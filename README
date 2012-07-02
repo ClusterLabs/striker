@@ -1,0 +1,16 @@
+AN!CWM - Cluster Web Manager
+
+!!! THIS PROGRAM IS NOT READY FOR USE IN ANY WAY, SHAPE OR FORM!
+!!! If you use this before this warning is removed, you will have a bad time.
+
+This program talks to cluster nodes using password-less ssh shared keys. It
+presents the user with a view of their current VMs and the remaining free
+resources on their cluster. When free resources exist, the user will be able to
+use this program to provision new VMs which will then be added to the cluster
+management.
+
+This program is designed for use on clusters using Red Hat High Availability 
+Add-on, backed by DRBD which is in turn managed by clustered LVM. It is 
+specifically designed for clusters built according to the tutorial below:
+ - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+
