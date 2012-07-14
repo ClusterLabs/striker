@@ -50,6 +50,964 @@ sub footer
 	return (0);
 }
 
+# This attempts to gather all information about a node in one SSH call. It's
+# done to minimize the ssh overhead on slow links.
+sub check_node_status
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		gather_node_details($conf, $node);
+	}
+	
+	# If I have no nodes up, exit.
+	record($conf, "$THIS_FILE ".__LINE__."; I have: [".@{$conf->{up_nodes}}."] nodes up.\n");
+	if (@{$conf->{up_nodes}} < 1)
+	{
+		# Neither node is up, so exit now.
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			I could not reach either node in this cluster.
+		</td>
+	</tr>
+</table>
+</body>
+<img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />
+";
+		exit;
+	}
+	else
+	{
+		post_scan_calculations($conf);
+	}
+	
+	return (0);
+}
+
+# This does the actual call out to get the data and parse the returned data.
+sub gather_node_details
+{
+	my ($conf, $node) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
+	
+	# This will flip false if I catch an ssh problem.
+	my $connected = 1;
+	$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_good\">Up!</span>";
+	$conf->{node}{$node}{info}{note}    = "";
+	
+	# I echo 'start purpose:' before each call so that I know for
+	# sure when I am switching between shell calls.
+	my $sc =  "$conf->{path}{ssh} root\@$node \"";
+	   $sc .= "echo \\\"start dmidecode:\\\"; dmidecode -t 4,16,17; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start meminfo:\\\"; cat /proc/meminfo; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start drbd-status:\\\"; drbdadm status; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start clustat:\\\"; clustat; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start cluster.conf:\\\"; cat /etc/cluster/cluster.conf; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start daemons:\\\"; ";
+	   $sc .= "/etc/init.d/rgmanager status; echo 'an-sve:rgmanager:$?'; ";
+	   $sc .= "/etc/init.d/cman status; echo 'an-sve:cman:$?'; ";
+	   $sc .= "/etc/init.d/drbd status; echo 'an-sve:drbd:$?'; ";
+	   $sc .= "/etc/init.d/clvmd status; echo 'an-sve:clvmd:$?'; ";
+	   $sc .= "/etc/init.d/gfs2 status; echo 'an-sve:gfs2:$?'; ";
+	   $sc .= "/etc/init.d/libvirtd status; echo 'an-sve:libvirtd:$?'; ";
+	   $sc .= "echo \\\"lvm-scan start:\\\"; pvscan; vgscan; lvscan; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"lvm-data start:\\\"; ";
+	   $sc .= "pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ";
+	   $sc .= "vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free; ";
+	   $sc .= "lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ";
+	   $sc .= "echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
+	   $sc .= "\"";
+	# These keep track of where I am.
+	my $in_dmidecode    = 0;
+	my $in_meminfo      = 0;
+	my $in_drbd_status  = 0;
+	my $in_clustat      = 0;
+	my $in_cluster_conf = 0;
+	my $in_daemons      = 0;
+	my $in_lvm_scan     = 0;
+	my $in_lvm_data     = 0;
+	my $in_gfs2         = 0;
+	
+	# These store the data read.
+	my @dmidecode;
+	my @meminfo;
+	my @drbd_status;
+	my @clustat;
+	my @cluster_conf;
+	my @daemons;
+	my @lvm_scan;
+	my @lvm_data;
+	my @gfs2;
+	### NOTE: This is over 1 KiB long and causes some IDEs, like 'kate', to
+	### flip the file into read-only mode. Enable only when needed.
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#next if not $line;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		
+		# This catches connectivity problems.
+		if ($line =~ /no route to host/)
+		{
+			$connected = 0;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "Failed to connect to <span class=\"code\">$node</span>. Is it turned on?<br />If so, have you setup ssh shared keys from <span class=\"code\">$conf->{'system'}{username}</span> to <span class=\"code\">root\@${node}</span>? Is the port set correctly?";
+			last;
+		}
+		elsif ($line =~ /host key verification failed/)
+		{
+			$connected = 0;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed. Have you saved <span class=\"code\">${node}</span>'s fingerprint in <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file? If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved. If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
+			last;
+		}
+		elsif ($line =~ /could not resolve hostname/)
+		{
+			$connected = 0;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"code\">$node</span>. Have you setup your <span class=\"code\">/etc/hosts</span> file or DNS server properly?";
+			last;
+		}
+		elsif ($line =~ /permission denied/)
+		{
+			$connected = 0;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"code\">$node</span>. Have you added <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/id_rsa.pub</span> public key to <span class=\"code\">$node</span>'s <span class=\"code\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"code\">/var/log/secure</span> on <span class=\"code\">$node</span> for errors.";
+			last;
+		}
+		elsif ($line =~ /\@\@\@\@/)
+		{
+			# When the host-key fails to match, a box made
+			# of '@@@@' is displayed, and is the entire 
+			# first line.
+			$connected = 0;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"code\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+			last;
+		}
+		
+		# Catch the end of sections
+		if ($line =~ /#!end!#/)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; end\n");
+			$in_dmidecode    = 0;
+			$in_meminfo      = 0;
+			$in_drbd_status  = 0;
+			$in_clustat      = 0;
+			$in_cluster_conf = 0;
+			$in_daemons      = 0;
+			$in_lvm_scan     = 0;
+			$in_lvm_data     = 0;
+			$in_gfs2         = 0;
+		}
+		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
+		
+		# Figure out where I am.
+		if ($line =~ /^start dmidecode:/)    { $in_dmidecode    = 1; next; }
+		if ($line =~ /^start meminfo:/)      { $in_meminfo      = 1; next; }
+		if ($line =~ /^start drbd-status:/)  { $in_drbd_status  = 1; next; }
+		if ($line =~ /^start clustat:/)      { $in_clustat      = 1; next; }
+		if ($line =~ /^start cluster.conf:/) { $in_cluster_conf = 1; next; }
+		if ($line =~ /^start daemons:/)      { $in_daemons      = 1; next; }
+		if ($line =~ /^lvm-scan start:/)     { $in_lvm_scan     = 1; next; }
+		if ($line =~ /^lvm-data start:/)     { $in_lvm_data     = 1; next; }
+		if ($line =~ /^start gfs2:/)         { $in_gfs2         = 1; next; }
+		
+		# If I am in a section, push the lines into the
+		# appropriate array.
+		if ($in_dmidecode)    { push @dmidecode,    $line; }
+		if ($in_meminfo)      { push @meminfo,      $line; }
+		if ($in_drbd_status)  { push @drbd_status,  $line; }
+		if ($in_clustat)      { push @clustat,      $line; }
+		if ($in_cluster_conf) { push @cluster_conf, $line; }
+		if ($in_daemons)      { push @daemons,      $line; }
+		if ($in_lvm_scan)     { push @lvm_scan,     $line; }
+		if ($in_lvm_data)     { push @lvm_data,     $line; }
+		if ($in_gfs2)         { push @gfs2,         $line; }
+	}
+	$fh->close();
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$connected], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
+	if ($connected)
+	{
+		push @{$conf->{up_nodes}}, $node;
+		parse_dmidecode   ($conf, $node, \@dmidecode);
+		parse_meminfo     ($conf, $node, \@meminfo);
+		parse_drbd_status ($conf, $node, \@drbd_status);
+		parse_clustat     ($conf, $node, \@clustat);
+		parse_cluster_conf($conf, $node, \@cluster_conf);
+		parse_daemons     ($conf, $node, \@daemons);
+		parse_lvm_scan    ($conf, $node, \@lvm_scan);
+		parse_lvm_data    ($conf, $node, \@lvm_data);
+		parse_gfs2        ($conf, $node, \@gfs2);
+		# Some stuff, like setting the system memory, needs some
+		# post-scan math.
+		post_node_calculations($conf, $node);
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			$conf->{node}{$node}{info}{'state'}
+		</td>
+		<td>
+			$conf->{node}{$node}{info}{note}
+		</td>
+	</tr>
+</table>
+";
+	}
+	
+	return (0);
+}
+
+# This sorts out some stuff after both nodes have been scanned.
+sub post_scan_calculations
+{
+	my ($conf) = @_;
+	
+	$conf->{resources}{total_ram}     = 0;
+	$conf->{resources}{total_cores}   = 0;
+	$conf->{resources}{total_threads} = 0;
+	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
+	{
+		# Record this node's RAM and CPU as the maximum available if
+		# the max cores and max ram is 0 or greater than that on this
+		# node.
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
+		{
+			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
+		{
+			$conf->{resources}{total_cores} = $conf->{node}{$node}{hardware}{total_node_cores};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}]\n");
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}], hardware total node threads: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		if ((not $conf->{resources}{total_threads}) || ($conf->{node}{$node}{hardware}{total_node_threads} < $conf->{resources}{total_threads}))
+		{
+			$conf->{resources}{total_threads} = $conf->{node}{$node}{hardware}{total_node_threads};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}]\n");
+		}
+		
+		# Record the VG info. I only record the first node I see as I
+		# only care about clustered VGs and they are, by definition,
+		# identical.
+		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}]\n");
+			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
+			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
+			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
+			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
+			$conf->{resources}{vg}{$vg}{size}       = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}       if not $conf->{resources}{vg}{$vg}{size};
+			$conf->{resources}{vg}{$vg}{used_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_pe}    if not $conf->{resources}{vg}{$vg}{used_pe};
+			$conf->{resources}{vg}{$vg}{used_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space} if not $conf->{resources}{vg}{$vg}{used_space};
+			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
+			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}]\n");
+		}
+	}
+	
+	return (0);
+}
+
+# This sorts out some values once the parsing is collected.
+sub post_node_calculations
+{
+	my ($conf, $node) = @_;
+	
+	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+	if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
+	{
+		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+	}
+	
+	return (0);
+}
+
+# Parse the dmidecode data.
+sub parse_dmidecode
+{
+	my ($conf, $node, $array) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
+	#foreach my $line (@{$array}) { record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
+	
+	# Some variables I will need.
+	my $in_cpu           = 0;
+	my $in_system_ram    = 0;
+	my $in_dimm_module   = 0;
+	
+	# On SMP machines, the CPU socket becomes important. This 
+	# tracks which CPU I am looking at.
+	my $this_socket      = "";
+	
+	# Same deal with volume groups.
+	my $this_vg          = "";
+	
+	# RAM is all over the place, so I need to record all the bits
+	# in strings and push to the hash when I see a blank line.
+	my $dimm_locator     = "";
+	my $dimm_bank        = "";
+	my $dimm_size        = "";
+	my $dimm_type        = "";
+	my $dimm_speed       = "";
+	my $dimm_form_factor = "";
+	
+	# This will be set to the values I find on this node.
+	$conf->{node}{$node}{hardware}{total_node_cores}   = 0;
+	$conf->{node}{$node}{hardware}{total_node_threads} = 0;
+	$conf->{node}{$node}{hardware}{total_memory}       = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+	
+	# These will be set to the lowest available RAM, and CPU core
+	# available.
+	$conf->{resources}{total_cores}   = 0;
+	$conf->{resources}{total_threads} = 0;
+	$conf->{resources}{total_ram}     = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; Cluster; total cores: [$conf->{resources}{total_cores}], total threads: [$conf->{resources}{total_threads}], total memory: [$conf->{resources}{total_ram}]\n");
+	
+	foreach my $line (@{$array})
+	{
+		if ($line =~ /dmidecode: command not found/)
+		{
+			die "Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
+		}
+		
+		# Find out what I am looking at.
+		if (not $line)
+		{
+			# Blank lines break sections.
+			# If I had been reading DIMM info, push it into
+			# the hash.
+			if ($in_dimm_module)
+			{
+				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank}        = $dimm_bank;
+				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size}        = $dimm_size;
+				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}        = $dimm_type;
+				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}       = $dimm_speed;
+				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor} = $dimm_form_factor;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], dimm: [$dimm_locator], bank: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank}], size: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size}], type: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}], speed: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}], form factor: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor}]\n");
+			}
+			$in_cpu         = 0;
+			$in_system_ram  = 0;
+			$in_dimm_module = 0;
+			$this_socket    = "";
+			$this_vg        = "";
+			next;
+		}
+		if ($line =~ /Processor Information/)
+		{
+			$in_cpu         = 1;
+			next;
+		}
+		if ($line =~ /Physical Memory Array/)
+		{
+			$in_system_ram  = 1;
+			next;
+		}
+		if ($line =~ /Memory Device/)
+		{
+			$in_dimm_module = 1;
+			next;
+		}
+		if ((not $in_cpu) && (not $in_system_ram) && (not $in_dimm_module))
+		{
+			next;
+		}
+		
+		# Now pull out data based on where I am.
+		if ($in_cpu)
+		{
+			# The socket is the first line, so I can safely
+			# assume that 'this_socket' will be populated
+			# after this.
+			if ($line =~ /Socket Designation: (.*)/)
+			{
+				$this_socket = $1;
+				next;
+			}
+			
+			# Grab some deets!
+			if ($line =~ /Family: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{family}    = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu family: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{family}]\n");
+			}
+			if ($line =~ /Manufacturer: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem}       = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu oem: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem}]\n");
+			}
+			if ($line =~ /Version: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{version}   = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu version: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{version}]\n");
+			}
+			if ($line =~ /Max Speed: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu max speed: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed}]\n");
+			}
+			if ($line =~ /Status: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{status}    = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu status: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{status}]\n");
+			}
+			if ($line =~ /Core Count: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores} =  $1;
+				$conf->{node}{$node}{hardware}{total_node_cores}         += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores};
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], socket cores: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores}], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+			}
+			if ($line =~ /Thread Count: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads} =  $1;
+				$conf->{node}{$node}{hardware}{total_node_threads}         += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads};
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], socket threads: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}]\n");
+			}
+		}
+		if ($in_system_ram)
+		{
+			# Not much in system RAM, but good to know stuff.
+			if ($line =~ /Error Correction Type: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{ram}{ecc_support} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], RAM ECC: [$conf->{node}{$node}{hardware}{ram}{ecc_support}]\n");
+			}
+			if ($line =~ /Number Of Devices: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{ram}{slots}       = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], RAM slots: [$conf->{node}{$node}{hardware}{ram}{slots}]\n");
+			}
+			# This needs to be converted to bytes.
+			if ($line =~ /Maximum Capacity: (.*)/)
+			{
+				$conf->{node}{$node}{hardware}{ram}{max_support} = $1;
+				$conf->{node}{$node}{hardware}{ram}{max_support} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{ram}{max_support}, 1);
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], max. supported RAM: [$conf->{node}{$node}{hardware}{ram}{max_support}]\n");
+			}
+		}
+		if ($in_dimm_module)
+		{
+			if ($line =~ /Locator: (.*)/)      { $dimm_locator     = $1; }
+			if ($line =~ /Bank Locator: (.*)/) { $dimm_bank        = $1; }
+			if ($line =~ /Type: (.*)/)         { $dimm_type        = $1; }
+			if ($line =~ /Speed: (.*)/)        { $dimm_speed       = $1; }
+			if ($line =~ /Form Factor: (.*)/)  { $dimm_form_factor = $1; }
+			if ($line =~ /Size: (.*)/)
+			{
+				$dimm_size = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size]\n");
+				# If the DIMM couldn't be read, it will
+				# show "Unknown". I set this to 0 in 
+				# that case.
+				if ($dimm_size !~ /^\d/)
+				{
+					$dimm_size = 0;
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size]\n");
+				}
+				else
+				{
+					$dimm_size                                   =  convert_to_bytes($conf, $dimm_size, 1);
+					$conf->{node}{$node}{hardware}{total_memory} += $dimm_size;
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+				}
+			}
+		}
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Cluster; total cores: [$conf->{resources}{total_cores}], total threads: [$conf->{resources}{total_threads}], total memory: [$conf->{resources}{total_ram}]\n");
+	return(0);
+}
+
+# Parse the memory information.
+sub parse_meminfo
+{
+	my ($conf, $node, $array) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /MemTotal:\s+(.*)/)
+		{
+			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = $1;
+			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{meminfo}{memtotal}, 1);
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+		}
+	}
+	
+	return(0);
+}
+
+# Parse the DRBD status.
+sub parse_drbd_status
+{
+	my ($conf, $node, $array) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbd_status() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		next if $line !~ /^<resource /;
+		
+		# Make sure I only display "unknown" or the read value.
+		my $minor = "unknown";
+		my $res   = "unknown";
+		my $cs    = "unknown";
+		my $ro    = "unknown";
+		my $ds    = "unknown";
+		my $dev   = "unknown";
+		($minor) = ($line =~ /minor="(.*?)"/);
+		($res)   = ($line =~ /name="(.*?)"/);
+		($cs)    = ($line =~ /cs="(.*?)"/);
+		($ro)    = ($line =~ /ro1="(.*?)"/);
+		($ds)    = ($line =~ /ds1="(.*?)"/);
+		$dev = "/dev/drbd$minor" if $minor =~ /^\d+$/;
+# 		$conf->{node}{$node}{drbd}{$dev}{resource_name}    = $res;
+# 		$conf->{node}{$node}{drbd}{$dev}{connection_state} = $cs;
+# 		$conf->{node}{$node}{drbd}{$dev}{role}             = $ro;
+# 		$conf->{node}{$node}{drbd}{$dev}{disk_state}       = $ds;
+# 		$conf->{node}{$node}{drbd}{$dev}{minor}            = $minor;
+# 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n") if $conf->{'system'}{debug};
+		
+		# This is the new way of recording.
+		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
+		$conf->{drbd}{$res}{node}{$node}{connection_state} = $cs;
+		$conf->{drbd}{$res}{node}{$node}{role}             = $ro;
+		$conf->{drbd}{$res}{node}{$node}{disk_state}       = $ds;
+		$conf->{drbd}{$res}{node}{$node}{device}           = $dev;
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], New - res: [$res], minor: [$conf->{drbd}{$res}{node}{$node}{minor}], cs: [$conf->{drbd}{$res}{node}{$node}{connection_state}], ro: [$conf->{drbd}{$res}{node}{$node}{role}], ds: [$conf->{drbd}{$res}{node}{$node}{disk_state}], dev: [$conf->{drbd}{$res}{node}{$node}{device}]\n");
+	}
+	
+	return(0);
+}
+
+# Parse the cluster status.
+sub parse_clustat
+{
+	my ($conf, $node, $array) = @_;
+	
+	# Setup some variables.
+	my $in_member  = 0;
+	my $in_service = 0;
+	my $line_num   = 0;
+	
+	my $host_name                         = "unknown";
+	my $cman                              = "unknown";
+	my $rgmanager                         = "unknown";
+	my $storage_name                      = "unknown";
+	my $storage_state                     = "unknown";
+	$conf->{node}{$node}{me}{cman}        = 0;
+	$conf->{node}{$node}{me}{rgmanager}   = 0;
+	$conf->{node}{$node}{peer}{cman}      = 0;
+	$conf->{node}{$node}{peer}{rgmanager} = 0;
+
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_clustat() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		next if not $line;
+		next if $line =~ /^-/;
+		
+		if ($line =~ /^Member Name/)
+		{
+			$in_member  = 1;
+			$in_service = 0;
+			next;
+		}
+		elsif ($line =~ /^Service Name/)
+		{
+			$in_member  = 0;
+			$in_service = 1;
+			next;
+		}
+		if ($in_member)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /Local/)
+			{
+				($conf->{node}{$node}{me}{name}, undef, my $services) = (split/ /, $line, 3);
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - me: [$conf->{node}{$node}{me}{name}], services: [$services]\n");
+				$services =~ s/local//;
+				$services =~ s/ //g;
+				$services =~ s/,,/,/g;
+				$conf->{node}{$node}{me}{cman}      =  1 if $services =~ /Online/;
+				$conf->{node}{$node}{me}{rgmanager} =  1 if $services =~ /rgmanager/;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - Me   -> [$conf->{node}{$node}{me}{name}]; cman: [$conf->{node}{$node}{me}{cman}], rgmanager: [$conf->{node}{$node}{me}{rgmanager}]\n");
+			}
+			else
+			{
+				($conf->{node}{$node}{peer}{name}, undef, my $services) = split/ /, $line, 3;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - peer: [$conf->{node}{$node}{peer}{name}], services: [$services]\n");
+				$services =~ s/ //g;
+				$services =~ s/,,/,/g;
+				$conf->{node}{peer}{cman}      = 1 if $services =~ /Online/;
+				$conf->{node}{peer}{rgmanager} = 1 if $services =~ /rgmanager/;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - Peer -> [$conf->{node}{$node}{peer}{name}]; cman: [$conf->{node}{peer}{cman}], rgmanager: [$conf->{node}{peer}{rgmanager}]\n");
+			}
+		}
+		elsif ($in_service)
+		{
+			if ($line =~ /^vm:/)
+			{
+				my ($vm, $host, $state) = split/ /, $line, 3;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
+				
+				# If the service is disabled, it will 
+				# have '()' which I need to remove.
+				$host =~ s/\(//g;
+				$host =~ s/\)//g;
+				
+				$conf->{vm}{$vm}{host}    = $host;
+				$conf->{vm}{$vm}{'state'} = $state;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
+				
+				# Pick out who the peer node is.
+				#record($conf, "$THIS_FILE ".__LINE__."; host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
+				if ($host eq $conf->{node}{$node}{me}{name})
+				{
+					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{peer}{name};
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+				}
+				else
+				{
+					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{me}{name};
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+				}
+			}
+			elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
+			{
+				my $name  = $1;
+				my $host  = $2;
+				my $state = $3;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name], host: [$host], state: [$state]\n");
+				
+				# If the service is disabled, it will 
+				# have '()' which I need to remove.
+				$host =~ s/\(//g;
+				$host =~ s/\)//g;
+				
+				$conf->{service}{$name}{host}    = $host;
+				$conf->{service}{$name}{'state'} = $state;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name], host: [$conf->{service}{$name}{host}], state: [$conf->{service}{$name}{'state'}]\n");
+			}
+		}
+	}
+	
+	$host_name            = $conf->{node}{$node}{me}{name};
+	my $cman_running      = $conf->{node}{$node}{me}{cman};
+	my $rgmanager_running = $conf->{node}{$node}{me}{rgmanager};
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - host name: [$host_name], cman: [$cman_running], rgmanager: [$rgmanager_running]\n");
+	foreach my $name (sort {$a cmp $b} keys %{$conf->{service}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name]\n");
+		next if $conf->{service}{$name}{host} ne $host_name;
+		next if $name !~ /storage/;
+		$storage_name  = $name;
+		$storage_state = $conf->{service}{$name}{'state'};
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - storage name: [$storage_name], storage state: [$storage_state]\n");
+	}
+	my @say_yn=("no", "yes");
+	$cman      = $say_yn[$cman_running];
+	$rgmanager = $say_yn[$rgmanager_running];
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - cman: [$cman], rgmanager: [$rgmanager]\n");
+	
+	$conf->{node}{$node}{info}{host_name}       = $host_name;
+	$conf->{node}{$node}{info}{short_host_name} = ($host_name =~ /^(.*?)\./)[0];
+	$conf->{node}{$node}{info}{cman_state}      = $cman;
+	$conf->{node}{$node}{info}{rgmanager_state} = $rgmanager;
+	$conf->{node}{$node}{info}{storage_name}    = $storage_name;
+	$conf->{node}{$node}{info}{storage_state}   = $storage_state;
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - host name: [$conf->{node}{$node}{info}{host_name}], short host name: [$conf->{node}{$node}{info}{short_host_name}], cman state: [$conf->{node}{$node}{info}{cman_state}], rgmanager state: [$conf->{node}{$node}{info}{rgmanager_state}], storage name: [$conf->{node}{$node}{info}{storage_name}], storage state: [$conf->{node}{$node}{info}{storage_state}]\n");
+	
+	return(0);
+}
+
+# Parse the cluster configuration.
+sub parse_cluster_conf
+{
+	my ($conf, $node, $array) = @_;
+	
+	my $in_fod      = 0;
+	my $current_fod = "";
+	
+	# If I've already read the config, return.
+	return (0) if $conf->{'system'}{config_read};
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		# Find failover domains.
+		if ($line =~ /<failoverdomain /)
+		{
+			$current_fod = ($line =~ /name="(.*?)"/)[0];
+			#record($conf, "$THIS_FILE ".__LINE__."; current_fod: [$current_fod]\n");
+			$in_fod      = 1;
+			next;
+		}
+		if ($line =~ /<\/failoverdomain>/)
+		{
+			$current_fod = "";
+			$in_fod      = 0;
+			next;
+		}
+		if ($in_fod)
+		{
+			next if $line !~ /failoverdomainnode/;
+			my $node     = ($line =~ /name="(.*?)"/)[0];
+			my $priority = ($line =~ /priority="(.*?)"/)[0] ? $1 : 0;
+			$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node} = $node;
+			#record($conf, "$THIS_FILE ".__LINE__."; failover domain: [$current_fod], node: [$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node}], priority: [$priority]\n");
+		}
+		
+		# Find VMs.
+		if ($line =~ /<vm.*?name="(.*?)"/)
+		{
+			my $vm     = $1;
+			my $vm_key = "vm:$vm";
+			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
+			my $domain = ($line =~ /domain="(.*?)"/)[0];
+			$conf->{vm}{$vm_key}{definition_file} = $def;
+			$conf->{vm}{$vm_key}{failover_domain} = $domain;
+			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$conf->{vm}{$vm_key}{definition_file}]\n");
+		}
+	}
+	$conf->{'system'}{config_read} = 1;
+	
+	return(0);
+}
+
+# Parse the daemon statuses.
+sub parse_daemons
+{
+	my ($conf, $node, $array) = @_;
+	
+	# If all daemons are down, record here that I can shut down
+	# this VM. If any are up, enable withdrawl.
+	$conf->{node}{$node}{enable_shutdown}  = 1;
+	$conf->{node}{$node}{enable_withdraw} = 0;
+	
+	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
+	
+	# I need to preset the services as stopped because the little
+	# hack I have below doesn't echo when a service isn't running.
+	foreach my $daemon (@daemons)
+	{
+		$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_bad\">Stopped</span>";
+		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_daemons() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		next if $line !~ /^an-sve:/;
+		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
+		$exit_code = "" if not defined $exit_code;
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit_code: [$exit_code]\n");
+		if ($exit_code =~ /^\d+$/)
+		{
+			$conf->{node}{$node}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">Running</span>";
+			$conf->{node}{$node}{enable_shutdown}         = 0;
+			$conf->{node}{$node}{enable_withdraw}         = 1;
+		}
+		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = defined $exit_code ? $exit_code : "";
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}], status: [$conf->{node}{$node}{daemon}{$daemon}{status}]\n");
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable shutdown: [$conf->{node}{$node}{enable_shutdown}], enable withdrawl: [$conf->{node}{$node}{enable_withdraw}]\n");
+	#foreach my $daemon (@daemons) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], status: [$conf->{node}{$node}{daemon}{$daemon}{status}], exit_code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}]\n"); }
+	
+	return(0);
+}
+
+# Parse the LVM scan output.
+sub parse_lvm_scan
+{
+	my ($conf, $node, $array) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_scan() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	
+	return(0);
+}
+
+# Parse the LVM data.
+sub parse_lvm_data
+{
+	my ($conf, $node, $array) = @_;
+	
+	my $in_pvs = 0;
+	my $in_vgs = 0;
+	my $in_lvs = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_data() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^PV/)
+		{
+			$in_pvs = 1;
+			$in_vgs = 0;
+			$in_lvs = 0;
+			next;
+		}
+		if ($line =~ /^VG/)
+		{
+			$in_pvs = 0;
+			$in_vgs = 1;
+			$in_lvs = 0;
+			next;
+		}
+		if ($line =~ /^LV/)
+		{
+			$in_pvs = 0;
+			$in_vgs = 0;
+			$in_lvs = 1;
+			next;
+		}
+		
+		if ($in_pvs)
+		{
+			# pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#   pv_name,  vg_name,     pv_fmt,  pv_attr,     pv_size,     pv_free,   pv_used,     pv_uuid
+			my ($this_pv, $used_by_vg, $format, $attributes, $total_size, $free_size, $used_size, $uuid) = (split /#!#/, $line);
+			$total_size =~ s/B$//;
+			$free_size  =~ s/B$//;
+			$used_size  =~ s/B$//;
+			#record($conf, "$THIS_FILE ".__LINE__."; PV: [$this_pv], used by VG: [$used_by_vg], format: [$format], attributes: [$attributes], total size: [$total_size], free size: [$free_size], used size: [$used_size], uuid: [$uuid]\n");
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_by_vg} = $used_by_vg;
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{attributes} = $attributes;
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{total_size} = $total_size;
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{free_size}  = $free_size;
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_size}  = $used_size;
+			$conf->{node}{$node}{lvm}{pv}{$this_pv}{uuid}       = $uuid;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], PV: [$this_pv], used by VG: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_by_vg}], attributes: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{attributes}], total size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{total_size}], free size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{free_size}], used size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_size}], uuid: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{uuid}]\n");
+		}
+		elsif ($in_vgs)
+		{
+			# vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  
+			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free) = split /#!#/, $line;
+			$pe_size =~ s/B$//;
+			$vg_size =~ s/B$//;
+			$vg_free =~ s/B$//;
+			my $used_pe    = $total_pe - $free_pe;
+			my $used_space = $vg_size - $vg_free;
+			#record($conf, "$THIS_FILE ".__LINE__."; VG: [$this_vg], attributes: [$attributes], PE size: [$pe_size], total PE: [$total_pe], uuid: [$uuid], VG size: [$vg_size], used PE: [$used_pe], used space: [$used_space], free PE: [$free_pe], free space: [$vg_free], VG free: [$vg_free]\n");
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}  = $attributes =~ /c$/ ? 1 : 0;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}    = $pe_size;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}   = $total_pe;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}       = $uuid;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}       = $vg_size;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}    = $used_pe;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space} = $used_space;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}    = $free_pe;
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space} = $vg_free;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$this_vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}], pe size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}], total pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}], uuid: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}], used pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}], used space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space}], free pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}], free space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space}]\n");
+		}
+		elsif ($in_lvs)
+		{
+			# lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			my ($lv_name, $on_vg, $attributes, $total_size, $uuid, $path, $devices) = (split /#!#/, $line);
+			#record($conf, "$THIS_FILE ".__LINE__."; LV name: [$lv_name], on VG: [$on_vg], attributes: [$attributes], total size: [$total_size], uuid: [$uuid], path: [$path], device(s): [$devices]\n");
+			$total_size =~ s/D$//;
+			$devices    =~ s/\(\d+\)//g;	# Strip the starting PE number
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_vg}      = $on_vg;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{active}     = ($attributes =~ /.{4}(.{1})/)[0] eq "a" ? 1 : 0;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{attributes} = $attributes;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{total_size} = $total_size;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{uuid}       = $uuid;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{path}       = $path;
+			$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_devices} = $devices;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], LV: [$lv_name], on VG: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_vg}], active: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{active}], attribute: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{attributes}], total size: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{total_size}], uuid: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{uuid}], path: [$conf->{node}{$node}{lvm}{lv}{$lv_name}{path}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_devices}]\n");
+		}
+	}
+	
+	return(0);
+}
+
+# Parse the GFS2 data.
+sub parse_gfs2
+{
+	my ($conf, $node, $array) = @_;
+	
+	my $in_fs = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_gfs2() for node: [$node]\n");
+	foreach my $line (@{$array})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /Filesystem/)
+		{
+			$in_fs = 1;
+			next;
+		}
+		
+		if ($in_fs)
+		{
+			next if $line !~ /^\//;
+			my ($device_path, $total_size, $used_space, $free_space, $percent_used, $mount_point) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)$/);
+			next if not exists $conf->{node}{$node}{gfs}{$mount_point};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device path: [$device_path], total size: [$total_size], used space: [$used_space], free space: [$free_space], percent used: [$percent_used], mount point: [$mount_point]\n");
+			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = $device_path;
+			$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = $total_size;
+			$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = $used_space;
+			$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = $free_space;
+			$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = $percent_used;
+			$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 1;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], device path: [$conf->{node}{$node}{gfs}{$mount_point}{device_path}], total size: [$conf->{node}{$node}{gfs}{$mount_point}{total_size}], used space: [$conf->{node}{$node}{gfs}{$mount_point}{used_space}], free space: [$conf->{node}{$node}{gfs}{$mount_point}{free_space}], percent used: [$conf->{node}{$node}{gfs}{$mount_point}{percent_used}], mounted: [$conf->{node}{$node}{gfs}{$mount_point}{mounted}]\n");
+		}
+		else
+		{
+			# Read the GFS info.
+			my (undef, $mount_point, $fs) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s/);
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], fs: [$fs]\n");
+			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = "--";
+			$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = "--";
+			$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = "--";
+			$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = "--";
+			$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = "--";
+			$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 0;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], device path: [$conf->{node}{$node}{gfs}{$mount_point}{device_path}], total size: [$conf->{node}{$node}{gfs}{$mount_point}{total_size}], used space: [$conf->{node}{$node}{gfs}{$mount_point}{used_space}], free space: [$conf->{node}{$node}{gfs}{$mount_point}{free_space}], percent used: [$conf->{node}{$node}{gfs}{$mount_point}{percent_used}], mounted: [$conf->{node}{$node}{gfs}{$mount_point}{mounted}]\n");
+		}
+	}
+	
+	return(0);
+}
+
+# ==================================================
+
 # This sorts out what needs to happen if 'task' was set.
 sub process_task
 {
@@ -424,338 +1382,71 @@ sub display_details
 		<td class=\"td_hidden\">
 ";
 	
-	# Show the status of each node's GFS2 share(s)
-	display_gfs2_details($conf);
-	print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
-	
-	# This shows the status of each DRBD resource in the cluster.
-	display_drbd_details($conf);
-	print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
-	
-	# Show the user the current VM states and the control buttons.
-	display_vm_state_and_controls($conf);
-	print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
-	
-	# Show the details about each VM.
-	display_vm_details($conf);
-	print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
-	
-	# Show the free resources available for new VMs.
-	display_free_resources($conf);
-	print "
-		</td>
-	</tr>
-</table>
-";
+# 	# Show the status of each node's GFS2 share(s)
+# 	display_gfs2_details($conf);
+# 	print "
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# 			&nbsp;
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# ";
+# 	
+# 	# This shows the status of each DRBD resource in the cluster.
+# 	display_drbd_details($conf);
+# 	print "
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# 			&nbsp;
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# ";
+# 	
+# 	# Show the user the current VM states and the control buttons.
+# 	display_vm_state_and_controls($conf);
+# 	print "
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# 			&nbsp;
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# ";
+# 	
+# 	# Show the details about each VM.
+# 	display_vm_details($conf);
+# 	print "
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# 			&nbsp;
+# 		</td>
+# 	</tr>
+# 	<tr>
+# 		<td class=\"td_hidden\">
+# ";
+# 	
+# 	# Show the free resources available for new VMs.
+# 	display_free_resources($conf);
+# 	print "
+# 		</td>
+# 	</tr>
+# </table>
+# ";
 	
 	return (0);
-}
-
-# This calls each host and gathers/records system information like CPU and RAM
-# details, VGs and their used/free space, etc. 
-sub check_host
-{
-	my ($conf) = @_;
-	
-	# This will record data from both nodes and use the lowest of each
-	# value, when differences appear.
-	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
-	{
-		# Some variables I will need.
-		my $in_cpu           = 0;
-		my $in_system_ram    = 0;
-		my $in_dimm_module   = 0;
-		my $in_meminfo       = 0;
-		my $in_vg            = 0;
-		
-		# On SMP machines, the CPU socket becomes important. This 
-		# tracks which CPU I am looking at.
-		my $this_socket      = "";
-		
-		# Same deal with volume groups.
-		my $this_vg          = "";
-		
-		# RAM is all over the place, so I need to record all the bits
-		# in strings and push to the hash when I see a blank line.
-		my $dimm_locator     = "";
-		my $dimm_bank        = "";
-		my $dimm_size        = "";
-		my $dimm_type        = "";
-		my $dimm_speed       = "";
-		my $dimm_form_factor = "";
-		
-		# These will be set to the lowest available RAM, and CPU core
-		# available.
-		my $total_node_cores   = 0;
-		my $total_node_threads = 0;
-		my $total_node_memory  = 0;
-		$conf->{resources}{total_cores}   = 0;
-		$conf->{resources}{total_threads} = 0;
-		$conf->{resources}{total_ram}     = 0;
-		
-		# Some machine (Tyan, I am looking at you...) don't report RAM
-		# details. For this reason, I toss the 'cat /proc/meminfo' as a
-		# way to find the available RAM.
-		my $fh=IO::Handle->new();
-		my $sc = "ssh root\@$node \"dmidecode -t 4,16,17 && echo \\\"meminfo:\\\" && cat /proc/meminfo && echo && vgdisplay\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line =  $_;
-			$line    =~ s/^\s+//;
-			$line    =~ s/\s+$//;
-			
-			if ($line =~ /dmidecode: command not found/)
-			{
-				die "Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
-			}
-			
-			# Find out what I am looking at.
-			if (not $line)
-			{
-				# Blank lines break sections.
-				# If I had been reading DIMM info, push it into
-				# the hash.
-				if ($in_dimm_module)
-				{
-					$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank}        = $dimm_bank;
-					$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size}        = $dimm_size;
-					$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}        = $dimm_type;
-					$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}       = $dimm_speed;
-					$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor} = $dimm_form_factor;
-				}
-				$in_cpu         = 0;
-				$in_system_ram  = 0;
-				$in_dimm_module = 0;
-				$in_meminfo     = 0;
-				$in_vg          = 0;
-				$this_socket    = "";
-				$this_vg        = "";
-				next;
-			}
-			if ($line =~ /Processor Information/)
-			{
-				$in_cpu         = 1;
-				next;
-			}
-			if ($line =~ /Physical Memory Array/)
-			{
-				$in_system_ram  = 1;
-				next;
-			}
-			if ($line =~ /Memory Device/)
-			{
-				$in_dimm_module = 1;
-				next;
-			}
-			if ($line =~ /meminfo:/)
-			{
-				$in_meminfo     = 1;
-				next;
-			}
-			if ($line =~ /--- Volume group ---/)
-			{
-				$in_vg          = 1;
-			}
-			if ((not $in_cpu) && (not $in_system_ram) && (not $in_dimm_module) && (not $in_meminfo) && (not $in_vg))
-			{
-				next;
-			}
-			
-			# Now pull out data based on where I am.
-			if ($in_cpu)
-			{
-				# The socket is the first line, so I can safely
-				# assume that 'this_socket' will be populated
-				# after this.
-				if ($line =~ /Socket Designation: (.*)/)
-				{
-					$this_socket = $1;
-					next;
-				}
-				
-				# Grab some deets!
-				if ($line =~ /Family: (.*)/)       { $conf->{node}{$node}{hardware}{cpu}{$this_socket}{family}    = $1; }
-				if ($line =~ /Manufacturer: (.*)/) { $conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem}       = $1; }
-				if ($line =~ /Version: (.*)/)      { $conf->{node}{$node}{hardware}{cpu}{$this_socket}{version}   = $1; }
-				if ($line =~ /Max Speed: (.*)/)    { $conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed} = $1; }
-				if ($line =~ /Status: (.*)/)       { $conf->{node}{$node}{hardware}{cpu}{$this_socket}{status}    = $1; }
-				if ($line =~ /Core Count: (.*)/)
-				{
-					$conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores} =  $1;
-					$total_node_cores                                        += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores};
-				}
-				if ($line =~ /Thread Count: (.*)/)
-				{
-					$conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads} =  $1;
-					$total_node_threads                                        += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads};
-				}
-			}
-			if ($in_system_ram)
-			{
-				# Not much in system RAM, but good to know stuff.
-				if ($line =~ /Error Correction Type: (.*)/) { $conf->{node}{$node}{hardware}{ram}{ecc_support} = $1; }
-				if ($line =~ /Number Of Devices: (.*)/)     { $conf->{node}{$node}{hardware}{ram}{slots}       = $1; }
-				# This needs to be converted to bytes.
-				if ($line =~ /Maximum Capacity: (.*)/)
-				{
-					$conf->{node}{$node}{hardware}{ram}{max_support} = $1;
-					$conf->{node}{$node}{hardware}{ram}{max_support} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{ram}{max_support}, 1);
-				}
-			}
-			if ($in_dimm_module)
-			{
-				if ($line =~ /Locator: (.*)/)      { $dimm_locator     = $1; }
-				if ($line =~ /Bank Locator: (.*)/) { $dimm_bank        = $1; }
-				if ($line =~ /Type: (.*)/)         { $dimm_type        = $1; }
-				if ($line =~ /Speed: (.*)/)        { $dimm_speed       = $1; }
-				if ($line =~ /Form Factor: (.*)/)  { $dimm_form_factor = $1; }
-				if ($line =~ /Size: (.*)/)
-				{
-					$dimm_size = $1;
-					# If the DIMM couldn't be read, it will
-					# show "Unknown". I set this to 0 in 
-					# that case.
-					if ($dimm_size !~ /^\d/)
-					{
-						$dimm_size = 0;
-					}
-					else
-					{
-						$dimm_size         =  convert_to_bytes($conf, $dimm_size, 1);
-						$total_node_memory += $dimm_size;
-					}
-				}
-			}
-			if ($in_meminfo)
-			{
-				if ($line =~ /MemTotal:\s+(.*)/) { $conf->{node}{$node}{hardware}{meminfo}{memtotal} = $1; }
-			}
-			if ($in_vg)
-			{
-				# The socket is the first line, so I can safely
-				# assume that 'this_socket' will be populated
-				# after this.
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				if ($line =~ /VG Name\s+(.*)/)
-				{
-					$this_vg = $1;
-					next;
-				}
-				
-				if ($line =~ /Clustered\s+(.*)/) { $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered} = $1; }
-				if ($line =~ /PE\s+Size\s+(.*)/)   { $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}   = $1; }
-				if ($line =~ /Total\s+PE\s+(.*)/)  { $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}  = $1; }
-				if ($line =~ /VG\s+UUID\s+(.*)/)   { $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}      = $1; }
-				if ($line =~ /PE\s+Size\s+(.*)/)
-				{
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size} = $1;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}, 1);
-				}
-				if ($line =~ /VG\s+Size\s+(.*)/)
-				{
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size} = $1;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}, 1);
-				}
-				# These two have two bits of info I want.
-				if ($line =~ /Alloc\s+PE\s+\/\s+Size\s+(.*?) \/ (.*)/)
-				{
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}    = $1;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space} = $2;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space}, 1);
-				}
-				if ($line =~ /Free\s+PE\s+\/\s+Size\s+(.*?) \/ (.*)/)
-				{
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}    = $1;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space} = $2;
-					$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space}, 1);
-				}
-			}
-		}
-		$fh->close();
-		
-		# If I have no $total_node_memory value, use the 'meminfo' size.
-		if (not $total_node_memory)
-		{
-			$total_node_memory = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
-		}
-		
-		# Record this node's RAM and CPU as the maximum available if
-		# the max cores and max ram is 0 or greater than that on this
-		# node.
-		if ((not $conf->{resources}{total_ram}) || ($total_node_memory < $conf->{resources}{total_ram}))
-		{
-			$conf->{resources}{total_ram} = $total_node_memory;
-		}
-		if ((not $conf->{resources}{total_cores}) || ($total_node_cores < $conf->{resources}{total_cores}))
-		{
-			$conf->{resources}{total_cores} = $total_node_cores;
-		}
-		if ((not $conf->{resources}{total_threads}) || ($total_node_cores < $conf->{resources}{total_threads}))
-		{
-			$conf->{resources}{total_threads} = $total_node_threads;
-		}
-		
-		# Record the VG info. I only record the first node I see as I
-		# only care about clustered VGs and they are, by definition,
-		# identical.
-		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; - vg: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}]\n");
-			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
-			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
-			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
-			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
-			$conf->{resources}{vg}{$vg}{size}       = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}       if not $conf->{resources}{vg}{$vg}{size};
-			$conf->{resources}{vg}{$vg}{used_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_pe}    if not $conf->{resources}{vg}{$vg}{used_pe};
-			$conf->{resources}{vg}{$vg}{used_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space} if not $conf->{resources}{vg}{$vg}{used_space};
-			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
-			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
-			#record($conf, "$THIS_FILE ".__LINE__."; - vg: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}]\n");
-		}
-	}
 }
 
 # This shows the free resources available to be assigned to new VMs.
@@ -955,6 +1646,7 @@ sub display_free_resources
 		</td>
 	</tr>
 </table>
+<br />
 ";
 
 	return (0);
@@ -1470,13 +2162,10 @@ sub set_node_names
 	my ($conf) = @_;
 	
 	# First pull the names into easier to follow variables.
-	if (not $conf->{cgi}{cluster})
-	{
-		die "A specific cluster has not yet been selected.\n";
-	}
 	my $this_cluster = $conf->{cgi}{cluster};
 	$conf->{'system'}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
 	$conf->{'system'}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
+	#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{'system'}{cluster}{node1_name}], node2: [$conf->{'system'}{cluster}{node2_name}]\n");
 	
 	return (0);
 }
@@ -1873,10 +2562,10 @@ sub display_node_details
 {
 	my ($conf) = @_;
 	
-	print q|
-<table width="100%">
+	print "
+<table width=\"100%\">
 	<tr>
-		<td colspan="9">
+		<td colspan=\"11\">
 			<b>Cluster Node Status</b>
 		</td>
 	</tr>
@@ -1902,11 +2591,11 @@ sub display_node_details
 		<td>
 			<i>libvirtd</i>
 		</td>
-		<td colspan="2">
+		<td colspan=\"4\">
 			<i>Control</i>
 		</td>
 	</tr>
-|;
+";
 	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
 	my $this_cluster = $conf->{cgi}{cluster};
@@ -1944,10 +2633,12 @@ sub display_node_details
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		
+		my $say_join = "<span class=\"disabled_button\">Join</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_withdraw: [$conf->{node}{$node}{enable_withdraw}]\n");
 		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name&storage=$conf->{node}{$node}{storage_service}\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_shutdown: [$conf->{node}{$node}{enable_shutdown}]\n");
 		my $say_shutdown = $conf->{node}{$node}{enable_shutdown} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=shutdown&node=$node&node_cluster_name=$node_long_name\">Shut Down</a>" : "<span class=\"disabled_button\">Shut Down</span>";
+		my $say_boot = "<span class=\"disabled_button\">Boot Up</span>";
 
 		print "
 	<tr>
@@ -1973,10 +2664,16 @@ sub display_node_details
 			$conf->{node}{$node}{daemon}{libvirtd}{status}
 		</td>
 		<td>
+			$say_join
+		</td>
+		<td>
 			$say_withdraw
 		</td>
 		<td>
 			$say_shutdown
+		</td>
+		<td>
+			$say_boot
 		</td>
 	</tr>
 ";
@@ -1986,126 +2683,6 @@ sub display_node_details
 </table>
 ";
 
-	return (0);
-}
-
-# This checks to see if the daemons on the target node are running.
-sub check_daemons
-{
-	my ($conf, $node) = @_;
-	
-	foreach my $node (@{$conf->{up_nodes}})
-	{
-		# If all daemons are down, record here that I can shut down
-		# this VM. If any are up, enable withdrawl.
-		$conf->{node}{$node}{enable_shutdown}  = 1;
-		$conf->{node}{$node}{enable_withdraw} = 0;
-		
-		# I need to preset the services as stopped because the little
-		# hack I have below doesn't echo when a service isn't running.
-		$conf->{node}{$node}{daemon}{cman}{status}      = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{rgmanager}{status} = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{drbd}{status}      = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{clvmd}{status}     = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{gfs2}{status}      = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{libvirtd}{status}  = "<span class=\"highlight_bad\">Stopped</span>";
-		
-		# This avoids 'undefined variable in regex' errors.
-		$conf->{node}{$node}{daemon}{cman}{exit_code}      = "";
-		$conf->{node}{$node}{daemon}{rgmanager}{exit_code} = "";
-		$conf->{node}{$node}{daemon}{drbd}{exit_code}      = "";
-		$conf->{node}{$node}{daemon}{clvmd}{exit_code}     = "";
-		$conf->{node}{$node}{daemon}{gfs2}{exit_code}      = "";
-		$conf->{node}{$node}{daemon}{libvirtd}{exit_code}  = "";
-		
-		# I look for any exit code (the daemon's rarely follow a 
-		# pattern, except that $? is undefined when the daemon is not 
-		# running). So I pull out the last line that is just an int.
-		my $fh=IO::Handle->new();
-		my $sc="ssh root\@$node \"/etc/init.d/rgmanager status && echo 'an-sve:rgmanager:\$?' && /etc/init.d/cman status && echo 'an-sve:cman:\$?' && /etc/init.d/drbd status && echo 'an-sve:drbd:\$?' && /etc/init.d/clvmd status && echo 'an-sve:clvmd:\$?' && /etc/init.d/gfs2 status && echo 'an-sve:gfs2:\$?' && /etc/init.d/libvirtd status && echo 'an-sve:libvirtd:\$?'\" | grep an-sve";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		my $exit;
-		while(<$fh>)
-		{
-			chomp;
-			my $line=$_;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			next if $line !~ /^an-sve:/;
-			my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
-			$exit_code = "" if not defined $exit_code;
-			#record($conf, "$THIS_FILE ".__LINE__."; daemon: [$daemon], exit_code: [$exit_code]\n");
-			if ($exit_code =~ /^\d+$/)
-			{
-				$conf->{node}{$node}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">Running</span>";
-				$conf->{node}{$node}{enable_shutdown}         = 0;
-				$conf->{node}{$node}{enable_withdraw}         = 1;
-			}
-			$conf->{node}{$node}{daemon}{$daemon}{exit_code} = defined $exit_code ? $exit_code : "";
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}], status: [$conf->{node}{$node}{daemon}{$daemon}{status}]\n");
-		}
-		$fh->close();
-	}
-	
-	return (0);
-}
-
-# Read /etc/cluster/cluster.conf and parse out the defined nodes and VMs.
-sub read_cluster_conf
-{
-	my ($conf, $node)=@_;
-	
-	# TODO: Parse the failover domains
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ssh} root\@$node \"cat /etc/cluster/cluster.conf\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-	my $in_fod      = 0;
-	my $current_fod = "";
-	open ($fh, "$sc 2>&1 |") or die "Failed to read: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line=$_;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		
-		# Find failover domains.
-		if ($line =~ /<failoverdomain /)
-		{
-			$current_fod = ($line =~ /name="(.*?)"/)[0];
-			#record($conf, "$THIS_FILE ".__LINE__."; current_fod: [$current_fod]\n");
-			$in_fod      = 1;
-			next;
-		}
-		if ($line =~ /<\/failoverdomain>/)
-		{
-			$current_fod = "";
-			$in_fod      = 0;
-			next;
-		}
-		if ($in_fod)
-		{
-			next if $line !~ /failoverdomainnode/;
-			my $node     = ($line =~ /name="(.*?)"/)[0];
-			my $priority = ($line =~ /priority="(.*?)"/)[0] ? $1 : 0;
-			$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node} = $node;
-			#record($conf, "$THIS_FILE ".__LINE__."; failover domain: [$current_fod], node: [$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node}], priority: [$priority]\n");
-		}
-		
-		# Find VMs.
-		if ($line =~ /<vm.*?name="(.*?)"/)
-		{
-			my $vm     = $1;
-			my $vm_key = "vm:$vm";
-			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
-			my $domain = ($line =~ /domain="(.*?)"/)[0];
-			$conf->{vm}{$vm_key}{definition_file} = $def;
-			$conf->{vm}{$vm_key}{failover_domain} = $domain;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$conf->{vm}{$vm_key}{definition_file}]\n");
-		}
-	}
-	$fh->close();
-	
-	$conf->{'system'}{config_read} = 1;
 	return (0);
 }
 
@@ -2195,215 +2772,6 @@ sub get_cgi_vars
 	return (0);
 }
 
-sub check_clvmd
-{
-	my ($conf) = @_;
-	
-	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
-	{
-		# Keep track of where I am.
-		my $in_pv = 0;
-		my $in_vg = 0;
-		my $in_lv = 0;
-		
-		my $sc = "$conf->{path}{ssh} root\@$node \"pvs --units b --separator ,; vgs --units b --separator ,; lvs --units b --separator ,\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			next if not $line;
-			
-			#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - line: [$line]\n") if $conf->{'system'}{debug};
-			if ($line =~ /^PV/)
-			{
-				$in_pv = 1;
-				$in_vg = 0;
-				$in_lv = 0;
-				next;
-			}
-			elsif ($line =~ /^VG/)
-			{
-				$in_pv = 0;
-				$in_vg = 1;
-				$in_lv = 0;
-				next;
-			}
-			elsif ($line =~ /^LV/)
-			{
-				$in_pv = 0;
-				$in_vg = 0;
-				$in_lv = 1;
-				next;
-			}
-			if ($in_pv)
-			{
-				my ($device, $on_vg, $format, $attributes, $total_size, $free_size) = (split /,/, $line);
-				$conf->{node}{$node}{lvm}{pv}{$device}{on_vg}      = $on_vg;
-				$conf->{node}{$node}{lvm}{pv}{$device}{attributes} = $attributes;
-				$conf->{node}{$node}{lvm}{pv}{$device}{total_size} = $total_size;
-				$conf->{node}{$node}{lvm}{pv}{$device}{free_size}  = $free_size;
-			}
-			elsif ($in_vg)
-			{
-				#                                            /- Make sure this is actually the snapshot count
-				my ($vg_name, $on_how_many_pv, $how_many_lv, $how_many_ss, $attributes, $total_size, $free_size) = (split /,/, $line);
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{on_how_many_pv} = $on_how_many_pv;
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{how_many_lv}    = $how_many_lv;
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{how_many_ss}    = $how_many_ss;
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{attributes}     = $attributes;
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{total_size}     = $total_size;
-				$conf->{node}{$node}{lvm}{vg}{$vg_name}{free_size}      = $free_size;
-			}
-			elsif ($in_lv)
-			{
-				# There are many more columns, but I doubt I need them
-				my ($lv_name, $on_vg, $attributes, $total_size) = (split /,/, $line, 4);
-				$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_vg}      = $on_vg;
-				$conf->{node}{$node}{lvm}{lv}{$lv_name}{attributes} = $attributes;
-				$conf->{node}{$node}{lvm}{lv}{$lv_name}{total_size} = $total_size;
-				# Parse whether this LV is active or not.
-				my ($active) = ($conf->{node}{$node}{lvm}{lv}{$lv_name}{attributes} =~ /^.{4}(\w)/);
-				$conf->{node}{$node}{lvm}{lv}{$lv_name}{active}     = $active eq "a" ? "Yes" : "No (in state: [$active])";
-				
-				# Find the PV(s) this is on. Yes I know this is inefficient, meh.
-				my $on_pv = "";
-				my $sc = "$conf->{path}{ssh} root\@$node \"lvdisplay -m /dev/$on_vg/$lv_name\"";
-				#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
-				{
-					chomp;
-					my $line = $_;
-					$line =~ s/^\s+//;
-					$line =~ s/\s+$//;
-					next if not $line;
-					if ($line =~ /Physical volume\s+(.*)$/)
-					{
-						$on_pv.=$1.",";
-					}
-				}
-				$fh->close();
-				$on_pv =~ s/,$//;
-				$on_pv =~ s/,/, /g;
-				$conf->{node}{$node}{lvm}{lv}{$lv_name}{on_pv} = $on_pv;
-			}
-		}
-		$fh->close();
-	}
-	
-	return (0);
-}
-
-sub check_gfs2
-{
-	my ($conf) = @_;
-	
-	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
-	{
-		my $in_fs = 0;
-		my $sc = "$conf->{path}{ssh} root\@$node \"cat /etc/fstab | grep gfs2 && df -hP\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - line: [$line]\n") if $conf->{'system'}{debug};
-			if ($line =~ /Filesystem/)
-			{
-				$in_fs = 1;
-				next;
-			}
-			
-			if ($in_fs)
-			{
-				next if $line !~ /^\//;
-				my ($device_path, $total_size, $used_space, $free_space, $percent_used, $mount_point) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)$/);
-				next if not exists $conf->{node}{$node}{gfs}{$mount_point};
-				#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - node::${node}::gfs::$mount_point: [$conf->{node}{$node}{gfs}{$mount_point}]\n") if $conf->{'system'}{debug};
-				$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = $device_path;
-				$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = $total_size;
-				$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = $used_space;
-				$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = $free_space;
-				$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = $percent_used;
-				$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 1;
-			}
-			else
-			{
-				# Read the GFS info.
-				my (undef, $mount_point, $fs) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s/);
-				$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = "--";
-				$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = "--";
-				$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = "--";
-				$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = "--";
-				$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = "--";
-				$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 0;
-			}
-		}
-		$fh->close();
-	}
-	
-	return (0);
-}
-
-sub check_drbd
-{
-	my ($conf) = @_;
-	
-	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
-	{
-		my $sc = "$conf->{path}{ssh} root\@$node \"drbdadm status\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - line: [$line]\n") if $conf->{'system'}{debug};
-			next if $line !~ /^<resource /;
-			
-			# Make sure I only display "unknown" or the read value.
-			my $minor = "unknown";
-			my $res   = "unknown";
-			my $cs    = "unknown";
-			my $ro    = "unknown";
-			my $ds    = "unknown";
-			my $dev   = "unknown";
-			($minor) = ($line =~ /minor="(.*?)"/);
-			($res)   = ($line =~ /name="(.*?)"/);
-			($cs)    = ($line =~ /cs="(.*?)"/);
-			($ro)    = ($line =~ /ro1="(.*?)"/);
-			($ds)    = ($line =~ /ds1="(.*?)"/);
-			$dev = "/dev/drbd$minor" if $minor =~ /^\d+$/;
-			$conf->{node}{$node}{drbd}{$dev}{resource_name}    = $res;
-			$conf->{node}{$node}{drbd}{$dev}{connection_state} = $cs;
-			$conf->{node}{$node}{drbd}{$dev}{role}             = $ro;
-			$conf->{node}{$node}{drbd}{$dev}{disk_state}       = $ds;
-			$conf->{node}{$node}{drbd}{$dev}{minor}            = $minor;
-			#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n") if $conf->{'system'}{debug};
-			
-			# This is the new way of recording.
-			$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
-			$conf->{drbd}{$res}{node}{$node}{connection_state} = $cs;
-			$conf->{drbd}{$res}{node}{$node}{role}             = $ro;
-			$conf->{drbd}{$res}{node}{$node}{disk_state}       = $ds;
-			$conf->{drbd}{$res}{node}{$node}{device}           = $dev;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res: [$res], minor: [$conf->{drbd}{$res}{node}{$node}{minor}], cs: [$conf->{drbd}{$res}{node}{$node}{connection_state}], ro: [$conf->{drbd}{$res}{node}{$node}{role}], ds: [$conf->{drbd}{$res}{node}{$node}{disk_state}], dev: [$conf->{drbd}{$res}{node}{$node}{device}]\n");
-		}
-		$fh->close();
-	}
-
-	return (0);
-}
-
 sub check_nodes
 {
 	my ($conf) = @_;
@@ -2426,220 +2794,8 @@ sub check_nodes
 </div>
 	";
 	
-	foreach my $node (sort {$a cmp $b} @{$conf->{nodes}})
-	{
-		get_node_state($conf, $node);
-	}
-	
-	if (@{$conf->{up_nodes}} < 1)
-	{
-		# Neither node is up, so exit now.
-		print "
-</body>
-<img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />
-";
-		exit;
-	}
-	
-	return (0);
-}
-
-sub get_node_state
-{
-	my ($conf, $node)=@_;
-	
-	# Setup some variables.
-	my $connected  = 1;
-	my $in_member  = 0;
-	my $in_service = 0;
-	my $line_num   = 0;
-	
-	my $state                 = "<span class=\"highlight_bad\">Down!</span>";
-	my $host_name             = "unknown";
-	my $cman                  = "unknown";
-	my $rgmanager             = "unknown";
-	my $storage_service_name  = "unknown";
-	my $storage_service_state = "unknown";
-	
-	# Try to connect.
-	my $sc = "$conf->{path}{ssh} root\@$node \"clustat\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = lc($_);
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line_num)
-		{
-			# This should be the clustat data.
-			$line=~s/^\s+//;
-			$line=~s/\s+$//;
-			$line=~s/\s+/ /g;
-			next if not $line;
-			next if $line =~ /^-/;
-			
-			if ($line =~ /^member name/)
-			{
-				$in_member=1;
-				$in_service=0;
-				next;
-			}
-			elsif ($line =~ /^service name/)
-			{
-				$in_member=0;
-				$in_service=1;
-				next;
-			}
-			if ($in_member)
-			{
-				if ($line=~/local/)
-				{
-					($conf->{node}{me}{name}, undef, my $services) = (split/ /, $line, 3);
-					$services=~s/local//;
-					$services=~s/ //g;
-					$services=~s/,,/,/g;
-					$conf->{node}{me}{cman}=1      if $services =~ /online/;
-					$conf->{node}{me}{rgmanager}=1 if $services =~ /rgmanager/;
-					#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Me   -> [$conf->{node}{me}{name}]; cman: [$conf->{node}{me}{cman}], rgmanager: [$conf->{node}{me}{rgmanager}]\n") if $conf->{'system'}{debug};
-				}
-				else
-				{
-					($conf->{node}{peer}{name}, undef, my $services) = split/ /, $line, 3;
-					$services=~s/ //g;
-					$services=~s/,,/,/g;
-					$conf->{node}{peer}{cman}=1      if $services =~ /online/;
-					$conf->{node}{peer}{rgmanager}=1 if $services =~ /rgmanager/;
-					#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Peer -> [$conf->{node}{peer}{name}]; cman: [$conf->{node}{peer}{cman}], rgmanager: [$conf->{node}{peer}{rgmanager}]\n") if $conf->{'system'}{debug};
-				}
-			}
-			elsif ($in_service)
-			{
-				if ($line =~ /^vm:/)
-				{
-					my ($vm, $host, $state)=split/ /, $line, 3;
-					
-					# If the service is disabled, it will 
-					# have '()' which I need to remove.
-					$host =~ s/\(//g;
-					$host =~ s/\)//g;
-					
-					$conf->{vm}{$vm}{host}     = $host;
-					$conf->{vm}{$vm}{'state'}  = $state;
-					# Pick out who the peer node is.
-					if ($host eq $conf->{node}{me}{name})
-					{
-						$conf->{vm}{$vm}{peer} = $conf->{node}{me}{name};
-					}
-					else
-					{
-						$conf->{vm}{$vm}{peer} = $conf->{node}{peer}{name};
-					}
-				}
-				elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
-				{
-					my $service_name  = $1;
-					my $service_host  = $2;
-					my $service_state = $3;
-					
-					# If the service is disabled, it will 
-					# have '()' which I need to remove.
-					$service_host =~ s/\(//g;
-					$service_host =~ s/\)//g;
-					
-					$conf->{service}{$service_name}{host}    = $service_host;
-					$conf->{service}{$service_name}{'state'} = $service_state;
-					#record($conf, "$THIS_FILE ".__LINE__."; Service: [$service_name] on: [$conf->{service}{$service_name}{host}] in state: [$conf->{service}{$service_name}{'state'}]\n") if $conf->{'system'}{debug};
-				}
-			}
-		}
-		else
-		{
-			if ($line =~ /no route to host/)
-			{
-				$connected = 0;
-				$state = "Failed to connect to <span class=\"code\">$node</span>. Is it turned on?<br />If so, have you setup ssh shared keys from <span class=\"code\">$conf->{'system'}{username}</span> to <span class=\"code\">root\@${node}</span>? Is the port set correctly?";
-				last;
-			}
-			elsif ($line =~ /host key verification failed/)
-			{
-				$connected = 0;
-				$state = "SSH host key validation failed. Have you saved <span class=\"code\">${node}</span>'s fingerprint in <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file? If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved. If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
-				last;
-			}
-			elsif ($line =~ /could not resolve hostname/)
-			{
-				$connected = 0;
-				$state = "Could not resolve the hostname: <span class=\"code\">$node</span>. Have you setup your <span class=\"code\">/etc/hosts</span> file or DNS server properly?";
-				last;
-			}
-			elsif ($line =~ /permission denied/)
-			{
-				$connected = 0;
-				$state = "I could not log into: <span class=\"code\">$node</span>. Have you added <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/id_rsa.pub</span> public key to <span class=\"code\">$node</span>'s <span class=\"code\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"code\">/var/log/secure</span> on <span class=\"code\">$node</span> for errors.";
-				last;
-			}
-			elsif ($line =~ /\@\@\@\@/)
-			{
-				# When the host-key fails to match, a box made
-				# of '@@@@' is displayed, and is the entire 
-				# first line.
-				$connected = 0;
-				$state = "I could not log into: <span class=\"code\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
-				last;
-			}
-		}
-		$line_num++;
-	}
-	$fh->close();
-	
-	if ($connected)
-	{
-		$host_name            = $conf->{node}{me}{name};
-		my $cman_running      = $conf->{node}{me}{cman};
-		my $rgmanager_running = $conf->{node}{me}{rgmanager};
-		foreach my $service_name (sort {$a cmp $b} keys %{$conf->{service}})
-		{
-			next if $conf->{service}{$service_name}{host} ne $host_name;
-			next if $service_name !~ /storage/;
-			$storage_service_name  = $service_name;
-			$storage_service_state = $conf->{service}{$service_name}{'state'};
-		}
-		my @say_yn=("no", "yes");
-		$cman      = $say_yn[$cman_running];
-		$rgmanager = $say_yn[$rgmanager_running];
-		
-		# The first node that is up will be the node I do future queries against.
-		$state     = "<span class=\"highlight_good\">Up!</span>";
-		push @{$conf->{up_nodes}}, $node;
-		
-		if (not $conf->{'system'}{config_read})
-		{
-			read_cluster_conf($conf, $node);
-		}
-	}
-	else
-	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td>
-			<span class=\"highlight_warning\"><b>Failed to connect!</b></span><br />
-			$state<br />
-		</td>
-	</tr>
-</table>
-";
-	}
-	
-	$conf->{node}{$node}{info}{'state'}               = $state;
-	$conf->{node}{$node}{info}{host_name}             = $host_name;
-	$conf->{node}{$node}{info}{short_host_name}       = ($host_name =~ /^(.*?)\./)[0];
-	$conf->{node}{$node}{info}{cman_state}            = $cman;
-	$conf->{node}{$node}{info}{rgmanager_state}       = $rgmanager;
-	$conf->{node}{$node}{info}{storage_service_name}  = $storage_service_name;
-	$conf->{node}{$node}{info}{storage_service_state} = $storage_service_state;
+	# Start your engines!
+	check_node_status($conf);
 	
 	return (0);
 }

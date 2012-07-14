@@ -7,15 +7,15 @@ our $THIS_FILE = "an-cwm.lib";
 
 my $conf={
 	clusters		=>	{
-		'cc-cluster-A'		=>	{
-			description		=>	"CC Systems \"Cluster A\" (in Peer 1)",
-			nodes			=>	["il0049.remote", "il0050.remote"],
+		'cc-cluster-01'		=>	{
+			description		=>	"CC Systems \"Cluster 01\" (in Peer 1)",
+			nodes			=>	["cc-c01n01.remote", "cc-c01n01.remote"],
 		},
-		'an-cluster-A'		=>	{
-			description		=>	"Alteeve's Niche! \"Cluster A\" (in Peer 1)",
-			nodes			=>	["an-node01", "an-node02"],
+		'an-cluster-01'		=>	{
+			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Peer 1)",
+# 			nodes			=>	["an-node01", "an-node02"],
 # 			nodes			=>	["an-node01.remote", "an-node02.remote"],
-# 			nodes			=>	["an-c01n01", "an-c01n02"],
+			nodes			=>	["an-c01n01", "an-c01n02"],
 		},
 	},
 	nodes			=>	"",
@@ -69,16 +69,7 @@ if ($conf->{cgi}{cluster})
 		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 		set_node_names($conf);
 		check_nodes($conf);
-		# This will only get set if one of the two nodes were up.
-		if (@{$conf->{up_nodes}} > 0)
-		{
-			check_host($conf);
-			check_drbd($conf);
-			check_gfs2($conf);
-			check_clvmd($conf);
-			check_daemons($conf);
-			check_vms($conf);
-		}
+		check_vms($conf);	### LEFT OFF HERE.
 		display_details($conf);
 	}
 }
