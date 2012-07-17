@@ -9,7 +9,7 @@ my $conf={
 	clusters		=>	{
 		'cc-cluster-01'		=>	{
 			description		=>	"CC Systems \"Cluster 01\" (in Peer 1)",
-			nodes			=>	["cc-c01n01.remote", "cc-c01n01.remote"],
+			nodes			=>	["cc-c01n01.remote", "cc-c01n02.remote"],
 		},
 		'an-cluster-01'		=>	{
 			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Peer 1)",
@@ -67,9 +67,9 @@ if ($conf->{cgi}{cluster})
 		# Set the node list.
 		my $cluster = $conf->{cgi}{cluster};
 		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
-		set_node_names($conf);
-		check_nodes($conf);
-		check_vms($conf);	### LEFT OFF HERE.
+		set_node_names ($conf);
+		check_nodes    ($conf);
+		check_vms      ($conf);	### LEFT OFF HERE.
 		display_details($conf);
 	}
 }

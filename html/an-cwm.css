@@ -50,6 +50,11 @@ td {
 	padding-right: 4px;
 }
 
+.highlight_detail {
+	color: #13749a;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+}
+
 .highlight_good {
 	color: #1a9a13;
 }
