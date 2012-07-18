@@ -65,7 +65,7 @@ sub check_node_status
 	}
 	
 	# If I have no nodes up, exit.
-	record($conf, "$THIS_FILE ".__LINE__."; I have: [".@{$conf->{up_nodes}}."] nodes up.\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; I have: [".@{$conf->{up_nodes}}."] nodes up.\n");
 	if (@{$conf->{up_nodes}} < 1)
 	{
 		# Neither node is up, so exit now.
@@ -167,28 +167,28 @@ sub gather_node_details
 		{
 			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-			$conf->{node}{$node}{info}{note}    = "Failed to connect to <span class=\"code\">$node</span>. Is it turned on?<br />If so, have you setup ssh shared keys from <span class=\"code\">$conf->{'system'}{username}</span> to <span class=\"code\">root\@${node}</span>? Is the port set correctly?";
+			$conf->{node}{$node}{info}{note}    = "Failed to connect to <span class=\"fixed_width\">$node</span>. Is it turned on?<br />If so, have you setup ssh shared keys from <span class=\"fixed_width\">$conf->{'system'}{username}</span> to <span class=\"fixed_width\">root\@${node}</span>? Is the port set correctly?";
 			last;
 		}
 		elsif ($line =~ /host key verification failed/)
 		{
 			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed. Have you saved <span class=\"code\">${node}</span>'s fingerprint in <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file? If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved. If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
+			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed. Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file? If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved. If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
 			last;
 		}
 		elsif ($line =~ /could not resolve hostname/)
 		{
 			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"code\">$node</span>. Have you setup your <span class=\"code\">/etc/hosts</span> file or DNS server properly?";
+			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
 			last;
 		}
 		elsif ($line =~ /permission denied/)
 		{
 			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"code\">$node</span>. Have you added <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/id_rsa.pub</span> public key to <span class=\"code\">$node</span>'s <span class=\"code\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"code\">/var/log/secure</span> on <span class=\"code\">$node</span> for errors.";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
 			last;
 		}
 		elsif ($line =~ /\@\@\@\@/)
@@ -198,7 +198,7 @@ sub gather_node_details
 			# first line.
 			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"code\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"code\">$conf->{'system'}{username}</span>'s <span class=\"code\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
 			last;
 		}
 		
@@ -388,7 +388,8 @@ sub post_node_calculations
 	
 	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
-	if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
+	#if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
+	if (not $conf->{node}{$node}{hardware}{total_memory})
 	{
 		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
@@ -1567,7 +1568,8 @@ sub display_free_resources
 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
 	{
 		# If it's not a clustered VG, I don't care about it.
-		next if $conf->{resources}{vg}{$vg}{clustered} ne "yes";
+		#record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}]\n");
+		next if not $conf->{resources}{vg}{$vg}{clustered};
 		push @vg,      $vg;
 		push @vg_size, $conf->{resources}{vg}{$vg}{size};
 		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
@@ -1592,7 +1594,9 @@ sub display_free_resources
 	}
 	
 	# Always knock off 2GB of RAM for the host OS.
+	my $real_total_ram            = convert_from_bytes($conf, $conf->{resources}{total_ram});
 	$conf->{resources}{total_ram} -= 2147483648;
+	$conf->{resources}{total_ram} = 0 if $conf->{resources}{total_ram} < 0;
 	my $free_ram                  =  $conf->{resources}{total_ram} - $allocated_ram;
 	my $say_free_ram              =  convert_from_bytes($conf, $free_ram);
 	my $say_total_ram             =  convert_from_bytes($conf, $conf->{resources}{total_ram});
@@ -1614,25 +1618,25 @@ sub display_free_resources
 			$allocated_cores
 		</td>
 		<td>
-			$say_total_ram <!-- ($conf->{resources}{total_ram} bytes) -->
+			$real_total_ram ($say_total_ram)
 		</td>
 		<td>
-			$say_allocated_ram <!-- ($allocated_ram bytes) -->
+			$say_allocated_ram
 		</td>
 		<td>
-			$say_free_ram <!-- ($free_ram bytes) -->
+			$say_free_ram
 		</td>
 		<td>
-			<span class=\"code\">$vg[0]</span>
+			<span class=\"fixed_width\">$vg[0]</span>
 		</td>
 		<td>
-			$say_vg_size <!-- ($vg_size[0] bytes) -->
+			$say_vg_size
 		</td>
 		<td>
-			$say_vg_used <!-- ($vg_used[0] bytes) -->
+			$say_vg_used
 		</td>
 		<td>
-			$say_vg_free <!-- ($vg_free[0] bytes) -->
+			$say_vg_free
 		</td>
 	</tr>
 ";
@@ -1664,16 +1668,16 @@ sub display_free_resources
 			&nbsp;
 		</td>
 		<td>
-			<span class=\"code\">$vg[$i]</span>
+			<span class=\"fixed_width\">$vg[$i]</span>
 		</td>
 		<td>
-			$say_vg_size <!-- ($vg_size[$i] bytes) -->
+			$say_vg_size
 		</td>
 		<td>
-			$say_vg_used <!-- ($vg_used[$i] bytes) -->
+			$say_vg_used
 		</td>
 		<td>
-			$say_vg_free <!-- ($vg_free[$i] bytes) -->
+			$say_vg_free
 		</td>
 	</tr>
 ";
@@ -1731,6 +1735,8 @@ sub display_vm_details
 {
 	my ($conf) = @_;
 	
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	print "
 <table width=\"100%\">
 	<tr>
@@ -1763,7 +1769,7 @@ sub display_vm_details
 		next if $vm !~ /^vm/;
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
 		my $say_ram = convert_from_bytes($conf, $conf->{vm}{$vm}{details}{ram});
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		
 		# Get the LV arrays populated.
 		my @lv_path;
@@ -1776,10 +1782,10 @@ sub display_vm_details
 			$host = @{$conf->{up_nodes}}[0];
 		}
 		my $node = long_host_name_to_node_name($conf, $host);
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
-			record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
+			#record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
 			push @lv_path, $lv;
 			push @lv_size, $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
 		}
@@ -1796,13 +1802,18 @@ sub display_vm_details
 			push @mac,    $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac};
 			push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
 		}
+		my $say_net_host = "";
+		if ($conf->{vm}{$vm}{host} =~ /^(.*?)\./)
+		{
+			$say_net_host = "<span class=\"highlight_detail\">$1</span> ->";
+		}
 		
 		# If there is no host, only the device type and MAC address are valid.
 		
 		print "
 	<tr>
 		<td>
-			<span class=\"code\">$say_vm</span>
+			<span class=\"fixed_width\">$say_vm</span>
 		</td>
 		<td>
 			$conf->{vm}{$vm}{details}{cpu_count}
@@ -1811,13 +1822,13 @@ sub display_vm_details
 			$say_ram
 		</td>
 		<td>
-			<span class=\"code\">$lv_path[0]</span>
+			<span class=\"fixed_width\">$lv_path[0]</span>
 		</td>
 		<td>
 			$lv_size[0]
 		</td>
 		<td>
-			<span class=\"highlight_detail\">$conf->{vm}{$vm}{host}</span> -> <span class=\"highlight_detail\">$type[0]</span> (<span class=\"highlight_detail\">$mac[0]</span>)
+			$say_net_host <span class=\"highlight_detail\">$type[0]</span> / <span class=\"highlight_detail\">$mac[0]</span>
 		</td>
 	</tr>
 ";
@@ -1833,7 +1844,12 @@ sub display_vm_details
 				my $say_network = "&nbsp;";
 				if ($bridge[$i])
 				{
-					$say_network = "<span class=\"highlight_detail\">$conf->{vm}{$vm}{host}</span> -> <span class=\"highlight_detail\">$type[0]</span> (<span class=\"highlight_detail\">$mac[0]</span>)";
+					my $say_net_host = "";
+					if ($conf->{vm}{$vm}{host} =~ /^(.*?)\./)
+					{
+						$say_net_host = "<span class=\"highlight_detail\">$1</span> ->";
+					}
+					$say_network = "$say_net_host <span class=\"highlight_detail\">$type[0]</span> / <span class=\"highlight_detail\">$mac[0]</span>";
 				}
 				
 				print "
@@ -1904,14 +1920,14 @@ sub check_node_readiness
 		# Still alive, find out what storage backs this VM and ensure
 		# that the LV is 'active' and that the DRBD resource(s) they
 		# sit on are Primary and UpToDate.
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
 		read_vm_definition($conf, $node, $vm);
 		
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
 			# Make sure the LV is active.
-			record($conf, "$THIS_FILE ".__LINE__.";  - vm: [$vm], node: [$node], lv: [$lv]\n");
-			record($conf, "$THIS_FILE ".__LINE__.";    - active:           [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__.";  - vm: [$vm], node: [$node], lv: [$lv]\n");
+			#record($conf, "$THIS_FILE ".__LINE__.";    - active:           [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active}]\n");
 			if ($conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
 			{
 				# It's active, so now check the backing storage.
@@ -1921,16 +1937,16 @@ sub check_node_readiness
 					my $cs = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{connection_state};
 					my $ro = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{role};
 					my $ds = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{disk_state};
-					record($conf, "$THIS_FILE ".__LINE__.";    - res:              [$res]\n");
-					record($conf, "$THIS_FILE ".__LINE__.";    - connection state: [$cs]\n");
-					record($conf, "$THIS_FILE ".__LINE__.";    - role:             [$ro]\n");
-					record($conf, "$THIS_FILE ".__LINE__.";    - disk state:       [$ds]\n");
+					#record($conf, "$THIS_FILE ".__LINE__.";    - res:              [$res]\n");
+					#record($conf, "$THIS_FILE ".__LINE__.";    - connection state: [$cs]\n");
+					#record($conf, "$THIS_FILE ".__LINE__.";    - role:             [$ro]\n");
+					#record($conf, "$THIS_FILE ".__LINE__.";    - disk state:       [$ds]\n");
 					
 					# I consider a node "ready" if it is UpToDate and Primary.
 					if (($ro ne "Primary") || ($ds ne "UpToDate"))
 					{
 						$ready = 0;
-						record($conf, "$THIS_FILE ".__LINE__."; 2. ready: [$ready]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; 2. ready: [$ready]\n");
 					}
 				}
 			}
@@ -1939,11 +1955,11 @@ sub check_node_readiness
 				# The LV is inactive.
 				# TODO: Try to change the LV to active.
 				$ready = 0;
-				record($conf, "$THIS_FILE ".__LINE__."; 3. vm: [$vm], node: [$node], ready: [$ready]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; 3. vm: [$vm], node: [$node], ready: [$ready]\n");
 			}
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; 4. vm: [$vm], node: [$node], ready: [$ready]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; 4. vm: [$vm], node: [$node], ready: [$ready]\n");
 	
 	return ($ready);
 }
@@ -2125,14 +2141,12 @@ sub check_vms
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-# 	$conf->{node}{$node}{info}{host_name}       = $host_name;
-# 	$conf->{node}{$node}{info}{short_host_name} = ($host_name =~ /^(.*?)\./)[0];
-	my $say_node1   = "<span class=\"code\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2   = "<span class=\"code\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	my $short_node1 = "$conf->{node}{$node1}{info}{short_host_name}";
 	my $short_node2 = "$conf->{node}{$node2}{info}{short_host_name}";
 	my $long_node1  = "$conf->{node}{$node1}{info}{host_name}";
 	my $long_node2  = "$conf->{node}{$node2}{info}{host_name}";
+	my $say_node1   = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
+	my $say_node2   = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
 		my ($say_vm) = ($vm =~ /^vm:(.*)/);
@@ -2162,6 +2176,10 @@ sub check_vms
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{host}], node1 / node2 short names: [$short_node1] / [$short_node2]\n");
 		if ($conf->{vm}{$vm}{host} =~ /$short_node1/)
 		{
+			# Even though I know the host is ready, this function
+			# loads some data, like LV details, which I will need
+			# later.
+			check_node_readiness($conf, $vm, $node1);
 			$conf->{vm}{$vm}{can_start}     = 0;
 			$conf->{vm}{$vm}{can_stop}      = 1;
 			$conf->{vm}{$vm}{current_host}  = $node1;
@@ -2174,10 +2192,14 @@ sub check_vms
 			}
 			# Disable cluster withdrawl of this node.
 			$conf->{node}{$node1}{enable_withdraw} = 0;
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
 		}
 		elsif ($conf->{vm}{$vm}{host} =~ /$short_node2/)
 		{
+			# Even though I know the host is ready, this function
+			# loads some data, like LV details, which I will need
+			# later.
+			check_node_readiness($conf, $vm, $node2);
 			$conf->{vm}{$vm}{can_start}     = 0;
 			$conf->{vm}{$vm}{can_stop}      = 1;
 			$conf->{vm}{$vm}{current_host}  = $node2;
@@ -2190,53 +2212,53 @@ sub check_vms
 			}
 			# Disable withdrawl of this node.
 			$conf->{node}{$node2}{enable_withdraw} = 0;
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
 		}
 		else
 		{
 			$conf->{vm}{$vm}{can_stop}  = 0;
 			($conf->{vm}{$vm}{node1_ready}) = check_node_readiness($conf, $vm, $node1);
 			($conf->{vm}{$vm}{node2_ready}) = check_node_readiness($conf, $vm, $node2);
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
 		}
 		
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{current_host}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{current_host}]\n");
 		$conf->{vm}{$vm}{boot_target} = "";
 		if (not $conf->{vm}{$vm}{current_host})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
 			if (($conf->{vm}{$vm}{node1_ready}) && ($conf->{vm}{$vm}{node2_ready}))
 			{
 				# I can boot on either node, so choose the 
 				# first one in the VM's failover domain.
 				$conf->{vm}{$vm}{can_start}    = 1;
 				my $failover_domain = $conf->{vm}{$vm}{failover_domain};
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
 				# TODO: Check to see if I need to use <=> instead of cmp.
 				foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$failover_domain}{priority}})
 				{
 					# I only care about the first entry, so I will
 					# exit the loop as soon as I analyze it.
 					$conf->{vm}{$vm}{boot_target} = $conf->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
-					record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
 					last;
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
 			}
 			elsif ($conf->{vm}{$vm}{node1_ready})
 			{
 				$conf->{vm}{$vm}{boot_target} = $node1;
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
 			}
 			elsif ($conf->{vm}{$vm}{node2_ready})
 			{
 				$conf->{vm}{$vm}{boot_target} = $node2;
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
 			}
 			else
 			{
 				$conf->{vm}{$vm}{can_start} = 0;
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
 			}
 		}
 	}
@@ -2309,10 +2331,10 @@ sub display_vm_state_and_controls
 			&nbsp;
 		</td>
 		<td>
-			<span class=\"code\">$conf->{node}{$node1}{info}{short_host_name}</span>
+			<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>
 		</td>
 		<td>
-			<span class=\"code\">$conf->{node}{$node2}{info}{short_host_name}</span>
+			<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>
 		</td>
 		<td colspan=\"9\">
 			<i>Controls</i>
@@ -2323,7 +2345,7 @@ sub display_vm_state_and_controls
 	{
 		# Break the name out of the hash key.
 		my ($say_vm) = ($vm =~ /^vm:(.*)/);
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
 		
 		# Use the node's short name for the buttons.
 		my $say_start_target     =  $conf->{vm}{$vm}{boot_target};
@@ -2338,11 +2360,11 @@ sub display_vm_state_and_controls
 		my $migrate_button = "<span class=\"disabled_button\">Migrate</span>";
 		if ($conf->{vm}{$vm}{can_migrate})
 		{
-			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate&target=$conf->{vm}{$vm}{migration_target}\">Migrate to <span class=\"fixed_width\">$say_migration_target</span></a>";
+			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate&target=$conf->{vm}{$vm}{migration_target}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
 		}
 		my $stop_button      = $conf->{vm}{$vm}{can_stop}    ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm\">Shut Down</a>"                                            : "<span class=\"disabled_button\">Shut Down</span>";
 		my $force_off_button = $conf->{vm}{$vm}{can_stop}    ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm\" class=\"highlight_dangerous\">Force Off</a>"         : "<span class=\"disabled_button\">Force Off</span>";
-		my $start_button     = $conf->{vm}{$vm}{boot_target} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot on $say_start_target</a>" : "<span class=\"disabled_button\">Boot</span>" if (($conf->{vm}{$vm}{say_node1}) || ($conf->{vm}{$vm}{say_node2}));
+		my $start_button     = $conf->{vm}{$vm}{boot_target} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot on <span class=\"fixed_width_button\">$say_start_target</span></a>" : "<span class=\"disabled_button\">Boot</span>" if (($conf->{vm}{$vm}{say_node1}) || ($conf->{vm}{$vm}{say_node2}));
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
 		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
@@ -2366,7 +2388,7 @@ sub display_vm_state_and_controls
 		print "
 	<tr>
 		<td>
-			<span class=\"code\">$say_vm</span>
+			<span class=\"fixed_width\">$say_vm</span>
 		</td>
 		<td>
 			$conf->{vm}{$vm}{say_node1}
@@ -2423,8 +2445,8 @@ sub display_drbd_details
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $say_node1 = "<span class=\"code\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2 = "<span class=\"code\">$conf->{node}{$node2}{info}{short_host_name}</span>";
+	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
+	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	
 	print "
 <table width=\"100%\">
@@ -2516,13 +2538,13 @@ sub display_drbd_details
 		print "
 	<tr>
 		<td>
-			<span class=\"code\">$res</span>
+			<span class=\"fixed_width\">$res</span>
 		</td>
 		<td>
-			<span class=\"code\">$say_n1_dev</span>
+			<span class=\"fixed_width\">$say_n1_dev</span>
 		</td>
 		<td>
-			<span class=\"code\">$say_n2_dev</span>
+			<span class=\"fixed_width\">$say_n2_dev</span>
 		</td>
 		<td>
 			<span class=\"$class_n1_cs\">$say_n1_cs</span>
@@ -2561,8 +2583,8 @@ sub display_gfs2_details
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $say_node1 = "<span class=\"code\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2 = "<span class=\"code\">$conf->{node}{$node2}{info}{short_host_name}</span>";
+	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
+	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	print "
 <table width=\"100%\">
 	<tr>
@@ -2624,7 +2646,7 @@ sub display_gfs2_details
 			print "
 	<tr>
 		<td>
-			<span class=\"code\">$mount_point</span>
+			<span class=\"fixed_width\">$mount_point</span>
 		</td>
 		<td>
 			$say_node1_mounted
@@ -2749,7 +2771,7 @@ sub display_node_details
 		print "
 	<tr>
 		<td>
-			<span class=\"code\">$conf->{node}{$node}{info}{host_name}</span>
+			<span class=\"fixed_width\">$conf->{node}{$node}{info}{host_name}</span>
 		</td>
 		<td>
 			$conf->{node}{$node}{daemon}{cman}{status}

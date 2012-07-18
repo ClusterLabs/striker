@@ -40,6 +40,11 @@ td {
 
 .fixed_width {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	color: #1f1f1f;
+}
+
+.fixed_width_button {
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 }
 
 .code {
