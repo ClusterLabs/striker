@@ -70,6 +70,8 @@ td {
 
 .highlight_warning {
 	color: #936c02;
+/* 	font-weight: bold; */
+	font-style: italic;
 }
 
 .highlight_bad {

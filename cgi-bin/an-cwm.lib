@@ -288,6 +288,7 @@ sub parse_vm_defs
 {
 	my ($conf, $node, $array) = @_;
 	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs() for node: [$node]\n");
 	my $this_vm    = "";
 	my $in_domain  = 0;
 	my $this_array = [];
@@ -644,7 +645,7 @@ sub parse_drbd_status
 # 		$conf->{node}{$node}{drbd}{$dev}{role}             = $ro;
 # 		$conf->{node}{$node}{drbd}{$dev}{disk_state}       = $ds;
 # 		$conf->{node}{$node}{drbd}{$dev}{minor}            = $minor;
-# 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n");
+# 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n");
 		
 		# This is the new way of recording.
 		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
@@ -1126,8 +1127,10 @@ sub process_task
 			<span class=\"highlight_good\"><b>Note</b></span>
 		</td>
 		<td>
-			The virtual machine named: [<span class=\"fixed_width\">$conf->{cgi}{vm}</span>] will be booted on cluster node: [<span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span>].<br />
-			The node was selected because it is either the prefered host or the only host ready to run this VM.
+			<br />
+			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be booted on cluster node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span>.<br />
+			The node was selected because it is either the prefered host or the only host ready to run this VM.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1162,7 +1165,7 @@ sub process_task
 		</td>
 		<td>
 			<br />
-			The virtual machine named: [<span class=\"fixed_width\">$conf->{cgi}{vm}</span>], running on cluster node: [<span class=\"fixed_width\">$conf->{cgi}{node}</span>] is about to be shut down.<br />
+			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span>, running on cluster node <span class=\"fixed_width\">$conf->{cgi}{node}</span>, is about to be shut down.<br />
 			<br />
 		</td>
 	</tr>
@@ -1199,6 +1202,103 @@ sub process_task
 ";
 		}
 	}
+	elsif ($conf->{cgi}{task} eq "force_off_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			force_off_vm($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to forcefully power off <b>$conf->{cgi}{vm}</b>!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			
+			<span class=\"highlight_dangerous\"><b>Dangerous!</b></span>
+		</td>
+		<td>
+			<br />
+			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span>, running on cluster node <span class=\"fixed_width\">$conf->{cgi}{host}</span>, is about to be <span class=\"highlight_dangerous\">forcibly powered off</span>!<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			This action is the same as pulling the power on a normal server!<br />
+			The virtual machine will have no chance to react and will be instantly turned off. A moment later, the cluster will restart this VM.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Reconsider!</b></span>
+		</td>
+		<td>
+			<br />
+			This should be done as a last resort, when all other attempts to gain control of the VM have failed.<br />
+			<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off. <br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "migrate_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			migrate_vm($conf);
+		}
+		else
+		{
+			# Calculate roughly how long the migration will take.
+			my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
+			$migration_time_estimate *= 10; # ~10s / GB
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to migrate the virtual machine <b><span class=\"fixed_width_button\">$conf->{cgi}{vm}</span></b> to <b><span class=\"fixed_width_button\">$conf->{cgi}{target}</span></b>.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Note</b></span>
+		</td>
+		<td>
+			<br />
+			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be migrated to cluster node <span class=\"fixed_width\">$conf->{cgi}{target}</span>.<br />
+			This VM has ".convert_from_bytes($conf, $conf->{cgi}{vm_ram})." RAM, which will take roughly $migration_time_estimate seconds to migrate.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+";
+		}
+	}
 	else
 	{
 		print "<pre>\n";
@@ -1220,11 +1320,12 @@ sub start_vm
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $vm                = $conf->{cgi}{vm};
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# Make sure the node is still ready to take this VM.
 	scan_cluster($conf);
-	my $ready = check_node_readiness($conf, $vm, $node);
+	my $vm_key = "vm:$vm";
+	my $ready = check_node_readiness($conf, $vm_key, $node);
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
 	if ($ready)
 	{
@@ -1245,7 +1346,7 @@ sub start_vm
 			<br />
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 		while(<$fh>)
@@ -1255,7 +1356,7 @@ sub start_vm
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -1299,6 +1400,94 @@ sub start_vm
 	return(0);
 }
 
+# This migrates a VM to the target node.
+sub migrate_vm
+{
+	my ($conf) = @_;
+	
+	my $target = $conf->{cgi}{target};
+	my $vm     = $conf->{cgi}{vm};
+	my $node   = long_host_name_to_node_name($conf, $target);
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], target: [$target]\n");
+	
+	# Make sure the node is still ready to take this VM.
+	scan_cluster($conf);
+	my $vm_key = "vm:$vm";
+	my $ready = check_node_readiness($conf, $vm_key, $node);
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
+	if ($ready)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Migrating $vm to $target now...</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			System call output below:
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -M vm:$vm -m $target\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
+		}
+		$fh->close();
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Migration of $vm to $target aborted!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			It appears that node <span class=\"fixed_width\">$target</span> is no longer ready to run <span class=\"fixed_width\">$vm</span>.<br />
+			This could be because some time has passed and the state of the node has changed.<br />
+			Please go back to the status page for more details.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	}
+	
+	return(0);
+}
+
 # This sttempts to shut down a VM on a target node.
 sub stop_vm
 {
@@ -1306,7 +1495,7 @@ sub stop_vm
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
 	
 	# This, more than 
 	scan_cluster($conf);
@@ -1357,6 +1546,70 @@ sub stop_vm
 	return(0);
 }
 
+# This forcibly shuts down a VM on a target node. The cluster should restart it
+# shortly after.
+sub force_off_vm
+{
+	my ($conf) = @_;
+	
+	my $node = $conf->{cgi}{node};
+	my $vm   = $conf->{cgi}{vm};
+	#record($conf, "$THIS_FILE ".__LINE__."; in force_off_vm(), vm: [$vm], node: [$node]\n");
+	
+	# This, more than 
+	scan_cluster($conf);
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Forcibly shutting down $vm now...</span><br />
+			This can take a while, please be patient!
+		</td>
+	</tr>
+	<tr>
+		<td>
+			System call output below:
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"virsh destroy $vm\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
+		}
+		$fh->close();
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			The cluster will restart this VM in a moment, if this call succeeded.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	
+	return(0);
+}
+
 # This does a final check of the target node then withdraws it from the
 # cluster.
 sub withdraw_node
@@ -1393,12 +1646,12 @@ sub withdraw_node
 			{
 				$stop_storage = 0;
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; storage line: [$line]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; stop storage: [$storage_name] -> [$stop_storage] (in state: [$state], host is/was: [$host])\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; storage line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; stop storage: [$storage_name] -> [$stop_storage] (in state: [$state], host is/was: [$host])\n");
 		}
 		elsif ($line =~ /$node_cluster_name/)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node line:    [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node line:    [$line]\n");
 			if ($line =~ /^vm:(.*?) (.*?) (.*)$/)
 			{
 				my $vm        = $1;
@@ -1856,6 +2109,18 @@ sub long_host_name_to_node_name
 	return ($node_name);
 }
 
+# Simply converts a node name to the full domain name.
+sub node_name_to_long_host_name
+{
+	my ($conf, $host) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in node_name_to_long_host_name(), host: [$host]\n");
+	
+	my $node_name = $conf->{node}{$host}{me}{name};
+
+	#record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
+	return ($node_name);
+}
+
 # This just shows the details of the VM (no controls)
 sub display_vm_details
 {
@@ -2097,7 +2362,7 @@ sub read_vm_definition
 	my $this_vm = ($vm =~ /vm:(.*)/)[0];
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-# 	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
@@ -2360,19 +2625,8 @@ sub check_vms
 			{
 				# I can boot on either node, so choose the 
 				# first one in the VM's failover domain.
-				$conf->{vm}{$vm}{can_start}    = 1;
-				my $failover_domain = $conf->{vm}{$vm}{failover_domain};
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
-				# TODO: Check to see if I need to use <=> instead of cmp.
-				foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$failover_domain}{priority}})
-				{
-					# I only care about the first entry, so I will
-					# exit the loop as soon as I analyze it.
-					$conf->{vm}{$vm}{boot_target} = $conf->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
-					last;
-				}
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
+				$conf->{vm}{$vm}{boot_target} = find_prefered_host($conf, $vm);
+				$conf->{vm}{$vm}{can_start}   = 1;
 			}
 			elsif ($conf->{vm}{$vm}{node1_ready})
 			{
@@ -2393,6 +2647,30 @@ sub check_vms
 	}
 	
 	return (0);
+}
+
+# This looks through the failover domain for a VM and returns the prefered host.
+sub find_prefered_host
+{
+	my ($conf, $vm) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in find_prefered_host(), vm: [$vm]\n");
+	my $prefered_host = "";
+	
+	my $failover_domain = $conf->{vm}{$vm}{failover_domain};
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
+	
+	# TODO: Check to see if I need to use <=> instead of cmp.
+	foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$failover_domain}{priority}})
+	{
+		# I only care about the first entry, so I will
+		# exit the loop as soon as I analyze it.
+		$prefered_host = $conf->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
+		last;
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
+	return ($prefered_host);
 }
 
 # This prints an error and exits.
@@ -2463,7 +2741,7 @@ sub display_vm_state_and_controls
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"12\">
+		<td colspan=\"13\">
 			<b>Virtual Machines - Status and Control</b>
 		</td>
 	</tr>
@@ -2477,11 +2755,15 @@ sub display_vm_state_and_controls
 		<td>
 			<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>
 		</td>
+		<td>
+			Prefered Host
+		</td>
 		<td colspan=\"9\">
 			<i>Controls</i>
 		</td>
 	</tr>
 ";
+
 	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
 		# Break the name out of the hash key.
@@ -2495,13 +2777,31 @@ sub display_vm_state_and_controls
 		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
 		#record($conf, "$THIS_FILE ".__LINE__."; say_start_target: [$say_start_target], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}], start_target_long: [$start_target_long]\n");
 		
+		my $prefered_host        =  find_prefered_host($conf, $vm);
+		$prefered_host           =~ s/\..*$//;
+		if ($conf->{vm}{$vm}{boot_target})
+		{
+			$prefered_host = "<span class=\"highlight_ready\">$prefered_host</span>";
+		}
+		else
+		{
+			my $on_host              =  ($conf->{vm}{$vm}{host} =~ /^(.*?)\./)[0];
+			if ($on_host eq $prefered_host)
+			{
+				$prefered_host = "<span class=\"highlight_good\">$prefered_host</span>";
+			}
+			else
+			{
+				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
+			}
+		}
+		
 		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
 		$say_migration_target    =~ s/\..*?$//;
-		
 		my $migrate_button = "<span class=\"disabled_button\">Migrate</span>";
 		if ($conf->{vm}{$vm}{can_migrate})
 		{
-			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate&target=$conf->{vm}{$vm}{migration_target}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
+			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
 		my $stop_button      = "<span class=\"disabled_button\">Shut Down</span>";
@@ -2510,12 +2810,12 @@ sub display_vm_state_and_controls
 		{
 			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
 			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">Orderly Shut Down</a>";
-			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm\" class=\"highlight_dangerous\">Force Off</a>";
+			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}\" class=\"highlight_dangerous\">Force Off</a>";
 		}
-		my $start_button     = "<span class=\"disabled_button\">Boot</span>";
+		my $start_button     = "<span class=\"disabled_button\">Boot Up</span>";
 		if ($conf->{vm}{$vm}{boot_target})
 		{
-			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot on <span class=\"fixed_width_button\">$say_start_target</span></a>";
+			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot Up</a>";
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
@@ -2547,6 +2847,9 @@ sub display_vm_state_and_controls
 		</td>
 		<td>
 			$conf->{vm}{$vm}{say_node2}
+		</td>
+		<td>
+			<span class=\"fixed_width\">$prefered_host</span>
 		</td>
 		<td>
 			&nbsp;
@@ -3008,11 +3311,13 @@ sub get_cgi_vars
 		"cluster",
 		"task",
 		"confirm",
+		"host",
 		"node",
 		"node_cluster_name",
 		"storage",
 		"target",
 		"vm",
+		"vm_ram",
 		"max_ram",
 		"max_cores",
 		"max_storage",
