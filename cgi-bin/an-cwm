@@ -67,9 +67,7 @@ if ($conf->{cgi}{cluster})
 		# Set the node list.
 		my $cluster    = $conf->{cgi}{cluster};
 		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
-		set_node_names ($conf);
-		check_nodes    ($conf);
-		check_vms      ($conf);
+		scan_cluster($conf);
 		display_details($conf);
 	}
 }

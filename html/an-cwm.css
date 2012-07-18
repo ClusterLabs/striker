@@ -94,7 +94,7 @@ a {
 	color: #7f117f;
 	cursor: pointer;
 	text-decoration: none;
-	font-weight: bold;
+/* 	font-weight: bold; */
 	background: none;
 }
 
@@ -102,7 +102,7 @@ a:hover
 {
 /* 	text-decoration: underline; */
 	text-decoration: none;
-	font-weight: bold;
+/* 	font-weight: bold; */
 }
 /*a {
 	text-decoration: none;

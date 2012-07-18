@@ -644,7 +644,7 @@ sub parse_drbd_status
 # 		$conf->{node}{$node}{drbd}{$dev}{role}             = $ro;
 # 		$conf->{node}{$node}{drbd}{$dev}{disk_state}       = $ds;
 # 		$conf->{node}{$node}{drbd}{$dev}{minor}            = $minor;
-# 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n") if $conf->{'system'}{debug};
+# 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n");
 		
 		# This is the new way of recording.
 		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
@@ -728,6 +728,10 @@ sub parse_clustat
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
+				if ($state eq "disabled")
+				{
+					$host = "none";
+				}
 				
 				# If the service is disabled, it will 
 				# have '()' which I need to remove.
@@ -736,6 +740,9 @@ sub parse_clustat
 				
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
+				# TODO: If the state is "failed", call 
+				# 'virsh list --all' against both nodes. If the
+				# VM is found, try to recover the service.
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
 				
 				# Pick out who the peer node is.
@@ -840,13 +847,15 @@ sub parse_cluster_conf
 		# Find VMs.
 		if ($line =~ /<vm.*?name="(.*?)"/)
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			my $vm     = $1;
 			my $vm_key = "vm:$vm";
 			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
 			my $domain = ($line =~ /domain="(.*?)"/)[0];
+			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$def], domain: [$domain]\n");
 			$conf->{vm}{$vm_key}{definition_file} = $def;
 			$conf->{vm}{$vm_key}{failover_domain} = $domain;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$conf->{vm}{$vm_key}{definition_file}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}]\n");
 		}
 	}
 	$conf->{'system'}{config_read} = 1;
@@ -1057,8 +1066,6 @@ sub parse_gfs2
 	return(0);
 }
 
-# ==================================================
-
 # This sorts out what needs to happen if 'task' was set.
 sub process_task
 {
@@ -1111,7 +1118,7 @@ sub process_task
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
-			<span class=\"highlight_ready\">About to boot up the virtual machine <b>$conf->{cgi}{vm}</b> on <b>$conf->{cgi}{target}</b></span>
+			<span class=\"highlight_ready\">About to boot up the virtual machine <b>$conf->{cgi}{vm}</b> on <b>$conf->{cgi}{node_cluster_name}</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -1119,8 +1126,68 @@ sub process_task
 			<span class=\"highlight_good\"><b>Note</b></span>
 		</td>
 		<td>
-			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be booted on cluster node <span class=\"fixed_width\">$conf->{cgi}{target}</span>.<br />
+			The virtual machine named: [<span class=\"fixed_width\">$conf->{cgi}{vm}</span>] will be booted on cluster node: [<span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span>].<br />
 			The node was selected because it is either the prefered host or the only host ready to run this VM.
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "stop_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			stop_vm($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to shut down the virtual machine <b>$conf->{cgi}{vm}</b>!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			
+			<span class=\"highlight_dangerous\"><b>Careful!</b></span>
+		</td>
+		<td>
+			<br />
+			The virtual machine named: [<span class=\"fixed_width\">$conf->{cgi}{vm}</span>], running on cluster node: [<span class=\"fixed_width\">$conf->{cgi}{node}</span>] is about to be shut down.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			If $conf->{cgi}{vm} is not listening to ACPI calls, this attempt to shut down the node will fail!<br />
+			Make sure that Linux machines are running <span class=\"code\">acpid</span> and that Windows machines have no pending updates.<br />
+			If <span class=\"fixed_width\">$conf->{cgi}{vm}</span> doesn't shut down within <u>60 seconds</u>, it will be <span class=\"highlight_dangerous\">forced off</span>!<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Precautions!</b></span>
+		</td>
+		<td>
+			<br />
+			Before proceeding, it is <b>strongly advised</b> that you connect to the VM. If there are updates pending, please <b>reboot</b> the VM first.<br />
+			This will ensure that VM shuts down cleanly.<br />
+			Connect to this VM by using <span class=\"fixed_width\">virt-manager</span> (connecting to <span class=\"fixed_width\">$conf->{cgi}{node}</span>) or by using an RDP or SSH session.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1156,8 +1223,9 @@ sub start_vm
 	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# Make sure the node is still ready to take this VM.
-	my ($ready) = check_node_readiness($conf, $vm, $node);
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
+	scan_cluster($conf);
+	my $ready = check_node_readiness($conf, $vm, $node);
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
 	if ($ready)
 	{
 		print "
@@ -1169,15 +1237,15 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
-			System call output below.
+			System call output below:
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<pre>
+		<td class=\"fixed_width\">
+			<br />
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
-		record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 		while(<$fh>)
@@ -1187,12 +1255,12 @@ sub start_vm
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			print "$line\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
 		}
 		$fh->close();
 		print "
-			</pre>
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1231,6 +1299,64 @@ sub start_vm
 	return(0);
 }
 
+# This sttempts to shut down a VM on a target node.
+sub stop_vm
+{
+	my ($conf) = @_;
+	
+	my $node = $conf->{cgi}{node};
+	my $vm   = $conf->{cgi}{vm};
+	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
+	
+	# This, more than 
+	scan_cluster($conf);
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Attempting orderly shut down of $vm now...</span><br />
+			This can take a while, please be patient!
+		</td>
+	</tr>
+	<tr>
+		<td>
+			System call output below:
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
+		}
+		$fh->close();
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	
+	return(0);
+}
+
 # This does a final check of the target node then withdraws it from the
 # cluster.
 sub withdraw_node
@@ -1248,7 +1374,7 @@ sub withdraw_node
 	my $abort_reason      = "";
 	
 	my $sc = "$conf->{path}{ssh} root\@$node \"clustat\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 	while(<$fh>)
@@ -1920,7 +2046,7 @@ sub check_node_readiness
 		# Still alive, find out what storage backs this VM and ensure
 		# that the LV is 'active' and that the DRBD resource(s) they
 		# sit on are Primary and UpToDate.
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm]\n");
 		read_vm_definition($conf, $node, $vm);
 		
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
@@ -1969,15 +2095,18 @@ sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
 	my $this_vm = ($vm =~ /vm:(.*)/)[0];
-	#record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
+	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
+# 	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
-	if (not ref($conf->{vm}{$vm}{xml}) eq "ARRAY")
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], XML: [$conf->{vm}{$vm}{xml}], def: [$conf->{vm}{$vm}{definition_file}]\n");
+	if ((not ref($conf->{vm}{$vm}{xml}) eq "ARRAY") && ($conf->{vm}{$vm}{definition_file}))
 	{
 		my $fh = IO::Handle->new();
 		my $sc = "ssh root\@$node \"cat $conf->{vm}{$vm}{definition_file}\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; [ DEBUG ] - Calling: [$sc]\n") if $conf->{'system'}{debug};
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
 		while(<$fh>)
 		{
@@ -2290,6 +2419,18 @@ sub error
 	return(1);
 }
 
+# This gathers details on the cluster.
+sub scan_cluster
+{
+	my ($conf) = @_;
+	
+	set_node_names ($conf);
+	check_nodes    ($conf);
+	check_vms      ($conf);
+
+	return(0);
+}
+
 # This function simply sets a couple variables using the node names as set in
 # the $conf hash declaration
 sub set_node_names
@@ -2362,9 +2503,20 @@ sub display_vm_state_and_controls
 		{
 			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate&target=$conf->{vm}{$vm}{migration_target}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
 		}
-		my $stop_button      = $conf->{vm}{$vm}{can_stop}    ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm\">Shut Down</a>"                                            : "<span class=\"disabled_button\">Shut Down</span>";
-		my $force_off_button = $conf->{vm}{$vm}{can_stop}    ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm\" class=\"highlight_dangerous\">Force Off</a>"         : "<span class=\"disabled_button\">Force Off</span>";
-		my $start_button     = $conf->{vm}{$vm}{boot_target} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot on <span class=\"fixed_width_button\">$say_start_target</span></a>" : "<span class=\"disabled_button\">Boot</span>" if (($conf->{vm}{$vm}{say_node1}) || ($conf->{vm}{$vm}{say_node2}));
+		my $host_node        = "$conf->{vm}{$vm}{host}";
+		my $stop_button      = "<span class=\"disabled_button\">Shut Down</span>";
+		my $force_off_button = "<span class=\"disabled_button\">Force Off</span>";
+		if ($conf->{vm}{$vm}{can_stop})
+		{
+			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">Orderly Shut Down</a>";
+			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm\" class=\"highlight_dangerous\">Force Off</a>";
+		}
+		my $start_button     = "<span class=\"disabled_button\">Boot</span>";
+		if ($conf->{vm}{$vm}{boot_target})
+		{
+			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot on <span class=\"fixed_width_button\">$say_start_target</span></a>";
+		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
 		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
@@ -2892,7 +3044,7 @@ sub get_cgi_vars
 			}
 			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$var: [$conf->{cgi}{$var}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
