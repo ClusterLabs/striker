@@ -110,12 +110,12 @@ sub gather_node_details
 	   $sc .= "echo \\\"start clustat:\\\"; clustat; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start cluster.conf:\\\"; cat /etc/cluster/cluster.conf; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start daemons:\\\"; ";
-	   $sc .= "/etc/init.d/rgmanager status; echo 'an-sve:rgmanager:$?'; ";
-	   $sc .= "/etc/init.d/cman status; echo 'an-sve:cman:$?'; ";
-	   $sc .= "/etc/init.d/drbd status; echo 'an-sve:drbd:$?'; ";
-	   $sc .= "/etc/init.d/clvmd status; echo 'an-sve:clvmd:$?'; ";
-	   $sc .= "/etc/init.d/gfs2 status; echo 'an-sve:gfs2:$?'; ";
-	   $sc .= "/etc/init.d/libvirtd status; echo 'an-sve:libvirtd:$?'; ";
+	   $sc .= "/etc/init.d/rgmanager status; echo an-sve:rgmanager:\\\$?; ";
+	   $sc .= "/etc/init.d/cman status; echo an-sve:cman:\\\$?; ";
+	   $sc .= "/etc/init.d/drbd status; echo an-sve:drbd:\\\$?; ";
+	   $sc .= "/etc/init.d/clvmd status; echo an-sve:clvmd:\\\$?; ";
+	   $sc .= "/etc/init.d/gfs2 status; echo an-sve:gfs2:\\\$?; ";
+	   $sc .= "/etc/init.d/libvirtd status; echo an-sve:libvirtd:\\\$?; ";
 	   $sc .= "echo \\\"lvm-scan start:\\\"; pvscan; vgscan; lvscan; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"lvm-data start:\\\"; ";
 	   $sc .= "pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ";
@@ -123,6 +123,7 @@ sub gather_node_details
 	   $sc .= "lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ";
 	   $sc .= "echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start virsh:\\\"; virsh list --all; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start vm defs:\\\"; cat /shared/definitions/*; echo \\\"#!end!#\\\"; ";
 	   $sc .= "\"";
 	# These keep track of where I am.
@@ -135,6 +136,7 @@ sub gather_node_details
 	my $in_lvm_scan     = 0;
 	my $in_lvm_data     = 0;
 	my $in_gfs2         = 0;
+	my $in_virsh        = 0;
 	my $in_vm_defs      = 0;
 	
 	# These store the data read.
@@ -147,6 +149,7 @@ sub gather_node_details
 	my @lvm_scan;
 	my @lvm_data;
 	my @gfs2;
+	my @virsh;
 	my @vm_defs;
 	### NOTE: This is over 1 KiB long and causes some IDEs, like 'kate', to
 	### flip the file into read-only mode. Enable only when needed.
@@ -215,6 +218,7 @@ sub gather_node_details
 			$in_lvm_scan     = 0;
 			$in_lvm_data     = 0;
 			$in_gfs2         = 0;
+			$in_virsh        = 0;
 			$in_vm_defs      = 0;
 		}
 		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
@@ -229,6 +233,7 @@ sub gather_node_details
 		if ($line =~ /^lvm-scan start:/)     { $in_lvm_scan     = 1; next; }
 		if ($line =~ /^lvm-data start:/)     { $in_lvm_data     = 1; next; }
 		if ($line =~ /^start gfs2:/)         { $in_gfs2         = 1; next; }
+		if ($line =~ /^start virsh:/)        { $in_virsh        = 1; next; }
 		if ($line =~ /^start vm defs:/)      { $in_vm_defs      = 1; next; }
 		
 		# If I am in a section, push the lines into the
@@ -242,6 +247,7 @@ sub gather_node_details
 		if ($in_lvm_scan)     { push @lvm_scan,     $line; }
 		if ($in_lvm_data)     { push @lvm_data,     $line; }
 		if ($in_gfs2)         { push @gfs2,         $line; }
+		if ($in_virsh)        { push @virsh,        $line; }
 		if ($in_vm_defs)      { push @vm_defs,      $line; }
 	}
 	$fh->close();
@@ -259,6 +265,7 @@ sub gather_node_details
 		parse_lvm_scan    ($conf, $node, \@lvm_scan);
 		parse_lvm_data    ($conf, $node, \@lvm_data);
 		parse_gfs2        ($conf, $node, \@gfs2);
+		parse_virsh       ($conf, $node, \@virsh);
 		parse_vm_defs     ($conf, $node, \@vm_defs);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
@@ -622,10 +629,12 @@ sub parse_drbd_status
 	my ($conf, $node, $array) = @_;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbd_status() for node: [$node]\n");
+	my $resources = 0;
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if $line !~ /^<resource /;
+		$resources++;
 		
 		# Make sure I only display "unknown" or the read value.
 		my $minor = "unknown";
@@ -655,6 +664,11 @@ sub parse_drbd_status
 		$conf->{drbd}{$res}{node}{$node}{device}           = $dev;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], New - res: [$res], minor: [$conf->{drbd}{$res}{node}{$node}{minor}], cs: [$conf->{drbd}{$res}{node}{$node}{connection_state}], ro: [$conf->{drbd}{$res}{node}{$node}{role}], ds: [$conf->{drbd}{$res}{node}{$node}{disk_state}], dev: [$conf->{drbd}{$res}{node}{$node}{device}]\n");
 	}
+	if (not $resources)
+	{
+		# DRBD isn't running.
+		record($conf, "$THIS_FILE ".__LINE__."; DRBD does not appear to be running on node: [$node]\n");
+	}
 	
 	return(0);
 }
@@ -678,8 +692,14 @@ sub parse_clustat
 	$conf->{node}{$node}{me}{rgmanager}   = 0;
 	$conf->{node}{$node}{peer}{cman}      = 0;
 	$conf->{node}{$node}{peer}{rgmanager} = 0;
+	$conf->{node}{$node}{enable_join}     = 0;
 
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_clustat() for node: [$node]\n");
+	if (@{$array} < 1)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; The cluster is shut down on node: [$node]\n");
+		$conf->{node}{$node}{enable_join} = 1;
+	}
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -796,8 +816,16 @@ sub parse_clustat
 	$rgmanager = $say_yn[$rgmanager_running];
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - cman: [$cman], rgmanager: [$rgmanager]\n");
 	
-	$conf->{node}{$node}{info}{host_name}       = $host_name;
-	$conf->{node}{$node}{info}{short_host_name} = ($host_name =~ /^(.*?)\./)[0];
+	if ($host_name)
+	{
+		$conf->{node}{$node}{info}{host_name}            = $host_name;
+		$conf->{node}{$node}{info}{short_host_name}      = ($host_name =~ /^(.*?)\./)[0];
+		$conf->{node}{$node}{get_host_from_cluster_conf} = 0;
+	}
+	else
+	{
+		$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
+	}
 	$conf->{node}{$node}{info}{cman_state}      = $cman;
 	$conf->{node}{$node}{info}{rgmanager_state} = $rgmanager;
 	$conf->{node}{$node}{info}{storage_name}    = $storage_name;
@@ -845,6 +873,23 @@ sub parse_cluster_conf
 			#record($conf, "$THIS_FILE ".__LINE__."; failover domain: [$current_fod], node: [$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node}], priority: [$priority]\n");
 		}
 		
+		# If I didn't get the hostname from clustat, try to find it here.
+		if (($line =~ /<clusternode.*?name="(.*?)"/) && ($conf->{node}{$node}{get_host_from_cluster_conf}))
+		{
+			my $this_host_name  =  $1;
+			my $short_host_name =  $this_host_name;
+			   $short_host_name =~ s/\..*$//;
+			my $short_node_name =  $node;
+			   $short_node_name =~ s/\..*$//;
+			if ($short_host_name eq $short_node_name)
+			{
+				# Found it.
+				$conf->{node}{$node}{info}{host_name}            = $this_host_name;
+				$conf->{node}{$node}{info}{short_host_name}      = $short_host_name;
+				$conf->{node}{$node}{get_host_from_cluster_conf} = 0;
+			}
+		}
+		
 		# Find VMs.
 		if ($line =~ /<vm.*?name="(.*?)"/)
 		{
@@ -871,7 +916,7 @@ sub parse_daemons
 	
 	# If all daemons are down, record here that I can shut down
 	# this VM. If any are up, enable withdrawl.
-	$conf->{node}{$node}{enable_shutdown}  = 1;
+	$conf->{node}{$node}{enable_poweroff} = 0;
 	$conf->{node}{$node}{enable_withdraw} = 0;
 	
 	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
@@ -892,17 +937,49 @@ sub parse_daemons
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		$exit_code = "" if not defined $exit_code;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit_code: [$exit_code]\n");
-		if ($exit_code =~ /^\d+$/)
+		if ($exit_code eq "0")
 		{
 			$conf->{node}{$node}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">Running</span>";
-			$conf->{node}{$node}{enable_shutdown}         = 0;
-			$conf->{node}{$node}{enable_withdraw}         = 1;
+			$conf->{node}{$node}{enable_poweroff}         = 0;
 		}
 		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = defined $exit_code ? $exit_code : "";
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}], status: [$conf->{node}{$node}{daemon}{$daemon}{status}]\n");
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable shutdown: [$conf->{node}{$node}{enable_shutdown}], enable withdrawl: [$conf->{node}{$node}{enable_withdraw}]\n");
+	# If cman is running, enable withdrawl. If not, enable shut down.
+	my $cman_exit      = $conf->{node}{$node}{daemon}{cman}{exit_code};
+	my $rgmanager_exit = $conf->{node}{$node}{daemon}{rgmanager}{exit_code};
+	my $drbd_exit      = $conf->{node}{$node}{daemon}{drbd}{exit_code};
+	my $clvmd_exit     = $conf->{node}{$node}{daemon}{clvmd}{exit_code};
+	my $gfs2_exit      = $conf->{node}{$node}{daemon}{gfs2}{exit_code};
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman_exit:      [$cman_exit]\n");
+	if ($cman_exit eq "0")
+	{
+		$conf->{node}{$node}{enable_withdraw} = 1;
+	}
+	else
+	{
+		# If something went wrong, one of the storage resources might still be running.
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager_exit: [$rgmanager_exit]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd_exit:      [$drbd_exit]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd_exit:     [$clvmd_exit]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2_exit:      [$gfs2_exit]\n");
+		if (($rgmanager_exit eq "0") ||
+		($drbd_exit eq "0") ||
+		($clvmd_exit eq "0") ||
+		($gfs2_exit eq "0"))
+		{
+			# Uh oh...
+			error($conf, "One of more of the storage daemons are running on $node while the cluster itself is down. This is generally the sign of an unclean withdrawl of a node from the cluster! Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.\n"); 
+		}
+		else
+		{
+			# Ready to power off the node
+			$conf->{node}{$node}{enable_poweroff} = 1;
+		}
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable poweroff: [$conf->{node}{$node}{enable_poweroff}], enable withdrawl: [$conf->{node}{$node}{enable_withdraw}]\n");
 	#foreach my $daemon (@daemons) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], status: [$conf->{node}{$node}{daemon}{$daemon}{status}], exit_code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}]\n"); }
 	
 	return(0);
@@ -1019,6 +1096,35 @@ sub parse_lvm_data
 	return(0);
 }
 
+# Parse the virsh data.
+sub parse_virsh
+{
+	my ($conf, $node, $array) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_virsh(), node: [$node]\n");
+	
+	foreach my $line (@{$array})
+	{
+		next if $line !~ /^\d/;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		
+		my ($id, $say_vm, $state) = split/ /, $line, 3;
+		#record($conf, "$THIS_FILE ".__LINE__."; id: [$id], saw vm: [$say_vm], state: [$state]\n");
+		
+		my $vm = "vm:$say_vm";
+		$conf->{vm}{$vm}{node}{$node}{virsh}{'state'} = $state;
+		if ($state eq "paused")
+		{
+			# This VM is being migrated here, disable withdrawl of
+			# this node and migration of this VM.
+			$conf->{node}{$node}{enable_withdraw} = 0;
+			$conf->{vm}{$vm}{can_migrate}         = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+		}
+	}
+	
+	return(0);
+}
+
 # Parse the GFS2 data.
 sub parse_gfs2
 {
@@ -1052,6 +1158,7 @@ sub parse_gfs2
 		else
 		{
 			# Read the GFS info.
+			next if $line !~ /gfs2/;
 			my (undef, $mount_point, $fs) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s/);
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], fs: [$fs]\n");
 			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = "--";
@@ -1085,7 +1192,7 @@ sub process_task
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
-			<span class=\"highlight_ready\">About to withdraw <b>$conf->{cgi}{node_cluster_name}</b></span>
+			<span class=\"highlight_ready\">About to withdraw <b>$conf->{cgi}{node_cluster_name}</b> from cluster <b>$conf->{cgi}{cluster}</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -1093,8 +1200,47 @@ sub process_task
 			<span class=\"highlight_warning\"><b>Caution!</b></span>
 		</td>
 		<td>
+			<br />
 			<span class=\"fixed_width\"><u><b>$conf->{cgi}{node_cluster_name}</b></u></span> will leave the cluster.<br />
-			Once complete, it will no longer be able to run or recover any VMs until it rejoins!
+			Once complete, it will no longer be able to run or recover any VMs until it rejoins!<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "join_cluster")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			join_cluster($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to join <b>$conf->{cgi}{node_cluster_name}</b> to cluster <b>$conf->{cgi}{cluster}</b>.</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			This will attempt to join the node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span> to the cluster <span class=\"fixed_width\">$conf->{cgi}{cluster}</span>.<br />
+			This is usually a safe action.<br />
+			If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1304,7 +1450,7 @@ sub process_task
 		print "<pre>\n";
 		foreach my $var (sort {$a cmp $b} keys %{$conf->{cgi}})
 		{
-			print "var: [$var] -> [$conf->{cgi}{$var}]\n";
+			print "var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
 		}
 		print "</pre>";
 	}
@@ -1383,9 +1529,11 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
+			<br />
 			It appears that node <span class=\"fixed_width\">$node_cluster_name</span> is no longer ready to run <span class=\"fixed_width\">$vm</span>.<br />
 			This could be because some time has passed and the state of the node has changed.<br />
-			Please go back to the status page for more details.
+			Please go back to the status page for more details.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1471,9 +1619,11 @@ sub migrate_vm
 	</tr>
 	<tr>
 		<td>
+			<br />
 			It appears that node <span class=\"fixed_width\">$target</span> is no longer ready to run <span class=\"fixed_width\">$vm</span>.<br />
 			This could be because some time has passed and the state of the node has changed.<br />
-			Please go back to the status page for more details.
+			Please go back to the status page for more details.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1542,6 +1692,109 @@ sub stop_vm
 	</tr>
 </table>
 ";
+	
+	return(0);
+}
+
+# This sttempts to shut down a VM on a target node.
+sub join_cluster
+{
+	my ($conf) = @_;
+	
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $proceed           = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; in join_cluster(), node: [$node], node_cluster_name: [$node_cluster_name]\n");
+	
+	# This, more than 
+	scan_cluster($conf);
+	
+	# Proceed only if all of the storage components, cman and rgmanager are
+	# off.
+	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
+	{
+		$proceed = 1;
+	}
+	if ($proceed)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</span><br />
+			This can take a while, please be patient!<br />
+			This process will complete before the storage service starts. Please give a minute or two for storage to come online.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			System call output below:
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
+		}
+		$fh->close();
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Joining of $node_cluster_name to $conf->{cgi}{cluster} aborted!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			It appears that <span class=\"fixed_width\">$node_cluster_name</span> is already running <span class=\"fixed_width\">cman</span>, <span class=\"fixed_width\">rgmanager</span>, <span class=\"fixed_width\">drbd</span>, <span class=\"fixed_width\">clvmd</span> or <span class=\"fixed_width\">gfs2</span>.<br />
+			If any of these daemons are running, then either the cluster was already started elsewhere or the last attempt to withdraw the cluster failed.<br />
+			If you believe that the cluster has failed, please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			Note that <span class=\"fixed_width\">libvirtd</span> is allowed to be running and would not block this action.<br />
+			Please go back and see what the current state of the cluster is.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	}
 	
 	return(0);
 }
@@ -1620,74 +1873,47 @@ sub withdraw_node
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $storage_name      = $conf->{cgi}{storage};
-	my $stop_storage      = 1;
-	my $stop_rgmanager    = 1;
-	my $stop_cman         = 1;
-	my $proceed           = 1;
-	my $abort_reason      = "";
 	
-	my $sc = "$conf->{path}{ssh} root\@$node \"clustat\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		if ($line =~ /^service:$storage_name (.*?) (.*)$/)
-		{
-			my $host  = $1;
-			my $state = $2;
-			
-			if (lc($state) eq "disabled")
-			{
-				$stop_storage = 0;
-			}
-			#record($conf, "$THIS_FILE ".__LINE__."; storage line: [$line]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; stop storage: [$storage_name] -> [$stop_storage] (in state: [$state], host is/was: [$host])\n");
-		}
-		elsif ($line =~ /$node_cluster_name/)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node line:    [$line]\n");
-			if ($line =~ /^vm:(.*?) (.*?) (.*)$/)
-			{
-				my $vm        = $1;
-				my $host      = $2;
-				my $state     = $3;
-				
-				if ($state ne "disabled")
-				{
-					$proceed      =  0;
-					$abort_reason .= "VM: [$vm] is in state: [$state] on node: [$host] (this node). Migrate or stop this VM and try again.<br />\n";
-				}
-			}
-		}
-	}
-	$abort_reason =~ s/<br \/>\n$//;
-	
+	# Scan the cluster, then confirm that withdrawl is still enabled.
+	scan_cluster($conf);
+	my $proceed = $conf->{node}{$node}{enable_withdraw};
+	record($conf, "$THIS_FILE ".__LINE__."; in withdraw_node(), node: [$node], storage service: [$storage_name], proceed: [$proceed]\n");
 	if ($proceed)
 	{
-		# Stop storage
-
-		# Stop RGManager
-
-		# Stop cman
-	}
-	else
-	{
+		# Stop rgmanager and then check it's status.
 		print "
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Withdrawl of $node_cluster_name failed!</span>
+			<span class=\"highligh_bad\"><b>Withdrawing $node_cluster_name from the cluster now...</span>
 		</td>
 	</tr>
 	<tr>
 		<td>
-			$abort_reason
+			Stopping the resource manager and cluster communications now.
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager stop && /etc/init.d/cman stop\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "$line<br />\n";
+		}
+		$fh->close();
+		print "
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1698,6 +1924,34 @@ sub withdraw_node
 </table>
 ";
 	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			It appears that node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span> is now in use by a VM.<br />
+			This could be because some time has passed and the state of the node has changed.<br />
+			Please go back to the status page for more details.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+		</td>
+	</tr>
+</table>
+";
+	}
+	
+	footer($conf);
 	
 	return(0);
 }
@@ -2291,12 +2545,12 @@ sub check_node_readiness
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd exit_code:     [$conf->{node}{$node}{daemon}{clvmd}{exit_code}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2 exit_code:      [$conf->{node}{$node}{daemon}{gfs2}{exit_code}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], libvirtd exit_code:  [$conf->{node}{$node}{daemon}{libvirtd}{exit_code}]\n");
-	if (($conf->{node}{$node}{daemon}{cman}{exit_code} !~ /^\d+$/) ||
-	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} !~ /^\d+$/) ||
-	($conf->{node}{$node}{daemon}{drbd}{exit_code} !~ /^\d+$/) ||
-	($conf->{node}{$node}{daemon}{clvmd}{exit_code} !~ /^\d+$/) ||
-	($conf->{node}{$node}{daemon}{gfs2}{exit_code} !~ /^\d+$/) ||
-	($conf->{node}{$node}{daemon}{libvirtd}{exit_code} !~ /^\d+$/))
+	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
+	($conf->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
 	{
 		$ready = 0;
 	}
@@ -2492,6 +2746,13 @@ sub check_lv
 	my ($conf, $node, $vm, $lv) = @_;
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv]\n");
 	
+	# If this node is down, just return.
+	if ($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is down, skipping LV check for: [$lv] for VM: [$vm]\n");
+		return(0);
+	}
+	
 	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $conf->{node}{$node}{lvm}{lv}{$lv}{active};
 	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = convert_from_bytes($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv], active: [$conf->{node}{$node}{lvm}{lv}{$lv}{active}], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$lv}{on_devices}]\n");
@@ -2543,7 +2804,15 @@ sub check_vms
 	my $say_node2   = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
-		my ($say_vm) = ($vm =~ /^vm:(.*)/);
+		my $say_vm;
+		if ($vm =~ /^vm:(.*)/)
+		{
+			$say_vm = $1;
+		}
+		else
+		{
+			error($conf, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
+		}
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 		
 		# This will control the buttons.
@@ -2555,9 +2824,9 @@ sub check_vms
 		
 		# Find out who, if anyone, is running this VM and who *can* run
 		# it. 2 == Running, 1 == Can run, 0 == Can't run.
-		$conf->{vm}{$vm}{say_node1}        = "<span class=\"highlight_warning\">Not Ready</span>";
+		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node1_ready}      = 0;
-		$conf->{vm}{$vm}{say_node2}        = "<span class=\"highlight_warning\">Not Ready</span>";
+		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node2_ready}      = 0;
 		
 		# If a VM's XML definition file is found but there is no host,
@@ -3068,7 +3337,22 @@ sub display_gfs2_details
 		</td>
 	</tr>
 ";
-	my $gfs2_hash = ref($conf->{node}{$node1}{gfs}) eq "HASH" ? $conf->{node}{$node1}{gfs} : $conf->{node}{$node2}{gfs};
+	my $gfs2_hash;
+	my $node;
+	#record($conf, "$THIS_FILE ".__LINE__."; node1 - cman exit code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node2 - cman exit code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node1}{gfs}) eq "HASH"))
+	{
+		$gfs2_hash = $conf->{node}{$node1}{gfs};
+		$node      = $node1;
+		#record($conf, "$THIS_FILE ".__LINE__."; using node1's gfs2 hash: [$gfs2_hash]\n");
+	}
+	elsif (($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node2}{gfs}) eq "HASH"))
+	{
+		$gfs2_hash = $conf->{node}{$node2}{gfs};
+		$node      = $node2;
+		#record($conf, "$THIS_FILE ".__LINE__."; using node2's gfs2 hash: [$gfs2_hash]\n");
+	}
 	#record($conf, "$THIS_FILE ".__LINE__."; gfs2_hash: [$gfs2_hash], node1 hash: [".(ref($conf->{node}{$node1}{gfs}))."], node2 hash: [".(ref($conf->{node}{$node2}{gfs}))."]\n");
 	if (ref($gfs2_hash) eq "HASH")
 	{
@@ -3084,14 +3368,14 @@ sub display_gfs2_details
 			my $say_free         = "--";
 			#record($conf, "$THIS_FILE ".__LINE__."; node1 total size: [$conf->{node}{$node1}{gfs}{$mount_point}{total_size}]\n");
 			#record($conf, "$THIS_FILE ".__LINE__."; node2 total size: [$conf->{node}{$node2}{gfs}{$mount_point}{total_size}]\n");
-			if ($conf->{node}{$node1}{gfs}{$mount_point}{total_size})
+			if ($conf->{node}{$node1}{gfs}{$mount_point}{total_size} =~ /^\d/)
 			{
 				$say_size         = $conf->{node}{$node1}{gfs}{$mount_point}{total_size};
 				$say_used         = $conf->{node}{$node1}{gfs}{$mount_point}{used_space};
 				$say_used_percent = $conf->{node}{$node1}{gfs}{$mount_point}{percent_used};
 				$say_free         = $conf->{node}{$node1}{gfs}{$mount_point}{free_space};
 			}
-			elsif ($conf->{node}{$node2}{gfs}{$mount_point}{total_size})
+			elsif ($conf->{node}{$node2}{gfs}{$mount_point}{total_size} =~ /^\d/)
 			{
 				$say_size         = $conf->{node}{$node2}{gfs}{$mount_point}{total_size};
 				$say_used         = $conf->{node}{$node2}{gfs}{$mount_point}{used_space};
@@ -3216,12 +3500,12 @@ sub display_node_details
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		
-		my $say_join = "<span class=\"disabled_button\">Join</span>";
+		my $say_join     = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\">Join Cluster</a>" : "<span class=\"disabled_button\">Join Cluster</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_withdraw: [$conf->{node}{$node}{enable_withdraw}]\n");
 		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name&storage=$conf->{node}{$node}{storage_service}\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_shutdown: [$conf->{node}{$node}{enable_shutdown}]\n");
-		my $say_shutdown = $conf->{node}{$node}{enable_shutdown} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=shutdown&node=$node&node_cluster_name=$node_long_name\">Shut Down</a>" : "<span class=\"disabled_button\">Shut Down</span>";
-		my $say_boot = "<span class=\"disabled_button\">Boot Up</span>";
+		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
+		my $say_shutdown = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";
+		my $say_boot     = "<span class=\"disabled_button\">Boot Up</span>";
 
 		print "
 	<tr>
