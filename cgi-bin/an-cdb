@@ -2,14 +2,18 @@
 
 use strict;
 use warnings;
-require "./an-cwm.lib";
-our $THIS_FILE = "an-cwm.lib";
+require "./an-cdb.lib";
+our $THIS_FILE = "an-cdb";
 
 my $conf={
 	clusters		=>	{
 		'cc-cluster-01'		=>	{
 			description		=>	"CC Systems \"Cluster 01\" (in Peer 1)",
 			nodes			=>	["cc-c01n01.remote", "cc-c01n02.remote"],
+		},
+		'cc-cluster-02'		=>	{
+			description		=>	"CC Systems \"Cluster 02\" (At YYZ HQ)",
+			nodes			=>	["cc-c02n01", "cc-c02n02"],
 		},
 		'an-cluster-01'		=>	{
 			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Peer 1)",
@@ -23,10 +27,14 @@ my $conf={
 	up_nodes		=>	[],
 	path			=>	{
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
-		'log'			=>	"/var/log/an-cwm.log",
+		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
 		ping			=>	"/usr/bin/ping",
 		ssh			=>	"/usr/bin/ssh",
+		fence_ipmilan		=>	"/sbin/fence_ipmilan",
+		'an-cdb_files'		=>	"/var/www/home",
+		gethostip		=>	"/bin/gethostip",
+		ifconfig		=>	"/sbin/ifconfig",
 	},
 	handles			=>	{
 		'log'			=>	"",
