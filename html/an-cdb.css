@@ -38,6 +38,12 @@ td {
 /* 	border: none; */
 }
 
+.legal {
+	font-size: 9px;
+	text-align: center;
+	color: #8f8f8f;
+}
+
 .fixed_width {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	color: #1f1f1f;
@@ -66,6 +72,11 @@ td {
 
 .highlight_ready {
 	color: #13749a;
+}
+
+.highlight_ready_bold {
+	color: #13749a;
+	font-weight: bold;
 }
 
 .highlight_warning {
