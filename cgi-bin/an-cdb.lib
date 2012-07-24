@@ -49,7 +49,6 @@ sub footer
 	if ($conf->{'system'}{show_refresh})
 	{
 		print "
-<br />
 <table align=\"center\">
 	<tr>
 		<td>
@@ -66,8 +65,8 @@ sub footer
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
-			&copy; Alteeve's Niche! 1997 - 2012<br />
-			This program is released under the GNU GPL v2+<br />
+			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2012<br />
+			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
 			</span>
 		</td>
 	</tr>
@@ -90,10 +89,12 @@ sub check_node_status
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
 		gather_node_details($conf, $node);
+		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
 	}
 	
 	# If I have no nodes up, exit.
-	$conf->{'system'}{up_nodes} = @{$conf->{up_nodes}};
+	$conf->{'system'}{up_nodes}     = @{$conf->{up_nodes}};
+	$conf->{'system'}{online_nodes} = @{$conf->{online_nodes}};
 	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} < 1)
 	{
@@ -102,6 +103,7 @@ sub check_node_status
 		if (not $conf->{'system'}{show_nodes})
 		{
 			print "
+<br />
 <table align=\"center\">
 	<tr>
 		<td>
@@ -109,10 +111,10 @@ sub check_node_status
 		</td>
 	</tr>
 </table>
-</body>
-<img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />
+<br />
 ";
-			footer($conf);
+# </body>
+# <img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />
 		}
 	}
 	else
@@ -211,6 +213,7 @@ sub gather_node_details
 		{
 			$connected = 0;
 			check_if_on($conf, $node);
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 			if ($conf->{node}{$node}{is_on} == 0)
 			{
 				$conf->{'system'}{show_nodes}         = 1;
@@ -242,7 +245,7 @@ sub gather_node_details
 				$conf->{node}{$node}{enable_poweron}  = 0;
 				$conf->{node}{$node}{enable_poweroff} = 0;
 				$conf->{node}{$node}{enable_fence}    = 0;
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access!</span>";
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
 				$conf->{node}{$node}{info}{note}    = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.";
 			}
 			last;
@@ -362,7 +365,8 @@ sub gather_node_details
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$connected], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
 	if ($connected)
 	{
-		$conf->{node}{$node}{up} = 1;
+		$conf->{'system'}{show_nodes} = 1;
+		$conf->{node}{$node}{up}      = 1;
 		push @{$conf->{up_nodes}}, $node;
 		parse_dmidecode    ($conf, $node, \@dmidecode);
 		parse_meminfo      ($conf, $node, \@meminfo);
@@ -383,7 +387,7 @@ sub gather_node_details
 	else
 	{
 		# If I have confirmed the node is powered off, don't display this.
-		if (not $conf->{node}{$node}{enable_poweron})
+		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
 			print "
 <table align=\"center\">
@@ -478,10 +482,17 @@ sub check_if_on
 					if ($line =~ /Chassis power = On/i)
 					{
 						$conf->{node}{$node}{is_on} = 1;
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 					}
 					if ($line =~ /Chassis power = Off/i)
 					{
 						$conf->{node}{$node}{is_on} = 0;
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+					}
+					if ($line =~ /Chassis power = Unknown/i)
+					{
+						$conf->{node}{$node}{is_on} = 2;
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
 					}
 				}
 				$fh->close();
@@ -537,7 +548,7 @@ sub on_same_network
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)$/)
 		{
 			$target_ip = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip: [$target_ip]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 		}
 		elsif ($line =~ /Unknown host/i)
 		{
@@ -552,7 +563,7 @@ sub on_same_network
 	}
 	$fh->close();
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip: [$target_ip]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
 	{
 		# Find out my own IP(s) and subnet(s).
@@ -579,34 +590,34 @@ sub on_same_network
 				# to the power check device.
 				my $target_ip_range = $target_ip;
 				my $this_ip_range   = $this_ip;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip_range: [$target_ip_range], this_ip: [$this_ip]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip: [$this_ip]\n");
 				if ($this_nm eq "255.255.255.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+$//;
 					$this_ip_range   =~ s/.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
 				}
 				if ($this_nm eq "255.255.0.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+.\d+$//;
 					$this_ip_range   =~ s/.\d+.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
 				}
 				if ($this_nm eq "255.0.0.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+.\d+.\d+$//;
 					$this_ip_range   =~ s/.\d+.\d+.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
 				}
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
 				if ($this_ip_range eq $target_ip_range)
 				{
 					# Match! I can reach it directly.
 					$local_access = 1;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local_access: [$local_access]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
 					last;
 				}
 				
@@ -622,18 +633,19 @@ sub on_same_network
 				if ($line =~ /inet (\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_ip = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], this_ip: [$this_ip]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip]\n");
 				}
 				if ($line =~ /netmask (\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_nm = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], this_nm: [$this_nm]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_nm: [$this_nm]\n");
 				}
 			}
 		}
 		$fh->close();
 	}
 	
+	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
 	return($local_access);
 }
 
@@ -1072,12 +1084,6 @@ sub parse_drbd_status
 		($ro)    = ($line =~ /ro1="(.*?)"/);
 		($ds)    = ($line =~ /ds1="(.*?)"/);
 		$dev = "/dev/drbd$minor" if $minor =~ /^\d+$/;
-# 		$conf->{node}{$node}{drbd}{$dev}{resource_name}    = $res;
-# 		$conf->{node}{$node}{drbd}{$dev}{connection_state} = $cs;
-# 		$conf->{node}{$node}{drbd}{$dev}{role}             = $ro;
-# 		$conf->{node}{$node}{drbd}{$dev}{disk_state}       = $ds;
-# 		$conf->{node}{$node}{drbd}{$dev}{minor}            = $minor;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Old - dev: [$dev], res: [$conf->{node}{$node}{drbd}{$dev}{resource_name}], cs: [$conf->{node}{$node}{drbd}{$dev}{connection_state}], ro: [$conf->{node}{$node}{drbd}{$dev}{role}], ds: [$conf->{node}{$node}{drbd}{$dev}{disk_state}]\n");
 		
 		# This is the new way of recording.
 		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
@@ -1294,13 +1300,10 @@ sub parse_clustat
 	
 	# If this is set, the cluster isn't running.
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
-	if ($conf->{node}{$node}{get_host_from_cluster_conf})
-	{
-	}
-	else
+	if (not $conf->{node}{$node}{get_host_from_cluster_conf})
 	{
 		$host_name = $conf->{node}{$node}{me}{name};
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
 		foreach my $name (sort {$a cmp $b} keys %{$conf->{service}})
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name]\n");
@@ -1311,7 +1314,7 @@ sub parse_clustat
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - storage name: [$storage_name], storage state: [$storage_state]\n");
 		}
 		
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
 		if ($host_name)
 		{
 			$conf->{node}{$node}{info}{host_name}            =  $host_name;
@@ -1323,7 +1326,7 @@ sub parse_clustat
 		{
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
 		# NOTE: These aren't used (yet?).
 		$conf->{node}{$node}{info}{storage_name}    = $storage_name;
 		$conf->{node}{$node}{info}{storage_state}   = $storage_state;
@@ -1490,7 +1493,7 @@ sub parse_cluster_conf
 	
 	# See if I got the fence details for both nodes.
 	my $peer = get_peer_node($conf, $node);
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	foreach my $this_node ($node, $peer)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node]\n");
@@ -1801,7 +1804,7 @@ sub parse_gfs2
 			$free_space   = "" if not defined $free_space;
 			$percent_used = "" if not defined $percent_used;
 			next if not exists $conf->{node}{$node}{gfs}{$mount_point};
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device path: [$device_path], total size: [$total_size], used space: [$used_space], free space: [$free_space], percent used: [$percent_used], mount point: [$mount_point]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device path: [$device_path], total size: [$total_size], used space: [$used_space], free space: [$free_space], percent used: [$percent_used], mount point: [$mount_point]\n");
 			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = $device_path;
 			$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = $total_size;
 			$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = $used_space;
@@ -1867,6 +1870,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -1904,6 +1908,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -1951,6 +1956,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -1999,6 +2005,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -2035,6 +2042,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -2095,6 +2103,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -2153,6 +2162,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -2192,6 +2202,7 @@ sub process_task
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -2262,10 +2273,11 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -2288,10 +2300,11 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -2306,7 +2319,7 @@ sub migrate_vm
 	my $target = $conf->{cgi}{target};
 	my $vm     = $conf->{cgi}{vm};
 	my $node   = long_host_name_to_node_name($conf, $target);
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], target: [$target]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], target: [$target]\n");
 	
 	# Make sure the node is still ready to take this VM.
 	scan_cluster($conf);
@@ -2352,10 +2365,11 @@ sub migrate_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -2378,10 +2392,11 @@ sub migrate_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -2437,10 +2452,11 @@ sub stop_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	
 	return(0);
@@ -2511,10 +2527,11 @@ sub join_cluster
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -2539,10 +2556,11 @@ sub join_cluster
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -2604,10 +2622,11 @@ sub force_off_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	
 	return(0);
@@ -2667,10 +2686,11 @@ sub poweroff_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -2693,10 +2713,11 @@ sub poweroff_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -2786,6 +2807,10 @@ sub poweron_node
 				print "$line<br />\n";
 			}
 			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>";
 		}
 		else
 		{
@@ -2811,6 +2836,10 @@ sub poweron_node
 						print "$line<br />\n";
 					}
 					$fh->close();
+					print "
+			<br />
+		</td>
+	</tr>";
 				}
 				else
 				{
@@ -2822,6 +2851,11 @@ sub poweron_node
 			{
 				# Can't check the power.
 				print "
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
 <table align=\"center\">
 	<tr>
 		<td>
@@ -2839,10 +2873,9 @@ sub poweron_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
-</table>
 ";
 			}
 		}
@@ -2865,22 +2898,19 @@ sub poweron_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
-</table>
 ";
 	}
 	print "
-			<br />
-		</td>
-	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	
 	footer($conf);
@@ -2942,10 +2972,11 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -2968,10 +2999,11 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</span>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -3075,83 +3107,34 @@ sub display_details
 		<td class=\"td_hidden\">
 ";
 	# Display the status of each node's daemons
+	my $up_nodes = @{$conf->{up_nodes}};
+	#record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 	if ($conf->{'system'}{show_nodes})
 	{
 		display_node_details($conf);
-		print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
 
 		# I don't show below here unless at least one node is up.
-		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 		if ($conf->{'system'}{up_nodes} > 0)
 		{
 			# Show the status of each node's GFS2 share(s)
 			display_gfs2_details($conf);
-			print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
 		
 			# This shows the status of each DRBD resource in the cluster.
 			display_drbd_details($conf);
-			print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
 		
 			# Show the user the current VM states and the control buttons.
 			display_vm_state_and_controls($conf);
-			print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
 		
 			# Show the details about each VM.
 			display_vm_details($conf);
-			print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"td_hidden\">
-";
 		
 			# Show the free resources available for new VMs.
 			display_free_resources($conf);
+			print "
+</table>
+<br />
+";
 		}
 		else
 		{
@@ -3172,6 +3155,7 @@ sub display_details
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
@@ -3194,13 +3178,9 @@ sub display_details
 		</td>
 	</tr>
 </table>
+<br />
 "
 	}
-	print "
-		</td>
-	</tr>
-</table>
-";
 	
 	return (0);
 }
@@ -3405,9 +3385,9 @@ sub display_free_resources
 			$say_link
 		</td>
 	</tr>
-</table>
-<br />
 ";
+# </table>
+# <br />
 
 	return (0);
 }
@@ -3497,13 +3477,18 @@ sub display_vm_details
 		my @lv_path;
 		my @lv_size;
 		my $host = $conf->{vm}{$vm}{host};
+		
 		# If the host is "none", read the details from one of the "up"
 		# nodes.
 		if ($host eq "none")
 		{
-			$host = @{$conf->{up_nodes}}[0];
+			# If the first node is running, use it. Otherwise use
+			# the second node.
+			$host = check_node_daemons($conf, $node1) ? $node1 : $node2;
 		}
 		my $node = long_host_name_to_node_name($conf, $host);
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
+		
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
@@ -3521,15 +3506,16 @@ sub display_vm_details
 		{
 			push @bridge, $current_bridge;
 			push @device, $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
-			push @mac,    $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac};
+			push @mac,    uc($conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
 			push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
 		}
 		my $say_net_host = "";
-		if ($conf->{vm}{$vm}{host})
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+		if ($conf->{vm}{$vm}{host} ne "none")
 		{
-			my $say_host =  $conf->{vm}{$vm}{host};
-			   $say_host =~ s/\..*?//;
-			$say_net_host = "<span class=\"highlight_detail\">$say_host</span> ->";
+			my $say_host  =  $conf->{vm}{$vm}{host};
+			   $say_host  =~ s/\..*//;
+			$say_net_host = "<span class=\"highlight_detail\">$say_host</span> -> <span class=\"highlight_detail\">$bridge[0]</span> -> <span class=\"highlight_detail\">$device[0]</span> -> ";
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
@@ -3569,13 +3555,14 @@ sub display_vm_details
 				if ($bridge[$i])
 				{
 					my $say_net_host = "";
-					if ($conf->{vm}{$vm}{host})
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+					if ($conf->{vm}{$vm}{host} ne "none")
 					{
-						my $say_host =  $conf->{vm}{$vm}{host};
-						   $say_host =~ s/\..*?//;
-						$say_net_host = "<span class=\"highlight_detail\">$say_host</span> ->";
+						my $say_host  =  $conf->{vm}{$vm}{host};
+						$say_host  =~ s/\..*//;
+						$say_net_host = "<span class=\"highlight_detail\">$say_host</span> -> <span class=\"highlight_detail\">$bridge[$i]</span> -> <span class=\"highlight_detail\">$device[$i]</span> -> ";
 					}
-					$say_network = "$say_net_host <span class=\"highlight_detail\">$type[0]</span> / <span class=\"highlight_detail\">$mac[0]</span>";
+					$say_network = "$say_net_host <span class=\"highlight_detail\">$type[$i]</span> / <span class=\"highlight_detail\">$mac[$i]</span>";
 				}
 				
 				print "
@@ -3606,20 +3593,17 @@ sub display_vm_details
 	
 	print "
 </table>
+<br />
 ";
 	return (0);
 }
 
-# This checks a node to see if it's ready to run a given VM.
-sub check_node_readiness
+# This checks the daemons running on a node and returns '1' if all are running.
+sub check_node_daemons
 {
-	my ($conf, $vm, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_readiness(); vm: [$vm], node: [$node]\n");
-	
-	# This will get negated if something isn't ready.
+	my ($conf, $node) = @_;
 	my $ready = 1;
 	
-	# First, is the node and it's daemons up.
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman exit_code:      [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager exit_code: [$conf->{node}{$node}{daemon}{rgmanager}{exit_code}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd exit_code:      [$conf->{node}{$node}{daemon}{drbd}{exit_code}]\n");
@@ -3635,6 +3619,18 @@ sub check_node_readiness
 	{
 		$ready = 0;
 	}
+	
+	return($ready);
+}
+
+# This checks a node to see if it's ready to run a given VM.
+sub check_node_readiness
+{
+	my ($conf, $vm, $node) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_readiness(); vm: [$vm], node: [$node]\n");
+	
+	# This will get negated if something isn't ready.
+	my $ready = check_node_daemons($conf, $node);
 	#record($conf, "$THIS_FILE ".__LINE__."; 1. vm: [$vm], node: [$node], ready: [$ready]\n");
 	
 	# TODO: Add split-brain detection. If both nodes are 
@@ -3706,7 +3702,7 @@ sub read_vm_definition
 	{
 		my $fh = IO::Handle->new();
 		my $sc = "ssh root\@$node \"cat $conf->{vm}{$vm}{definition_file}\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
 		while(<$fh>)
 		{
@@ -3741,6 +3737,14 @@ sub read_vm_definition
 			$conf->{vm}{$vm}{details}{ram} *= 1024;
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		}
+		if ($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/)
+		{
+			# Record the memory, multiple by 1024 to get bytes.
+			my $units                      =  $1;
+			my $ram                        =  $2;
+			$conf->{vm}{$vm}{details}{ram} = convert_to_bytes($conf, "$ram $units", 1);
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+		}
 		
 		# TODO: Support pinned cores.
 		# Pull out the CPU details
@@ -3748,6 +3752,12 @@ sub read_vm_definition
 		{
 			$conf->{vm}{$vm}{details}{cpu_count} = $1;
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
+		}
+		if ($line =~ /<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
+		{
+			my $cpu_type                         = $1;
+			$conf->{vm}{$vm}{details}{cpu_count} = $2;
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}], type: [$cpu_type]\n");
 		}
 		
 		# Pull out network details.
@@ -3759,9 +3769,9 @@ sub read_vm_definition
 		elsif ($line =~ /<\/interface/)
 		{
 			# Record the values I found
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device;
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address;
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type;
+			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
+			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
+			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], bride: [$current_bridge], device: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device}], mac: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}], type: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}]\n");
 			$current_bridge         = "";
 			$current_device         = "";
@@ -3961,7 +3971,7 @@ sub check_vms
 		}
 		else
 		{
-			$conf->{vm}{$vm}{can_stop}  = 0;
+			$conf->{vm}{$vm}{can_stop}      = 0;
 			($conf->{vm}{$vm}{node1_ready}) = check_node_readiness($conf, $vm, $node1);
 			($conf->{vm}{$vm}{node2_ready}) = check_node_readiness($conf, $vm, $node2);
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
@@ -3969,7 +3979,31 @@ sub check_vms
 		
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{current_host}]\n");
 		$conf->{vm}{$vm}{boot_target} = "";
-		if (not $conf->{vm}{$vm}{current_host})
+		if ($conf->{vm}{$vm}{current_host})
+		{
+			# This is a bit expensive, but read the VM's running
+			# definition.
+			my $host   = $conf->{vm}{$vm}{current_host};
+			my $say_vm = $vm;
+			$say_vm =~ s/^vm://;
+			#record($conf, "$THIS_FILE ".__LINE__."; Reading the XML for the VM: [$vm] which is currently running on: [$conf->{vm}{$vm}{current_host}]\n");
+			my $fh = IO::Handle->new();
+			my $sc = "ssh root\@$host \"virsh dumpxml $say_vm\"";
+			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				push @{$conf->{vm}{$vm}{xml}}, $line;
+			}
+			$fh->close();
+		}
+		else
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
 			if (($conf->{vm}{$vm}{node1_ready}) && ($conf->{vm}{$vm}{node2_ready}))
@@ -4042,6 +4076,7 @@ sub error
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	
 	exit(1);
@@ -4058,7 +4093,7 @@ sub scan_cluster
 	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} > 0)
 	{
-		check_vms      ($conf);
+		check_vms($conf);
 	}
 
 	return(0);
@@ -4165,6 +4200,7 @@ sub display_vm_state_and_controls
 		if ($conf->{vm}{$vm}{can_stop})
 		{
 			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
 			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">Orderly Shut Down</a>";
 			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}\" class=\"highlight_dangerous\">Force Off</a>";
 		}
@@ -4243,6 +4279,7 @@ sub display_vm_state_and_controls
 	
 	print "
 </table>
+<br />
 ";
 	
 	return (0);
@@ -4428,6 +4465,7 @@ sub display_drbd_details
 	
 	print "
 </table>
+<br />
 ";
 	
 	return (0);
@@ -4597,6 +4635,7 @@ sub display_gfs2_details
 	
 	print "
 </table>
+<br />
 ";
 
 	return (0);
@@ -4684,7 +4723,7 @@ sub display_node_details
 		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
 		my $say_shutdown = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";
-		my $say_boot     = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Power On</span></a>"   : "<span class=\"disabled_button\">Boot Up</span>";
+		my $say_boot     = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Power On</span></a>"   : "<span class=\"disabled_button\">Power On</span>";
 		
 		# At all times, the option to fence the node is made available.
 		my $say_fence    = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
@@ -4733,6 +4772,7 @@ sub display_node_details
 	
 	print "
 </table>
+<br />
 ";
 
 	return (0);
@@ -4864,7 +4904,7 @@ sub record
 		$fh = IO::Handle->new();
 		$conf->{handles}{'log'} = $fh;
 		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!Provision log at ".time."\n";
+		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".time."\n";
 	}
 	print $fh $message;
 	
