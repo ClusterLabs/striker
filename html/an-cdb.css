@@ -98,6 +98,11 @@ td {
 	color: #7f7f7f;
 }
 
+.highlight_offline {
+	color: #e61667;
+	font-weight: bold;
+}
+
 .disabled_button {
 	color: #7f7f7f;
 }

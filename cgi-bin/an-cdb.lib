@@ -1,4 +1,27 @@
 #!/usr/bin/perl
+#
+# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+# No warranty is provided. Do not use this software unless you are willing and
+# able to take full liability for it's use. The authors take care to prevent
+# unexpected side effects when using this program. However, no software is
+# perfect and bugs may exist which could lead to hangs or crashes in the
+# program, in your cluster and possibly even data loss.
+# 
+# If you are concerned about these risks, please stick to command line tools.
+# 
+# This program is designed to extend clusters built according to this tutorial:
+# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+#
+# This program's source code and updates are available on Github:
+# - https://github.com/digimer/an-cdb
+#
+# Author;
+# Alteeve's Niche!  -  https://alteeve.com
+# Madison Kelly     -  mkelly@alteeve.ca
+# 
 
 use strict;
 use warnings;
@@ -20,7 +43,7 @@ sub header
 	print q|
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>Alteeve's Niche! Cluster Dashboard</title>
+	<title>AN!CDB - Alteeve's Niche! Cluster Dashboard</title>
 	<link rel="stylesheet" href="/an-cdb.css" media="screen" />
 	<script type="text/javascript" src="/an-cdb.js"></script>
 </head>
@@ -29,7 +52,7 @@ sub header
 <table align="center">
 	<tr>
 		<td>
-			<a href="/">AN!CDB - Cluster Dashboard</a>
+			<a href="/"><img src="/logo_an-cdb_02.png" alt="AN!CDB - Cluster Dashboard"></a>
 		</td>
 	</tr>
 </table>
@@ -95,7 +118,7 @@ sub check_node_status
 	# If I have no nodes up, exit.
 	$conf->{'system'}{up_nodes}     = @{$conf->{up_nodes}};
 	$conf->{'system'}{online_nodes} = @{$conf->{online_nodes}};
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}], online nodes: [$conf->{'system'}{online_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} < 1)
 	{
 		# Neither node is up. If I can power them on, then I will show
@@ -103,7 +126,6 @@ sub check_node_status
 		if (not $conf->{'system'}{show_nodes})
 		{
 			print "
-<br />
 <table align=\"center\">
 	<tr>
 		<td>
@@ -113,8 +135,6 @@ sub check_node_status
 </table>
 <br />
 ";
-# </body>
-# <img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />
 		}
 	}
 	else
@@ -131,15 +151,13 @@ sub gather_node_details
 	my ($conf, $node) = @_;
 	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
 	
-	# This will flip false if I catch an ssh problem.
-	my $connected = 1;
-	$conf->{node}{$node}{info}{'state'}  = "<span class=\"highlight_good\">Up!</span>";
+	# This will flip true if I see 'start dmidecode' (the first line to
+	# return from the client).
+	my $connected = 0;
+	$conf->{node}{$node}{info}{'state'}  = "<span class=\"highlight_unavailable\">Unknown</span>";
 	$conf->{node}{$node}{info}{note}     = "";
 	$conf->{node}{$node}{up}             = 0;
 	$conf->{node}{$node}{enable_poweron} = 0;
-	
-	# TODO: Find a way to shorten the timeout when trying to connect to
-	# machines that are powered down.
 	
 	# I echo 'start purpose:' before each call so that I know for
 	# sure when I am switching between shell calls.
@@ -211,95 +229,58 @@ sub gather_node_details
 		# This catches connectivity problems.
 		if ($line =~ /No route to host/i)
 		{
-			$connected = 0;
-			check_if_on($conf, $node);
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
-			if ($conf->{node}{$node}{is_on} == 0)
+			my $local_access = on_same_network($conf, $node);
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
+			if ($local_access)
 			{
-				$conf->{'system'}{show_nodes}         = 1;
-				$conf->{node}{$node}{enable_poweron}  = 1;
-				$conf->{node}{$node}{enable_poweroff} = 0;
-				$conf->{node}{$node}{enable_fence}    = 0;
-				#$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">Powered Off</span>";
-				#$conf->{node}{$node}{info}{note}    = "The node <span class=\"fixed_width\">$node</span> is powered down.";
-			}
-			elsif ($conf->{node}{$node}{is_on} == 1)
-			{
-				# The node is on but unreachable.
-				$conf->{'system'}{show_nodes}         = 1;
-				$conf->{node}{$node}{enable_poweron}  = 0;
-				$conf->{node}{$node}{enable_poweroff} = 1;
-				$conf->{node}{$node}{enable_fence}    = 1;
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
-				$conf->{node}{$node}{info}{note}    = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being power on.<br />If you just powered on this system, please wait a moment for it to boot. Otherwise, the node may have crashed.";
-				my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-				foreach my $daemon (@daemons)
-				{
-					$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Unknown</span>";
-					$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-				}
+				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
 			}
 			else
 			{
-				# Unable to determine node state.
-				$conf->{node}{$node}{enable_poweron}  = 0;
-				$conf->{node}{$node}{enable_poweroff} = 0;
-				$conf->{node}{$node}{enable_fence}    = 0;
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
-				$conf->{node}{$node}{info}{note}    = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.";
+				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
 			}
 			last;
 		}
 		elsif ($line =~ /host key verification failed/i)
 		{
-			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
 			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
-			my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-			foreach my $daemon (@daemons)
-			{
-				$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Unknown</span>";
-				$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-			}
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 			last;
 		}
 		elsif ($line =~ /could not resolve hostname/i)
 		{
-			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
 			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
-			my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-			foreach my $daemon (@daemons)
-			{
-				$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Unknown</span>";
-				$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-			}
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 			last;
 		}
 		elsif ($line =~ /permission denied/i)
 		{
-			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
-			my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-			foreach my $daemon (@daemons)
-			{
-				$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Unknown</span>";
-				$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-			}
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 			last;
 		}
 		elsif ($line =~ /connection refused/i)
 		{
-			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
-			my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-			foreach my $daemon (@daemons)
-			{
-				$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Unknown</span>";
-				$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-			}
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /Connection timed out/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /Network is unreachable/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 			last;
 		}
 		elsif ($line =~ /\@\@\@\@/)
@@ -307,9 +288,9 @@ sub gather_node_details
 			# When the host-key fails to match, a box made
 			# of '@@@@' is displayed, and is the entire 
 			# first line.
-			$connected = 0;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 			last;
 		}
 		
@@ -332,7 +313,13 @@ sub gather_node_details
 		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
 		
 		# Figure out where I am.
-		if ($line =~ /^start dmidecode:/)     { $in_dmidecode     = 1; next; }
+		if ($line =~ /^start dmidecode:/)
+		{
+			$connected    = 1;
+			$in_dmidecode = 1;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_good\">Up!</span>";
+			next;
+		}
 		if ($line =~ /^start meminfo:/)       { $in_meminfo       = 1; next; }
 		if ($line =~ /^start drbd-status:/)   { $in_drbd_status   = 1; next; }
 		if ($line =~ /^start drbd-res-file:/) { $in_drbd_res_file = 1; next; }
@@ -386,7 +373,40 @@ sub gather_node_details
 	}
 	else
 	{
+		check_if_on($conf, $node);
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		if ($conf->{node}{$node}{is_on} == 0)
+		{
+			$conf->{'system'}{show_nodes}         = 1;
+			$conf->{node}{$node}{enable_poweron}  = 1;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{enable_fence}    = 0;
+			#$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">Powered Off</span>";
+			#$conf->{node}{$node}{info}{note}    = "The node <span class=\"fixed_width\">$node</span> is powered down.";
+		}
+		elsif ($conf->{node}{$node}{is_on} == 1)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 1;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 1;
+			$conf->{node}{$node}{enable_fence}    = 1;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being power on.<br />If you just powered on this system, please wait a moment for it to boot. Otherwise, the node may have crashed.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		else
+		{
+			# Unable to determine node state.
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{enable_fence}    = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.";
+		}
+		
 		# If I have confirmed the node is powered off, don't display this.
+		#record($conf, "$THIS_FILE ".__LINE__."; enable power on: [$conf->{node}{$node}{enable_poweron}], task: [$conf->{cgi}{task}]\n");
 		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
 			print "
@@ -400,11 +420,26 @@ sub gather_node_details
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
 	
 	return (0);
+}
+
+# This sets all of the daemons to a given state.
+sub set_daemons
+{
+	my ($conf, $node, $state, $class) = @_;
+	
+	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
+	foreach my $daemon (@daemons)
+	{
+		$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"$class\">$state</span>";
+		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
+	}
+	return(0);
 }
 
 # This checks to see if the node's power is on, when possible.
@@ -414,9 +449,9 @@ sub check_if_on
 	#record($conf, "$THIS_FILE ".__LINE__."; in check_if_on(); node: [$node]\n");
 	
 	# If the peer is on, use it to check the power.
-	my $peer     = "";
+	my $peer                    = "";
 	$conf->{node}{$node}{is_on} = 2;
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} == 1)
 	{
 		# It has to be the peer of this node.
@@ -508,16 +543,10 @@ sub check_if_on
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 	if ($conf->{node}{$node}{is_on} == 0)
 	{
-		$conf->{node}{$node}{enable_poweron} = 1;
-		
 		# I need to preset the services as stopped because the little
 		# hack I have below doesn't echo when a service isn't running.
-		my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-		foreach my $daemon (@daemons)
-		{
-			$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_unavailable\">Offline</span>";
-			$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-		}
+		$conf->{node}{$node}{enable_poweron} = 1;
+		set_daemons($conf, $node, "Offline", "highlight_unavailable");
 	}
 	
 	return(0);
@@ -1572,15 +1601,9 @@ sub parse_daemons
 	$conf->{node}{$node}{enable_poweroff} = 0;
 	$conf->{node}{$node}{enable_withdraw} = 0;
 	
-	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
-	
 	# I need to preset the services as stopped because the little
 	# hack I have below doesn't echo when a service isn't running.
-	foreach my $daemon (@daemons)
-	{
-		$conf->{node}{$node}{daemon}{$daemon}{status}    = "<span class=\"highlight_bad\">Stopped</span>";
-		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = "";
-	}
+	set_daemons($conf, $node, "Stopped", "highlight_bad");
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_daemons() for node: [$node]\n");
 	foreach my $line (@{$array})
@@ -1996,6 +2019,43 @@ sub process_task
 			This is by design, as a node can not safely provide clustered services when it's peer is in an unknown state.<br />
 			If the peer node is already online and there are not network problems, this node will join the peer safely.<br />
 			If the peer node is offline, this node will wait for a while before timing out. Once it times out, the peer node will likely be started.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "dual_boot")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			dual_boot($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to power on both nodes!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			An attempt will be made to boot both nodes in the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
+			Please be patient, it can take a few minutes for the nodes to become accessible.<br />
 			<br />
 		</td>
 	</tr>
@@ -2726,6 +2786,127 @@ sub poweroff_node
 	return(0);
 }
 
+# This uses the local machine to call "power on" against both nodes in the
+# cluster.
+sub dual_boot
+{
+	my ($conf) = @_;
+	
+	my $proceed = 1;
+	my $cluster = $conf->{cgi}{cluster};
+	my $sc      = "";
+	# TODO: Provide an option to boot just one node if one node fails for
+	# some reason but the other node is fine.
+	scan_cluster($conf);
+	my @abort_reasons;
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		# Read the cache files.
+		read_node_cache($conf, $node);
+		if (not $conf->{node}{$node}{info}{power_check_command})
+		{
+			push @abort_reasons, "I was asked to power on: [$node], but the command to do so was not found in the cache. Manual power up is required.\n";
+			$proceed = 0;
+		}
+		
+		# Confirm the node is off still.
+		check_if_on($conf, $node);
+		if ($conf->{node}{$node}{is_on} == 1)
+		{
+			push @abort_reasons, "I was asked to power on: [$node], but it appears to already be running. Start up aborted.\n";
+			$proceed = 0;
+		}
+		elsif ($conf->{node}{$node}{is_on} == 2)
+		{
+			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			push @abort_reasons, "I was asked to power on: [$node], but I am not on the same subnet as it's out of band management interface at: [$target_host].<br />Please restore access to the target subnet. Unable to continue.\n";
+			$proceed = 0;
+		}
+		
+		# Still alive?
+		$sc .= "$conf->{node}{$node}{info}{power_check_command} -o on; ";
+	}
+	
+	# Let's go
+	if ($proceed)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Powering on both nodes in the cluster now...</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			I will now try to power on both nodes in the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
+			It may take a few minutes before the dashboard can log into either node.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				print "$line<br />\n";
+			}
+			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Booting both nodes in the $conf->{cgi}{cluster} cluster aborted!</span>
+		</td>
+	</tr>
+";
+		foreach my $reason (@abort_reasons)
+		{
+			print "
+	<tr>
+		<td>
+			<br />
+			$reason<br />
+			<br />
+		</td>
+	</tr>
+";
+		}
+		print "
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	
+	return(0);
+}
+
 # This uses the IPMI (or similar) to try and power on the node.
 sub poweron_node
 {
@@ -3111,12 +3292,15 @@ sub display_details
 	#record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 	if ($conf->{'system'}{show_nodes})
 	{
-		display_node_details($conf);
+		display_node_controls($conf);
 
 		# I don't show below here unless at least one node is up.
 		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 		if ($conf->{'system'}{up_nodes} > 0)
 		{
+			# Show the state of the daemons.
+			display_node_details($conf);
+			
 			# Show the status of each node's GFS2 share(s)
 			display_gfs2_details($conf);
 		
@@ -3170,7 +3354,7 @@ sub display_details
 		</td>
 	</tr>
 	<tr>
-		<td>
+		<td class=\"highlight_offline\">
 			Offline
 		</td>
 		<td>
@@ -4350,8 +4534,7 @@ sub display_drbd_details
 		</td>
 	</tr>
 ";
-	# TODO: Check if both nodes are offline and use the cached resources
-	#       when so.
+
 	foreach my $res (sort {$a cmp $b} keys %{$conf->{drbd}})
 	{
 		# If the DRBD daemon is stopped, I will use the values from the
@@ -4530,7 +4713,7 @@ sub display_gfs2_details
 		# Neither node has the GFS2 partition mounted. Use the data
 		# from /etc/fstab. This is what will be stored in either node's
 		# hash. So pick a node that's online and use it.
-		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 		if ($conf->{'system'}{up_nodes} == 1)
 		{
 			$node      = @{$conf->{up_nodes}}[0];
@@ -4649,8 +4832,8 @@ sub display_node_details
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"12\">
-			<b>Cluster Node Status</b>
+		<td colspan=\"7\">
+			<b>Cluster Nodes - Status</b>
 		</td>
 	</tr>
 	<tr>
@@ -4674,9 +4857,6 @@ sub display_node_details
 		</td>
 		<td>
 			<i>libvirtd</i>
-		</td>
-		<td colspan=\"5\">
-			<i>Control</i>
 		</td>
 	</tr>
 ";
@@ -4717,16 +4897,6 @@ sub display_node_details
 		my $say_short_name =  $node;
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
-		
-		my $say_join     = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\">Join Cluster</a>" : "<span class=\"disabled_button\">Join Cluster</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
-		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
-		my $say_shutdown = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";
-		my $say_boot     = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Power On</span></a>"   : "<span class=\"disabled_button\">Power On</span>";
-		
-		# At all times, the option to fence the node is made available.
-		my $say_fence    = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
 
 		print "
 	<tr>
@@ -4751,17 +4921,107 @@ sub display_node_details
 		<td>
 			$conf->{node}{$node}{daemon}{libvirtd}{status}
 		</td>
+	</tr>
+";
+	}
+	
+	print "
+</table>
+<br />
+";
+
+	return (0);
+}
+
+# This shows the controls for the nodes.
+sub display_node_controls
+{
+	my ($conf) = @_;
+	
+	print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"7\">
+			<b>Cluster Nodes - Controls</b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan=\"3\">
+			<i>Power</i>
+		</td>
+		<td colspan=\"2\">
+			<i>Membership</i>
+		</td>
+		<td colspan=\"1\">
+			<i>Special</i>
+		</td>
+	</tr>
+";
+	
+	# I want to map storage service to nodes for the "Withdraw" buttons.
+	my $this_cluster = $conf->{cgi}{cluster};
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1_long = $conf->{node}{$node1}{info}{host_name};
+	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	my $rowspan    = 2;
+	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	{
+		# Get the cluster's node name.
+		my $say_short_name =  $node;
+		$say_short_name    =~ s/\..*//;
+		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		
+		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\">Join Cluster</a>" : "<span class=\"disabled_button\">Join Cluster</span>";
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
+		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
+		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
+		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";
+		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Power On</span></a>"   : "<span class=\"disabled_button\">Power On</span>";
+		
+		# At all times, the option to fence the node is made available.
+		my $say_fence     = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
+		my $say_dual_boot = "<span class=\"highlight_unavailable\">Dual Boot</span>";
+		if ($rowspan)
+		{
+			# First row.
+			if ($dual_boot)
+			{
+				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\"><span class=\"highlight_ready_bold\">Dual Boot</span></a>";
+			}
+		}
+
+		print "
+	<tr>
+		<td>
+			<span class=\"fixed_width\">$conf->{node}{$node}{info}{host_name}</span>
+		</td>
+";
+		if ($rowspan)
+		{
+			print "
+		<td rowspan=\"2\">
+			$say_dual_boot
+		</td>
+";
+			$rowspan = 0;
+		}
+		print "
 		<td>
 			$say_boot
+		</td>
+		<td>
+			$say_shutdown
 		</td>
 		<td>
 			$say_join
 		</td>
 		<td>
 			$say_withdraw
-		</td>
-		<td>
-			$say_shutdown
 		</td>
 		<td>
 			$say_fence
@@ -4805,6 +5065,10 @@ sub ask_which_cluster
 	</tr>
 ";
 	}
+	print "
+</table>
+<br />
+";
 	
 	return (0);
 }

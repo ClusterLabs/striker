@@ -1,4 +1,27 @@
 #!/usr/bin/perl
+#
+# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+# No warranty is provided. Do not use this software unless you are willing and
+# able to take full liability for it's use. The authors take care to prevent
+# unexpected side effects when using this program. However, no software is
+# perfect and bugs may exist which could lead to hangs or crashes in the
+# program, in your cluster and possibly even data loss.
+# 
+# If you are concerned about these risks, please stick to command line tools.
+# 
+# This program is designed to extend clusters built according to this tutorial:
+# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+#
+# This program's source code and updates are available on Github:
+# - https://github.com/digimer/an-cdb
+#
+# Author;
+# Alteeve's Niche!  -  https://alteeve.com
+# Madison Kelly     -  mkelly@alteeve.ca
+# 
 
 use strict;
 use warnings;
