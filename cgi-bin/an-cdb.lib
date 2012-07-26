@@ -2742,7 +2742,8 @@ sub dual_join
 	</tr>
 	<tr>
 		<td>
-			System call output below:
+			System call output below:<br />
+			<span class=\"highligh_ready_bold\">Note</span>: Output from both nodes will be mixed together.
 		</td>
 	</tr>
 	<tr>
@@ -2761,7 +2762,7 @@ sub dual_join
 			if ($pid)
 			{
 				# Parent thread.
-				$pids{$pid}=1;
+				$pids{$pid} = 1;
 				record($conf, "Spawned child with PID: [$pid] for node: [$node].\n");
 			}
 			else
@@ -2769,7 +2770,7 @@ sub dual_join
 				# This is the child thread, so do the call.
 				# Note that, without the 'die', we could end
 				# up here if the fork() failed.
-				my $sc = "$conf->{path}{ssh} root\@\$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
+				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
 				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
 				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -2792,7 +2793,7 @@ sub dual_join
 		
 		# Now loop until both child processes are dead.
 		# This helps to catch hung children.
-		my $saw_reaped=0;
+		my $saw_reaped = 0;
 		
 		# If I am here, then I am the parent process and all the child process have
 		# been spawned. I will not enter a while() loop that will exist for however
