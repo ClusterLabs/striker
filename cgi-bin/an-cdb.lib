@@ -178,7 +178,7 @@ sub gather_node_details
 	   $sc .= "echo \\\"lvm-scan start:\\\"; pvscan; vgscan; lvscan; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"lvm-data start:\\\"; ";
 	   $sc .= "pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ";
-	   $sc .= "vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free; ";
+	   $sc .= "vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; ";
 	   $sc .= "lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ";
 	   $sc .= "echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
@@ -836,7 +836,7 @@ sub post_scan_calculations
 		# identical.
 		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}], PV: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}]\n");
 			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
 			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
 			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
@@ -846,8 +846,39 @@ sub post_scan_calculations
 			$conf->{resources}{vg}{$vg}{used_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space} if not $conf->{resources}{vg}{$vg}{used_space};
 			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
 			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}]\n");
+			$conf->{resources}{vg}{$vg}{pv_name}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}    if not $conf->{resources}{vg}{$vg}{pv_name};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}], PV: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
 		}
+	}
+	
+	# If both nodes have a given daemon down, then some data may be
+	# unavailable. This saves logic when such checks are needed.
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	$conf->{'system'}{gfs2_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{gfs2_down} = 1;
+	}
+	$conf->{'system'}{clvmd_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{clvmd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{clvmd}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{clvmd_down} = 1;
+	}
+	$conf->{'system'}{drbd_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{drbd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{drbd}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{drbd_down} = 1;
+	}
+	$conf->{'system'}{rgmanager_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{rgmanager}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{rgmanager}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{rgmanager_down} = 1;
+	}
+	$conf->{'system'}{cman_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{cman_down} = 1;
 	}
 	
 	return (0);
@@ -1277,7 +1308,7 @@ sub parse_clustat
 			if ($line =~ /^vm:/)
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
 				if ($state eq "disabled")
 				{
 					$host = "none";
@@ -1288,12 +1319,14 @@ sub parse_clustat
 				$host =~ s/\(//g;
 				$host =~ s/\)//g;
 				
+				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host]\n");
+				$host = "none" if not $host;
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
 				# TODO: If the state is "failed", call 
 				# 'virsh list --all' against both nodes. If the
 				# VM is found, try to recover the service.
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
 				
 				# Pick out who the peer node is.
 				#record($conf, "$THIS_FILE ".__LINE__."; host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
@@ -1513,10 +1546,14 @@ sub parse_cluster_conf
 			my $vm_key = "vm:$vm";
 			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
 			my $domain = ($line =~ /domain="(.*?)"/)[0];
+			# I need to set the host to 'none' to avoid triggering
+			# the error caused by seeing and foo.xml VM def outside
+			# of here.
 			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$def], domain: [$domain]\n");
 			$conf->{vm}{$vm_key}{definition_file} = $def;
 			$conf->{vm}{$vm_key}{failover_domain} = $domain;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}]\n");
+			$conf->{vm}{$vm_key}{host}            = "none";
+			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}], host: [$conf->{vm}{$vm_key}{host}]\n");
 		}
 	}
 	
@@ -1729,16 +1766,16 @@ sub parse_lvm_data
 		}
 		elsif ($in_vgs)
 		{
-			# vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free
+			# vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  
-			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free) = split /#!#/, $line;
+			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
+			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
 			$pe_size =~ s/B$//;
 			$vg_size =~ s/B$//;
 			$vg_free =~ s/B$//;
 			my $used_pe    = $total_pe - $free_pe;
 			my $used_space = $vg_size - $vg_free;
-			#record($conf, "$THIS_FILE ".__LINE__."; VG: [$this_vg], attributes: [$attributes], PE size: [$pe_size], total PE: [$total_pe], uuid: [$uuid], VG size: [$vg_size], used PE: [$used_pe], used space: [$used_space], free PE: [$free_pe], free space: [$vg_free], VG free: [$vg_free]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; VG: [$this_vg], attributes: [$attributes], PE size: [$pe_size], total PE: [$total_pe], uuid: [$uuid], VG size: [$vg_size], used PE: [$used_pe], used space: [$used_space], free PE: [$free_pe], free space: [$vg_free], VG free: [$vg_free], pv_name: [$pv_name]\n");
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}  = $attributes =~ /c$/ ? 1 : 0;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}    = $pe_size;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}   = $total_pe;
@@ -1748,7 +1785,8 @@ sub parse_lvm_data
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space} = $used_space;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}    = $free_pe;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space} = $vg_free;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$this_vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}], pe size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}], total pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}], uuid: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}], used pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}], used space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space}], free pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}], free space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space}]\n");
+			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pv_name}    = $pv_name;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$this_vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}], pe size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}], total pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}], uuid: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}], used pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}], used space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space}], free pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}], free space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space}], PV name: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pv_name}]\n");
 		}
 		elsif ($in_lvs)
 		{
@@ -1922,6 +1960,43 @@ sub process_task
 			This will attempt to join the node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span> to the cluster <span class=\"fixed_width\">$conf->{cgi}{cluster}</span>.<br />
 			This is usually a safe action.<br />
 			If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "dual_join")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			dual_join($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to join both nodes to the $conf->{cgi}{cluster} cluster.</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			This will attempt to join both nodes of the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
+			This is usually a safe action.<br />
 			<br />
 		</td>
 	</tr>
@@ -2627,6 +2702,184 @@ sub join_cluster
 	return(0);
 }
 
+# This sttempts to start the cluster stack on both nodes simultaneously.
+sub dual_join
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $proceed = 1;
+	#record($conf, "$THIS_FILE ".__LINE__."; in dual_join(), cluster: [$cluster]\n");
+	
+	# This, more than 
+	scan_cluster($conf);
+	
+	# Proceed only if all of the storage components, cman and rgmanager are
+	# off.
+	my @abort_reason;
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		if (($conf->{node}{$node}{daemon}{cman}{exit_code} eq "0") ||
+		($conf->{node}{$node}{daemon}{rgmanager}{exit_code} eq "0") ||
+		($conf->{node}{$node}{daemon}{drbd}{exit_code} eq "0") ||
+		($conf->{node}{$node}{daemon}{clvmd}{exit_code} eq "0") ||
+		($conf->{node}{$node}{daemon}{gfs2}{exit_code} eq "0"))
+		{
+			$proceed = 0;
+			push @abort_reason, "It appears that <span class=\"fixed_width\">$node</span> is already running <span class=\"fixed_width\">cman</span>, <span class=\"fixed_width\">rgmanager</span>, <span class=\"fixed_width\">drbd</span>, <span class=\"fixed_width\">clvmd</span> or <span class=\"fixed_width\">gfs2</span>.";
+		}
+	}
+	if ($proceed)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</span><br />
+			This can take a while, please be patient!<br />
+			This process will complete before the storage services start. Please give then minute or two for storage to come online.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			System call output below:
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		# I need to fork here because the calls won't return until cman
+		# either talks to it's peer or fences it.
+		my $parent_pid = $$;
+		record($conf, "Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
+		my %pids;
+		my $node_count = @{$conf->{clusters}{$cluster}{nodes}};
+		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+		{
+			defined(my $pid = fork) or die "Can't fork(), error was: $!\n";
+			if ($pid)
+			{
+				# Parent thread.
+				$pids{$pid}=1;
+				record($conf, "Spawned child with PID: [$pid] for node: [$node].\n");
+			}
+			else
+			{
+				# This is the child thread, so do the call.
+				# Note that, without the 'die', we could end
+				# up here if the fork() failed.
+				my $sc = "$conf->{path}{ssh} root\@\$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					record($conf, "$THIS_FILE ".__LINE__."; $node; $line\n");
+					print "$node; $line<br />\n";
+				}
+				$fh->close();
+				
+				# Kill the child process.
+				exit;
+			}
+		}
+		
+		# Now loop until both child processes are dead.
+		# This helps to catch hung children.
+		my $saw_reaped=0;
+		
+		# If I am here, then I am the parent process and all the child process have
+		# been spawned. I will not enter a while() loop that will exist for however
+		# long the %pids hash has data.
+		while (%pids)
+		{
+			# This is a bit of an odd loop that put's the while()
+			# at the end. It will cycle once per child-exit event.
+			my $pid;
+			do
+			{
+				# 'wait' returns the PID of each child as they
+				# exit. Once all children are gone it returns 
+				# '-1'.
+				$pid = wait;
+				if ($pid < 1)
+				{
+					record($conf, "Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
+				}
+				else
+				{
+					record($conf, "Parent process told that child with PID: [$pid] has exited.\n");
+				}
+				
+				# This deletes the just-exited child process' PID from the
+				# %pids hash.
+				delete $pids{$pid};
+				
+				# This counter is a safety mechanism. If I see more PIDs exit
+				# than I spawned, something went oddly and I need to bail.
+				$saw_reaped++;
+				die "All children should be gone now but it seems the program went into an infinit loop.\n" if $saw_reaped > ($node_count + 1);
+			}
+			while $pid > 0;	# This re-enters the do() loop for as
+					# long as the PID returned by wait()
+					# was >0.
+		}
+		record($conf, "All child processes reaped, exiting threaded execution.\n");
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Joining of both nodes to the $conf->{cgi}{cluster} cluster aborted!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+";
+		foreach my $reason (@abort_reason)
+		{
+			print "
+			$reason<br />
+";
+		}
+			print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	
+	return(0);
+}
+
 # This forcibly shuts down a VM on a target node. The cluster should restart it
 # shortly after.
 sub force_off_vm
@@ -3298,20 +3551,20 @@ sub display_details
 		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 		if ($conf->{'system'}{up_nodes} > 0)
 		{
+			# Show the user the current VM states and the control buttons.
+			display_vm_state_and_controls($conf);
+			
 			# Show the state of the daemons.
 			display_node_details($conf);
+		
+			# Show the details about each VM.
+			display_vm_details($conf);
 			
 			# Show the status of each node's GFS2 share(s)
 			display_gfs2_details($conf);
 		
 			# This shows the status of each DRBD resource in the cluster.
 			display_drbd_details($conf);
-		
-			# Show the user the current VM states and the control buttons.
-			display_vm_state_and_controls($conf);
-		
-			# Show the details about each VM.
-			display_vm_details($conf);
 		
 			# Show the free resources available for new VMs.
 			display_free_resources($conf);
@@ -3435,6 +3688,7 @@ sub display_free_resources
 	my @vg_size;
 	my @vg_used;
 	my @vg_free;
+	my @pv_name;
 	my $vg_link="";
 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
 	{
@@ -3445,11 +3699,15 @@ sub display_free_resources
 		push @vg_size, $conf->{resources}{vg}{$vg}{size};
 		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
 		push @vg_free, $conf->{resources}{vg}{$vg}{free_space};
+		push @pv_name, $conf->{resources}{vg}{$vg}{pv_name};
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
-		$enough_storage = 1 if $conf->{resources}{vg}{$vg}{free_space} > 1073741824;
-		$vg_link .="$vg:$conf->{resources}{vg}{$vg}{free_space},";
+		if (not $conf->{'system'}{clvmd_down})
+		{
+			$enough_storage =  1 if $conf->{resources}{vg}{$vg}{free_space} > 1073741824;
+			$vg_link        .= "$vg:$conf->{resources}{vg}{$vg}{free_space},";
+		}
 	}
 	$vg_link =~ s/,$//;
 	
@@ -3459,23 +3717,33 @@ sub display_free_resources
 	foreach my $vm (sort {$a cmp $b} %{$conf->{vm}})
 	{
 		next if $vm !~ /^vm/;
-		$allocated_ram   += $conf->{vm}{$vm}{details}{ram};
-		#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$allocated_ram], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
-		$allocated_cores += $conf->{vm}{$vm}{details}{cpu_count};
+		# I check GFS2 because, without it, I can't read the VM's details.
+		if ($conf->{'system'}{gfs2_down})
+		{
+			$allocated_ram   = "<span class=\"fixed_width\">--</span>";
+			$allocated_cores = "<span class=\"fixed_width\">--</span>";
+		}
+		else
+		{
+			$allocated_ram   += $conf->{vm}{$vm}{details}{ram};
+			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$allocated_ram], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$allocated_cores += $conf->{vm}{$vm}{details}{cpu_count};
+		}
 	}
 	
 	# Always knock off 2GB of RAM for the host OS.
 	my $real_total_ram            = convert_from_bytes($conf, $conf->{resources}{total_ram});
 	$conf->{resources}{total_ram} -= 2147483648;
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
-	my $free_ram                  =  $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  convert_from_bytes($conf, $free_ram);
+	my $free_ram                  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
+	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : convert_from_bytes($conf, $free_ram);
 	my $say_total_ram             =  convert_from_bytes($conf, $conf->{resources}{total_ram});
-	my $say_allocated_ram         =  convert_from_bytes($conf, $allocated_ram);
-	my $say_vg_size               =  $vg_size[0] ? convert_from_bytes($conf, $vg_size[0]) : "--";
-	my $say_vg_used               =  $vg_used[0] ? convert_from_bytes($conf, $vg_used[0]) : "--";
-	my $say_vg_free               =  $vg_free[0] ? convert_from_bytes($conf, $vg_free[0]) : "--";
-	my $say_vg                    =  $vg[0] ? $vg[0] : "--";
+	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : convert_from_bytes($conf, $allocated_ram);
+	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_size[0]);
+	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_used[0]);
+	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_free[0]);
+	my $say_vg                    =  $conf->{'system'}{clvmd_down} ? "--" : $vg[0];
+	my $say_pv_name               =  $conf->{'system'}{clvmd_down} ? "--" : $pv_name[0];
 	
 	# Show the main info.
 	print "
@@ -3499,7 +3767,7 @@ sub display_free_resources
 			$say_free_ram
 		</td>
 		<td>
-			<span class=\"fixed_width\">$say_vg</span>
+			<span class=\"fixed_width\">$say_vg</span> on (<span class=\"fixed_width\">$say_pv_name</span>)
 		</td>
 		<td>
 			$say_vg_size
@@ -3519,6 +3787,7 @@ sub display_free_resources
 			my $say_vg_size = convert_from_bytes($conf, $vg_size[$i]);
 			my $say_vg_used = convert_from_bytes($conf, $vg_used[$i]);
 			my $say_vg_free = convert_from_bytes($conf, $vg_free[$i]);
+			my $say_pv_name = $pv_name[$i];
 			print "
 	<tr>
 		<td>
@@ -3540,7 +3809,7 @@ sub display_free_resources
 			&nbsp;
 		</td>
 		<td>
-			<span class=\"fixed_width\">$vg[$i]</span>
+			<span class=\"fixed_width\">$vg[$i]</span> on (<span class=\"fixed_width\">$pv_name[$i]</span>)
 		</td>
 		<td>
 			$say_vg_size
@@ -3653,8 +3922,9 @@ sub display_vm_details
 	foreach my $vm (sort {$a cmp $b} %{$conf->{vm}})
 	{
 		next if $vm !~ /^vm/;
+		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = convert_from_bytes($conf, $conf->{vm}{$vm}{details}{ram});
+		my $say_ram = $conf->{'system'}{gfs2_down} ? "<span class=\"fixed_width\">--</span>" : convert_from_bytes($conf, $conf->{vm}{$vm}{details}{ram});
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		
 		# Get the LV arrays populated.
@@ -3703,7 +3973,11 @@ sub display_vm_details
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
-		
+		$conf->{vm}{$vm}{details}{cpu_count} = "<span class=\"fixed_width\">--</span>" if $conf->{'system'}{gfs2_down};
+		$lv_path[0]                          = "<span class=\"fixed_width\">--</span>" if $conf->{'system'}{gfs2_down};
+		$lv_size[0]                          = "<span class=\"fixed_width\">--</span>" if $conf->{'system'}{gfs2_down};
+		$type[0]                             = "<span class=\"fixed_width\">--</span>" if $conf->{'system'}{gfs2_down};
+		$mac[0]                              = "<span class=\"fixed_width\">--</span>" if $conf->{'system'}{gfs2_down};
 		print "
 	<tr>
 		<td>
@@ -4107,6 +4381,7 @@ sub check_vms
 		
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 		if (not $conf->{vm}{$vm}{host})
 		{
 			error($conf, "I found a definition for a VM named: [<span class=\"highlight_detail\">$say_vm</span>], but there doesn't seem to be an entry in <span class=\"highlight_detail\">cluster.conf</span> for it.");
@@ -4713,7 +4988,7 @@ sub display_gfs2_details
 		# Neither node has the GFS2 partition mounted. Use the data
 		# from /etc/fstab. This is what will be stored in either node's
 		# hash. So pick a node that's online and use it.
-		record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 		if ($conf->{'system'}{up_nodes} == 1)
 		{
 			$node      = @{$conf->{up_nodes}}[0];
@@ -4941,7 +5216,7 @@ sub display_node_controls
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"7\">
+		<td colspan=\"8\">
 			<b>Cluster Nodes - Controls</b>
 		</td>
 	</tr>
@@ -4952,7 +5227,7 @@ sub display_node_controls
 		<td colspan=\"3\">
 			<i>Power</i>
 		</td>
-		<td colspan=\"2\">
+		<td colspan=\"3\">
 			<i>Membership</i>
 		</td>
 		<td colspan=\"1\">
@@ -4969,6 +5244,7 @@ sub display_node_controls
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
+	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
@@ -4976,7 +5252,7 @@ sub display_node_controls
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		
-		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\">Join Cluster</a>" : "<span class=\"disabled_button\">Join Cluster</span>";
+		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Join Cluster</span></a>" : "<span class=\"disabled_button\">Join Cluster</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
@@ -4986,12 +5262,17 @@ sub display_node_controls
 		# At all times, the option to fence the node is made available.
 		my $say_fence     = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
 		my $say_dual_boot = "<span class=\"highlight_unavailable\">Dual Boot</span>";
+		my $say_dual_join = "<span class=\"highlight_unavailable\">Dual Join</span>";
 		if ($rowspan)
 		{
 			# First row.
 			if ($dual_boot)
 			{
 				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\"><span class=\"highlight_ready_bold\">Dual Boot</span></a>";
+			}
+			if ($dual_join)
+			{
+				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Dual Join</span></a>";
 			}
 		}
 
@@ -5008,7 +5289,6 @@ sub display_node_controls
 			$say_dual_boot
 		</td>
 ";
-			$rowspan = 0;
 		}
 		print "
 		<td>
@@ -5017,6 +5297,16 @@ sub display_node_controls
 		<td>
 			$say_shutdown
 		</td>
+";
+		if ($rowspan)
+		{
+			print "
+		<td rowspan=\"2\">
+			$say_dual_join
+		</td>
+";
+		}
+		print "
 		<td>
 			$say_join
 		</td>
@@ -5028,6 +5318,7 @@ sub display_node_controls
 		</td>
 	</tr>
 ";
+		$rowspan = 0;
 	}
 	
 	print "
