@@ -55,6 +55,7 @@ my $conf={
 	online_nodes		=>	[],
 	path			=>	{
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
+		clusvcadm		=>	"/usr/sbin/clusvcadm",
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
 		ping			=>	"/usr/bin/ping",

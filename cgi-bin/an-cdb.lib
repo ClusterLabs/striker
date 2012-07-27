@@ -110,7 +110,8 @@ sub check_node_status
 	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
 		gather_node_details($conf, $node);
 		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
 	}
@@ -398,7 +399,7 @@ sub gather_node_details
 			}
 			$conf->{node}{$node}{enable_fence}    = 1;
 			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being power on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		else
@@ -408,7 +409,7 @@ sub gather_node_details
 			$conf->{node}{$node}{enable_poweroff} = 0;
 			$conf->{node}{$node}{enable_fence}    = 0;
 			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />";
 		}
 		
 		# If I have confirmed the node is powered off, don't display this.
@@ -457,7 +458,7 @@ sub check_if_on
 	# If the peer is on, use it to check the power.
 	my $peer                    = "";
 	$conf->{node}{$node}{is_on} = 2;
-	record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} == 1)
 	{
 		# It has to be the peer of this node.
@@ -1315,7 +1316,7 @@ sub parse_clustat
 			if ($line =~ /^vm:/)
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$host], state: [$state]\n");
 				if ($state eq "disabled")
 				{
 					$host = "none";
@@ -1326,26 +1327,26 @@ sub parse_clustat
 				$host =~ s/\(//g;
 				$host =~ s/\)//g;
 				
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$host]\n");
 				$host = "none" if not $host;
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
 				# TODO: If the state is "failed", call 
 				# 'virsh list --all' against both nodes. If the
 				# VM is found, try to recover the service.
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
 				
 				# Pick out who the peer node is.
-				#record($conf, "$THIS_FILE ".__LINE__."; host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
 				if ($host eq $conf->{node}{$node}{me}{name})
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{peer}{name};
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
 				}
 				else
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{me}{name};
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
 				}
 			}
 			elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
@@ -1553,7 +1554,7 @@ sub parse_cluster_conf
 		# Find VMs.
 		if ($line =~ /<vm.*?name="(.*?)"/)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			my $vm     = $1;
 			my $vm_key = "vm:$vm";
 			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
@@ -1564,8 +1565,8 @@ sub parse_cluster_conf
 			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$def], domain: [$domain]\n");
 			$conf->{vm}{$vm_key}{definition_file} = $def;
 			$conf->{vm}{$vm_key}{failover_domain} = $domain;
-			$conf->{vm}{$vm_key}{host}            = "none";
-			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}], host: [$conf->{vm}{$vm_key}{host}]\n");
+			$conf->{vm}{$vm_key}{host}            = "none" if not $conf->{vm}{$vm_key}{host};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}], host: [$conf->{vm}{$vm_key}{host}]\n");
 		}
 	}
 	
@@ -2091,7 +2092,7 @@ sub process_task
 		<td>
 			<br />
 			This will effectively press and hold your node's power button until the system is forced to power down.<br >
-			Should that fail, the power to you node will be cut off.<br />
+			Should that fail, the power to the node will be cut completely cut off.<br />
 			<br />
 		</td>
 	</tr>
@@ -2306,7 +2307,7 @@ sub process_task
 	<tr>
 		<td>
 			
-			<span class=\"highlight_dangerous\"><b>Careful!</b></span>
+			<span class=\"highlight_warning\"><b>Careful!</b></span>
 		</td>
 		<td>
 			<br />
@@ -2316,13 +2317,13 @@ sub process_task
 	</tr>
 	<tr>
 		<td>
-			<span class=\"highlight_warning\"><b>Note!</b></span>
+			<span class=\"highlight_ready\"><b>Note!</b></span>
 		</td>
 		<td>
 			<br />
 			If $conf->{cgi}{vm} is not listening to ACPI calls, this attempt to shut down the node will fail!<br />
-			Make sure that Linux machines are running <span class=\"code\">acpid</span> and that Windows machines have no pending updates.<br />
-			If <span class=\"fixed_width\">$conf->{cgi}{vm}</span> doesn't shut down within <u>60 seconds</u>, it will be <span class=\"highlight_dangerous\">forced off</span>!<br />
+			Make sure that Linux machines are running <span class=\"code\">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />
+			If <span class=\"fixed_width\">$conf->{cgi}{vm}</span> doesn't shut down within <u>60 seconds</u>, it will be <span class=\"highlight_dangerous\"><b>forced off</b></span>!<br />
 			<br />
 		</td>
 	</tr>
@@ -2394,6 +2395,69 @@ sub process_task
 			<br />
 			This should be done as a last resort, when all other attempts to gain control of the VM have failed.<br />
 			<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off. <br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "delete_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			delete_vm($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to <span class=\"highlight_dangerous\"><b>delete</b></span> the <b>$conf->{cgi}{vm} server!</b></span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			
+			<span class=\"highlight_dangerous\"><b>Dangerous!</b></span>
+		</td>
+		<td>
+			<br />
+			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be <span class=\"highlight_dangerous\"><b>destroyed and deleted!</b></span><br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Warning!</b></span>
+		</td>
+		<td>
+			<br />
+			<u><b>This is a permanent and unreversable action!</b></u><br />
+			The virtual machine, along with all of it's data, will be deleted.<br />
+			If the virtual machine is running, it will be stopped via the cluster.<br />
+			Once off, it will be removed from the cluster's management.<br />
+			Finally, it's definition file will be deleted and it's backing storage will be freed up.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			This is effectively the same as reformatting a server's hard drive,<br />
+			pulling apart a server and making all of it's resources available for new servers later.<br />
+			There is no way to undo this action! Ensure you have backed up any data on the machine before proceeding!<br />
 			<br />
 		</td>
 	</tr>
@@ -2493,7 +2557,7 @@ sub start_vm
 		<td class=\"fixed_width\">
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
+		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e vm:$vm -m $node_cluster_name\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -2585,7 +2649,7 @@ sub migrate_vm
 		<td class=\"fixed_width\">
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -M vm:$vm -m $target\"";
+		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -M vm:$vm -m $target\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -2672,7 +2736,8 @@ sub stop_vm
 		<td class=\"fixed_width\">
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
+		my $say_node = node_name_to_long_host_name($conf, $node);
+		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -d vm:$vm\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -2683,6 +2748,7 @@ sub stop_vm
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
+			$line =~ s/Local machine/$say_node/;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			print "$line<br />\n";
 		}
@@ -3040,6 +3106,150 @@ sub force_off_vm
 			The cluster will restart this VM in a moment, if this call succeeded.
 		</td>
 	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return(0);
+}
+
+# This stops the VM, if it's running, edits the cluster.conf to remove the VM's
+# entry, pushes the changed cluster out, deletes the VM's definition file and 
+# finally deletes the LV.
+sub delete_vm
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $say_vm  = $conf->{cgi}{vm};
+	my $vm      = "vm:$conf->{cgi}{vm}";
+	record($conf, "$THIS_FILE ".__LINE__."; in delete_vm(), vm: [$vm], cluster: [$cluster]\n");
+	
+	# This, more than 
+	scan_cluster($conf);
+	my $proceed  = 1;
+	my $stop_vm  = 0;
+	my $say_host = "";
+	my $host     = "";
+	if (not $conf->{vm}{$vm}{host})
+	{
+		$proceed = 0;
+	}
+	elsif ($conf->{vm}{$vm}{host} ne "none")
+	{
+		$stop_vm  = 1;
+		$say_host = $conf->{vm}{$vm}{host};
+		$host     = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+	}
+	# Get to work!
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Begining the process of deleting $say_vm now...</b></span><br />
+			This can take a while, please be patient!
+		</td>
+	</tr>
+";
+	if ($proceed)
+	{
+		print "
+	<tr>
+		<td>
+			System call output below:<br />
+			Please be patient, this might take a few minutes.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+		# Stop the VM if needed.
+		my $stop_exit_code = 1;
+		if ($stop_vm)
+		{
+			my $sc = "$conf->{path}{ssh} root\@$host \"$conf->{path}{clusvcadm} -d $vm; echo clusvcadm:\\\$?\"";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$line =~ s/Local machine/$say_host/;
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /clusvcadm:(\d+)/)
+				{
+					$stop_exit_code = $1;
+				}
+				else
+				{
+					print "$line<br />\n";
+				}
+			}
+			$fh->close();
+		}
+		my $edit_cluster_conf = 0;
+		if ($stop_exit_code)
+		{
+			# Failed to stop, abort.
+			print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Stopping the $say_vm virtual machine failed. Aborting.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+			footer($conf);
+			exit(1);
+		}
+		else
+		{
+			# VM has stopped. Delete it from the cluster.
+			print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Stopping the $say_vm virtual machine succeeded.<br />
+			Removing it from the cluster now.<br />
+		</td>
+	</tr>
+";
+		}
+	}
+	else
+	{
+		print "
+	<tr>
+		<td>
+			<b>Removal of $say_vm has been aborted!</b><br />
+			The program appears to have failed to read the VM's information properly.<br />
+			This is likely a bug in the program.<br />
+		</td>
+	</tr>
+";
+	}
+	print "
 	<tr>
 		<td>
 			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
@@ -3531,9 +3741,6 @@ sub fence_node
 			I will now attempt to fence <span class=\"fixed_width\">$node_cluster_name</span>.<br />
 		</td>
 	</tr>
-	<tr>
-		<td class=\"fixed_width\">
-			<br />
 ";
 		# This loops for each method, which may have multiple device 
 		# calls. I parse each call into an 'off' and 'on' call. If the
@@ -3545,17 +3752,31 @@ sub fence_node
 		my $unfence_success = 0;
 		foreach my $line ($fence_string =~ /\d+:.*?;\./g)
 		{
+			print "
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
 			my ($method_num, $method_name, $command) = ($line =~ /(\d+):(.*?): (.*?;)\./);
 			my $off_command =  $command;
-			$off_command =~ s/#!action!#;/off; echo fence:\\\$?;/g;
 			my $on_command  =  $command;
-			$on_command  =~ s/#!action!#;/on;  echo fence:\\\$?;/g;
 			
 			# If the peer is up, set the command to run through it.
 			if ($conf->{node}{$peer}{up})
 			{
+				# When called remotely, I need to double-escape
+				# the $? to protect it inside the "".
+				$off_command =~ s/#!action!#;/off; echo fence:\\\$?;/g;
+				$on_command  =~ s/#!action!#;/on;  echo fence:\\\$?;/g;
 				$off_command = "$conf->{path}{ssh} root\@$peer \"$off_command\"";
 				$on_command  = "$conf->{path}{ssh} root\@$peer \"$on_command\"";
+			}
+			else
+			{
+				# When called locally, I only need to escape
+				# the $? once.
+				$off_command =~ s/#!action!#;/off; echo fence:\$?;/g;
+				$on_command  =~ s/#!action!#;/on;  echo fence:\$?;/g;
 			}
 			my $off_success = 1;
 			my $on_success  = 1;
@@ -3586,23 +3807,44 @@ sub fence_node
 				}
 			}
 			$fh->close();
-			
+			print "
+			<br />
+		</td>
+	</tr>
+";
 			if ($off_success)
 			{
 				# Fence succeeded!
-				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the $method_name succeeded. Proceeding with unfence action.\n");
-				print "Fencing using the $method_name succeeded. Proceeding with unfence action.<br />\n";
+				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method succeeded. Proceeding with unfence action.\n");
+				print "
+	<tr>
+		<td>
+			Fencing using the <span class=\"fixed_width\">$method_name</span> method succeeded. Proceeding with unfence action.<br />
+		</td>
+	</tr>
+";
 				$fence_success = 1;
 			}
 			else
 			{
 				# Fence failed!
-				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the $method_name failed. Will try next method, if available.\n");
-				print "Fencing using the $method_name failed. Will try next method, if available.<br />\n";
+				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method failed. Will try next method, if available.\n");
+				print "
+	<tr>
+		<td>
+			Fencing using the <span class=\"fixed_width\">$method_name</span> method failed. Will try next method, if available.<br />
+		</td>
+	</tr>
+";
 				next;
 			}
 			
 			# If I'm here, I can try the unfence command.
+			print "
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
 			$sc = "$on_command";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			$fh = IO::Handle->new();
@@ -3628,11 +3870,22 @@ sub fence_node
 				}
 			}
 			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>
+";
 			if ($on_success)
 			{
 				# Unfence succeeded!
-				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the $method_name succeeded. Fence operation a complete success!\n");
-				print "Unfencing using the $method_name succeeded. Fence operation a complete success!<br />\n";
+				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method succeeded. Fence operation a complete success!\n");
+				print "
+	<tr>
+		<td>
+			Unfencing using the <span class=\"fixed_width\">$method_name</span> method succeeded. Fence operation a complete success!<br />
+		</td>
+	</tr>
+";
 				$unfence_success = 1;
 				last;
 			}
@@ -3644,20 +3897,20 @@ sub fence_node
 				# interface after a fence call, requiring power
 				# to be cut in order to reset the BMC. HP, I'm
 				# looking at you and your DL1** G7 line...
-				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the $method_name failed. The core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service. If another fence method remains, it will now be tried in hopes of assisting recovery.\n");
-				print "Unfencing using the $method_name failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.<br />\n";
-			}
-			print "
-			<br />
+				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method failed. The core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service. If another fence method remains, it will now be tried in hopes of assisting recovery.\n");
+				print "
+	<tr>
+		<td>
+			Unfencing using the <span class=\"fixed_width\">$method_name</span> method failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.<br />			<br />
 		</td>
 	</tr>
 ";
+			}
 		}
 	}
 	else
 	{
 		print "
-<table align=\"center\">
 	<tr>
 		<td>
 			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name aborted!</span>
@@ -3686,7 +3939,6 @@ sub fence_node
 </table>
 <br />
 ";
-	
 	footer($conf);
 	
 	return(0);
@@ -3883,8 +4135,12 @@ sub display_details
 ";
 	# Display the status of each node's daemons
 	my $up_nodes = @{$conf->{up_nodes}};
+	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
+	# calls are available. IE: enable this when the cache exists and the
+	# fence command addresses are reachable.
 	#record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
-	if ($conf->{'system'}{show_nodes})
+#	if ($conf->{'system'}{show_nodes})
+	if (1)
 	{
 		display_node_controls($conf);
 
@@ -4297,38 +4553,54 @@ sub display_vm_details
 		{
 			# If the first node is running, use it. Otherwise use
 			# the second node.
-			$host = check_node_daemons($conf, $node1) ? $node1 : $node2;
+			my $node1_daemons_running = check_node_daemons($conf, $node1);
+			my $node2_daemons_running = check_node_daemons($conf, $node2);
+			if ($node1_daemons_running)
+			{
+				$host = $node1;
+			}
+			elsif ($node2_daemons_running)
+			{
+				$host = $node2;
+			}
 		}
-		my $node = long_host_name_to_node_name($conf, $host);
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
-		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
-		{
-			#record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
-			push @lv_path, $lv;
-			push @lv_size, $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
-		}
-		
-		# Get the network arrays built.
 		my @bridge;
 		my @device;
 		my @mac;
 		my @type;
-		foreach my $current_bridge (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{details}{bridge}})
+		my $node         = "--";
+		my $say_net_host = "--";
+		my $say_host     = "--";
+		if ($host)
 		{
-			push @bridge, $current_bridge;
-			push @device, $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
-			push @mac,    uc($conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
-			push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
-		}
-		my $say_net_host = "";
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
-		if ($conf->{vm}{$vm}{host} ne "none")
-		{
-			my $say_host  =  $conf->{vm}{$vm}{host};
-			   $say_host  =~ s/\..*//;
-			$say_net_host = "<span class=\"highlight_detail\">$say_host</span> -> <span class=\"highlight_detail\">$bridge[0]</span> -> <span class=\"highlight_detail\">$device[0]</span> -> ";
+			$node = long_host_name_to_node_name($conf, $host);
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
+			
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
+			foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
+			{
+				#record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
+				push @lv_path, $lv;
+				push @lv_size, $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
+			}
+			
+			# Get the network arrays built.
+			foreach my $current_bridge (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{details}{bridge}})
+			{
+				push @bridge, $current_bridge;
+				push @device, $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
+				push @mac,    uc($conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
+				push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
+			}
+			
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+			if ($conf->{vm}{$vm}{host} ne "none")
+			{
+				$say_host  =  $conf->{vm}{$vm}{host};
+				$say_host  =~ s/\..*//;
+				$say_net_host = "<span class=\"highlight_detail\">$say_host</span> -> <span class=\"highlight_detail\">$bridge[0]</span> -> <span class=\"highlight_detail\">$device[0]</span> -> ";
+			}
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
@@ -4419,14 +4691,20 @@ sub display_vm_details
 sub check_node_daemons
 {
 	my ($conf, $node) = @_;
+	if (not $node)
+	{
+		error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
+	}
+	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_daemons(), node: [$node]\n");
 	my $ready = 1;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman exit_code:      [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager exit_code: [$conf->{node}{$node}{daemon}{rgmanager}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd exit_code:      [$conf->{node}{$node}{daemon}{drbd}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd exit_code:     [$conf->{node}{$node}{daemon}{clvmd}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2 exit_code:      [$conf->{node}{$node}{daemon}{gfs2}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], libvirtd exit_code:  [$conf->{node}{$node}{daemon}{libvirtd}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman exit_code:      [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager exit_code: [$conf->{node}{$node}{daemon}{rgmanager}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd exit_code:      [$conf->{node}{$node}{daemon}{drbd}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd exit_code:     [$conf->{node}{$node}{daemon}{clvmd}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2 exit_code:      [$conf->{node}{$node}{daemon}{gfs2}{exit_code}]\n");
+# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], libvirtd exit_code:  [$conf->{node}{$node}{daemon}{libvirtd}{exit_code}]\n");
+	
 	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
 	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
 	($conf->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
@@ -4444,6 +4722,11 @@ sub check_node_daemons
 sub check_node_readiness
 {
 	my ($conf, $vm, $node) = @_;
+	if (not $node)
+	{
+		error($conf, "I was asked to check the node readiness to run the $vm VM, but was not passed a node name. This is likely a program error.\n");
+	}
+
 	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_readiness(); vm: [$vm], node: [$node]\n");
 	
 	# This will get negated if something isn't ready.
@@ -4949,7 +5232,7 @@ sub display_vm_state_and_controls
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"13\">
+		<td colspan=\"10\">
 			<b>Virtual Machines - Status and Control</b>
 		</td>
 	</tr>
@@ -4966,7 +5249,7 @@ sub display_vm_state_and_controls
 		<td>
 			Prefered Host
 		</td>
-		<td colspan=\"9\">
+		<td colspan=\"6\">
 			<i>Controls</i>
 		</td>
 	</tr>
@@ -5029,6 +5312,12 @@ sub display_vm_state_and_controls
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
+		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
+		if ($conf->{'system'}{up_nodes} > 0)
+		{
+			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
+		}
+		
 		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
 		if ($conf->{vm}{$vm}{node1_ready} == 2)
 		{
@@ -5062,31 +5351,22 @@ sub display_vm_state_and_controls
 			<span class=\"fixed_width\">$prefered_host</span>
 		</td>
 		<td>
-			&nbsp;
-		</td>
-		<td>
 			$start_button
-		</td>
-		<td>
-			&nbsp;
 		</td>
 		<td>
 			$migrate_button
 		</td>
 		<td>
-			&nbsp;
-		</td>
-		<td>
 			$stop_button
-		</td>
-		<td>
-			&nbsp;
 		</td>
 		<td>
 			$force_off_button
 		</td>
 		<td>
-			&nbsp;
+			|
+		</td>
+		<td>
+			$say_delete_button
 		</td>
 	</tr>
 ";
