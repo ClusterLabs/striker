@@ -1619,6 +1619,7 @@ sub parse_cluster_conf
 				}
 			}
 			# Record the fence command.
+			$fence_command =~ s/ $/. /;
 			if ($node eq $this_node)
 			{
 				$conf->{node}{$node}{info}{fence_methods} .= "$fence_command";
@@ -2480,7 +2481,7 @@ sub start_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Booting $vm on $node_cluster_name now...</span>
+			<span class=\"highligh_bad\"><b>Booting $vm on $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -2572,7 +2573,7 @@ sub migrate_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Migrating $vm to $target now...</span>
+			<span class=\"highligh_bad\"><b>Migrating $vm to $target now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -2658,7 +2659,7 @@ sub stop_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Attempting orderly shut down of $vm now...</span><br />
+			<span class=\"highligh_bad\"><b>Attempting orderly shut down of $vm now...</b></span><br />
 			This can take a while, please be patient!
 		</td>
 	</tr>
@@ -2732,7 +2733,7 @@ sub join_cluster
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</span><br />
+			<span class=\"highligh_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</b></span><br />
 			This can take a while, please be patient!<br />
 			This process will complete before the storage service starts. Please give a minute or two for storage to come online.<br />
 		</td>
@@ -2840,7 +2841,7 @@ sub dual_join
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</span><br />
+			<span class=\"highligh_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</b></span><br />
 			This can take a while, please be patient!<br />
 			This process will complete before the storage services start. Please give then minute or two for storage to come online.<br />
 		</td>
@@ -3002,7 +3003,7 @@ sub force_off_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Forcibly shutting down $vm now...</span><br />
+			<span class=\"highligh_bad\"><b>Forcibly shutting down $vm now...</b></span><br />
 			This can take a while, please be patient!
 		</td>
 	</tr>
@@ -3071,7 +3072,7 @@ sub poweroff_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Shutting down $node_cluster_name now...</span>
+			<span class=\"highligh_bad\"><b>Shutting down $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3193,7 +3194,7 @@ sub dual_boot
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on both nodes in the cluster now...</span>
+			<span class=\"highligh_bad\"><b>Powering on both nodes in the cluster now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3302,7 +3303,7 @@ sub poweron_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on $node_cluster_name now...</span>
+			<span class=\"highligh_ready\"><b>Powering on $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3498,19 +3499,12 @@ sub fence_node
 	# If the peer node is up, use the fence command as compiled by it. 
 	# Otherwise, read the cache. If the fence command(s) are still not
 	# available, abort.
-	my $fence_from = "";
 	if ($proceed)
 	{
-		if ($conf->{node}{$peer}{up})
-		{
-			# The peer is accessible, will try calling from there.
-			$fence_from = $peer;
-		}
-		else
+		if (not $conf->{node}{$peer}{up})
 		{
 			# See if this machine can reach each '-a ...' fence device
 			# address.
-			$fence_from = "local";
 			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
 			{
 				if (not on_same_network($conf, $address))
@@ -3529,7 +3523,7 @@ sub fence_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Fencing $node_cluster_name now...</span>
+			<span class=\"highligh_bad\"><b>Fencing $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3541,27 +3535,33 @@ sub fence_node
 		<td class=\"fixed_width\">
 			<br />
 ";
-
-		# The node is still off. Now can I call it from it's peer?
-		my $peer  = "";
-		my $is_on = 2;
-		record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-		if ($conf->{'system'}{up_nodes} == 1)
+		# This loops for each method, which may have multiple device 
+		# calls. I parse each call into an 'off' and 'on' call. If the
+		# 'off' call fails, I go to the next method until there are no
+		# methods left. If the 'off' works, I call the 'on' call from
+		# the same method to (try to) boot the node back up (or simply
+		# unfence it in the case of PDUs and the like).
+		my $fence_success   = 0;
+		my $unfence_success = 0;
+		foreach my $line ($fence_string =~ /\d+:.*?;\./g)
 		{
-			# It has to be the peer of this node.
-			$peer = @{$conf->{up_nodes}}[0];
-		}
-		
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
-		if ($peer)
-		{
-			# It's peer is up, use it.
-			if (not $conf->{node}{$node}{info}{power_check_command})
+			my ($method_num, $method_name, $command) = ($line =~ /(\d+):(.*?): (.*?;)\./);
+			my $off_command =  $command;
+			$off_command =~ s/#!action!#;/off; echo fence:\\\$?;/g;
+			my $on_command  =  $command;
+			$on_command  =~ s/#!action!#;/on;  echo fence:\\\$?;/g;
+			
+			# If the peer is up, set the command to run through it.
+			if ($conf->{node}{$peer}{up})
 			{
-				error($conf, "I was asked to power on: [$node] via it's peer: [$peer], but the power command is empty.<br />\nThis is likely a program error.\n");
+				$off_command = "$conf->{path}{ssh} root\@$peer \"$off_command\"";
+				$on_command  = "$conf->{path}{ssh} root\@$peer \"$on_command\"";
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
-			my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o on\"";
+			my $off_success = 1;
+			my $on_success  = 1;
+			
+			# Make the off attempt.
+			my $sc = "$off_command";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
 			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -3570,80 +3570,88 @@ sub fence_node
 				chomp;
 				my $line = $_;
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-				print "$line<br />\n";
-			}
-			$fh->close();
-			print "
-			<br />
-		</td>
-	</tr>";
-		}
-		else
-		{
-			# Try to boot the node locally.
-			if ($conf->{node}{$node}{info}{power_check_command})
-			{
-				my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target host: [$target_host], power check command: [$conf->{node}{$node}{info}{power_check_command}].\n");
-				my $local_access = on_same_network($conf, $target_host);
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local access: [$local_access].\n");
-				if ($local_access)
+				# This is how I get the fence call's exit code.
+				if ($line =~ /fence:(\d+)/)
 				{
-					# I can reach it directly
-					my $sc = "$conf->{node}{$node}{info}{power_check_command} -o on";
-					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-					my $fh = IO::Handle->new();
-					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-					while(<$fh>)
+					# Anything but '0' is a failure.
+					my $exit = $1;
+					if ($exit ne "0")
 					{
-						chomp;
-						my $line = $_;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-						print "$line<br />\n";
+						$off_success = 0;
 					}
-					$fh->close();
-					print "
-			<br />
-		</td>
-	</tr>";
 				}
 				else
 				{
-					# I can't reach it from here.
-					record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+					print "$line<br />\n";
 				}
+			}
+			$fh->close();
+			
+			if ($off_success)
+			{
+				# Fence succeeded!
+				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the $method_name succeeded. Proceeding with unfence action.\n");
+				print "Fencing using the $method_name succeeded. Proceeding with unfence action.<br />\n";
+				$fence_success = 1;
 			}
 			else
 			{
-				# Can't check the power.
-				print "
+				# Fence failed!
+				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the $method_name failed. Will try next method, if available.\n");
+				print "Fencing using the $method_name failed. Will try next method, if available.<br />\n";
+				next;
+			}
+			
+			# If I'm here, I can try the unfence command.
+			$sc = "$on_command";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			$fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				# This is how I get the fence call's exit code.
+				if ($line =~ /fence:(\d+)/)
+				{
+					# Anything but '0' is a failure.
+					my $exit = $1;
+					if ($exit ne "0")
+					{
+						$on_success = 0;
+					}
+				}
+				else
+				{
+					print "$line<br />\n";
+				}
+			}
+			$fh->close();
+			if ($on_success)
+			{
+				# Unfence succeeded!
+				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the $method_name succeeded. Fence operation a complete success!\n");
+				print "Unfencing using the $method_name succeeded. Fence operation a complete success!<br />\n";
+				$unfence_success = 1;
+				last;
+			}
+			else
+			{
+				# Unfence failed!
+				# This is allowed to go to the next fence method
+				# because some servers may hang their IPMI 
+				# interface after a fence call, requiring power
+				# to be cut in order to reset the BMC. HP, I'm
+				# looking at you and your DL1** G7 line...
+				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the $method_name failed. The core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service. If another fence method remains, it will now be tried in hopes of assisting recovery.\n");
+				print "Unfencing using the $method_name failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.<br />\n";
+			}
+			print "
 			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<table align=\"center\">
-	<tr>
-		<td>
-			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name failed!</span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<br />
-			I wasn't able to find the command needed to power on $node_cluster_name.<br />
-			Either this node has not been seen before or the cache for this node was deleted.<br />
-			You can not power on the node from the dashboard at this time.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
 ";
-			}
 		}
 	}
 	else
@@ -3668,14 +3676,16 @@ sub fence_node
 	</tr>
 ";
 		}
-		print "
+	}
+	print "
 	<tr>
 		<td>
 			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
 		</td>
 	</tr>
+</table>
+<br />
 ";
-	}
 	
 	footer($conf);
 	
@@ -3703,7 +3713,7 @@ sub withdraw_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Withdrawing $node_cluster_name from the cluster now...</span>
+			<span class=\"highligh_bad\"><b>Withdrawing $node_cluster_name from the cluster now...</b></span>
 		</td>
 	</tr>
 	<tr>
