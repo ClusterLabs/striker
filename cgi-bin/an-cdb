@@ -22,6 +22,8 @@
 # Alteeve's Niche!  -  https://alteeve.com
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
+# TODO:
+# - Read and cache each cluster's /etc/hosts file.
 
 use strict;
 use warnings;

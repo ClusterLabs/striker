@@ -153,7 +153,7 @@ sub gather_node_details
 	
 	# This will flip true if I see 'start dmidecode' (the first line to
 	# return from the client).
-	my $connected = 0;
+	$conf->{node}{$node}{connected}      = 0;
 	$conf->{node}{$node}{info}{'state'}  = "<span class=\"highlight_unavailable\">Unknown</span>";
 	$conf->{node}{$node}{info}{note}     = "";
 	$conf->{node}{$node}{up}             = 0;
@@ -315,8 +315,8 @@ sub gather_node_details
 		# Figure out where I am.
 		if ($line =~ /^start dmidecode:/)
 		{
-			$connected    = 1;
-			$in_dmidecode = 1;
+			$conf->{node}{$node}{connected}     = 1;
+			$in_dmidecode                       = 1;
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_good\">Up!</span>";
 			next;
 		}
@@ -349,8 +349,8 @@ sub gather_node_details
 	}
 	$fh->close();
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$connected], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
-	if ($connected)
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
+	if ($conf->{node}{$node}{connected})
 	{
 		$conf->{'system'}{show_nodes} = 1;
 		$conf->{node}{$node}{up}      = 1;
@@ -390,9 +390,15 @@ sub gather_node_details
 			$conf->{'system'}{show_nodes}         = 1;
 			$conf->{node}{$node}{enable_poweron}  = 0;
 			$conf->{node}{$node}{enable_poweroff} = 1;
+			# Disable poweroff if I wasn't able to SSH into the
+			# node.
+			if (not $conf->{node}{$node}{connected})
+			{
+				$conf->{node}{$node}{enable_poweroff} = 0;
+			}
 			$conf->{node}{$node}{enable_fence}    = 1;
 			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being power on.<br />If you just powered on this system, please wait a moment for it to boot. Otherwise, the node may have crashed.";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being power on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		else
@@ -699,6 +705,7 @@ sub write_node_cache
 		
 		print $fh "host_name = $conf->{node}{$node}{info}{host_name}\n";
 		print $fh "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
+		print $fh "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
 		
 		$fh->close();
 	}
@@ -1308,7 +1315,7 @@ sub parse_clustat
 			if ($line =~ /^vm:/)
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$host], state: [$state]\n");
 				if ($state eq "disabled")
 				{
 					$host = "none";
@@ -1319,14 +1326,14 @@ sub parse_clustat
 				$host =~ s/\(//g;
 				$host =~ s/\)//g;
 				
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host]\n");
 				$host = "none" if not $host;
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
 				# TODO: If the state is "failed", call 
 				# 'virsh list --all' against both nodes. If the
 				# VM is found, try to recover the service.
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
 				
 				# Pick out who the peer node is.
 				#record($conf, "$THIS_FILE ".__LINE__."; host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
@@ -1413,6 +1420,7 @@ sub parse_cluster_conf
 	my $in_fence_device = 0;
 	my $this_host_name  = "";
 	my $this_node       = "";
+	my $method_counter  = 0;
 	
 	foreach my $line (@{$array})
 	{
@@ -1480,8 +1488,9 @@ sub parse_cluster_conf
 		if ($line =~ /<\/clusternode>/)
 		{
 			# Record my fence findings.
-			$in_node   = "";
-			$this_node = "";
+			$in_node        = "";
+			$this_node      = "";
+			$method_counter = 0;
 		}
 		
 		if (($in_node) && ($line =~ /<fence>/))
@@ -1494,7 +1503,10 @@ sub parse_cluster_conf
 		}
 		if (($in_fence) && ($line =~ /<method.*name="(.*?)"/))
 		{
-			$in_method = $1;
+			# The method counter ensures ordered use of the fence
+			# devices.
+			$in_method = "$method_counter:$1";
+			$method_counter++;
 		}
 		if ($line =~ /<\/method>/)
 		{
@@ -1562,14 +1574,23 @@ sub parse_cluster_conf
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	foreach my $this_node ($node, $peer)
 	{
+		# This will contain possible fence methods.
+		$conf->{node}{$this_node}{info}{fence_methods} = "";
+		
+		# This will contain the command needed to check the node's
+		# power.
+		$conf->{node}{$this_node}{info}{power_check_command} = "";
+		
 		#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node]\n");
 		foreach my $in_method (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}})
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method]\n");
+			my $fence_command = "$in_method: ";
 			foreach my $device_count (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}{$in_method}{device}})
 			{
+				#$fence_command .= " [$device_count]";
 				#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
-				# Find the matching fence device entry.
+				#Find the matching fence device entry.
 				foreach my $name (sort {$a cmp $b} keys %{$conf->{fence}})
 				{
 					if ($name eq $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name})
@@ -1579,10 +1600,13 @@ sub parse_cluster_conf
 						my $login    = $conf->{fence}{$name}{login};
 						my $password = $conf->{fence}{$name}{password};
 						my $port     = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port};
+						#my $action   = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action};
+						#   $action   = "reboot" if not $action;
 						my $command  = "$agent -a $address ";
 						   $command .= "-l $login "    if $login;
 						   $command .= "-p $password " if $password;
 						   $command .= "-n $port "     if $port;
+						   $command =~ s/ $//;
 						$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], fence command: [$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command}]\n");
 						if ($agent eq "fence_ipmilan")
@@ -1590,11 +1614,26 @@ sub parse_cluster_conf
 							$conf->{node}{$this_node}{info}{power_check_command} = $command;
 							#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}]\n");
 						}
+						$fence_command .= "$command -o #!action!#; ";
 					}
 				}
 			}
+			# Record the fence command.
+			if ($node eq $this_node)
+			{
+				$conf->{node}{$node}{info}{fence_methods} .= "$fence_command";
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: fence command: $conf->{node}{$node}{info}{fence_methods}\n");
+			}
+			else
+			{
+				$conf->{node}{$peer}{info}{fence_methods} .= "$fence_command";
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: peer: [$peer], fence command: $conf->{node}{$peer}{info}{fence_methods}\n");
+			}
 		}
+		$conf->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence command: [$conf->{node}{$node}{info}{fence_methods}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer], fence command: [$conf->{node}{$peer}{info}{fence_methods}]\n");
 	
 	# If the host name was set, then I can trust that I had good data.
 	if ($conf->{node}{$node}{info}{host_name})
@@ -1687,8 +1726,12 @@ sub parse_daemons
 		}
 		else
 		{
-			# Ready to power off the node
-			$conf->{node}{$node}{enable_poweroff} = 1;
+			# Ready to power off the node, if I was actually able
+			# to connect to the node.
+			if ($conf->{node}{$node}{connected})
+			{
+				$conf->{node}{$node}{enable_poweroff} = 1;
+			}
 		}
 	}
 	
@@ -1770,11 +1813,14 @@ sub parse_lvm_data
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
 			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
+			$pe_size = "" if not defined $pe_size;
+			$vg_size = "" if not defined $vg_size;
+			$vg_free = "" if not defined $vg_free;
 			$pe_size =~ s/B$//;
 			$vg_size =~ s/B$//;
 			$vg_free =~ s/B$//;
-			my $used_pe    = $total_pe - $free_pe;
-			my $used_space = $vg_size - $vg_free;
+			my $used_pe    = $total_pe - $free_pe if (($total_pe) && ($free_pe));
+			my $used_space = $vg_size - $vg_free  if (($vg_size) && ($vg_free));
 			#record($conf, "$THIS_FILE ".__LINE__."; VG: [$this_vg], attributes: [$attributes], PE size: [$pe_size], total PE: [$total_pe], uuid: [$uuid], VG size: [$vg_size], used PE: [$used_pe], used space: [$used_space], free PE: [$free_pe], free space: [$vg_free], VG free: [$vg_free], pv_name: [$pv_name]\n");
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}  = $attributes =~ /c$/ ? 1 : 0;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}    = $pe_size;
@@ -1997,6 +2043,65 @@ sub process_task
 			<br />
 			This will attempt to join both nodes of the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
 			This is usually a safe action.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "fence_node")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			fence_node($conf);
+		}
+		else
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<span class=\"highlight_ready\">About to forcefully power off cluster node <b>$conf->{cgi}{node_cluster_name}</b>!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			
+			<span class=\"highlight_dangerous\"><b>Dangerous!</b></span>
+		</td>
+		<td>
+			<br />
+			The cluster node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span> is about to be <span class=\"highlight_dangerous\">forcibly powered off</span>!<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Note!</b></span>
+		</td>
+		<td>
+			<br />
+			This will effectively press and hold your node's power button until the system is forced to power down.<br >
+			Should that fail, the power to you node will be cut off.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\"><b>Reconsider!</b></span>
+		</td>
+		<td>
+			<br />
+			This should be done as a last resort, when all other attempts to gracefully shut down the node have failed.<br />
+			<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off.<br />
 			<br />
 		</td>
 	</tr>
@@ -2753,7 +2858,7 @@ sub dual_join
 		# I need to fork here because the calls won't return until cman
 		# either talks to it's peer or fences it.
 		my $parent_pid = $$;
-		record($conf, "Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
 		my %pids;
 		my $node_count = @{$conf->{clusters}{$cluster}{nodes}};
 		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
@@ -2763,7 +2868,7 @@ sub dual_join
 			{
 				# Parent thread.
 				$pids{$pid} = 1;
-				record($conf, "Spawned child with PID: [$pid] for node: [$node].\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Spawned child with PID: [$pid].\n");
 			}
 			else
 			{
@@ -2771,7 +2876,7 @@ sub dual_join
 				# Note that, without the 'die', we could end
 				# up here if the fork() failed.
 				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
 				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 				while(<$fh>)
@@ -2811,11 +2916,11 @@ sub dual_join
 				$pid = wait;
 				if ($pid < 1)
 				{
-					record($conf, "Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
+					record($conf, "$THIS_FILE ".__LINE__."; Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
 				}
 				else
 				{
-					record($conf, "Parent process told that child with PID: [$pid] has exited.\n");
+					record($conf, "$THIS_FILE ".__LINE__."; Parent process told that child with PID: [$pid] has exited.\n");
 				}
 				
 				# This deletes the just-exited child process' PID from the
@@ -2825,13 +2930,13 @@ sub dual_join
 				# This counter is a safety mechanism. If I see more PIDs exit
 				# than I spawned, something went oddly and I need to bail.
 				$saw_reaped++;
-				die "All children should be gone now but it seems the program went into an infinit loop.\n" if $saw_reaped > ($node_count + 1);
+				error($conf, "All children should be gone now but it seems the program went into an infinit loop.\n") if $saw_reaped > ($node_count + 1);
 			}
 			while $pid > 0;	# This re-enters the do() loop for as
 					# long as the PID returned by wait()
 					# was >0.
 		}
-		record($conf, "All child processes reaped, exiting threaded execution.\n");
+		record($conf, "$THIS_FILE ".__LINE__."; All child processes reaped, exiting threaded execution.\n");
 		print "
 			<br />
 		</td>
@@ -3353,6 +3458,230 @@ sub poweron_node
 	return(0);
 }
 
+# This uses the fence methods, as defined in cluster.conf and in the proper
+# order, to fence the target node.
+sub fence_node
+{
+	my ($conf) = @_;
+	
+	# Make sure no VMs are running.
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $peer              = get_peer_node($conf, $node);
+	record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node], peer: [$peer], cluster name: [$node_cluster_name]\n");
+	
+	# Scan the cluster, then confirm that withdrawl is still enabled.
+	scan_cluster($conf);
+	my $proceed      = 1;
+	my @abort_reason = "";
+	
+	my $fence_string = "";
+	# See if I already have the fence string. If not, load it from cache.
+	if ($conf->{node}{$node}{info}{fence_methods})
+	{
+		$fence_string = $conf->{node}{$node}{info}{fence_methods};
+	}
+	else
+	{
+		read_node_cache($conf, $node);
+		if ($conf->{node}{$node}{info}{fence_methods})
+		{
+			$fence_string = $conf->{node}{$node}{info}{fence_methods};
+		}
+		else
+		{
+			$proceed      = 0;
+			push @abort_reason, "Unable to determine the commands needed to fence $node. One of the nodes need to be accessible or the cache file must exist with the correct command.\n";
+		}
+	}
+	
+	# If the peer node is up, use the fence command as compiled by it. 
+	# Otherwise, read the cache. If the fence command(s) are still not
+	# available, abort.
+	my $fence_from = "";
+	if ($proceed)
+	{
+		if ($conf->{node}{$peer}{up})
+		{
+			# The peer is accessible, will try calling from there.
+			$fence_from = $peer;
+		}
+		else
+		{
+			# See if this machine can reach each '-a ...' fence device
+			# address.
+			$fence_from = "local";
+			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
+			{
+				if (not on_same_network($conf, $address))
+				{
+					$proceed = 0;
+					push @abort_reason, "Trying to fence $node, but it's peer, $peer, is also offline and the fence device at $address is not accessible from this machine.<br />Unable to proceed with fence action.\n";
+				}
+			}
+		}
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], proceed: [$proceed]\n");
+	if ($proceed)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Fencing $node_cluster_name now...</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			I will now attempt to fence <span class=\"fixed_width\">$node_cluster_name</span>.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+
+		# The node is still off. Now can I call it from it's peer?
+		my $peer  = "";
+		my $is_on = 2;
+		record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		if ($conf->{'system'}{up_nodes} == 1)
+		{
+			# It has to be the peer of this node.
+			$peer = @{$conf->{up_nodes}}[0];
+		}
+		
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+		if ($peer)
+		{
+			# It's peer is up, use it.
+			if (not $conf->{node}{$node}{info}{power_check_command})
+			{
+				error($conf, "I was asked to power on: [$node] via it's peer: [$peer], but the power command is empty.<br />\nThis is likely a program error.\n");
+			}
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+			my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o on\"";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				print "$line<br />\n";
+			}
+			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>";
+		}
+		else
+		{
+			# Try to boot the node locally.
+			if ($conf->{node}{$node}{info}{power_check_command})
+			{
+				my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target host: [$target_host], power check command: [$conf->{node}{$node}{info}{power_check_command}].\n");
+				my $local_access = on_same_network($conf, $target_host);
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local access: [$local_access].\n");
+				if ($local_access)
+				{
+					# I can reach it directly
+					my $sc = "$conf->{node}{$node}{info}{power_check_command} -o on";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					my $fh = IO::Handle->new();
+					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					while(<$fh>)
+					{
+						chomp;
+						my $line = $_;
+						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+						print "$line<br />\n";
+					}
+					$fh->close();
+					print "
+			<br />
+		</td>
+	</tr>";
+				}
+				else
+				{
+					# I can't reach it from here.
+					record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+				}
+			}
+			else
+			{
+				# Can't check the power.
+				print "
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name failed!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			I wasn't able to find the command needed to power on $node_cluster_name.<br />
+			Either this node has not been seen before or the cache for this node was deleted.<br />
+			You can not power on the node from the dashboard at this time.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+";
+			}
+		}
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name aborted!</span>
+		</td>
+	</tr>
+";
+		foreach my $reason (@abort_reason)
+		{
+			print "
+	<tr>
+		<td>
+			<br />
+			$reason<br />
+			<br />
+		</td>
+	</tr>
+";
+		}
+		print "
+	<tr>
+		<td>
+			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+		</td>
+	</tr>
+";
+	}
+	
+	footer($conf);
+	
+	return(0);
+}
+
 # This does a final check of the target node then withdraws it from the
 # cluster.
 sub withdraw_node
@@ -3379,7 +3708,8 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
-			Stopping the resource manager and cluster communications now.
+			Stopping the resource manager and cluster communications now.<br />
+			<span class=\"highligh_ready_bold\">Please be patient</span>! This can take a minute.
 		</td>
 	</tr>
 	<tr>
@@ -3631,7 +3961,7 @@ sub display_free_resources
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"10\">
+		<td colspan=\"12\">
 			<b>Available Resources</b>
 		</td>
 	</tr>
@@ -3642,7 +3972,7 @@ sub display_free_resources
 		<td colspan=\"3\">
 			<i>RAM</i>
 		</td>
-		<td colspan=\"4\">
+		<td colspan=\"6\">
 			<i>Storage</i>
 		</td>
 	</tr>
@@ -3667,6 +3997,12 @@ sub display_free_resources
 		</td>
 		<td>
 			VG
+		</td>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			PV
 		</td>
 		<td>
 			Size
@@ -3768,7 +4104,13 @@ sub display_free_resources
 			$say_free_ram
 		</td>
 		<td>
-			<span class=\"fixed_width\">$say_vg</span> on (<span class=\"fixed_width\">$say_pv_name</span>)
+			<span class=\"fixed_width\">$say_vg</span>
+		</td>
+		<td>
+			on
+		</td>
+		<td>
+			<span class=\"fixed_width\">$say_pv_name</span>
 		</td>
 		<td>
 			$say_vg_size
@@ -3810,7 +4152,13 @@ sub display_free_resources
 			&nbsp;
 		</td>
 		<td>
-			<span class=\"fixed_width\">$vg[$i]</span> on (<span class=\"fixed_width\">$pv_name[$i]</span>)
+			<span class=\"fixed_width\">$vg[$i]</span>
+		</td>
+		<td>
+			on
+		</td>
+		<td>
+			<span class=\"fixed_width\">$pv_name[$i]</span>
 		</td>
 		<td>
 			$say_vg_size
