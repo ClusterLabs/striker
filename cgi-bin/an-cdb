@@ -24,9 +24,11 @@
 # 
 # TODO:
 # - Read and cache each cluster's /etc/hosts file.
+# - 
 
 use strict;
 use warnings;
+require "./an-cluster.lib";
 require "./an-cdb.lib";
 our $THIS_FILE = "an-cdb";
 
@@ -40,10 +42,6 @@ my $conf={
 			description		=>	"CC Systems \"Cluster 02\" (At YYZ HQ)",
 			nodes			=>	["cc-c02n01", "cc-c02n02"],
 		},
-		'an-cluster-01'		=>	{
-			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Peer 1)",
-			nodes			=>	["an-c01n01", "an-c01n02"],
-		},
 		'pp-cluster-01'		=>	{
 			description		=>	"Plastic Plus \"Cluster 01\"",
 			nodes			=>	["pp-c01n01", "pp-c01n02"],
@@ -54,6 +52,7 @@ my $conf={
 	up_nodes		=>	[],
 	online_nodes		=>	[],
 	path			=>	{
+		cat			=>	"/bin/cat",
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
 		'log'			=>	"/var/log/an-cdb.log",

@@ -1,13 +1,16 @@
-AN!CDB - Cluster Dashboard
+AN!CDB - Cluster Dashboard v1.0-rc1
 
-!!! THIS PROGRAM IS NOT READY FOR USE IN ANY WAY, SHAPE OR FORM!
-!!! If you use this before this warning is removed, you will have a bad time.
+Please note: This is a release candidate of this program.
 
 This program talks to cluster nodes using password-less ssh shared keys. It
 presents the user with a view of their current VMs and the remaining free
-resources on their cluster. When free resources exist, the user will be able to
-use this program to provision new VMs which will then be added to the cluster
-management.
+resources on their cluster. 
+
+This program provides full control of a cluster's VMs and the host nodes. From
+it, you can cold boot, cold stop, boot, power off, fence, withdraw from and
+join a node to the cluster.
+
+VMs can be booted, migrated, gracefully shutdown and forced off.
 
 This program is designed for use on clusters using Red Hat High Availability 
 Add-on, backed by DRBD which is in turn managed by clustered LVM. It is 

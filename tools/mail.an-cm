@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+# 
+# AN!CM - Cluster Monitor
+# 
+# This program watches the hardware and cluster stack for changes, sending
+# alert emails when needed.
+# 
+
+use strict;
+use warnings;
+require Digest::HMAC_MD5;	# CRAM-MD5 support
+require IO::Socket::SSL;	# TLS support
+require Net::SSLeay;		# TLS support
+
+my $conf = {
+	smtp		=>	{
+		server		=>	"mail.alteeve.ca",
+		port		=>	587,
+		timeout		=>	60,
+		user		=>	"clusters\@alteeve.ca",
+		password	=>	"cm0nit0r",
+		security	=>	"STARTTLS",
+		encrypt_pass	=>	1,
+	},
+	data		=>	{
+		to		=>	"digital.mermaid\@gmail.com",
+		sending_domain	=>	"mail.alteeve.ca",
+		subject		=>	"",
+		body		=>	"",
+	},
+};
+
+exit(0);
+
+# This sends the actual email.
+my send_email
+{
+	my ($conf) = @_;
+	
+	my $sock = IO::Socket::INET->new(
+		PeerAddr	=>	$conf->{smtp}{server},
+		PeerPort	=>	$conf->{smtp}{port},
+		Proto		=>	'tcp',
+		Timeout		=>	$conf->{smtp}{timeout},
+	) or die ("Connect failed: $@\n");
+	
+	($code, $text) = get_line ($sock);
+	
+	return(0);
+}
+
+#
+sub get_line
+{
+	my ($sock) = @_;
+	
+	my ($code, $text, $more) = get_one_line ($sock);
+	while ($more)
+	{
+		my ($code2, $line);
+		($code2, $line, $more) = get_one_line ($sock);
+		$text .= " $line";
+		die ("Error code changed from $code to $code2. That's illegal.\n") if ($code ne $code2);
+	}	
+	
+	return($code, $text);
+}
+
+
+# Get one line of response from the server.
+sub get_one_line
+{
+	my $sock = shift;
+	my ($code, $sep, $text) = ($sock->getline() =~ /(\d+)(.)([^\r]*)/);
+	my $more;
+	$more = ($sep eq "-");
+	if ($verbose)
+		{ printf ("[%d] '%s'\n", $code, $text); }
+	return ($code, $text, $more);
+}

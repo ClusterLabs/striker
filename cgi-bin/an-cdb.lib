@@ -111,7 +111,7 @@ sub check_node_status
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-		record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
 		gather_node_details($conf, $node);
 		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
 	}
@@ -402,6 +402,16 @@ sub gather_node_details
 			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
+		elsif ($conf->{node}{$node}{is_on} == 2)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 0;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
 		else
 		{
 			# Unable to determine node state.
@@ -410,6 +420,7 @@ sub gather_node_details
 			$conf->{node}{$node}{enable_fence}    = 0;
 			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
 			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		
 		# If I have confirmed the node is powered off, don't display this.
@@ -457,7 +468,7 @@ sub check_if_on
 	
 	# If the peer is on, use it to check the power.
 	my $peer                    = "";
-	$conf->{node}{$node}{is_on} = 2;
+	$conf->{node}{$node}{is_on} = 9;
 	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} == 1)
 	{
@@ -543,6 +554,7 @@ sub check_if_on
 			{
 				# I can't reach it from here.
 				record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+				$conf->{node}{$node}{is_on} = 2;
 			}
 		}
 	}
@@ -861,8 +873,11 @@ sub post_scan_calculations
 	
 	# If both nodes have a given daemon down, then some data may be
 	# unavailable. This saves logic when such checks are needed.
+	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1_long = $conf->{node}{$node1}{info}{host_name};
+	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	$conf->{'system'}{gfs2_down} = 0;
 	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} ne "0"))
 	{
@@ -888,6 +903,34 @@ sub post_scan_calculations
 	{
 		$conf->{'system'}{cman_down} = 1;
 	}
+	
+	# I want to map storage service to nodes for the "Withdraw" buttons.
+# 	foreach my $service (sort {$a cmp $b} keys %{$conf->{service}})
+# 	{
+# 		#record($conf, "$THIS_FILE ".__LINE__."; service: [$service]\n");
+# 		my $service_host  = $conf->{service}{$service}{host};
+# 		my $service_state = $conf->{service}{$service}{'state'};
+# 		next if $service !~ /storage/;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; service_host: [$service_host], service_state: [$service_state]\n");
+# 
+# 		my $short_host_name =  $service_host;
+# 		   $short_host_name =~ s/\..*?//;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; short_host_name: [$short_host_name]\n");
+# 		#record($conf, "$THIS_FILE ".__LINE__."; node1:           [$conf->{node}{$node1}{info}{short_host_name}]\n");
+# 		#record($conf, "$THIS_FILE ".__LINE__."; node2:           [$conf->{node}{$node2}{info}{short_host_name}]\n");
+# 		if ($short_host_name eq $conf->{node}{$node1}{info}{short_host_name})
+# 		{
+# 			$conf->{node}{$node1}{storage_service_name}  = $service;
+# 			$conf->{node}{$node1}{storage_service_state} = $service_state;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node1}{storage_service_name}], state: [$conf->{node}{$node1}{storage_service_state}]\n");
+# 		}
+# 		elsif ($short_host_name eq $conf->{node}{$node2}{info}{short_host_name})
+# 		{
+# 			$conf->{node}{$node2}{storage_service_name}  = $service;
+# 			$conf->{node}{$node2}{storage_service_state} = $service_state;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node2}{storage_service_name}], state: [$conf->{node}{$node2}{storage_service_state}]\n");
+# 		}
+# 	}
 	
 	return (0);
 }
@@ -1140,12 +1183,12 @@ sub parse_drbd_status
 		$resources++;
 		
 		# Make sure I only display "unknown" or the read value.
-		my $minor = "unknown";
-		my $res   = "unknown";
-		my $cs    = "unknown";
-		my $ro    = "unknown";
-		my $ds    = "unknown";
-		my $dev   = "unknown";
+		my $minor = "--";
+		my $res   = "--";
+		my $cs    = "--";
+		my $ro    = "--";
+		my $ds    = "--";
+		my $dev   = "--";
 		($minor) = ($line =~ /minor="(.*?)"/);
 		($res)   = ($line =~ /name="(.*?)"/);
 		($cs)    = ($line =~ /cs="(.*?)"/);
@@ -1154,11 +1197,11 @@ sub parse_drbd_status
 		$dev = "/dev/drbd$minor" if $minor =~ /^\d+$/;
 		
 		# This is the new way of recording.
-		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor;
-		$conf->{drbd}{$res}{node}{$node}{connection_state} = $cs;
-		$conf->{drbd}{$res}{node}{$node}{role}             = $ro;
-		$conf->{drbd}{$res}{node}{$node}{disk_state}       = $ds;
-		$conf->{drbd}{$res}{node}{$node}{device}           = $dev;
+		$conf->{drbd}{$res}{node}{$node}{minor}            = $minor ? $minor : "--";
+		$conf->{drbd}{$res}{node}{$node}{connection_state} = $cs    ? $cs    : "--";
+		$conf->{drbd}{$res}{node}{$node}{role}             = $ro    ? $ro    : "--";
+		$conf->{drbd}{$res}{node}{$node}{disk_state}       = $ds    ? $ds    : "--";
+		$conf->{drbd}{$res}{node}{$node}{device}           = $dev   ? $dev   : "--";
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], New - res: [$res], minor: [$conf->{drbd}{$res}{node}{$node}{minor}], cs: [$conf->{drbd}{$res}{node}{$node}{connection_state}], ro: [$conf->{drbd}{$res}{node}{$node}{role}], ds: [$conf->{drbd}{$res}{node}{$node}{disk_state}], dev: [$conf->{drbd}{$res}{node}{$node}{device}]\n");
 	}
 	if (not $resources)
@@ -1397,7 +1440,6 @@ sub parse_clustat
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
-		# NOTE: These aren't used (yet?).
 		$conf->{node}{$node}{info}{storage_name}    = $storage_name;
 		$conf->{node}{$node}{info}{storage_state}   = $storage_state;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - host name: [$conf->{node}{$node}{info}{host_name}], short host name: [$conf->{node}{$node}{info}{short_host_name}], storage name: [$conf->{node}{$node}{info}{storage_name}], storage state: [$conf->{node}{$node}{info}{storage_state}]\n");
@@ -1975,7 +2017,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2013,7 +2056,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2050,7 +2094,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2109,7 +2154,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2157,7 +2203,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2206,7 +2253,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2243,7 +2291,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2280,7 +2329,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2341,7 +2391,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2400,7 +2451,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2463,7 +2515,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -2503,7 +2556,8 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<a href=\"$conf->{'system'}{cgi_string}&confirm=true\">Confirm</a>
+			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
 </table>
@@ -3132,13 +3186,24 @@ sub delete_vm
 	
 	# This, more than 
 	scan_cluster($conf);
-	my $proceed  = 1;
-	my $stop_vm  = 0;
-	my $say_host = "";
-	my $host     = "";
+	my $proceed      = 1;
+	my $stop_vm      = 0;
+	my $say_host     = "";
+	my $host         = "";
+	my $abort_reason = "";
+	my $node         = $conf->{'system'}{cluster}{node1_name};
+	my $node1        = $conf->{'system'}{cluster}{node1_name};
+	my $node2        = $conf->{'system'}{cluster}{node2_name};
+	# I need both nodes to be running for this.
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+	{
+		$proceed      = 0;
+		$abort_reason = "<b>Removal of $say_vm has been aborted!</b><br />\nThis program requires that both nodes be running in order to remove a VM.<br />If this is not possible, manual removal of the VM will be required.\n";
+	}
 	if (not $conf->{vm}{$vm}{host})
 	{
-		$proceed = 0;
+		$proceed      = 0;
+		$abort_reason = "<b>Removal of $say_vm has been aborted!</b><br />\nThe program appears to have failed to read the VM's information properly.<br />\nThis is likely a bug in the program.<br />\n";
 	}
 	elsif ($conf->{vm}{$vm}{host} ne "none")
 	{
@@ -3165,14 +3230,16 @@ sub delete_vm
 			Please be patient, this might take a few minutes.<br />
 		</td>
 	</tr>
-	<tr>
-		<td class=\"fixed_width\">
-			<br />
 ";
 		# Stop the VM if needed.
 		my $stop_exit_code = 1;
 		if ($stop_vm)
 		{
+			print "
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
 			my $sc = "$conf->{path}{ssh} root\@$host \"$conf->{path}{clusvcadm} -d $vm; echo clusvcadm:\\\$?\"";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
@@ -3196,15 +3263,17 @@ sub delete_vm
 				}
 			}
 			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>
+";
 		}
 		my $edit_cluster_conf = 0;
 		if ($stop_exit_code)
 		{
 			# Failed to stop, abort.
 			print "
-			<br />
-		</td>
-	</tr>
 	<tr>
 		<td>
 			Stopping the $say_vm virtual machine failed. Aborting.
@@ -3221,13 +3290,9 @@ sub delete_vm
 			footer($conf);
 			exit(1);
 		}
-		else
-		{
-			# VM has stopped. Delete it from the cluster.
-			print "
-			<br />
-		</td>
-	</tr>
+		
+		# VM has stopped. Delete it from the cluster.
+		print "
 	<tr>
 		<td>
 			Stopping the $say_vm virtual machine succeeded.<br />
@@ -3235,16 +3300,14 @@ sub delete_vm
 		</td>
 	</tr>
 ";
-		}
+		update_cluster_conf($conf, "remove", $vm, $node);
 	}
 	else
 	{
 		print "
 	<tr>
 		<td>
-			<b>Removal of $say_vm has been aborted!</b><br />
-			The program appears to have failed to read the VM's information properly.<br />
-			This is likely a bug in the program.<br />
+			$abort_reason
 		</td>
 	</tr>
 ";
@@ -3260,6 +3323,25 @@ sub delete_vm
 ";
 	
 	return(0);
+}
+
+# This adds or removes a VM from the cluster.conf file.
+sub update_cluster_conf
+{
+	my ($conf, $do, $vm, $node) = @_;
+	my $say_vm  = ($vm =~ /vm:(.*)/)[0];
+	my $success = 1;
+	
+	# I 'cat' the current cluster.conf, incrementing 'config_version="x"'
+	# by one, add or remove the <vm ...> line and then write out the edited
+	# version locally. Next I backup the current cluster.conf to 
+	# '/shared/archive/vX.cluster.conf', 'rsync' the updated local copy to
+	# the target node, 'ccs_config_validate' it and, if all is well, 
+	# 'cman_tool version -r' to push out the changes.
+	
+	# Read in the current cluster.conf.
+	
+	return($success);
 }
 
 # This makes an ssh call to the node and sends a simple 'poweroff' command.
@@ -3957,7 +4039,7 @@ sub withdraw_node
 	# Scan the cluster, then confirm that withdrawl is still enabled.
 	scan_cluster($conf);
 	my $proceed = $conf->{node}{$node}{enable_withdraw};
-	record($conf, "$THIS_FILE ".__LINE__."; in withdraw_node(), node: [$node], proceed: [$proceed]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in withdraw_node(), node: [$node], proceed: [$proceed]\n");
 	if ($proceed)
 	{
 		# Stop rgmanager and then check it's status.
@@ -3970,7 +4052,7 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
-			Stopping the resource manager and cluster communications now.<br />
+			Stopping the cluster resource manager now...<br />
 			<span class=\"highligh_ready_bold\">Please be patient</span>! This can take a minute.
 		</td>
 	</tr>
@@ -3978,7 +4060,8 @@ sub withdraw_node
 		<td class=\"fixed_width\">
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager stop && /etc/init.d/cman stop\"";
+		my $rgmanager_stop = 1;
+		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager stop\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -3989,6 +4072,10 @@ sub withdraw_node
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
+			if ($line =~ /failed/i)
+			{
+				$rgmanager_stop = 0;
+			}
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			print "$line<br />\n";
 		}
@@ -3997,6 +4084,136 @@ sub withdraw_node
 			<br />
 		</td>
 	</tr>
+";
+		if ($rgmanager_stop)
+		{
+			print "
+	<tr>
+		<td>
+			Cluster resource manager stopped successfully.<br />
+			Stopping the cluster communication layer now...<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+			my $cman_stop = 1;
+			my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman stop\"";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				if ($line =~ /failed/i)
+				{
+					$cman_stop = 0;
+				}
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				print "$line<br />\n";
+			}
+			$fh->close();
+			print "
+			<br />
+		</td>
+	</tr>
+";
+			if (not $cman_stop)
+			{
+				# Crap...
+			print "
+	<tr>
+		<td class=\"highlight_bad\">
+			Cluster communication layer failed to stop!<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<b>Was something holding open the cluster storage?</b><br />
+			If a shell was logged in and sitting in a shared directory, a failure like this can occur.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Attempting to recover now...<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+				my $cman_start = 1;
+				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					if ($line =~ /failed/i)
+					{
+						$cman_start = 0;
+					}
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					print "$line<br />\n";
+				}
+				$fh->close();
+				print "
+			<br />
+		</td>
+	</tr>
+";
+				if ($cman_start)
+				{
+					# Number 5 is alive
+					print "
+	<tr>
+		<td class=\"highlight_ready\">
+			Cluster communication layer started successfully!<br />
+		</td>
+	</tr>
+";
+					recover_rgmanager($conf, $node);
+					
+				}
+				else
+				{
+					# Failed, call support.
+					print "
+	<tr>
+		<td class=\"highlight_bad\">
+			Unable to start the cluster communication layer!<br />
+			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+		</td>
+	</tr>
+";
+				}
+			}
+		}
+		else
+		{
+			# Oh shit...
+			print "
+	<tr>
+		<td class=\"highlight_bad\">
+			Cluster resource manager failed to stop!<br />
+			Was something holding open the cluster storage?<br />
+			If a shell was logged in and sitting in a shared directory, a failure like this can occur.<br />
+		</td>
+	</tr>
+";
+			recover_rgmanager($conf, $node);
+		}
+		print "
 	<tr>
 		<td>
 			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
@@ -4035,6 +4252,248 @@ sub withdraw_node
 	}
 	
 	footer($conf);
+	
+	return(0);
+}
+
+# This restarts rgmanager and, if necessary, disables and re-enables the 
+# storage service
+sub recover_rgmanager
+{
+	my ($conf, $node) = @_;
+	
+	print "
+	<tr>
+		<td>
+			Attempting to recover rgmanager and, if necessary, the node's storage service...<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+	my $rgmanager_start = 1;
+	my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager start\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		if ($line =~ /failed/i)
+		{
+			$rgmanager_start = 0;
+		}
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		print "$line<br />\n";
+	}
+	$fh->close();
+	print "
+			<br />
+		</td>
+	</tr>
+";
+	if ($rgmanager_start)
+	{
+		my $storage_service = $conf->{node}{$node}{info}{storage_name};
+		print "
+	<tr>
+		<td class=\"highlight_good\">
+			Cluster resource manager recovered successfully!<br />
+		</td>
+	</tr>
+";
+		if ($storage_service)
+		{
+			print "
+	<tr>
+		<td>
+			Checking the <span class=\"fixed_width\">$storage_service</span> storage service now.<br />
+			This requires a rescan of the cluster, please be patient.<br />
+		</td>
+	</tr>
+";
+			# I need to sleep for ~ten seconds to give time for
+			# 'clustat' to start showing the service section again.
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rescanning the cluster in ten seconds.\n");
+			sleep 10;
+			check_node_status($conf);
+			my $storage_state = $conf->{node}{$node}{info}{storage_state};
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], storage service: [$storage_service], storage state: [$storage_state]\n");
+			if ($storage_state =~ /Failed/i) 
+			{
+				print "
+	<tr>
+		<td class=\"highlight_bad\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage service has failed!<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			The <span class=\"fixed_width_button\">$storage_service</span> storage will now be cycled...<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+				# NOTE: This will return 'Warning' because of
+				# whatever is holding open the storage. This is
+				# fine, as the goal is to enable, not stop.
+				my $storage_stop = 1;
+				my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -d $storage_service\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					if ($line =~ /failed/i)
+					{
+						$storage_stop = 0;
+					}
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					print "$line<br />\n";
+				}
+				$fh->close();
+				print "
+			<br />
+		</td>
+	</tr>
+";
+				if ($storage_stop)
+				{
+					print "
+	<tr>
+		<td class=\"highlight_ready\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage service has been disabled.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Attempting to re-enable it now...<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"fixed_width\">
+			<br />
+";
+				my $storage_start = 1;
+				my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e $storage_service\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					if ($line =~ /failed/i)
+					{
+						$storage_start = 0;
+					}
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					print "$line<br />\n";
+				}
+				$fh->close();
+				print "
+			<br />
+		</td>
+	</tr>
+";
+					if ($storage_start)
+					{
+						print "
+	<tr>
+		<td class=\"highlight_ready\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage has been restarted.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Recovery has completed successfully!<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Please log into <span class=\"fixed_width_button\">$node</span> and locate what held open the storage service.<br />
+			Trying to withdraw from the cluster before this is fixed could cause problems. <br />
+			Proceed carefully!<br />
+		</td>
+	</tr>
+";
+					}
+					else
+					{
+						print "
+	<tr>
+		<td class=\"highlight_bad\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage service failed to restart!<br />
+			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+		</td>
+	</tr>
+";
+					}
+				}
+				else
+				{
+					print "
+	<tr>
+		<td class=\"highlight_bad\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage service failed to disable!<br />
+			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+		</td>
+	</tr>
+";
+				}
+			}
+			else
+			{
+				# TODO: Check each individual storage service
+				# and restart each if needed.
+				print "
+	<tr>
+		<td class=\"highlight_good\">
+			The <span class=\"fixed_width_button\">$storage_service</span> storage service appears to be ok!<br />
+			Recovery of the storage services appears to be unnecessary.
+		</td>
+	</tr>
+";
+			}
+		}
+		else
+		{
+			print "
+	<tr>
+		<td class=\"highlight_bad\">
+			Unable to identify the storage service for this node! This is likely a program error.<br />
+			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+		</td>
+	</tr>
+";
+		}
+	}
+	else
+	{
+		print "
+	<tr>
+		<td class=\"highlight_bad\">
+			Failed to start the <span class=\"fixed_width_button\">rgmanager</span> daemon back up!<br />
+			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+		</td>
+	</tr>
+";
+	}
 	
 	return(0);
 }
@@ -4129,7 +4588,7 @@ sub display_details
 	my ($conf) = @_;
 	
 	print "
-<table class=\"hidden_table\" align=\"center\" border=\"1\">
+<table class=\"hidden_table\" align=\"center\" border=\"0\">
 	<tr>
 		<td class=\"td_hidden\">
 ";
@@ -4440,22 +4899,26 @@ sub display_free_resources
 		}
 	}
 	
-	# If I found enough free disk space and at least a GiB of free RAM,
-	# enable the "provision new VM" button.
-	my $say_link = "<span class=\"disabled_button\">Provision New VM</span>";
-	if (($enough_storage) && ($free_ram > 1073741824))
-	{
-		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Provision New VM</a>";
-	}
-	print "
-	<tr>
-		<td colspan=\"10\">
-			$say_link
-		</td>
-	</tr>
-";
-# </table>
-# <br />
+	### NOTE: Disabled in this release.
+# 	# If I found enough free disk space, have at least 1 GiB of free RAM 
+# 	# and both nodes are up, enable the "provision new VM" button.
+# 	my $node1    = $conf->{'system'}{cluster}{node1_name};
+# 	my $node2    = $conf->{'system'}{cluster}{node2_name};
+# 	my $say_link = "<span class=\"disabled_button\">Provision New VM</span>";
+# 	if (($enough_storage) && 
+# 	($free_ram > 1073741824) && 
+# 	($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && 
+# 	($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+# 	{
+# 		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Provision New VM</a>";
+# 	}
+# 	print "
+# 	<tr>
+# 		<td colspan=\"12\">
+# 			$say_link
+# 		</td>
+# 	</tr>
+# ";
 
 	return (0);
 }
@@ -4570,7 +5033,7 @@ sub display_vm_details
 		my @mac;
 		my @type;
 		my $node         = "--";
-		my $say_net_host = "--";
+		my $say_net_host = ""; # Don't want anything printed when the VM is down
 		my $say_host     = "--";
 		if ($host)
 		{
@@ -5232,7 +5695,8 @@ sub display_vm_state_and_controls
 	print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"10\">
+		<!-- Reset to '10' when enabling VM deletion -->
+		<td colspan=\"8\">
 			<b>Virtual Machines - Status and Control</b>
 		</td>
 	</tr>
@@ -5249,7 +5713,8 @@ sub display_vm_state_and_controls
 		<td>
 			Prefered Host
 		</td>
-		<td colspan=\"6\">
+		<!-- Reset to '6' when enabling VM deletion -->
+		<td colspan=\"4\">
 			<i>Controls</i>
 		</td>
 	</tr>
@@ -5312,8 +5777,9 @@ sub display_vm_state_and_controls
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
+		# I need both nodes up to delete a VM.
 		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
-		if ($conf->{'system'}{up_nodes} > 0)
+		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
 		{
 			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		}
@@ -5362,12 +5828,14 @@ sub display_vm_state_and_controls
 		<td>
 			$force_off_button
 		</td>
+		<!-- Disabled in this release
 		<td>
-			|
+			&nbsp;
 		</td>
 		<td>
 			$say_delete_button
 		</td>
+		-->
 	</tr>
 ";
 	}
@@ -5743,6 +6211,11 @@ sub display_node_details
 {
 	my ($conf) = @_;
 	
+	my $this_cluster = $conf->{cgi}{cluster};
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1_long = $conf->{node}{$node1}{info}{host_name};
+	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	print "
 <table width=\"100%\">
 	<tr>
@@ -5774,37 +6247,6 @@ sub display_node_details
 		</td>
 	</tr>
 ";
-	
-	# I want to map storage service to nodes for the "Withdraw" buttons.
-	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	foreach my $service (sort {$a cmp $b} keys %{$conf->{service}})
-	{
-		#record($conf, "$THIS_FILE ".__LINE__."; service: [$service]\n");
-		my $service_host  = $conf->{service}{$service}{host};
-		my $service_state = $conf->{service}{$service}{'state'};
-		next if $service !~ /storage/;
-		#record($conf, "$THIS_FILE ".__LINE__."; service_host: [$service_host], service_state: [$service_state]\n");
-
-		my $short_host_name =  $service_host;
-		   $short_host_name =~ s/\..*?//;
-		#record($conf, "$THIS_FILE ".__LINE__."; short_host_name: [$short_host_name]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; node1:           [$conf->{node}{$node1}{info}{short_host_name}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; node2:           [$conf->{node}{$node2}{info}{short_host_name}]\n");
-		if ($short_host_name eq $conf->{node}{$node1}{info}{short_host_name})
-		{
-			$conf->{node}{$node1}{storage_service} = $service;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node1}{storage_service}]\n");
-		}
-		elsif ($short_host_name eq $conf->{node}{$node2}{info}{short_host_name})
-		{
-			$conf->{node}{$node2}{storage_service} = $service;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node2], storage service: [$conf->{node}{$node2}{storage_service}]\n");
-		}
-	}
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
@@ -6084,23 +6526,6 @@ sub check_nodes
 	
 	# Start your engines!
 	check_node_status($conf);
-	
-	return (0);
-}
-
-sub record
-{
-	my ($conf, $message)=@_;
-
-	my $fh = $conf->{handles}{'log'};
-	if (not $fh)
-	{
-		$fh = IO::Handle->new();
-		$conf->{handles}{'log'} = $fh;
-		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".time."\n";
-	}
-	print $fh $message;
 	
 	return (0);
 }

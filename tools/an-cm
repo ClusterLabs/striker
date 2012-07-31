@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+# 
+# AN!CM - Cluster Monitor
+# 
+# This program watches the hardware and cluster stack for changes, sending
+# alert emails when needed.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+require "./an-cluster.lib";
+require "./an-cm.lib";
+our $THIS_FILE = "an-cm";
+
+my $conf = {
+	smtp		=>	{
+		server		=>	"mail.alteeve.ca",
+		port		=>	587,
+		timeout		=>	60,
+		user		=>	"clusters\@alteeve.ca",
+		password	=>	"cm0nit0r",
+		security	=>	"STARTTLS",
+		encrypt_pass	=>	1,
+	},
+	data		=>	{
+		to		=>	"digital.mermaid\@gmail.com",
+		sending_domain	=>	"mail.alteeve.ca",
+		subject		=>	"",
+		body		=>	"",
+	},
+	path		=>	{
+		'smtp-cli'	=>	"./smtp-cli",
+	},
+};
+
+exit(0);
+
+# This sends the actual email.
+my send_email
+{
+	my ($conf) = @_;
+	
+	my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o status\"";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		if ($line =~ /Chassis power = On/i)
+		{
+			$conf->{node}{$node}{is_on} = 1;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		}
+		if ($line =~ /Chassis power = Off/i)
+		{
+			$conf->{node}{$node}{is_on} = 0;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		}
+	}
+	$fh->close();
+	
+	
+	return(0);
+}

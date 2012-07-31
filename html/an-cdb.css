@@ -16,6 +16,7 @@ table {
 	border-collapse: collapse;
 	box-shadow: 0 0 5px #888;
 }
+
 td {
 	border: 1px solid #dfdfdf;
 	padding-left: 5px;
@@ -24,18 +25,28 @@ td {
 }
 
 .td_hidden {
-	border: 1px solid #d1cfd3;
+	border: 0px solid #d1cfd3;
 	padding-left: 0px;
 	padding-right: 0px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+	margin: 0px;
+/* 	border-spacing: 0px;  */
+/* 	border-color: #ffffff; */
 }
 
 .hidden_table {
-	font-size: 100%;
-	color: transparent;
+/* 	font-size: 100%; */
+/* 	color: transparent; */
 	background-color: transparent;
 	border-collapse: collapse;
 	box-shadow: none;
-/* 	border: none; */
+	padding-left: 0px;
+	padding-right: 0px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+/* 	border-spacing: 0px;  */
+	border-color: 1px solid #d1cfd3;
 }
 
 .legal {
@@ -149,4 +160,16 @@ a.new:visited {
 img {
 	border: none;
 	vertical-align: middle;
+}
+
+.align_left {
+	float: left;
+	width: 50%;
+	text-align: left;
+}
+
+.align_right {
+	float: right;
+	width: 50%;
+	text-align: right;
 }
