@@ -8,61 +8,113 @@
 
 use strict;
 use warnings;
-use IO::Handle;
-require "./an-cluster.lib";
 require "./an-cm.lib";
 our $THIS_FILE = "an-cm";
 
+$SIG{INT}  = \&catch_sig;
+$SIG{TERM} = \&catch_sig;
+
 my $conf = {
+	cluster		=>	{
+# 		name		=>	"pp-cluster-01",
+# 		description	=>	"Plastic Plus \"Cluster 01\"",
+# 		nodes		=>	["pp-c01n01", "pp-c01n02"],
+# 		company		=>	"CC Systems",
+		name		=>	"cc-cluster-02",
+		description	=>	"CC Systems \"Cluster 02\" in Oakville",
+		nodes		=>	["cc-c02n01", "cc-c02n02"],
+		company		=>	"CC Systems",
+	},
+	node		=>	{
+		me		=>	{
+			long_name	=>	"",
+			short_name	=>	"",
+		},
+		peer		=>	{
+			long_name	=>	"",
+			short_name	=>	"",
+		},
+	},
 	smtp		=>	{
 		server		=>	"mail.alteeve.ca",
 		port		=>	587,
 		timeout		=>	60,
-		user		=>	"clusters\@alteeve.ca",
+		username	=>	"clusters\@alteeve.ca",
 		password	=>	"cm0nit0r",
 		security	=>	"STARTTLS",
 		encrypt_pass	=>	1,
+		helo_domain	=>	"alteeve.ca",
 	},
-	data		=>	{
-		to		=>	"digital.mermaid\@gmail.com",
+	mail_data	=>	{
+		to		=>	"alert\@alteeve.ca",
 		sending_domain	=>	"mail.alteeve.ca",
-		subject		=>	"",
-		body		=>	"",
+		subject		=>	"test",
+		body		=>	"test",
+	},
+	handles			=>	{
+		'log'			=>	"",
 	},
 	path		=>	{
-		'smtp-cli'	=>	"./smtp-cli",
+		'log'		=>	"/var/log/an-cm.log",
+		uname		=>	"/bin/uname",
+		clustat		=>	"/usr/sbin/clustat",
+	},
+	'system'	=>	{
+		sleep_time	=>	10,
 	},
 };
 
+get_hostname($conf);
+$conf->{mail_data}{subject_prefix} = "[ AN-CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
+$conf->{mail_data}{body_suffix}    = "
+--[ Source Cluster Details ]------------------------------------------
+$conf->{cluster}{company}
+$conf->{cluster}{name}
+$conf->{cluster}{description}
+$conf->{node}{me}{long_name}
+
+If you have any questions or concerns, please don't hesitate to
+contact support. 
+
+                    https://alteeve.com/w/Support
+
+                                                     Alteeve's Niche!
+                                                      Cluster Monitor
+----------------------------------------------------------------------
+--
+You received this email because you were listed as a contact for the
+AN!Cluster described in this email. If you do not wish to receives
+these emails, please contact your systems administrator. AN!CM runs on
+cluster nodes directly, and are not sent by Alteeve's Niche!. If you
+do not know who controls these servers, please visit the support link
+above and we will try to help you identify the person who can assist
+you.
+";
+read_initial_states($conf);
+initial_report($conf);
+
+# Infinite loop time
+while (1)
+{
+	check_for_changes($conf);
+	sleep $conf->{'system'}{sleep_time};
+}
+
 exit(0);
 
-# This sends the actual email.
-my send_email
+
+
+# This catches SIGINT and SIGTERM and fires out an email before shutting down.
+sub catch_sig
 {
-	my ($conf) = @_;
+	my $signame = shift;
 	
-	my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o status\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-		if ($line =~ /Chassis power = On/i)
-		{
-			$conf->{node}{$node}{is_on} = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
-		}
-		if ($line =~ /Chassis power = Off/i)
-		{
-			$conf->{node}{$node}{is_on} = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
-		}
-	}
-	$fh->close();
+	$conf->{mail_data}{subject} = "Cluster Monitor Shutdown";
+	$conf->{mail_data}{body}    = "
+The $conf->{node}{me}{short_name} cluster node's monitor program has stopped.
+It received a SIG${signame} signal and shut down.
+";
+	send_email($conf);
 	
-	
-	return(0);
+	die "Process with PID $$ Exiting on SIG${signame}.\n";
 }

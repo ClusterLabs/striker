@@ -1,0 +1,357 @@
+#!/usr/bin/perl
+#
+# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+# No warranty is provided. Do not use this software unless you are willing and
+# able to take full liability for it's use. The authors take care to prevent
+# unexpected side effects when using this program. However, no software is
+# perfect and bugs may exist which could lead to hangs or crashes in the
+# program, in your cluster and possibly even data loss.
+# 
+# If you are concerned about these risks, please stick to command line tools.
+# 
+# This program is designed to extend clusters built according to this tutorial:
+# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+#
+# This program's source code and updates are available on Github:
+# - https://github.com/digimer/an-cdb
+#
+# Author;
+# Alteeve's Niche!  -  https://alteeve.com
+# Madison Kelly     -  mkelly@alteeve.ca
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+
+# Email stuff
+use Email::Sender::Simple qw(sendmail);
+use Email::Sender::Transport::SMTP::TLS;
+use Try::Tiny;
+use Email::Simple::Creator;
+
+# Setup for UTF-8 mode.
+binmode STDOUT, ":utf8:";
+$ENV{'PERL_UNICODE'}=1;
+our $THIS_FILE = "an-cm.lib";
+
+# This checks to see what hardware I need to monitor, reads in the initial
+# values and makes no attempt to compare previous scans.
+sub read_initial_states
+{
+	my ($conf) = @_;
+	
+	check_clustat($conf);
+	
+	
+	return(0);
+}
+
+# This reads 'clustat'.
+sub check_clustat
+{
+	my ($conf)=@_;
+
+	my $in = "";
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{clustat} 2>&1 |";
+	open ($fh, $sc) || die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$conf->{data}{raw}{clustat} .= $line."\n";
+		
+		if ($line =~ /Member Name/)
+		{
+			$in = "members";
+			next;
+		}
+		if ($line =~ /Service Name/)
+		{
+			$in = "services";
+			next;
+		}
+		
+		#print "reading: [$in], line: [$line]\n";
+		if ($in eq "members")
+		{
+			if ($line =~ /^(.*?)\s+(\d+) (.*)/)
+			{
+				my $node   = $1;
+				my $id     = $2;
+				my $status = $3;
+				$conf->{data}{clustat}{new}{node}{$node}{id}     = $id;
+				$conf->{data}{clustat}{new}{node}{$node}{status} = $status;
+				#record($conf, "$THIS_FILE ".__LINE__."; node:    [$node], ID: [$conf->{data}{clustat}{new}{node}{$node}{id}], Status: [$conf->{data}{clustat}{new}{node}{$node}{status}]\n");
+			}
+		}
+		elsif ($in eq "services")
+		{
+			if ($line =~ /^(.*?)\s+(.*?)\s+(.*)/)
+			{
+				my $service = $1;
+				my $member  = $2;
+				my $state   = $3;
+				next if $service =~ /^---/;
+				$conf->{data}{clustat}{new}{service}{$service}{on}      = $member;
+				$conf->{data}{clustat}{new}{service}{$service}{'state'} = $state;
+				#record($conf, "$THIS_FILE ".__LINE__."; Service: [$service], on: [$conf->{data}{clustat}{new}{service}{$service}{on}], State: [$conf->{data}{clustat}{new}{service}{$service}{'state'}]\n");
+			}
+		}
+		else
+		{
+			if ($line =~ /Member Status: (.*)/)
+			{
+				$conf->{data}{clustat}{new}{quorum} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; Quorum:  [$conf->{data}{clustat}{new}{quorum}]\n");
+			}
+			elsif ($line =~ /Cluster Status for (.*) \@/)
+			{
+				$conf->{data}{clustat}{new}{cluster} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; Cluster: [$conf->{data}{clustat}{new}{cluster}]\n");
+			}
+		}
+	}
+	$fh->close();
+	
+	return (0);
+}
+
+# This checks to see if anything has changed since the last scan.
+sub check_for_changes
+{
+	my ($conf) = @_;
+	
+	check_clustat($conf);
+	
+	compare_new_and_old($conf);
+	
+	return(0);
+}
+
+# This sends out the initial cluster status report.
+sub initial_report
+{
+	my ($conf) = @_;
+	
+	my $body = "";
+	$body = "
+$conf->{node}{me}{short_name}
+- Cluster node's monitor program has started.
+
+--[ Cluster Status ]--------------------------------------------------
+Cluster: $conf->{data}{clustat}{new}{cluster}
+Quorum:  $conf->{data}{clustat}{new}{quorum}
+";
+	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
+	{
+		$body .= "Node:    $node - $conf->{data}{clustat}{new}{node}{$node}{status}\n";
+	}
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
+	{
+		my $state = $conf->{data}{clustat}{new}{service}{$service}{'state'};
+		my $on    = $conf->{data}{clustat}{new}{service}{$service}{on};
+		my $say_service = $service;
+		if ($service =~ /^service:(.*)/)
+		{
+			$say_service = "Service: $1";
+		}
+		elsif ($service =~ /^vm:(.*)/)
+		{
+			$say_service = "     VM: $1";
+		}
+		my $say_status = "$state on $on";
+		if ($state ne "started")
+		{
+			$on =~ s/\(//;
+			$on =~ s/\)//;
+			$say_status = "state (last on $on)";
+		}
+		$body .= "$say_service\t- $say_status\n";
+	}
+
+	$conf->{mail_data}{subject} = "Cluster Monitor Start";
+	$conf->{mail_data}{body}    = $body;
+	send_email($conf);
+	
+	copy_new_to_old($conf);
+	
+	return(0);
+}
+
+# This cycles through the 'new' and 'old' hashes, looking for changes. If
+# anything has changed, it will send an email.
+sub compare_new_and_old
+{
+	my ($conf) = @_;
+	
+	my $changes = "";
+	
+	# Check clustat for changes.
+	if ($conf->{data}{clustat}{old}{cluster} ne $conf->{data}{clustat}{new}{cluster})
+	{
+		# Cluster name changed.
+		$changes .= "Cluster name change!\n";
+		$changes .= "  $conf->{data}{clustat}{old}{cluster}\t-> $conf->{data}{clustat}{new}{cluster}\n";
+	}
+	if ($conf->{data}{clustat}{old}{quorum} ne $conf->{data}{clustat}{new}{cluster})
+	{
+		# Quorum status changed.
+		$changes .= "Quorum state change!\n";
+		$changes .= "  $conf->{data}{clustat}{old}{quorum}\t-> $conf->{data}{clustat}{new}{quorum}\n";
+	}
+	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
+	{
+		if ($conf->{data}{clustat}{old}{node}{$node}{status} ne $conf->{data}{clustat}{new}{node}{$node}{status})
+		{
+			$changes .= "Node $node; State change!\n";
+			$changes .= "  $conf->{data}{clustat}{old}{node}{$node}{status}\t-> $conf->{data}{clustat}{new}{node}{$node}{status}\n";
+		}
+	}
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
+	{
+		if (($conf->{data}{clustat}{old}{service}{$service}{'state'} ne $conf->{data}{clustat}{new}{service}{$service}{'state'}) ||
+		    ($conf->{data}{clustat}{new}{service}{$service}{on}      ne $conf->{data}{clustat}{new}{service}{$service}{on}))
+		{
+			my $say_service = "";
+			if ($service =~ /service:(.*)/i)
+			{
+				$say_service = "Service $1; State change!";
+			}
+			elsif ($service =~ /vm:(.*)/i)
+			{
+				$say_service = "VM $1; State change!";
+			}
+			$changes .= "$say_service\n";
+			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
+			$changes .= "  $conf->{data}{clustat}{new}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
+		}
+	}
+	
+	if ($changes)
+	{
+		$conf->{mail_data}{subject} = "State Change!";
+		$conf->{mail_data}{body}    = "
+Changes have been detected in the cluster. If you anticipated this
+change then there is no reason for concern. If this change was 
+unexpected, please feel free to contact support.
+
+----------------------------------------------------------------------
+$changes
+";
+		send_email($conf);
+		copy_new_to_old($conf);
+	}
+	
+	return(0);
+}
+
+# This takes all the values in the 'new' hash and copies them to the 'old'
+# hash.
+sub copy_new_to_old
+{
+	my ($conf) = @_;
+	
+	# Clustat stuff.
+	$conf->{data}{clustat}{old}{cluster} = $conf->{data}{clustat}{new}{cluster};
+	$conf->{data}{clustat}{old}{quorum}  = $conf->{data}{clustat}{new}{cluster};
+	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
+	{
+		$conf->{data}{clustat}{old}{node}{$node}{status} = $conf->{data}{clustat}{new}{node}{$node}{status};
+	}
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
+	{
+		$conf->{data}{clustat}{old}{service}{$service}{'state'} = $conf->{data}{clustat}{new}{service}{$service}{'state'};
+		$conf->{data}{clustat}{new}{service}{$service}{on}      = $conf->{data}{clustat}{new}{service}{$service}{on};
+	}
+	
+	return(0);
+}
+
+# Send am email.
+sub send_email
+{
+	my ($conf) = @_;
+
+	$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - $conf->{mail_data}{subject}";
+	$conf->{mail_data}{body}    .= $conf->{mail_data}{body_suffix};
+	my $transport = Email::Sender::Transport::SMTP::TLS->new(
+		host		=>	$conf->{smtp}{server},
+		port		=>	$conf->{smtp}{port},
+		username	=>	$conf->{smtp}{username},
+		password	=>	$conf->{smtp}{password},
+		helo		=>	$conf->{smtp}{helo_domain},
+	);
+
+	my $message = Email::Simple->create(
+		header	=> [
+			From	=>	$conf->{smtp}{username},
+			To	=>	$conf->{mail_data}{to},
+			Subject	=>	$conf->{mail_data}{subject},
+		],
+		body	=>	$conf->{mail_data}{body},
+	);
+	
+	try {
+		sendmail($message, { transport => $transport });
+	} catch {
+		die "Error sending email: $_";
+	};
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
+	$conf->{mail_data}{subject} = "";
+	$conf->{mail_data}{body}    = "";
+	
+	return(0);
+}
+
+# Record a message to the log file.
+sub record
+{
+	my ($conf, $message)=@_;
+
+	my $fh = $conf->{handles}{'log'};
+	if (not $fh)
+	{
+		$fh = IO::Handle->new();
+		$conf->{handles}{'log'} = $fh;
+		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".time."\n";
+	}
+	print $fh $message;
+	$message =~ s/^.*; //;
+	print $message;
+	
+	return (0);
+}
+
+# This sets the host name of this machine based on the output of `uname -n`
+sub get_hostname
+{
+	my ($conf)=@_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{uname} -n 2>&1 |";
+	open ($fh, $sc) or die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		$conf->{node}{me}{short_name} = $_;
+	}
+	$fh->close();
+	
+	$conf->{node}{me}{long_name}  =  $conf->{node}{me}{short_name};
+	$conf->{node}{me}{short_name} =~ s/\..*//;
+	record($conf, "$THIS_FILE ".__LINE__."; local host name: [$conf->{node}{me}{long_name}], short: [$conf->{node}{me}{short_name}]\n");
+	
+	return (0); 
+}
+
+1;
