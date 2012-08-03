@@ -40,12 +40,392 @@ our $THIS_FILE = "an-cm.lib";
 
 # This checks to see what hardware I need to monitor, reads in the initial
 # values and makes no attempt to compare previous scans.
-sub read_initial_states
+sub read_states
 {
 	my ($conf) = @_;
 	
 	check_clustat($conf);
+	check_network($conf);
 	
+	return(0);
+}
+
+# This reads the network values; bonds, bridges and ethernet devices.
+sub check_network
+{
+	my ($conf) = @_;
+	
+	# NOTE: I may want to look into /sys/class/net/$dev/* later.
+	
+	# Read in all interfaces from 'ifconfig -a'.
+	my $this_dev = "";
+	my $fh       = IO::Handle->new();
+	my $sc       = "$conf->{path}{ifconfig} -a";
+	open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$conf->{data}{raw}{ifconfig} .= $line."\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; ifconfig line: [$line]\n");
+		if (not $line)
+		{
+			$this_dev = "";
+			next;
+		}
+		if ($line =~ /^(.*?) Link/i)
+		{
+			$this_dev = $1;
+		}
+		if (not $this_dev)
+		{
+			next;
+		}
+		if ($line =~ /HWaddr (.*)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{hwaddr} = uc($1);
+			#record($conf, "$THIS_FILE ".__LINE__."; device: [$this_dev], MAC: [$conf->{data}{network}{new}{dev}{$this_dev}{hwaddr}]\n");
+		}
+		if ($line =~ /(.*?) MTU:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{'state'} = $1;
+			$conf->{data}{network}{new}{dev}{$this_dev}{mtu}     = $2;
+		}
+		if ($line =~ /Metric:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{metric} = $1;
+		}
+		if ($line =~ /inet addr:(.*?)\s/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{ip_address} = $1;
+		}
+		if ($line =~ /inet6 addr:(.*?)\s/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{ipv6_address} = $1;
+		}
+		if ($line =~ /Mask:(.*)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{netmask} = $1;
+		}
+		if ($line =~ /RX packets:(.*) errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{packets}  = $1;
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{errors}   = $2;
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{dropped}  = $3;
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{overruns} = $4;
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{frame}    = $5;
+		}
+		if ($line =~ /TX packets:(.*) errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{packets}  = $1;
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{errors}   = $2;
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{dropped}  = $3;
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{overruns} = $4;
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{carrier}  = $5;
+		}
+		if ($line =~ /RX bytes:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{'bytes'}  = $1;
+		}
+		if ($line =~ /TX bytes:(\d+)/i)
+		{
+			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{'bytes'}  = $1;
+		}
+	}
+	$fh->close();
+	
+	# This requires that bonds be 'bondX', eth devices be 'ethX' and
+	# bridges be 'vbrX'.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
+	{
+		# Bonds will sort first.
+		if ($dev =~ /bond/)
+		{
+			# Read the bond's /proc FS file
+			#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev]\n");
+			$conf->{data}{network}{new}{bond}{$dev}{slave_count} = 0;
+			$conf->{data}{raw}{bond}{$dev}                       = "";
+			my $in = "bond";
+			my $fh = IO::Handle->new();
+			my $sc = "/proc/net/bonding/$dev";
+			open ($fh, "<$sc") || die "Failed to read: [$sc], error: $!\n";
+			while (<$fh>)
+			{
+				chomp;
+				my $line=$_;
+				$conf->{data}{raw}{bond}{$dev} .= $line."\n";
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], line: [$line]\n");
+				next if not $line;
+				
+				# See when I switch the device I am looking at.
+				if ($line =~ /Slave Interface: (.*)/i)
+				{
+					$in = $1;
+					$conf->{data}{network}{new}{bond}{$dev}{slave_count}++;
+					#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], in: [$in]\n");
+				}
+				next if not $in;
+				
+				# Parse out the main bond values.
+				if ($in eq "bond")
+				{
+					if ($line =~ /Bonding Mode:.*?\((.*?)\)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{mode} = $1;
+					}
+					if ($line =~ /Primary Slave: (.*?) \(primary_reselect (.*?)\)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{primary}{slave}    = $1;
+						$conf->{data}{network}{new}{bond}{$dev}{primary}{reselect} = $2;
+					}
+					if ($line =~ /Currently Active Slave: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{active_slave} = $1;
+					}
+					if ($line =~ /MII Status: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{mii}{status} = $1;
+						#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], MII stats: [$conf->{data}{network}{new}{bond}{$dev}{mii}{status}]\n");
+					}
+					if ($line =~ /MII Polling Interval \(ms\): (\d+)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval} = $1;
+					}
+					if ($line =~ /Up Delay \(ms\): (\d+)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{delay}{up} = $1;
+					}
+					if ($line =~ /Down Delay \(ms\): (\d+)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{delay}{down} = $1;
+					}
+				}
+				else
+				{
+					# Parse out the slave interface values.
+					if ($line =~ /MII Status: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{mii_status} = $1;
+						#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], in: [$in], MII stats: [$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{mii_status}]\n");
+					}
+					if ($line =~ /Speed: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{speed} = $1;
+					}
+					if ($line =~ /Duplex: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{duplex} = $1;
+					}
+					if ($line =~ /Link Failure Count: (\d+)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{link_failure_count} = $1;
+					}
+					if ($line =~ /Permanent HW addr: (.*)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{real_mac} = uc($1);
+						#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], slave: [$in], real MAC: [$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{real_mac}]\n");
+						my $if_mac    = $conf->{data}{network}{new}{dev}{$in}{hwaddr};
+						my $slave_mac = $conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{real_mac};
+						#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], slave: [$in], real MAC: [$if_mac], recorded MAC: [$slave_mac]\n");
+						if ($if_mac ne $slave_mac)
+						{
+							# Update the device's 
+							# reported MAC address 
+							# with the real one.
+							$conf->{data}{network}{new}{dev}{$in}{hwaddr} = $slave_mac;
+							#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], slave: [$in], MAC updated to: [$conf->{data}{network}{new}{dev}{$in}{hwaddr}]\n");
+						}
+					}
+					if ($line =~ /Slave queue ID: (\d+)/i)
+					{
+						$conf->{data}{network}{new}{bond}{$dev}{slave}{$in}{slave_queue_id} = $1;
+					}
+				}
+			}
+			$fh->close();
+			
+			# Read the configuration file to parse the BOND_OPTS string.
+			my $file = "/etc/sysconfig/network-scripts/ifcfg-$dev";
+			if (-r $file)
+			{
+				my $fh = IO::Handle->new();
+				my $sc = "/etc/sysconfig/network-scripts/ifcfg-$dev";
+				open ($fh, "<$sc") || die "Failed to read: [$sc], error: $!\n";
+				while (<$fh>)
+				{
+					chomp;
+					my $line=$_;
+					$conf->{data}{raw}{bond}{$dev} .= $line."\n";
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev], line: [$line]\n");
+					if ($line =~ /BONDING_OPTS/i)
+					{
+						my $primary  = "none";
+						my $reselect = "none";
+						if ($line =~ /primary=(.*)/i)
+						{
+							$primary  =  $1;
+							$primary  =~ s/\s.*//;
+							$primary  =~ s/"//g;
+							$reselect =  "always";
+						}
+						$conf->{data}{network}{new}{bond}{$dev}{primary}{slave} = $primary;
+						if ($line =~ /primary_reselect=(.*)/i)
+						{
+							$reselect =  $1;
+							$reselect =~ s/\s.*//;
+							$reselect =~ s/"//g;
+							if (($reselect eq "1") || ($reselect =~ /better/i))
+							{
+								$reselect = "better";
+							}
+							if (($reselect eq "2") || ($reselect =~ /failure/i))
+							{
+								$reselect = "failure";
+							}
+						}
+						$conf->{data}{network}{new}{bond}{$dev}{primary}{reselect} = $reselect;
+					}
+				}
+				$fh->close();
+			}
+		}
+		elsif ($dev =~ /eth/)
+		{
+			# Read the '/etc/sysconfig/network-scripts/ifcfg-${dev}'
+			# file. This is needed because if a device was 
+			# ifdown'ed, it won't show as a slave of a bond.
+			$conf->{data}{raw}{ifcfg}{$dev} = "";
+			my $file = "/etc/sysconfig/network-scripts/ifcfg-$dev";
+			if (-r $file)
+			{
+				my $fh = IO::Handle->new();
+				my $sc = "$file";
+				open ($fh, "<$sc") || die "Failed to read: [$sc], error: $!\n";
+				while (<$fh>)
+				{
+					chomp;
+					my $line=$_;
+					$conf->{data}{raw}{ifcfg}{$dev} .= $line."\n";
+					$line =~ s/#.*//;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					next if not $line;
+					#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], line: [$line]\n");
+					if ($line =~ /MASTER/)
+					{
+						# Got it.
+						my $parent = $line;
+						$parent =~ s/^.*?=//;
+						$parent =~ s/"//g;
+						$parent =~ s/\s+//g;
+						if (not exists $conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{mii_status})
+						{
+							$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{mii_status} = "down";
+						}
+						if (not exists $conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{speed})
+						{
+							$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{speed} = "--";
+						}
+						if (not exists $conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{duplex})
+						{
+							$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{duplex} = "--";
+						}
+						if (not exists $conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{link_failure_count})
+						{
+							$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{link_failure_count} = "--";
+						}
+						if (not exists $conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{real_mac})
+						{
+							$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{real_mac} = $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+							#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], parent: [$parent], MAC: [$conf->{data}{network}{new}{bond}{$parent}{slave}{$dev}{real_mac}]\n");
+						}
+						last;
+					}
+				}
+				$fh->close();
+			}
+		}
+		elsif ($dev =~ /vbr/)
+		{
+			# Read 'brctl show $dev'
+			my $bridge_id   = "";
+			my $stp_enabled = "";
+			my $interfaces  = "";
+			my $fh = IO::Handle->new();
+			my $sc = "$conf->{path}{brctl} show $dev";
+			open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+			while (<$fh>)
+			{
+				chomp;
+				my $line=$_;
+				$conf->{data}{raw}{bond}{$dev} .= $line."\n";
+				$line =~ s/\s+/ /g;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				#record($conf, "$THIS_FILE ".__LINE__."; bridge: [$dev], line: [$line]\n");
+				next if not $line;
+				next if $line =~ /^bridge name/i;
+				
+				# This can be one of three possible lines;
+				# - bridge info with device
+				# - bridge info, no devices
+				# - device only.
+				if ($line =~ /^$dev\s+(.*?)\s+(.*?)\s+(.*)/)
+				{
+					$bridge_id   =  $1;
+					$stp_enabled =  $2;
+					$interfaces  .= "$3, ";
+				}
+				elsif ($line =~ /^$dev\s+(.*?)\s+(.*?)/)
+				{
+					$bridge_id   = $1;
+					$stp_enabled = $2;
+					$interfaces  = "--";
+				}
+				else
+				{
+					$interfaces .= "$line, ";
+				}
+			}
+			$fh->close();
+			$interfaces =~ s/, $//;
+			$conf->{data}{network}{new}{bridge}{$dev}{id}         = $bridge_id;
+			$conf->{data}{network}{new}{bridge}{$dev}{stu}        = $stp_enabled;
+			$conf->{data}{network}{new}{bridge}{$dev}{interfaces} = $interfaces;
+		}
+	}
+	
+	# Record the passive slave for each bond for easy reference
+	# later.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
+	{
+		next if $dev !~ /bond/;
+		#record($conf, "$THIS_FILE ".__LINE__."; bond: [$dev]\n");
+		foreach my $slave (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}{$dev}{slave}})
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; - slave: [$slave]\n");
+			if (not $conf->{data}{network}{new}{bond}{$dev}{first_slave})
+			{
+				$conf->{data}{network}{new}{bond}{$dev}{first_slave}  = $slave;
+				#record($conf, "$THIS_FILE ".__LINE__."; - first slave:  [$conf->{data}{network}{new}{bond}{$dev}{first_slave}]\n");
+			}
+			else
+			{
+				$conf->{data}{network}{new}{bond}{$dev}{second_slave} = $slave;
+				#record($conf, "$THIS_FILE ".__LINE__."; - second slave: [$conf->{data}{network}{new}{bond}{$dev}{second_slave}]\n");
+			}
+		}
+	}
 	
 	return(0);
 }
@@ -57,16 +437,17 @@ sub check_clustat
 
 	my $in = "";
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{clustat} 2>&1 |";
-	open ($fh, $sc) || die "Failed to call: [$sc], error: $!\n";
+	my $sc = "$conf->{path}{clustat}";
+	open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
 	while (<$fh>)
 	{
 		chomp;
 		my $line=$_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
-		next if not $line;
 		$conf->{data}{raw}{clustat} .= $line."\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; clustat line: [$line]\n");
+		next if not $line;
 		
 		if ($line =~ /Member Name/)
 		{
@@ -129,6 +510,8 @@ sub check_for_changes
 {
 	my ($conf) = @_;
 	
+	# TODO: This needs a way to track hash entries that vanished since the
+	# last scan.
 	check_clustat($conf);
 	
 	compare_new_and_old($conf);
@@ -142,11 +525,14 @@ sub initial_report
 	my ($conf) = @_;
 	
 	my $body = "";
+	
+	# Clustat data
 	$body = "
 $conf->{node}{me}{short_name}
 - Cluster node's monitor program has started.
 
 --[ Cluster Status ]--------------------------------------------------
+
 Cluster: $conf->{data}{clustat}{new}{cluster}
 Quorum:  $conf->{data}{clustat}{new}{quorum}
 ";
@@ -154,6 +540,7 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 	{
 		$body .= "Node:    $node - $conf->{data}{clustat}{new}{node}{$node}{status}\n";
 	}
+	$body .= "\n";
 	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
 	{
 		my $state = $conf->{data}{clustat}{new}{service}{$service}{'state'};
@@ -179,6 +566,290 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 
 	$conf->{mail_data}{subject} = "Cluster Monitor Start";
 	$conf->{mail_data}{body}    = $body;
+	
+	# Network/bond data.
+	$body .= "
+--[ Network Status ]--------------------------------------------------
+";
+	# Bridge
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bridge}})
+	{
+		my $bridge_id   = $conf->{data}{network}{new}{bridge}{$dev}{id};
+		my $stp_enabled = $conf->{data}{network}{new}{bridge}{$dev}{stu};
+		my $interfaces  = $conf->{data}{network}{new}{bridge}{$dev}{interfaces};
+		my $say_stp = "STP disabled";
+		if ($stp_enabled =~ /yes/i)
+		{
+			$say_stp = "STP enabled";
+		}
+		my $interface0 = "";
+		my @interfaces;
+		if ($interfaces)
+		{
+			foreach my $iface (split/, /, $interfaces)
+			{
+				if ($interface0 eq "")
+				{
+					$interface0 = $iface;
+				}
+				else
+				{
+					push @interfaces, $iface;
+				}
+			}
+		}
+		my $say_iface_mac  = "";
+		my $iface_count    = @interfaces;
+		my $say_interface0 = "\\- $interface0";
+		if ($interface0)
+		{
+			$say_iface_mac = $conf->{data}{network}{new}{dev}{$interface0}{hwaddr};
+			if ($iface_count > 0)
+			{
+				$say_interface0 = "|- $interface0, MAC: $say_iface_mac";
+			}
+		}
+		else
+		{
+			$say_interface0 = "\\- No connections";
+		}
+		$body .= "
+Bridge: $dev, $say_stp
+        $say_interface0
+";
+		foreach (my $i=0; $i<$iface_count; $i++)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], iface_count: [$iface_count], interface: [$interfaces[$i]]\n");
+			$say_iface_mac = $conf->{data}{network}{new}{dev}{$interfaces[$i]}{hwaddr};
+			my $say_iface = "|- $interfaces[$i], MAC: $say_iface_mac\n";
+			if ($i == ($iface_count - 1))
+			{
+				$say_iface = "\\- $interfaces[$i], MAC: $say_iface_mac\n";
+			}
+			$body .= "        $say_iface";
+		}
+	}
+	
+	# Bonds
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
+	{
+		my $say_out = "Internet-Facing Network";
+		if ($dev =~ /bond0/i)
+		{
+			$say_out = "Back-Channel Network"
+		}
+		elsif ($dev =~ /bond1/i)
+		{
+			$say_out = "Storage Network"
+		}
+		my $first_slave       = $conf->{data}{network}{new}{bond}{$dev}{first_slave};
+		my $active_slave      = $conf->{data}{network}{new}{bond}{$dev}{active_slave};
+		
+		my $first_mac         = $conf->{data}{network}{new}{bond}{$dev}{slave}{$first_slave}{real_mac};
+		my $first_mii_status  = $conf->{data}{network}{new}{bond}{$dev}{slave}{$first_slave}{mii_status};
+		my $first_fail_count  = $conf->{data}{network}{new}{bond}{$dev}{slave}{$first_slave}{link_failure_count};
+		my $first_speed       = $conf->{data}{network}{new}{bond}{$dev}{slave}{$first_slave}{speed};
+		my $first_duplex      = $conf->{data}{network}{new}{bond}{$dev}{slave}{$first_slave}{duplex};
+		
+		my $second_slave      = $conf->{data}{network}{new}{bond}{$dev}{second_slave};
+		my $second_mac        = $conf->{data}{network}{new}{bond}{$dev}{slave}{$second_slave}{real_mac};
+		my $second_mii_status = $conf->{data}{network}{new}{bond}{$dev}{slave}{$second_slave}{mii_status};
+		my $second_fail_count = $conf->{data}{network}{new}{bond}{$dev}{slave}{$second_slave}{link_failure_count};
+		my $second_speed      = $conf->{data}{network}{new}{bond}{$dev}{slave}{$second_slave}{speed};
+		my $second_duplex     = $conf->{data}{network}{new}{bond}{$dev}{slave}{$second_slave}{duplex};
+		
+		my $active_mac        = $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+		my $slave_count       = $conf->{data}{network}{new}{bond}{$dev}{slave_count};
+		my $mode              = $conf->{data}{network}{new}{bond}{$dev}{mode};
+		my $primary_slave     = $conf->{data}{network}{new}{bond}{$dev}{primary}{slave};
+		my $primary_reselect  = $conf->{data}{network}{new}{bond}{$dev}{primary}{reselect};
+		my $up_delay          = $conf->{data}{network}{new}{bond}{$dev}{delay}{up};
+		my $mii_mon           = $conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval};
+		my $mii_status        = $conf->{data}{network}{new}{bond}{$dev}{mii}{status};
+		my $mtu               = $conf->{data}{network}{new}{dev}{$dev}{mtu};
+		
+		# Draw the bond diagram
+		my $say_line1 = "-+- $first_slave -+-> $say_out";
+		my $say_line2 = "\\- $second_slave -/";
+		if ($active_slave =~ /None/i)
+		{
+			# Bond is down.
+			$say_line1 = "-+- $first_slave -x    *Link to $say_out lost!*";
+			$say_line2 = "\\- $second_slave -x";
+		}
+		elsif ($active_slave eq $primary_slave)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Secondary slave: [$second_slave], mii status: [$second_mii_status]\n");
+			if ($second_mii_status =~ /down/i)
+			{
+				$say_line2 = "\\- $second_slave -x";
+			}
+		}
+		elsif ($active_slave eq $second_slave)
+		{
+			$say_line1 = "-+- $first_slave -\\";
+			$say_line2 = "\\- $second_slave -+-> $say_out";
+			if ($first_mii_status =~ /down/i)
+			{
+				$say_line1 = "-+- $first_slave -x";
+			}
+		}
+		
+		# Prepare other details
+		my $say_reselect        = "On Failure";
+		my $say_reselect_policy = "";
+		if (($primary_reselect =~ /none/i) || ($primary_reselect =~ /failure/i))
+		{
+			$say_reselect = "Reselect on failure";
+		}
+		elsif ($primary_reselect =~ /always/i)
+		{
+			if ($up_delay eq "0")
+			{
+				$say_reselect = "Primary always, without delay";
+			}
+			else
+			{
+				$say_reselect = "Primary always, after ${up_delay} seconds";
+			}
+		}
+		elsif ($primary_reselect =~ /better/i)
+		{
+			if ($up_delay eq "0")
+			{
+				$say_reselect = "Whichever is faster, without delay";
+			}
+			else
+			{
+				$say_reselect = "Whichever is faster, after ${up_delay} seconds";
+			}
+		}
+		my $say_link_check = "Rely on driver notification";
+		if (($mii_mon =~ /^\d+$/) && ($mii_mon > 0))
+		{
+			$say_link_check = "Every $mii_mon ms";
+		}
+		
+		# Sort out the interface details
+		my $say_first_link_state  = "--";
+		my $say_second_link_state = "--";
+		my $say_first_duplex      = "";
+		my $say_second_duplex     = "";
+		
+		#record($conf, "$THIS_FILE ".__LINE__."; first MII status: [$first_mii_status], second MII status: [$second_mii_status]\n");
+		# First interface
+		if ($first_mii_status =~ /up/i)
+		{
+			$say_first_link_state = "Up";
+			if ($first_duplex)
+			{
+				if ($first_duplex =~ /full/i)
+				{
+					$say_first_duplex = "FD";
+				}
+				else
+				{
+					$say_first_duplex = "HD";
+				}
+			}
+		}
+		elsif ($first_mii_status =~ /down/i)
+		{
+			$say_first_link_state = "Down";
+			$first_speed          = "--";
+		}
+		else
+		{
+			$say_first_link_state = "--";
+		}
+		
+		# Second interface
+		if ($second_mii_status =~ /up/i)
+		{
+			$say_second_link_state = "Up";
+			if ($second_duplex)
+			{
+				if ($second_duplex =~ /full/i)
+				{
+					$say_second_duplex = "FD";
+				}
+				else
+				{
+					$say_second_duplex = "HD";
+				}
+			}
+		}
+		elsif ($second_mii_status =~ /down/i)
+		{
+			$say_second_link_state = "Down";
+			$second_speed          = "--";
+			$say_second_duplex     = "";
+		}
+		else
+		{
+			$say_second_link_state  = "--";
+		}
+		
+		my $say_first_speed   = "$first_speed $say_first_duplex";
+		my $say_second_speed  = "$second_speed $say_second_duplex";
+		my $pad_length        = 17;
+		$first_fail_count     = sprintf("%-${pad_length}s", $first_fail_count);
+		$say_first_speed      = sprintf("%-${pad_length}s", $say_first_speed);
+		$say_first_link_state = sprintf("%-${pad_length}s", $say_first_link_state);
+		
+		$body .= "
+Bond: $dev $say_line1
+             $say_line2
+      
+      Active Slave: $active_slave using MAC: $active_mac
+      Prefer Slave: $primary_slave
+      Reselect:     $say_reselect
+      Link Check:   $say_link_check
+      MTU Size:     $mtu Bytes
+
+      Slaves:           $first_slave         |       $second_slave
+                   ------------------+------------------
+        Link:      $say_first_link_state | $say_second_link_state
+        Speed:     $say_first_speed | $say_second_speed
+        MAC:       $first_mac | $second_mac
+        Failures:  $first_fail_count | $second_fail_count
+                   ------------------+------------------
+";
+	}
+	
+	print "Email body:
+===========================================================
+$body
+===========================================================
+";
+	die "testing\n";
+	# Now for base devices.
+# 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
+# 	{
+# 		next if $dev =~ /bond/i;
+# 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+# 		$conf->{data}{network}{new}{dev}{$dev}{'state'};
+# 		$conf->{data}{network}{new}{dev}{$dev}{mtu};
+# 		$conf->{data}{network}{new}{dev}{$dev}{metric};
+# 		$conf->{data}{network}{new}{dev}{$dev}{ip_address};
+# 		$conf->{data}{network}{new}{dev}{$dev}{ipv6_address};
+# 		$conf->{data}{network}{new}{dev}{$dev}{netmask};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{packets};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{errors};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{dropped};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{overruns};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{frame};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{packets};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{errors};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{dropped};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{overruns};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{carrier};
+# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{'bytes'};
+# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{'bytes'};
+# 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+# 	}
+	
+	# Send the email.
 	send_email($conf);
 	
 	copy_new_to_old($conf);
@@ -198,12 +869,14 @@ sub compare_new_and_old
 	if ($conf->{data}{clustat}{old}{cluster} ne $conf->{data}{clustat}{new}{cluster})
 	{
 		# Cluster name changed.
+		$conf->{data}{clustat}{old}{cluster} = "--" if not defined $conf->{data}{clustat}{old}{cluster};
 		$changes .= "Cluster name change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{cluster}\t-> $conf->{data}{clustat}{new}{cluster}\n";
 	}
 	if ($conf->{data}{clustat}{old}{quorum} ne $conf->{data}{clustat}{new}{cluster})
 	{
 		# Quorum status changed.
+		$conf->{data}{clustat}{old}{quorum} = "--" if not defined $conf->{data}{clustat}{old}{quorum};
 		$changes .= "Quorum state change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{quorum}\t-> $conf->{data}{clustat}{new}{quorum}\n";
 	}
@@ -211,12 +884,15 @@ sub compare_new_and_old
 	{
 		if ($conf->{data}{clustat}{old}{node}{$node}{status} ne $conf->{data}{clustat}{new}{node}{$node}{status})
 		{
+			$conf->{data}{clustat}{old}{node}{$node}{status} = "--" if not defined $conf->{data}{clustat}{old}{node}{$node}{status};
 			$changes .= "Node $node; State change!\n";
 			$changes .= "  $conf->{data}{clustat}{old}{node}{$node}{status}\t-> $conf->{data}{clustat}{new}{node}{$node}{status}\n";
 		}
 	}
 	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
 	{
+		$conf->{data}{clustat}{old}{service}{$service}{'state'} = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{'state'};
+		$conf->{data}{clustat}{new}{service}{$service}{on}      = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{on};
 		if (($conf->{data}{clustat}{old}{service}{$service}{'state'} ne $conf->{data}{clustat}{new}{service}{$service}{'state'}) ||
 		    ($conf->{data}{clustat}{new}{service}{$service}{on}      ne $conf->{data}{clustat}{new}{service}{$service}{on}))
 		{
@@ -279,7 +955,24 @@ sub copy_new_to_old
 sub send_email
 {
 	my ($conf) = @_;
-
+	
+	# If the password is in a file, read it.
+	if ($conf->{smtp}{password} =~ /^file:(.*)/)
+	{
+		my $file = $1;
+		my $sc = "$file";
+		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			$conf->{smtp}{password} = $_;
+			last;
+		}
+		$fh->close();
+	}
+	
 	$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - $conf->{mail_data}{subject}";
 	$conf->{mail_data}{body}    .= $conf->{mail_data}{body_suffix};
 	my $transport = Email::Sender::Transport::SMTP::TLS->new(
@@ -352,6 +1045,37 @@ sub get_hostname
 	record($conf, "$THIS_FILE ".__LINE__."; local host name: [$conf->{node}{me}{long_name}], short: [$conf->{node}{me}{short_name}]\n");
 	
 	return (0); 
+}
+
+# This causes the script to exit if another instance is already running.
+sub avoid_duplicate_run
+{
+	my ($conf)=@_;
+	
+	my $my_pid     = $$;
+	my $short_name =  $THIS_FILE;
+	   $short_name =~ s/\..*//;
+	#record($conf, "$THIS_FILE ".__LINE__."; Checking if $short_name is already running. I have pid: [$my_pid]...\n");
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{pgrep} $short_name";
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		my $prog_name = $conf->{misc}{program_name};
+		if ($line ne $my_pid)
+		{
+			my $ps_pid = $line;
+			#record ($conf, "$THIS_FILE ".__LINE__."; Found another instance of $short_name with pid: [$ps_pid]. Exiting...\n");
+			$fh->close();
+			exit (1);
+		}
+	}
+	$fh->close();
+	
+	return (0);
 }
 
 1;

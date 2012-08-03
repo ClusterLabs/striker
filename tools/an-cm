@@ -40,7 +40,7 @@ my $conf = {
 		port		=>	587,
 		timeout		=>	60,
 		username	=>	"clusters\@alteeve.ca",
-		password	=>	"cm0nit0r",
+		password	=>	"file:./email_pw.txt",
 		security	=>	"STARTTLS",
 		encrypt_pass	=>	1,
 		helo_domain	=>	"alteeve.ca",
@@ -58,20 +58,25 @@ my $conf = {
 		'log'		=>	"/var/log/an-cm.log",
 		uname		=>	"/bin/uname",
 		clustat		=>	"/usr/sbin/clustat",
+		pgrep		=>	"/usr/bin/pgrep",
+		ifconfig	=>	"/sbin/ifconfig",
+		brctl		=>	"/usr/sbin/brctl",
 	},
 	'system'	=>	{
 		sleep_time	=>	10,
 	},
 };
 
+avoid_duplicate_run($conf);
 get_hostname($conf);
 $conf->{mail_data}{subject_prefix} = "[ AN-CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
 $conf->{mail_data}{body_suffix}    = "
 --[ Source Cluster Details ]------------------------------------------
-$conf->{cluster}{company}
-$conf->{cluster}{name}
-$conf->{cluster}{description}
-$conf->{node}{me}{long_name}
+Company: $conf->{cluster}{company}
+Cluster: $conf->{cluster}{name}
+Node:    $conf->{node}{me}{long_name}
+Description:
+ - $conf->{cluster}{description}
 
 If you have any questions or concerns, please don't hesitate to
 contact support. 
@@ -90,7 +95,7 @@ do not know who controls these servers, please visit the support link
 above and we will try to help you identify the person who can assist
 you.
 ";
-read_initial_states($conf);
+read_states($conf);
 initial_report($conf);
 
 # Infinite loop time

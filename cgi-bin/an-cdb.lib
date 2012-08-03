@@ -1857,9 +1857,10 @@ sub parse_lvm_data
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
 			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
-			$pe_size = "" if not defined $pe_size;
-			$vg_size = "" if not defined $vg_size;
-			$vg_free = "" if not defined $vg_free;
+			$pe_size    = "" if not defined $pe_size;
+			$vg_size    = "" if not defined $vg_size;
+			$vg_free    = "" if not defined $vg_free;
+			$attributes = "" if not defined $attributes;
 			$pe_size =~ s/B$//;
 			$vg_size =~ s/B$//;
 			$vg_free =~ s/B$//;
@@ -6342,18 +6343,18 @@ sub display_node_controls
 		
 		# At all times, the option to fence the node is made available.
 		my $say_fence     = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
-		my $say_dual_boot = "<span class=\"highlight_unavailable\">Dual Boot</span>";
-		my $say_dual_join = "<span class=\"highlight_unavailable\">Dual Join</span>";
+		my $say_dual_boot = "<span class=\"highlight_unavailable\">Power On Both</span>";
+		my $say_dual_join = "<span class=\"highlight_unavailable\">Join Both</span>";
 		if ($rowspan)
 		{
 			# First row.
 			if ($dual_boot)
 			{
-				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\"><span class=\"highlight_ready_bold\">Dual Boot</span></a>";
+				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\"><span class=\"highlight_ready_bold\">Power On Both</span></a>";
 			}
 			if ($dual_join)
 			{
-				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Dual Join</span></a>";
+				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Join Both</span></a>";
 			}
 		}
 
@@ -6526,6 +6527,23 @@ sub check_nodes
 	
 	# Start your engines!
 	check_node_status($conf);
+	
+	return (0);
+}
+# Record a message to the log file.
+sub record
+{
+	my ($conf, $message)=@_;
+
+	my $fh = $conf->{handles}{'log'};
+	if (not $fh)
+	{
+		$fh = IO::Handle->new();
+		$conf->{handles}{'log'} = $fh;
+		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
+	}
+	print $fh $message;
 	
 	return (0);
 }
