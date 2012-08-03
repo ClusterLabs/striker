@@ -71,7 +71,7 @@ avoid_duplicate_run($conf);
 get_hostname($conf);
 $conf->{mail_data}{subject_prefix} = "[ AN-CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
 $conf->{mail_data}{body_suffix}    = "
---[ Source Cluster Details ]------------------------------------------
+--[ Source Details ]--------------------------------------------------
 Company: $conf->{cluster}{company}
 Cluster: $conf->{cluster}{name}
 Node:    $conf->{node}{me}{long_name}
