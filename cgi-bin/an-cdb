@@ -34,13 +34,17 @@ our $THIS_FILE = "an-cdb";
 
 my $conf={
 	clusters		=>	{
+		'an-cluster-01'		=>	{
+			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
+			nodes			=>	["an-c01n01", "an-c01n02"],
+		},
 		'cc-cluster-01'		=>	{
 			description		=>	"CC Systems \"Cluster 01\" (in Peer 1)",
 			nodes			=>	["cc-c01n01.remote", "cc-c01n02.remote"],
 		},
 		'cc-cluster-02'		=>	{
-			description		=>	"CC Systems \"Cluster 02\" (At YYZ HQ)",
-			nodes			=>	["cc-c02n01", "cc-c02n02"],
+			description		=>	"CC Systems \"Cluster 02\" (in Peer 1)",
+			nodes			=>	["cc-c02n01.remote", "cc-c02n02.remote"],
 		},
 		'pp-cluster-01'		=>	{
 			description		=>	"Plastic Plus \"Cluster 01\"",

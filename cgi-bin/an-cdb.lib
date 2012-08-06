@@ -40,35 +40,31 @@ sub header
 	my ($conf) = @_;
 	
 	print "Content-type: text/html; charset=utf-8\n";
-	print q|
+	
+	my $say_refresh = "&nbsp;";
+	if ($conf->{'system'}{show_refresh})
+	{
+		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\">Refresh</a>";
+	}
+	print "
 <head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />
 	<title>AN!CDB - Alteeve's Niche! Cluster Dashboard</title>
-	<link rel="stylesheet" href="/an-cdb.css" media="screen" />
-	<script type="text/javascript" src="/an-cdb.js"></script>
+	<link rel=\"stylesheet\" href=\"/an-cdb.css\" media=\"screen\" />
+	<script type=\"text/javascript\" src=\"/an-cdb.js\"></script>
 </head>
 <body>
 <br />
-<table align="center">
+<table align=\"center\">
 	<tr>
 		<td>
-			<a href="/"><img src="/logo_an-cdb_02.png" alt="AN!CDB - Cluster Dashboard"></a>
+			<a href=\"/\"><img src=\"/logo_an-cdb_02.png\" alt=\"AN!CDB - Cluster Dashboard\"></a>
 		</td>
 	</tr>
 </table>
 <br />
-|;
-	
-	return (0);
-}
+";
 
-sub footer
-{
-	my ($conf) = @_;
-	
-	return(0) if $conf->{'system'}{footer_printed}; 
-	$conf->{'system'}{footer_printed} = 1;
-	
 	if ($conf->{'system'}{show_refresh})
 	{
 		print "
@@ -82,6 +78,17 @@ sub footer
 <br />
 ";
 	}
+	
+	
+	return (0);
+}
+
+sub footer
+{
+	my ($conf) = @_;
+	
+	return(0) if $conf->{'system'}{footer_printed}; 
+	$conf->{'system'}{footer_printed} = 1;
 	
 	print "
 <table align=\"center\" class=\"hidden_table\">
@@ -1303,7 +1310,19 @@ sub parse_clustat
 	$conf->{node}{$node}{enable_join}     = 0;
 	$conf->{node}{$node}{get_host_from_cluster_conf} = 0;
 
+	### NOTE: This check seems odd, but I've run intp cases where a node,
+	###       otherwise behaving fine, simple returns nothing when cman is
+	###       off. Couldn't reproduce on the command line.
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_clustat() for node: [$node]\n");
+	my $line_count = @{$array};
+	if (not $line_count)
+	{
+		# CMAN isn't running.
+		record($conf, "$THIS_FILE ".__LINE__."; CMAN does not appear to be running on node: [$node] (nothing returned by the 'clustat' call).\n");
+		$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
+		$conf->{node}{$node}{enable_join}                = 1;
+	}
+	#record($conf, "$THIS_FILE ".__LINE__."; Will parse: [$line_count] lines.\n");
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -6335,7 +6354,7 @@ sub display_node_controls
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		
 		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Join Cluster</span></a>" : "<span class=\"disabled_button\">Join Cluster</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
 		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";

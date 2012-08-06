@@ -20,10 +20,16 @@ my $conf = {
 # 		description	=>	"Plastic Plus \"Cluster 01\"",
 # 		nodes		=>	["pp-c01n01", "pp-c01n02"],
 # 		company		=>	"CC Systems",
-		name		=>	"cc-cluster-02",
-		description	=>	"CC Systems \"Cluster 02\" in Oakville",
-		nodes		=>	["cc-c02n01", "cc-c02n02"],
-		company		=>	"CC Systems",
+
+# 		name		=>	"cc-cluster-02",
+# 		description	=>	"CC Systems \"Cluster 02\" in Oakville",
+# 		nodes		=>	["cc-c02n01", "cc-c02n02"],
+# 		company		=>	"CC Systems",
+		
+		name		=>	"an-cluster-01",
+		description	=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
+		nodes		=>	["an-c01n01", "an-c01n02"],
+		company		=>	"Alteeve's Niche!",
 	},
 	node		=>	{
 		me		=>	{
@@ -61,9 +67,11 @@ my $conf = {
 		pgrep		=>	"/usr/bin/pgrep",
 		ifconfig	=>	"/sbin/ifconfig",
 		brctl		=>	"/usr/sbin/brctl",
+		MegaCli64	=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 	},
 	'system'	=>	{
 		sleep_time	=>	10,
+		storage_type	=>	"",
 	},
 };
 
