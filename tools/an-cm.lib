@@ -103,129 +103,150 @@ sub get_storage_lsi_vd_info
 		next if $vd        !~ /^\d/;
 		next if $target_id !~ /^\d/;
 		
-		if ($line =~ /^Name\s*:\s*(.*)/i)
+		if ($line =~ /^(Name)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{name} = $1;
+			$conf->{translate}{lsi}{name} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{name} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; name: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{name}]\n");
 			next;
 		}
-		if ($line =~ /^RAID Level\s*:\s*(.*)/i)
+		if ($line =~ /^(RAID Level)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{raid_level} = $1;
+			$conf->{translate}{lsi}{raid_level} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{raid_level} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; raid_level: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{raid_level}]\n");
 			next;
 		}
-		if ($line =~ /^Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{size} = $1;
+			$conf->{translate}{lsi}{size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{size}]\n");
 			next;
 		}
-		if ($line =~ /^Parity Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Parity Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{parity_size} = $1;
+			$conf->{translate}{lsi}{parity_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{parity_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; parity_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{parity_size}]\n");
 			next;
 		}
-		if ($line =~ /^State\s*:\s*(.*)/i)
+		if ($line =~ /^(State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{'state'} = $1;
+			$conf->{translate}{lsi}{'state'} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{'state'} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{'state'}]\n");
 			next;
 		}
-		if ($line =~ /^Strip Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Strip Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{strip_size} = $1;
+			$conf->{translate}{lsi}{strip_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{strip_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; strip_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{strip_size}]\n");
 			next;
 		}
-		if ($line =~ /^Number Of Drives\s*:\s*(.*)/i)
+		if ($line =~ /^(Number Of Drives)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{number_of_drives} = $1;
+			$conf->{translate}{lsi}{number_of_drives} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{number_of_drives} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; number_of_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{number_of_drives}]\n");
 			next;
 		}
-		if ($line =~ /^Span Depth\s*:\s*(.*)/i)
+		if ($line =~ /^(Span Depth)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{span_depth} = $1;
+			$conf->{translate}{lsi}{span_depth} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{span_depth} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; span_depth: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{span_depth}]\n");
 			next;
 		}
-		if ($line =~ /^Default Cache Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Default Cache Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_cache_policy} = $1;
+			$conf->{translate}{lsi}{default_cache_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_cache_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; default_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_cache_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Current Cache Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Current Cache Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_cache_policy} = $1;
+			$conf->{translate}{lsi}{current_cache_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_cache_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_cache_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Default Access Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Default Access Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_access_policy} = $1;
+			$conf->{translate}{lsi}{default_access_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_access_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; default_access_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_access_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Current Access Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Current Access Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_access_policy} = $1;
+			$conf->{translate}{lsi}{current_access_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_access_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current_access_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_access_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Disk Cache Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Disk Cache Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{disk_cache_policy} = $1;
+			$conf->{translate}{lsi}{disk_cache_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{disk_cache_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disk_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{disk_cache_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Encryption Type\s*:\s*(.*)/i)
+		if ($line =~ /^(Encryption Type)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{encryption_type} = $1;
+			$conf->{translate}{lsi}{encryption_type} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{encryption_type} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; encryption_type: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{encryption_type}]\n");
 			next;
 		}
-		if ($line =~ /^Bad Blocks Exist\s*:\s*(.*)/i)
+		if ($line =~ /^(Bad Blocks Exist)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{bad_blocks_exist} = $1;
+			$conf->{translate}{lsi}{bad_blocks_exist} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{bad_blocks_exist} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; bad_blocks_exist: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{bad_blocks_exist}]\n");
 			next;
 		}
-		if ($line =~ /^Default Power Savings Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Default Power Savings Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_power_savings_policy} = $1;
+			$conf->{translate}{lsi}{default_power_savings_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_power_savings_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; default_power_savings_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_power_savings_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Current Power Savings Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Current Power Savings Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_power_savings_policy} = $1;
+			$conf->{translate}{lsi}{current_power_savings_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_power_savings_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current_power_savings_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_power_savings_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Can spin up in 1 minute\s*:\s*(.*)/i)
+		if ($line =~ /^(Can spin up in 1 minute)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{can_spin_up_in_1_minute} = $1;
+			$conf->{translate}{lsi}{can_spin_up_in_1_minute} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{can_spin_up_in_1_minute} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; can_spin_up_in_1_minute: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{can_spin_up_in_1_minute}]\n");
 			next;
 		}
-		if ($line =~ /^LD has drives that support T10 power conditions\s*:\s*(.*)/i)
+		if ($line =~ /^(LD has drives that support T10 power conditions)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{ld_has_drives_that_support_t10_power_conditions} = $1;
+			$conf->{translate}{lsi}{ld_has_drives_that_support_t10_power_conditions} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{ld_has_drives_that_support_t10_power_conditions} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; ld_has_drives_that_support_t10_power_conditions: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{ld_has_drives_that_support_t10_power_conditions}]\n");
 			next;
 		}
-		if ($line =~ /^LD's IO profile supports MAX power savings with cached writes\s*:\s*(.*)/i)
+		if ($line =~ /^(LD's IO profile supports MAX power savings with cached writes)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{lds_io_profile_supports_max_power_savings_with_cached_writes} = $1;
+			$conf->{translate}{lsi}{lds_io_profile_supports_max_power_savings_with_cached_writes} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{lds_io_profile_supports_max_power_savings_with_cached_writes} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; lds_io_profile_supports_max_power_savings_with_cached_writes: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{lds_io_profile_supports_max_power_savings_with_cached_writes}]\n");
 			next;
 		}
-		if ($line =~ /^Is VD Cached\s*:\s*(.*)/i)
+		if ($line =~ /^(Is VD Cached)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{is_vd_cached} = $1;
+			$conf->{translate}{lsi}{is_vd_cached} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{is_vd_cached} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; is_vd_cached: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{is_vd_cached}]\n");
 			next;
 		}
@@ -309,236 +330,271 @@ sub get_storage_lsi_bbu_info
 		next if $adapter !~ /^\d/;
 		
 		# Base stats
-		if ($line =~ /^BatteryType\s*:\s*(.*)/i)
+		if ($line =~ /^(BatteryType)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{batterytype} = $1;
+			$conf->{translate}{lsi}{batterytype} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{batterytype} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; batterytype: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{batterytype}]\n");
 			next;
 		}
-		if ($line =~ /^Voltage\s*:\s*(.*)/i)
+		if ($line =~ /^(Voltage)\s*:\s*(.*)/i)
 		{
 			if ($in_base)
 			{
 				# Base
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_voltage} = $1;
+				$conf->{translate}{lsi}{base_voltage} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_voltage} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Base voltage: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_voltage}]\n");
 				next;
 			}
 			elsif ($in_bbu_fw_status)
 			{
 				# FW Status
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_voltage} = $1;
+				$conf->{translate}{lsi}{fw_status_voltage} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_voltage} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; FW Status voltage: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_voltage}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Current\s*:\s*(.*)/i)
+		if ($line =~ /^(Current)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current} = $1;
+			$conf->{translate}{lsi}{current} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current}]\n");
 			next;
 		}
-		if ($line =~ /^Temperature\s*:\s*(.*)/i)
+		if ($line =~ /^(Temperature)\s*:\s*(.*)/i)
 		{
 			if ($in_base)
 			{
 				# Base
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_temperature} = $1;
+				$conf->{translate}{lsi}{base_temperature} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_temperature} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Base temperature: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_temperature}]\n");
 				next;
 			}
 			elsif ($in_bbu_fw_status)
 			{
 				# FW Status
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_temperature} = $1;
+				$conf->{translate}{lsi}{fw_status_temperature} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_temperature} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; FW Status temperature: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_temperature}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Battery State\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state} = $1;
+			$conf->{translate}{lsi}{battery_state} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n");
 			next;
 		}
 		
 		# BBU Firmware Status
-		if ($line =~ /^Charging Status\s*:\s*(.*)/i)
+		if ($line =~ /^(Charging Status)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_status} = $1;
+			$conf->{translate}{lsi}{charging_status} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_status} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; charging_status: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_status}]\n");
 			next;
 		}
 		# Voltage and Temperature are recorded up in the Base section.
-		if ($line =~ /^Learn Cycle Requested\s*:\s*(.*)/i)
+		if ($line =~ /^(Learn Cycle Requested)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_requested} = $1;
+			$conf->{translate}{lsi}{learn_cycle_requested} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_requested} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; learn_cycle_requested: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_requested}]\n");
 			next;
 		}
-		if ($line =~ /^Learn Cycle Active\s*:\s*(.*)/i)
+		if ($line =~ /^(Learn Cycle Active)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active} = $1;
+			$conf->{translate}{lsi}{learn_cycle_active} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; learn_cycle_active: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}]\n");
 			next;
 		}
-		if ($line =~ /^Learn Cycle Status\s*:\s*(.*)/i)
+		if ($line =~ /^(Learn Cycle Status)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_status} = $1;
+			$conf->{translate}{lsi}{learn_cycle_status} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_status} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; learn_cycle_status: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_status}]\n");
 			next;
 		}
-		if ($line =~ /^Learn Cycle Timeout\s*:\s*(.*)/i)
+		if ($line =~ /^(Learn Cycle Timeout)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_timeout} = $1;
+			$conf->{translate}{lsi}{learn_cycle_timeout} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_timeout} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; learn_cycle_timeout: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_timeout}]\n");
 			next;
 		}
-		if ($line =~ /^I2c Errors Detected\s*:\s*(.*)/i)
+		if ($line =~ /^(I2c Errors Detected)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{i2c_errors_detected} = $1;
+			$conf->{translate}{lsi}{i2c_errors_detected} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{i2c_errors_detected} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; i2c_errors_detected: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{i2c_errors_detected}]\n");
 			next;
 		}
-		if ($line =~ /^Battery Pack Missing\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery Pack Missing)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_pack_missing} = $1;
+			$conf->{translate}{lsi}{battery_pack_missing} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_pack_missing} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_pack_missing: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_pack_missing}]\n");
 			next;
 		}
-		if ($line =~ /^Battery Replacement required\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery Replacement required)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_replacement_required} = $1;
+			$conf->{translate}{lsi}{battery_replacement_required} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_replacement_required} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_replacement_required: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_replacement_required}]\n");
 			next;
 		}
-		if ($line =~ /^Remaining Capacity Low\s*:\s*(.*)/i)
+		if ($line =~ /^(Remaining Capacity Low)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low} = $1;
+			$conf->{translate}{lsi}{remaining_capacity_low} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; remaining_capacity_low: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}]\n");
 			next;
 		}
-		if ($line =~ /^Periodic Learn Required\s*:\s*(.*)/i)
+		if ($line =~ /^(Periodic Learn Required)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{periodic_learn_required} = $1;
+			$conf->{translate}{lsi}{periodic_learn_required} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{periodic_learn_required} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; periodic_learn_required: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{periodic_learn_required}]\n");
 			next;
 		}
-		if ($line =~ /^Transparent Learn\s*:\s*(.*)/i)
+		if ($line =~ /^(Transparent Learn)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn} = $1;
+			$conf->{translate}{lsi}{transparent_learn} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; transparent_learn: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn}]\n");
 			next;
 		}
-		if ($line =~ /^No space to cache offload\s*:\s*(.*)/i)
+		if ($line =~ /^(No space to cache offload)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{no_space_to_cache_offload} = $1;
+			$conf->{translate}{lsi}{no_space_to_cache_offload} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{no_space_to_cache_offload} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; no_space_to_cache_offload: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{no_space_to_cache_offload}]\n");
 			next;
 		}
-		if ($line =~ /^Pack is about to fail & should be replaced\s*:\s*(.*)/i)
+		if ($line =~ /^(Pack is about to fail & should be replaced)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_is_about_to_fail_and_should_be_replaced} = $1;
+			$conf->{translate}{lsi}{pack_is_about_to_fail_and_should_be_replaced} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_is_about_to_fail_and_should_be_replaced} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pack_is_about_to_fail_and_should_be_replaced: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_is_about_to_fail_and_should_be_replaced}]\n");
 			next;
 		}
-		if ($line =~ /^Cache Offload premium feature required\s*:\s*(.*)/i)
+		if ($line =~ /^(Cache Offload premium feature required)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cache_offload_premium_feature_required} = $1;
+			$conf->{translate}{lsi}{cache_offload_premium_feature_required} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cache_offload_premium_feature_required} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cache_offload_premium_feature_required: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cache_offload_premium_feature_required}]\n");
 			next;
 		}
-		if ($line =~ /^Module microcode update required\s*:\s*(.*)/i)
+		if ($line =~ /^(Module microcode update required)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{module_microcode_update_required} = $1;
+			$conf->{translate}{lsi}{module_microcode_update_required} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{module_microcode_update_required} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; module_microcode_update_required: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{module_microcode_update_required}]\n");
 			next;
 		}
-		if ($line =~ /^BBU GasGauge Status\s*:\s*(.*)/i)
+		if ($line =~ /^(BBU GasGauge Status)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{bbu_gasgauge_status} = $1;
+			$conf->{translate}{lsi}{bbu_gasgauge_status} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{bbu_gasgauge_status} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; bbu_gasgauge_status: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{bbu_gasgauge_status}]\n");
 			next;
 		}
-		if ($line =~ /^Pack energy\s*:\s*(.*)/i)
+		if ($line =~ /^(Pack energy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_energy} = $1;
+			$conf->{translate}{lsi}{pack_energy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_energy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pack_energy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_energy}]\n");
 			next;
 		}
-		if ($line =~ /^Capacitance\s*:\s*(.*)/i)
+		if ($line =~ /^(Capacitance)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{capacitance} = $1;
+			$conf->{translate}{lsi}{capacitance} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{capacitance} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; capacitance: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{capacitance}]\n");
 			next;
 		}
-		if ($line =~ /^Remaining reserve space\s*:\s*(.*)/i)
+		if ($line =~ /^(Remaining reserve space)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_reserve_space} = $1;
+			$conf->{translate}{lsi}{remaining_reserve_space} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_reserve_space} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; remaining_reserve_space: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_reserve_space}]\n");
 			next;
 		}
-		if ($line =~ /^Relative State of Charge\s*:\s*(.*)/i)
+		if ($line =~ /^(Relative State of Charge)\s*:\s*(.*)/i)
 		{
 			if ($in_bbu_fw_status)
 			{
 				# FW Status
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_relative_state_of_charge} = $1;
+				$conf->{translate}{lsi}{fw_status_relative_state_of_charge} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_relative_state_of_charge} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; FW Status relative_state_of_charge: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_relative_state_of_charge}]\n");
 				next;
 			}
 			elsif ($in_bbu_cap_info)
 			{
 				# Capacity Info
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_relative_state_of_charge} = $1;
+				$conf->{translate}{lsi}{cap_info_relative_state_of_charge} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_relative_state_of_charge} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Capacity Info relative_state_of_charge: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_relative_state_of_charge}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Charger System State\s*:\s*(.*)/i)
+		if ($line =~ /^(Charger System State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_state} = $1;
+			$conf->{translate}{lsi}{charger_system_state} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_state} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; charger_system_state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_state}]\n");
 			next;
 		}
-		if ($line =~ /^Charger System Ctrl\s*:\s*(.*)/i)
+		if ($line =~ /^(Charger System Ctrl)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_ctrl} = $1;
+			$conf->{translate}{lsi}{charger_system_ctrl} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_ctrl} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; charger_system_ctrl: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charger_system_ctrl}]\n");
 			next;
 		}
-		if ($line =~ /^Charging current\s*:\s*(.*)/i)
+		if ($line =~ /^(Charging current)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_current} = $1;
+			$conf->{translate}{lsi}{charging_current} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_current} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; charging_current: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{charging_current}]\n");
 			next;
 		}
-		if ($line =~ /^Absolute state of charge\s*:\s*(.*)/i)
+		if ($line =~ /^(Absolute state of charge)\s*:\s*(.*)/i)
 		{
 			if ($in_bbu_fw_status)
 			{
 				# FW Status
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_absolute_state_of_charge} = $1;
+				$conf->{translate}{lsi}{fw_status_absolute_state_of_charge} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_absolute_state_of_charge} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; FW Status absolute_state_of_charge: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{fw_status_absolute_state_of_charge}]\n");
 				next;
 			}
 			elsif ($in_bbu_cap_info)
 			{
 				# Capacity Info
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_absolute_state_of_charge} = $1;
+				$conf->{translate}{lsi}{cap_info_absolute_state_of_charge} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_absolute_state_of_charge} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Capacity Info absolute_state_of_charge: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cap_info_absolute_state_of_charge}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Max Error\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Error)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{max_error} = $1;
+			$conf->{translate}{lsi}{max_error} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{max_error} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_error: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{max_error}]\n");
 			next;
 		}
-		if ($line =~ /^Battery backup charge time\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery backup charge time)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_backup_charge_time} = $1;
+			$conf->{translate}{lsi}{battery_backup_charge_time} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_backup_charge_time} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_backup_charge_time: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_backup_charge_time}]\n");
 			next;
 		}
@@ -546,145 +602,168 @@ sub get_storage_lsi_bbu_info
 		# BBU Capacity Info
 		# Relative and Absolute state of charge are recorded up in the
 		# FW Status section.
-		if ($line =~ /^Remaining Capacity\s*:\s*(.*)/i)
+		if ($line =~ /^(Remaining Capacity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity} = $1;
+			$conf->{translate}{lsi}{remaining_capacity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; remaining_capacity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity}]\n");
 			next;
 		}
-		if ($line =~ /^Full Charge Capacity\s*:\s*(.*)/i)
+		if ($line =~ /^(Full Charge Capacity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{full_charge_capacity} = $1;
+			$conf->{translate}{lsi}{full_charge_capacity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{full_charge_capacity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; full_charge_capacity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{full_charge_capacity}]\n");
 			next;
 		}
-		if ($line =~ /^Run time to empty\s*:\s*(.*)/i)
+		if ($line =~ /^(Run time to empty)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{run_time_to_empty} = $1;
+			$conf->{translate}{lsi}{run_time_to_empty} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{run_time_to_empty} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; run_time_to_empty: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{run_time_to_empty}]\n");
 			next;
 		}
-		if ($line =~ /^Average time to empty\s*:\s*(.*)/i)
+		if ($line =~ /^(Average time to empty)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{average_time_to_empty} = $1;
+			$conf->{translate}{lsi}{average_time_to_empty} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{average_time_to_empty} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; average_time_to_empty: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{average_time_to_empty}]\n");
 			next;
 		}
-		if ($line =~ /^Estimated Time to full recharge\s*:\s*(.*)/i)
+		if ($line =~ /^(Estimated Time to full recharge)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{estimated_time_to_full_recharge} = $1;
+			$conf->{translate}{lsi}{estimated_time_to_full_recharge} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{estimated_time_to_full_recharge} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; estimated_time_to_full_recharge: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{estimated_time_to_full_recharge}]\n");
 			next;
 		}
-		if ($line =~ /^Cycle Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Cycle Count)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cycle_count} = $1;
+			$conf->{translate}{lsi}{cycle_count} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cycle_count} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cycle_count: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{cycle_count}]\n");
 			next;
 		}
 		
 		# BBU Design Info
-		if ($line =~ /^Date of Manufacture\s*:\s*(.*)/i)
+		if ($line =~ /^(Date of Manufacture)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{date_of_manufacture} = $1;
+			$conf->{translate}{lsi}{date_of_manufacture} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{date_of_manufacture} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; date_of_manufacture: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{date_of_manufacture}]\n");
 			next;
 		}
-		if ($line =~ /^Design Capacity\s*:\s*(.*)/i)
+		if ($line =~ /^(Design Capacity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_capacity} = $1;
+			$conf->{translate}{lsi}{design_capacity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_capacity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; design_capacity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_capacity}]\n");
 			next;
 		}
-		if ($line =~ /^Design Voltage\s*:\s*(.*)/i)
+		if ($line =~ /^(Design Voltage)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage} = $1;
+			$conf->{translate}{lsi}{design_voltage} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; design_voltage: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}]\n");
 			next;
 		}
-		if ($line =~ /^Specification Info\s*:\s*(.*)/i)
+		if ($line =~ /^(Specification Info)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{specification_info} = $1;
+			$conf->{translate}{lsi}{specification_info} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{specification_info} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; specification_info: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{specification_info}]\n");
 			next;
 		}
-		if ($line =~ /^Serial Number\s*:\s*(.*)/i)
+		if ($line =~ /^(Serial Number)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{serial_number} = $1;
+			$conf->{translate}{lsi}{serial_number} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{serial_number} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; serial_number: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{serial_number}]\n");
 			next;
 		}
-		if ($line =~ /^Pack Stat Configuration\s*:\s*(.*)/i)
+		if ($line =~ /^(Pack Stat Configuration)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_stat_configuration} = $1;
+			$conf->{translate}{lsi}{pack_stat_configuration} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_stat_configuration} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pack_stat_configuration: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_stat_configuration}]\n");
 			next;
 		}
-		if ($line =~ /^Manufacture Name\s*:\s*(.*)/i)
+		if ($line =~ /^(Manufacture Name)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{manufacture_name} = $1;
+			$conf->{translate}{lsi}{manufacture_name} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{manufacture_name} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; manufacture_name: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{manufacture_name}]\n");
 			next;
 		}
-		if ($line =~ /^Device Name\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Name)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_name} = $1;
+			$conf->{translate}{lsi}{device_name} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_name} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_name: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_name}]\n");
 			next;
 		}
-		if ($line =~ /^Device Chemistry\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Chemistry)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_chemistry} = $1;
+			$conf->{translate}{lsi}{device_chemistry} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_chemistry} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_chemistry: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{device_chemistry}]\n");
 			next;
 		}
-		if ($line =~ /^Battery FRU\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery FRU)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_fru} = $1;
+			$conf->{translate}{lsi}{battery_fru} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_fru} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_fru: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_fru}]\n");
 			next;
 		}
-		if ($line =~ /^TMM FRU\s*:\s*(.*)/i)
+		if ($line =~ /^(TMM FRU)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{tmm_fru} = $1;
+			$conf->{translate}{lsi}{tmm_fru} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{tmm_fru} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; tmm_fru: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{tmm_fru}]\n");
 			next;
 		}
-		if ($line =~ /^Transparent Learn\s*=\s*(.*)/i)
+		if ($line =~ /^(Transparent Learn)\s*=\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn} = $1;
+			$conf->{translate}{lsi}{transparent_learn} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; transparent_learn: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{transparent_learn}]\n");
 			next;
 		}
-		if ($line =~ /^App Data\s*=\s*(.*)/i)
+		if ($line =~ /^(App Data)\s*=\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{app_data} = $1;
+			$conf->{translate}{lsi}{app_data} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{app_data} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; app_data: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{app_data}]\n");
 			next;
 		}
 		
 		# BBU Properties
-		if ($line =~ /^Auto Learn Period\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto Learn Period)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_period} = $1;
+			$conf->{translate}{lsi}{auto_learn_period} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_period} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; auto_learn_period: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_period}]\n");
 			next;
 		}
-		if ($line =~ /^Next Learn time\s*:\s*(.*)/i)
+		if ($line =~ /^(Next Learn time)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time} = $1;
+			$conf->{translate}{lsi}{next_learn_time} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; next_learn_time: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time}]\n");
 			next;
 		}
-		if ($line =~ /^Learn Delay Interval\s*:\s*(.*)/i)
+		if ($line =~ /^(Learn Delay Interval)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_delay_interval} = $1;
+			$conf->{translate}{lsi}{learn_delay_interval} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_delay_interval} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; learn_delay_interval: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_delay_interval}]\n");
 			next;
 		}
-		if ($line =~ /^Auto-Learn Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto-Learn Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_mode} = $1;
+			$conf->{translate}{lsi}{auto_learn_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; auto_learn_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_mode}]\n");
 			next;
 		}
@@ -775,224 +854,260 @@ sub get_storage_lsi_physical_disk_info
 		
 		### When I see the SMART line, I know I am at the end of the
 		### given drive and can commit the data.
-		if ($line =~ /^Enclosure Device ID\s*:\s*(.*)/i)
+		if ($line =~ /^(Enclosure Device ID)\s*:\s*(.*)/i)
 		{
-			$enclosure_device_id = $1;
+			$conf->{translate}{lsi}{enclosure_device_id} = $1;
+			$enclosure_device_id = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enclosure_device_id: [$enclosure_device_id]\n");
 			next;
 		}
-		if ($line =~ /^Slot Number\s*:\s*(.*)/i)
+		if ($line =~ /^(Slot Number)\s*:\s*(.*)/i)
 		{
-			$slot_number = $1;
+			$conf->{translate}{lsi}{slot_number} = $1;
+			$slot_number = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; slot_number: [$slot_number]\n");
 			next;
 		}
-		if ($line =~ /^Drive's postion\s*:\s*DiskGroup\s*:\s*(\d+),\s*Span\s*:\s*(\d+),\s*Arm\s*:\s*(\d+)/i)
+		if ($line =~ /^(Drive's postion)\s*:\s*DiskGroup\s*:\s*(\d+),\s*Span\s*:\s*(\d+),\s*Arm\s*:\s*(\d+)/i)
 		{
-			$diskgroup = $1;
-			$span      = $2;
-			$arm       = $3;
+			$conf->{translate}{lsi}{diskgroup} = $1;
+			$diskgroup = $2;
+			$span      = $3;
+			$arm       = $4;
 			#record($conf, "$THIS_FILE ".__LINE__."; drives_postion; disk group: [$diskgroup], span: [$span], arm: [$arm]\n");
 			next;
 		}
-		if ($line =~ /^Enclosure position\s*:\s*(.*)/i)
+		if ($line =~ /^(Enclosure position)\s*:\s*(.*)/i)
 		{
-			$enclosure_position = $1;
+			$conf->{translate}{lsi}{enclosure_position} = $1;
+			$enclosure_position = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enclosure_position: [$enclosure_position]\n");
 			next;
 		}
-		if ($line =~ /^Device Id\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Id)\s*:\s*(.*)/i)
 		{
-			$device_id = $1;
+			$conf->{translate}{lsi}{device_id} = $1;
+			$device_id = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_id: [$device_id]\n");
 			next;
 		}
-		if ($line =~ /^WWN\s*:\s*(.*)/i)
+		if ($line =~ /^(WWN)\s*:\s*(.*)/i)
 		{
-			$wwn = $1;
+			$conf->{translate}{lsi}{wwn} = $1;
+			$wwn = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; wwn: [$wwn]\n");
 			next;
 		}
-		if ($line =~ /^Sequence Number\s*:\s*(.*)/i)
+		if ($line =~ /^(Sequence Number)\s*:\s*(.*)/i)
 		{
-			$sequence_number = $1;
+			$conf->{translate}{lsi}{sequence_number} = $1;
+			$sequence_number = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; sequence_number: [$sequence_number]\n");
 			next;
 		}
-		if ($line =~ /^Media Error Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Media Error Count)\s*:\s*(.*)/i)
 		{
-			$media_error_count = $1;
+			$conf->{translate}{lsi}{media_error_count} = $1;
+			$media_error_count = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; media_error_count: [$media_error_count]\n");
 			next;
 		}
-		if ($line =~ /^Other Error Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Other Error Count)\s*:\s*(.*)/i)
 		{
-			$other_error_count = $1;
+			$conf->{translate}{lsi}{other_error_count} = $1;
+			$other_error_count = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; other_error_count: [$other_error_count]\n");
 			next;
 		}
-		if ($line =~ /^Predictive Failure Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Predictive Failure Count)\s*:\s*(.*)/i)
 		{
-			$predictive_failure_count = $1;
+			$conf->{translate}{lsi}{predictive_failure_count} = $1;
+			$predictive_failure_count = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; predictive_failure_count: [$predictive_failure_count]\n");
 			next;
 		}
-		if ($line =~ /^Last Predictive Failure Event Seq Number\s*:\s*(.*)/i)
+		if ($line =~ /^(Last Predictive Failure Event Seq Number)\s*:\s*(.*)/i)
 		{
-			$last_predictive_failure_event_seq_number = $1;
+			$conf->{translate}{lsi}{last_predictive_failure_event_seq_number} = $1;
+			$last_predictive_failure_event_seq_number = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; last_predictive_failure_event_seq_number: [$last_predictive_failure_event_seq_number]\n");
 			next;
 		}
-		if ($line =~ /^PD Type\s*:\s*(.*)/i)
+		if ($line =~ /^(PD Type)\s*:\s*(.*)/i)
 		{
-			$pd_type = $1;
+			$conf->{translate}{lsi}{pd_type} = $1;
+			$pd_type = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pd_type: [$pd_type]\n");
 			next;
 		}
-		if ($line =~ /^Raw Size\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
+		if ($line =~ /^(Raw Size)\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
 		{
-			$raw_size_string      = $1;
-			$raw_size_hex_sectors = $2;
+			$conf->{translate}{lsi}{raw_size_string     } = $1;
+			$raw_size_string      = $2;
+			$raw_size_hex_sectors = $3;
 			#record($conf, "$THIS_FILE ".__LINE__."; raw_size_string: [$raw_size_string], sectors (in hex): [$raw_size_hex_sectors]\n");
 			next;
 		}
-		if ($line =~ /^Non Coerced Size\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
+		if ($line =~ /^(Non Coerced Size)\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
 		{
-			$non_coerced_size_string      = $1;
-			$non_coerced_size_hex_sectors = $2;
+			$conf->{translate}{lsi}{non_coerced_size_string     } = $1;
+			$non_coerced_size_string      = $2;
+			$non_coerced_size_hex_sectors = $3;
 			#record($conf, "$THIS_FILE ".__LINE__."; non_coerced_size_string: [$non_coerced_size_string], sectors (in hex): [$non_coerced_size_hex_sectors]\n");
 			next;
 		}
-		if ($line =~ /^Coerced Size\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
+		if ($line =~ /^(Coerced Size)\s*:\s*(.*?\s*.*?)\s*\[(.*?)\]/i)
 		{
-			$coerced_size_string      = $1;
-			$coerced_size_hex_sectors = $2;
+			$conf->{translate}{lsi}{coerced_size_string     } = $1;
+			$coerced_size_string      = $2;
+			$coerced_size_hex_sectors = $3;
 			#record($conf, "$THIS_FILE ".__LINE__."; coerced_size_string: [$coerced_size_string], sectors (in hex): [$coerced_size_hex_sectors]\n");
 			next;
 		}
-		if ($line =~ /^Firmware state\s*:\s*(.*)/i)
+		if ($line =~ /^(Firmware state)\s*:\s*(.*)/i)
 		{
-			$firmware_state = $1;
+			$conf->{translate}{lsi}{firmware_state} = $1;
+			$firmware_state = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; firmware_state: [$firmware_state]\n");
 			next;
 		}
-		if ($line =~ /^Device Firmware Level\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Firmware Level)\s*:\s*(.*)/i)
 		{
-			$device_firmware_level = $1;
+			$conf->{translate}{lsi}{device_firmware_level} = $1;
+			$device_firmware_level = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_firmware_level: [$device_firmware_level]\n");
 			next;
 		}
-		if ($line =~ /^Shield Counter\s*:\s*(.*)/i)
+		if ($line =~ /^(Shield Counter)\s*:\s*(.*)/i)
 		{
-			$shield_counter = $1;
+			$conf->{translate}{lsi}{shield_counter} = $1;
+			$shield_counter = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; shield_counter: [$shield_counter]\n");
 			next;
 		}
-		if ($line =~ /^Successful diagnostics completion on\s*:\s*(.*)/i)
+		if ($line =~ /^(Successful diagnostics completion on)\s*:\s*(.*)/i)
 		{
-			$successful_diagnostics_completion_on = $1;
+			$conf->{translate}{lsi}{successful_diagnostics_completion_on} = $1;
+			$successful_diagnostics_completion_on = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; successful_diagnostics_completion_on: [$successful_diagnostics_completion_on]\n");
 			next;
 		}
-		if ($line =~ /^SAS Address\(0\)\s*:\s*(.*)/i)
+		if ($line =~ /^(SAS Address)\(0\)\s*:\s*(.*)/i)
 		{
-			$sas_address_0 = $1;
+			$conf->{translate}{lsi}{sas_address_0} = $1;
+			$sas_address_0 = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; sas_address_0: [$sas_address_0]\n");
 			next;
 		}
-		if ($line =~ /^SAS Address\(1\)\s*:\s*(.*)/i)
+		if ($line =~ /^(SAS Address)\(1\)\s*:\s*(.*)/i)
 		{
-			$sas_address_1 = $1;
+			$conf->{translate}{lsi}{sas_address_1} = $1;
+			$sas_address_1 = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; sas_address_1: [$sas_address_1]\n");
 			next;
 		}
-		if ($line =~ /^Connected Port Number\s*:\s*(.*)/i)
+		if ($line =~ /^(Connected Port Number)\s*:\s*(.*)/i)
 		{
-			$connected_port_number = $1;
+			$conf->{translate}{lsi}{connected_port_number} = $1;
+			$connected_port_number = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; connected_port_number: [$connected_port_number]\n");
 			next;
 		}
-		if ($line =~ /^Inquiry Data\s*:\s*(.*)/i)
+		if ($line =~ /^(Inquiry Data)\s*:\s*(.*)/i)
 		{
-			$inquiry_data = $1;
+			$conf->{translate}{lsi}{inquiry_data} = $1;
+			$inquiry_data = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; inquiry_data: [$inquiry_data]\n");
 			next;
 		}
-		if ($line =~ /^FDE Capable\s*:\s*(.*)/i)
+		if ($line =~ /^(FDE Capable)\s*:\s*(.*)/i)
 		{
-			$fde_capable = $1;
+			$conf->{translate}{lsi}{fde_capable} = $1;
+			$fde_capable = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; fde_capable: [$fde_capable]\n");
 			next;
 		}
-		if ($line =~ /^FDE Enable\s*:\s*(.*)/i)
+		if ($line =~ /^(FDE Enable)\s*:\s*(.*)/i)
 		{
-			$fde_enable = $1;
+			$conf->{translate}{lsi}{fde_enable} = $1;
+			$fde_enable = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; fde_enable: [$fde_enable]\n");
 			next;
 		}
-		if ($line =~ /^Secured\s*:\s*(.*)/i)
+		if ($line =~ /^(Secured)\s*:\s*(.*)/i)
 		{
-			$secured = $1;
+			$conf->{translate}{lsi}{secured} = $1;
+			$secured = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; secured: [$secured]\n");
 			next;
 		}
-		if ($line =~ /^Locked\s*:\s*(.*)/i)
+		if ($line =~ /^(Locked)\s*:\s*(.*)/i)
 		{
-			$locked = $1;
+			$conf->{translate}{lsi}{locked} = $1;
+			$locked = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; locked: [$locked]\n");
 			next;
 		}
-		if ($line =~ /^Needs EKM Attention\s*:\s*(.*)/i)
+		if ($line =~ /^(Needs EKM Attention)\s*:\s*(.*)/i)
 		{
-			$needs_ekm_attention = $1;
+			$conf->{translate}{lsi}{needs_ekm_attention} = $1;
+			$needs_ekm_attention = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; needs_ekm_attention: [$needs_ekm_attention]\n");
 			next;
 		}
-		if ($line =~ /^Foreign State\s*:\s*(.*)/i)
+		if ($line =~ /^(Foreign State)\s*:\s*(.*)/i)
 		{
-			$foreign_state = $1;
+			$conf->{translate}{lsi}{foreign_state} = $1;
+			$foreign_state = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; foreign_state: [$foreign_state]\n");
 			next;
 		}
-		if ($line =~ /^Device Speed\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Speed)\s*:\s*(.*)/i)
 		{
-			$device_speed = $1;
+			$conf->{translate}{lsi}{device_speed} = $1;
+			$device_speed = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_speed: [$device_speed]\n");
 			next;
 		}
-		if ($line =~ /^Link Speed\s*:\s*(.*)/i)
+		if ($line =~ /^(Link Speed)\s*:\s*(.*)/i)
 		{
-			$link_speed = $1;
+			$conf->{translate}{lsi}{link_speed} = $1;
+			$link_speed = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; link_speed: [$link_speed]\n");
 			next;
 		}
-		if ($line =~ /^Media Type\s*:\s*(.*)/i)
+		if ($line =~ /^(Media Type)\s*:\s*(.*)/i)
 		{
-			$media_type = $1;
+			$conf->{translate}{lsi}{media_type} = $1;
+			$media_type = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; media_type: [$media_type]\n");
 			next;
 		}
-		if ($line =~ /^Drive Temperature\s*:\s*(.*)/i)
+		if ($line =~ /^(Drive Temperature)\s*:\s*(.*)/i)
 		{
-			$drive_temperature = $1;
+			$conf->{translate}{lsi}{drive_temperature} = $1;
+			$drive_temperature = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; drive_temperature: [$drive_temperature]\n");
 			next;
 		}
-		if ($line =~ /^PI Eligibility\s*:\s*(.*)/i)
+		if ($line =~ /^(PI Eligibility)\s*:\s*(.*)/i)
 		{
-			$pi_eligibility = $1;
+			$conf->{translate}{lsi}{pi_eligibility} = $1;
+			$pi_eligibility = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pi_eligibility: [$pi_eligibility]\n");
 			next;
 		}
-		if ($line =~ /^Drive is formatted for PI information\s*:\s*(.*)/i)
+		if ($line =~ /^(Drive is formatted for PI information)\s*:\s*(.*)/i)
 		{
-			$drive_is_formatted_for_pi_information = $1;
+			$conf->{translate}{lsi}{drive_is_formatted_for_pi_information} = $1;
+			$drive_is_formatted_for_pi_information = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; drive_is_formatted_for_pi_information: [$drive_is_formatted_for_pi_information]\n");
 			next;
 		}
-		if ($line =~ /^PI\s*:\s*(.*)/i)
+		if ($line =~ /^(PI)\s*:\s*(.*)/i)
 		{
-			$pi = $1;
+			$conf->{translate}{lsi}{pi} = $1;
+			$pi = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pi: [$pi]\n");
 			next;
 		}
@@ -1004,21 +1119,24 @@ sub get_storage_lsi_physical_disk_info
 			#record($conf, "$THIS_FILE ".__LINE__."; in_port: [$in_port]\n");
 			next;
 		}
-		if ($line =~ /^Port status\s*:\s*(.*)/i)
+		if ($line =~ /^(Port status)\s*:\s*(.*)/i)
 		{
-			$port_status->[$in_port] = $1;
+			$conf->{translate}{lsi}{port_status} = $1;
+			$port_status->[$in_port] = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; port_status->[$in_port]: [$port_status->[$in_port]]\n");
 			next;
 		}
-		if ($line =~ /^Port's Linkspeed\s*:\s*(.*)/i)
+		if ($line =~ /^(Port's Linkspeed)\s*:\s*(.*)/i)
 		{
-			$ports_linkspeed->[$in_port] = $1;
+			$conf->{translate}{lsi}{ports_linkspeed} = $1;
+			$ports_linkspeed->[$in_port] = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; ports_linkspeed->[$in_port]: [$ports_linkspeed->[$in_port]]\n");
 			next;
 		}
-		if ($line =~ /^Drive has flagged a S.M.A.R.T alert\s*:\s*(.*)/i)
+		if ($line =~ /^(Drive has flagged a S.M.A.R.T alert)\s*:\s*(.*)/i)
 		{
-			$drive_has_flagged_a_smart_alert = $1;
+			$conf->{translate}{lsi}{drive_has_flagged_a_smart_alert} = $1;
+			$drive_has_flagged_a_smart_alert = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; drive_has_flagged_a_smart_alert: [$drive_has_flagged_a_smart_alert]\n");
 			
 			# Record all the values and reset the variables.
@@ -1576,9 +1694,10 @@ sub get_storage_lsi_adapter_info
 		# NOTE: This is untested and written on the assumption that the
 		#       structure is the same as internal/backend data.
 		# Get the number of external ports and their addresses.
-		if ($line =~ /^Number of Frontend Port\s*:\s*(.*)/i)
+		if ($line =~ /^(Number of Frontend Port)\s*:\s*(.*)/i)
 		{
-			$frontend_port_count = $1;
+			$conf->{translate}{lsi}{number_of_frontend_ports} = $1;
+			$frontend_port_count = $2;
 			$conf->{data}{lsi}{new}{adapter}{$adapter}{number_of_frontend_ports} = $frontend_port_count;
 			next;
 		}
@@ -1608,141 +1727,163 @@ sub get_storage_lsi_adapter_info
 		
 		### Grab stuff that can be pulled from simple single-line regex's.
 		# Version stuff
-		if ($line =~ /^Product Name\s*:\s*(.*)/i)
+		if ($line =~ /^(Product Name)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{product_name} = $1;
+			$conf->{translate}{lsi}{product_name} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{product_name} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; product_name: [$conf->{data}{lsi}{new}{adapter}{$adapter}{product_name}]\n");
 			next;
 		}
-		if ($line =~ /^Serial No\s*:\s*(.*)/i)
+		if ($line =~ /^(Serial No)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no} = $1;
+			$conf->{translate}{lsi}{serial_no} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; serial_no: [$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no}]\n");
 			next;
 		}
-		if ($line =~ /^FW Package Build\s*:\s*(.*)/i)
+		if ($line =~ /^(FW Package Build)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_package_build} = $1;
+			$conf->{translate}{lsi}{fw_package_build} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_package_build} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; fw_package_build: [$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_package_build}]\n");
 			next;
 		}
 		
 		# Manufacture info
-		if ($line =~ /^Mfg. Date\s*:\s*(.*)/i)
+		if ($line =~ /^(Mfg. Date)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{manufacture_date} = $1;
+			$conf->{translate}{lsi}{manufacture_date} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{manufacture_date} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; mfg._date: [$conf->{data}{lsi}{new}{adapter}{$adapter}{manufacture_date}]\n");
 			next;
 		}
-		if ($line =~ /^Rework Date\s*:\s*(.*)/i)
+		if ($line =~ /^(Rework Date)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{rework_date} = $1;
+			$conf->{translate}{lsi}{rework_date} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{rework_date} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; rework_date: [$conf->{data}{lsi}{new}{adapter}{$adapter}{rework_date}]\n");
 			next;
 		}
-		if ($line =~ /^Revision No\s*:\s*(.*)/i)
+		if ($line =~ /^(Revision No)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no} = $1;
+			$conf->{translate}{lsi}{revision_no} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; revision_no: [$conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no}]\n");
 			next;
 		}
-		if ($line =~ /^Battery FRU\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery FRU)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_fru} = $1;
+			$conf->{translate}{lsi}{battery_fru} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_fru} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_fru: [$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_fru}]\n");
 			next;
 		}
 		
 		# Image version in flash
-		if ($line =~ /^Image Versions in Flash\s*:\s*(.*)/i)
+		if ($line =~ /^(Image Versions in Flash)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{image_versions_in_flash} = $1;
+			$conf->{translate}{lsi}{image_versions_in_flash} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{image_versions_in_flash} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; image_versions_in_flash: [$conf->{data}{lsi}{new}{adapter}{$adapter}{image_versions_in_flash}]\n");
 			next;
 		}
-		if ($line =~ /^BIOS Version\s*:\s*(.*)/i)
+		if ($line =~ /^(BIOS Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_version} = $1;
+			$conf->{translate}{lsi}{bios_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; bios_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_version}]\n");
 			next;
 		}
-		if ($line =~ /^WebBIOS Version\s*:\s*(.*)/i)
+		if ($line =~ /^(WebBIOS Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{webbios_version} = $1;
+			$conf->{translate}{lsi}{webbios_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{webbios_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; webbios_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{webbios_version}]\n");
 			next;
 		}
-		if ($line =~ /^Preboot CLI Version\s*:\s*(.*)/i)
+		if ($line =~ /^(Preboot CLI Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_version} = $1;
+			$conf->{translate}{lsi}{preboot_cli_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; preboot_cli_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_version}]\n");
 			next;
 		}
-		if ($line =~ /^FW Version\s*:\s*(.*)/i)
+		if ($line =~ /^(FW Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_version} = $1;
+			$conf->{translate}{lsi}{fw_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; fw_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{fw_version}]\n");
 			next;
 		}
-		if ($line =~ /^NVDATA Version\s*:\s*(.*)/i)
+		if ($line =~ /^(NVDATA Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{nvdata_version} = $1;
+			$conf->{translate}{lsi}{nvdata_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{nvdata_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; nvdata_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{nvdata_version}]\n");
 			next;
 		}
-		if ($line =~ /^Boot Block Version\s*:\s*(.*)/i)
+		if ($line =~ /^(Boot Block Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_block_version} = $1;
+			$conf->{translate}{lsi}{boot_block_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_block_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; boot_block_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_block_version}]\n");
 			next;
 		}
-		if ($line =~ /^BOOT Version\s*:\s*(.*)/i)
+		if ($line =~ /^(BOOT Version)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_version} = $1;
+			$conf->{translate}{lsi}{boot_version} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_version} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; boot_version: [$conf->{data}{lsi}{new}{adapter}{$adapter}{boot_version}]\n");
 			next;
 		}
 		
 		# PCI info
-		if ($line =~ /^Controller Id\s*:\s*(.*)/i)
+		if ($line =~ /^(Controller Id)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{controller_id} = $1;
+			$conf->{translate}{lsi}{controller_id} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{controller_id} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; controller_id: [$conf->{data}{lsi}{new}{adapter}{$adapter}{controller_id}]\n");
 			next;
 		}
-		if ($line =~ /^Vendor Id\s*:\s*(.*)/i)
+		if ($line =~ /^(Vendor Id)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vendor_id} = $1;
+			$conf->{translate}{lsi}{vendor_id} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vendor_id} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; vendor_id: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vendor_id}]\n");
 			next;
 		}
-		if ($line =~ /^Device Id\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Id)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{device_id} = $1;
+			$conf->{translate}{lsi}{device_id} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{device_id} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_id: [$conf->{data}{lsi}{new}{adapter}{$adapter}{device_id}]\n");
 			next;
 		}
-		if ($line =~ /^SubVendorId\s*:\s*(.*)/i)
+		if ($line =~ /^(SubVendorId)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{subvendorid} = $1;
+			$conf->{translate}{lsi}{subvendorid} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{subvendorid} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; subvendorid: [$conf->{data}{lsi}{new}{adapter}{$adapter}{subvendorid}]\n");
 			next;
 		}
-		if ($line =~ /^SubDeviceId\s*:\s*(.*)/i)
+		if ($line =~ /^(SubDeviceId)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{subdeviceid} = $1;
+			$conf->{translate}{lsi}{subdeviceid} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{subdeviceid} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; subdeviceid: [$conf->{data}{lsi}{new}{adapter}{$adapter}{subdeviceid}]\n");
 			next;
 		}
-		if ($line =~ /^Host Interface\s*:\s*(.*)/i)
+		if ($line =~ /^(Host Interface)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{host_interface} = $1;
+			$conf->{translate}{lsi}{host_interface} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{host_interface} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; host_interface: [$conf->{data}{lsi}{new}{adapter}{$adapter}{host_interface}]\n");
 			next;
 		}
-		if ($line =~ /^ChipRevision\s*:\s*(.*)/i)
+		if ($line =~ /^(ChipRevision)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{chiprevision} = $1;
+			$conf->{translate}{lsi}{chiprevision} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{chiprevision} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; chiprevision: [$conf->{data}{lsi}{new}{adapter}{$adapter}{chiprevision}]\n");
 			next;
 		}
@@ -1753,414 +1894,474 @@ sub get_storage_lsi_adapter_info
 		#       don't have access to a card with external ports. The
 		#       external/Frontend code is assumed to match, but it
 		#       untested.
-		if ($line =~ /^Device Interface\s*:\s*(.*)/i)
+		if ($line =~ /^(Device Interface)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{device_interface} = $1;
+			$conf->{translate}{lsi}{device_interface} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{device_interface} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; device_interface: [$conf->{data}{lsi}{new}{adapter}{$adapter}{device_interface}]\n");
 			next;
 		}
 		
 		# Hardware configuration
-		if ($line =~ /^SAS Address\s*:\s*(.*)/i)
+		if ($line =~ /^(SAS Address)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_address} = $1;
+			$conf->{translate}{lsi}{sas_address} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_address} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; sas_address: [$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_address}]\n");
 			next;
 		}
-		if ($line =~ /^BBU\s*:\s*(.*)/i)
+		if ($line =~ /^(BBU)\s*:\s*(.*)/i)
 		{
 			if ($in_hw_conf)
 			{
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu} = $1;
+				$conf->{translate}{lsi}{hw_conf_bbu} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; bbu: [$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu}]\n");
 				next;
 			}
 			elsif ($in_sao)
 			{
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bbu} = $1;
+				$conf->{translate}{lsi}{sao_bbu} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bbu} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported adapter options bbu: [$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bbu}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Alarm\s*:\s*(.*)/i)
+		if ($line =~ /^(Alarm)\s*:\s*(.*)/i)
 		{
 			if ($in_hw_conf)
 			{
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_alarm} = $1;
+				$conf->{translate}{lsi}{hw_conf_alarm} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_alarm} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Hardware configuration alarm: [$conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_alarm}]\n");
 				next;
 			}
 			elsif ($in_settings)
 			{
 				# This is from the 'Settings' section.
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_alarm} = $1;
+				$conf->{translate}{lsi}{settings_alarm} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_alarm} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings alarm: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_alarm}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^NVRAM\s*:\s*(.*)/i)
+		if ($line =~ /^(NVRAM)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{nvram} = $1;
+			$conf->{translate}{lsi}{nvram} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{nvram} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; nvram: [$conf->{data}{lsi}{new}{adapter}{$adapter}{nvram}]\n");
 			next;
 		}
-		if ($line =~ /^Serial Debugger\s*:\s*(.*)/i)
+		if ($line =~ /^(Serial Debugger)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_debugger} = $1;
+			$conf->{translate}{lsi}{serial_debugger} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_debugger} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; serial_debugger: [$conf->{data}{lsi}{new}{adapter}{$adapter}{serial_debugger}]\n");
 			next;
 		}
-		if ($line =~ /^Memory\s*:\s*(.*)/i)
+		if ($line =~ /^(Memory)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory} = $1;
+			$conf->{translate}{lsi}{memory} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; memory: [$conf->{data}{lsi}{new}{adapter}{$adapter}{memory}]\n");
 			next;
 		}
-		if ($line =~ /^Flash\s*:\s*(.*)/i)
+		if ($line =~ /^(Flash)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{flash} = $1;
+			$conf->{translate}{lsi}{flash} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{flash} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; flash: [$conf->{data}{lsi}{new}{adapter}{$adapter}{flash}]\n");
 			next;
 		}
-		if ($line =~ /^Memory Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Memory Size)\s*:\s*(.*)/i)
 		{
 			# This is recorded as 'xMB'.
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_size} = $1;
+			$conf->{translate}{lsi}{memory_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; memory_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_size}]\n");
 			next;
 		}
-		if ($line =~ /^TPM\s*:\s*(.*)/i)
+		if ($line =~ /^(TPM)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{tpm} = $1;
+			$conf->{translate}{lsi}{tpm} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{tpm} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; tpm: [$conf->{data}{lsi}{new}{adapter}{$adapter}{tpm}]\n");
 			next;
 		}
-		if ($line =~ /^On board Expander\s*:\s*(.*)/i)
+		if ($line =~ /^(On board Expander)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{on_board_expander} = $1;
+			$conf->{translate}{lsi}{on_board_expander} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{on_board_expander} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; on_board_expander: [$conf->{data}{lsi}{new}{adapter}{$adapter}{on_board_expander}]\n");
 			next;
 		}
-		if ($line =~ /^Upgrade Key\s*:\s*(.*)/i)
+		if ($line =~ /^(Upgrade Key)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{upgrade_key} = $1;
+			$conf->{translate}{lsi}{upgrade_key} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{upgrade_key} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; upgrade_key: [$conf->{data}{lsi}{new}{adapter}{$adapter}{upgrade_key}]\n");
 			next;
 		}
-		if ($line =~ /^Temperature sensor for ROC\s*:\s*(.*)/i)
+		if ($line =~ /^(Temperature sensor for ROC)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_roc} = $1;
+			$conf->{translate}{lsi}{temperature_sensor_for_roc} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_roc} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; temperature_sensor_for_roc: [$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_roc}]\n");
 			next;
 		}
-		if ($line =~ /^Temperature sensor for controller\s*:\s*(.*)/i)
+		if ($line =~ /^(Temperature sensor for controller)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_controller} = $1;
+			$conf->{translate}{lsi}{temperature_sensor_for_controller} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_controller} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; temperature_sensor_for_controller: [$conf->{data}{lsi}{new}{adapter}{$adapter}{temperature_sensor_for_controller}]\n");
 			next;
 		}
-		if ($line =~ /^ROC temperature\s*:\s*(.*)/i)
+		if ($line =~ /^(ROC temperature)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{roc_temperature} = $1;
+			$conf->{translate}{lsi}{roc_temperature} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{roc_temperature} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; roc_temperature: [$conf->{data}{lsi}{new}{adapter}{$adapter}{roc_temperature}]\n");
 			next;
 		}
 		
 		# Settings
 		# I don't read the date because it's ever-changing.
-		if ($line =~ /^Predictive Fail Poll Interval\s*:\s*(.*)/i)
+		if ($line =~ /^(Predictive Fail Poll Interval)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{predictive_fail_poll_interval} = $1;
+			$conf->{translate}{lsi}{predictive_fail_poll_interval} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{predictive_fail_poll_interval} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; predictive_fail_poll_interval: [$conf->{data}{lsi}{new}{adapter}{$adapter}{predictive_fail_poll_interval}]\n");
 			next;
 		}
-		if ($line =~ /^Interrupt Throttle Active Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Interrupt Throttle Active Count)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_active_count} = $1;
+			$conf->{translate}{lsi}{interrupt_throttle_active_count} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_active_count} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; interrupt_throttle_active_count: [$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_active_count}]\n");
 			next;
 		}
-		if ($line =~ /^Interrupt Throttle Completion\s*:\s*(.*)/i)
+		if ($line =~ /^(Interrupt Throttle Completion)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_completion} = $1;
+			$conf->{translate}{lsi}{interrupt_throttle_completion} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_completion} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; interrupt_throttle_completion: [$conf->{data}{lsi}{new}{adapter}{$adapter}{interrupt_throttle_completion}]\n");
 			next;
 		}
-		if ($line =~ /^Rebuild Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Rebuild Rate)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{rebuild_rate} = $1;
+				$conf->{translate}{lsi}{rebuild_rate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{rebuild_rate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; rebuild_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{rebuild_rate}]\n");
 				next;
 			}
 			elsif ($in_sao)
 			{
 				# Supported adapter operations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_rebuild_rate} = $1;
+				$conf->{translate}{lsi}{sao_rebuild_rate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_rebuild_rate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported adapter operations rebuild_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_rebuild_rate}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^PR Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(PR Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_rate} = $1;
+			$conf->{translate}{lsi}{pr_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pr_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_rate}]\n");
 			next;
 		}
-		if ($line =~ /^BGI Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(BGI Rate)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_bgi_rate} = $1;
+				$conf->{translate}{lsi}{settings_bgi_rate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_bgi_rate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings bgi_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_bgi_rate}]\n");
 				next;
 			}
 			elsif ($in_sao)
 			{
 				# Supported adapter operations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bgi_rate} = $1;
+				$conf->{translate}{lsi}{sao_bgi_rate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bgi_rate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported adapter operations bgi_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{sao_bgi_rate}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Check Consistency Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Check Consistency Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{check_consistency_rate} = $1;
+			$conf->{translate}{lsi}{check_consistency_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{check_consistency_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; check_consistency_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{check_consistency_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Reconstruction Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Reconstruction Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction_rate} = $1;
+			$conf->{translate}{lsi}{reconstruction_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; reconstruction_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Cache Flush Interval\s*:\s*(.*)/i)
+		if ($line =~ /^(Cache Flush Interval)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_flush_interval} = $1;
+			$conf->{translate}{lsi}{cache_flush_interval} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_flush_interval} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cache_flush_interval: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_flush_interval}]\n");
 			next;
 		}
-		if ($line =~ /^Max Drives to Spinup at One Time\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Drives to Spinup at One Time)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_drives_to_spinup_at_one_time} = $1;
+			$conf->{translate}{lsi}{max_drives_to_spinup_at_one_time} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_drives_to_spinup_at_one_time} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_drives_to_spinup_at_one_time: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_drives_to_spinup_at_one_time}]\n");
 			next;
 		}
-		if ($line =~ /^Delay Among Spinup Groups\s*:\s*(.*)/i)
+		if ($line =~ /^(Delay Among Spinup Groups)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_among_spinup_groups} = $1;
+			$conf->{translate}{lsi}{delay_among_spinup_groups} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_among_spinup_groups} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; delay_among_spinup_groups: [$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_among_spinup_groups}]\n");
 			next;
 		}
-		if ($line =~ /^Physical Drive Coercion Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Physical Drive Coercion Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_drive_coercion_mode} = $1;
+			$conf->{translate}{lsi}{physical_drive_coercion_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_drive_coercion_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; physical_drive_coercion_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_drive_coercion_mode}]\n");
 			next;
 		}
-		if ($line =~ /^Cluster Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Cluster Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_mode} = $1;
+			$conf->{translate}{lsi}{cluster_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cluster_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_mode}]\n");
 			next;
 		}
 		# the "alarm" for Settingss is caught up in the 
 		# "HW Configuration" section.
-		if ($line =~ /^Auto Rebuild\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto Rebuild)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_rebuild} = $1;
+			$conf->{translate}{lsi}{auto_rebuild} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_rebuild} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; auto_rebuild: [$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_rebuild}]\n");
 			next;
 		}
-		if ($line =~ /^Battery Warning\s*:\s*(.*)/i)
+		if ($line =~ /^(Battery Warning)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_warning} = $1;
+			$conf->{translate}{lsi}{battery_warning} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_warning} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; battery_warning: [$conf->{data}{lsi}{new}{adapter}{$adapter}{battery_warning}]\n");
 			next;
 		}
-		if ($line =~ /^Ecc Bucket Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Ecc Bucket Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_size} = $1;
+			$conf->{translate}{lsi}{ecc_bucket_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; ecc_bucket_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_size}]\n");
 			next;
 		}
-		if ($line =~ /^Ecc Bucket Leak Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Ecc Bucket Leak Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_leak_rate} = $1;
+			$conf->{translate}{lsi}{ecc_bucket_leak_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_leak_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; ecc_bucket_leak_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_leak_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Restore HotSpare on Insertion\s*:\s*(.*)/i)
+		if ($line =~ /^(Restore HotSpare on Insertion)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hotspare_on_insertion} = $1;
+			$conf->{translate}{lsi}{restore_hotspare_on_insertion} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hotspare_on_insertion} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; restore_hotspare_on_insertion: [$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hotspare_on_insertion}]\n");
 			next;
 		}
-		if ($line =~ /^Expose Enclosure Devices\s*:\s*(.*)/i)
+		if ($line =~ /^(Expose Enclosure Devices)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_expose_enclosure_devices} = $1;
+				$conf->{translate}{lsi}{settings_expose_enclosure_devices} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_expose_enclosure_devices} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings expose_enclosure_devices: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_expose_enclosure_devices}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_expose_enclosure_devices} = $1;
+				$conf->{translate}{lsi}{ds_expose_enclosure_devices} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_expose_enclosure_devices} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings expose_enclosure_devices: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_expose_enclosure_devices}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Maintain PD Fail History\s*:\s*(.*)/i)
+		if ($line =~ /^(Maintain PD Fail History)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings.
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_maintain_pd_fail_history} = $1;
+				$conf->{translate}{lsi}{settings_maintain_pd_fail_history} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_maintain_pd_fail_history} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settingss maintain_pd_fail_history: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_maintain_pd_fail_history}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_maintain_pd_fail_history} = $1;
+				$conf->{translate}{lsi}{ds_maintain_pd_fail_history} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_maintain_pd_fail_history} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings maintain_pd_fail_history: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_maintain_pd_fail_history}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Host Request Reordering\s*:\s*(.*)/i)
+		if ($line =~ /^(Host Request Reordering)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{host_request_reordering} = $1;
+			$conf->{translate}{lsi}{host_request_reordering} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{host_request_reordering} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; host_request_reordering: [$conf->{data}{lsi}{new}{adapter}{$adapter}{host_request_reordering}]\n");
 			next;
 		}
-		if ($line =~ /^Auto Detect BackPlane Enabled\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto Detect BackPlane Enabled)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enabled} = $1;
+			$conf->{translate}{lsi}{auto_detect_backplane_enabled} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enabled} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; auto_detect_backplane_enabled: [$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enabled}]\n");
 			next;
 		}
-		if ($line =~ /^Load Balance Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Load Balance Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{load_balance_mode} = $1;
+			$conf->{translate}{lsi}{load_balance_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{load_balance_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; load_balance_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{load_balance_mode}]\n");
 			next;
 		}
-		if ($line =~ /^Use FDE Only\s*:\s*(.*)/i)
+		if ($line =~ /^(Use FDE Only)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings.
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_use_fde_only} = $1;
+				$conf->{translate}{lsi}{settings_use_fde_only} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_use_fde_only} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings use_fde_only: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_use_fde_only}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_use_fde_only} = $1;
+				$conf->{translate}{lsi}{ds_use_fde_only} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_use_fde_only} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings use_fde_only: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_use_fde_only}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Security Key Assigned\s*:\s*(.*)/i)
+		if ($line =~ /^(Security Key Assigned)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_assigned} = $1;
+			$conf->{translate}{lsi}{security_key_assigned} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_assigned} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; security_key_assigned: [$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_assigned}]\n");
 			next;
 		}
-		if ($line =~ /^Security Key Failed\s*:\s*(.*)/i)
+		if ($line =~ /^(Security Key Failed)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_failed} = $1;
+			$conf->{translate}{lsi}{security_key_failed} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_failed} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; security_key_failed: [$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_failed}]\n");
 			next;
 		}
-		if ($line =~ /^Security Key Not Backedup\s*:\s*(.*)/i)
+		if ($line =~ /^(Security Key Not Backedup)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_not_backedup} = $1;
+			$conf->{translate}{lsi}{security_key_not_backedup} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_not_backedup} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; security_key_not_backedup: [$conf->{data}{lsi}{new}{adapter}{$adapter}{security_key_not_backedup}]\n");
 			next;
 		}
-		if ($line =~ /^Default LD PowerSave Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Default LD PowerSave Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{default_ld_powersave_policy} = $1;
+			$conf->{translate}{lsi}{default_ld_powersave_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{default_ld_powersave_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; default_ld_powersave_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{default_ld_powersave_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Maximum number of direct attached drives to spin up in 1 min\s*:\s*(.*)/i)
+		if ($line =~ /^(Maximum number of direct attached drives to spin up in 1 min)\s*:\s*(.*)/i)
 		{
 			# hash-key length win!
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{maximum_number_of_direct_attached_drives_to_spin_up_in_1_min} = $1;
+			$conf->{translate}{lsi}{maximum_number_of_direct_attached_drives_to_spin_up_in_1_min} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{maximum_number_of_direct_attached_drives_to_spin_up_in_1_min} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; maximum_number_of_direct_attached_drives_to_spin_up_in_1_min: [$conf->{data}{lsi}{new}{adapter}{$adapter}{maximum_number_of_direct_attached_drives_to_spin_up_in_1_min}]\n");
 			next;
 		}
-		if ($line =~ /^Auto Enhanced Import\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto Enhanced Import)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_auto_enhanced_import} = $1;
+				$conf->{translate}{lsi}{settings_auto_enhanced_import} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_auto_enhanced_import} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings auto_enhanced_import: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_auto_enhanced_import}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_auto_enhanced_import} = $1;
+				$conf->{translate}{lsi}{ds_auto_enhanced_import} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_auto_enhanced_import} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings auto_enhanced_import: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_auto_enhanced_import}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Any Offline VD Cache Preserved\s*:\s*(.*)/i)
+		if ($line =~ /^(Any Offline VD Cache Preserved)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{any_offline_vd_cache_preserved} = $1;
+			$conf->{translate}{lsi}{any_offline_vd_cache_preserved} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{any_offline_vd_cache_preserved} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; any_offline_vd_cache_preserved: [$conf->{data}{lsi}{new}{adapter}{$adapter}{any_offline_vd_cache_preserved}]\n");
 			next;
 		}
-		if ($line =~ /^Allow Boot with Preserved Cache\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow Boot with Preserved Cache)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_boot_with_preserved_cache} = $1;
+			$conf->{translate}{lsi}{allow_boot_with_preserved_cache} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_boot_with_preserved_cache} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_boot_with_preserved_cache: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_boot_with_preserved_cache}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Online Controller Reset\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Online Controller Reset)\s*:\s*(.*)/i)
 		{
 			if ($in_settings)
 			{
 				# Settings.
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_disable_online_controller_reset} = $1;
+				$conf->{translate}{lsi}{settings_disable_online_controller_reset} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_disable_online_controller_reset} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings disable_online_controller_reset: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_disable_online_controller_reset}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_disable_online_controller_reset} = $1;
+				$conf->{translate}{lsi}{ds_disable_online_controller_reset} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_disable_online_controller_reset} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings disable_online_controller_reset: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_disable_online_controller_reset}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^PFK in NVRAM\s*:\s*(.*)/i)
+		if ($line =~ /^(PFK in NVRAM)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_in_nvram} = $1;
+			$conf->{translate}{lsi}{pfk_in_nvram} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_in_nvram} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pfk_in_nvram: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_in_nvram}]\n");
 			next;
 		}
-		if ($line =~ /^Use disk activity for locate\s*:\s*(.*)/i)
+		if ($line =~ /^(Use disk activity for locate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{use_disk_activity_for_locate} = $1;
+			$conf->{translate}{lsi}{use_disk_activity_for_locate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{use_disk_activity_for_locate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; use_disk_activity_for_locate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{use_disk_activity_for_locate}]\n");
 			next;
 		}
-		if ($line =~ /^POST delay\s*:\s*(.*)/i)
+		if ($line =~ /^(POST delay)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{post_delay} = $1;
+			$conf->{translate}{lsi}{post_delay} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{post_delay} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; post_delay: [$conf->{data}{lsi}{new}{adapter}{$adapter}{post_delay}]\n");
 			next;
 		}
@@ -2168,109 +2369,123 @@ sub get_storage_lsi_adapter_info
 		# I don't care about "Capabilities.
 		
 		# Status
-		if ($line =~ /^ECC Bucket Count\s*:\s*(.*)/i)
+		if ($line =~ /^(ECC Bucket Count)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_count} = $1;
+			$conf->{translate}{lsi}{ecc_bucket_count} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_count} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; ecc_bucket_count: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ecc_bucket_count}]\n");
 			next;
 		}
 		
 		# Limitations
-		if ($line =~ /^Max Arms Per VD\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Arms Per VD)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arms_per_vd} = $1;
+			$conf->{translate}{lsi}{max_arms_per_vd} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arms_per_vd} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_arms_per_vd: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arms_per_vd}]\n");
 			next;
 		}
-		if ($line =~ /^Max Spans Per VD\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Spans Per VD)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_spans_per_vd} = $1;
+			$conf->{translate}{lsi}{max_spans_per_vd} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_spans_per_vd} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_spans_per_vd: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_spans_per_vd}]\n");
 			next;
 		}
-		if ($line =~ /^Max Arrays\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Arrays)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arrays} = $1;
+			$conf->{translate}{lsi}{max_arrays} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arrays} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_arrays: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_arrays}]\n");
 			next;
 		}
-		if ($line =~ /^Max Number of VDs\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Number of VDs)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_number_of_vds} = $1;
+			$conf->{translate}{lsi}{max_number_of_vds} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_number_of_vds} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_number_of_vds: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_number_of_vds}]\n");
 			next;
 		}
-		if ($line =~ /^Max Parallel Commands\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Parallel Commands)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_parallel_commands} = $1;
+			$conf->{translate}{lsi}{max_parallel_commands} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_parallel_commands} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_parallel_commands: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_parallel_commands}]\n");
 			next;
 		}
-		if ($line =~ /^Max SGE Count\s*:\s*(.*)/i)
+		if ($line =~ /^(Max SGE Count)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_sge_count} = $1;
+			$conf->{translate}{lsi}{max_sge_count} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_sge_count} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_sge_count: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_sge_count}]\n");
 			next;
 		}
-		if ($line =~ /^Max Data Transfer Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Data Transfer Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_data_transfer_size} = $1;
+			$conf->{translate}{lsi}{max_data_transfer_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_data_transfer_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_data_transfer_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_data_transfer_size}]\n");
 			next;
 		}
-		if ($line =~ /^Max Strips PerIO\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Strips PerIO)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strips_perio} = $1;
+			$conf->{translate}{lsi}{max_strips_perio} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strips_perio} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_strips_perio: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strips_perio}]\n");
 			next;
 		}
-		if ($line =~ /^Max LD per array\s*:\s*(.*)/i)
+		if ($line =~ /^(Max LD per array)\s*:\s*(.*)/i)
 		{
-			my $max_ld = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; Max LD per array: [$max_ld], in_limits: [$in_limits], in_ds: [$in_ds]\n");
 			if ($in_limits)
 			{
 				# Limitations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{limits_max_ld_per_array} = $max_ld;
+				$conf->{translate}{lsi}{limits_max_ld_per_array} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{limits_max_ld_per_array} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Limits max_ld_per_array: [$conf->{data}{lsi}{new}{adapter}{$adapter}{limits_max_ld_per_array}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_max_ld_per_array} = $max_ld;
+				$conf->{translate}{lsi}{ds_max_ld_per_array} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_max_ld_per_array} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings max_ld_per_array: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_max_ld_per_array}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Min Strip Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Min Strip Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{min_strip_size} = $1;
+			$conf->{translate}{lsi}{min_strip_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{min_strip_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; min_strip_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{min_strip_size}]\n");
 			next;
 		}
-		if ($line =~ /^Max Strip Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Strip Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strip_size} = $1;
+			$conf->{translate}{lsi}{max_strip_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strip_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_strip_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_strip_size}]\n");
 			next;
 		}
-		if ($line =~ /^Max Configurable CacheCade Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Configurable CacheCade Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_configurable_cachecade_size} = $1;
+			$conf->{translate}{lsi}{max_configurable_cachecade_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_configurable_cachecade_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_configurable_cachecade_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_configurable_cachecade_size}]\n");
 			next;
 		}
-		if ($line =~ /^Current Size of CacheCade\s*:\s*(.*)/i)
+		if ($line =~ /^(Current Size of CacheCade)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_cachecade} = $1;
+			$conf->{translate}{lsi}{current_size_of_cachecade} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_cachecade} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current_size_of_cachecade: [$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_cachecade}]\n");
 			next;
 		}
-		if ($line =~ /^Current Size of FW Cache\s*:\s*(.*)/i)
+		if ($line =~ /^(Current Size of FW Cache)\s*:\s*(.*)/i)
 		{
 			# This might squack a lot...
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_fw_cache} = $1;
+			$conf->{translate}{lsi}{current_size_of_fw_cache} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_fw_cache} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; current_size_of_fw_cache: [$conf->{data}{lsi}{new}{adapter}{$adapter}{current_size_of_fw_cache}]\n");
 			next;
 		}
@@ -2279,626 +2494,718 @@ sub get_storage_lsi_adapter_info
 		# NOTE: The options below 'Virtual Drives' and 'Physical
 		#       devices' are spaced in... Might need special handling
 		#       later to avoid duplicating key names.
-		if ($line =~ /^Virtual Drives\s*:\s*(.*)/i)
+		if ($line =~ /^(Virtual Drives)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{virtual_drives} = $1;
+			$conf->{translate}{lsi}{virtual_drives} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{virtual_drives} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; virtual_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{virtual_drives}]\n");
 			next;
 		}
-		if ($line =~ /^Degraded\s*:\s*(.*)/i)
+		if ($line =~ /^(Degraded)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_degraded} = $1;
+			$conf->{translate}{lsi}{vd_degraded} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_degraded} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; VD degraded: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_degraded}]\n");
 			next;
 		}
-		if ($line =~ /^Offline\s*:\s*(.*)/i)
+		if ($line =~ /^(Offline)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_offline} = $1;
+			$conf->{translate}{lsi}{vd_offline} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_offline} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; VD offline: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd_offline}]\n");
 			next;
 		}
-		if ($line =~ /^Physical Devices\s*:\s*(.*)/i)
+		if ($line =~ /^(Physical Devices)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_devices} = $1;
+			$conf->{translate}{lsi}{physical_devices} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_devices} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; physical_devices: [$conf->{data}{lsi}{new}{adapter}{$adapter}{physical_devices}]\n");
 			next;
 		}
-		if ($line =~ /^Disks\s*:\s*(.*)/i)
+		if ($line =~ /^(Disks)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_disks} = $1;
+			$conf->{translate}{lsi}{pv_disks} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_disks} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; PV disks: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_disks}]\n");
 			next;
 		}
-		if ($line =~ /^Critical Disks\s*:\s*(.*)/i)
+		if ($line =~ /^(Critical Disks)\s*:\s*(.*)/i)
 		{
 			# NOTE: This should trigger migration of VMs off of
 			#       this node.
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_critical_disks} = $1;
+			$conf->{translate}{lsi}{pv_critical_disks} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_critical_disks} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; PV critical_disks: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_critical_disks}]\n");
 			next;
 		}
-		if ($line =~ /^Failed Disks\s*:\s*(.*)/i)
+		if ($line =~ /^(Failed Disks)\s*:\s*(.*)/i)
 		{
 			# NOTE: This should trigger migration of VMs off of
 			#       this node.
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_failed_disks} = $1;
+			$conf->{translate}{lsi}{pv_failed_disks} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_failed_disks} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; PV failed_disks: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pv_failed_disks}]\n");
 			next;
 		}
 		
 		# Supported adapter operations
 		# SAO rebuild rate recorded up in the Settings section.
-		if ($line =~ /^CC Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(CC Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cc_rate} = $1;
+			$conf->{translate}{lsi}{cc_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cc_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cc_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cc_rate}]\n");
 			next;
 		}
 		# SAO BGI rate is recorded up in the Settings section.
-		if ($line =~ /^Reconstruct Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Reconstruct Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruct_rate} = $1;
+			$conf->{translate}{lsi}{reconstruct_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruct_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; reconstruct_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruct_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Patrol Read Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Patrol Read Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{patrol_read_rate} = $1;
+			$conf->{translate}{lsi}{patrol_read_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{patrol_read_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; patrol_read_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{patrol_read_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Alarm Control\s*:\s*(.*)/i)
+		if ($line =~ /^(Alarm Control)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_control} = $1;
+			$conf->{translate}{lsi}{alarm_control} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_control} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; alarm_control: [$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_control}]\n");
 			next;
 		}
-		if ($line =~ /^Cluster Support\s*:\s*(.*)/i)
+		if ($line =~ /^(Cluster Support)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_support} = $1;
+			$conf->{translate}{lsi}{cluster_support} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_support} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cluster_support: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_support}]\n");
 			next;
 		}
 		# SAO BBU is recorded in the Hardware Config section
-		if ($line =~ /^Spanning\s*:\s*(.*)/i)
+		if ($line =~ /^(Spanning)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{spanning} = $1;
+			$conf->{translate}{lsi}{spanning} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{spanning} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; spanning: [$conf->{data}{lsi}{new}{adapter}{$adapter}{spanning}]\n");
 			next;
 		}
-		if ($line =~ /^Dedicated Hot Spare\s*:\s*(.*)/i)
+		if ($line =~ /^(Dedicated Hot Spare)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{dedicated_hot_spare} = $1;
+			$conf->{translate}{lsi}{dedicated_hot_spare} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{dedicated_hot_spare} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; dedicated_hot_spare: [$conf->{data}{lsi}{new}{adapter}{$adapter}{dedicated_hot_spare}]\n");
 			next;
 		}
-		if ($line =~ /^Revertible Hot Spares\s*:\s*(.*)/i)
+		if ($line =~ /^(Revertible Hot Spares)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{revertible_hot_spares} = $1;
+			$conf->{translate}{lsi}{revertible_hot_spares} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{revertible_hot_spares} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; revertible_hot_spares: [$conf->{data}{lsi}{new}{adapter}{$adapter}{revertible_hot_spares}]\n");
 			next;
 		}
-		if ($line =~ /^Foreign Config Import\s*:\s*(.*)/i)
+		if ($line =~ /^(Foreign Config Import)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{foreign_config_import} = $1;
+			$conf->{translate}{lsi}{foreign_config_import} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{foreign_config_import} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; foreign_config_import: [$conf->{data}{lsi}{new}{adapter}{$adapter}{foreign_config_import}]\n");
 			next;
 		}
-		if ($line =~ /^Self Diagnostic\s*:\s*(.*)/i)
+		if ($line =~ /^(Self Diagnostic)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{self_diagnostic} = $1;
+			$conf->{translate}{lsi}{self_diagnostic} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{self_diagnostic} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; self_diagnostic: [$conf->{data}{lsi}{new}{adapter}{$adapter}{self_diagnostic}]\n");
 			next;
 		}
-		if ($line =~ /^Allow Mixed Redundancy on Array\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow Mixed Redundancy on Array)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mixed_redundancy_on_array} = $1;
+			$conf->{translate}{lsi}{allow_mixed_redundancy_on_array} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mixed_redundancy_on_array} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_mixed_redundancy_on_array: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mixed_redundancy_on_array}]\n");
 			next;
 		}
-		if ($line =~ /^Global Hot Spares\s*:\s*(.*)/i)
+		if ($line =~ /^(Global Hot Spares)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{global_hot_spares} = $1;
+			$conf->{translate}{lsi}{global_hot_spares} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{global_hot_spares} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; global_hot_spares: [$conf->{data}{lsi}{new}{adapter}{$adapter}{global_hot_spares}]\n");
 			next;
 		}
-		if ($line =~ /^Deny SCSI Passthrough\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny SCSI Passthrough)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_scsi_passthrough} = $1;
+			$conf->{translate}{lsi}{deny_scsi_passthrough} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_scsi_passthrough} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_scsi_passthrough: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_scsi_passthrough}]\n");
 			next;
 		}
-		if ($line =~ /^Deny SMP Passthrough\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny SMP Passthrough)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_smp_passthrough} = $1;
+			$conf->{translate}{lsi}{deny_smp_passthrough} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_smp_passthrough} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_smp_passthrough: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_smp_passthrough}]\n");
 			next;
 		}
-		if ($line =~ /^Deny STP Passthrough\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny STP Passthrough)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_stp_passthrough} = $1;
+			$conf->{translate}{lsi}{deny_stp_passthrough} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_stp_passthrough} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_stp_passthrough: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_stp_passthrough}]\n");
 			next;
 		}
-		if ($line =~ /^Support Security\s*:\s*(.*)/i)
+		if ($line =~ /^(Support Security)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_security} = $1;
+			$conf->{translate}{lsi}{support_security} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_security} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_security: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_security}]\n");
 			next;
 		}
-		if ($line =~ /^Snapshot Enabled\s*:\s*(.*)/i)
+		if ($line =~ /^(Snapshot Enabled)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{snapshot_enabled} = $1;
+			$conf->{translate}{lsi}{snapshot_enabled} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{snapshot_enabled} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; snapshot_enabled: [$conf->{data}{lsi}{new}{adapter}{$adapter}{snapshot_enabled}]\n");
 			next;
 		}
-		if ($line =~ /^Support the OCE without adding drives\s*:\s*(.*)/i)
+		if ($line =~ /^(Support the OCE without adding drives)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_the_oce_without_adding_drives} = $1;
+			$conf->{translate}{lsi}{support_the_oce_without_adding_drives} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_the_oce_without_adding_drives} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_the_oce_without_adding_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_the_oce_without_adding_drives}]\n");
 			next;
 		}
-		if ($line =~ /^Support PFK\s*:\s*(.*)/i)
+		if ($line =~ /^(Support PFK)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pfk} = $1;
+			$conf->{translate}{lsi}{support_pfk} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pfk} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_pfk: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pfk}]\n");
 			next;
 		}
-		if ($line =~ /^Support PI\s*:\s*(.*)/i)
+		if ($line =~ /^(Support PI)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pi} = $1;
+			$conf->{translate}{lsi}{support_pi} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pi} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_pi: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_pi}]\n");
 			next;
 		}
-		if ($line =~ /^Support Boot Time PFK Change\s*:\s*(.*)/i)
+		if ($line =~ /^(Support Boot Time PFK Change)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_boot_time_pfk_change} = $1;
+			$conf->{translate}{lsi}{support_boot_time_pfk_change} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_boot_time_pfk_change} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_boot_time_pfk_change: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_boot_time_pfk_change}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Online PFK Change\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Online PFK Change)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_online_pfk_change} = $1;
+			$conf->{translate}{lsi}{disable_online_pfk_change} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_online_pfk_change} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_online_pfk_change: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_online_pfk_change}]\n");
 			next;
 		}
-		if ($line =~ /^PFK TrailTime Remaining\s*:\s*(.*)/i)
+		if ($line =~ /^(PFK TrailTime Remaining)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_trailtime_remaining} = $1;
+			$conf->{translate}{lsi}{pfk_trailtime_remaining} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_trailtime_remaining} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pfk_trailtime_remaining: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pfk_trailtime_remaining}]\n");
 			next;
 		}
-		if ($line =~ /^Support Shield State\s*:\s*(.*)/i)
+		if ($line =~ /^(Support Shield State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_shield_state} = $1;
+			$conf->{translate}{lsi}{support_shield_state} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_shield_state} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_shield_state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_shield_state}]\n");
 			next;
 		}
-		if ($line =~ /^Block SSD Write Disk Cache Change\s*:\s*(.*)/i)
+		if ($line =~ /^(Block SSD Write Disk Cache Change)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{block_ssd_write_disk_cache_change} = $1;
+			$conf->{translate}{lsi}{block_ssd_write_disk_cache_change} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{block_ssd_write_disk_cache_change} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; block_ssd_write_disk_cache_change: [$conf->{data}{lsi}{new}{adapter}{$adapter}{block_ssd_write_disk_cache_change}]\n");
 			next;
 		}
 		
 		# Supported VD Operations
-		if ($line =~ /^Read Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Read Policy)\s*:\s*(.*)/i)
 		{
-			my $read_policy = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; Read Policy: [$read_policy], in_svdo: [$in_svdo], in_ds: [$in_ds]\n");
 			if ($in_svdo)
 			{
 				# Supported VD Operation
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_read_policy} = $read_policy;
+				$conf->{translate}{lsi}{svdo_read_policy} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_read_policy} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported VD Operations read_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_read_policy}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_read_policy} = $read_policy;
+				$conf->{translate}{lsi}{ds_read_policy} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_read_policy} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings read_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_read_policy}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Write Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Write Policy)\s*:\s*(.*)/i)
 		{
-			my $write_policy = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; Write Policy: [$write_policy], in_svdo: [$in_svdo], in_ds: [$in_ds]\n");
 			if ($in_svdo)
 			{
 				# Supported VD Operation
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_write_policy} = $write_policy;
+				$conf->{translate}{lsi}{svdo_write_policy} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_write_policy} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported VD Operation write_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_write_policy}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default Settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_write_policy} = $write_policy;
+				$conf->{translate}{lsi}{settings_write_policy} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_write_policy} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Settings write_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{settings_write_policy}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^IO Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(IO Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{io_policy} = $1;
+			$conf->{translate}{lsi}{io_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{io_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; io_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{io_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Access Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Access Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{access_policy} = $1;
+			$conf->{translate}{lsi}{access_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{access_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; access_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{access_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Disk Cache Policy\s*:\s*(.*)/i)
+		if ($line =~ /^(Disk Cache Policy)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disk_cache_policy} = $1;
+			$conf->{translate}{lsi}{disk_cache_policy} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disk_cache_policy} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disk_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disk_cache_policy}]\n");
 			next;
 		}
-		if ($line =~ /^Reconstruction\s*:\s*(.*)/i)
+		if ($line =~ /^(Reconstruction)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction} = $1;
+			$conf->{translate}{lsi}{reconstruction} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; reconstruction: [$conf->{data}{lsi}{new}{adapter}{$adapter}{reconstruction}]\n");
 			next;
 		}
-		if ($line =~ /^Deny Locate\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny Locate)\s*:\s*(.*)/i)
 		{
 			if ($in_svdo)
 			{
 				# Supported VD Operations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_deny_locate} = $1;
+				$conf->{translate}{lsi}{svdo_deny_locate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_deny_locate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported VD operations deny_locate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{svdo_deny_locate}]\n");
 				next;
 			}
 			elsif ($in_spdo)
 			{
 				# Supported PD Operations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_deny_locate} = $1;
+				$conf->{translate}{lsi}{spdo_deny_locate} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_deny_locate} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported PD operations deny_locate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_deny_locate}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Deny CC\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny CC)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_cc} = $1;
+			$conf->{translate}{lsi}{deny_cc} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_cc} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_cc: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_cc}]\n");
 			next;
 		}
-		if ($line =~ /^Allow Ctrl Encryption\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow Ctrl Encryption)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ctrl_encryption} = $1;
+			$conf->{translate}{lsi}{allow_ctrl_encryption} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ctrl_encryption} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_ctrl_encryption: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ctrl_encryption}]\n");
 			next;
 		}
-		if ($line =~ /^Enable LDBBM\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable LDBBM)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ldbbm} = $1;
+			$conf->{translate}{lsi}{enable_ldbbm} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ldbbm} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_ldbbm: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ldbbm}]\n");
 			next;
 		}
-		if ($line =~ /^Support Breakmirror\s*:\s*(.*)/i)
+		if ($line =~ /^(Support Breakmirror)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_breakmirror} = $1;
+			$conf->{translate}{lsi}{support_breakmirror} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_breakmirror} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_breakmirror: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_breakmirror}]\n");
 			next;
 		}
 		
 		# Supported PD Operations
-		if ($line =~ /^Power Savings\s*:\s*(.*)/i)
+		if ($line =~ /^(Power Savings)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{power_savings} = $1;
+			$conf->{translate}{lsi}{power_savings} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{power_savings} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; power_savings: [$conf->{data}{lsi}{new}{adapter}{$adapter}{power_savings}]\n");
 			next;
 		}
-		if ($line =~ /^Force Online\s*:\s*(.*)/i)
+		if ($line =~ /^(Force Online)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_online} = $1;
+			$conf->{translate}{lsi}{force_online} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_online} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; force_online: [$conf->{data}{lsi}{new}{adapter}{$adapter}{force_online}]\n");
 			next;
 		}
-		if ($line =~ /^Force Offline\s*:\s*(.*)/i)
+		if ($line =~ /^(Force Offline)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_offline} = $1;
+			$conf->{translate}{lsi}{force_offline} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_offline} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; force_offline: [$conf->{data}{lsi}{new}{adapter}{$adapter}{force_offline}]\n");
 			next;
 		}
-		if ($line =~ /^Force Rebuild\s*:\s*(.*)/i)
+		if ($line =~ /^(Force Rebuild)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_rebuild} = $1;
+			$conf->{translate}{lsi}{force_rebuild} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{force_rebuild} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; force_rebuild: [$conf->{data}{lsi}{new}{adapter}{$adapter}{force_rebuild}]\n");
 			next;
 		}
-		if ($line =~ /^Deny Force Failed\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny Force Failed)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_failed} = $1;
+			$conf->{translate}{lsi}{deny_force_failed} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_failed} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_force_failed: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_failed}]\n");
 			next;
 		}
-		if ($line =~ /^Deny Force Good\/Bad\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny Force Good)\/Bad\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_good_bad} = $1;
+			$conf->{translate}{lsi}{deny_force_good_bad} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_good_bad} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_force_good_bad: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_force_good_bad}]\n");
 			next;
 		}
-		if ($line =~ /^Deny Missing Replace\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny Missing Replace)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_missing_replace} = $1;
+			$conf->{translate}{lsi}{deny_missing_replace} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_missing_replace} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_missing_replace: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_missing_replace}]\n");
 			next;
 		}
-		if ($line =~ /^Deny Clear\s*:\s*(.*)/i)
+		if ($line =~ /^(Deny Clear)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_clear} = $1;
+			$conf->{translate}{lsi}{deny_clear} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_clear} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; deny_clear: [$conf->{data}{lsi}{new}{adapter}{$adapter}{deny_clear}]\n");
 			next;
 		}
 		# Supported PD Operations deny_locate is picked up in the 
 		# Supported VD Operations above.
-		if ($line =~ /^Support Temperature\s*:\s*(.*)/i)
+		if ($line =~ /^(Support Temperature)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_temperature} = $1;
+			$conf->{translate}{lsi}{support_temperature} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{support_temperature} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; support_temperature: [$conf->{data}{lsi}{new}{adapter}{$adapter}{support_temperature}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Copyback\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Copyback)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_copyback} = $1;
+			$conf->{translate}{lsi}{disable_copyback} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_copyback} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_copyback: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_copyback}]\n");
 			next;
 		}
-		if ($line =~ /^Enable JBOD\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable JBOD)\s*:\s*(.*)/i)
 		{
 			if ($in_spdo)
 			{
 				# Supported PD Operations
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_enable_jbod} = $1;
+				$conf->{translate}{lsi}{spdo_enable_jbod} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_enable_jbod} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Supported PD Operations enable_jbod: [$conf->{data}{lsi}{new}{adapter}{$adapter}{spdo_enable_jbod}]\n");
 				next;
 			}
 			elsif ($in_ds)
 			{
 				# Default settings
-				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_enable_jbod} = $1;
+				$conf->{translate}{lsi}{ds_enable_jbod} = $1;
+				$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_enable_jbod} = $2;
 				#record($conf, "$THIS_FILE ".__LINE__."; Default settings enable_jbod: [$conf->{data}{lsi}{new}{adapter}{$adapter}{ds_enable_jbod}]\n");
 				next;
 			}
 		}
-		if ($line =~ /^Enable Copyback on SMART\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Copyback on SMART)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_on_smart} = $1;
+			$conf->{translate}{lsi}{enable_copyback_on_smart} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_on_smart} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_copyback_on_smart: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_on_smart}]\n");
 			next;
 		}
-		if ($line =~ /^Enable Copyback to SSD on SMART Error\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Copyback to SSD on SMART Error)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_to_ssd_on_smart_error} = $1;
+			$conf->{translate}{lsi}{enable_copyback_to_ssd_on_smart_error} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_to_ssd_on_smart_error} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_copyback_to_ssd_on_smart_error: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_copyback_to_ssd_on_smart_error}]\n");
 			next;
 		}
-		if ($line =~ /^Enable SSD Patrol Read\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable SSD Patrol Read)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ssd_patrol_read} = $1;
+			$conf->{translate}{lsi}{enable_ssd_patrol_read} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ssd_patrol_read} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_ssd_patrol_read: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_ssd_patrol_read}]\n");
 			next;
 		}
-		if ($line =~ /^PR Correct Unconfigured Areas\s*:\s*(.*)/i)
+		if ($line =~ /^(PR Correct Unconfigured Areas)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_correct_unconfigured_areas} = $1;
+			$conf->{translate}{lsi}{pr_correct_unconfigured_areas} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_correct_unconfigured_areas} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; pr_correct_unconfigured_areas: [$conf->{data}{lsi}{new}{adapter}{$adapter}{pr_correct_unconfigured_areas}]\n");
 			next;
 		}
-		if ($line =~ /^Enable Spin Down of UnConfigured Drives\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Spin Down of UnConfigured Drives)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_spin_down_of_unconfigured_drives} = $1;
+			$conf->{translate}{lsi}{enable_spin_down_of_unconfigured_drives} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_spin_down_of_unconfigured_drives} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_spin_down_of_unconfigured_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_spin_down_of_unconfigured_drives}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Spin Down of hot spares\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Spin Down of hot spares)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_spin_down_of_hot_spares} = $1;
+			$conf->{translate}{lsi}{disable_spin_down_of_hot_spares} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_spin_down_of_hot_spares} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_spin_down_of_hot_spares: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_spin_down_of_hot_spares}]\n");
 			next;
 		}
-		if ($line =~ /^Spin Down time\s*:\s*(.*)/i)
+		if ($line =~ /^(Spin Down time)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_time} = $1;
+			$conf->{translate}{lsi}{spin_down_time} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_time} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; spin_down_time: [$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_time}]\n");
 			next;
 		}
-		if ($line =~ /^T10 Power State\s*:\s*(.*)/i)
+		if ($line =~ /^(T10 Power State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{t10_power_state} = $1;
+			$conf->{translate}{lsi}{t10_power_state} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{t10_power_state} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; t10_power_state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{t10_power_state}]\n");
 			next;
 		}
 		
 		# Error Counters
-		if ($line =~ /^Memory Correctable Errors\s*:\s*(.*)/i)
+		if ($line =~ /^(Memory Correctable Errors)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_correctable_errors} = $1;
+			$conf->{translate}{lsi}{memory_correctable_errors} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_correctable_errors} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; memory_correctable_errors: [$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_correctable_errors}]\n");
 			next;
 		}
-		if ($line =~ /^Memory Uncorrectable Errors\s*:\s*(.*)/i)
+		if ($line =~ /^(Memory Uncorrectable Errors)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_uncorrectable_errors} = $1;
+			$conf->{translate}{lsi}{memory_uncorrectable_errors} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_uncorrectable_errors} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; memory_uncorrectable_errors: [$conf->{data}{lsi}{new}{adapter}{$adapter}{memory_uncorrectable_errors}]\n");
 			next;
 		}
 		
 		# Cluster Information
-		if ($line =~ /^Cluster Permitted\s*:\s*(.*)/i)
+		if ($line =~ /^(Cluster Permitted)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_permitted} = $1;
+			$conf->{translate}{lsi}{cluster_permitted} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_permitted} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cluster_permitted: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_permitted}]\n");
 			next;
 		}
-		if ($line =~ /^Cluster Active\s*:\s*(.*)/i)
+		if ($line =~ /^(Cluster Active)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_active} = $1;
+			$conf->{translate}{lsi}{cluster_active} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_active} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cluster_active: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_active}]\n");
 			next;
 		}
 		
 		# Default Settings
-		if ($line =~ /^Phy Polarity\s*:\s*(.*)/i)
+		if ($line =~ /^(Phy Polarity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polarity} = $1;
+			$conf->{translate}{lsi}{phy_polarity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polarity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; phy_polarity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polarity}]\n");
 			next;
 		}
-		if ($line =~ /^Phy PolaritySplit\s*:\s*(.*)/i)
+		if ($line =~ /^(Phy PolaritySplit)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polaritysplit} = $1;
+			$conf->{translate}{lsi}{phy_polaritysplit} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polaritysplit} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; phy_polaritysplit: [$conf->{data}{lsi}{new}{adapter}{$adapter}{phy_polaritysplit}]\n");
 			next;
 		}
-		if ($line =~ /^Background Rate\s*:\s*(.*)/i)
+		if ($line =~ /^(Background Rate)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{background_rate} = $1;
+			$conf->{translate}{lsi}{background_rate} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{background_rate} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; background_rate: [$conf->{data}{lsi}{new}{adapter}{$adapter}{background_rate}]\n");
 			next;
 		}
-		if ($line =~ /^Strip Size\s*:\s*(.*)/i)
+		if ($line =~ /^(Strip Size)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{strip_size} = $1;
+			$conf->{translate}{lsi}{strip_size} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{strip_size} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; strip_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{strip_size}]\n");
 			next;
 		}
-		if ($line =~ /^Flush Time\s*:\s*(.*)/i)
+		if ($line =~ /^(Flush Time)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{flush_time} = $1;
+			$conf->{translate}{lsi}{flush_time} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{flush_time} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; flush_time: [$conf->{data}{lsi}{new}{adapter}{$adapter}{flush_time}]\n");
 			next;
 		}
 		# Default read and write policies are recorded in the Standard 
 		# VD Operations section.
-		if ($line =~ /^Cache When BBU Bad\s*:\s*(.*)/i)
+		if ($line =~ /^(Cache When BBU Bad)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_when_bbu_bad} = $1;
+			$conf->{translate}{lsi}{cache_when_bbu_bad} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_when_bbu_bad} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cache_when_bbu_bad: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cache_when_bbu_bad}]\n");
 			next;
 		}
-		if ($line =~ /^Cached IO\s*:\s*(.*)/i)
+		if ($line =~ /^(Cached IO)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cached_io} = $1;
+			$conf->{translate}{lsi}{cached_io} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cached_io} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cached_io: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cached_io}]\n");
 			next;
 		}
-		if ($line =~ /^SMART Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(SMART Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{smart_mode} = $1;
+			$conf->{translate}{lsi}{smart_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{smart_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; smart_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{smart_mode}]\n");
 			next;
 		}
-		if ($line =~ /^Alarm Disable\s*:\s*(.*)/i)
+		if ($line =~ /^(Alarm Disable)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_disable} = $1;
+			$conf->{translate}{lsi}{alarm_disable} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_disable} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; alarm_disable: [$conf->{data}{lsi}{new}{adapter}{$adapter}{alarm_disable}]\n");
 			next;
 		}
-		if ($line =~ /^Coercion Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Coercion Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{coercion_mode} = $1;
+			$conf->{translate}{lsi}{coercion_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{coercion_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; coercion_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{coercion_mode}]\n");
 			next;
 		}
-		if ($line =~ /^ZCR Config\s*:\s*(.*)/i)
+		if ($line =~ /^(ZCR Config)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{zcr_config} = $1;
+			$conf->{translate}{lsi}{zcr_config} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{zcr_config} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; zcr_config: [$conf->{data}{lsi}{new}{adapter}{$adapter}{zcr_config}]\n");
 			next;
 		}
-		if ($line =~ /^Dirty LED Shows Drive Activity\s*:\s*(.*)/i)
+		if ($line =~ /^(Dirty LED Shows Drive Activity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{dirty_led_shows_drive_activity} = $1;
+			$conf->{translate}{lsi}{dirty_led_shows_drive_activity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{dirty_led_shows_drive_activity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; dirty_led_shows_drive_activity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{dirty_led_shows_drive_activity}]\n");
 			next;
 		}
-		if ($line =~ /^BIOS Continue on Error\s*:\s*(.*)/i)
+		if ($line =~ /^(BIOS Continue on Error)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_continue_on_error} = $1;
+			$conf->{translate}{lsi}{bios_continue_on_error} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_continue_on_error} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; bios_continue_on_error: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_continue_on_error}]\n");
 			next;
 		}
-		if ($line =~ /^Spin Down Mode\s*:\s*(.*)/i)
+		if ($line =~ /^(Spin Down Mode)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_mode} = $1;
+			$conf->{translate}{lsi}{spin_down_mode} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_mode} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; spin_down_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{spin_down_mode}]\n");
 			next;
 		}
-		if ($line =~ /^Allowed Device Type\s*:\s*(.*)/i)
+		if ($line =~ /^(Allowed Device Type)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allowed_device_type} = $1;
+			$conf->{translate}{lsi}{allowed_device_type} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allowed_device_type} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allowed_device_type: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allowed_device_type}]\n");
 			next;
 		}
-		if ($line =~ /^Allow Mix in Enclosure\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow Mix in Enclosure)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mix_in_enclosure} = $1;
+			$conf->{translate}{lsi}{allow_mix_in_enclosure} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mix_in_enclosure} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_mix_in_enclosure: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_mix_in_enclosure}]\n");
 			next;
 		}
-		if ($line =~ /^Allow HDD SAS\/SATA Mix in VD\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow HDD SAS)\/SATA Mix in VD\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_sas_sata_mix_in_vd} = $1;
+			$conf->{translate}{lsi}{allow_hdd_sas_sata_mix_in_vd} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_sas_sata_mix_in_vd} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_hdd_sas_sata_mix_in_vd: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_sas_sata_mix_in_vd}]\n");
 			next;
 		}
-		if ($line =~ /^Allow SSD SAS\/SATA Mix in VD\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow SSD SAS)\/SATA Mix in VD\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ssd_sas_sata_mix_in_vd} = $1;
+			$conf->{translate}{lsi}{allow_ssd_sas_sata_mix_in_vd} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ssd_sas_sata_mix_in_vd} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_ssd_sas_sata_mix_in_vd: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_ssd_sas_sata_mix_in_vd}]\n");
 			next;
 		}
-		if ($line =~ /^Allow HDD\/SSD Mix in VD\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow HDD)\/SSD Mix in VD\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_ssd_mix_in_vd} = $1;
+			$conf->{translate}{lsi}{allow_hdd_ssd_mix_in_vd} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_ssd_mix_in_vd} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_hdd_ssd_mix_in_vd: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_hdd_ssd_mix_in_vd}]\n");
 			next;
 		}
-		if ($line =~ /^Allow SATA in Cluster\s*:\s*(.*)/i)
+		if ($line =~ /^(Allow SATA in Cluster)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_sata_in_cluster} = $1;
+			$conf->{translate}{lsi}{allow_sata_in_cluster} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_sata_in_cluster} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; allow_sata_in_cluster: [$conf->{data}{lsi}{new}{adapter}{$adapter}{allow_sata_in_cluster}]\n");
 			next;
 		}
-		if ($line =~ /^Max Chained Enclosures\s*:\s*(.*)/i)
+		if ($line =~ /^(Max Chained Enclosures)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_chained_enclosures} = $1;
+			$conf->{translate}{lsi}{max_chained_enclosures} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{max_chained_enclosures} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; max_chained_enclosures: [$conf->{data}{lsi}{new}{adapter}{$adapter}{max_chained_enclosures}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Ctrl-R\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Ctrl-R)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_ctrl_r} = $1;
+			$conf->{translate}{lsi}{disable_ctrl_r} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_ctrl_r} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_ctrl_r: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_ctrl_r}]\n");
 			next;
 		}
-		if ($line =~ /^Enable Web BIOS\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Web BIOS)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_web_bios} = $1;
+			$conf->{translate}{lsi}{enable_web_bios} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_web_bios} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_web_bios: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_web_bios}]\n");
 			next;
 		}
-		if ($line =~ /^Direct PD Mapping\s*:\s*(.*)/i)
+		if ($line =~ /^(Direct PD Mapping)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{direct_pd_mapping} = $1;
+			$conf->{translate}{lsi}{direct_pd_mapping} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{direct_pd_mapping} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; direct_pd_mapping: [$conf->{data}{lsi}{new}{adapter}{$adapter}{direct_pd_mapping}]\n");
 			next;
 		}
-		if ($line =~ /^BIOS Enumerate VDs\s*:\s*(.*)/i)
+		if ($line =~ /^(BIOS Enumerate VDs)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_enumerate_vds} = $1;
+			$conf->{translate}{lsi}{bios_enumerate_vds} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_enumerate_vds} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; bios_enumerate_vds: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bios_enumerate_vds}]\n");
 			next;
 		}
-		if ($line =~ /^Restore Hot Spare on Insertion\s*:\s*(.*)/i)
+		if ($line =~ /^(Restore Hot Spare on Insertion)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hot_spare_on_insertion} = $1;
+			$conf->{translate}{lsi}{restore_hot_spare_on_insertion} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hot_spare_on_insertion} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; restore_hot_spare_on_insertion: [$conf->{data}{lsi}{new}{adapter}{$adapter}{restore_hot_spare_on_insertion}]\n");
 			next;
 		}
@@ -2906,130 +3213,150 @@ sub get_storage_lsi_adapter_info
 		# section above.
 		# Maintain PD Fail History is recorded above in the Settings
 		# section above.
-		if ($line =~ /^Disable Puncturing\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Puncturing)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_puncturing} = $1;
+			$conf->{translate}{lsi}{disable_puncturing} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_puncturing} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_puncturing: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_puncturing}]\n");
 			next;
 		}
-		if ($line =~ /^Zero Based Enclosure Enumeration\s*:\s*(.*)/i)
+		if ($line =~ /^(Zero Based Enclosure Enumeration)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{zero_based_enclosure_enumeration} = $1;
+			$conf->{translate}{lsi}{zero_based_enclosure_enumeration} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{zero_based_enclosure_enumeration} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; zero_based_enclosure_enumeration: [$conf->{data}{lsi}{new}{adapter}{$adapter}{zero_based_enclosure_enumeration}]\n");
 			next;
 		}
-		if ($line =~ /^PreBoot CLI Enabled\s*:\s*(.*)/i)
+		if ($line =~ /^(PreBoot CLI Enabled)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_enabled} = $1;
+			$conf->{translate}{lsi}{preboot_cli_enabled} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_enabled} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; preboot_cli_enabled: [$conf->{data}{lsi}{new}{adapter}{$adapter}{preboot_cli_enabled}]\n");
 			next;
 		}
-		if ($line =~ /^LED Show Drive Activity\s*:\s*(.*)/i)
+		if ($line =~ /^(LED Show Drive Activity)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{led_show_drive_activity} = $1;
+			$conf->{translate}{lsi}{led_show_drive_activity} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{led_show_drive_activity} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; led_show_drive_activity: [$conf->{data}{lsi}{new}{adapter}{$adapter}{led_show_drive_activity}]\n");
 			next;
 		}
-		if ($line =~ /^Cluster Disable\s*:\s*(.*)/i)
+		if ($line =~ /^(Cluster Disable)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_disable} = $1;
+			$conf->{translate}{lsi}{cluster_disable} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_disable} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; cluster_disable: [$conf->{data}{lsi}{new}{adapter}{$adapter}{cluster_disable}]\n");
 			next;
 		}
-		if ($line =~ /^SAS Disable\s*:\s*(.*)/i)
+		if ($line =~ /^(SAS Disable)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_disable} = $1;
+			$conf->{translate}{lsi}{sas_disable} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_disable} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; sas_disable: [$conf->{data}{lsi}{new}{adapter}{$adapter}{sas_disable}]\n");
 			next;
 		}
-		if ($line =~ /^Auto Detect BackPlane Enable\s*:\s*(.*)/i)
+		if ($line =~ /^(Auto Detect BackPlane Enable)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enable} = $1;
+			$conf->{translate}{lsi}{auto_detect_backplane_enable} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enable} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; auto_detect_backplane_enable: [$conf->{data}{lsi}{new}{adapter}{$adapter}{auto_detect_backplane_enable}]\n");
 			next;
 		}
 		# Use FDE Only is recorded above in the Settings section above.
-		if ($line =~ /^Enable Led Header\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Led Header)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_led_header} = $1;
+			$conf->{translate}{lsi}{enable_led_header} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_led_header} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_led_header: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_led_header}]\n");
 			next;
 		}
-		if ($line =~ /^Delay during POST\s*:\s*(.*)/i)
+		if ($line =~ /^(Delay during POST)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_during_post} = $1;
+			$conf->{translate}{lsi}{delay_during_post} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_during_post} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; delay_during_post: [$conf->{data}{lsi}{new}{adapter}{$adapter}{delay_during_post}]\n");
 			next;
 		}
-		if ($line =~ /^EnableCrashDump\s*:\s*(.*)/i)
+		if ($line =~ /^(EnableCrashDump)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enablecrashdump} = $1;
+			$conf->{translate}{lsi}{enablecrashdump} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enablecrashdump} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enablecrashdump: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enablecrashdump}]\n");
 			next;
 		}
 		# Disable Online Controller Reset is recorded above in the 
 		# Settings section above.
-		if ($line =~ /^EnableLDBBM\s*:\s*(.*)/i)
+		if ($line =~ /^(EnableLDBBM)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enableldbbm} = $1;
+			$conf->{translate}{lsi}{enableldbbm} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enableldbbm} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enableldbbm: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enableldbbm}]\n");
 			next;
 		}
-		if ($line =~ /^Un-Certified Hard Disk Drives\s*:\s*(.*)/i)
+		if ($line =~ /^(Un-Certified Hard Disk Drives)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{un_certified_hard_disk_drives} = $1;
+			$conf->{translate}{lsi}{un_certified_hard_disk_drives} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{un_certified_hard_disk_drives} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; un_certified_hard_disk_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{un_certified_hard_disk_drives}]\n");
 			next;
 		}
-		if ($line =~ /^Treat Single span R1E as R10\s*:\s*(.*)/i)
+		if ($line =~ /^(Treat Single span R1E as R10)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{treat_single_span_r1e_as_r10} = $1;
+			$conf->{translate}{lsi}{treat_single_span_r1e_as_r10} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{treat_single_span_r1e_as_r10} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; treat_single_span_r1e_as_r10: [$conf->{data}{lsi}{new}{adapter}{$adapter}{treat_single_span_r1e_as_r10}]\n");
 			next;
 		}
 		# Max LD per array is recorded in the Limitations section 
 		# above.
-		if ($line =~ /^Power Saving option\s*:\s*(.*)/i)
+		if ($line =~ /^(Power Saving option)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{power_saving_option} = $1;
+			$conf->{translate}{lsi}{power_saving_option} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{power_saving_option} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; power_saving_option: [$conf->{data}{lsi}{new}{adapter}{$adapter}{power_saving_option}]\n");
 			next;
 		}
-		if ($line =~ /^Default spin down time in minutes\s*:\s*(.*)/i)
+		if ($line =~ /^(Default spin down time in minutes)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{default_spin_down_time_in_minutes} = $1;
+			$conf->{translate}{lsi}{default_spin_down_time_in_minutes} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{default_spin_down_time_in_minutes} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; default_spin_down_time_in_minutes: [$conf->{data}{lsi}{new}{adapter}{$adapter}{default_spin_down_time_in_minutes}]\n");
 			next;
 		}
 		# Enable JBOD is recoded in Supported PD Operations above.
-		if ($line =~ /^TTY Log In Flash\s*:\s*(.*)/i)
+		if ($line =~ /^(TTY Log In Flash)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{tty_log_in_flash} = $1;
+			$conf->{translate}{lsi}{tty_log_in_flash} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{tty_log_in_flash} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; tty_log_in_flash: [$conf->{data}{lsi}{new}{adapter}{$adapter}{tty_log_in_flash}]\n");
 			next;
 		}
 		# Auto Enhanced Import is recorded in the Settings section above.
-		if ($line =~ /^BreakMirror RAID Support\s*:\s*(.*)/i)
+		if ($line =~ /^(BreakMirror RAID Support)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{breakmirror_raid_support} = $1;
+			$conf->{translate}{lsi}{breakmirror_raid_support} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{breakmirror_raid_support} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; breakmirror_raid_support: [$conf->{data}{lsi}{new}{adapter}{$adapter}{breakmirror_raid_support}]\n");
 			next;
 		}
-		if ($line =~ /^Disable Join Mirror\s*:\s*(.*)/i)
+		if ($line =~ /^(Disable Join Mirror)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_join_mirror} = $1;
+			$conf->{translate}{lsi}{disable_join_mirror} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_join_mirror} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; disable_join_mirror: [$conf->{data}{lsi}{new}{adapter}{$adapter}{disable_join_mirror}]\n");
 			next;
 		}
-		if ($line =~ /^Enable Shield State\s*:\s*(.*)/i)
+		if ($line =~ /^(Enable Shield State)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_shield_state} = $1;
+			$conf->{translate}{lsi}{enable_shield_state} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_shield_state} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; enable_shield_state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{enable_shield_state}]\n");
 			next;
 		}
-		if ($line =~ /^Time taken to detect CME\s*:\s*(.*)/i)
+		if ($line =~ /^(Time taken to detect CME)\s*:\s*(.*)/i)
 		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{time_taken_to_detect_cme} = $1;
+			$conf->{translate}{lsi}{time_taken_to_detect_cme} = $1;
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{time_taken_to_detect_cme} = $2;
 			#record($conf, "$THIS_FILE ".__LINE__."; time_taken_to_detect_cme: [$conf->{data}{lsi}{new}{adapter}{$adapter}{time_taken_to_detect_cme}]\n");
 			next;
 		}

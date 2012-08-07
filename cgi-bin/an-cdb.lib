@@ -41,9 +41,12 @@ sub header
 	
 	print "Content-type: text/html; charset=utf-8\n";
 	
+	# TODO: Make the "back" button appear on the top-left when 'task' is
+	#       set and the progress box is hidden.
 	my $say_refresh = "&nbsp;";
 	my $say_class   = "";
-	if ($conf->{'system'}{show_refresh})
+	#if ($conf->{'system'}{show_refresh})
+	if (not $conf->{cgi}{task})
 	{
 		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 	}
