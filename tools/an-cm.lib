@@ -60,6 +60,170 @@ sub check_storage_lsi
 	get_storage_lsi_adapter_info($conf);
 	get_storage_lsi_physical_disk_info($conf);
 	get_storage_lsi_bbu_info($conf);
+	get_storage_lsi_vd_info($conf);
+	
+	return(0);
+}
+
+# This reads in the Virtual Drive info
+sub get_storage_lsi_vd_info
+{
+	my ($conf) = @_;
+	
+	$conf->{data}{raw}{MegaCli64}{LDInfo} = "";
+	my $adapter   = "";
+	my $vd        = "";
+	my $target_id = "";
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{MegaCli64} LDInfo Lall aAll";
+	open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		$conf->{data}{raw}{MegaCli64}{LDInfo} .= $line."\n";
+		$line =~ s/\t+/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		
+		if ($line =~ /Adapter\s*(\d+)/i)
+		{
+			$adapter = $1;
+			next;
+		}
+		if ($line =~ /Virtual Drive: (\d+) \(Target Id: (\d+)\)/i)
+		{
+			$vd        = $1;
+			$target_id = $2;
+			next;
+		}
+		next if not $adapter;
+		next if not $vd;
+		next if not $target_id;
+		
+		if ($line =~ /Name\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{name} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; name: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{name}])\n");
+			next;
+		}
+		if ($line =~ /RAID Level\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{raid_level} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; raid_level: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{raid_level}])\n");
+			next;
+		}
+		if ($line =~ /Size\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{size} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{size}])\n");
+			next;
+		}
+		if ($line =~ /Parity Size\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{parity_size} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; parity_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{parity_size}])\n");
+			next;
+		}
+		if ($line =~ /State\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{state} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; state: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{state}])\n");
+			next;
+		}
+		if ($line =~ /Strip Size\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{strip_size} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; strip_size: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{strip_size}])\n");
+			next;
+		}
+		if ($line =~ /Number Of Drives\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{number_of_drives} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; number_of_drives: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{number_of_drives}])\n");
+			next;
+		}
+		if ($line =~ /Span Depth\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{span_depth} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; span_depth: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{span_depth}])\n");
+			next;
+		}
+		if ($line =~ /Default Cache Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_cache_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; default_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_cache_policy}])\n");
+			next;
+		}
+		if ($line =~ /Current Cache Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_cache_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; current_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_cache_policy}])\n");
+			next;
+		}
+		if ($line =~ /Default Access Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_access_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; default_access_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_access_policy}])\n");
+			next;
+		}
+		if ($line =~ /Current Access Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_access_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; current_access_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_access_policy}])\n");
+			next;
+		}
+		if ($line =~ /Disk Cache Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{disk_cache_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; disk_cache_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{disk_cache_policy}])\n");
+			next;
+		}
+		if ($line =~ /Encryption Type\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{encryption_type} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; encryption_type: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{encryption_type}])\n");
+			next;
+		}
+		if ($line =~ /Default Power Savings Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_power_savings_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; default_power_savings_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{default_power_savings_policy}])\n");
+			next;
+		}
+		if ($line =~ /Current Power Savings Policy\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_power_savings_policy} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; current_power_savings_policy: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{current_power_savings_policy}])\n");
+			next;
+		}
+		if ($line =~ /Can spin up in 1 minute\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{can_spin_up_in_1_minute} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; can_spin_up_in_1_minute: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{can_spin_up_in_1_minute}])\n");
+			next;
+		}
+		if ($line =~ /LD has drives that support T10 power conditions\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{ld_has_drives_that_support_t10_power_conditions} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; ld_has_drives_that_support_t10_power_conditions: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{ld_has_drives_that_support_t10_power_conditions}])\n");
+			next;
+		}
+		if ($line =~ /LD's IO profile supports MAX power savings with cached writes\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{lds_io_profile_supports_max_power_savings_with_cached_writes} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; lds_io_profile_supports_max_power_savings_with_cached_writes: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{lds_io_profile_supports_max_power_savings_with_cached_writes}])\n");
+			next;
+		}
+		if ($line =~ /Is VD Cached\s*:\s*(.*)/i)
+		{
+			$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{is_vd_cached} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; is_vd_cached: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{is_vd_cached}])\n");
+			next;
+		}
+	}
+	$fh->close();
 	
 	return(0);
 }
@@ -476,12 +640,6 @@ sub get_storage_lsi_bbu_info
 		{
 			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_mode} = $1;
 			record($conf, "$THIS_FILE ".__LINE__."; auto_learn_mode: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{auto_learn_mode}])\n");
-			next;
-		}
-		if ($line =~ /Exit Code\s*:\s*(.*)/i)
-		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{exit_code} = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; exit_code: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{exit_code}])\n");
 			next;
 		}
 	}
@@ -2820,14 +2978,6 @@ sub get_storage_lsi_adapter_info
 		{
 			$conf->{data}{lsi}{new}{adapter}{$adapter}{time_taken_to_detect_cme} = $1;
 			record($conf, "$THIS_FILE ".__LINE__."; time_taken_to_detect_cme: [$conf->{data}{lsi}{new}{adapter}{$adapter}{time_taken_to_detect_cme}]\n");
-			next;
-		}
-		
-		# If this isn't '0x00', something went wrong.
-		if ($line =~ /Exit Code\s*:\s*(.*)/i)
-		{
-			$conf->{data}{lsi}{new}{adapter}{$adapter}{exit_code} = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; exit_code: [$conf->{data}{lsi}{new}{adapter}{$adapter}{exit_code}]\n");
 			next;
 		}
 		
