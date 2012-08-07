@@ -42,9 +42,10 @@ sub header
 	print "Content-type: text/html; charset=utf-8\n";
 	
 	my $say_refresh = "&nbsp;";
+	my $say_class   = "";
 	if ($conf->{'system'}{show_refresh})
 	{
-		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\">Refresh</a>";
+		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 	}
 	print "
 <head>
@@ -55,30 +56,33 @@ sub header
 </head>
 <body>
 <br />
-<table align=\"center\">
+<table class=\"hidden_table\" align=\"center\">
 	<tr>
-		<td>
-			<a href=\"/\"><img src=\"/logo_an-cdb_02.png\" alt=\"AN!CDB - Cluster Dashboard\"></a>
+		<td width=\"100px\" class=\"td_hidden\">
+			&nbsp;
+		</td>
+		<td class=\"td_hidden\">
+			<table align=\"center\">
+				<tr>
+					<td>
+						<a href=\"/\"><img src=\"/logo_an-cdb_02.png\" alt=\"AN!CDB - Cluster Dashboard\"></a>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td width=\"100px\" class=\"td_hidden\">
+			<table align=\"right\" class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\">
+						$say_refresh
+					</td>
+				</tr>
+			</table>
 		</td>
 	</tr>
 </table>
 <br />
 ";
-
-	if ($conf->{'system'}{show_refresh})
-	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td>
-			<a href=\"$conf->{'system'}{cgi_string}\">Refresh</a>
-		</td>
-	</tr>
-</table>
-<br />
-";
-	}
-	
 	
 	return (0);
 }
@@ -6352,9 +6356,10 @@ sub display_node_controls
 		my $say_short_name =  $node;
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
 		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Join Cluster</span></a>" : "<span class=\"disabled_button\">Join Cluster</span>";
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
 		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">Power Off</a>" : "<span class=\"disabled_button\">Shut Down</span>";
