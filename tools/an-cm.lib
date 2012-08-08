@@ -4153,7 +4153,7 @@ Bridge: $dev, MAC: $mac, $say_stp
 	}
 	
 	# Bonds
-	my $iface_in_bond = "";
+	$conf->{data}{network}{new}{iface_in_bond} = "";
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
 	{
 		my $say_out = "Internet-Facing Network";
@@ -4193,7 +4193,7 @@ Bridge: $dev, MAC: $mac, $say_stp
 		
 		# Record the interfaces in the bond so that I can skip them in
 		# the interface print out.
-		$iface_in_bond        .= "$first_slave,$second_slave,";
+		$conf->{data}{network}{new}{iface_in_bond} .= "$first_slave,$second_slave,";
 		
 		# Draw the bond diagram
 		my $say_line1 = "-+- $first_slave -+-> $say_out";
@@ -4348,7 +4348,7 @@ Bond: $dev $say_line1
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
 	{
 		next if $dev !~ /eth/i;
-		next if $iface_in_bond =~ /$dev,/;
+		next if $conf->{data}{network}{new}{iface_in_bond} =~ /$dev,/;
 		my $mac   = $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
 		my $state = $conf->{data}{network}{new}{dev}{$dev}{'state'};
 		my $mtu   = $conf->{data}{network}{new}{dev}{$dev}{mtu};
@@ -4619,32 +4619,156 @@ sub compare_new_and_old
 		}
 	}
 	
-	# TODO: Check for interfaces that are not in a bond.
-	# Now for base devices.
-# 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
-# 	{
-# 		next if $dev =~ /bond/i;
-# 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr};
-# 		$conf->{data}{network}{new}{dev}{$dev}{'state'};
-# 		$conf->{data}{network}{new}{dev}{$dev}{mtu};
-# 		$conf->{data}{network}{new}{dev}{$dev}{metric};
-# 		$conf->{data}{network}{new}{dev}{$dev}{ip_address};
-# 		$conf->{data}{network}{new}{dev}{$dev}{ipv6_address};
-# 		$conf->{data}{network}{new}{dev}{$dev}{netmask};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{packets};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{errors};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{dropped};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{overruns};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{frame};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{packets};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{errors};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{dropped};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{overruns};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{carrier};
-# 		$conf->{data}{network}{new}{dev}{$dev}{rx}{'bytes'};
-# 		$conf->{data}{network}{new}{dev}{$dev}{tx}{'bytes'};
-# 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr};
-# 	}
+	# This will only show information for interfaces not in a bond.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
+	{
+		next if $dev !~ /eth/i;
+		$conf->{data}{network}{old}{dev}{$dev}{hwaddr}     = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{hwaddr};
+		$conf->{data}{network}{new}{dev}{$dev}{hwaddr}     = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+		if ($conf->{data}{network}{old}{dev}{$dev}{hwaddr} ne $conf->{data}{network}{new}{dev}{$dev}{hwaddr})
+		{
+			$changes .= "Interface $dev; MAC address has changed!\n";
+			$changes .= "  NOTE: This is expected when the active slave in a bond changes\n";
+			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{hwaddr}\t-> $conf->{data}{network}{new}{dev}{$dev}{hwaddr}\n";
+		}
+		
+		$conf->{data}{network}{old}{dev}{$dev}{'state'}    = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{'state'};
+		$conf->{data}{network}{new}{dev}{$dev}{'state'}    = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{'state'};
+		if ($conf->{data}{network}{old}{dev}{$dev}{'state'} ne $conf->{data}{network}{new}{dev}{$dev}{'state'})
+		{
+			$changes .= "Interface $dev; The state of the interface has changed!\n";
+			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{'state'}\t-> $conf->{data}{network}{new}{dev}{$dev}{'state'}\n";
+		}
+		
+		$conf->{data}{network}{old}{dev}{$dev}{mtu}        = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{mtu};
+		$conf->{data}{network}{new}{dev}{$dev}{mtu}        = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{mtu};
+		if ($conf->{data}{network}{old}{dev}{$dev}{mtu} ne $conf->{data}{network}{new}{dev}{$dev}{mtu})
+		{
+			$changes .= "Interface $dev; MTU size has changed!\n";
+			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{mtu}\t-> $conf->{data}{network}{new}{dev}{$dev}{mtu}\n";
+		}
+		
+		$conf->{data}{network}{old}{dev}{$dev}{ip_address} = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{ip_address};
+		$conf->{data}{network}{new}{dev}{$dev}{ip_address} = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{ip_address};
+		if ($conf->{data}{network}{old}{dev}{$dev}{ip_address} ne $conf->{data}{network}{new}{dev}{$dev}{ip_address})
+		{
+			$changes .= "Interface $dev; IP Address has changed!\n";
+			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{ip_address}\t-> $conf->{data}{network}{new}{dev}{$dev}{ip_address}\n";
+		}
+		
+		$conf->{data}{network}{old}{dev}{$dev}{netmask}    = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{netmask};
+		$conf->{data}{network}{new}{dev}{$dev}{netmask}    = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{netmask};
+		if ($conf->{data}{network}{old}{dev}{$dev}{netmask} ne $conf->{data}{network}{new}{dev}{$dev}{netmask})
+		{
+			$changes .= "Interface $dev; Subnet Mask has changed!\n";
+			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{netmask}\t-> $conf->{data}{network}{new}{dev}{$dev}{netmask}\n";
+		}
+	}
+	
+	# Record storage state changes.
+	if ($conf->{'system'}{storage} eq "lsi")
+	{
+		foreach my $adapter (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}})
+		{
+			foreach my $key (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}})
+			{
+				# Some keys are hash references
+				if ($key eq "vd")
+				{
+					foreach my $vd (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}})
+					{
+						foreach my $target_id (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}})
+						{
+							foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}})
+							{
+								my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+								$conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
+								$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
+								if ($conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var})
+								{
+									$changes .= "RAID virtual disk $adapter:$vd:$target_id \"$say_translation\" has changed!\n";
+									$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}\n";
+								}
+							} 
+						}
+					}
+				}
+				elsif ($key eq "bbu")
+				{
+					foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
+					{
+						my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
+						$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
+						if ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
+						{
+							$changes .= "RAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
+							$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
+						}
+					}
+				}
+				elsif ($key eq "slot")
+				{
+					foreach my $slot (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}})
+					{
+						foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}})
+						{
+							if ($var eq "port")
+							{
+								foreach my $i (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}})
+								{
+									foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}})
+									{
+										my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+										$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var};
+										$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var};
+										if ($conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var})
+										{
+											$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s port ${i}'s \"$say_translation\" has changed!\n";
+											$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var}\n";
+										}
+									}
+								}
+							}
+							else
+							{
+								my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+								$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var};
+								$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var};
+								if ($conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var})
+								{
+									$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s \"$say_translation\" has changed!\n";
+									$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var}\n";
+								}
+							}
+						}
+					}
+				}
+				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "ARRAY")
+				{
+					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
+					record($conf, "$THIS_FILE ".__LINE__."; Warning: While checking for changed on adapter: [$adapter], I found a variable that is an array reference called \"$say_translation\". This is a program error.\n");
+				}
+				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "HASH")
+				{
+					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
+					record($conf, "$THIS_FILE ".__LINE__."; Warning: While checking for changed on adapter: [$adapter], I found a variable that is a hash reference called \"$say_translation\". This is a program error.\n");
+				}
+				else
+				{
+					my $var = $key;  # Just to keep it sane with the above code.
+					my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+					$conf->{data}{lsi}{old}{adapter}{$adapter}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{$var};
+					$conf->{data}{lsi}{new}{adapter}{$adapter}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
+					if ($conf->{data}{lsi}{old}{adapter}{$adapter}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{$var})
+					{
+						$changes .= "RAID ${adapter}'s \"$say_translation\" has changed!\n";
+						$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{$var}\n";
+					}
+				}
+			}
+		}
+	}
 	
 	# Send an email and record the new values if there are changes.
 	if ($changes)
@@ -4715,6 +4839,75 @@ sub copy_new_to_old
 			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{link_failure_count} = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count};
 			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{speed}              = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed};
 			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{duplex}             = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex};
+		}
+	}
+	
+	if ($conf->{'system'}{storage} eq "lsi")
+	{
+		foreach my $adapter (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}})
+		{
+			foreach my $key (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}})
+			{
+				# Some keys are hash references
+				if ($key eq "vd")
+				{
+					foreach my $vd (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}})
+					{
+						foreach my $target_id (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}})
+						{
+							foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}})
+							{
+								$conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
+							} 
+						}
+					}
+				}
+				elsif ($key eq "bbu")
+				{
+					foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
+					{
+						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
+					}
+				}
+				elsif ($key eq "slot")
+				{
+					foreach my $slot (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}})
+					{
+						foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}})
+						{
+							if ($var eq "port")
+							{
+								foreach my $i (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}})
+								{
+									foreach my $var (sort {$a cmp $b} %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}})
+									{
+										$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var};
+									}
+								}
+							}
+							else
+							{
+								$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var};
+							}
+						}
+					}
+				}
+				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "ARRAY")
+				{
+					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
+					record($conf, "$THIS_FILE ".__LINE__."; Warning: While checking for changed on adapter: [$adapter], I found a variable that is an array reference called \"$say_translation\". This is a program error.\n");
+				}
+				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "HASH")
+				{
+					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
+					record($conf, "$THIS_FILE ".__LINE__."; Warning: While checking for changed on adapter: [$adapter], I found a variable that is a hash reference called \"$say_translation\". This is a program error.\n");
+				}
+				else
+				{
+					my $var = $key;  # Just to keep it sane with the above code.
+					$conf->{data}{lsi}{old}{adapter}{$adapter}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
+				}
+			}
 		}
 	}
 	
