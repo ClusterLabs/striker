@@ -41,12 +41,16 @@ sub header
 	
 	print "Content-type: text/html; charset=utf-8\n";
 	
-	# TODO: Make the "back" button appear on the top-left when 'task' is
-	#       set and the progress box is hidden.
+	# Header buttons.
+	my $say_back    = "&nbsp;";
 	my $say_refresh = "&nbsp;";
-	my $say_class   = "";
 	#if ($conf->{'system'}{show_refresh})
-	if (not $conf->{cgi}{task})
+	if ($conf->{cgi}{task})
+	{
+		#$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\" id=\"show_when_loaded\" style=\"display: none\"></a>";
+		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\"></a>";
+	}
+	else
 	{
 		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 	}
@@ -62,7 +66,13 @@ sub header
 <table class=\"hidden_table\" align=\"center\">
 	<tr>
 		<td width=\"100px\" class=\"td_hidden\">
-			&nbsp;
+			<table align=\"left\" class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\">
+						$say_back
+					</td>
+				</tr>
+			</table>
 		</td>
 		<td class=\"td_hidden\">
 			<table align=\"center\">
@@ -109,6 +119,7 @@ sub footer
 	</tr>
 </table>
 </body>
+<img src=\"/t.png\" onload=\"show_on_load();\" border=\"0\" />
 <img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />";
 	
 	return (0);
@@ -2044,7 +2055,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2083,7 +2094,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2121,7 +2132,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2181,7 +2192,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2230,7 +2241,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2280,7 +2291,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2318,7 +2329,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2356,7 +2367,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2418,7 +2429,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2478,7 +2489,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2542,7 +2553,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2583,7 +2594,7 @@ sub process_task
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div>
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
 			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
 		</td>
 	</tr>
@@ -2650,6 +2661,7 @@ sub start_vm
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -2659,7 +2671,8 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2686,7 +2699,8 @@ sub start_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2695,6 +2709,28 @@ sub start_vm
 	}
 	
 	return(0);
+}
+
+# This tries to parse lines coming back from a shell call to add highlighting and what-not.
+sub parse_text_line
+{
+	my ($conf, $line) = @_;
+	
+	# 'Da good ^_^
+	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
+	$line =~ s/\[ (ok) \]/[ <span class="highlight_good">$1<\/span> ]/ig;
+	
+	# Informational.
+	$line =~ s/(done)/<span class="highlight_ready">$1<\/span>/ig;
+	$line =~ s/(disabled)/<span class="highlight_ready">$1<\/span>/ig;
+	#$line =~ s/(shutdown)/<span class="highlight_ready">$1<\/span>/ig;
+	$line =~ s/(shut down)/<span class="highlight_ready">$1<\/span>/ig;
+	
+	# 'Da bad. ;_;
+	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
+	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	
+	return($line);
 }
 
 # This migrates a VM to the target node.
@@ -2742,6 +2778,7 @@ sub migrate_vm
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -2751,7 +2788,8 @@ sub migrate_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2778,7 +2816,8 @@ sub migrate_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2831,6 +2870,7 @@ sub stop_vm
 			$line =~ s/\s+/ /g;
 			$line =~ s/Local machine/$say_node/;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -2840,7 +2880,8 @@ sub stop_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2906,6 +2947,7 @@ sub join_cluster
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -2915,7 +2957,8 @@ sub join_cluster
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -2944,7 +2987,8 @@ sub join_cluster
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3091,7 +3135,8 @@ sub dual_join
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3123,7 +3168,8 @@ sub dual_join
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3175,6 +3221,7 @@ sub force_off_vm
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -3189,7 +3236,8 @@ sub force_off_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3286,6 +3334,7 @@ sub delete_vm
 				}
 				else
 				{
+					$line = parse_text_line($conf, $line);
 					print "$line<br />\n";
 				}
 			}
@@ -3308,7 +3357,8 @@ sub delete_vm
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3342,7 +3392,8 @@ sub delete_vm
 	print "
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3404,7 +3455,7 @@ sub poweroff_node
 		<td class=\"fixed_width\">
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"poweroff && echo \"Powering down...\"\"";
+		my $sc = "$conf->{path}{ssh} root\@$node \"poweroff && echo \"Power down initiated. Please return to the main page now.\"\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -3416,6 +3467,7 @@ sub poweroff_node
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -3425,7 +3477,8 @@ sub poweroff_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3452,7 +3505,8 @@ sub poweroff_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3534,6 +3588,7 @@ sub dual_boot
 				chomp;
 				my $line = $_;
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$line = parse_text_line($conf, $line);
 				print "$line<br />\n";
 			}
 			$fh->close();
@@ -3543,7 +3598,8 @@ sub dual_boot
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3575,7 +3631,8 @@ sub dual_boot
 		print "
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -3733,7 +3790,8 @@ sub poweron_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 ";
@@ -3756,17 +3814,13 @@ sub poweron_node
 			<br />
 		</td>
 	</tr>
-	<tr>
-		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
-		</td>
-	</tr>
 ";
 	}
 	print "
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -4042,7 +4096,8 @@ sub fence_node
 	print "
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -4104,6 +4159,7 @@ sub withdraw_node
 				$rgmanager_stop = 0;
 			}
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line = parse_text_line($conf, $line);
 			print "$line<br />\n";
 		}
 		$fh->close();
@@ -4142,6 +4198,7 @@ sub withdraw_node
 					$cman_stop = 0;
 				}
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$line = parse_text_line($conf, $line);
 				print "$line<br />\n";
 			}
 			$fh->close();
@@ -4191,6 +4248,7 @@ sub withdraw_node
 						$cman_start = 0;
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line = parse_text_line($conf, $line);
 					print "$line<br />\n";
 				}
 				$fh->close();
@@ -4243,7 +4301,8 @@ sub withdraw_node
 		print "
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -4270,7 +4329,8 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
-			<a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a>
+			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
 		</td>
 	</tr>
 </table>
@@ -4388,6 +4448,7 @@ sub recover_rgmanager
 						$storage_stop = 0;
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line = parse_text_line($conf, $line);
 					print "$line<br />\n";
 				}
 				$fh->close();
@@ -4430,6 +4491,7 @@ sub recover_rgmanager
 						$storage_start = 0;
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line = parse_text_line($conf, $line);
 					print "$line<br />\n";
 				}
 				$fh->close();
@@ -4675,6 +4737,7 @@ sub display_details
 		</td>
 	</tr>
 </table>
+<meta http-equiv=\"refresh\" content=\"10\">
 <br />
 ";
 		}
@@ -4803,7 +4866,7 @@ sub display_free_resources
 	# Count how much RAM and CPU cores have been allocated.
 	my $allocated_cores = 0;
 	my $allocated_ram   = 0;
-	foreach my $vm (sort {$a cmp $b} %{$conf->{vm}})
+	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
 		next if $vm !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
@@ -5024,7 +5087,7 @@ sub display_vm_details
 ";
 	
 	# Pull up the VM details.
-	foreach my $vm (sort {$a cmp $b} %{$conf->{vm}})
+	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
 		next if $vm !~ /^vm/;
 		
