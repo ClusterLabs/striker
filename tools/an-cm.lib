@@ -57,6 +57,7 @@ sub check_host
 {
 	my ($conf) = @_;
 	
+	delete $conf->{data}{ipmi}{new};
 	$conf->{data}{raw}{ipmitool}{sdr} = "";
 	my $adapter   = "";
 	my $vd        = "";
@@ -132,6 +133,7 @@ sub check_storage_lsi
 	my ($conf) = @_;
 	
 	# Get all the controller details.
+	delete $conf->{data}{lsi}{new};
 	get_storage_lsi_adapter_info($conf);
 	get_storage_lsi_physical_disk_info($conf);
 	get_storage_lsi_bbu_info($conf);
@@ -3634,6 +3636,7 @@ sub check_network
 	# NOTE: I may want to look into /sys/class/net/$dev/* later.
 	
 	# Read in all interfaces from 'ifconfig -a'.
+	delete $conf->{data}{network}{new};
 	my $this_dev = "";
 	my $fh       = IO::Handle->new();
 	my $sc       = "$conf->{path}{ifconfig} -a";
@@ -4010,7 +4013,8 @@ sub check_network
 sub check_clustat
 {
 	my ($conf)=@_;
-
+	
+	delete $conf->{data}{clustat}{new};
 	my $in = "";
 	my $fh = IO::Handle->new();
 	my $sc = "$conf->{path}{clustat}";
@@ -4115,7 +4119,7 @@ sub initial_report
 	send_email($conf);
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Initial copy of new to old\n");
-	copy_new_to_old($conf);
+	copy_hash($conf, "new", "old");
 	
 	return(0);
 }
@@ -4636,6 +4640,7 @@ sub compare_new_and_old
 	
 	# TODO: Watch for records that vanished and are not in the 'new' record
 	#       but is in the 'old' record.
+	#       Try doing this by copying all of 'old' to 'diff', deleting from 'diff' after each compare, and doing a final loop through to see what's left.
 	my $changes = "";
 	
 	# Check clustat for changes.
@@ -4655,6 +4660,8 @@ sub compare_new_and_old
 		$changes .= "Quorum state change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{quorum}\t-> $conf->{data}{clustat}{new}{quorum}\n";
 	}
+	delete $conf->{data}{cluster}{diff}{cluster};
+	delete $conf->{data}{cluster}{diff}{quorum};
 	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
 	{
 		$conf->{data}{clustat}{old}{node}{$node}{status} = "--" if not defined $conf->{data}{clustat}{old}{node}{$node}{status};
@@ -4664,6 +4671,7 @@ sub compare_new_and_old
 			$changes .= "Node $node; State change!\n";
 			$changes .= "  $conf->{data}{clustat}{old}{node}{$node}{status}\t-> $conf->{data}{clustat}{new}{node}{$node}{status}\n";
 		}
+		delete $conf->{data}{clustat}{diff}{node}{$node}{status};
 	}
 	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
 	{
@@ -4687,6 +4695,8 @@ sub compare_new_and_old
 			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
 			$changes .= "  $conf->{data}{clustat}{new}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
 		}
+		delete $conf->{data}{clustat}{diff}{service}{$service}{on};
+		delete $conf->{data}{clustat}{diff}{service}{$service}{'state'};
 	}
 	
 	# Check for changes in the network.
@@ -4708,6 +4718,7 @@ sub compare_new_and_old
 			$changes .= "Bridge Spanning Tree Protocol changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bridge}{$dev}{stp}\t-> $conf->{data}{network}{new}{bridge}{$dev}{stp}\n";
 		}
+		delete $conf->{data}{network}{diff}{bridge}{$dev}{stp};
 		
 		$conf->{data}{network}{old}{dev}{$dev}{hwaddr} = "--" if not exists $conf->{data}{network}{old}{dev}{$dev}{hwaddr};
 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr} = "--" if not exists $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
@@ -4716,6 +4727,7 @@ sub compare_new_and_old
 			$changes .= "Bridge $dev; MAC address has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{hwaddr}\t-> $conf->{data}{network}{new}{dev}{$dev}{hwaddr}\n";
 		}
+		delete $conf->{data}{network}{diff}{bridge}{$dev}{hwaddr};
 		
 		# I don't watch for changes of interfaces on the bridge because
 		# they change with the coming and goind of the bonds or VM's
@@ -5115,6 +5127,186 @@ sub compare_new_and_old
 			}
 		}
 	}
+
+	# Find anything that went missing since the last scan. Do this by
+	# copying the 'old' hash over to 'diff', then looping through 'new' and
+	# deleting the corresponding 'diff' entry. Once done, check if anything
+	# is left in diff.
+	copy_hash($conf, "old", "diff");
+	
+	# Clustat isn't a concern.
+	delete $conf->{data}{clustat}{diff};
+	
+	# Bridge
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bridge}})
+	{
+		delete $conf->{data}{network}{diff}{bridge}{$dev};
+	}
+	
+	# Bonds
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
+	{
+		delete $conf->{data}{network}{diff}{bond}{$dev};
+	}
+	
+	# Network cards.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
+	{
+		# Because I read the config files, this will only trigger if
+		# both the iface and the config file were removed.
+		delete $conf->{data}{network}{diff}{dev}{$dev};
+	}
+	
+	# Storage
+	if ($conf->{'system'}{storage} eq "lsi")
+	{
+		# When a drive is removed, it's corresponding 'slot' entry goes away.
+		foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}})
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}})
+			{
+				# Some keys are hash references
+				if ($key eq "vd")
+				{
+					foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}})
+					{
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{vd}{$vd};
+					}
+				}
+				elsif ($key eq "bbu")
+				{
+					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{bbu};
+				}
+				elsif ($key eq "slot")
+				{
+					foreach my $slot (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}})
+					{
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{slot}{$slot};
+					}
+				}
+				elsif ($key eq "backend_port")
+				{
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}})
+					{
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{backend_port}{$port};
+					}
+				}
+				elsif ($key eq "frontend_port")
+				{
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}})
+					{
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{frontend_port}{$port};
+					}
+				}
+				else
+				{
+					my $var = $key;  # Just to keep it sane with the above code.
+					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{$var};
+				}
+			}
+		}
+	}
+	
+	# Host sensors
+	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
+	{
+		delete $conf->{data}{ipmi}{diff}{$key};
+	}
+	
+#------------------------------------------------------------------------------
+	# Now look for undeleted entries.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{bridge}})
+	{
+		$changes .= "The bridge \"$dev\" appears to have been removed!\n";
+		delete $conf->{data}{network}{diff}{bridge}{$dev};
+	}
+	
+	# Bonds
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{bond}})
+	{
+		$changes .= "The bond \"$dev\" appears to have been removed!\n";
+		delete $conf->{data}{network}{diff}{bond}{$dev};
+	}
+	
+	# Network cards.
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{dev}})
+	{
+		# Because I read the config files, this will only trigger if
+		# both the iface and the config file were removed.
+		$changes .= "The network interface \"$dev\" appears to have been removed!\n";
+		delete $conf->{data}{network}{diff}{dev}{$dev};
+	}
+	
+	# Storage
+	if ($conf->{'system'}{storage} eq "lsi")
+	{
+		# When a drive is removed, it's corresponding 'slot' entry goes away.
+		foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}})
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}})
+			{
+				# Some keys are hash references
+				if ($key eq "vd")
+				{
+					foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{vd}})
+					{
+						$changes .= "The LSI adapter $adapter appears to no longer have the virtual disk \"$vd\"!\n";
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{vd}{$vd};
+					}
+				}
+				elsif ($key eq "bbu")
+				{
+					# Is this even possible?
+					$changes .= "The LSI adapter $adapter appears to have lost it's BBU (Battery BackUp)!\n";
+					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{bbu};
+				}
+				elsif ($key eq "slot")
+				{
+					foreach my $slot (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{slot}})
+					{
+						# TODO: I can probably add the drive type / serial number to this.
+						$changes .= "The LSI adapter $adapter appears to have lost the drive in slot $slot!\n";
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{slot}{$slot};
+					}
+				}
+				elsif ($key eq "backend_port")
+				{
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{backend_port}})
+					{
+						$changes .= "The LSI adapter $adapter appears to have lost it's internal port $port!\n";
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{backend_port}{$port};
+					}
+				}
+				elsif ($key eq "frontend_port")
+				{
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{frontend_port}})
+					{
+						$changes .= "The LSI adapter $adapter appears to have lost it's external port $port!\n";
+						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{frontend_port}{$port};
+					}
+				}
+				else
+				{
+					my $var             =  $key;  # Just to keep it sane with the above code.
+					my $say_translation =  $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
+					$changes            .= "The LSI adapter $adapter appears to have lost the \"$say_translation\" value!\n";
+					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{$var};
+				}
+			}
+		}
+	}
+	
+	# Host sensors
+	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
+	{
+		my $say_var = $conf->{translate}{ipmi}{$key};
+		$changes .= "The IPMI \"$say_var\" value has disappeared!\n";
+	}
+	delete $conf->{data}{ipmi}{diff};
+	
+#==============================================================================
+	
+	copy_hash($conf, "new", "old");
 	
 	# Send an email and record the new values if there are changes.
 	if ($changes)
@@ -5130,7 +5322,6 @@ $changes
 ";
 		send_email($conf);
 		record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
-		copy_new_to_old($conf);
 		die "testing...\n";
 	}
 	
@@ -5139,77 +5330,77 @@ $changes
 
 # This takes all the values in the 'new' hash and copies them to the 'old'
 # hash.
-sub copy_new_to_old
+sub copy_hash
 {
-	my ($conf) = @_;
+	my ($conf, $src, $dst) = @_;
 	
 	# TODO: Delete the entire set of 'old' hashes. Will simply clearing the hash reference free the memory or do I need to actually delete the hash reference?
 	# Clustat stuff.
-	$conf->{data}{clustat}{old} = {};
-	$conf->{data}{clustat}{old}{cluster} = $conf->{data}{clustat}{new}{cluster};
-	$conf->{data}{clustat}{old}{quorum}  = $conf->{data}{clustat}{new}{cluster};
-	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
+	$conf->{data}{clustat}{$dst} = {};
+	$conf->{data}{clustat}{$dst}{cluster} = $conf->{data}{clustat}{$src}{cluster};
+	$conf->{data}{clustat}{$dst}{quorum}  = $conf->{data}{clustat}{$src}{cluster};
+	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{$src}{node}})
 	{
-		$conf->{data}{clustat}{old}{node}{$node}{status} = $conf->{data}{clustat}{new}{node}{$node}{status};
+		$conf->{data}{clustat}{$dst}{node}{$node}{status} = $conf->{data}{clustat}{$src}{node}{$node}{status};
 	}
-	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{$src}{service}})
 	{
-		$conf->{data}{clustat}{old}{service}{$service}{'state'} = $conf->{data}{clustat}{new}{service}{$service}{'state'};
-		$conf->{data}{clustat}{old}{service}{$service}{on}      = $conf->{data}{clustat}{new}{service}{$service}{on};
+		$conf->{data}{clustat}{$dst}{service}{$service}{'state'} = $conf->{data}{clustat}{$src}{service}{$service}{'state'};
+		$conf->{data}{clustat}{$dst}{service}{$service}{on}      = $conf->{data}{clustat}{$src}{service}{$service}{on};
 	}
 	
 	# Bridge
-	$conf->{data}{network}{old} = {};
-	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bridge}})
+	$conf->{data}{network}{$dst} = {};
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{bridge}})
 	{
-		$conf->{data}{network}{old}{bridge}{$dev}{id}         = $conf->{data}{network}{new}{bridge}{$dev}{id};
-		$conf->{data}{network}{old}{bridge}{$dev}{stp}        = $conf->{data}{network}{new}{bridge}{$dev}{stp};
-		$conf->{data}{network}{old}{bridge}{$dev}{interfaces} = $conf->{data}{network}{new}{bridge}{$dev}{interfaces};
-		$conf->{data}{network}{old}{dev}{$dev}{hwaddr}        = $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
+		$conf->{data}{network}{$dst}{bridge}{$dev}{id}         = $conf->{data}{network}{$src}{bridge}{$dev}{id};
+		$conf->{data}{network}{$dst}{bridge}{$dev}{stp}        = $conf->{data}{network}{$src}{bridge}{$dev}{stp};
+		$conf->{data}{network}{$dst}{bridge}{$dev}{interfaces} = $conf->{data}{network}{$src}{bridge}{$dev}{interfaces};
+		$conf->{data}{network}{$dst}{dev}{$dev}{hwaddr}        = $conf->{data}{network}{$src}{dev}{$dev}{hwaddr};
 	}
 	
 	# Bonds
-	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{bond}})
 	{
-		$conf->{data}{network}{old}{dev}{$dev}{mtu}                    = $conf->{data}{network}{new}{dev}{$dev}{mtu};
-		$conf->{data}{network}{old}{bond}{$dev}{mode}                  = $conf->{data}{network}{new}{bond}{$dev}{mode};
-		$conf->{data}{network}{old}{bond}{$dev}{primary}{slave}        = $conf->{data}{network}{new}{bond}{$dev}{primary}{slave};
-		$conf->{data}{network}{old}{bond}{$dev}{primary}{reselect}     = $conf->{data}{network}{new}{bond}{$dev}{primary}{reselect};
-		$conf->{data}{network}{old}{bond}{$dev}{delay}{up}             = $conf->{data}{network}{new}{bond}{$dev}{delay}{up};
-		$conf->{data}{network}{old}{bond}{$dev}{mii}{polling_interval} = $conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval};
-		$conf->{data}{network}{old}{bond}{$dev}{mii}{status}           = $conf->{data}{network}{new}{bond}{$dev}{mii}{status};
-		$conf->{data}{network}{old}{bond}{$dev}{active_slave}          = $conf->{data}{network}{new}{bond}{$dev}{active_slave};
+		$conf->{data}{network}{$dst}{dev}{$dev}{mtu}                    = $conf->{data}{network}{$src}{dev}{$dev}{mtu};
+		$conf->{data}{network}{$dst}{bond}{$dev}{mode}                  = $conf->{data}{network}{$src}{bond}{$dev}{mode};
+		$conf->{data}{network}{$dst}{bond}{$dev}{primary}{slave}        = $conf->{data}{network}{$src}{bond}{$dev}{primary}{slave};
+		$conf->{data}{network}{$dst}{bond}{$dev}{primary}{reselect}     = $conf->{data}{network}{$src}{bond}{$dev}{primary}{reselect};
+		$conf->{data}{network}{$dst}{bond}{$dev}{delay}{up}             = $conf->{data}{network}{$src}{bond}{$dev}{delay}{up};
+		$conf->{data}{network}{$dst}{bond}{$dev}{mii}{polling_interval} = $conf->{data}{network}{$src}{bond}{$dev}{mii}{polling_interval};
+		$conf->{data}{network}{$dst}{bond}{$dev}{mii}{status}           = $conf->{data}{network}{$src}{bond}{$dev}{mii}{status};
+		$conf->{data}{network}{$dst}{bond}{$dev}{active_slave}          = $conf->{data}{network}{$src}{bond}{$dev}{active_slave};
 		# TODO: This probably misses links that are lost by ifdown (leaving the old record behind)
-		foreach my $slave (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}{$dev}{slave}})
+		foreach my $slave (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{bond}{$dev}{slave}})
 		{
-			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{real_mac}           = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{real_mac};
-			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{mii_status}         = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{mii_status};
-			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{link_failure_count} = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count};
-			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{speed}              = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed};
-			$conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{duplex}             = $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex};
+			$conf->{data}{network}{$dst}{bond}{$dev}{slave}{$slave}{real_mac}           = $conf->{data}{network}{$src}{bond}{$dev}{slave}{$slave}{real_mac};
+			$conf->{data}{network}{$dst}{bond}{$dev}{slave}{$slave}{mii_status}         = $conf->{data}{network}{$src}{bond}{$dev}{slave}{$slave}{mii_status};
+			$conf->{data}{network}{$dst}{bond}{$dev}{slave}{$slave}{link_failure_count} = $conf->{data}{network}{$src}{bond}{$dev}{slave}{$slave}{link_failure_count};
+			$conf->{data}{network}{$dst}{bond}{$dev}{slave}{$slave}{speed}              = $conf->{data}{network}{$src}{bond}{$dev}{slave}{$slave}{speed};
+			$conf->{data}{network}{$dst}{bond}{$dev}{slave}{$slave}{duplex}             = $conf->{data}{network}{$src}{bond}{$dev}{slave}{$slave}{duplex};
 		}
 	}
 	
 	# Network cards.
-	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{dev}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; COPYING - dev: [$dev]\n");
 		if ($dev =~ /eth/)
 		{
-			foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}{$dev}})
+			foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{dev}{$dev}})
 			{
 				if (($var eq "tx") or ($var eq "rx"))
 				{
-					foreach my $var2 (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}{$dev}{$var}})
+					foreach my $var2 (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{dev}{$dev}{$var}})
 					{
-						#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], var: [$var], var2: [$var2] -> [$conf->{data}{network}{new}{dev}{$dev}{$var}{$var2}]\n");
-						$conf->{data}{network}{old}{dev}{$dev}{$var}{$var2} = $conf->{data}{network}{new}{dev}{$dev}{$var}{$var2};
+						#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], var: [$var], var2: [$var2] -> [$conf->{data}{network}{$src}{dev}{$dev}{$var}{$var2}]\n");
+						$conf->{data}{network}{$dst}{dev}{$dev}{$var}{$var2} = $conf->{data}{network}{$src}{dev}{$dev}{$var}{$var2};
 					}
 				}
 				else
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], var: [$var] -> [$conf->{data}{network}{new}{dev}{$dev}{$var}]\n");
-					$conf->{data}{network}{old}{dev}{$dev}{$var} = $conf->{data}{network}{new}{dev}{$dev}{$var};
+					#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], var: [$var] -> [$conf->{data}{network}{$src}{dev}{$dev}{$var}]\n");
+					$conf->{data}{network}{$dst}{dev}{$dev}{$var} = $conf->{data}{network}{$src}{dev}{$dev}{$var};
 				}
 			}
 		}
@@ -5219,95 +5410,95 @@ sub copy_new_to_old
 	#record($conf, "$THIS_FILE ".__LINE__."; Copying storage values from new to old.\n");
 	if ($conf->{'system'}{storage} eq "lsi")
 	{
-		foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}})
+		foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}})
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter: [$adapter].\n");
-			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}})
+			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}})
 			{
 				# Some keys are hash references
 				#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key].\n");
 				if ($key eq "vd")
 				{
-					foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}})
+					foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{vd}})
 					{
 						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], vd: [$vd].\n");
-						foreach my $target_id (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}})
+						foreach my $target_id (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{vd}{$vd}{target}})
 						{
 							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], vd: [$vd], target id: [$target_id].\n");
-							foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}})
+							foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}})
 							{
-								$conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
-								#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], vd: [$vd], target id: [$target_id], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}].\n");
+								$conf->{data}{lsi}{$dst}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
+								#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], vd: [$vd], target id: [$target_id], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}].\n");
 							} 
 						}
 					}
 				}
 				elsif ($key eq "bbu")
 				{
-					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
+					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{bbu}})
 					{
-						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
-						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}].\n");
+						$conf->{data}{lsi}{$dst}{adapter}{$adapter}{bbu}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{bbu}{$var};
+						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{bbu}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{bbu}{$var}].\n");
 					}
 				}
 				elsif ($key eq "slot")
 				{
-					foreach my $slot (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}})
+					foreach my $slot (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}})
 					{
 						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot].\n");
-						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}})
+						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}})
 						{
 							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var].\n");
 							if ($var eq "port")
 							{
-								foreach my $i (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}})
+								foreach my $i (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{port}})
 								{
 									#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var], i: [$i].\n");
-									foreach my $var2 (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}})
+									foreach my $var2 (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{port}{$i}})
 									{
-										$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2} = $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2};
-										#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var], i: [$i], var2: [$var2], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2}].\n");
+										$conf->{data}{lsi}{$dst}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2};
+										#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var], i: [$i], var2: [$var2], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var2}].\n");
 									}
 								}
 							}
 							else
 							{
-								$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var};
-								#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var}].\n");
+								$conf->{data}{lsi}{$dst}{adapter}{$adapter}{slot}{$slot}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{$var};
+								#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], slot: [$slot], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{slot}{$slot}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{slot}{$slot}{$var}].\n");
 							}
 						}
 					}
 				}
 				elsif ($key eq "backend_port")
 				{
-					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}})
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{backend_port}})
 					{
 						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port].\n");
-						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}})
+						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{backend_port}{$port}})
 						{
-							$conf->{data}{lsi}{old}{adapter}{$adapter}{backend_port}{$port}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}{$var};
-							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{backend_port}{$port}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}{$var}].\n");
+							$conf->{data}{lsi}{$dst}{adapter}{$adapter}{backend_port}{$port}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{backend_port}{$port}{$var};
+							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{backend_port}{$port}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{backend_port}{$port}{$var}].\n");
 						}
 					}
 				}
 				elsif ($key eq "frontend_port")
 				{
-					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}})
+					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{frontend_port}})
 					{
 						#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port].\n");
-						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}})
+						foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{$src}{adapter}{$adapter}{frontend_port}{$port}})
 						{
-							$conf->{data}{lsi}{old}{adapter}{$adapter}{frontend_port}{$port}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}{$var};
-							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{backend_port}{$port}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}{$var}].\n");
+							$conf->{data}{lsi}{$dst}{adapter}{$adapter}{frontend_port}{$port}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{frontend_port}{$port}{$var};
+							#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], port: [$port], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{backend_port}{$port}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{backend_port}{$port}{$var}].\n");
 						}
 					}
 				}
-				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "ARRAY")
+				elsif (ref($conf->{data}{lsi}{$src}{adapter}{$adapter}{$key}) eq "ARRAY")
 				{
 					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
 					#record($conf, "$THIS_FILE ".__LINE__."; Warning: While archiving details of adapter: [$adapter], I found a variable that is an array reference called \"$say_translation\". This is a program error.\n");
 				}
-				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "HASH")
+				elsif (ref($conf->{data}{lsi}{$src}{adapter}{$adapter}{$key}) eq "HASH")
 				{
 					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
 					#record($conf, "$THIS_FILE ".__LINE__."; Warning: While archiving details of on adapter: [$adapter], I found a variable that is a hash reference called \"$say_translation\". This is a program error.\n");
@@ -5315,17 +5506,17 @@ sub copy_new_to_old
 				else
 				{
 					my $var = $key;  # Just to keep it sane with the above code.
-					$conf->{data}{lsi}{old}{adapter}{$adapter}{$var} = $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
-					#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], var: [$var], old: [$conf->{data}{lsi}{old}{adapter}{$adapter}{$var}], new: [$conf->{data}{lsi}{new}{adapter}{$adapter}{$var}].\n");
+					$conf->{data}{lsi}{$dst}{adapter}{$adapter}{$var} = $conf->{data}{lsi}{$src}{adapter}{$adapter}{$var};
+					#record($conf, "$THIS_FILE ".__LINE__."; Adapter: [$adapter], key: [$key], var: [$var], old: [$conf->{data}{lsi}{$dst}{adapter}{$adapter}{$var}], new: [$conf->{data}{lsi}{$src}{adapter}{$adapter}{$var}].\n");
 				}
 			}
 		}
 	}
 	
 	# Host sensors
-	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
+	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{$src}})
 	{
-		$conf->{data}{ipmi}{old}{$key} = $conf->{data}{ipmi}{new}{$key};
+		$conf->{data}{ipmi}{$dst}{$key} = $conf->{data}{ipmi}{$src}{$key};
 	}
 	
 	return(0);

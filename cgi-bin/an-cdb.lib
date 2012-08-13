@@ -2717,18 +2717,18 @@ sub parse_text_line
 	my ($conf, $line) = @_;
 	
 	# 'Da good ^_^
-	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
-	$line =~ s/\[ (ok) \]/[ <span class="highlight_good">$1<\/span> ]/ig;
+	$line =~ s/(success)/<span class="highlight_good"><b>$1<\/b><\/span>/ig;
+	$line =~ s/\[ (ok) \]/[ <span class="highlight_good"><b>$1<\/b><\/span> ]/ig;
 	
 	# Informational.
-	$line =~ s/(done)/<span class="highlight_ready">$1<\/span>/ig;
-	$line =~ s/(disabled)/<span class="highlight_ready">$1<\/span>/ig;
+	$line =~ s/(done)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
+	$line =~ s/(disabled)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
 	#$line =~ s/(shutdown)/<span class="highlight_ready">$1<\/span>/ig;
-	$line =~ s/(shut down)/<span class="highlight_ready">$1<\/span>/ig;
+	$line =~ s/(shut down)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
 	
 	# 'Da bad. ;_;
-	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
-	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	$line =~ s/(failed)/<span class="highlight_bad"><b>$1<\/b><\/span>/ig;
+	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad"><b>$1<\/b><\/span> ]/ig;
 	
 	return($line);
 }
@@ -4737,7 +4737,7 @@ sub display_details
 		</td>
 	</tr>
 </table>
-<meta http-equiv=\"refresh\" content=\"10\">
+<meta http-equiv=\"refresh\" content=\"30\">
 <br />
 ";
 		}
