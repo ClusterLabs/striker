@@ -6,6 +6,13 @@
 # alert emails when needed.
 # 
 
+=pod
+AP7900           =  2.27kg ea
+SMT1500RM2U      = 28.64kg ea
+DGS-3120-24TC/SI =  5.42kg ea
+Primenergy RX300 = 25.00kg ea
+=cut
+
 use strict;
 use warnings;
 require "./an-cm.lib";
@@ -14,22 +21,25 @@ our $THIS_FILE = "an-cm";
 $SIG{INT}  = \&catch_sig;
 $SIG{TERM} = \&catch_sig;
 
+# Disable buffering
+$| = 1;
+
 my $conf = {
 	cluster		=>	{
-# 		name			=>	"pp-cluster-01",
-# 		description		=>	"Plastic Plus \"Cluster 01\"",
-# 		nodes			=>	["pp-c01n01", "pp-c01n02"],
-# 		company			=>	"CC Systems",
+		name			=>	"pp-cluster-01",
+		description		=>	"Plastic Plus \"Cluster 01\"",
+		nodes			=>	["pp-c01n01", "pp-c01n02"],
+		company			=>	"Plastic Plus",
 
 # 		name			=>	"cc-cluster-02",
 # 		description		=>	"CC Systems \"Cluster 02\" in Oakville",
 # 		nodes			=>	["cc-c02n01", "cc-c02n02"],
 # 		company			=>	"CC Systems",
 		
-		name			=>	"an-cluster-01",
-		description		=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
-		nodes			=>	["an-c01n01", "an-c01n02"],
-		company			=>	"Alteeve's Niche!",
+# 		name			=>	"an-cluster-01",
+# 		description		=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
+# 		nodes			=>	["an-c01n01", "an-c01n02"],
+# 		company			=>	"Alteeve's Niche!",
 	},
 	node		=>	{
 		me			=>	{
@@ -72,9 +82,35 @@ my $conf = {
 	},
 	alerts			=>	{
 		storage			=>	{
-			delta			=>	10,	# A change of this amoint between scans will trigger an email. Factor the 'sleep_time' below.
-			upper_threshold		=>	40,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
+			delta			=>	5,	# A change of this amoint between scans will trigger an email. Factor the 'sleep_time' below.
+			upper_threshold		=>	45,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
 			power_down_threshold	=>	50,	# A temperature above this will trigger a complete shutdown of the server. Be sure to reference the OEM specs and leave enough of a buffer to give the machine time to shutdown before passing the maximum temp.
+			roc_delta		=>	10,	# RAID on Chip (RAID controller CPU) delta
+			roc_threshold		=>	75,	# ROC alert temp
+			roc_powerdown_temp	=>	85,	# ROC power down temp. # TODO: Confirm these temperatures with LSI
+		},
+		bbu			=>	{
+			delta_temp		=>	5,
+			upper_temp		=>	45,
+			powerdown_temp		=>	50,	# Max for the BBO08 is 55 *C
+			base_voltage_diff	=>	1000,	# This is how many mV below 'design_voltage' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this voltage.
+			base_joules_diff	=>	100,	# This is how many J below 'design_capacity' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this energery.
+			max_milliamperage_delta	=>	20,	# A variation of more than this amount triggers this alert.
+		},
+		host			=>	{
+			cpu_temp_delta		=>	10,	# CPU change
+			cpu_threshold_temp	=>	65,	# CPU warning threshold
+			cpu_powerdown_temp	=>	75,	# CPU poweroff threshold
+			mb_temp_delta		=>	10,	# Mainboard change
+			mb_threshold_temp	=>	45,	# Mainboard warning threshold
+			mb_powerdown_temp	=>	55,	# Mainboard poweroff threshold
+			ram_temp_delta		=>	10,	# RAM change
+			ram_threshold_temp	=>	45,	# RAM warning threshold
+			ram_powerdown_temp	=>	55,	# RAM poweroff threshold
+			ambient_temp_delta	=>	10,	# RAM change
+			ambient_threshold_temp	=>	45,	# RAM warning threshold
+			ambient_powerdown_temp	=>	55,	# RAM poweroff threshold
+			fan_minimum_rpm		=>	500,	# If any fan drops below this threshold, it will trigger an alert. The alert will be cleared when the speed registers as douple this value.
 		},
 	},
 	'system'		=>	{
@@ -87,6 +123,7 @@ my $conf = {
 		emergency_shutdown	=>	0,		# This is set true when a significant fault has been detected requiring an automated shutdown of the cluster.
 		disable_emergency_shutdown	=>	0,	# The client must *physically sign* that they wish to disable automated shutdown. Enabling this option removed the ability for the node to power off to avoid physical damage. ENABLING THIS OPTION WILL VOID THE HARDWARE WARRANTY IF UPPER THRESHOLDS ARE EXCEEDED!
 		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
+		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
 	},
 };
 

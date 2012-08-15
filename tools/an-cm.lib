@@ -1739,7 +1739,7 @@ sub get_storage_lsi_adapter_info
 		{
 			next if $line !~ /^\d/;
 			#record($conf, "$THIS_FILE ".__LINE__."; number_of_backend_ports: [$backend_port_count], line: [$line]\n");
-			if ($line =~ /^(\d+)\s*(.*)/)
+			if ($line =~ /^(\d+)\s+(.*)/)
 			{
 				my $port    = $1;
 				my $address = $2;
@@ -3578,7 +3578,7 @@ Adapter: #$adapter
 					$say_drive    = "Seagate $model_number, sn: $serial_drive";
 				}
 				my $say_temp = $temperature;
-				if ($temperature =~ /^(\d+)C\s\((.*?)\s*F\)/i)
+				if ($temperature =~ /^(\d+\.*\d*)C\s\((.*?)\s*F\)/i)
 				{
 					$say_temp =  $1;
 					$say_temp .= " degrees Celcius";
@@ -4031,7 +4031,7 @@ sub check_clustat
 		$conf->{data}{raw}{clustat} .= $line."\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
-		record($conf, "$THIS_FILE ".__LINE__."; clustat line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; clustat line: [$line]\n");
 		next if not $line;
 		
 		if ($line =~ /Member Name/)
@@ -4664,17 +4664,24 @@ sub compare_new_and_old
 	delete $conf->{data}{cluster}{diff}{quorum};
 	foreach my $node (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{node}})
 	{
+		my $say_title = 1;
 		$conf->{data}{clustat}{old}{node}{$node}{status} = "--" if not defined $conf->{data}{clustat}{old}{node}{$node}{status};
 		$conf->{data}{clustat}{new}{node}{$node}{status} = "--" if not defined $conf->{data}{clustat}{new}{node}{$node}{status};
 		if ($conf->{data}{clustat}{old}{node}{$node}{status} ne $conf->{data}{clustat}{new}{node}{$node}{status})
 		{
-			$changes .= "Node $node; State change!\n";
+			if ($say_title)
+			{
+				$changes   .= "Node $node; State change!\n";
+				$say_title =  1;
+			}
 			$changes .= "  $conf->{data}{clustat}{old}{node}{$node}{status}\t-> $conf->{data}{clustat}{new}{node}{$node}{status}\n";
 		}
 		delete $conf->{data}{clustat}{diff}{node}{$node}{status};
 	}
 	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
 	{
+		my $say_service_title = 1;
+		my $say_vm_title      = 1;
 		$conf->{data}{clustat}{old}{service}{$service}{'state'} = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{'state'};
 		$conf->{data}{clustat}{new}{service}{$service}{'state'} = "--" if not defined $conf->{data}{clustat}{new}{service}{$service}{'state'};
 		$conf->{data}{clustat}{old}{service}{$service}{on}      = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{on};
@@ -4685,11 +4692,19 @@ sub compare_new_and_old
 			my $say_service = "";
 			if ($service =~ /service:(.*)/i)
 			{
-				$say_service = "Service $1; State change!";
+				if ($say_service_title)
+				{
+					$say_service       = "Service $1; State change!";
+					$say_service_title = 0;
+				}
 			}
 			elsif ($service =~ /vm:(.*)/i)
 			{
-				$say_service = "VM $1; State change!";
+				if ($say_vm_title)
+				{
+					$say_service  = "VM $1; State change!";
+					$say_vm_title = 0;
+				}
 			}
 			$changes .= "$say_service\n";
 			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
@@ -4949,10 +4964,151 @@ sub compare_new_and_old
 				{
 					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
 					{
+						next if $var eq "next_learn_time"; # This would squack too much.
+						
 						my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
 						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
 						$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
-						if ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
+						
+						# I need to watch for ranges in temperature, voltage and Joules.
+						my $new_value = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
+						my $old_value = $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
+						#record($conf, "$THIS_FILE ".__LINE__."; RAID adapter $adapter, BBU $say_translation ($var); old: [$old_value], new: [$new_value]\n");
+						if ($new_value =~ /^(\d+\.*\d*) C$/)
+						{
+							# I've got a temperature.
+							# Do I have an old temperature?
+							my $new_temp =  $1;
+							my $old_temp = ($old_value =~ /(\d+\.*\d*) C$/)[0];
+							#record($conf, "$THIS_FILE ".__LINE__." Comparing new: [$new_temp] to old: [$old_temp] ($new_value/$old_value)\n");
+							next if $new_temp eq $old_temp;
+							if ($old_temp)
+							{
+								# Old value.
+								my $alert =  $conf->{alerts}{bbu}{delta_temp};
+								my $scan  =  $conf->{'system'}{sleep_time};
+								my $diff  =  $new_temp - $old_temp;
+								my $delta =  $diff;
+								$delta    =~ s/^-//;
+								if ($delta >= $alert)
+								{
+									#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+									$conf->{'system'}{warning_event} = 1;
+									$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+									$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+								}
+								else
+								{
+									# Log the difference, but don't send an email.
+									record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $old_temp *C -> $new_temp *C\n");
+								}
+							}
+							else
+							{
+								# No prior temparature.
+								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" seen for the first time.\n";
+								$changes .= "  --\t-> $new_temp *C\n";
+							}
+							
+							# Check the current temperature and see if it's above threasholds.
+							my $upper_threshold      = $conf->{alerts}{bbu}{upper_temp};
+							my $power_down_threshold = $conf->{alerts}{bbu}{powerdown_temp};
+							if ($new_temp >= $power_down_threshold)
+							{
+								$conf->{'system'}{migration_target}   = 0;
+								$conf->{'system'}{emergency_shutdown} = 1;
+								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
+								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+							}
+							elsif ($new_temp >= $upper_threshold)
+							{
+								#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+								$conf->{'system'}{migration_target} = 0;
+								$conf->{'system'}{warning_event}    = 1;
+								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
+								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+							}
+						}
+						elsif ($var eq "base_voltage")
+						{
+							# Calculate the lower voltage by subtracting from the design voltage.
+							my $current_voltage = ($new_value =~ /^(\d+\.*\d*) mV/i)[0];
+							                     # I use the old table in case I've not seen the new design_voltage yet.
+							my $lower_voltage =  ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage} =~ /^(\d+\.*\d*) mV/)[0];
+							   $lower_voltage -= $conf->{alerts}{bbu}{base_voltage_diff};
+							#record($conf, "$THIS_FILE ".__LINE__."; Checking if the voltage in the BBU on adapter $adapter is below the lower threshhold: [$current_voltage / $lower_voltage] (design voltage: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage} - $conf->{alerts}{bbu}{base_voltage_diff}]\n");
+							if ($current_voltage <= $lower_voltage)
+							{
+								next if $conf->{'system'}{bbu_needs_attention};
+								$changes .= "RAID ${adapter}'s Battery Backup Unit has fallen below the lower voltage threshhold!\n";
+								$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], lower threshhold: [$lower_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
+								$changes .= "  Recharging or replacing he battery is required.\n";
+								$conf->{'system'}{bbu_needs_attention} = 1;
+								$conf->{'system'}{warning_event}       = 1;
+							}
+							elsif ($conf->{'system'}{bbu_needs_attention})
+							{
+								# To avoid rapid flips, I only send this when the voltage goes over half the delta.
+								my $ok_voltage =  ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage} =~ /^(\d+\.*\d*) mV/)[0];
+								   $ok_voltage -= int($conf->{alerts}{bbu}{base_voltage_diff} / 2);
+								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_voltage] > [$ok_voltage]\n");
+								if ($current_voltage > $ok_voltage)
+								{
+									$changes .= "RAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], OK voltage is: [$ok_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
+									$changes .= "  Recharging or replacing the backup unit is required.\n";
+									$conf->{'system'}{bbu_needs_attention} = 0;
+								}
+							}
+						}
+						elsif ($new_value =~ /^(\d+\.*\d*) mA/i)
+						{
+							my $current_amperage =  $1;
+							my $previous_amerage =  ($old_value =~ /^(\d+\.*\d*) mA/i)[0];
+							   $previous_amerage =  0 if not $previous_amerage;
+							my $max_delta        =  $conf->{alerts}{bbu}{max_milliamperage_delta};
+							my $difference       =  $current_amperage - $previous_amerage;
+							   $difference       =~ s/^-//;
+							if ($difference >= $max_delta)
+							{
+								$changes .= "RAID ${adapter}'s Battery Backup Unit power draw has changed by an amount exceeding alert tolerances.\n";
+								$changes .= "This may be do to a relearn cycle, which is normal.\n";
+								$changes .= "  Current draw: [$new_value], old draw: [$old_value], Alert trigger threshhold: [$max_delta mA / $conf->{'system'}{sleep_time} seconds]\n"; 
+							}
+						}
+						elsif ($var eq "pack_energy")
+						{
+							my $current_energy  =  ($new_value =~ /^(\d+\.*\d*) J/i)[0];
+							my $previous_energy =  ($old_value =~ /^(\d+\.*\d*) J/i)[0];
+							   $previous_energy =  0 if not $previous_energy;
+							my $lower_energy    =  ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_capacity} =~ /^(\d+\.*\d*) J/)[0];
+							   $lower_energy    -= $conf->{alerts}{bbu}{base_joules_diff};
+							#record($conf, "$THIS_FILE ".__LINE__."; Checking if the energy in the BBU on adapter $adapter is below the lower threshhold: [$current_energy / $lower_energy] (design energy: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_capacity} - $conf->{alerts}{bbu}{base_joules_diff} J]\n");
+							if ($current_energy <= $lower_energy)
+							{
+								next if $conf->{'system'}{bbu_needs_attention};
+								$changes .= "RAID ${adapter}'s Capacitor Backup Unit has fallen below the lower energy threshhold!\n";
+								$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], lower threshhold: [$lower_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
+								$changes .= "  Recharging or replacing the backup unit is required.\n";
+								$conf->{'system'}{bbu_needs_attention} = 1;
+								$conf->{'system'}{warning_event}       = 1;
+							}
+							elsif ($conf->{'system'}{bbu_needs_attention})
+							{
+								# To avoid rapid flips, I only send this when the energy goes over half the delta.
+								my $ok_energy =  ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_capacity} =~ /^(\d+\.*\d*) J/)[0];
+								   $ok_energy -= int($conf->{alerts}{bbu}{base_joules_diff} / 2);
+								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_energy] > [$ok_energy]\n");
+								if ($current_energy > $ok_energy)
+								{
+									$changes .= "RAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], OK energy is: [$ok_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
+									$changes .= "  Recharging or replacing he battery is required.\n";
+									$conf->{'system'}{bbu_needs_attention} = 0;
+								}
+							}
+						}
+						elsif ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
 						{
 							$changes .= "RAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
 							$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
@@ -4996,12 +5152,12 @@ sub compare_new_and_old
 								my $new_value = $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var};
 								my $old_value = $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var};
 								#record($conf, "$THIS_FILE ".__LINE__." Checking if temperature: new: [$new_value] (old: [$old_value]).\n");
-								if ($new_value =~ /(\d+\.*\d+)C \(.*? F\)/i)
+								if ($new_value =~ /(\d+\.*\d*)C \(.*? F\)/i)
 								{
 									# I've got a temperature.
 									# Do I have an old temperature?
 									my $new_temp =  $1;
-									my $old_temp = ($old_value =~ /(\d+\.*\d+)C.*/)[0];
+									my $old_temp = ($old_value =~ /(\d+\.*\d*)C.*/)[0];
 									#record($conf, "$THIS_FILE ".__LINE__." Comparing new: [$new_temp] to old: [$old_temp] ($new_value/$old_value)\n");
 									next if $new_temp eq $old_temp;
 									if ($old_value)
@@ -5022,7 +5178,7 @@ sub compare_new_and_old
 										else
 										{
 											# Log the difference, but don't send an email.
-											#record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has changed; $old_temp *C -> $new_temp *C\n");
+											record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has changed; $old_temp *C -> $new_temp *C\n");
 										}
 									}
 									else
@@ -5102,6 +5258,71 @@ sub compare_new_and_old
 						}
 					}
 				}
+				elsif ($key eq "roc_temperature")
+				{
+					# This is the RAID controller's internal temperature.
+					my $var = $key;	# Keep things simple
+					my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
+					$conf->{data}{lsi}{old}{adapter}{$adapter}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{$var};
+					$conf->{data}{lsi}{new}{adapter}{$adapter}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
+					
+					# If this is a temperature, don't fire unless the delta is greater than allowed.
+					my $new_value = $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
+					my $old_value = $conf->{data}{lsi}{old}{adapter}{$adapter}{$var};
+					#record($conf, "$THIS_FILE ".__LINE__." Checking if ROC temperature has changed: new: [$new_value] (old: [$old_value]).\n");
+					
+					# Do I have an old temperature?
+					my $new_temp = ($new_value =~ /^(\d+\.*\d*)/)[0];
+					my $old_temp = ($old_value =~ /^(\d+\.*\d*)/)[0];
+					#record($conf, "$THIS_FILE ".__LINE__." Comparing new: [$new_temp] to old: [$old_temp] ($new_value/$old_value)\n");
+					next if $new_temp eq $old_temp;
+					if ($old_value)
+					{
+						# Old value.
+						my $alert =  $conf->{alerts}{storage}{roc_delta};
+						my $scan  =  $conf->{'system'}{sleep_time};
+						my $diff  =  $new_temp - $old_temp;
+						my $delta =  $diff;
+						$delta    =~ s/^-//;
+						if ($delta >= $alert)
+						{
+							#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+							$conf->{'system'}{warning_event} = 1;
+							$changes .= "RAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+							$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+						}
+						else
+						{
+							# Log the difference, but don't send an email.
+							record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s ROC temperature has changed; $old_temp *C -> $new_temp *C\n");
+						}
+					}
+					else
+					{
+						# No prior temparature.
+						$changes .= "RAID ${adapter}'s ROC temperature seen for the first time.\n";
+						$changes .= "  --\t-> $new_temp *C\n";
+					}
+					
+					# Check the current temperature and see if it's above threasholds.
+					my $upper_threshold      = $conf->{alerts}{storage}{roc_threshold};
+					my $power_down_threshold = $conf->{alerts}{storage}{roc_powerdown_temp};
+					if ($new_temp >= $power_down_threshold)
+					{
+						$conf->{'system'}{migration_target}   = 0;
+						$conf->{'system'}{emergency_shutdown} = 1;
+						$changes .= "RAID ${adapter}'s ROC temperature is at or above the critical level of $power_down_threshold *C!\n";
+						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+					}
+					elsif ($new_temp >= $upper_threshold)
+					{
+						#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+						$conf->{'system'}{migration_target} = 0;
+						$conf->{'system'}{warning_event}    = 1;
+						$changes .= "RAID ${adapter}'s ROC temperature is at or above the warning level of $upper_threshold *C!\n";
+						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+					}
+				}
 				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "ARRAY")
 				{
 					my $say_translation = $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
@@ -5125,6 +5346,234 @@ sub compare_new_and_old
 					}
 				}
 			}
+		}
+	}
+	
+	# Check for changes in the host sensors.
+	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
+	{
+		my $var = $key; # Consistency
+		my $say_translation = $conf->{translate}{ipmi}{$var};
+		$conf->{data}{ipmi}{old}{$var} = "--" if not defined $conf->{data}{ipmi}{old}{$var};
+		$conf->{data}{ipmi}{new}{$var} = "--" if not defined $conf->{data}{ipmi}{new}{$var};
+		next if (($conf->{data}{ipmi}{new}{$var} ne "--") && ($conf->{data}{ipmi}{old}{$var} eq $conf->{data}{ipmi}{new}{$var}));
+		#record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" ($var), old: [$conf->{data}{ipmi}{old}{$var}], new: [$conf->{data}{ipmi}{new}{$var}]\n");
+		my ($old_state, $old_value) = (split /,/, $conf->{data}{ipmi}{old}{$var}, 2);
+		my ($new_state, $new_value) = (split /,/, $conf->{data}{ipmi}{new}{$var}, 2);
+		
+		# I need to apply buffers to voltages and RPMs and ignore 
+		# wattage changes.
+		if ($new_value =~ /^(\d+\.*\d*) Watts/i)
+		{
+			my $new_wattage = $1;
+			my $old_wattage = ($old_value =~ /^(\d+\.*\d*)/)[0];
+			#record($conf, "$THIS_FILE ".__LINE__."; Checking \"$say_translation\"; old wattage: [$old_state, $old_wattage], new wattage: [$new_state, $new_wattage]\n");
+			# If the state has changed, send an alert.
+			if ($new_state ne "ok")
+			{
+				$changes .= "Host's \"$say_translation\" state has changed!\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				$conf->{'system'}{warning_event}    = 1;
+				$conf->{'system'}{migration_target} = 0;
+			}
+			elsif ($old_wattage ne $new_wattage)
+			{
+				# This is mainly for debugging or tracking changes over time.
+				record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" has change; $old_state, $old_value -> $new_state, $new_value.\n");
+			}
+		}
+		elsif ($new_value =~ /^(\d+\.*\d*) RPM/i)
+		{
+			# Here I only care about lower thresholds.
+			my $new_rpm = $1;
+			my $old_rpm = ($old_value =~ /^(\d+\.*\d*) RPM/i)[0];
+			my $minimum_rpm = $conf->{alerts}{host}{fan_minimum_rpm};
+			my $reset_rpm   = $minimum_rpm * 2;
+			#record($conf, "$THIS_FILE ".__LINE__."; FAN speed for $var; old: [$old_state, $old_value ($old_rpm)], new: [$new_state, $new_value ($new_rpm)], minimum RPM: [$minimum_rpm], reset RPM: [$reset_rpm]\n");
+			
+			if (exists $conf->{'system'}{fan_alert}{$var})
+			{
+				if (($new_state eq "ok") && ($new_rpm >= $reset_rpm))
+				{
+					delete $conf->{'system'}{fan_alert}{$var};
+					$changes .= "Host's \"$say_translation\" fan speed has returned to normal. Alert cleared.\n";
+					$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+					$conf->{'system'}{clear_event}      = 1;
+					$conf->{'system'}{migration_target} = 1;
+				}
+				else
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" fan is listed as failed, is not yet healthy but has changed; old: [$old_state, $old_value], new: [$new_state, $new_value].\n");
+				}
+			}
+			elsif ($new_state ne "ok")
+			{
+				$conf->{'system'}{fan_alert}{$var}  = 1;
+				$conf->{'system'}{warning_event}    = 1;
+				$conf->{'system'}{migration_target} = 0;
+				$changes .= "Host's \"$say_translation\" fan state has changed!\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
+			elsif ($new_rpm < $minimum_rpm)
+			{
+				$conf->{'system'}{fan_alert}{$var}  = 1;
+				$conf->{'system'}{warning_event}    = 1;
+				$conf->{'system'}{migration_target} = 0;
+				$changes .= "Host's \"$say_translation\" fan speed has dropped below the minimum of $minimum_rpm RPM!\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
+			else
+			{
+				# This is mainly for debugging or tracking changes over time.
+				record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" fan speed has change; $old_state, $old_value -> $new_state, $new_value.\n");
+			}
+		}
+		elsif ($new_value =~ /^(\d+\.*\d*) degrees C/)
+		{
+			my $new_temp = $1;
+			my $old_temp = ($old_value =~ /^(\d+\.*\d*) degrees C/)[0];
+			#record($conf, "$THIS_FILE ".__LINE__." Comparing: [$var]'s new: [$new_temp ($new_value)] to old: [$old_temp ($old_value)]\n");
+			next if $new_temp eq $old_temp;
+			
+			my $alert                = 10;
+			my $upper_threshold      = 45;
+			my $power_down_threshold = 55;
+			if ($var =~ /ambient/)
+			{
+				$alert                = $conf->{alerts}{host}{ambient_temp_delta};
+				$upper_threshold      = $conf->{alerts}{host}{ambient_threshold_temp};
+				$power_down_threshold = $conf->{alerts}{host}{ambient_powerdown_temp};
+			}
+			elsif ($var =~ /^cpu/)
+			{
+				$alert                = $conf->{alerts}{host}{cpu_temp_delta};
+				$upper_threshold      = $conf->{alerts}{host}{cpu_threshold_temp};
+				$power_down_threshold = $conf->{alerts}{host}{cpu_powerdown_temp};
+			}
+			elsif ($var =~ /^mem_/)
+			{
+				$alert                = $conf->{alerts}{host}{ram_temp_delta};
+				$upper_threshold      = $conf->{alerts}{host}{ram_threshold_temp};
+				$power_down_threshold = $conf->{alerts}{host}{ram_powerdown_temp};
+			}
+			elsif ($var =~ /^systemboard_/)
+			{
+				$alert                = $conf->{alerts}{host}{mb_temp_delta};
+				$upper_threshold      = $conf->{alerts}{host}{mb_threshold_temp};
+				$power_down_threshold = $conf->{alerts}{host}{mb_powerdown_temp};
+			}
+			#record($conf, "$THIS_FILE ".__LINE__." Alert: [$alert], upper threshold: [$upper_threshold], power down threshold: [$power_down_threshold]\n");
+			
+			if ($old_value)
+			{
+				# Old value.
+				my $scan  =  $conf->{'system'}{sleep_time};
+				my $diff  =  $new_temp - $old_temp;
+				my $delta =  $diff;
+				$delta    =~ s/^-//;
+				if ($delta >= $alert)
+				{
+					#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+					$conf->{'system'}{warning_event} = 1;
+					$changes .= "Host's \"$say_translation\" temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+					$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+				}
+				else
+				{
+					# Log the difference, but don't send an email.
+					record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" temperature has changed; $old_state, $old_temp *C -> $new_state, $new_temp *C\n");
+				}
+			}
+			else
+			{
+				# No prior temparature.
+				$changes .= "Host's \"$say_translation\" temperature seen for the first time.\n";
+				$changes .= "  --\t-> $new_state, $new_temp *C\n";
+			}
+			
+			# Check the current temperature and see if it's above threasholds.
+			if ($new_temp >= $power_down_threshold)
+			{
+				$conf->{'system'}{migration_target}   = 0;
+				$conf->{'system'}{emergency_shutdown} = 1;
+				$changes .= "Host's \"$say_translation\" temperature is at or above the critical level of $power_down_threshold *C!\n";
+				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			}
+			elsif ($new_temp >= $upper_threshold)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+				$conf->{'system'}{migration_target} = 0;
+				$conf->{'system'}{warning_event}    = 1;
+				$changes .= "Host's \"$say_translation\" temperature is at or above the warning level of $upper_threshold *C!\n";
+				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			}
+			else
+			{
+				# This is mainly for debugging or tracking changes over time.
+				record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" temperature has change below the threshold for an alert; old: $old_state, $old_value -> $new_state, $new_value.\n");
+			}
+		}
+		elsif ($new_value =~ /^(\d+\.*\d*) Volts/i)
+		{
+			# I look at the base voltage and send alerts at >5% deviation. If a pending alert exists, clear it when the voltage falls below 3%.
+			my $tolerance  = 0.05;
+			my $recover    = 0.03;
+			my $new_volts  = $1;
+			my $old_volts  = ($old_value =~ /^(\d+\.*\d*) Volts/i)[0];
+			my $base_volts = ($var =~ /.*_(\d+\.*\d*)v/)[0];
+			#record($conf, "$THIS_FILE ".__LINE__."; Checking the current voltages for \"$say_translation\"; base: [$base_volts ($var)], old: [$old_state, $old_value ($new_volts)], new: [$new_state, $new_value ($new_volts)]\n");
+			
+			my $new_mv  =  $new_volts * 1000;
+			my $old_mv  =  $old_volts * 1000;
+			my $diff    =  $new_mv - $old_mv;
+			   $diff    =~ s/^-//;
+			my $base_mv =  $base_volts * 1000;
+			my $range   =  $base_mv * $tolerance;
+			my $restore =  $base_mv * $recover;
+			#record($conf, "$THIS_FILE ".__LINE__."; As mV; base [$base_mv], old: [$old_mv], new: [$new_mv], diff: [$diff], allowed range: [$range], restore threshold: [$restore]\n");
+			
+			if (exists $conf->{'system'}{voltage_alert}{$var})
+			{
+				if (($new_state eq "ok") && ($diff <= $restore))
+				{
+					# All is right in the world.
+					delete $conf->{'system'}{voltage_alert}{$var};
+					$changes .= "Host's \"$say_translation\" voltage has returned to normal. Deviation now within $recover mV of base $base_mv mV. Alert cleared.\n";
+					$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+					$conf->{'system'}{clear_event}      = 1;
+					$conf->{'system'}{migration_target} = 0;
+				}
+				else
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" voltage is listed as failed, is not yet healthy but has changed; old: [$old_state, $old_value], new: [$new_state, $new_value].\n");
+				}
+			}
+			elsif ($new_state ne "ok")
+			{
+				$conf->{'system'}{voltage_alert}{$var} = 1;
+				$conf->{'system'}{warning_event}       = 1;
+				$conf->{'system'}{migration_target}    = 0;
+				$changes .= "Host's \"$say_translation\" voltage state has changed!\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
+			elsif ($new_mv <= $restore)
+			{
+				$conf->{'system'}{voltage_alert}{$var} = 1;
+				$conf->{'system'}{warning_event}       = 1;
+				$conf->{'system'}{migration_target}    = 0;
+				$changes .= "Host's \"$say_translation\" level has fallen outside of tolerances! $diff mV off of base voltage of $base_mv mV, max deviation was $range mV\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
+			else
+			{
+				# This is mainly for debugging or tracking changes over time.
+				record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" voltage has change; $old_state, $old_value -> $new_state, $new_value.\n");
+			}
+		}
+		elsif ($conf->{data}{ipmi}{old}{$var} ne $conf->{data}{ipmi}{new}{$var})
+		{
+			$changes .= "Host sensor \"$say_translation\" has change!\n";
+			$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 		}
 	}
 
@@ -5322,7 +5771,7 @@ $changes
 ";
 		send_email($conf);
 		record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
-		die "testing...\n";
+		#die "testing...\n";
 	}
 	
 	return(0);
@@ -5565,6 +6014,11 @@ sub send_email
 		$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - Warning! - $conf->{mail_data}{subject}";
 		$conf->{'system'}{warning_event} = 0;
 	}
+	elsif ($conf->{'system'}{clear_event})
+	{
+		$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - Alert Cleared! - $conf->{mail_data}{subject}";
+		$conf->{'system'}{clear_event} = 0;
+	}
 	else
 	{
 		$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - $conf->{mail_data}{subject}";
@@ -5643,9 +6097,8 @@ sub record
 		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".time."\n";
 		$conf->{handles}{'log'} = $fh;
 	}
-	print $fh $message;
-# 	$message =~ s/^.*; //;
-	print $message;
+	print $fh time." ".$message;
+	print time." ".$message;
 	
 	return (0);
 }
