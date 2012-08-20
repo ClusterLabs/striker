@@ -48,6 +48,232 @@ sub read_states
 	check_network($conf);
 	check_storage($conf);
 	check_host($conf);
+	check_ups($conf);
+	
+	return(0);
+}
+
+# This checks to see if apcupsd is installed and, if so, reads it's config
+# file(s), then calls apcaccess using the data found within.
+sub check_ups
+{
+	my ($conf) = @_;
+	
+	delete $conf->{data}{ipmi}{new};
+	$conf->{data}{ipmi}{new}{config_files} = [];
+	$conf->{data}{raw}{apcupsd}{status}    = "";
+	
+	### TODO: This only supports multi-UPS setups.
+	if (-x "/etc/init.d/apcupsd")
+	{
+		my $fh = IO::Handle->new();
+		my $sc = "/etc/init.d/apcupsd status";
+		open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+		while (<$fh>)
+		{
+			chomp;
+			my $line=$_;
+			$conf->{data}{raw}{apcupsd}{status} .= "$line\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /(apcupsd.*conf) \(pid  \d+\) is running/)
+			{
+				push @{$conf->{data}{ipmi}{new}{config_files}}, $1;
+			}
+		}
+		$fh->close();
+	}
+	else
+	{
+		$conf->{'system'}{ups_available} = 0;
+		return(0);
+	}
+	
+	# Now parse the config files for the running daemons.
+	foreach my $config (sort {$a cmp $b} @{$conf->{data}{ipmi}{new}{config_files}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; config: [$config]\n");
+		next if not $config;
+		my $config_name = ($config =~ /apcupsd-(.*)$/)[0];
+		my $config_file = "/etc/apcupsd/$config_name";
+		my $ups_name    = "";
+		my $device_line = "";
+		my $nisip       = "0.0.0.0";
+		my $nisport     = 3551;
+		#record($conf, "$THIS_FILE ".__LINE__."; Reading config file: [$config_file]\n");
+		my $fh = IO::Handle->new();
+		my $sc = "$config_file";
+		open ($fh, "<$sc") || die "Failed to read: [$sc], error: $!\n";
+		while (<$fh>)
+		{
+			chomp;
+			my $line=$_;
+			$conf->{data}{raw}{apcupsd}{conf}{$config_name} .= "$line\n";
+			$line =~ s/^#.*//;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			next if not $line;
+			#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$config_name], line: [$line]\n");
+			if ($line =~ /UPSNAME (.*)$/)
+			{
+				$ups_name = $1;
+			}
+			if ($line =~ /DEVICE (.*)$/)
+			{
+				$device_line = $1;
+			}
+			if ($line =~ /NISIP (.*)$/)
+			{
+				$nisip = $1;
+			}
+			if ($line =~ /NISPORT (.*)$/)
+			{
+				$nisport = $1;
+			}
+		}
+		$fh->close();
+		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{config_file} = $config_file;
+		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line} = $device_line;
+		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip}       = $nisip;
+		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport}     = $nisport;
+	}
+	
+	# Now call and record the apcupsd info for each UPS
+	foreach my $config_name (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}{config}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; config name: [$config_name]\n");
+		foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}})
+		{
+			my $nisip       = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip};
+			my $nisport     = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport};
+			my $device_line = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line};
+			my ($ups_ip, $ups_port, $ups_vendor, $ups_community) = (split /:/, $device_line, 4);
+			$nisip          = "localhost" if $nisip eq "0.0.0.0";
+			#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], NISIP: [$nisip], NISPORT: [$nisport], IP: [$ups_ip], port: [$ups_port], vendor: [$ups_vendor], snmp community: [$ups_community]\n");
+			
+			my $fh = IO::Handle->new();
+			my $sc = "$conf->{path}{apcaccess} status $nisip:$nisport";
+			open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+			while (<$fh>)
+			{
+				chomp;
+				my $line=$_;
+				$conf->{data}{raw}{apcupsd}{ups_name}{$ups_name}{status} .= "$line\n";
+				#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], line: [$line]\n");
+				my ($variable, $value) = (split /:/, $line, 2);
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+$//;
+				$value    =~ s/^\s+//;
+				$value    =~ s/\s+$//;
+				record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], variable: [$variable]\t-> value: [$value]\n");
+=pod
+1345431919 an-cm 167; UPS: [pp-u01], variable: [APC]	-> value: [001,050,1242]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [DATE]	-> value: [2012-08-19 23:05:12 -0400]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [HOSTNAME]	-> value: [pp-c01n01.plasticplus.ca]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [VERSION]	-> value: [3.14.10 (13 September 2011) redhat]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [UPSNAME]	-> value: [APCUPS]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [CABLE]	-> value: [Ethernet Link]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [DRIVER]	-> value: [SNMP UPS Driver]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [UPSMODE]	-> value: [Stand Alone]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [STARTTIME]	-> value: [2012-08-19 22:28:04 -0400]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MODEL]	-> value: [Smart-UPS 1500]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [STATUS]	-> value: [ONLINE]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [LINEV]	-> value: [123.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [LOADPCT]	-> value: [18.0 Percent Load Capacity]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [BCHARGE]	-> value: [100.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [TIMELEFT]	-> value: [72.0 Minutes]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MBATTCHG]	-> value: [0 Percent]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MINTIMEL]	-> value: [0 Minutes]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MAXTIME]	-> value: [0 Seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MAXLINEV]	-> value: [123.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MINLINEV]	-> value: [123.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [OUTPUTV]	-> value: [123.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [SENSE]	-> value: [High]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [DWAKE]	-> value: [000 Seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [DSHUTD]	-> value: [000 Seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [DLOWBATT]	-> value: [02 Minutes]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [LOTRANS]	-> value: [106.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [HITRANS]	-> value: [127.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [RETPCT]	-> value: [14151696.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [ITEMP]	-> value: [25.0 C Internal]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [ALARMDEL]	-> value: [30 seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [BATTV]	-> value: [27.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [LINEFREQ]	-> value: [60.0 Hz]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [LASTXFER]	-> value: [Line voltage notch or spike]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [NUMXFERS]	-> value: [0]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [TONBATT]	-> value: [0 seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [CUMONBATT]	-> value: [0 seconds]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [XOFFBATT]	-> value: [N/A]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [SELFTEST]	-> value: [OK]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [STESTI]	-> value: [OFF]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [STATFLAG]	-> value: [0x07000008 Status Flag]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [MANDATE]	-> value: [06/08/2012]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [SERIALNO]	-> value: [xxxxxxxxxxxx]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [BATTDATE]	-> value: [06/08/2012]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [NOMOUTV]	-> value: [120 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [NOMBATTV]	-> value: [14151696.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [HUMIDITY]	-> value: [6519592.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [AMBTEMP]	-> value: [6519592.0 C]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [EXTBATTS]	-> value: [14151696]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [BADBATTS]	-> value: [6519592]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [FIRMWARE]	-> value: [UPS 08.3 / MCU 14.0]
+1345431919 an-cm 167; UPS: [pp-u01], variable: [END APC]	-> value: [2012-08-19 23:05:19 -0400]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [APC]	-> value: [001,050,1240]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [DATE]	-> value: [2012-08-19 23:05:12 -0400]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [HOSTNAME]	-> value: [pp-c01n01.plasticplus.ca]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [VERSION]	-> value: [3.14.10 (13 September 2011) redhat]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [UPSNAME]	-> value: [APCUPS]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [CABLE]	-> value: [Ethernet Link]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [DRIVER]	-> value: [SNMP UPS Driver]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [UPSMODE]	-> value: [Stand Alone]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [STARTTIME]	-> value: [2012-08-19 22:28:04 -0400]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MODEL]	-> value: [Smart-UPS 1500]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [STATUS]	-> value: [ONLINE]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [LINEV]	-> value: [122.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [LOADPCT]	-> value: [16.0 Percent Load Capacity]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [BCHARGE]	-> value: [100.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [TIMELEFT]	-> value: [77.0 Minutes]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MBATTCHG]	-> value: [0 Percent]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MINTIMEL]	-> value: [0 Minutes]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MAXTIME]	-> value: [0 Seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MAXLINEV]	-> value: [122.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MINLINEV]	-> value: [121.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [OUTPUTV]	-> value: [122.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [SENSE]	-> value: [High]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [DWAKE]	-> value: [000 Seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [DSHUTD]	-> value: [000 Seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [DLOWBATT]	-> value: [02 Minutes]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [LOTRANS]	-> value: [106.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [HITRANS]	-> value: [127.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [RETPCT]	-> value: [28798992.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [ITEMP]	-> value: [23.0 C Internal]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [ALARMDEL]	-> value: [30 seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [BATTV]	-> value: [27.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [LINEFREQ]	-> value: [60.0 Hz]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [LASTXFER]	-> value: [No transfers since turnon]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [NUMXFERS]	-> value: [0]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [TONBATT]	-> value: [0 seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [CUMONBATT]	-> value: [0 seconds]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [XOFFBATT]	-> value: [N/A]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [SELFTEST]	-> value: [OK]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [STESTI]	-> value: [OFF]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [STATFLAG]	-> value: [0x07000008 Status Flag]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [MANDATE]	-> value: [06/08/2012]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [SERIALNO]	-> value: [yyyyyyyyyyyy]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [BATTDATE]	-> value: [06/08/2012]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [NOMOUTV]	-> value: [120 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [NOMBATTV]	-> value: [28798992.0 Volts]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [HUMIDITY]	-> value: [6519592.0 Percent]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [AMBTEMP]	-> value: [6519592.0 C]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [EXTBATTS]	-> value: [28798992]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [BADBATTS]	-> value: [6519592]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [FIRMWARE]	-> value: [UPS 08.3 / MCU 14.0]
+1345431919 an-cm 167; UPS: [pp-u02], variable: [END APC]	-> value: [2012-08-19 23:05:19 -0400]
+=cut
+			}
+			$fh->close();
+		}
+	}
+	die "testing...\n";
 	
 	return(0);
 }
@@ -5433,7 +5659,6 @@ sub compare_new_and_old
 			my $new_temp = $1;
 			my $old_temp = ($old_value =~ /^(\d+\.*\d*) degrees C/)[0];
 			#record($conf, "$THIS_FILE ".__LINE__." Comparing: [$var]'s new: [$new_temp ($new_value)] to old: [$old_temp ($old_value)]\n");
-			next if $new_temp eq $old_temp;
 			
 			my $alert                = 10;
 			my $upper_threshold      = 45;
@@ -5462,56 +5687,31 @@ sub compare_new_and_old
 				$upper_threshold      = $conf->{alerts}{host}{mb_threshold_temp};
 				$power_down_threshold = $conf->{alerts}{host}{mb_powerdown_temp};
 			}
+			my $clear_threshold = $upper_threshold - 5;
 			#record($conf, "$THIS_FILE ".__LINE__." Alert: [$alert], upper threshold: [$upper_threshold], power down threshold: [$power_down_threshold]\n");
 			
-			if ($old_value)
-			{
-				# Old value.
-				my $scan  =  $conf->{'system'}{sleep_time};
-				my $diff  =  $new_temp - $old_temp;
-				my $delta =  $diff;
-				$delta    =~ s/^-//;
-				if ($delta >= $alert)
-				{
-					#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
-					$conf->{'system'}{warning_event} = 1;
-					$changes .= "Host's \"$say_translation\" temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-					$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
-				}
-				else
-				{
-					# Log the difference, but don't send an email.
-					record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" temperature has changed; $old_state, $old_temp *C -> $new_state, $new_temp *C\n");
-				}
-			}
-			else
-			{
-				# No prior temparature.
-				$changes .= "Host's \"$say_translation\" temperature seen for the first time.\n";
-				$changes .= "  --\t-> $new_state, $new_temp *C\n";
-			}
-			
-			# Check the current temperature and see if it's above threasholds.
-			if ($new_temp >= $power_down_threshold)
-			{
-				$conf->{'system'}{migration_target}   = 0;
-				$conf->{'system'}{emergency_shutdown} = 1;
-				$changes .= "Host's \"$say_translation\" temperature is at or above the critical level of $power_down_threshold *C!\n";
-				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
-			}
-			elsif ($new_temp >= $upper_threshold)
-			{
-				#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
-				$conf->{'system'}{migration_target} = 0;
-				$conf->{'system'}{warning_event}    = 1;
-				$changes .= "Host's \"$say_translation\" temperature is at or above the warning level of $upper_threshold *C!\n";
-				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
-			}
-			else
-			{
-				# This is mainly for debugging or tracking changes over time.
-				record($conf, "$THIS_FILE ".__LINE__."; Host's \"$say_translation\" temperature has change below the threshold for an alert; old: $old_state, $old_value -> $new_state, $new_value.\n");
-			}
+			check_temperature($conf, $changes, {
+				var				=>	$var,
+				old_state			=>	$old_state,
+				new_state			=>	$new_state,
+				old_value			=>	$old_value,
+				new_value			=>	$new_value,
+				old_temp			=>	$old_temp,
+				new_temp			=>	$new_temp,
+				delta_threshold			=>	$alert,
+				upper_threshold			=>	$upper_threshold,
+				power_down_threshold		=>	$power_down_threshold,
+				clear_threshold			=>	$clear_threshold,
+				message_upper_to_power_down	=>	"Host's \"$say_translation\" temperature is now at or above the critical level of $power_down_threshold *C!",
+				log_upper_to_power_down		=>	"Host's \"$say_translation\" temperature is now critical but poweroff has been disabled; $old_state, $old_value -> $new_state, $new_value.",
+				message_power_down_to_upper	=>	"Host's \"$say_translation\" temperature is dropping, but it is still above the alert threshold of $upper_threshold *C!",
+				log_power_down_to_upper		=>	"Host's \"$say_translation\" temperature is dropping, but it is still above alert levels; $old_state, $old_value -> $new_state, $new_value.",
+				message_clear_threshold		=>	"Host's \"$say_translation\" temperature has returned to safe levels. Alert cleared.",
+				log_in_alert_change		=>	"Host's \"$say_translation\" temperature is good now, but it hasn't dropped below the clear thredshold of $clear_threshold *C; $old_state, $old_value -> $new_state, $new_value.",
+				message_over_power_down		=>	"Host's \"$say_translation\" temperature is suddenly at or above the critical level of $power_down_threshold *C!",
+				message_over_alert		=>	"Host's \"$say_translation\" temperature has risen to or above the alert threshold of $upper_threshold *C!",
+				log_normal_change		=>	"Host's \"$say_translation\" temperature has changed; old: $old_state, $old_value -> $new_state, $new_value.",
+			});
 		}
 		elsif ($new_value =~ /^(\d+\.*\d*) Volts/i)
 		{
@@ -5775,6 +5975,120 @@ $changes
 	}
 	
 	return(0);
+}
+
+# This takes the temperature of a device and determines it's current state.
+sub check_temperature
+{
+	my ($conf, $changes, $vars) = @_;
+	
+	my $var                         = $vars->{var};
+	my $old_state                   = $vars->{old_state};
+	my $new_state                   = $vars->{new_state};
+	my $old_value                   = $vars->{old_value};
+	my $new_value                   = $vars->{new_value};
+	my $old_temp                    = $vars->{old_temp};
+	my $new_temp                    = $vars->{new_temp};
+	my $delta_threshold             = $vars->{delta_threshold};
+	my $upper_threshold             = $vars->{upper_threshold};
+	my $power_down_threshold        = $vars->{power_down_threshold};
+	my $clear_threshold             = $vars->{clear_threshold};
+	my $message_upper_to_power_down = $vars->{message_upper_to_power_down};
+	my $log_upper_to_power_down     = $vars->{log_upper_to_power_down};
+	my $message_power_down_to_upper = $vars->{message_power_down_to_upper};
+	my $log_power_down_to_upper     = $vars->{log_power_down_to_upper};
+	my $message_clear_threshold     = $vars->{message_clear_threshold};
+	my $log_in_alert_change         = $vars->{log_in_alert_change};
+	my $message_over_power_down     = $vars->{message_over_power_down};
+	my $message_over_alert          = $vars->{message_over_alert};
+	my $log_normal_change           = $vars->{log_normal_change};
+	
+	# Old value.
+	my $scan  =  $conf->{'system'}{sleep_time};
+	my $diff  =  $new_temp - $old_temp;
+	my $delta =  $diff;
+	$delta    =~ s/^-//;
+	
+	if (exists $conf->{'system'}{temp_alert}{$var})
+	{
+		# If the temp is over the poweroff threshold, do the deed.
+		if ($delta >= $power_down_threshold)
+		{
+			if ($conf->{'system'}{temp_alert}{$var} == 1)
+			{
+				$conf->{'system'}{temp_alert}{$var}   = 2;
+				$conf->{'system'}{critical_event}     = 1;
+				$conf->{'system'}{migration_target}   = 0;
+				$conf->{'system'}{emergency_shutdown} = 1;
+				$changes .= "$message_upper_to_power_down\n";
+				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			}
+			else
+			{
+				# Log this, as the poweroff override is true.
+				record($conf, "$THIS_FILE ".__LINE__."; $log_upper_to_power_down\n");
+			}
+		}
+		elsif ($delta >= $delta_threshold)
+		{
+			# If the alert was 2, we're cooling down.
+			if ($conf->{'system'}{temp_alert}{$var} == 2)
+			{
+				$conf->{'system'}{warning_event}    = 1;
+				$conf->{'system'}{migration_target} = 0;
+				$changes .= "$message_power_down_to_upper\n";
+				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			}
+			else
+			{
+				# They've already heard from us.
+				record($conf, "$THIS_FILE ".__LINE__."; $log_power_down_to_upper\n");
+			}
+		}
+		elsif ($delta <= $clear_threshold)
+		{
+			# We're ok now, clear the event.
+			delete $conf->{'system'}{temp_alert}{$var};
+			$conf->{'system'}{migration_target} = 1;
+			$conf->{'system'}{clear_event}      = 1;
+			$changes .= "$message_clear_threshold\n";
+			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+		}
+		else
+		{
+			# We're below the alert threshold, but haven't reached the cleared threshold.
+			record($conf, "$THIS_FILE ".__LINE__."; $log_in_alert_change\n");
+		}
+	}
+	else
+	{
+		# No existing alert.
+		if ($delta >= $power_down_threshold)
+		{
+			# It's gone straight to a critical temperature.
+			$conf->{'system'}{temp_alert}{$var}   = 2;
+			$conf->{'system'}{emergency_shutdown} = 1;
+			$conf->{'system'}{critical_event}     = 1;
+			$conf->{'system'}{migration_target}   = 0;
+			$changes .= "$message_over_power_down\n";
+			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+		}
+		elsif ($delta >= $delta_threshold)
+		{
+			$conf->{'system'}{temp_alert}{$var} = 1;
+			$conf->{'system'}{warning_event}    = 1;
+			$conf->{'system'}{migration_target} = 0;
+			$changes .= "$message_over_alert\n";
+			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+		}
+		else
+		{
+			# Just a normal change.
+			record($conf, "$THIS_FILE ".__LINE__."; $log_normal_change\n");
+		}
+	}
+	
+	return($changes);
 }
 
 # This takes all the values in the 'new' hash and copies them to the 'old'
@@ -6154,6 +6468,110 @@ sub avoid_duplicate_run
 	$fh->close();
 	
 	return (0);
+}
+
+# This reads the cluster.conf file for information about this node and the
+# cluster.
+sub read_cluster_conf
+{
+	my ($conf) = @_;
+	
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{cluster_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		if ($line =~ /<cluster.*name="(.*?)"/)
+		{
+			$conf->{cluster}{name} = $1;
+		}
+		if ($line =~ /<clusternode.*name="(.*?)"/)
+		{
+			my $node = $1;
+			push @{$conf->{cluster}{node}}, $node;
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This reads in the configuration file.
+sub read_conf
+{
+	my ($conf) = @_;
+	
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{an_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }
 
 1;

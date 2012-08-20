@@ -26,20 +26,9 @@ $| = 1;
 
 my $conf = {
 	cluster		=>	{
-		name			=>	"pp-cluster-01",
-		description		=>	"Plastic Plus \"Cluster 01\"",
-		nodes			=>	["pp-c01n01", "pp-c01n02"],
 		company			=>	"Plastic Plus",
-
-# 		name			=>	"cc-cluster-02",
-# 		description		=>	"CC Systems \"Cluster 02\" in Oakville",
-# 		nodes			=>	["cc-c02n01", "cc-c02n02"],
-# 		company			=>	"CC Systems",
-		
-# 		name			=>	"an-cluster-01",
-# 		description		=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
-# 		nodes			=>	["an-c01n01", "an-c01n02"],
-# 		company			=>	"Alteeve's Niche!",
+		description		=>	"Plastic Plus \"Cluster 01\"",
+		nodes			=>	[],
 	},
 	node		=>	{
 		me			=>	{
@@ -71,6 +60,8 @@ my $conf = {
 		'log'			=>	"",
 	},
 	path			=>	{
+		cluster_conf		=>	"/etc/cluster/cluster.conf",
+		an_conf			=>	"/etc/an/an.conf",
 		'log'			=>	"/var/log/an-cm.log",
 		uname			=>	"/bin/uname",
 		clustat			=>	"/usr/sbin/clustat",
@@ -79,6 +70,8 @@ my $conf = {
 		brctl			=>	"/usr/sbin/brctl",
 		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 		ipmitool		=>	"/usr/bin/ipmitool",
+		apcupsd			=>	"/sbin/apcupsd",
+		apcaccess		=>	"/sbin/apcaccess",
 	},
 	alerts			=>	{
 		storage			=>	{
@@ -117,6 +110,7 @@ my $conf = {
 		sleep_time		=>	10,
 		storage_type		=>	"",
 		ipmi_available		=>	1,
+		ups_available		=>	1,		# This requires apcupsd be installed and working.
 		cluster_running		=>	1,
 		warning_event		=>	0,		# This is set true when a serious event has occured.
 		critical_event		=>	0,		# This is set true when an alert is critical.
@@ -127,8 +121,15 @@ my $conf = {
 	},
 };
 
+# Should I live?
 avoid_duplicate_run($conf);
+
+# Who am I?
 get_hostname($conf);
+
+# What cluster am I in?
+read_cluster_conf($conf);
+
 $conf->{mail_data}{subject_prefix} = "[ AN-CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
 $conf->{mail_data}{body_suffix}    = "
 --[ Source Details ]--------------------------------------------------
@@ -155,7 +156,11 @@ do not know who controls these servers, please visit the support link
 above and we will try to help you identify the person who can assist
 you.
 ";
+
+# How am I?
 read_states($conf);
+
+# Tell the user.
 initial_report($conf);
 
 # Infinite loop time
@@ -167,8 +172,6 @@ while (1)
 }
 
 exit(0);
-
-
 
 # This catches SIGINT and SIGTERM and fires out an email before shutting down.
 sub catch_sig

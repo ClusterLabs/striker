@@ -6509,7 +6509,7 @@ sub ask_which_cluster
 	print "
 <table align=\"center\">
 	<tr>
-		<td colspan=\"2\">
+		<td colspan=\"3\">
 			<b>Please choose a cluster</b>
 		</td>
 	</tr>
@@ -6521,6 +6521,9 @@ sub ask_which_cluster
 	<tr>
 		<td>
 			<a href=\"?cluster=$cluster\">$cluster</a>
+		</td>
+		<td>
+			$conf->{clusters}{$cluster}{company}
 		</td>
 		<td>
 			$conf->{clusters}{$cluster}{description}
@@ -6636,6 +6639,81 @@ sub record
 	print $fh $message;
 	
 	return (0);
+}
+
+# This reads in the configuration file.
+sub read_conf
+{
+	my ($conf) = @_;
+	
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{an_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }
 
 1;

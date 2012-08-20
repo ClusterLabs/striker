@@ -33,29 +33,12 @@ require "./an-cdb.lib";
 our $THIS_FILE = "an-cdb";
 
 my $conf={
-	clusters		=>	{
-		'an-cluster-01'		=>	{
-			description		=>	"Alteeve's Niche! \"Cluster 01\" (in Oakville)",
-			nodes			=>	["an-c01n01", "an-c01n02"],
-		},
-		'cc-cluster-01'		=>	{
-			description		=>	"CC Systems \"Cluster 01\" (in Peer 1)",
-			nodes			=>	["cc-c01n01.remote", "cc-c01n02.remote"],
-		},
-		'cc-cluster-02'		=>	{
-			description		=>	"CC Systems \"Cluster 02\" (in Peer 1)",
-			nodes			=>	["cc-c02n01.remote", "cc-c02n02.remote"],
-		},
-		'pp-cluster-01'		=>	{
-			description		=>	"Plastic Plus \"Cluster 01\"",
-			nodes			=>	["pp-c01n01", "pp-c01n02"],
-		},
-	},
 	nodes			=>	"",
 	check_using_node	=>	"",
 	up_nodes		=>	[],
 	online_nodes		=>	[],
 	path			=>	{
+		an_conf			=>	"/etc/an/an.conf",
 		cat			=>	"/bin/cat",
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
@@ -82,6 +65,25 @@ my $conf={
 		show_refresh		=>	1,
 	},
 };
+
+read_conf($conf);
+
+# I need to convert the global configuration of the clusters to the format I use here.
+foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
+{
+	my $name = $conf->{cluster}{$cluster}{name};
+	$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
+	$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
+	$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
+	#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
+	
+	for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
+	{
+		@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/^\s+//;
+		@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/\s+$//;
+		#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]]\n");
+	}
+}
 
 # If there is only one cluster defined, use it. Note that I need a special
 # exception in get_cgi_vars() for this to work properly.
