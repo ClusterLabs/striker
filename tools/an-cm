@@ -105,6 +105,12 @@ my $conf = {
 			ambient_powerdown_temp	=>	55,	# RAM poweroff threshold
 			fan_minimum_rpm		=>	500,	# If any fan drops below this threshold, it will trigger an alert. The alert will be cleared when the speed registers as douple this value.
 		},
+		ups			=>	{
+			shutdown_buffer		=>	"300",	# When the best "TIMELEFT" value is below this number of seconds, the node will gracefully power down.
+			high_line_volt_buffer	=>	"2",	# When the line voltage gets within this many volts of HITRANS an alert will be triggered.
+			low_line_volt_buffer	=>	"5",	# When the line voltage gets within this many volts of LOTRANS an alert will be triggered.
+			upper_load_threshold	=>	"90",	# This is the maximum "LOADPCT" over which an alert is triggered.
+		},
 	},
 	'system'		=>	{
 		sleep_time		=>	10,
@@ -130,9 +136,10 @@ get_hostname($conf);
 # What cluster am I in?
 read_cluster_conf($conf);
 
-$conf->{mail_data}{subject_prefix} = "[ AN-CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
+$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
 $conf->{mail_data}{body_suffix}    = "
 --[ Source Details ]--------------------------------------------------
+
 Company: $conf->{cluster}{company}
 Cluster: $conf->{cluster}{name}
 Node:    $conf->{node}{me}{long_name}
@@ -142,7 +149,7 @@ Description:
 If you have any questions or concerns, please don't hesitate to
 contact support. 
 
-                    https://alteeve.com/w/Support
+                    https://alteeve.ca/w/Support
 
                                                      Alteeve's Niche!
                                                       Cluster Monitor

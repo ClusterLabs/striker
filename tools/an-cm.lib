@@ -59,9 +59,14 @@ sub check_ups
 {
 	my ($conf) = @_;
 	
-	delete $conf->{data}{ipmi}{new};
-	$conf->{data}{ipmi}{new}{config_files} = [];
-	$conf->{data}{raw}{apcupsd}{status}    = "";
+	delete $conf->{data}{ups}{new};
+	$conf->{data}{ups}{new}{config_files} = [];
+	$conf->{data}{raw}{apcupsd}{status}   = "";
+	
+	# When this drops below the powerdown threshold, the node will shutdown.
+	$conf->{data}{ups}{new}{best_case}{time_left} = 0;
+	$conf->{data}{ups}{new}{best_case}{status}    = "";
+	$conf->{data}{ups}{new}{ups_count}            = 0;
 	
 	### TODO: This only supports multi-UPS setups.
 	if (-x "/etc/init.d/apcupsd")
@@ -77,7 +82,7 @@ sub check_ups
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /(apcupsd.*conf) \(pid  \d+\) is running/)
 			{
-				push @{$conf->{data}{ipmi}{new}{config_files}}, $1;
+				push @{$conf->{data}{ups}{new}{config_files}}, $1;
 			}
 		}
 		$fh->close();
@@ -89,7 +94,7 @@ sub check_ups
 	}
 	
 	# Now parse the config files for the running daemons.
-	foreach my $config (sort {$a cmp $b} @{$conf->{data}{ipmi}{new}{config_files}})
+	foreach my $config (sort {$a cmp $b} @{$conf->{data}{ups}{new}{config_files}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; config: [$config]\n");
 		next if not $config;
@@ -131,21 +136,27 @@ sub check_ups
 			}
 		}
 		$fh->close();
-		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{config_file} = $config_file;
-		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line} = $device_line;
-		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip}       = $nisip;
-		$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport}     = $nisport;
+		$conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{config_file} = $config_file;
+		$conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line} = $device_line;
+		$conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip}       = $nisip;
+		$conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport}     = $nisport;
+		$conf->{data}{ups}{new}{ups_count}++;
 	}
 	
+	# Before I parse each entry, I want to setup a few variables for
+	# recording the "best case" for a couple values. These are used for
+	# triggering events, like powering down, when the "best case" value is
+	# outside tolerances.
+	
 	# Now call and record the apcupsd info for each UPS
-	foreach my $config_name (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}{config}})
+	foreach my $config_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{config}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; config name: [$config_name]\n");
-		foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}})
+		foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{config}{$config_name}{ups_name}})
 		{
-			my $nisip       = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip};
-			my $nisport     = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport};
-			my $device_line = $conf->{data}{ipmi}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line};
+			my $nisip       = $conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{nisip};
+			my $nisport     = $conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{nisport};
+			my $device_line = $conf->{data}{ups}{new}{config}{$config_name}{ups_name}{$ups_name}{device_line};
 			my ($ups_ip, $ups_port, $ups_vendor, $ups_community) = (split /:/, $device_line, 4);
 			$nisip          = "localhost" if $nisip eq "0.0.0.0";
 			#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], NISIP: [$nisip], NISPORT: [$nisport], IP: [$ups_ip], port: [$ups_port], vendor: [$ups_vendor], snmp community: [$ups_community]\n");
@@ -164,116 +175,38 @@ sub check_ups
 				$variable =~ s/\s+$//;
 				$value    =~ s/^\s+//;
 				$value    =~ s/\s+$//;
-				record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], variable: [$variable]\t-> value: [$value]\n");
-=pod
-1345431919 an-cm 167; UPS: [pp-u01], variable: [APC]	-> value: [001,050,1242]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [DATE]	-> value: [2012-08-19 23:05:12 -0400]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [HOSTNAME]	-> value: [pp-c01n01.plasticplus.ca]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [VERSION]	-> value: [3.14.10 (13 September 2011) redhat]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [UPSNAME]	-> value: [APCUPS]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [CABLE]	-> value: [Ethernet Link]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [DRIVER]	-> value: [SNMP UPS Driver]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [UPSMODE]	-> value: [Stand Alone]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [STARTTIME]	-> value: [2012-08-19 22:28:04 -0400]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MODEL]	-> value: [Smart-UPS 1500]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [STATUS]	-> value: [ONLINE]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [LINEV]	-> value: [123.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [LOADPCT]	-> value: [18.0 Percent Load Capacity]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [BCHARGE]	-> value: [100.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [TIMELEFT]	-> value: [72.0 Minutes]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MBATTCHG]	-> value: [0 Percent]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MINTIMEL]	-> value: [0 Minutes]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MAXTIME]	-> value: [0 Seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MAXLINEV]	-> value: [123.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MINLINEV]	-> value: [123.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [OUTPUTV]	-> value: [123.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [SENSE]	-> value: [High]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [DWAKE]	-> value: [000 Seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [DSHUTD]	-> value: [000 Seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [DLOWBATT]	-> value: [02 Minutes]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [LOTRANS]	-> value: [106.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [HITRANS]	-> value: [127.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [RETPCT]	-> value: [14151696.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [ITEMP]	-> value: [25.0 C Internal]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [ALARMDEL]	-> value: [30 seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [BATTV]	-> value: [27.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [LINEFREQ]	-> value: [60.0 Hz]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [LASTXFER]	-> value: [Line voltage notch or spike]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [NUMXFERS]	-> value: [0]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [TONBATT]	-> value: [0 seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [CUMONBATT]	-> value: [0 seconds]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [XOFFBATT]	-> value: [N/A]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [SELFTEST]	-> value: [OK]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [STESTI]	-> value: [OFF]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [STATFLAG]	-> value: [0x07000008 Status Flag]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [MANDATE]	-> value: [06/08/2012]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [SERIALNO]	-> value: [xxxxxxxxxxxx]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [BATTDATE]	-> value: [06/08/2012]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [NOMOUTV]	-> value: [120 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [NOMBATTV]	-> value: [14151696.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [HUMIDITY]	-> value: [6519592.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [AMBTEMP]	-> value: [6519592.0 C]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [EXTBATTS]	-> value: [14151696]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [BADBATTS]	-> value: [6519592]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [FIRMWARE]	-> value: [UPS 08.3 / MCU 14.0]
-1345431919 an-cm 167; UPS: [pp-u01], variable: [END APC]	-> value: [2012-08-19 23:05:19 -0400]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [APC]	-> value: [001,050,1240]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [DATE]	-> value: [2012-08-19 23:05:12 -0400]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [HOSTNAME]	-> value: [pp-c01n01.plasticplus.ca]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [VERSION]	-> value: [3.14.10 (13 September 2011) redhat]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [UPSNAME]	-> value: [APCUPS]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [CABLE]	-> value: [Ethernet Link]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [DRIVER]	-> value: [SNMP UPS Driver]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [UPSMODE]	-> value: [Stand Alone]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [STARTTIME]	-> value: [2012-08-19 22:28:04 -0400]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MODEL]	-> value: [Smart-UPS 1500]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [STATUS]	-> value: [ONLINE]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [LINEV]	-> value: [122.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [LOADPCT]	-> value: [16.0 Percent Load Capacity]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [BCHARGE]	-> value: [100.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [TIMELEFT]	-> value: [77.0 Minutes]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MBATTCHG]	-> value: [0 Percent]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MINTIMEL]	-> value: [0 Minutes]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MAXTIME]	-> value: [0 Seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MAXLINEV]	-> value: [122.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MINLINEV]	-> value: [121.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [OUTPUTV]	-> value: [122.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [SENSE]	-> value: [High]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [DWAKE]	-> value: [000 Seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [DSHUTD]	-> value: [000 Seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [DLOWBATT]	-> value: [02 Minutes]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [LOTRANS]	-> value: [106.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [HITRANS]	-> value: [127.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [RETPCT]	-> value: [28798992.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [ITEMP]	-> value: [23.0 C Internal]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [ALARMDEL]	-> value: [30 seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [BATTV]	-> value: [27.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [LINEFREQ]	-> value: [60.0 Hz]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [LASTXFER]	-> value: [No transfers since turnon]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [NUMXFERS]	-> value: [0]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [TONBATT]	-> value: [0 seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [CUMONBATT]	-> value: [0 seconds]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [XOFFBATT]	-> value: [N/A]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [SELFTEST]	-> value: [OK]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [STESTI]	-> value: [OFF]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [STATFLAG]	-> value: [0x07000008 Status Flag]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [MANDATE]	-> value: [06/08/2012]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [SERIALNO]	-> value: [yyyyyyyyyyyy]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [BATTDATE]	-> value: [06/08/2012]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [NOMOUTV]	-> value: [120 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [NOMBATTV]	-> value: [28798992.0 Volts]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [HUMIDITY]	-> value: [6519592.0 Percent]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [AMBTEMP]	-> value: [6519592.0 C]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [EXTBATTS]	-> value: [28798992]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [BADBATTS]	-> value: [6519592]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [FIRMWARE]	-> value: [UPS 08.3 / MCU 14.0]
-1345431919 an-cm 167; UPS: [pp-u02], variable: [END APC]	-> value: [2012-08-19 23:05:19 -0400]
-=cut
+				
+				# Some values always change and have little value
+				next if ($variable =~ /DATE/i);
+				next if ($variable =~ /END APC/i);
+				
+				#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], variable: [$variable]\t-> value: [$value]\n");
+				$conf->{data}{ups}{new}{ups_name}{$ups_name}{$variable} = $value;
+				
+				if ($variable =~ /TIMELEFT/)
+				{
+					#record($conf, "$THIS_FILE ".__LINE__."; $ups_name - Checking if the time left: [$value] in greater than previously seen.\n");
+					my $minutes_left = ($value =~ /^(\d+\.*\d*)/)[0];
+					#record($conf, "$THIS_FILE ".__LINE__."; $ups_name - Minutes left: [$minutes_left].\n");
+					my $seconds_left = ($minutes_left * 60);
+					#record($conf, "$THIS_FILE ".__LINE__."; $ups_name - Was: [$conf->{data}{ups}{new}{best_case}{time_left}], this UPS: [$seconds_left seconds] ($minutes_left minutes, raw: [$value])\n");
+					if ($seconds_left > $conf->{data}{ups}{new}{best_case}{time_left})
+					{
+						$conf->{data}{ups}{new}{best_case}{time_left} = $seconds_left;
+						#record($conf, "$THIS_FILE ".__LINE__."; $ups_name - It is higher, now: [$conf->{data}{ups}{new}{best_case}{time_left}]\n");
+					}
+				}
+				if (($variable =~ /STATUS/i) && ($value =~ /ONLINE/i))
+				{
+					# This will block the power down, 
+					# regardless of the battery state.
+					$conf->{data}{ups}{new}{best_case}{status} = "ONLINE";
+				}
 			}
 			$fh->close();
 		}
 	}
-	die "testing...\n";
+	$conf->{'system'}{ups_available} = 0 if $conf->{data}{ups}{new}{ups_count} < 1;
 	
 	return(0);
 }
@@ -3717,17 +3650,6 @@ sub get_current_state_lsi
                 Capacity: $pack_energy, $design_capacity design
                 Voltage:  $current_voltage, $design_voltage design
                 Temp:     $say_temp";
-# Temperature: 24 C
-#   Pack energy             : 321 J 
-#   Capacitance             : 100 
-#   Remaining reserve space : 96 
-# 
-# BBU Design Info for Adapter: 0
-# Design Capacity: 306 J
-# Design Voltage: 9500 mV
-# Serial Number: 3276
-# Manufacture Name: LSI
-# Device Name: SuperCaP
 			}
 			elsif ($part_name =~ /iBBU/i)
 			{
@@ -3743,9 +3665,11 @@ sub get_current_state_lsi
 
 		$body .= "
 Adapter: #$adapter
-         Model: $part_number (rev: $hw_revision), sn: $serial_number
-         Cache: $memory_size
-         BBU:   $bbu_string
+         Model:    $part_number
+         Revision: $hw_revision
+         Serial #: $serial_number
+         Cache:    $memory_size
+         BBU:      $bbu_string
 ";
 		# Virtual disks
 		foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}})
@@ -4327,6 +4251,7 @@ sub check_for_changes
 	check_network($conf);
 	check_storage($conf);
 	check_host($conf);
+	check_ups($conf);
 	#record($conf, "$THIS_FILE ".__LINE__."; Comparing new to old.\n");
 	compare_new_and_old($conf);
 	
@@ -4458,8 +4383,8 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 			$say_interface0 = "\\- No connections";
 		}
 		$body .= "
-Bridge: $dev, MAC: $mac, $say_stp
-        $say_interface0
+Bridge:   $dev, MAC: $mac, $say_stp
+Links(s): $say_interface0
 ";
 		foreach (my $i=0; $i<$iface_count; $i++)
 		{
@@ -4470,7 +4395,7 @@ Bridge: $dev, MAC: $mac, $say_stp
 			{
 				$say_iface = "\\- $interfaces[$i], MAC: $say_iface_mac\n";
 			}
-			$body .= "        $say_iface";
+			$body .= "          $say_iface";
 		}
 	}
 	
@@ -4639,30 +4564,34 @@ Bridge: $dev, MAC: $mac, $say_stp
 			$say_second_link_state  = "--";
 		}
 		
-		my $say_first_speed   = "$first_speed $say_first_duplex";
-		my $say_second_speed  = "$second_speed $say_second_duplex";
-		my $pad_length        = 17;
-		$first_fail_count     = sprintf("%-${pad_length}s", $first_fail_count);
-		$say_first_speed      = sprintf("%-${pad_length}s", $say_first_speed);
-		$say_first_link_state = sprintf("%-${pad_length}s", $say_first_link_state);
+		my $say_first_speed    = "$first_speed $say_first_duplex";
+		my $say_second_speed   = "$second_speed $say_second_duplex";
+		my $pad_length         = 17;
+		$first_fail_count      = sprintf("%-${pad_length}s", $first_fail_count);
+		$say_first_speed       = sprintf("%-${pad_length}s", $say_first_speed);
+		$say_first_link_state  = sprintf("%-${pad_length}s", $say_first_link_state);
+		$second_fail_count     = sprintf("%-${pad_length}s", $second_fail_count);
+		$say_second_speed      = sprintf("%-${pad_length}s", $say_second_speed);
+		$say_second_link_state = sprintf("%-${pad_length}s", $say_second_link_state);
 		
 		$body .= "
 Bond: $dev $say_line1
              $say_line2
       
-      Active Slave: $active_slave using MAC: $active_mac
-      Prefer Slave: $primary_slave
-      Reselect:     $say_reselect
-      Link Check:   $say_link_check
-      MTU Size:     $mtu Bytes
+    Active Slave: $active_slave using MAC: $active_mac
+    Prefer Slave: $primary_slave
+    Reselect:     $say_reselect
+    Link Check:   $say_link_check
+    MTU Size:     $mtu Bytes
 
-      Slaves:           $first_slave         |       $second_slave
-                   ------------------+------------------
-        Link:      $say_first_link_state | $say_second_link_state
-        Speed:     $say_first_speed | $say_second_speed
-        MAC:       $first_mac | $second_mac
-        Failures:  $first_fail_count | $second_fail_count
-                   ------------------+------------------
+                 +-------------------+-------------------+
+       Slaves    |       $first_slave        |       $second_slave        |
+    +------------+-------------------+-------------------+
+    | Link:      | $say_first_link_state | $say_second_link_state |
+    | Speed:     | $say_first_speed | $say_second_speed |
+    | MAC:       | $first_mac | $second_mac |
+    | Failures:  | $first_fail_count | $second_fail_count |
+    +------------+-------------------+-------------------+
 ";
 	}
 
@@ -4721,44 +4650,53 @@ Interface: $dev
 		{
 			$say_psu1_fan = $say_psu1_fan_state;
 		}
-		$say_psu1_fan = sprintf("%-10s", $say_psu1_fan);
+		$say_psu1_fan = sprintf("%-11s", $say_psu1_fan);
 		my $say_psu2_fan = $say_psu2_fan_rpms;
 		if ($say_psu2_fan_state ne "ok")
 		{
 			$say_psu2_fan = $say_psu2_fan_state;
 		}
-		$say_psu2_fan = sprintf("%-10s", $say_psu2_fan);
+		$say_psu2_fan = sprintf("%-11s", $say_psu2_fan);
 
 		my ($say_psu1_temp_inlet_state, $say_psu1_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu1_inlet}, 2);
 		my ($say_psu2_temp_inlet_state, $say_psu2_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu2_inlet}, 2);
 		$say_psu1_temp_inlet =~ s/\s.*//g;
+		$say_psu1_temp_inlet .= " *C";
 		$say_psu2_temp_inlet =~ s/\s.*//g;
-		my $say_psu1_intake = sprintf("%-11s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
-		my $say_psu2_intake = sprintf("%-11s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
+		$say_psu2_temp_inlet .= " *C";
+		my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
+		my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
 
 		my ($say_psu1_temp_state, $say_psu1_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu1}, 2);
 		my ($say_psu2_temp_state, $say_psu2_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu2}, 2);
 		$say_psu1_temp =~ s/\s.*//g;
+		$say_psu1_temp .= " *C";
 		$say_psu2_temp =~ s/\s.*//g;
-		my $say_psu1_core = sprintf("%-11s", "$say_psu1_temp_state, $say_psu1_temp");
-		my $say_psu2_core = sprintf("%-11s", "$say_psu2_temp_state, $say_psu2_temp");
+		$say_psu2_temp .= " *C";
+		my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
+		my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
 	
 		$body .= "
-Power Supplies
-        +--------+------------+------------+---------------------------+
-        |        |            |            |      Temperature (*C)     |
-        | Status |  Wattage   | Fan Speed  |   Intake         Core     |
-+-------+--------+------------+------------+-------------+-------------+
-| PSU 1 | $say_psu1_state | $say_psu1_watts | $say_psu1_fan | $say_psu1_intake | $say_psu1_core |
-| PSU 2 | $say_psu2_state | $say_psu2_watts | $say_psu2_fan | $say_psu2_intake | $say_psu2_core |
-+-------+--------+------------+------------+-------------+-------------+
+                +--------+------------+-------------+
+ Power Supplies | Status |  Wattage   |  Fan Speed  |
++---------------+--------+------------+-------------+
+|     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_psu1_fan |
+|     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_psu2_fan |
++---------------+--------+------------+-------------+
+
+                +----------------+----------------+
+ Power Supplies |     Intake     |      Core      |
++---------------+----------------+----------------+
+|     PSU 1     | $say_psu1_intake | $say_psu1_core |
+|     PSU 2     | $say_psu2_intake | $say_psu2_core |
++---------------+----------------+----------------+
+
 ";
 	
 		# Power levels
 		$body .= "
-Power Levels
                    +--------------+--------------+--------------+
-                   |    State     |   Voltage    |   Wattage    |
+   Power Levels    |    State     |   Voltage    |   Wattage    |
 +------------------+--------------+--------------+--------------+
 ";
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
@@ -4788,9 +4726,8 @@ Power Levels
 		
 		# Temperature readings.
 		$body .= "
-Temperatures
                  +-----------+-----------+
-                 |   State   | Temp (*C) |
+  Temperatures   |   State   | Temp (*C) |
 +----------------+-----------+-----------+
 ";
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
@@ -4814,9 +4751,8 @@ Temperatures
 		
 		# Fans.
 		$body .= "
-Cooling Fans
                  +-----------+-----------+
-                 |   State   |   RPMs    |
+  Cooling Fans   |   State   |   RPMs    |
 +----------------+-----------+-----------+
 ";
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
@@ -4844,9 +4780,61 @@ Cooling Fans
 Unable to connect to the IPMI's BMC or no IPMI available on this node.
 ";
 	}
+	
+	# UPS Info
 	$body .= "
-----------------------------------------------------------------------
+--[ UPS Status ]------------------------------------------------------
 ";
+	# What to display depends on the storage type.
+	if ($conf->{'system'}{ups_available})
+	{
+		#$body = get_current_state_lsi($conf, $body);
+		foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{ups_name}})
+		{
+			my $say_status          = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{STATUS}   ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{STATUS}   : "--";
+			my $say_model           = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{MODEL}    ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{MODEL}    : "--";
+			my $say_serial          = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{SERIALNO} ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{SERIALNO} : "--";
+			my $say_batter_voltage  = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{BATTV}    ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{BATTV}    : "--";
+			my $say_battery_charge  = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{BCHARGE}  ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{BCHARGE}  : "--";
+			my $say_load_percentage = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOADPCT}  ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOADPCT}  : "--";
+			my $say_line_voltage    = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{LINEV}    ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{LINEV}    : "--";
+			my $say_output_voltage  = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{OUTPUTV}  ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{OUTPUTV}  : "--";
+			my $say_current_runtime = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{TIMELEFT} ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{TIMELEFT} : "--";
+			my $say_internal_temp   = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{ITEMP}    ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{ITEMP}    : "--";
+			my $say_firmware        = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{FIRMWARE} ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{FIRMWARE} : "--";
+			my $say_self_test       = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{SELFTEST} ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{SELFTEST} : "--";
+			   $say_internal_temp   =~ s/(\d) .*$/$1/;
+			   $say_internal_temp   .= " *C";
+			   $say_load_percentage =~ s/(\d) .*$/$1/;
+			   $say_load_percentage .= " %";
+			   $say_battery_charge  =~ s/(\d) .*$/$1/;
+			   $say_battery_charge  .= " %";
+			   $say_batter_voltage  =~ s/(\d) .*$/$1/;
+			   $say_batter_voltage  .= " vAC";
+			my $space               = 15;
+			my $say_ups_name        = sprintf("%-${space}s", $ups_name);
+			   $say_status          = sprintf("%-${space}s", $say_status);
+			   $say_model           = sprintf("%-${space}s", $say_model);
+			   $say_serial          = sprintf("%-${space}s", $say_serial);
+			   $say_current_runtime = sprintf("%-${space}s", $say_current_runtime);
+			   $say_self_test       = sprintf("%-${space}s", $say_self_test);
+			   
+			$body .= "
+Name:        $say_ups_name 
+Status:      $say_status Temperature:     $say_internal_temp
+Model:       $say_model Battery Voltage: $say_batter_voltage
+Serial #:    $say_serial Battery Charge:  $say_battery_charge
+Holdup Time: $say_current_runtime Current Load:    $say_load_percentage
+Self Test:   $say_self_test Firmware:        $say_firmware
+
+Mains -> $say_line_voltage -> UPS -> $say_output_voltage -> PDU
+";
+		}
+	}
+	else
+	{
+		$body .= "\nUPSes not found or 'apcupsd' is not running.\n\n";
+	}
 	
 # 	print "Email body:
 # ===========================================================
@@ -4864,9 +4852,6 @@ sub compare_new_and_old
 {
 	my ($conf) = @_;
 	
-	# TODO: Watch for records that vanished and are not in the 'new' record
-	#       but is in the 'old' record.
-	#       Try doing this by copying all of 'old' to 'diff', deleting from 'diff' after each compare, and doing a final loop through to see what's left.
 	my $changes = "";
 	
 	# Check clustat for changes.
@@ -4875,7 +4860,7 @@ sub compare_new_and_old
 	if ($conf->{data}{clustat}{old}{cluster} ne $conf->{data}{clustat}{new}{cluster})
 	{
 		# Cluster name changed.
-		$changes .= "Cluster name change!\n";
+		$changes .= "\nCluster name change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{cluster}\t-> $conf->{data}{clustat}{new}{cluster}\n";
 	}
 	$conf->{data}{clustat}{old}{quorum} = "--" if not defined $conf->{data}{clustat}{old}{quorum};
@@ -4883,7 +4868,7 @@ sub compare_new_and_old
 	if ($conf->{data}{clustat}{old}{quorum} ne $conf->{data}{clustat}{new}{cluster})
 	{
 		# Quorum status changed.
-		$changes .= "Quorum state change!\n";
+		$changes .= "\nQuorum state change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{quorum}\t-> $conf->{data}{clustat}{new}{quorum}\n";
 	}
 	delete $conf->{data}{cluster}{diff}{cluster};
@@ -4897,7 +4882,7 @@ sub compare_new_and_old
 		{
 			if ($say_title)
 			{
-				$changes   .= "Node $node; State change!\n";
+				$changes   .= "\nNode $node; State change!\n";
 				$say_title =  1;
 			}
 			$changes .= "  $conf->{data}{clustat}{old}{node}{$node}{status}\t-> $conf->{data}{clustat}{new}{node}{$node}{status}\n";
@@ -4932,7 +4917,7 @@ sub compare_new_and_old
 					$say_vm_title = 0;
 				}
 			}
-			$changes .= "$say_service\n";
+			$changes .= "\n$say_service\n";
 			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
 			$changes .= "  $conf->{data}{clustat}{new}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
 		}
@@ -4956,7 +4941,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bridge}{$dev}{stp} = "--" if not exists $conf->{data}{network}{new}{bridge}{$dev}{stp};
 		if ($conf->{data}{network}{old}{bridge}{$dev}{stp} ne $conf->{data}{network}{new}{bridge}{$dev}{stp})
 		{
-			$changes .= "Bridge Spanning Tree Protocol changed!\n";
+			$changes .= "\nBridge Spanning Tree Protocol changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bridge}{$dev}{stp}\t-> $conf->{data}{network}{new}{bridge}{$dev}{stp}\n";
 		}
 		delete $conf->{data}{network}{diff}{bridge}{$dev}{stp};
@@ -4965,7 +4950,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr} = "--" if not exists $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
 		if ($conf->{data}{network}{old}{dev}{$dev}{hwaddr} ne $conf->{data}{network}{new}{dev}{$dev}{hwaddr})
 		{
-			$changes .= "Bridge $dev; MAC address has changed!\n";
+			$changes .= "\nBridge $dev; MAC address has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{hwaddr}\t-> $conf->{data}{network}{new}{dev}{$dev}{hwaddr}\n";
 		}
 		delete $conf->{data}{network}{diff}{bridge}{$dev}{hwaddr};
@@ -4992,7 +4977,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{mode} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{mode};
 		if ($conf->{data}{network}{old}{bond}{$dev}{mode} ne $conf->{data}{network}{new}{bond}{$dev}{mode})
 		{
-			$changes .= "Bond $dev ($say_out); Mode has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Mode has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{mode}\t-> $conf->{data}{network}{new}{bond}{$dev}{mode}\n";
 		}
 		
@@ -5000,7 +4985,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{primary}{slave} = "" if not exists $conf->{data}{network}{new}{bond}{$dev}{primary}{slave};
 		if ($conf->{data}{network}{old}{bond}{$dev}{primary}{slave} ne $conf->{data}{network}{new}{bond}{$dev}{primary}{slave})
 		{
-			$changes .= "Bond $dev ($say_out); primary slave has changed!\n";
+			$changes .= "\nBond $dev ($say_out); primary slave has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{primary}{slave}\t-> $conf->{data}{network}{new}{bond}{$dev}{primary}{slave}\n";
 		}
 		
@@ -5008,7 +4993,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{primary}{reselect} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{primary}{reselect};
 		if ($conf->{data}{network}{old}{bond}{$dev}{primary}{reselect} ne $conf->{data}{network}{new}{bond}{$dev}{primary}{reselect})
 		{
-			$changes .= "Bond $dev ($say_out); primary reselect policy has changed!\n";
+			$changes .= "\nBond $dev ($say_out); primary reselect policy has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{primary}{reselect}\t-> $conf->{data}{network}{new}{bond}{$dev}{primary}{reselect}\n";
 		}
 		
@@ -5016,7 +5001,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{delay}{up} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{delay}{up};
 		if ($conf->{data}{network}{old}{bond}{$dev}{delay}{up} ne $conf->{data}{network}{new}{bond}{$dev}{delay}{up})
 		{
-			$changes .= "Bond $dev ($say_out); Primary reselect delay has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Primary reselect delay has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{delay}{up}\t-> $conf->{data}{network}{new}{bond}{$dev}{delay}{up}\n";
 		}
 		
@@ -5024,7 +5009,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval};
 		if ($conf->{data}{network}{old}{bond}{$dev}{mii}{polling_interval} ne $conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval})
 		{
-			$changes .= "Bond $dev ($say_out); Link check internal has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Link check internal has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{mii}{polling_interval}\t-> $conf->{data}{network}{new}{bond}{$dev}{mii}{polling_interval}\n";
 		}
 		
@@ -5032,7 +5017,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{mii}{status} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{mii}{status};
 		if ($conf->{data}{network}{old}{bond}{$dev}{mii}{status} ne $conf->{data}{network}{new}{bond}{$dev}{mii}{status})
 		{
-			$changes .= "Bond $dev ($say_out); Link status has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Link status has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{mii}{status}\t-> $conf->{data}{network}{new}{bond}{$dev}{mii}{status}\n";
 		}
 		
@@ -5040,7 +5025,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{mtu} = "--" if not exists $conf->{data}{network}{new}{dev}{$dev}{mtu};
 		if ($conf->{data}{network}{old}{dev}{$dev}{mtu} ne $conf->{data}{network}{new}{dev}{$dev}{mtu})
 		{
-			$changes .= "Bond $dev ($say_out); Maximum Transmition Unit (MTU) size has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Maximum Transmition Unit (MTU) size has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{mtu} Bytes\t-> $conf->{data}{network}{new}{dev}{$dev}{mtu} Bytes\n";
 		}
 		
@@ -5048,7 +5033,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{bond}{$dev}{active_slave} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{active_slave};
 		if ($conf->{data}{network}{old}{bond}{$dev}{active_slave} ne $conf->{data}{network}{new}{bond}{$dev}{active_slave})
 		{
-			$changes .= "Bond $dev ($say_out); Active slave interface has changed!\n";
+			$changes .= "\nBond $dev ($say_out); Active slave interface has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{active_slave}\t-> $conf->{data}{network}{new}{bond}{$dev}{active_slave}\n";
 		}
 		
@@ -5068,7 +5053,7 @@ sub compare_new_and_old
 				if ($conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{real_mac} ne $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{real_mac})
 				{
 					# lulwut?
-					$changes .= "Bond $dev ($say_out); $say_position slave ${slave}'s MAC address has changed!\n";
+					$changes .= "\nBond $dev ($say_out); $say_position slave ${slave}'s MAC address has changed!\n";
 					$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{real_mac}\t-> $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{real_mac}\n";
 				}
 				
@@ -5076,7 +5061,7 @@ sub compare_new_and_old
 				$conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{mii_status} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{mii_status};
 				if ($conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{mii_status} ne $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{mii_status})
 				{
-					$changes .= "Bond $dev ($say_out); $say_position slave ${slave}'s link status has changed!\n";
+					$changes .= "\nBond $dev ($say_out); $say_position slave ${slave}'s link status has changed!\n";
 					$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{mii_status}\t-> $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{mii_status}\n";
 				}
 				
@@ -5084,7 +5069,7 @@ sub compare_new_and_old
 				$conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count};
 				if ($conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{link_failure_count} ne $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count})
 				{
-					$changes .= "Bond $dev ($say_out); $say_position slave ${slave}'s link failure count has changed!\n";
+					$changes .= "\nBond $dev ($say_out); $say_position slave ${slave}'s link failure count has changed!\n";
 					$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{link_failure_count}\t-> $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{link_failure_count}\n";
 				}
 				
@@ -5092,7 +5077,7 @@ sub compare_new_and_old
 				$conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed}  = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed};
 				if ($conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{speed} ne $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed})
 				{
-					$changes .= "Bond $dev ($say_out); $say_position slave ${slave}'s link speed has changed!\n";
+					$changes .= "\nBond $dev ($say_out); $say_position slave ${slave}'s link speed has changed!\n";
 					$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{speed}\t-> $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{speed}\n";
 				}
 				
@@ -5100,13 +5085,13 @@ sub compare_new_and_old
 				$conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex} = "--" if not exists $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex};
 				if ($conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{duplex} ne $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex})
 				{
-					$changes .= "Bond $dev ($say_out); $say_position slave ${slave}'s link duplex has changed!\n";
+					$changes .= "\nBond $dev ($say_out); $say_position slave ${slave}'s link duplex has changed!\n";
 					$changes .= "  $conf->{data}{network}{old}{bond}{$dev}{slave}{$slave}{duplex}\t-> $conf->{data}{network}{new}{bond}{$dev}{slave}{$slave}{duplex}\n";
 				}
 			}
 			else
 			{
-				$changes .= "Bond $dev ($say_out); has lost it's ".lc($say_position)." slave interface!\n";
+				$changes .= "\nBond $dev ($say_out); has lost it's ".lc($say_position)." slave interface!\n";
 			}
 			$first = 0;
 		}
@@ -5120,7 +5105,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr}     = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
 		if ($conf->{data}{network}{old}{dev}{$dev}{hwaddr} ne $conf->{data}{network}{new}{dev}{$dev}{hwaddr})
 		{
-			$changes .= "Interface $dev; MAC address has changed!\n";
+			$changes .= "\nInterface $dev; MAC address has changed!\n";
 			$changes .= "  NOTE: This is expected when the active slave in a bond changes\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{hwaddr}\t-> $conf->{data}{network}{new}{dev}{$dev}{hwaddr}\n";
 		}
@@ -5129,7 +5114,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{'state'}    = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{'state'};
 		if ($conf->{data}{network}{old}{dev}{$dev}{'state'} ne $conf->{data}{network}{new}{dev}{$dev}{'state'})
 		{
-			$changes .= "Interface $dev; The state of the interface has changed!\n";
+			$changes .= "\nInterface $dev; The state of the interface has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{'state'}\t-> $conf->{data}{network}{new}{dev}{$dev}{'state'}\n";
 		}
 		
@@ -5137,7 +5122,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{mtu}        = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{mtu};
 		if ($conf->{data}{network}{old}{dev}{$dev}{mtu} ne $conf->{data}{network}{new}{dev}{$dev}{mtu})
 		{
-			$changes .= "Interface $dev; MTU size has changed!\n";
+			$changes .= "\nInterface $dev; MTU size has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{mtu}\t-> $conf->{data}{network}{new}{dev}{$dev}{mtu}\n";
 		}
 		
@@ -5145,7 +5130,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{ip_address} = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{ip_address};
 		if ($conf->{data}{network}{old}{dev}{$dev}{ip_address} ne $conf->{data}{network}{new}{dev}{$dev}{ip_address})
 		{
-			$changes .= "Interface $dev; IP Address has changed!\n";
+			$changes .= "\nInterface $dev; IP Address has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{ip_address}\t-> $conf->{data}{network}{new}{dev}{$dev}{ip_address}\n";
 		}
 		
@@ -5153,7 +5138,7 @@ sub compare_new_and_old
 		$conf->{data}{network}{new}{dev}{$dev}{netmask}    = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{netmask};
 		if ($conf->{data}{network}{old}{dev}{$dev}{netmask} ne $conf->{data}{network}{new}{dev}{$dev}{netmask})
 		{
-			$changes .= "Interface $dev; Subnet Mask has changed!\n";
+			$changes .= "\nInterface $dev; Subnet Mask has changed!\n";
 			$changes .= "  $conf->{data}{network}{old}{dev}{$dev}{netmask}\t-> $conf->{data}{network}{new}{dev}{$dev}{netmask}\n";
 		}
 	}
@@ -5179,7 +5164,7 @@ sub compare_new_and_old
 								$conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var};
 								if ($conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var})
 								{
-									$changes .= "RAID virtual disk $adapter:$vd:$target_id \"$say_translation\" has changed!\n";
+									$changes .= "\nRAID virtual disk $adapter:$vd:$target_id \"$say_translation\" has changed!\n";
 									$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{vd}{$vd}{target}{$target_id}{$var}\n";
 								}
 							} 
@@ -5220,7 +5205,7 @@ sub compare_new_and_old
 								{
 									#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 									$conf->{'system'}{warning_event} = 1;
-									$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
 									$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 								}
 								else
@@ -5232,7 +5217,7 @@ sub compare_new_and_old
 							else
 							{
 								# No prior temparature.
-								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" seen for the first time.\n";
+								$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" seen for the first time.\n";
 								$changes .= "  --\t-> $new_temp *C\n";
 							}
 							
@@ -5243,15 +5228,17 @@ sub compare_new_and_old
 							{
 								$conf->{'system'}{migration_target}   = 0;
 								$conf->{'system'}{emergency_shutdown} = 1;
+								$changes .= "\n#######################################################################\n";
 								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
 								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+								$changes .= "#######################################################################\n";
 							}
 							elsif ($new_temp >= $upper_threshold)
 							{
 								#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 								$conf->{'system'}{migration_target} = 0;
 								$conf->{'system'}{warning_event}    = 1;
-								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
+								$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
 								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 							}
 						}
@@ -5266,7 +5253,7 @@ sub compare_new_and_old
 							if ($current_voltage <= $lower_voltage)
 							{
 								next if $conf->{'system'}{bbu_needs_attention};
-								$changes .= "RAID ${adapter}'s Battery Backup Unit has fallen below the lower voltage threshhold!\n";
+								$changes .= "\nRAID ${adapter}'s Battery Backup Unit has fallen below the lower voltage threshhold!\n";
 								$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], lower threshhold: [$lower_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
 								$changes .= "  Recharging or replacing he battery is required.\n";
 								$conf->{'system'}{bbu_needs_attention} = 1;
@@ -5280,7 +5267,7 @@ sub compare_new_and_old
 								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_voltage] > [$ok_voltage]\n");
 								if ($current_voltage > $ok_voltage)
 								{
-									$changes .= "RAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
 									$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], OK voltage is: [$ok_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
 									$changes .= "  Recharging or replacing the backup unit is required.\n";
 									$conf->{'system'}{bbu_needs_attention} = 0;
@@ -5297,7 +5284,7 @@ sub compare_new_and_old
 							   $difference       =~ s/^-//;
 							if ($difference >= $max_delta)
 							{
-								$changes .= "RAID ${adapter}'s Battery Backup Unit power draw has changed by an amount exceeding alert tolerances.\n";
+								$changes .= "\nRAID ${adapter}'s Battery Backup Unit power draw has changed by an amount exceeding alert tolerances.\n";
 								$changes .= "This may be do to a relearn cycle, which is normal.\n";
 								$changes .= "  Current draw: [$new_value], old draw: [$old_value], Alert trigger threshhold: [$max_delta mA / $conf->{'system'}{sleep_time} seconds]\n"; 
 							}
@@ -5313,7 +5300,7 @@ sub compare_new_and_old
 							if ($current_energy <= $lower_energy)
 							{
 								next if $conf->{'system'}{bbu_needs_attention};
-								$changes .= "RAID ${adapter}'s Capacitor Backup Unit has fallen below the lower energy threshhold!\n";
+								$changes .= "\nRAID ${adapter}'s Capacitor Backup Unit has fallen below the lower energy threshhold!\n";
 								$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], lower threshhold: [$lower_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
 								$changes .= "  Recharging or replacing the backup unit is required.\n";
 								$conf->{'system'}{bbu_needs_attention} = 1;
@@ -5327,7 +5314,7 @@ sub compare_new_and_old
 								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_energy] > [$ok_energy]\n");
 								if ($current_energy > $ok_energy)
 								{
-									$changes .= "RAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
 									$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], OK energy is: [$ok_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
 									$changes .= "  Recharging or replacing he battery is required.\n";
 									$conf->{'system'}{bbu_needs_attention} = 0;
@@ -5336,7 +5323,7 @@ sub compare_new_and_old
 						}
 						elsif ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
 						{
-							$changes .= "RAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
+							$changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
 							$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
 						}
 					}
@@ -5360,7 +5347,7 @@ sub compare_new_and_old
 										{
 											my $say_slot =  $slot;
 											$say_slot =~ s/^0//;
-											$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s port ${i}'s \"$say_translation\" has changed!\n";
+											$changes .= "\nRAID ${adapter}'s Physical Disk ${slot}'s port ${i}'s \"$say_translation\" has changed!\n";
 											$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{port}{$i}{$var}\n";
 										}
 									}
@@ -5398,7 +5385,7 @@ sub compare_new_and_old
 										{
 											#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 											$conf->{'system'}{warning_event} = 1;
-											$changes .= "RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+											$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
 											$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 										}
 										else
@@ -5410,7 +5397,7 @@ sub compare_new_and_old
 									else
 									{
 										# No prior temparature.
-										$changes .= "RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" seen for the first time.\n";
+										$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" seen for the first time.\n";
 										$changes .= "  --\t-> $new_temp *C\n";
 									}
 									
@@ -5421,15 +5408,17 @@ sub compare_new_and_old
 									{
 										$conf->{'system'}{migration_target}   = 0;
 										$conf->{'system'}{emergency_shutdown} = 1;
+										$changes .= "\n#######################################################################\n";
 										$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
 										$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+										$changes .= "#######################################################################\n";
 									}
 									elsif ($new_temp >= $upper_threshold)
 									{
 										#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 										$conf->{'system'}{migration_target} = 0;
 										$conf->{'system'}{warning_event}    = 1;
-										$changes .= "RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
+										$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
 										$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 									}
 								}
@@ -5437,7 +5426,7 @@ sub compare_new_and_old
 								{
 									if ($conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var})
 									{
-										$changes .= "RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has changed!\n";
+										$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has changed!\n";
 										$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{slot}{$slot}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{$var}\n";
 									}
 								}
@@ -5461,7 +5450,7 @@ sub compare_new_and_old
 							
 							if ($conf->{data}{lsi}{old}{adapter}{$adapter}{backend_port}{$port}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}{$var})
 							{
-								$changes .= "RAID ${adapter}'s Internal Port ${port}'s \"$say_translation\" has changed!\n";
+								$changes .= "\nRAID ${adapter}'s Internal Port ${port}'s \"$say_translation\" has changed!\n";
 								$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{backend_port}{$port}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{backend_port}{$port}{$var}\n";
 							}
 						}
@@ -5478,7 +5467,7 @@ sub compare_new_and_old
 							$conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}{$var};
 							if ($conf->{data}{lsi}{old}{adapter}{$adapter}{frontend_port}{$port}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}{$var})
 							{
-								$changes .= "RAID ${adapter}'s External Port ${port}'s \"$say_translation\" has changed!\n";
+								$changes .= "\nRAID ${adapter}'s External Port ${port}'s \"$say_translation\" has changed!\n";
 								$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{frontend_port}{$port}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{frontend_port}{$port}{$var}\n";
 							}
 						}
@@ -5514,7 +5503,7 @@ sub compare_new_and_old
 						{
 							#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 							$conf->{'system'}{warning_event} = 1;
-							$changes .= "RAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+							$changes .= "\nRAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
 							$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 						}
 						else
@@ -5526,7 +5515,7 @@ sub compare_new_and_old
 					else
 					{
 						# No prior temparature.
-						$changes .= "RAID ${adapter}'s ROC temperature seen for the first time.\n";
+						$changes .= "\nRAID ${adapter}'s ROC temperature seen for the first time.\n";
 						$changes .= "  --\t-> $new_temp *C\n";
 					}
 					
@@ -5537,15 +5526,17 @@ sub compare_new_and_old
 					{
 						$conf->{'system'}{migration_target}   = 0;
 						$conf->{'system'}{emergency_shutdown} = 1;
+						$changes .= "\n#######################################################################\n";
 						$changes .= "RAID ${adapter}'s ROC temperature is at or above the critical level of $power_down_threshold *C!\n";
 						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+						$changes .= "#######################################################################\n";
 					}
 					elsif ($new_temp >= $upper_threshold)
 					{
 						#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 						$conf->{'system'}{migration_target} = 0;
 						$conf->{'system'}{warning_event}    = 1;
-						$changes .= "RAID ${adapter}'s ROC temperature is at or above the warning level of $upper_threshold *C!\n";
+						$changes .= "\nRAID ${adapter}'s ROC temperature is at or above the warning level of $upper_threshold *C!\n";
 						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
 					}
 				}
@@ -5567,7 +5558,7 @@ sub compare_new_and_old
 					$conf->{data}{lsi}{new}{adapter}{$adapter}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{$var};
 					if ($conf->{data}{lsi}{old}{adapter}{$adapter}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{$var})
 					{
-						$changes .= "RAID ${adapter}'s \"$say_translation\" has changed!\n";
+						$changes .= "\nRAID ${adapter}'s \"$say_translation\" has changed!\n";
 						$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{$var}\n";
 					}
 				}
@@ -5597,7 +5588,7 @@ sub compare_new_and_old
 			# If the state has changed, send an alert.
 			if ($new_state ne "ok")
 			{
-				$changes .= "Host's \"$say_translation\" state has changed!\n";
+				$changes .= "\nHost's \"$say_translation\" state has changed!\n";
 				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 				$conf->{'system'}{warning_event}    = 1;
 				$conf->{'system'}{migration_target} = 0;
@@ -5622,7 +5613,7 @@ sub compare_new_and_old
 				if (($new_state eq "ok") && ($new_rpm >= $reset_rpm))
 				{
 					delete $conf->{'system'}{fan_alert}{$var};
-					$changes .= "Host's \"$say_translation\" fan speed has returned to normal. Alert cleared.\n";
+					$changes .= "\nHost's \"$say_translation\" fan speed has returned to normal. Alert cleared.\n";
 					$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 					$conf->{'system'}{clear_event}      = 1;
 					$conf->{'system'}{migration_target} = 1;
@@ -5637,7 +5628,7 @@ sub compare_new_and_old
 				$conf->{'system'}{fan_alert}{$var}  = 1;
 				$conf->{'system'}{warning_event}    = 1;
 				$conf->{'system'}{migration_target} = 0;
-				$changes .= "Host's \"$say_translation\" fan state has changed!\n";
+				$changes .= "\nHost's \"$say_translation\" fan state has changed!\n";
 				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
 			elsif ($new_rpm < $minimum_rpm)
@@ -5645,7 +5636,7 @@ sub compare_new_and_old
 				$conf->{'system'}{fan_alert}{$var}  = 1;
 				$conf->{'system'}{warning_event}    = 1;
 				$conf->{'system'}{migration_target} = 0;
-				$changes .= "Host's \"$say_translation\" fan speed has dropped below the minimum of $minimum_rpm RPM!\n";
+				$changes .= "\nHost's \"$say_translation\" fan speed has dropped below the minimum of $minimum_rpm RPM!\n";
 				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
 			else
@@ -5738,7 +5729,7 @@ sub compare_new_and_old
 				{
 					# All is right in the world.
 					delete $conf->{'system'}{voltage_alert}{$var};
-					$changes .= "Host's \"$say_translation\" voltage has returned to normal. Deviation now within $recover mV of base $base_mv mV. Alert cleared.\n";
+					$changes .= "\nHost's \"$say_translation\" voltage has returned to normal. Deviation now within $recover mV of base $base_mv mV. Alert cleared.\n";
 					$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 					$conf->{'system'}{clear_event}      = 1;
 					$conf->{'system'}{migration_target} = 0;
@@ -5753,7 +5744,7 @@ sub compare_new_and_old
 				$conf->{'system'}{voltage_alert}{$var} = 1;
 				$conf->{'system'}{warning_event}       = 1;
 				$conf->{'system'}{migration_target}    = 0;
-				$changes .= "Host's \"$say_translation\" voltage state has changed!\n";
+				$changes .= "\nHost's \"$say_translation\" voltage state has changed!\n";
 				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
 			elsif ($new_mv <= $restore)
@@ -5761,7 +5752,7 @@ sub compare_new_and_old
 				$conf->{'system'}{voltage_alert}{$var} = 1;
 				$conf->{'system'}{warning_event}       = 1;
 				$conf->{'system'}{migration_target}    = 0;
-				$changes .= "Host's \"$say_translation\" level has fallen outside of tolerances! $diff mV off of base voltage of $base_mv mV, max deviation was $range mV\n";
+				$changes .= "\nHost's \"$say_translation\" level has fallen outside of tolerances! $diff mV off of base voltage of $base_mv mV, max deviation was $range mV\n";
 				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
 			else
@@ -5772,8 +5763,210 @@ sub compare_new_and_old
 		}
 		elsif ($conf->{data}{ipmi}{old}{$var} ne $conf->{data}{ipmi}{new}{$var})
 		{
-			$changes .= "Host sensor \"$say_translation\" has change!\n";
+			$changes .= "\nHost sensor \"$say_translation\" has change!\n";
 			$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+		}
+	}
+	
+	# UPS info.
+	# Key variables;
+	# STATUS - ONLINE == good
+	
+	# Informative variables.
+	# SERIALNO = serial number
+	# MODEL    = Generic model name
+	# MANDATE  = UPS Manufacture Date
+	# BATTDATE = Battery Manufactire Date
+	# BATTV    = Battery Voltage
+	
+	# Variables with tolerances
+	# LINEV   - Withing  HITRANS or below LOTRANS trigger
+	# OUTPUTV - Look at the tolerances of the PSUs and set a sane upper/lower threshold (can be later version).
+	# LOADPCT - Anything over 'upper_load_threshold' will fire an alert
+	# BCHARGE - For now, don't trigger an alert, but log changes.
+	
+	# Variables with lower limits
+	# TIMELEFT = When the second UPS drops below '5.0 Minutes', initiate power down.
+	if ($conf->{'system'}{ups_available})
+	{
+		# First off, if the strongest UPS is below the hold-up
+		# threshold, begin powering down. This will NOT try to migrate
+		# as the other node is almost certainly in the same boat.
+		if ($conf->{data}{ups}{new}{best_case}{status} ne "ONLINE")
+		{
+			my $best_time_left  = $conf->{data}{ups}{new}{best_case}{time_left};
+			my $shutdown_buffer = $conf->{alert}{ups}{shutdown_buffer};
+			record($conf, "$THIS_FILE ".__LINE__."; Checking if the time remaining in the strongest UPS: [$best_time_left] is greater than: [$shutdown_buffer seconds]\n");
+			if ($shutdown_buffer > $best_time_left)
+			{
+				$conf->{'system'}{critical_event}     = 1;
+				$conf->{'system'}{migration_target}   = 0;
+				$conf->{'system'}{emergency_shutdown} = 1;
+				if ($conf->{data}{ups}{new}{ups_count} == 1)
+				{
+					$changes .= "\n#######################################################################\n";
+					$changes .= "The UPS is running on batteries and the remaining hold up time is below\n";
+					$changes .= "critical levels! There are $best_time_left seconds remaining and the\n";
+					$changes .= "shut down threshold is $shutdown_buffer seconds.\n";
+					$changes .= "#######################################################################\n";
+				}
+				else
+				{
+					$changes .= "\n#######################################################################\n";
+					$changes .= "The strongest remaining UPS is running on batteries and the remaining\n";
+					$changes .= "hold up time below critical levels! There are $best_time_left seconds remaining\n";
+					$changes .= "and the shut down threshold is $shutdown_buffer seconds.\n";
+					$changes .= "#######################################################################\n";
+				}
+			}
+		}
+		
+		# Now for UPS specific checks.
+		foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{ups_name}})
+		{
+			foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{ups_name}{$ups_name}})
+			{
+				$conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} = "--" if not defined $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var};
+				$conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} = "--" if not defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var};
+				next if (($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} ne "--") && ($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} eq $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}));
+				
+				if ($var =~ /STATUS/i)
+				{
+					if ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /ONLINE/i)
+					{
+						$conf->{'system'}{clear_event} = 1;
+						delete $conf->{'system'}{ups_alert}{$ups_name}{status};
+						if ($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} =~ /COMMLOST/i)
+						{
+							$changes .= "\nUPS ${ups_name}'s communication link has been re-established. Alert cleared.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+						else
+						{
+							$changes .= "\nUPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+					}
+					elsif ($conf->{'system'}{ups_alert}{$ups_name}{status})
+					{
+						$changes .= "\nUPS ${ups_name}'s status has changed!\n";
+						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					}
+					else
+					{
+						$conf->{'system'}{warning_event}                = 1;
+						$conf->{'system'}{ups_alert}{$ups_name}{status} = 1;
+						if ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /COMMLOST/i)
+						{
+							$changes .= "\nUPS ${ups_name}'s status has changed! Communications link has been lost!\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+						else
+						{
+							$changes .= "\nUPS ${ups_name}'s status has changed! Power from mains has been lost!\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+					}
+				}
+				elsif ($var =~ /LINEV/i)
+				{
+					my $min_voltage  = ($conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS} =~ /^(\d+\.*\d*) /)[0];
+					my $max_voltage  = ($conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS} =~ /^(\d+\.*\d*) /)[0];
+					my $line_voltage = ($conf->{data}{ups}{new}{ups_name}{$ups_name}{LINEV}   =~ /^(\d+\.*\d*) /)[0];
+					if ($conf->{'system'}{ups_alert}{$ups_name}{live_voltage})
+					{
+						# If the voltage is now within range, clear the warning.
+						if (($line_voltage >= $min_voltage) && ($line_voltage <= $max_voltage))
+						{
+							# We're back in the clear.
+							delete $conf->{'system'}{ups_alert}{$ups_name}{live_voltage};
+							$conf->{'system'}{clear_event} = 1;
+							$changes .= "\nUPS ${ups_name}'s voltage from mains as returned to normal ranges. Alert cleared.\n";
+							$changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+						else
+						{
+							# Voltage changed but we're not in the clear.
+							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] line voltage has changed but is still outside tolerances. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+						}
+					}
+					else
+					{
+						# If it's within spec, just log the change.
+						if (($line_voltage >= $min_voltage) && ($line_voltage <= $max_voltage))
+						{
+							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] line voltage has changed but it is within acceptable range. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+						}
+						else
+						{
+							# Well shit.
+							$conf->{'system'}{ups_alert}{$ups_name}{live_voltage} = 1;
+							$conf->{'system'}{warning_event}                      = 1;
+							$changes .= "\nUPS ${ups_name}'s voltage from mains has fallen outside of tolerances!\n";
+							$changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+					}
+				}
+				elsif ($var =~ /LOADPCT/i)
+				{
+					my $load_alert   = $conf->{alerts}{ups}{upper_load_threshold};
+					my $clear_alert  = $load_alert - 5;	# Prevent bouncy alerts
+					my $current_load = ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /^(\d+\.*\d*) /)[0];
+					#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], Checking if current load: [$current_load] is greater than alert threshold of: [$load_alert]\n");
+					
+					# Is there an existing alert?
+					if ($conf->{'system'}{ups_alert}{$ups_name}{load_alert})
+					{
+						if ($current_load >= $load_alert)
+						{
+							# Still over loaded.
+							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load is still over the alert threshold of: [$load_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+						}
+						elsif ($current_load <= $clear_alert)
+						{
+							# We're clear.
+							delete $conf->{'system'}{ups_alert}{$ups_name}{load_alert};
+							$conf->{'system'}{clear_event} = 1;
+							$changes .= "\nUPS ${ups_name}'s load has fallen back down below: [$clear_alert %]. Alert cleared.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+						else
+						{
+							# Looking good, but not clear yet.
+							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load is back under the alert threshold of: [$load_alert %] but it is still above the clear threshold of: [$clear_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+							$changes .= "\nUPS ${ups_name}'s load has fallen back down below: [$clear_alert %]. Alert cleared.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+					}
+					else
+					{
+						if ($current_load >= $load_alert)
+						{
+							# This isn't itself bad.
+							$conf->{'system'}{ups_alert}{$ups_name}{load_alert} = 1;
+							$conf->{'system'}{warning_event}                    = 1;
+							$changes .= "\nUPS ${ups_name}'s load has exceed the alert level of: [$load_alert %].\n";
+							$changes .= "This is not, itself, a problem. However, this minimizes the run time after a mains failure.\n";
+							$changes .= "Please consider moving some load to another UPS or circuit if possible.\n";
+							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
+						else
+						{
+							# Still over loaded.
+							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load has changed; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+						}
+					}
+				}
+				else
+				{
+					# Something I am not (yet) concerned about has changed.
+					#$changes .= "\nUPS ${ups_name}'s \"$var\" has had a state changed.\n";
+					#$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s \"$var\" has had a state changed; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+				}
+			}
 		}
 	}
 
@@ -5862,18 +6055,24 @@ sub compare_new_and_old
 		delete $conf->{data}{ipmi}{diff}{$key};
 	}
 	
+	# UPSes
+	foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{new}{ups_name}})
+	{
+		delete $conf->{data}{ups}{diff}{ups_name}{$ups_name};
+	}
+	
 #------------------------------------------------------------------------------
 	# Now look for undeleted entries.
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{bridge}})
 	{
-		$changes .= "The bridge \"$dev\" appears to have been removed!\n";
+		$changes .= "\nThe bridge \"$dev\" appears to have been removed!\n";
 		delete $conf->{data}{network}{diff}{bridge}{$dev};
 	}
 	
 	# Bonds
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{bond}})
 	{
-		$changes .= "The bond \"$dev\" appears to have been removed!\n";
+		$changes .= "\nThe bond \"$dev\" appears to have been removed!\n";
 		delete $conf->{data}{network}{diff}{bond}{$dev};
 	}
 	
@@ -5882,7 +6081,7 @@ sub compare_new_and_old
 	{
 		# Because I read the config files, this will only trigger if
 		# both the iface and the config file were removed.
-		$changes .= "The network interface \"$dev\" appears to have been removed!\n";
+		$changes .= "\nThe network interface \"$dev\" appears to have been removed!\n";
 		delete $conf->{data}{network}{diff}{dev}{$dev};
 	}
 	
@@ -5899,14 +6098,14 @@ sub compare_new_and_old
 				{
 					foreach my $vd (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{vd}})
 					{
-						$changes .= "The LSI adapter $adapter appears to no longer have the virtual disk \"$vd\"!\n";
+						$changes .= "\nThe LSI adapter $adapter appears to no longer have the virtual disk \"$vd\"!\n";
 						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{vd}{$vd};
 					}
 				}
 				elsif ($key eq "bbu")
 				{
 					# Is this even possible?
-					$changes .= "The LSI adapter $adapter appears to have lost it's BBU (Battery BackUp)!\n";
+					$changes .= "\nThe LSI adapter $adapter appears to have lost it's BBU (Battery BackUp)!\n";
 					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{bbu};
 				}
 				elsif ($key eq "slot")
@@ -5914,7 +6113,7 @@ sub compare_new_and_old
 					foreach my $slot (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{slot}})
 					{
 						# TODO: I can probably add the drive type / serial number to this.
-						$changes .= "The LSI adapter $adapter appears to have lost the drive in slot $slot!\n";
+						$changes .= "\nThe LSI adapter $adapter appears to have lost the drive in slot $slot!\n";
 						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{slot}{$slot};
 					}
 				}
@@ -5922,7 +6121,7 @@ sub compare_new_and_old
 				{
 					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{backend_port}})
 					{
-						$changes .= "The LSI adapter $adapter appears to have lost it's internal port $port!\n";
+						$changes .= "\nThe LSI adapter $adapter appears to have lost it's internal port $port!\n";
 						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{backend_port}{$port};
 					}
 				}
@@ -5930,7 +6129,7 @@ sub compare_new_and_old
 				{
 					foreach my $port (sort {$a cmp $b} keys %{$conf->{data}{lsi}{diff}{adapter}{$adapter}{frontend_port}})
 					{
-						$changes .= "The LSI adapter $adapter appears to have lost it's external port $port!\n";
+						$changes .= "\nThe LSI adapter $adapter appears to have lost it's external port $port!\n";
 						delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{frontend_port}{$port};
 					}
 				}
@@ -5938,7 +6137,7 @@ sub compare_new_and_old
 				{
 					my $var             =  $key;  # Just to keep it sane with the above code.
 					my $say_translation =  $conf->{translate}{lsi}{$key} ? $conf->{translate}{lsi}{$key} : $key;
-					$changes            .= "The LSI adapter $adapter appears to have lost the \"$say_translation\" value!\n";
+					$changes            .= "\nThe LSI adapter $adapter appears to have lost the \"$say_translation\" value!\n";
 					delete $conf->{data}{lsi}{diff}{adapter}{$adapter}{$var};
 				}
 			}
@@ -5949,9 +6148,15 @@ sub compare_new_and_old
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
 	{
 		my $say_var = $conf->{translate}{ipmi}{$key};
-		$changes .= "The IPMI \"$say_var\" value has disappeared!\n";
+		$changes .= "\nThe IPMI \"$say_var\" value has disappeared!\n";
 	}
 	delete $conf->{data}{ipmi}{diff};
+	
+	# UPSes
+	foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{diff}{ups_name}})
+	{
+		$changes .= "\nThe UPS \"$ups_name\" has disappeared!\n";
+	}
 	
 #==============================================================================
 	
@@ -5967,8 +6172,7 @@ change then there is no reason for concern. If this change was
 unexpected, please feel free to contact support.
 
 ----------------------------------------------------------------------
-$changes
-";
+$changes";
 		send_email($conf);
 		record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
 		#die "testing...\n";
@@ -6020,8 +6224,10 @@ sub check_temperature
 				$conf->{'system'}{critical_event}     = 1;
 				$conf->{'system'}{migration_target}   = 0;
 				$conf->{'system'}{emergency_shutdown} = 1;
+				$changes .= "\n#######################################################################\n";
 				$changes .= "$message_upper_to_power_down\n";
 				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+				$changes .= "#######################################################################\n";
 			}
 			else
 			{
@@ -6036,7 +6242,7 @@ sub check_temperature
 			{
 				$conf->{'system'}{warning_event}    = 1;
 				$conf->{'system'}{migration_target} = 0;
-				$changes .= "$message_power_down_to_upper\n";
+				$changes .= "\n$message_power_down_to_upper\n";
 				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
 			}
 			else
@@ -6051,7 +6257,7 @@ sub check_temperature
 			delete $conf->{'system'}{temp_alert}{$var};
 			$conf->{'system'}{migration_target} = 1;
 			$conf->{'system'}{clear_event}      = 1;
-			$changes .= "$message_clear_threshold\n";
+			$changes .= "\n$message_clear_threshold\n";
 			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
 		}
 		else
@@ -6070,15 +6276,17 @@ sub check_temperature
 			$conf->{'system'}{emergency_shutdown} = 1;
 			$conf->{'system'}{critical_event}     = 1;
 			$conf->{'system'}{migration_target}   = 0;
+			$changes .= "\n#######################################################################\n";
 			$changes .= "$message_over_power_down\n";
 			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			$changes .= "#######################################################################\n";
 		}
 		elsif ($delta >= $delta_threshold)
 		{
 			$conf->{'system'}{temp_alert}{$var} = 1;
 			$conf->{'system'}{warning_event}    = 1;
 			$conf->{'system'}{migration_target} = 0;
-			$changes .= "$message_over_alert\n";
+			$changes .= "\n$message_over_alert\n";
 			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
 		}
 		else
@@ -6280,6 +6488,15 @@ sub copy_hash
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{$src}})
 	{
 		$conf->{data}{ipmi}{$dst}{$key} = $conf->{data}{ipmi}{$src}{$key};
+	}
+	
+	# Now for UPS specific checks.
+	foreach my $ups_name (sort {$a cmp $b} keys %{$conf->{data}{ups}{$src}{ups_name}})
+	{
+		foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{ups}{$src}{ups_name}{$ups_name}})
+		{
+			$conf->{data}{ups}{$dst}{ups_name}{$ups_name}{$var} = $conf->{data}{ups}{$src}{ups_name}{$ups_name}{$var};
+		}
 	}
 	
 	return(0);

@@ -2646,8 +2646,9 @@ sub start_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e vm:$vm -m $node_cluster_name\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -2662,10 +2663,27 @@ sub start_vm
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -2717,18 +2735,20 @@ sub parse_text_line
 	my ($conf, $line) = @_;
 	
 	# 'Da good ^_^
-	$line =~ s/(success)/<span class="highlight_good"><b>$1<\/b><\/span>/ig;
-	$line =~ s/\[ (ok) \]/[ <span class="highlight_good"><b>$1<\/b><\/span> ]/ig;
+	$line =~ s/(success)/<span class="highlight_good">$1<\/b><\/span>/ig;
+	$line =~ s/\[ (ok) \]/[ <span class="highlight_good">$1<\/b><\/span> ]/ig;
 	
 	# Informational.
-	$line =~ s/(done)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
-	$line =~ s/(disabled)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
+	$line =~ s/(done)/<span class="highlight_ready">$1<\/b><\/span>/ig;
+	$line =~ s/(Starting Cluster:)/<span class="highlight_ready">$1<\/b><\/span>/ig;
+	$line =~ s/(Stopping Cluster:)/<span class="highlight_ready">$1<\/b><\/span>/ig;
+	#$line =~ s/(disabled)/<span class="highlight_ready">$1<\/b><\/span>/ig;
 	#$line =~ s/(shutdown)/<span class="highlight_ready">$1<\/span>/ig;
-	$line =~ s/(shut down)/<span class="highlight_ready"><b>$1<\/b><\/span>/ig;
+	$line =~ s/(shut down)/<span class="highlight_ready">$1<\/b><\/span>/ig;
 	
 	# 'Da bad. ;_;
-	$line =~ s/(failed)/<span class="highlight_bad"><b>$1<\/b><\/span>/ig;
-	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad"><b>$1<\/b><\/span> ]/ig;
+	$line =~ s/(failed)/<span class="highlight_bad">$1<\/b><\/span>/ig;
+	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad">$1<\/b><\/span> ]/ig;
 	
 	return($line);
 }
@@ -2763,8 +2783,9 @@ sub migrate_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -M vm:$vm -m $target\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -2779,10 +2800,27 @@ sub migrate_vm
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -2853,8 +2891,9 @@ sub stop_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $say_node = node_name_to_long_host_name($conf, $node);
 		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -d vm:$vm\"";
@@ -2871,10 +2910,27 @@ sub stop_vm
 			$line =~ s/Local machine/$say_node/;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -2932,8 +2988,9 @@ sub join_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -2948,10 +3005,27 @@ sub join_cluster
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -3040,12 +3114,13 @@ sub dual_join
 	<tr>
 		<td>
 			System call output below:<br />
-			<span class=\"highligh_ready_bold\">Note</span>: Output from both nodes will be mixed together.
+			<span class=\"highlight_ready_bold\">Note</span>: Output from both nodes will be mixed together.
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		# I need to fork here because the calls won't return until cman
 		# either talks to it's peer or fences it.
@@ -3078,8 +3153,29 @@ sub dual_join
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
+					next if not $line;
 					record($conf, "$THIS_FILE ".__LINE__."; $node; $line\n");
-					print "$node; $line<br />\n";
+					$line = parse_text_line($conf, $line);
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" align=\"right\">
+						$node
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 				}
 				$fh->close();
 				
@@ -3130,6 +3226,7 @@ sub dual_join
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; All child processes reaped, exiting threaded execution.\n");
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -3206,8 +3303,9 @@ sub force_off_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"virsh destroy $vm\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -3222,10 +3320,27 @@ sub force_off_vm
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -3312,8 +3427,9 @@ sub delete_vm
 		{
 			print "
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 			my $sc = "$conf->{path}{ssh} root\@$host \"$conf->{path}{clusvcadm} -d $vm; echo clusvcadm:\\\$?\"";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -3335,11 +3451,28 @@ sub delete_vm
 				else
 				{
 					$line = parse_text_line($conf, $line);
-					print "$line<br />\n";
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 				}
 			}
 			$fh->close();
 			print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -3452,8 +3585,9 @@ sub poweroff_node
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"poweroff && echo \"Power down initiated. Please return to the main page now.\"\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -3468,10 +3602,27 @@ sub poweroff_node
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -3577,8 +3728,9 @@ sub dual_boot
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
@@ -3589,10 +3741,27 @@ sub dual_boot
 				my $line = $_;
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				$line = parse_text_line($conf, $line);
-				print "$line<br />\n";
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 			}
 			$fh->close();
 			print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -4139,8 +4308,9 @@ sub withdraw_node
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $rgmanager_stop = 1;
 		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager stop\"";
@@ -4160,10 +4330,27 @@ sub withdraw_node
 			}
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
-			print "$line<br />\n";
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 		}
 		$fh->close();
 		print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -4178,8 +4365,9 @@ sub withdraw_node
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 			my $cman_stop = 1;
 			my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman stop\"";
@@ -4199,10 +4387,27 @@ sub withdraw_node
 				}
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				$line = parse_text_line($conf, $line);
-				print "$line<br />\n";
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 			}
 			$fh->close();
 			print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -4228,8 +4433,9 @@ sub withdraw_node
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 				my $cman_start = 1;
 				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start\"";
@@ -4249,10 +4455,27 @@ sub withdraw_node
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
-					print "$line<br />\n";
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 				}
 				$fh->close();
 				print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -4425,8 +4648,9 @@ sub recover_rgmanager
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 				# NOTE: This will return 'Warning' because of
 				# whatever is holding open the storage. This is
@@ -4449,10 +4673,27 @@ sub recover_rgmanager
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
-					print "$line<br />\n";
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 				}
 				$fh->close();
 				print "
+			</table>
 			<br />
 		</td>
 	</tr>
@@ -4471,8 +4712,9 @@ sub recover_rgmanager
 		</td>
 	</tr>
 	<tr>
-		<td class=\"fixed_width\">
+		<td>
 			<br />
+			<table class=\"hidden_table\" width=\"100%\">
 ";
 				my $storage_start = 1;
 				my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e $storage_service\"";
@@ -4492,10 +4734,27 @@ sub recover_rgmanager
 					}
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
-					print "$line<br />\n";
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$message
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$status
+					</td>
+				</tr>
+";
 				}
 				$fh->close();
 				print "
+			</table>
 			<br />
 		</td>
 	</tr>
