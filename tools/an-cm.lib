@@ -4893,12 +4893,14 @@ sub compare_new_and_old
 	{
 		my $say_service_title = 1;
 		my $say_vm_title      = 1;
+		#record($conf, "$THIS_FILE ".__LINE__."; checking for state change in service: [$service]\n");
 		$conf->{data}{clustat}{old}{service}{$service}{'state'} = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{'state'};
 		$conf->{data}{clustat}{new}{service}{$service}{'state'} = "--" if not defined $conf->{data}{clustat}{new}{service}{$service}{'state'};
 		$conf->{data}{clustat}{old}{service}{$service}{on}      = "--" if not defined $conf->{data}{clustat}{old}{service}{$service}{on};
 		$conf->{data}{clustat}{new}{service}{$service}{on}      = "--" if not defined $conf->{data}{clustat}{new}{service}{$service}{on};
+		#record($conf, "$THIS_FILE ".__LINE__."; old state / on: [$conf->{data}{clustat}{old}{service}{$service}{'state'}] / [$conf->{data}{clustat}{old}{service}{$service}{on}], new state / on: [$conf->{data}{clustat}{new}{service}{$service}{'state'}] / [$conf->{data}{clustat}{new}{service}{$service}{on}]\n");
 		if (($conf->{data}{clustat}{old}{service}{$service}{'state'} ne $conf->{data}{clustat}{new}{service}{$service}{'state'}) ||
-		    ($conf->{data}{clustat}{new}{service}{$service}{on}      ne $conf->{data}{clustat}{new}{service}{$service}{on}))
+		    ($conf->{data}{clustat}{old}{service}{$service}{on}      ne $conf->{data}{clustat}{new}{service}{$service}{on}))
 		{
 			my $say_service = "";
 			if ($service =~ /service:(.*)/i)
@@ -5097,7 +5099,7 @@ sub compare_new_and_old
 		}
 	}
 	
-	# Check networkd interfaces
+	# Check network interfaces
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
 	{
 		next if $dev !~ /eth/i;
@@ -5175,7 +5177,8 @@ sub compare_new_and_old
 				{
 					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
 					{
-						next if $var eq "next_learn_time"; # This would squack too much.
+						next if $var eq "next_learn_time";     # This would squack too much.
+						next if $var eq "bbu_gasgauge_status"; # Ditto
 						
 						my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
 						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
@@ -6629,7 +6632,7 @@ sub record
 		$conf->{handles}{'log'} = $fh;
 	}
 	print $fh time." ".$message;
-	print time." ".$message;
+	#print time." ".$message;
 	
 	return (0);
 }

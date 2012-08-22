@@ -51,7 +51,7 @@ my $conf = {
 		helo_domain		=>	"alteeve.ca",
 	},
 	mail_data		=>	{
-		to			=>	"alert\@alteeve.ca",
+		to			=>	"clusters\@alteeve.ca",
 		sending_domain		=>	"mail.alteeve.ca",
 		subject			=>	"test",
 		body			=>	"test",
@@ -136,12 +136,12 @@ get_hostname($conf);
 # What cluster am I in?
 read_cluster_conf($conf);
 
-$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{name} - $conf->{node}{me}{short_name}";
+$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
 $conf->{mail_data}{body_suffix}    = "
 --[ Source Details ]--------------------------------------------------
 
 Company: $conf->{cluster}{company}
-Cluster: $conf->{cluster}{name}
+Cluster: $conf->{cluster}{description}
 Node:    $conf->{node}{me}{long_name}
 Description:
  - $conf->{cluster}{description}
