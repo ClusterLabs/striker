@@ -256,6 +256,12 @@ sub check_host
 		if ($val =~ /0x\d\d/i)
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; Checking variable name: [$var] with the value: [$val]\n");
+			# A state of '0x08' means a failed PSU.
+			if (($var =~ /PSU/i) && ($val eq "0x08"))
+			{
+				$state = "bad!";
+			}
+			
 			if (($var =~ /Total Power/i) or 
 			    ($var =~ /Total Power Out/i) or 
 			    ($var =~ /Power Level/i) or 
@@ -298,6 +304,167 @@ sub check_storage_lsi
 	get_storage_lsi_bbu_info($conf);
 	get_storage_lsi_vd_info($conf);
 	
+	return(0);
+}
+
+# This checks the storage when an HP RAID controller was found.
+sub check_storage_hp
+{
+	my ($conf) = @_;
+	
+	# Get all the controller details.
+	delete $conf->{data}{hp}{new};
+	get_storage_hp($conf);
+	#get_storage_lsi_adapter_info($conf);
+	#get_storage_lsi_physical_disk_info($conf);
+	#get_storage_lsi_bbu_info($conf);
+	#get_storage_lsi_vd_info($conf);
+	
+	return(0);
+}
+
+# This reads the states of an HP server, if this is one and the tools are
+# installed.
+sub get_storage_hp
+{
+	my ($conf)=@_;
+
+	$conf->{data}{raw}{hpacucli} = "";
+	my $reading   = "";
+	my $array     = "";
+	my $slot      = "x";
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{hpacucli} ctrl all show config";
+	record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
+	open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$conf->{data}{raw}{hpacucli} .= $line."\n";
+		$line =~ s/\t+/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		
+		# 
+		if ($line=~/in Slot (.*?)\s+/)
+		{
+			$slot = $1;
+		}
+	}
+	$fh->close();
+
+=pod
+	my $reading    = "";
+	my $read       = IO::Handle->new();
+	my $shell_call = "$conf->{path}{hpacucli} ctrl all show config 2>&1 |";
+	#print "Calling: [$shell_call]\n";
+	open ($read, $shell_call) || die "Failed to call: [$shell_call], error: $!\n";
+	while (<$read>)
+	{
+		chomp;
+		my $line=$_;
+		if ($line =~ /hpacucli is running/)
+		{
+			# There is another instance running... 
+			send_email($conf, "Problem with: [$conf->{path}{hpacucli}]", "The: [$conf->{path}{hpacucli}] is reporting that another instance is running. Exiting.", 1);
+			exit (1);
+		}
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$conf->{misc}{storage_data}.=$line."\n";
+	}
+	$read->close();
+	
+	my $array="";
+	my $slot="x";
+	foreach my $line (split/\n/, $conf->{misc}{storage_data})
+	{
+		#print __LINE__."; line: [$line]\n";
+		if ($line=~/in Slot (.*?)\s+/)
+		{
+			$slot=$1;
+		}
+		if ($line=~/Smart Array (.*?) in Slot $slot\s+\(sn: (.*?)\)/)
+		{
+			$conf->{hp}{hba}{slot}{$slot}{model}=$1;
+			$conf->{hp}{hba}{slot}{$slot}{serial}=$2;
+		}
+		if ($line=~/array (.*?) \((.*?), Unused Space: (.*?)\)/)
+		{
+			$array=$1;
+			$conf->{hp}{hba}{slot}{$slot}{array}{$array}{interface}=$2;
+			$conf->{hp}{hba}{slot}{$slot}{array}{$array}{free_space}=$3;
+		}
+		if ($line=~/SEP \(Vendor ID (.*?), Model\s+(.*?)\) (.*?) \(WWID: (.*?)\)/)
+		{
+			# I have no idea what this is...
+			# SEP \(Vendor ID PMCSIERA, Model  SRC 8x6G\) 250 \(WWID: 500143801465928F\)
+		}
+		if ($array)
+		{
+# 			print "line: [$line]\n";
+			if ($line=~/logicaldrive (.*?) \((.*?), RAID (.*?), (.*?)\)/)
+			{
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive}=$1;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity}=$2;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level}=$3;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status}=$4;
+				print __LINE__."; parsed; logical_drive: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive}], capacity: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity}], RAID level: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level}], status: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status}]\n";
+			}
+			if ($line=~/physicaldrive .*? \(port (.*?):box (.*?):bay (.*?), (.*?), (.*?), (.*?)\)/)
+			{
+				my $port=$1;
+				my $box=$2;
+				my $bay=$3;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface}=$4;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity}=$5;
+				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status}=$6;
+				print __LINE__."; Parsed; port: [$port], box: [$box], bay: [$bay], interface: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface}], capacity: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity}], status: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status}]\n";
+			}
+		}
+	}
+	
+	# Record the results.
+	foreach my $slot (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}})
+	{
+		foreach my $array (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}})
+		{
+			# Cleanliness.
+			my $logical_drive=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive};
+			my $capacity=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity};
+			my $raid_level=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level};
+			my $status=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status};
+# 			print __LINE__."; Array; Slot: [$slot], Array: [$array] -> logical drive: [$logical_drive], capacity: [$capacity], RAID level: [$raid_level], status: [$status]\n";
+# 			$conf->{misc}{storage_data}.="Array; Slot: [$slot], Array: [$array] -> logical drive: [$logical_drive], capacity: [$capacity], RAID level: [$raid_level], status: [$status]\n";
+			$conf->{array}{"$slot:$array"}{new}{logical_drive}=$logical_drive;
+			$conf->{array}{"$slot:$array"}{new}{capacity}=$capacity;
+			$conf->{array}{"$slot:$array"}{new}{raid_level}=$raid_level;
+			$conf->{array}{"$slot:$array"}{new}{status}=$status;
+			foreach my $port (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}})
+			{
+				foreach my $box (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}})
+				{
+					foreach my $bay (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}})
+					{
+# 						my $interface=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface};
+						my $capacity=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity};
+						my $status=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status};
+# 						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{interface}=$interface;
+						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{capacity}=$capacity;
+						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{status}=$status;
+# 						print __LINE__."; array::${slot}:${array}::new::disk::${port}:${box}:${bay}::capacity: [".$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{capacity}."]\n";
+# 						print __LINE__."; array::${slot}:${array}::new::disk::${port}:${box}:${bay}::status:   [".$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{status}."]\n";
+					}
+				}
+			}
+		}
+	}
+=cut
+
 	return(0);
 }
 
@@ -3765,10 +3932,22 @@ sub check_storage
 	{
 		$conf->{'system'}{storage} = "lsi";
 	}
+	elsif (-e $conf->{path}{hpacucli})
+	{
+		$conf->{'system'}{storage} = "hp";
+	}
+	else
+	{
+		$conf->{'system'}{storage} = "unknown";
+	}
 	
 	if ($conf->{'system'}{storage} eq "lsi")
 	{
 		check_storage_lsi($conf);
+	}
+	elsif ($conf->{'system'}{storage} eq "hp")
+	{
+		check_storage_hp($conf);
 	}
 	else
 	{
@@ -4643,55 +4822,118 @@ Interface: $dev
 		$say_psu1_watts = sprintf("%-10s", $say_psu1_watts);
 		$say_psu2_watts = sprintf("%-10s", $say_psu2_watts);
 		
-		my ($say_psu1_fan_state, $say_psu1_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu1}, 2);
-		my ($say_psu2_fan_state, $say_psu2_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu2}, 2);
-		my $say_psu1_fan = $say_psu1_fan_rpms;
-		if ($say_psu1_fan_state ne "ok")
+		# Some models have two PSU fans.
+		if ((exists $conf->{data}{ipmi}{new}{fan1_psu1}) ||
+		    (exists $conf->{data}{ipmi}{new}{fan2_psu1}) ||
+		    (exists $conf->{data}{ipmi}{new}{fan1_psu2}) ||
+		    (exists $conf->{data}{ipmi}{new}{fan2_psu2}))
 		{
-			$say_psu1_fan = $say_psu1_fan_state;
+			# There are no temp readings in the RX300 S6, which 
+			# this section supports.
+			my ($say_fan1_psu1_state, $say_fan1_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu1}, 2);
+			#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1_state: [$say_fan1_psu1_state], say_fan1_psu1_rpms: [$say_fan1_psu1_rpms], data::ipmi::new::fan1_psu1: [$conf->{data}{ipmi}{new}{fan1_psu1}]\n");
+			my ($say_fan2_psu1_state, $say_fan2_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu1}, 2);
+			#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1_state: [$say_fan2_psu1_state], say_fan2_psu1_rpms: [$say_fan2_psu1_rpms], data::ipmi::new::fan2_psu1: [$conf->{data}{ipmi}{new}{fan2_psu1}]\n");
+			my ($say_fan1_psu2_state, $say_fan1_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu2}, 2);
+			#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2_state: [$say_fan1_psu2_state], say_fan1_psu2_rpms: [$say_fan1_psu2_rpms], data::ipmi::new::fan1_psu2: [$conf->{data}{ipmi}{new}{fan1_psu2}]\n");
+			my ($say_fan2_psu2_state, $say_fan2_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu2}, 2);
+			#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2_state: [$say_fan2_psu2_state], say_fan2_psu2_rpms: [$say_fan2_psu2_rpms], data::ipmi::new::fan2_psu2: [$conf->{data}{ipmi}{new}{fan2_psu2}]\n");
+			
+			my $say_fan1_psu1 = $say_fan1_psu1_rpms;
+			if ($say_fan1_psu1_state ne "ok")
+			{
+				$say_fan1_psu1 = $say_fan1_psu1_state;
+				record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1: [$say_fan1_psu1]\n");
+			}
+			$say_fan1_psu1 = sprintf("%-13s", $say_fan1_psu1);
+			
+			my $say_fan2_psu1 = $say_fan2_psu1_rpms;
+			if ($say_fan2_psu1_state ne "ok")
+			{
+				$say_fan2_psu1 = $say_fan2_psu1_state;
+				record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1: [$say_fan2_psu1]\n");
+			}
+			$say_fan2_psu1 = sprintf("%-13s", $say_fan2_psu1);
+			
+			my $say_fan1_psu2 = $say_fan1_psu2_rpms;
+			if ($say_fan1_psu2_state ne "ok")
+			{
+				$say_fan1_psu2 = $say_fan1_psu2_state;
+				record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2: [$say_fan1_psu2]\n");
+			}
+			$say_fan1_psu2 = sprintf("%-13s", $say_fan1_psu2);
+			
+			my $say_fan2_psu2 = $say_fan2_psu2_rpms;
+			if ($say_fan2_psu2_state ne "ok")
+			{
+				$say_fan2_psu2 = $say_fan2_psu2_state;
+				record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2: [$say_fan2_psu2]\n");
+			}
+			$say_fan2_psu2 = sprintf("%-13s", $say_fan2_psu2);
+			
+			$body .= "
+		+--------+------------+---------------+---------------+
+ Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
++---------------+--------+------------+---------------+---------------+
+|     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_fan1_psu1 | $say_fan2_psu1 |
+|     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_fan1_psu2 | $say_fan2_psu2 |
++---------------+--------+------------+---------------+---------------+
+
+";
 		}
-		$say_psu1_fan = sprintf("%-11s", $say_psu1_fan);
-		my $say_psu2_fan = $say_psu2_fan_rpms;
-		if ($say_psu2_fan_state ne "ok")
+		else
 		{
-			$say_psu2_fan = $say_psu2_fan_state;
-		}
-		$say_psu2_fan = sprintf("%-11s", $say_psu2_fan);
+			# This applies to the RX300 S7
+			my ($say_psu1_fan_state, $say_psu1_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu1}, 2);
+			my ($say_psu2_fan_state, $say_psu2_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu2}, 2);
+			my $say_psu1_fan = $say_psu1_fan_rpms;
+			if ($say_psu1_fan_state ne "ok")
+			{
+				$say_psu1_fan = $say_psu1_fan_state;
+			}
+			$say_psu1_fan = sprintf("%-11s", $say_psu1_fan);
+			my $say_psu2_fan = $say_psu2_fan_rpms;
+			if ($say_psu2_fan_state ne "ok")
+			{
+				$say_psu2_fan = $say_psu2_fan_state;
+			}
+			$say_psu2_fan = sprintf("%-11s", $say_psu2_fan);
 
-		my ($say_psu1_temp_inlet_state, $say_psu1_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu1_inlet}, 2);
-		my ($say_psu2_temp_inlet_state, $say_psu2_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu2_inlet}, 2);
-		$say_psu1_temp_inlet =~ s/\s.*//g;
-		$say_psu1_temp_inlet .= " *C";
-		$say_psu2_temp_inlet =~ s/\s.*//g;
-		$say_psu2_temp_inlet .= " *C";
-		my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
-		my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
+			my ($say_psu1_temp_inlet_state, $say_psu1_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu1_inlet}, 2);
+			my ($say_psu2_temp_inlet_state, $say_psu2_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu2_inlet}, 2);
+			$say_psu1_temp_inlet =~ s/\s.*//g;
+			$say_psu1_temp_inlet .= " *C";
+			$say_psu2_temp_inlet =~ s/\s.*//g;
+			$say_psu2_temp_inlet .= " *C";
+			my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
+			my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
 
-		my ($say_psu1_temp_state, $say_psu1_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu1}, 2);
-		my ($say_psu2_temp_state, $say_psu2_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu2}, 2);
-		$say_psu1_temp =~ s/\s.*//g;
-		$say_psu1_temp .= " *C";
-		$say_psu2_temp =~ s/\s.*//g;
-		$say_psu2_temp .= " *C";
-		my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
-		my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
-	
-		$body .= "
-                +--------+------------+-------------+
+			my ($say_psu1_temp_state, $say_psu1_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu1}, 2);
+			my ($say_psu2_temp_state, $say_psu2_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu2}, 2);
+			$say_psu1_temp =~ s/\s.*//g;
+			$say_psu1_temp .= " *C";
+			$say_psu2_temp =~ s/\s.*//g;
+			$say_psu2_temp .= " *C";
+			my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
+			my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
+		
+			$body .= "
+		+--------+------------+-------------+
  Power Supplies | Status |  Wattage   |  Fan Speed  |
 +---------------+--------+------------+-------------+
 |     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_psu1_fan |
 |     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_psu2_fan |
 +---------------+--------+------------+-------------+
 
-                +----------------+----------------+
- Power Supplies |     Intake     |      Core      |
+		+----------------+----------------+
+Power Supplies |     Intake     |      Core      |
 +---------------+----------------+----------------+
 |     PSU 1     | $say_psu1_intake | $say_psu1_core |
 |     PSU 2     | $say_psu2_intake | $say_psu2_core |
 +---------------+----------------+----------------+
 
 ";
+		}
 	
 		# Power levels
 		$body .= "
@@ -4921,7 +5163,7 @@ sub compare_new_and_old
 			}
 			$changes .= "\n$say_service\n";
 			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
-			$changes .= "  $conf->{data}{clustat}{new}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
+			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
 		}
 		delete $conf->{data}{clustat}{diff}{service}{$service}{on};
 		delete $conf->{data}{clustat}{diff}{service}{$service}{'state'};
@@ -5177,17 +5419,37 @@ sub compare_new_and_old
 				{
 					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
 					{
-						next if $var eq "next_learn_time";     # This would squack too much.
-						next if $var eq "bbu_gasgauge_status"; # Ditto
-						
 						my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
 						$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
 						$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var} = "--" if not defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
-						
-						# I need to watch for ranges in temperature, voltage and Joules.
 						my $new_value = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
 						my $old_value = $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
+						next if $new_value eq $old_value;
 						#record($conf, "$THIS_FILE ".__LINE__."; RAID adapter $adapter, BBU $say_translation ($var); old: [$old_value], new: [$new_value]\n");
+						
+						# These cause unnecessary emails
+						if (($var eq "next_learn_time") ||
+						    ($var eq "bbu_gasgauge_status") ||
+						    ($var eq "learn_cycle_requested") ||
+						    ($var eq "learn_cycle_active") ||
+						    ($var eq "charging_status") ||
+						    ($var eq "pack_stat_configuration") ||
+						    ($var eq "estimated_time_to_full_recharge") ||
+						    ($var eq "fw_status_relative_state_of_charge") ||
+						    ($var eq "cap_info_relative_state_of_charge") ||
+						    ($var eq "cap_info_absolute_state_of_charge") ||
+						    ($var eq "fw_status_absolute_state_of_charge") ||
+						    ($var eq "average_time_to_empty") ||
+						    ($var eq "run_time_to_empty") ||
+						    ($var eq "current")
+						)
+						{
+							record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+							next;
+						}
+						
+						
+						# I need to watch for ranges in temperature, voltage and Joules.
 						if ($new_value =~ /^(\d+\.*\d*) C$/)
 						{
 							# I've got a temperature.
@@ -5766,6 +6028,8 @@ sub compare_new_and_old
 		}
 		elsif ($conf->{data}{ipmi}{old}{$var} ne $conf->{data}{ipmi}{new}{$var})
 		{
+			$old_state = "--" if not defined $old_state;
+			$old_value = "--" if not defined $old_value;
 			$changes .= "\nHost sensor \"$say_translation\" has change!\n";
 			$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 		}
@@ -5798,9 +6062,10 @@ sub compare_new_and_old
 		if ($conf->{data}{ups}{new}{best_case}{status} ne "ONLINE")
 		{
 			my $best_time_left  = $conf->{data}{ups}{new}{best_case}{time_left};
-			my $shutdown_buffer = $conf->{alert}{ups}{shutdown_buffer};
+			my $shutdown_buffer = $conf->{alerts}{ups}{shutdown_buffer};
 			record($conf, "$THIS_FILE ".__LINE__."; Checking if the time remaining in the strongest UPS: [$best_time_left] is greater than: [$shutdown_buffer seconds]\n");
-			if ($shutdown_buffer > $best_time_left)
+			# If I lose contact with the UPSes, the 'best_time_left' will be '0'.
+			if (($best_time_left > 0) && ($shutdown_buffer > $best_time_left))
 			{
 				$conf->{'system'}{critical_event}     = 1;
 				$conf->{'system'}{migration_target}   = 0;
@@ -6152,6 +6417,7 @@ sub compare_new_and_old
 	{
 		my $say_var = $conf->{translate}{ipmi}{$key};
 		$changes .= "\nThe IPMI \"$say_var\" value has disappeared!\n";
+		delete $conf->{data}{ipmi}{old}{$key};
 	}
 	delete $conf->{data}{ipmi}{diff};
 	

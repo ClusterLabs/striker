@@ -15,5 +15,5 @@ VMs can be booted, migrated, gracefully shutdown and forced off.
 This program is designed for use on clusters using Red Hat High Availability 
 Add-on, backed by DRBD which is in turn managed by clustered LVM. It is 
 specifically designed for clusters built according to the tutorial below:
- - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+ - https://alteeve.ca/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 

@@ -6,13 +6,6 @@
 # alert emails when needed.
 # 
 
-=pod
-AP7900           =  2.27kg ea
-SMT1500RM2U      = 28.64kg ea
-DGS-3120-24TC/SI =  5.42kg ea
-Primenergy RX300 = 25.00kg ea
-=cut
-
 use strict;
 use warnings;
 require "./an-cm.lib";
@@ -26,8 +19,8 @@ $| = 1;
 
 my $conf = {
 	cluster		=>	{
-		company			=>	"Plastic Plus",
-		description		=>	"Plastic Plus \"Cluster 01\"",
+		company			=>	"Alteeve's Niche!",
+		description		=>	"Cluster 05 - \"Tyson\"",
 		nodes			=>	[],
 	},
 	node		=>	{
@@ -51,10 +44,11 @@ my $conf = {
 		helo_domain		=>	"alteeve.ca",
 	},
 	mail_data		=>	{
-		to			=>	"clusters\@alteeve.ca",
+		to			=>	"alert\@alteeve.ca",
+		cc                      =>      "",
 		sending_domain		=>	"mail.alteeve.ca",
-		subject			=>	"test",
-		body			=>	"test",
+		subject			=>	"",
+		body			=>	"",
 	},
 	handles			=>	{
 		'log'			=>	"",
@@ -69,6 +63,7 @@ my $conf = {
 		ifconfig		=>	"/sbin/ifconfig",
 		brctl			=>	"/usr/sbin/brctl",
 		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
+		hpacucli		=>	"/usr/sbin/hpacucli",
 		ipmitool		=>	"/usr/bin/ipmitool",
 		apcupsd			=>	"/sbin/apcupsd",
 		apcaccess		=>	"/sbin/apcaccess",
@@ -88,7 +83,7 @@ my $conf = {
 			powerdown_temp		=>	50,	# Max for the BBO08 is 55 *C
 			base_voltage_diff	=>	1000,	# This is how many mV below 'design_voltage' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this voltage.
 			base_joules_diff	=>	100,	# This is how many J below 'design_capacity' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this energery.
-			max_milliamperage_delta	=>	20,	# A variation of more than this amount triggers this alert.
+			max_milliamperage_delta	=>	600,	# A variation of more than this amount triggers this alert.
 		},
 		host			=>	{
 			cpu_temp_delta		=>	10,	# CPU change
@@ -113,7 +108,7 @@ my $conf = {
 		},
 	},
 	'system'		=>	{
-		sleep_time		=>	10,
+		sleep_time		=>	30,
 		storage_type		=>	"",
 		ipmi_available		=>	1,
 		ups_available		=>	1,		# This requires apcupsd be installed and working.

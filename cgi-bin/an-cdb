@@ -24,7 +24,9 @@
 # 
 # TODO:
 # - Read and cache each cluster's /etc/hosts file.
-# - 
+# - Check to see if a VM is running outside of clustat and, if so, auto-enable
+#   it on the appropriate node.
+# - Add a "Cancel" button to each "Confirm" box.
 
 use strict;
 use warnings;
@@ -69,21 +71,7 @@ my $conf={
 read_conf($conf);
 
 # I need to convert the global configuration of the clusters to the format I use here.
-foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
-{
-	my $name = $conf->{cluster}{$cluster}{name};
-	$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
-	$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
-	$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
-	#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
-	
-	for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
-	{
-		@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/^\s+//;
-		@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/\s+$//;
-		#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]]\n");
-	}
-}
+convert_cluster_config($conf);
 
 # If there is only one cluster defined, use it. Note that I need a special
 # exception in get_cgi_vars() for this to work properly.
@@ -100,9 +88,26 @@ if (not $conf->{cgi}{cluster})
 	}
 }
 
-get_cgi_vars($conf);
-header($conf);
+# Get the CGI variables I might be passed.
+get_cgi_vars($conf, [
+	"cluster",
+	"task",
+	"confirm",
+	"host",
+	"node",
+	"node_cluster_name",
+	"storage",
+	"target",
+	"vm",
+	"vm_ram",
+	"max_ram",
+	"max_cores",
+	"max_storage",
+]);
 
+header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
+
+# Do I have a cluster name?
 if ($conf->{cgi}{cluster})
 {
 	if ($conf->{cgi}{task})
@@ -117,6 +122,7 @@ if ($conf->{cgi}{cluster})
 		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 		scan_cluster($conf);
 		display_details($conf);
+		#display_details2($conf);
 	}
 }
 else

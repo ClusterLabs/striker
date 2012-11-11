@@ -35,96 +35,6 @@ binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 our $THIS_FILE = "an-cdb.lib";
 
-sub header
-{
-	my ($conf) = @_;
-	
-	print "Content-type: text/html; charset=utf-8\n";
-	
-	# Header buttons.
-	my $say_back    = "&nbsp;";
-	my $say_refresh = "&nbsp;";
-	#if ($conf->{'system'}{show_refresh})
-	if ($conf->{cgi}{task})
-	{
-		#$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\" id=\"show_when_loaded\" style=\"display: none\"></a>";
-		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\"></a>";
-	}
-	else
-	{
-		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
-	}
-	print "
-<head>
-	<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />
-	<title>AN!CDB - Alteeve's Niche! Cluster Dashboard</title>
-	<link rel=\"stylesheet\" href=\"/an-cdb.css\" media=\"screen\" />
-	<script type=\"text/javascript\" src=\"/an-cdb.js\"></script>
-</head>
-<body>
-<br />
-<table class=\"hidden_table\" align=\"center\">
-	<tr>
-		<td width=\"100px\" class=\"td_hidden\">
-			<table align=\"left\" class=\"hidden_table\">
-				<tr>
-					<td class=\"td_hidden\">
-						$say_back
-					</td>
-				</tr>
-			</table>
-		</td>
-		<td class=\"td_hidden\">
-			<table align=\"center\">
-				<tr>
-					<td>
-						<a href=\"/\"><img src=\"/logo_an-cdb_02.png\" alt=\"AN!CDB - Cluster Dashboard\"></a>
-					</td>
-				</tr>
-			</table>
-		</td>
-		<td width=\"100px\" class=\"td_hidden\">
-			<table align=\"right\" class=\"hidden_table\">
-				<tr>
-					<td class=\"td_hidden\">
-						$say_refresh
-					</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
-</table>
-<br />
-";
-	
-	return (0);
-}
-
-sub footer
-{
-	my ($conf) = @_;
-	
-	return(0) if $conf->{'system'}{footer_printed}; 
-	$conf->{'system'}{footer_printed} = 1;
-	
-	print "
-<table align=\"center\" class=\"hidden_table\">
-	<tr>
-		<td class=\"td_hidden\">
-			<span class=\"legal\">
-			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2012<br />
-			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
-			</span>
-		</td>
-	</tr>
-</table>
-</body>
-<img src=\"/t.png\" onload=\"show_on_load();\" border=\"0\" />
-<img src=\"/t.png\" onload=\"hide_on_load();\" border=\"0\" />";
-	
-	return (0);
-}
-
 # This attempts to gather all information about a node in one SSH call. It's
 # done to minimize the ssh overhead on slow links.
 sub check_node_status
@@ -171,6 +81,77 @@ sub check_node_status
 	return (0);
 }
 
+# This tries to ping a node given it's name. If it doesn't answer, it tries 
+# again after adding/subtracting the '.remote' suffix. If that works, it will
+# change the node name.
+sub ping_node
+{
+	my ($conf, $node) = @_;
+	
+	my $exit;
+	my $fh = IO::Handle->new;
+	my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^ping:(\d+)/)
+		{
+			$exit = $1;
+		}
+	}
+	$fh->close();
+	record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
+	
+	if ($exit)
+	{
+		my $old_node = $node;
+		if ($node =~ /\.remote/)
+		{
+			$node =~ s/\.remote//;
+		}
+		else
+		{
+			$node .= ".remote";
+		}
+		my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^ping:(\d+)/)
+			{
+				$exit = $1;
+			}
+		}
+		$fh->close();
+		record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
+		
+		if ($exit)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Unable to ping the node: [$old_node] at alternate name: [$node]\n");
+			$node = $old_node;
+		}
+		else
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; The node: [$old_node] appears to be available at: [$node], renaming.\n");
+		}
+	}
+	else
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is ping-able.\n");
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; Returning node: [$node].\n");
+	return ($node);
+}
+
 # This does the actual call out to get the data and parse the returned data.
 sub gather_node_details
 {
@@ -184,6 +165,9 @@ sub gather_node_details
 	$conf->{node}{$node}{info}{note}     = "";
 	$conf->{node}{$node}{up}             = 0;
 	$conf->{node}{$node}{enable_poweron} = 0;
+	
+	# Check to see if I can ping the nodes as they're named.
+	#($node) = ping_node($conf, $node);
 	
 	# I echo 'start purpose:' before each call so that I know for
 	# sure when I am switching between shell calls.
@@ -210,7 +194,11 @@ sub gather_node_details
 	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start virsh:\\\"; virsh list --all; echo \\\"#!end!#\\\"; ";
 	   $sc .= "echo \\\"start vm defs:\\\"; cat /shared/definitions/*; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond0:\\\"; cat /proc/net/bonding/bond0; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond1:\\\"; cat /proc/net/bonding/bond1; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond2:\\\"; cat /proc/net/bonding/bond2; echo \\\"#!end!#\\\"; ";
 	   $sc .= "\"";
+	   #$sc = "./data_${node}.txt";
 	# These keep track of where I am.
 	my $in_dmidecode     = 0;
 	my $in_meminfo       = 0;
@@ -224,6 +212,10 @@ sub gather_node_details
 	my $in_gfs2          = 0;
 	my $in_virsh         = 0;
 	my $in_vm_defs       = 0;
+	my $in_bond          = 0;
+	
+	# This is used to track the bond I am reading.
+	my $bond = "";
 	
 	# These store the data read.
 	my @dmidecode;
@@ -238,13 +230,18 @@ sub gather_node_details
 	my @gfs2;
 	my @virsh;
 	my @vm_defs;
+	my @bond;
+	
 	### NOTE: This is over 1 KiB long and causes some IDEs, like 'kate', to
 	### flip the file into read-only mode. Enable only when needed.
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
+	my $raw;
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	#open ($fh, "<$sc") or die "Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
+		#$raw .= $_;
 		chomp;
 		my $line = $_;
 		$line =~ s/^\s+//;
@@ -335,6 +332,8 @@ sub gather_node_details
 			$in_gfs2         = 0;
 			$in_virsh        = 0;
 			$in_vm_defs      = 0;
+			$in_bond         = 0;
+			$bond            = "";
 		}
 		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
 		
@@ -357,6 +356,13 @@ sub gather_node_details
 		if ($line =~ /^start gfs2:/)          { $in_gfs2          = 1; next; }
 		if ($line =~ /^start virsh:/)         { $in_virsh         = 1; next; }
 		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
+		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
+		if ($line =~ /^start bond(\d+):/)
+		{
+			$bond       = $1;
+			$in_vm_defs = 1;
+			next;
+		}
 		
 		# If I am in a section, push the lines into the
 		# appropriate array.
@@ -372,8 +378,13 @@ sub gather_node_details
 		if ($in_gfs2)          { push @gfs2,          $line; }
 		if ($in_virsh)         { push @virsh,         $line; }
 		if ($in_vm_defs)       { push @vm_defs,       $line; }
+		if ($in_bond)
+		{
+			push @bond, "$bond:$line";
+		}
 	}
 	$fh->close();
+	#record($conf, "$THIS_FILE ".__LINE__."; raw $node:\n===========================\n$raw\n===========================\n");
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
 	if ($conf->{node}{$node}{connected})
@@ -393,6 +404,7 @@ sub gather_node_details
 		parse_gfs2         ($conf, $node, \@gfs2);
 		parse_virsh        ($conf, $node, \@virsh);
 		parse_vm_defs      ($conf, $node, \@vm_defs);
+		parse_bonds        ($conf, $node, \@bond);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -428,6 +440,16 @@ sub gather_node_details
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		elsif ($conf->{node}{$node}{is_on} == 2)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 0;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the cluster and update the cluster's fencing information if needed.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		elsif ($conf->{node}{$node}{is_on} == 3)
 		{
 			# The node is on but unreachable.
 			$conf->{'system'}{show_nodes}         = 0;
@@ -519,12 +541,12 @@ sub check_if_on
 			chomp;
 			my $line = $_;
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-			if ($line =~ /Chassis power = On/i)
+			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 			}
-			if ($line =~ /Chassis power = Off/i)
+			if ($line =~ / Off$/i)
 			{
 				$conf->{node}{$node}{is_on} = 0;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
@@ -536,6 +558,7 @@ sub check_if_on
 	{
 		# Read the cache and check the power directly, if possible.
 		read_node_cache($conf, $node);
+		$conf->{node}{$node}{info}{power_check_command} = "" if not defined $conf->{node}{$node}{info}{power_check_command};
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		if ($conf->{node}{$node}{info}{power_check_command})
 		{
@@ -557,17 +580,17 @@ sub check_if_on
 					chomp;
 					my $line = $_;
 					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-					if ($line =~ /Chassis power = On/i)
+					if ($line =~ / On$/i)
 					{
 						$conf->{node}{$node}{is_on} = 1;
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 					}
-					if ($line =~ /Chassis power = Off/i)
+					if ($line =~ / Off$/i)
 					{
 						$conf->{node}{$node}{is_on} = 0;
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 					}
-					if ($line =~ /Chassis power = Unknown/i)
+					if ($line =~ / Unknown$/i)
 					{
 						$conf->{node}{$node}{is_on} = 2;
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
@@ -578,9 +601,15 @@ sub check_if_on
 			else
 			{
 				# I can't reach it from here.
-				record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
-				$conf->{node}{$node}{is_on} = 2;
+				#record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+				$conf->{node}{$node}{is_on} = 3;
 			}
+		}
+		else
+		{
+			# No power-check command
+			$conf->{node}{$node}{is_on} = 4;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Unable to find power check command!\n");
 		}
 	}
 	
@@ -625,12 +654,12 @@ sub on_same_network
 		}
 		elsif ($line =~ /Unknown host/i)
 		{
+			#Failed to resolve
 			error($conf, "I was trying to resolve the host name: [$target_host] but was unable to do so. Is this a valid host name? If so, do you have an entry in DNS or in your /etc/hosts file?\n");
-			# Failed to resolve
 		}
 		elsif ($line =~ /Usage: gethostip/i)
 		{
-			# No hostname parsed out.
+			#No hostname parsed out.
 			error($conf, "I was trying to resolve a host name, but no name was given. This is likely a program error.\n");
 		}
 	}
@@ -652,9 +681,16 @@ sub on_same_network
 		{
 			chomp;
 			my $line = $_;
-			if ($line =~ /^(.*?): flags/)
+			if ($line =~ /^(.*?)\s+Link encap/)
 			{
 				$in_dev = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
+				next;
+			}
+			elsif ($line =~ /^(.*?): flags/)
+			{
+				$in_dev = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
 				next;
 			}
 			if (not $line)
@@ -703,12 +739,23 @@ sub on_same_network
 			if ($in_dev)
 			{
 				next if $line !~ /inet /;
-				if ($line =~ /inet (\d+\.\d+\.\d+\.\d+) /)
+				if ($line =~ /inet addr:(\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_ip = $1;
 					#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip]\n");
 				}
-				if ($line =~ /netmask (\d+\.\d+\.\d+\.\d+) /)
+				elsif ($line =~ /inet (\d+\.\d+\.\d+\.\d+) /)
+				{
+					$this_ip = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip]\n");
+				}
+				
+				if ($line =~ /Mask:(\d+\.\d+\.\d+\.\d+)/i)
+				{
+					$this_nm = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; this_nm: [$this_nm]\n");
+				}
+				elsif ($line =~ /netmask (\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_nm = $1;
 					#record($conf, "$THIS_FILE ".__LINE__."; this_nm: [$this_nm]\n");
@@ -730,13 +777,13 @@ sub write_node_cache
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
+	my $cluster    = $conf->{cgi}{cluster};
+	my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
-		my $cluster    = $conf->{cgi}{cluster};
-		my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
 		my $fh         = IO::Handle->new();
 		#record($conf, "$THIS_FILE ".__LINE__."; writting: [$cache_file]\n");
 		open ($fh, "> $cache_file") or error($conf, "Failed to write: [<span class=\"fixed_width\">$cache_file</span>] as UID: [<span class=\"fixed_width\">$<</span>].<br />The error was: <span class=\"fixed_width\">$!</span>\n");
@@ -747,9 +794,14 @@ sub write_node_cache
 		
 		$fh->close();
 	}
+	elsif (not -e $cache_file)
+	{
+		# I've probably never seen the cache file before, so don't
+		# error out.
+	}
 	else
 	{
-		error($conf, "I was asked to write the cache file for: [$node], but I didn't have all the cache data.<br />\nI was passed; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}].<br />\nThis is likely a program error.\n");
+		#error($conf, "I was asked to write the cache file for: [$node], but I didn't have all the cache data.<br />\nI was passed; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}].<br />\nThis is likely a program error.\n");
 	}
 	
 	return(0);
@@ -765,6 +817,21 @@ sub read_node_cache
 	# in the future when both nodes are offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
+	if (not -e $cache_file)
+	{
+		# See if there is a version with or without '<node>.remote'
+		if ($node =~ /\.remote/)
+		{
+			# Strip it off
+			$cache_file =~ s/\.remote//;
+		}
+		else
+		{
+			# Add the .remote suffix.
+			$cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".remote.an-cdb";
+		}
+	}
 	if (-e $cache_file)
 	{
 		# It exists! Read it.
@@ -797,6 +864,15 @@ sub read_node_cache
 	#record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	
 	return(0);
+}
+
+# This parse bond data
+sub parse_bonds
+{
+	my ($conf, $node, $array) = @_;
+	
+	
+	return (0);
 }
 
 # This (tries to) parse the VM definitions files.
@@ -3695,6 +3771,7 @@ sub dual_boot
 		
 		# Confirm the node is off still.
 		check_if_on($conf, $node);
+		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::is_on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 1)
 		{
 			push @abort_reasons, "I was asked to power on: [$node], but it appears to already be running. Start up aborted.\n";
@@ -3703,7 +3780,19 @@ sub dual_boot
 		elsif ($conf->{node}{$node}{is_on} == 2)
 		{
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			push @abort_reasons, "I was asked to power on: [$node], but I am not able to log into the taget node's out of band management interface: [$target_host].<br />Please check to see if the address, user or password has changed. Unable to continue.\n";
+			$proceed = 0;
+		}
+		elsif ($conf->{node}{$node}{is_on} == 3)
+		{
+			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 			push @abort_reasons, "I was asked to power on: [$node], but I am not on the same subnet as it's out of band management interface at: [$target_host].<br />Please restore access to the target subnet. Unable to continue.\n";
+			$proceed = 0;
+		}
+		elsif ($conf->{node}{$node}{is_on} == 4)
+		{
+			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			push @abort_reasons, "I was asked to power on: [$node], but I don't have a recorded method of checking or changing the power state for: [$target_host].<br />Please restore access to the target subnet. Unable to continue.\n";
 			$proceed = 0;
 		}
 		
@@ -4930,6 +5019,238 @@ sub convert_to_bytes
 	return ($size);
 }
 
+# This is a new attempt at an interface
+sub display_details2
+{
+	my ($conf) = @_;
+	
+	my $this_cluster = $conf->{cgi}{cluster};
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1_long = $conf->{node}{$node1}{info}{host_name};
+	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	my $rowspan    = 2;
+	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
+	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
+	
+	print "
+<table class=\"hidden_table\" align=\"center\" border=\"0\">
+	<tr>
+		<td class=\"td_hidden\">
+			<table width=\"100%\" border=\"0\">
+";
+	
+	# Node header
+	my $node1_class = "highlight_unavailable";
+	if (check_node_daemons($conf, $node1))        { $node1_class = "highlight_good"; }
+	elsif ($conf->{node}{$node1}{up})             { $node1_class = "highlight_warning"; }
+	elsif ($conf->{node}{$node1}{enable_poweron}) { $node1_class = "highlight_ready"; }
+	my $node2_class = "highlight_unavailable";
+	if (check_node_daemons($conf, $node2))        { $node2_class = "highlight_good"; }
+	elsif ($conf->{node}{$node2}{up})             { $node2_class = "highlight_warning"; }
+	elsif ($conf->{node}{$node2}{enable_poweron}) { $node2_class = "highlight_ready"; }
+	print "
+				<tr>
+					<td nowrap=\"nowrap\">
+						<b>Node</b><br />
+						<span class=\"$node1_class\">$node1_long</span>
+					</td>
+					<td nowrap=\"nowrap\">
+						<b>Node</b><br />
+						<span class=\"$node2_class\">$node2_long</span>
+					</td>
+				</tr>
+";
+	
+	# Show the VMs.
+	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	{
+		# Break the name out of the hash key.
+		my ($say_vm) = ($vm =~ /^vm:(.*)/);
+		my $say_power        =  "<span class=\"highlight_unavailable\">--</span>";
+		my $say_reset        =  "<span class=\"highlight_unavailable\">--</span>";
+		my $prefered_host    =  find_prefered_host($conf, $vm);
+		   $prefered_host    =~ s/\..*$//;
+		my $say_migrate      =  "<span class=\"highlight_unavailable\">--</span>";
+		# If it's not running, setup the start button.
+		my $show_on_host;
+		if ($conf->{vm}{$vm}{host})
+		{
+			$say_power   = "S";
+			$say_reset   = "R";
+			$say_migrate = "M";
+			if ($conf->{vm}{$vm}{host} eq $node1_long)
+			{
+				$show_on_host = $node1_long;
+			}
+			elsif ($conf->{vm}{$vm}{host} eq $node2_long)
+			{
+				$show_on_host = $node2_long;
+			}
+		}
+		else
+		{
+			$say_power = "Power Up";
+			$say_reset = "&nbsp;";
+		}
+		if ($show_on_host eq $node1_long)
+		{
+			print "
+				<tr>
+					<td nowrap=\"nowrap\">
+						<span class=\"fixed_width\">$say_vm</span><br />
+						$say_reset &nbsp; $say_power &nbsp; $say_migrate ->
+					</td>
+					<td nowrap=\"nowrap\">
+						<span class=\"highlight_unavailable\">--</span>
+					</td>
+				</tr>
+";
+		}
+		else
+		{
+			print "
+				<tr>
+					<td nowrap=\"nowrap\">
+						<span class=\"highlight_unavailable\">--</span>
+					</td>
+					<td nowrap=\"nowrap\">
+						<span class=\"fixed_width\">$say_vm</span><br />
+						<- $say_migrate &nbsp; $say_power &nbsp; $say_reset
+					</td>
+				</tr>
+";
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
+		
+		# Use the node's short name for the buttons.
+		my $say_start_target     =  $conf->{vm}{$vm}{boot_target};
+		$say_start_target        =~ s/\..*?$//;
+		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
+		#record($conf, "$THIS_FILE ".__LINE__."; say_start_target: [$say_start_target], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}], start_target_long: [$start_target_long]\n");
+		
+		$prefered_host           =  find_prefered_host($conf, $vm);
+		$prefered_host           =~ s/\..*$//;
+		if ($conf->{vm}{$vm}{boot_target})
+		{
+			$prefered_host = "<span class=\"highlight_ready\">$prefered_host</span>";
+		}
+		else
+		{
+			my $on_host =  $conf->{vm}{$vm}{host};
+			   $on_host =~ s/\..*$//;
+			if ($on_host eq $prefered_host)
+			{
+				$prefered_host = "<span class=\"highlight_good\">$prefered_host</span>";
+			}
+			else
+			{
+				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
+			}
+		}
+		
+		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
+		$say_migration_target    =~ s/\..*?$//;
+		my $migrate_button = "<span class=\"disabled_button\">Migrate</span>";
+		if ($conf->{vm}{$vm}{can_migrate})
+		{
+			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
+		}
+		my $host_node        = "$conf->{vm}{$vm}{host}";
+		my $stop_button      = "<span class=\"disabled_button\">Shut Down</span>";
+		my $force_off_button = "<span class=\"disabled_button\">Force Off</span>";
+		if ($conf->{vm}{$vm}{can_stop})
+		{
+			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
+			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">Orderly Shut Down</a>";
+			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}\" class=\"highlight_dangerous\">Force Off</a>";
+		}
+		my $start_button     = "<span class=\"disabled_button\">Boot Up</span>";
+		if ($conf->{vm}{$vm}{boot_target})
+		{
+			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot Up</a>";
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
+		
+		# I need both nodes up to delete a VM.
+		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
+		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+		{
+			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
+		}
+		
+		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+		if ($conf->{vm}{$vm}{node1_ready} == 2)
+		{
+			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">Running</span>";
+		}
+		elsif ($conf->{vm}{$vm}{node1_ready} == 1)
+		{
+			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_ready\">Ready</span>";
+		}
+		if ($conf->{vm}{$vm}{node2_ready} == 2)
+		{
+			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_good\">Running</span>";
+		}
+		elsif ($conf->{vm}{$vm}{node2_ready} == 1)
+		{
+			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">Ready</span>";
+		}
+		#record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+# 		print "
+# 	<tr>
+# 		<td>
+# 			<span class=\"fixed_width\">$say_vm</span>
+# 		</td>
+# 		<td>
+# 			$conf->{vm}{$vm}{say_node1}
+# 		</td>
+# 		<td>
+# 			$conf->{vm}{$vm}{say_node2}
+# 		</td>
+# 		<td>
+# 			<span class=\"fixed_width\">$prefered_host</span>
+# 		</td>
+# 		<td>
+# 			$start_button
+# 		</td>
+# 		<td>
+# 			$migrate_button
+# 		</td>
+# 		<td>
+# 			$stop_button
+# 		</td>
+# 		<td>
+# 			$force_off_button
+# 		</td>
+# 		<!-- Disabled in this release
+# 		<td>
+# 			&nbsp;
+# 		</td>
+# 		<td>
+# 			$say_delete_button
+# 		</td>
+# 		-->
+# 	</tr>
+# ";
+	}
+	
+	
+	# Figure out which, if any, power buttons (boot, poweroff and fence) to enable.
+	
+	
+	print "
+			</table>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	return(0);
+}
+
 # This creates the summary page after a cluster has been selected.
 sub display_details
 {
@@ -4996,7 +5317,7 @@ sub display_details
 		</td>
 	</tr>
 </table>
-<meta http-equiv=\"refresh\" content=\"30\">
+<!-- <meta http-equiv=\"refresh\" content=\"30\"> -->
 <br />
 ";
 		}
@@ -6606,7 +6927,8 @@ sub display_node_details
 		print "
 	<tr>
 		<td>
-			<span class=\"fixed_width\">$conf->{node}{$node}{info}{host_name}</span>
+			<span class=\"fixed_width\">$conf->{node}{$node}{info}{host_name}</span> &nbsp;
+			<!-- <img src=\"/img/icon_led_left.png\" border=\"0\"><img src=\"/img/icon_led_good.png\" border=\"0\"><img src=\"/img/icon_led_middle.png\" border=\"0\"><img src=\"/img/icon_led_good.png\" border=\"0\"><img src=\"/img/icon_led_middle.png\" border=\"0\"><img src=\"/img/icon_led_good.png\" border=\"0\"><img src=\"/img/icon_led_right.png\" border=\"0\"> -->
 		</td>
 		<td>
 			$conf->{node}{$node}{daemon}{cman}{status}
@@ -6667,6 +6989,7 @@ sub display_node_controls
 ";
 	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
+	my $disable_join = 0;
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
@@ -6684,6 +7007,7 @@ sub display_node_controls
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
 		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">Join Cluster</span></a>" : "<span class=\"disabled_button\">Join Cluster</span>";
+		   $say_join      = "<span class=\"disabled_button\">Join Cluster</span>" if $disable_join;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">Withdraw</a>"  : "<span class=\"disabled_button\">Withdraw</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
@@ -6704,6 +7028,9 @@ sub display_node_controls
 			if ($dual_join)
 			{
 				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Join Both</span></a>";
+				# Disable the per-node "join" options".
+				$say_join      = "<span class=\"disabled_button\">Join Cluster</span>";
+				$disable_join  = 1;
 			}
 		}
 
@@ -6760,101 +7087,6 @@ sub display_node_controls
 	return (0);
 }
 
-# This asks the user which cluster they want to work with.
-sub ask_which_cluster
-{
-	my ($conf) = @_;
-	
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<b>Please choose a cluster</b>
-		</td>
-	</tr>
-	";
-	
-	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
-	{
-		print "
-	<tr>
-		<td>
-			<a href=\"?cluster=$cluster\">$cluster</a>
-		</td>
-		<td>
-			$conf->{clusters}{$cluster}{company}
-		</td>
-		<td>
-			$conf->{clusters}{$cluster}{description}
-		</td>
-	</tr>
-";
-	}
-	print "
-</table>
-<br />
-";
-	
-	return (0);
-}
-
-# The reads in any passed CGI variables
-sub get_cgi_vars
-{
-	my ($conf) = @_;
-	
-	my $cgi = new CGI;
-	
-	my @vars=(
-		"cluster",
-		"task",
-		"confirm",
-		"host",
-		"node",
-		"node_cluster_name",
-		"storage",
-		"target",
-		"vm",
-		"vm_ram",
-		"max_ram",
-		"max_cores",
-		"max_storage",
-	);
-	$conf->{'system'}{cgi_string} = "?";
-	foreach my $var (@vars)
-	{
-		# A stray comma will cause a loop with no var name
-		next if not $var;
-		
-		# I auto-select the 'cluster' variable if only one is checked.
-		# Because of this, I don't want to overwrite the empty CGI 
-		# value. This prevents that.
-		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
-		{
-			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
-			next;
-		}
-		
-		# Avoid "uninitialized" warning messages.
-		$conf->{cgi}{$var}="";
-		if (defined $cgi->param($var))
-		{
-			$conf->{cgi}{$var} = $cgi->param($var);
-			# Make this UTF8 if it isn't already.
-			if (not Encode::is_utf8( $conf->{cgi}{$var} ))
-			{
-				$conf->{cgi}{$var} = Encode::decode_utf8( $conf->{cgi}{$var} );
-			}
-			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
-		}
-		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
-	}
-	$conf->{'system'}{cgi_string} =~ s/&$//;
-	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
-	
-	return (0);
-}
-
 sub check_nodes
 {
 	my ($conf) = @_;
@@ -6881,98 +7113,6 @@ sub check_nodes
 	check_node_status($conf);
 	
 	return (0);
-}
-# Record a message to the log file.
-sub record
-{
-	my ($conf, $message)=@_;
-
-	my $fh = $conf->{handles}{'log'};
-	if (not $fh)
-	{
-		$fh = IO::Handle->new();
-		$conf->{handles}{'log'} = $fh;
-		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
-	}
-	print $fh $message;
-	
-	return (0);
-}
-
-# This reads in the configuration file.
-sub read_conf
-{
-	my ($conf) = @_;
-	
-	my $fh=IO::Handle->new();
-	my $sc="$conf->{path}{an_conf}";
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		next if not $line;
-		next if $line !~ /=/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if $line =~ /^#/;
-		next if not $line;
-		my ($var, $val) = (split/=/, $line, 2);
-		$var =~ s/^\s+//;
-		$var =~ s/\s+$//;
-		$val =~ s/^\s+//;
-		$val =~ s/\s+$//;
-		next if (not $var);
-		_make_hash_reference($conf, $var, $val);
-	}
-	$fh->close();
-	
-	return(0);
-}
-###############################################################################
-# Sssh, there are private functions                                           #
-###############################################################################
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This is a helper to the below '_make_hash_reference' function. It is called
-# each time a new string is to be created as a new hash key in the passed hash
-# reference.
-sub _add_hash_reference
-{
-	my ($href1, $href2) = @_;
-
-	for my $key (keys %$href2)
-	{
-		if (ref $href1->{$key} eq 'HASH')
-		{
-			_add_hash_reference($href1->{$key}, $href2->{$key});
-		}
-		else
-		{
-			$href1->{$key} = $href2->{$key};
-		}
-	}
-}
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This takes a string with double-colon seperators and divides on those
-# double-colons to create a hash reference where each element is a hash key.
-sub _make_hash_reference
-{
-	my ($href, $key_string, $value) = @_;
-
-	my @keys            = split /::/, $key_string;
-	my $last_key        = pop @keys;
-	my $_href           = {};
-	$_href->{$last_key} = $value;
-	while (my $key = pop @keys)
-	{
-		my $elem      = {};
-		$elem->{$key} = $_href;
-		$_href        = $elem;
-	}
-	_add_hash_reference($href, $_href);
 }
 
 1;

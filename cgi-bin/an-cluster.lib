@@ -13,13 +13,13 @@
 # If you are concerned about these risks, please stick to command line tools.
 # 
 # This program is designed to extend clusters built according to this tutorial:
-# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+# - https://alteeve.ca/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
 # - https://github.com/digimer/an-cdb
 #
 # Author;
-# Alteeve's Niche!  -  https://alteeve.com
+# Alteeve's Niche!  -  https://alteeve.ca
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 
@@ -37,5 +37,294 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 our $THIS_FILE = "an-cluster.lib";
+
+
+# This asks the user which cluster they want to work with.
+sub ask_which_cluster
+{
+	my ($conf) = @_;
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<b>Please choose a cluster</b>
+		</td>
+	</tr>
+	";
+	
+	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
+	{
+		print "
+	<tr>
+		<td>
+			<a href=\"?cluster=$cluster\">$cluster</a>
+		</td>
+		<td>
+			$conf->{clusters}{$cluster}{company}
+		</td>
+		<td>
+			$conf->{clusters}{$cluster}{description}
+		</td>
+	</tr>
+";
+	}
+	print "
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+# I need to convert the global configuration of the clusters to the format I use here.
+sub convert_cluster_config
+{
+	my ($conf) = @_;
+	
+	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
+	{
+		my $name = $conf->{cluster}{$cluster}{name};
+		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
+		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
+		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
+		
+		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
+		{
+			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/^\s+//;
+			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/\s+$//;
+			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]]\n");
+		}
+	}
+	
+	return (0);
+}
+
+sub header
+{
+	my ($conf, $short_name, $program_name, $logo) = @_;
+	
+	print "Content-type: text/html; charset=utf-8\n";
+	
+	# Header buttons.
+	my $say_back    = "&nbsp;";
+	my $say_refresh = "&nbsp;";
+	#if ($conf->{'system'}{show_refresh})
+	if ($conf->{cgi}{task})
+	{
+		#$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\" id=\"show_when_loaded\" style=\"display: none\"></a>";
+		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\"></a>";
+	}
+	else
+	{
+		$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+	}
+	print "
+<head>
+	<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />
+	<title>$short_name - Alteeve's Niche! $program_name</title>
+	<link rel=\"stylesheet\" href=\"/an-cdb.css\" media=\"screen\" />
+	<script type=\"text/javascript\" src=\"/an-cdb.js\"></script>
+</head>
+<body>
+<br />
+<table class=\"hidden_table\" align=\"center\">
+	<tr>
+		<td width=\"100px\" class=\"td_hidden\">
+			<table align=\"left\" class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\">
+						$say_back
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td class=\"td_hidden\">
+			<table align=\"center\">
+				<tr>
+					<td>
+						<a href=\"/\"><img src=\"/img/$logo\" alt=\"$short_name - $program_name\"></a>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td width=\"100px\" class=\"td_hidden\">
+			<table align=\"right\" class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\">
+						$say_refresh
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+sub footer
+{
+	my ($conf) = @_;
+	
+	return(0) if $conf->{'system'}{footer_printed}; 
+	$conf->{'system'}{footer_printed} = 1;
+	
+	print "
+<table align=\"center\" class=\"hidden_table\">
+	<tr>
+		<td class=\"td_hidden\">
+			<span class=\"legal\">
+			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2012<br />
+			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
+			</span>
+		</td>
+	</tr>
+</table>
+</body>
+<img src=\"/img/t.png\" onload=\"show_on_load();\" border=\"0\" />
+<img src=\"/img/t.png\" onload=\"hide_on_load();\" border=\"0\" />";
+	
+	return (0);
+}
+
+# The reads in any passed CGI variables
+sub get_cgi_vars
+{
+	my ($conf, $vars) = @_;
+	
+	my $cgi = new CGI;
+	
+	$conf->{'system'}{cgi_string} = "?";
+	foreach my $var (@{$vars})
+	{
+		# A stray comma will cause a loop with no var name
+		next if not $var;
+		
+		# I auto-select the 'cluster' variable if only one is checked.
+		# Because of this, I don't want to overwrite the empty CGI 
+		# value. This prevents that.
+		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
+		{
+			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			next;
+		}
+		
+		# Avoid "uninitialized" warning messages.
+		$conf->{cgi}{$var}="";
+		if (defined $cgi->param($var))
+		{
+			$conf->{cgi}{$var} = $cgi->param($var);
+			# Make this UTF8 if it isn't already.
+			if (not Encode::is_utf8( $conf->{cgi}{$var} ))
+			{
+				$conf->{cgi}{$var} = Encode::decode_utf8( $conf->{cgi}{$var} );
+			}
+			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+		}
+		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
+	}
+	$conf->{'system'}{cgi_string} =~ s/&$//;
+	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
+	
+	return (0);
+}
+
+# This reads in the configuration file.
+sub read_conf
+{
+	my ($conf) = @_;
+	
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{an_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# Record a message to the log file.
+sub record
+{
+	my ($conf, $message)=@_;
+
+	my $fh = $conf->{handles}{'log'};
+	if (not $fh)
+	{
+		$fh = IO::Handle->new();
+		$conf->{handles}{'log'} = $fh;
+		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
+	}
+	print $fh $message;
+	
+	return (0);
+}
+
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
+}
 
 1;
