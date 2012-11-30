@@ -1759,9 +1759,9 @@ sub parse_cluster_conf
 						#my $action   = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action};
 						#   $action   = "reboot" if not $action;
 						my $command  = "$agent -a $address ";
-						   $command .= "-l $login "    if $login;
-						   $command .= "-p $password " if $password;
-						   $command .= "-n $port "     if $port;
+						   $command .= "-l $login "        if $login;
+						   $command .= "-p \"$password\" " if $password;	# quote the password in case it has spaces in it.
+						   $command .= "-n $port "         if $port;
 						   $command =~ s/ $//;
 						$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], fence command: [$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command}]\n");
@@ -5570,8 +5570,8 @@ sub display_free_resources
 	}
 	
 	### NOTE: Disabled in this release.
-# 	# If I found enough free disk space, have at least 1 GiB of free RAM 
-# 	# and both nodes are up, enable the "provision new VM" button.
+	# If I found enough free disk space, have at least 1 GiB of free RAM 
+	# and both nodes are up, enable the "provision new VM" button.
 # 	my $node1    = $conf->{'system'}{cluster}{node1_name};
 # 	my $node2    = $conf->{'system'}{cluster}{node2_name};
 # 	my $say_link = "<span class=\"disabled_button\">Provision New VM</span>";
@@ -5923,10 +5923,14 @@ sub check_node_readiness
 sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
+	if (not $vm)
+	{
+		error($conf, "I was asked to look at a VM's definition file, but no VM was specified.", 1);
+	}
 	my $this_vm = ($vm =~ /vm:(.*)/)[0];
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	#record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
@@ -5956,6 +5960,11 @@ sub read_vm_definition
 	my $current_device;
 	my $current_mac_address;
 	my $current_interface_type;
+	if (not $conf->{vm}{$vm}{xml})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; I was asked to look at: [$vm]'s definition file, it was not read or was not found.");
+		return (0);
+	}
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
 		my $line=lc($line); # everything should be lower case already.
@@ -6159,7 +6168,8 @@ sub check_vms
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 		if (not $conf->{vm}{$vm}{host})
 		{
-			error($conf, "I found a definition for a VM named: [<span class=\"highlight_detail\">$say_vm</span>], but there doesn't seem to be an entry in <span class=\"highlight_detail\">cluster.conf</span> for it.");
+			error($conf, "I found a definition for a VM named: [<span class=\"highlight_detail\">$say_vm</span>], but there doesn't seem to be an entry in <span class=\"highlight_detail\">cluster.conf</span> for it.", 0);
+			next;
 		}
 		
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{host}], node1 / node2 short names: [$short_node1] / [$short_node2]\n");
@@ -6277,6 +6287,11 @@ sub find_prefered_host
 	
 	my $failover_domain = $conf->{vm}{$vm}{failover_domain};
 	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
+	if (not $failover_domain)
+	{
+		# Not yet defined in the cluster.
+		return("--");
+	}
 	
 	# TODO: Check to see if I need to use <=> instead of cmp.
 	foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$failover_domain}{priority}})
@@ -6295,9 +6310,10 @@ sub find_prefered_host
 # This prints an error and exits.
 sub error
 {
-	my ($conf, $message) = @_;
+	my ($conf, $message, $fatal) = @_;
+	$fatal = 1 if not defined $fatal;
 	
-	footer($conf);
+	footer($conf) if $fatal;
 	
 	print "
 <table align=\"center\">
@@ -6313,24 +6329,8 @@ sub error
 <br />
 ";
 	
-	exit(1);
+	exit(1) if $fatal;
 	return(1);
-}
-
-# This gathers details on the cluster.
-sub scan_cluster
-{
-	my ($conf) = @_;
-	
-	set_node_names ($conf);
-	check_nodes    ($conf);
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-	if ($conf->{'system'}{up_nodes} > 0)
-	{
-		check_vms($conf);
-	}
-
-	return(0);
 }
 
 # This function simply sets a couple variables using the node names as set in
@@ -6397,7 +6397,7 @@ sub display_vm_state_and_controls
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
 		
 		# Use the node's short name for the buttons.
-		my $say_start_target     =  $conf->{vm}{$vm}{boot_target};
+		my $say_start_target     =  $conf->{vm}{$vm}{boot_target} ? $conf->{vm}{$vm}{boot_target} : "--";
 		$say_start_target        =~ s/\..*?$//;
 		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
@@ -7017,7 +7017,7 @@ sub display_node_controls
 		# At all times, the option to fence the node is made available.
 		my $say_fence     = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
 		my $say_dual_boot = "<span class=\"highlight_unavailable\">Power On Both</span>";
-		my $say_dual_join = "<span class=\"highlight_unavailable\">Join Both</span>";
+		my $say_dual_join = "<span class=\"highlight_unavailable\">Start Cluster</span>";
 		if ($rowspan)
 		{
 			# First row.
@@ -7027,7 +7027,7 @@ sub display_node_controls
 			}
 			if ($dual_join)
 			{
-				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Join Both</span></a>";
+				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">Start Cluster</span></a>";
 				# Disable the per-node "join" options".
 				$say_join      = "<span class=\"disabled_button\">Join Cluster</span>";
 				$disable_join  = 1;

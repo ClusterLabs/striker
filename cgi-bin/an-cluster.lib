@@ -88,7 +88,7 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -280,6 +280,22 @@ sub record
 	print $fh $message;
 	
 	return (0);
+}
+
+# This gathers details on the cluster.
+sub scan_cluster
+{
+	my ($conf) = @_;
+	
+	set_node_names ($conf);
+	check_nodes    ($conf);
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	if ($conf->{'system'}{up_nodes} > 0)
+	{
+		check_vms($conf);
+	}
+
+	return(0);
 }
 
 ###############################################################################
