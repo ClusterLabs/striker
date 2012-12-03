@@ -33,7 +33,7 @@ use CGI::Carp "fatalsToBrowser";
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
-our $THIS_FILE = "an-cdb.lib";
+my $THIS_FILE = "an-cdb.lib";
 
 # This attempts to gather all information about a node in one SSH call. It's
 # done to minimize the ssh overhead on slow links.
@@ -6305,32 +6305,6 @@ sub find_prefered_host
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
 	return ($prefered_host);
-}
-
-# This prints an error and exits.
-sub error
-{
-	my ($conf, $message, $fatal) = @_;
-	$fatal = 1 if not defined $fatal;
-	
-	footer($conf) if $fatal;
-	
-	print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_bad\">
-			<b>Oops.</b>
-		</td>
-		<td>
-			$message
-		</td>
-	</tr>
-</table>
-<br />
-";
-	
-	exit(1) if $fatal;
-	return(1);
 }
 
 # This function simply sets a couple variables using the node names as set in

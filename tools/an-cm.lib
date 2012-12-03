@@ -38,6 +38,22 @@ binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 our $THIS_FILE = "an-cm.lib";
 
+# This sends an email to the distrobution list with the current state of the
+# node and the cluster.
+sub send_state_email
+{
+	my ($conf) = @_;
+	
+	$conf->{mail_data}{subject} = "Current Node Status";
+	$conf->{mail_data}{body}    = get_current_state($conf);
+	
+	# Send the email.
+	send_email($conf);
+	
+	
+	return(0);
+}
+
 # This checks to see what hardware I need to monitor, reads in the initial
 # values and makes no attempt to compare previous scans.
 sub read_states
@@ -3977,7 +3993,9 @@ sub check_network
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
+		next if not $line;
 		$conf->{data}{raw}{ifconfig} .= $line."\n";
+		
 		#record($conf, "$THIS_FILE ".__LINE__."; ifconfig line: [$line]\n");
 		if (not $line)
 		{
@@ -3987,6 +4005,7 @@ sub check_network
 		if ($line =~ /^(.*?) Link/i)
 		{
 			$this_dev = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev]\n");
 		}
 		if (not $this_dev)
 		{
@@ -3995,28 +4014,33 @@ sub check_network
 		if ($line =~ /HWaddr (.*)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{hwaddr} = uc($1);
-			#record($conf, "$THIS_FILE ".__LINE__."; device: [$this_dev], MAC: [$conf->{data}{network}{new}{dev}{$this_dev}{hwaddr}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - device: [$this_dev], MAC: [$conf->{data}{network}{new}{dev}{$this_dev}{hwaddr}]\n");
 		}
 		if ($line =~ /(.*?) MTU:(\d+)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{'state'} = $1;
 			$conf->{data}{network}{new}{dev}{$this_dev}{mtu}     = $2;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - state: [$conf->{data}{network}{new}{dev}{$this_dev}{'state'}], MTU: [$conf->{data}{network}{new}{dev}{$this_dev}{mtu}]\n");
 		}
 		if ($line =~ /Metric:(\d+)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{metric} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - metric: [$conf->{data}{network}{new}{dev}{$this_dev}{metric}]\n");
 		}
 		if ($line =~ /inet addr:(.*?)\s/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{ip_address} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - ip_address: [$conf->{data}{network}{new}{dev}{$this_dev}{ip_address}]\n");
 		}
 		if ($line =~ /inet6 addr:(.*?)\s/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{ipv6_address} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - ipv6_address: [$conf->{data}{network}{new}{dev}{$this_dev}{ipv6_address}]\n");
 		}
 		if ($line =~ /Mask:(.*)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{netmask} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - netmask: [$conf->{data}{network}{new}{dev}{$this_dev}{netmask}]\n");
 		}
 		if ($line =~ /RX packets:(.*) errors:(\d+) dropped:(\d+) overruns:(\d+) frame:(\d+)/i)
 		{
@@ -4025,6 +4049,7 @@ sub check_network
 			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{dropped}  = $3;
 			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{overruns} = $4;
 			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{frame}    = $5;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - rx - packets: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{packets}], errors: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{errors}], dropped: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{dropped}], overruns: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{overruns}], frame: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{frame}]\n");
 		}
 		if ($line =~ /TX packets:(.*) errors:(\d+) dropped:(\d+) overruns:(\d+) carrier:(\d+)/i)
 		{
@@ -4033,14 +4058,17 @@ sub check_network
 			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{dropped}  = $3;
 			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{overruns} = $4;
 			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{carrier}  = $5;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - tx - packets: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{packets}], errors: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{errors}], dropped: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{dropped}], overruns: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{overruns}], carrier: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{carrier}]\n");
 		}
 		if ($line =~ /RX bytes:(\d+)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{rx}{'bytes'}  = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - rx - bytes: [$conf->{data}{network}{new}{dev}{$this_dev}{rx}{'bytes'}]\n");
 		}
 		if ($line =~ /TX bytes:(\d+)/i)
 		{
 			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{'bytes'}  = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - tx - bytes: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{'bytes'}]\n");
 		}
 	}
 	$fh->close();
@@ -4266,23 +4294,40 @@ sub check_network
 		elsif ($dev =~ /vbr/)
 		{
 			# Read 'brctl show $dev'
+			#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev]\n");
+			my $in_bridge   = "";
 			my $bridge_id   = "";
 			my $stp_enabled = "";
 			my $interfaces  = "";
 			my $fh = IO::Handle->new();
 			my $sc = "$conf->{path}{brctl} show $dev";
+			#record($conf, "$THIS_FILE ".__LINE__."; calling: [$sc]\n");
 			open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
 			while (<$fh>)
 			{
 				chomp;
 				my $line=$_;
+				# There is a bug where all bridges are shown, 
+				# despite a specific one having beed 
+				# specified... See:
+				# https://bugzilla.redhat.com/show_bug.cgi?id=882565
 				$conf->{data}{raw}{bond}{$dev} .= $line."\n";
+				if ($line !~ /^\s/)
+				{
+					$in_bridge = ($line =~ /^(.*?)\s/)[0];
+					#record($conf, "$THIS_FILE ".__LINE__."; in_bridge: [$in_bridge]\n");
+				}
+				#record($conf, "$THIS_FILE ".__LINE__."; >> dev: [$dev], in_bridge: [$in_bridge]\n");
+				next if ($in_bridge ne $dev);
+				#record($conf, "$THIS_FILE ".__LINE__."; << dev: [$dev], in_bridge: [$in_bridge]\n");
+				
 				$line =~ s/\s+/ /g;
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; bridge: [$dev], line: [$line]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; > dev: [$dev], line: [$line]\n");
 				next if not $line;
 				next if $line =~ /^bridge name/i;
+				#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], line: [$line]\n");
 				
 				# This can be one of three possible lines;
 				# - bridge info with device
@@ -4293,16 +4338,19 @@ sub check_network
 					$bridge_id   =  $1;
 					$stp_enabled =  $2;
 					$interfaces  .= "$3, ";
+					#record($conf, "$THIS_FILE ".__LINE__."; bridge_id: [$bridge_id], stp_enabled: [$stp_enabled], interfaces: [$interfaces]\n");
 				}
 				elsif ($line =~ /^$dev\s+(.*?)\s+(.*?)/)
 				{
 					$bridge_id   = $1;
 					$stp_enabled = $2;
 					$interfaces  = "--";
+					#record($conf, "$THIS_FILE ".__LINE__."; bridge_id: [$bridge_id], stp_enabled: [$stp_enabled], interfaces: [$interfaces]\n");
 				}
 				else
 				{
 					$interfaces .= "$line, ";
+					#record($conf, "$THIS_FILE ".__LINE__."; interfaces: [$interfaces]\n");
 				}
 			}
 			$fh->close();
@@ -4312,6 +4360,7 @@ sub check_network
 			$conf->{data}{network}{new}{bridge}{$dev}{interfaces} = $interfaces;
 		}
 	}
+	#die "testing.\n";
 	
 	# Record the passive slave for each bond for easy reference
 	# later.
@@ -4521,6 +4570,7 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 	# Bridge
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bridge}})
 	{
+		#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev]\n");
 		my $bridge_id   = $conf->{data}{network}{new}{bridge}{$dev}{id};
 		my $stp_enabled = $conf->{data}{network}{new}{bridge}{$dev}{stp};
 		my $interfaces  = $conf->{data}{network}{new}{bridge}{$dev}{interfaces};
@@ -4530,19 +4580,24 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 		{
 			$say_stp = "STP enabled";
 		}
+		#record($conf, "$THIS_FILE ".__LINE__."; bridge ID: [$bridge_id], say_stp: [$say_stp], mac: [$mac], interfaces: [$interfaces]\n");
 		my $interface0 = "";
 		my @interfaces;
 		if ($interfaces)
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; interfaces: [$interfaces]\n");
 			foreach my $iface (split/, /, $interfaces)
 			{
+				#record($conf, "$THIS_FILE ".__LINE__."; iface: [$iface]\n");
 				if ($interface0 eq "")
 				{
 					$interface0 = $iface;
+					#record($conf, "$THIS_FILE ".__LINE__."; interface0: [$interface0]\n");
 				}
 				else
 				{
 					push @interfaces, $iface;
+					#record($conf, "$THIS_FILE ".__LINE__."; pushing iface: [$iface] onto \@interfaces\n");
 				}
 			}
 		}
@@ -4552,6 +4607,7 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 		if ($interface0)
 		{
 			$say_iface_mac = $conf->{data}{network}{new}{dev}{$interface0}{hwaddr};
+			#record($conf, "$THIS_FILE ".__LINE__."; interface0: [$interface0], say_iface_mac: [$say_iface_mac]\n");
 			if ($iface_count > 0)
 			{
 				$say_interface0 = "|- $interface0, MAC: $say_iface_mac";
@@ -6940,7 +6996,7 @@ sub avoid_duplicate_run
 	while (<$fh>)
 	{
 		chomp;
-		my $line=$_;
+		my $line = $_;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		my $prog_name = $conf->{misc}{program_name};
 		if ($line ne $my_pid)

@@ -27,12 +27,13 @@
 # - Check to see if a VM is running outside of clustat and, if so, auto-enable
 #   it on the appropriate node.
 # - Add a "Cancel" button to each "Confirm" box.
+# - Add an ability to trigger a status email. SIGUSR1 via script -> email
 
 use strict;
 use warnings;
 require "./an-cluster.lib";
 require "./an-cdb.lib";
-our $THIS_FILE = "an-cdb";
+my $THIS_FILE = "an-cdb";
 
 my $conf={
 	nodes			=>	"",

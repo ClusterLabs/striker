@@ -36,7 +36,7 @@ use Email::Simple::Creator;
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
-our $THIS_FILE = "an-cluster.lib";
+my $THIS_FILE = "an-cluster.lib";
 
 
 # This asks the user which cluster they want to work with.
@@ -88,7 +88,7 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
-		record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -99,6 +99,32 @@ sub convert_cluster_config
 	}
 	
 	return (0);
+}
+
+# This prints an error and exits.
+sub error
+{
+	my ($conf, $message, $fatal) = @_;
+	$fatal = 1 if not defined $fatal;
+	
+	footer($conf) if $fatal;
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_bad\">
+			<b>Oops.</b>
+		</td>
+		<td>
+			$message
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	exit(1) if $fatal;
+	return(1);
 }
 
 sub header
@@ -297,6 +323,147 @@ sub scan_cluster
 
 	return(0);
 }
+
+# This takes a large number and inserts commas every three characters left of
+# the decimal place. This method doesn't take a parameter hash reference.
+sub comma
+{
+	my ($conf, $number) = @_;
+	
+	# Return if nothing passed.
+	return undef if not defined $number;
+
+	# Strip out any existing commas.
+	$number =~ s/,//g;
+	$number =~ s/^\+//g;
+
+	# Split on the left-most period.
+	my ($whole, $decimal) = split/\./, $number, 2;
+	$whole   = "" if not defined $whole;
+	$decimal = "" if not defined $decimal;
+
+	# Now die if either number has a non-digit character in it.
+	if (($whole =~ /\D/) || ($decimal =~ /\D/))
+	{
+		my $message = "The number: [$number] passed into the 'AN::Tools::Readable' module's 'comma' method contains a non-digit character or too many decimals.";
+		error($conf, $message, 1);
+	}
+
+	local($_) = $whole ? $whole : "";
+
+	1 while s/^(-?\d+)(\d{3})/$1,$2/;
+	$whole = $_;
+
+	my $return = $decimal ? "$whole.$decimal" : $whole;
+
+	return ($return);
+}
+
+# This takes a raw number of bytes and returns a base-2 human-readible value.
+# Takes a raw number of bytes (whole integer).
+sub bytes_to_hr
+{
+	my ($conf, $size) = @_;
+
+	# Expand exponential numbers.
+	if ($size =~ /(\d+)e\+(\d+)/)
+	{
+		my $base = $1;
+		my $exp  = $2;
+		$size    = $base;
+		for (1..$exp)
+		{
+			$size .= "0";
+		}
+	}
+
+	# Setup my variables.
+	my $suffix  = "";
+	my $hr_size = $size;
+
+	# Store and strip the sign
+	my $sign = "";
+	if ( $hr_size =~ /^-/ )
+	{
+		$sign    =  "-";
+		$hr_size =~ s/^-//;
+	}
+	$hr_size =~ s/,//g;
+	$hr_size =~ s/^\+//g;
+
+	# Die if either the 'time' or 'float' has a non-digit character in it.  
+	if ($hr_size =~ /\D/)
+	{
+		my $message = "The passed byte size: [$size] contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.";
+		error($conf, $message, 1);
+	}
+	
+	# Do the math.
+	if ( $hr_size >= (2 ** 80) )
+	{
+		# Yebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
+		$hr_size = comma($conf, $hr_size);
+		$suffix  = "YiB";
+	}
+	elsif ( $hr_size >= (2 ** 70) )
+	{
+		# Zebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
+		$suffix  = "ZiB";
+	}
+	elsif ( $hr_size >= (2 ** 60) )
+	{
+		# Exbibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
+		$suffix  = "EiB";
+	}
+	elsif ( $hr_size >= (2 ** 50) )
+	{
+		# Pebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
+		$suffix  = "PiB";
+	}
+	elsif ( $hr_size >= (2 ** 40) )
+	{
+		# Tebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
+		$suffix  = "TiB";
+	}
+	elsif ( $hr_size >= (2 ** 30) )
+	{
+		# Gibibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
+		$suffix  = "GiB";
+	}
+	elsif ( $hr_size >= (2 ** 20) )
+	{
+		# Mebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
+		$suffix  = "MiB";
+	}
+	elsif ( $hr_size >= (2 ** 10) )
+	{
+		# Kibibyte
+		$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
+		$suffix  = "KiB";
+	}
+	else
+	{
+		$hr_size = comma($conf, $hr_size);
+		$suffix  = "bytes";
+	}
+
+	# Restore the sign.
+	if ( $sign eq "-" )
+	{
+		$hr_size = $sign.$hr_size;
+	}
+	$hr_size .= $suffix;
+
+	return($hr_size);
+}
+
 
 ###############################################################################
 # Sssh, there are private functions                                           #
