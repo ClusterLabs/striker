@@ -1,0 +1,425 @@
+#!/usr/bin/perl
+# 
+# AN!MediaConnector
+# 
+# This allows a mechanism for taking a CD or DVD, turning it into an ISO and
+# pushing it to a cluster's /shared/files/ directory. It also allows for 
+# connecting and disconnecting these ISOs to and from VMs.
+# 
+
+use strict;
+use warnings;
+
+use strict;
+use warnings;
+use CGI;
+use Encode;
+use IO::Handle;
+use CGI::Carp "fatalsToBrowser";
+
+# Setup for UTF-8 mode.
+binmode STDOUT, ":utf8:";
+$ENV{'PERL_UNICODE'}=1;
+my $THIS_FILE = "an-mc.lib";
+
+sub process_task
+{
+}
+
+# This tries to see of there is a DVD or CD in the local drive (if there is a
+# local drive at all).
+sub check_local_dvd
+{
+	my ($conf) = @_;
+	
+	print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\">
+			Optical Drive
+		</td>
+	</tr>
+";
+	my $dev = "";
+	my $sc  = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh  = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /CD location\s+:\s+(.*)/i)
+		{
+			$dev = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:device:$dev\n");
+		}
+		elsif ($line =~ /Volume\s+:\s+(.*)/i)
+		{
+			my $volume = $1;
+			$conf->{drive}{$dev}{volume} = $volume;
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume:$volume\n");
+		}
+		elsif ($line =~ /Volume Set\s+:\s+(.*)/i)
+		{
+			my $volume_set = $1;
+			$conf->{drive}{$dev}{volume_set} = $volume_set;
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume set:$volume_set\n");
+		}
+		elsif ($line =~ /No medium found/i)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disk:true\n");
+			$conf->{drive}{$dev}{no_disk} = 1;
+			last;
+		}
+		elsif ($line =~ /unknown filesystem/i)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:reload needed:true\n");
+			$conf->{drive}{$dev}{reload} = 1;
+			last;
+		}
+		else
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:$line\n");
+		}
+	}
+	$fh->close;
+	
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
+	{
+		my $disk_name = "";
+		my $upload    = "--";
+		if ($conf->{drive}{$dev}{reload})
+		{
+			$disk_name = "Disk read failed, please reload to try again.";
+		}
+		elsif ($conf->{drive}{$dev}{no_disk})
+		{
+			$disk_name = "No disk found.";
+		}
+		elsif ($conf->{drive}{$dev}{volume})
+		{
+			$disk_name = $conf->{drive}{$dev}{volume};
+			$upload    = "upload";
+		}
+		elsif ($conf->{drive}{$dev}{volume_set})
+		{
+			$disk_name = $conf->{drive}{$dev}{volume_set};
+			$upload    = "upload";
+		}
+		else
+		{
+			$disk_name = "Unknown problem reading drive: [$dev]";
+		}
+		print "
+	<tr>
+		<td>
+			$dev
+		</td>
+		<td>
+			$disk_name
+		</td>
+		<td>
+			$upload
+		</td>
+	</tr>
+";
+	}
+	
+	print "
+</table>
+</br />
+";
+
+	return(0);
+}
+
+# This tries to log into each node in the cluster. The first one it connects to
+# which has /shared/files mounted is the one it will use to up upload the ISO
+# and generate the list of available media. It also compiles a list of which 
+# VMs are on each node.
+sub read_shared
+{
+	my ($conf) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; In read_shared().\n");
+	
+	# Let the user know that this might take a bit.
+	print "
+<div id=\"hide_when_loaded\">
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from $conf->{cgi}{cluster}.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src=\"/img/gather_info.gif\" border=\"0\">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+	";
+	
+	my $cluster      = $conf->{cgi}{cluster};
+	my $connected    = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		next if $connected;
+		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
+		my $fail = 0;
+		my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			$raw .= $_;
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			next if $fail;
+			
+			# This catches connectivity problems.
+			if ($line =~ /No route to host/i)
+			{
+				my $local_access = on_same_network($conf, $node);
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
+				if ($local_access)
+				{
+					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
+				}
+				else
+				{
+					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
+				}
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /host key verification failed/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
+				$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /could not resolve hostname/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
+				$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /permission denied/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /connection refused/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /Connection timed out/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /Network is unreachable/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /\@\@\@\@/)
+			{
+				# When the host-key fails to match, a box made
+				# of '@@@@' is displayed, and is the entire 
+				# first line.
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+				$fail = 1;
+				next;
+			}
+			
+			# If I made it this far, I've got a connection.
+			$connected = 1;
+			if ($line =~ /\s(\d+)-blocks\s/)
+			{
+				$conf->{partition}{shared}{block_size} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
+				next;
+			}
+			if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
+			{
+				$conf->{partition}{shared}{total_space}  = $1;
+				$conf->{partition}{shared}{used_space}   = $2;
+				$conf->{partition}{shared}{free_space}   = $3;
+				$conf->{partition}{shared}{used_percent} = $4;
+				#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
+				next;
+			}
+			if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
+			{
+				my $type   = $1;
+				my $mode   = $2;
+				my $user   = $3;
+				my $group  = $4;
+				my $size   = $5;
+				my $month  = $6;
+				my $day    = $7;
+				my $time   = $8; # might be a year, look for '\d+:\d+'.
+				my $file   = $9;
+				my $target = "";
+				if ($type eq "l")
+				{
+					# It's a symlink, strip off the destination.
+					($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
+				}
+				$conf->{files}{shared}{$file}{type}   = $type;
+				$conf->{files}{shared}{$file}{mode}   = $mode;
+				$conf->{files}{shared}{$file}{user}   = $user;
+				$conf->{files}{shared}{$file}{group}  = $group;
+				$conf->{files}{shared}{$file}{size}   = $size;
+				$conf->{files}{shared}{$file}{month}  = $month;
+				$conf->{files}{shared}{$file}{day}    = $day;
+				$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
+				$conf->{files}{shared}{$file}{target} = $target;
+				#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
+				next;
+			}
+		}
+	}
+	
+	print "
+<table class=\"hidden_table\" align=\"center\" border=\"0\">
+	<tr>
+		<td class=\"td_hidden\">
+
+";
+	if ($connected)
+	{
+		my $block_size       = $conf->{partition}{shared}{block_size};
+		my $total_space      = ($conf->{partition}{shared}{total_space} * $block_size);
+		my $say_total_space  = bytes_to_hr($conf, $total_space);
+		my $used_space       = ($conf->{partition}{shared}{used_space} * $block_size);
+		my $say_used_space   = bytes_to_hr($conf, $used_space);
+		my $free_space       = ($conf->{partition}{shared}{free_space} * $block_size);
+		my $say_free_space   = bytes_to_hr($conf, $free_space);
+		my $say_used_percent = $conf->{partition}{shared}{used_percent}."%";
+		print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\">
+			Cluster <span class=\"highlight_detail\">${cluster}</span>'s <span class=\"fixed_width\">/shared</span> details:
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Total Space
+		</td>
+		<td>
+			Used Space
+		</td>
+		<td>
+			Free Space
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"fixed_width\">$say_total_space</span>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$say_used_space</span>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$say_free_space</span>
+		</td>
+	</tr>
+</table>
+<br />
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\">
+			Existing Files
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			File Name
+		</td>
+		<td>
+			Size
+		</td>
+	</tr>
+";
+		
+		# Show existing files.
+		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+		{
+			next if $conf->{files}{shared}{$file}{type} ne "-";
+			my $say_size = bytes_to_hr($conf, $conf->{files}{shared}{$file}{size});
+			print "
+	<tr>
+		<td>
+			<a href=\"cluster=$cluster&task=delete&file=$file\"><span class=\"highlight_bad\">X</span></a>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$file</span>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$say_size</span>
+		</td>
+	</tr>
+";
+		}
+		
+		print "
+	<tr>
+</table>
+<br />
+";
+		check_local_dvd($conf);
+	}
+	else
+	{
+		print "
+<table>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\">Inaccessible</span>
+		</td>
+		<td>
+			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> cluster.
+		</td>
+	<tr>
+</table>
+<br />
+";
+	}
+	print "
+		</td>
+	</tr>
+</table>
+<br />
+";
+	return($connected);
+}
+
+1;

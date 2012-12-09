@@ -1,0 +1,64 @@
+#!/usr/bin/perl
+# 
+# AN!MediaConnector
+# 
+# This allows a mechanism for taking a CD or DVD, turning it into an ISO and
+# pushing it to a cluster's /shared/files/ directory. It also allows for 
+# connecting and disconnecting these ISOs to and from VMs.
+# 
+
+use strict;
+use warnings;
+
+require "./an-cluster.lib";
+require "./an-mc.lib";
+my $THIS_FILE = "an-mc";
+
+my $conf={
+	path			=>	{
+		an_conf			=>	"/etc/an/an.conf",
+		'log'			=>	"/var/log/an-cm.log",
+		ssh			=>	"/usr/bin/ssh",
+		check_dvd		=>	"/var/www/tools/check_dvd",
+	},
+	args			=>	{
+		check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
+	},
+};
+
+read_conf($conf);
+convert_cluster_config($conf);
+
+get_cgi_vars($conf, [
+	"cluster",
+	"task",
+	"confirm",
+]);
+
+header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
+
+# Do I have a cluster name?
+if ($conf->{cgi}{cluster})
+{
+	my $cluster    = $conf->{cgi}{cluster};
+	if ($conf->{cgi}{task})
+	{
+		$conf->{'system'}{show_refresh} = 0;
+		process_task($conf);
+	}
+	else
+	{
+		# Set the node list.
+		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
+		read_shared($conf);
+	}
+}
+else
+{
+	# Ask the user which cluster they want to look at.
+	ask_which_cluster($conf);
+}
+footer($conf);
+
+
+exit 0;
