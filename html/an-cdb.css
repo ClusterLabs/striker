@@ -118,6 +118,38 @@ td {
 	color: #7f7f7f;
 }
 
+.subtle_text {
+	font-size: 12px;
+	color: #6D6D8D;
+}
+
+.button {
+	font-family: 'Dejavu Sans', Arial, Helvetica, Verdana, Sans-Serif;
+	font-size: 14px;
+	background: transparent;
+/* 	background: white; */
+	cursor: pointer;
+	color: #7f117f;
+	border: 0px;
+	font-weight: bold;
+}
+
+input.disabled {
+	border: 1px solid #bfbfbf;
+	font-size: 12px;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	color: #1f1f1f;
+	padding: 4px;
+}
+
+input {
+	border: 1px solid #8f8f8f;
+	font-size: 12px;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	color: #1f1f1f;
+	padding: 4px;
+}
+
 /* Links */
 a {
 	color: #7f117f;

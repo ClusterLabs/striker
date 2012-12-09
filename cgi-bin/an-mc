@@ -14,15 +14,26 @@ require "./an-cluster.lib";
 require "./an-mc.lib";
 my $THIS_FILE = "an-mc";
 
+# Remember to keep 'create_image_and_upload.pl' updated.
 my $conf={
 	path			=>	{
 		an_conf			=>	"/etc/an/an.conf",
-		'log'			=>	"/var/log/an-cm.log",
-		ssh			=>	"/usr/bin/ssh",
 		check_dvd		=>	"/var/www/tools/check_dvd",
+		do_dd			=>	"/var/www/tools/do_dd",
+		'log'			=>	"/var/log/an-mc.log",
+		ssh			=>	"/usr/bin/ssh",
+		media			=>	"/var/www/home/media/",
+		rsync			=>	"/usr/bin/rsync",
+		screen			=>	"/usr/bin/screen",
+		shared			=>	"/shared/files/",
+		status			=>	"/var/www/home/status/",
 	},
 	args			=>	{
 		check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
+		rsync			=>	"-av --partial",
+	},
+	'system'		=>	{
+		dd_block_size		=>	"4M",
 	},
 };
 
@@ -33,6 +44,8 @@ get_cgi_vars($conf, [
 	"cluster",
 	"task",
 	"confirm",
+	"dev",
+	"name",
 ]);
 
 header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
@@ -40,7 +53,8 @@ header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
 # Do I have a cluster name?
 if ($conf->{cgi}{cluster})
 {
-	my $cluster    = $conf->{cgi}{cluster};
+	my $cluster = $conf->{cgi}{cluster};
+	$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 	if ($conf->{cgi}{task})
 	{
 		$conf->{'system'}{show_refresh} = 0;
@@ -49,7 +63,6 @@ if ($conf->{cgi}{cluster})
 	else
 	{
 		# Set the node list.
-		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 		read_shared($conf);
 	}
 }

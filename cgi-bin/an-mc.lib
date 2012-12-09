@@ -22,8 +22,282 @@ binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-mc.lib";
 
+
+# This images and uploads a DVD or CD disc
+sub image_and_upload
+{
+	my ($conf) = @_;
+	
+	# Let the user know that this might take a bit.
+	print "
+<div id=\"hide_when_loaded\">
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from $conf->{cgi}{cluster}.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src=\"/img/gather_info.gif\" border=\"0\">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+	";
+	
+	my $dev  = $conf->{cgi}{dev};
+	my $name = $conf->{cgi}{name};
+	
+	my ($node) = read_files_on_shared($conf);
+	if (exists $conf->{files}{shared}{$name})
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_bad\">
+			Name Conflict
+		</td>
+		<td>
+			<br />
+			There is a file on the cluster called <span class=\"fixed_width\">$name</span> on the cluster.<br />
+			Please go back and give the file a different name.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+";
+	}
+	else
+	{
+		# Now make sure the disc is still in the drive.
+		check_local_dvd($conf);
+		
+		if (not exists $conf->{drive}{$dev})
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning\">
+			Drive not found
+		</td>
+		<td>
+			<br />
+			The drive in <span class=\"fixed_width\">$dev</span> appears to no longer exist!<br />
+			If this is a USB drive, it may have been unplugged.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+</table>
+";
+		}
+		elsif ($conf->{drive}{$dev}{reload})
+		{
+			# Need to reload to catch the disc.
+			print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning\">
+			Reload needed
+		</td>
+		<td>
+			<br />
+			The drive in <span class=\"fixed_width\">$dev</span> appears to not be ready.<br />
+			Please reload to try and read the disc again.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+</table>
+";
+		}
+		elsif ($conf->{drive}{$dev}{no_disc})
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning\">
+			No Disc
+		</td>
+		<td>
+			<br />
+			The disc in <span class=\"fixed_width\">$dev</span> appears to have been removed.<br />
+			Please reinsert the disc and then reload this page.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+</table>
+";
+		}
+		else
+		{
+			# Finally...
+			my $out_file = $conf->{path}{media}.$name;
+			my $in_dev   = $dev;
+			print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready\">
+			Beginning image copy.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Please be patient! This could take up to <i>ten minutes</i>.<br />
+			<pre>
+";
+			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				print $_;
+			}
+			$fh->close;
+			print "
+			</pre>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Beginning upload. 
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Uploading image file: <span class=\"fixed_width\">$name</span> to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
+			This could take a long time, depending on the speed of the connection between the dashboard appliance and cluster.<br />
+			<pre>
+";
+			$sc = "$conf->{path}{rsync} $conf->{args}{rsync} $out_file root\@$node:$conf->{path}{shared}";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			$fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				print $_;
+			}
+			$fh->close;
+			unlink $out_file;
+			print "
+			</pre>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Done!<br />
+		</td>
+	</tr>
+</table>
+";
+		}
+	}
+	
+	return (0);
+}
+
+
+# Do whatever the user has asked.
 sub process_task
 {
+	my ($conf) = @_;
+	
+	if ($conf->{cgi}{task} eq "upload")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			image_and_upload($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			my $dev  = $conf->{cgi}{dev};
+			my $name = $conf->{cgi}{name};
+			print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_ready\">About to create a disc image and upload it to the cluster: [$conf->{cgi}{cluster}].</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Caution!</b></span>
+		</td>
+		<td colspan=\"2\" align=\"left\">
+			<br />
+			This process could take quite some time to complete!<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_ready\"><b>Step 1</b></span>
+		</td>
+		<td colspan=\"2\">
+			</br />
+			The disc will be converted into an image file.<br >
+			<i>For a DVD, this could take around 10 minutes to complete.</i><br />
+			</br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_ready\"><b>Step 2</b></span>
+		</td>
+		<td colspan=\"2\">
+			</br />
+			The image will be uploaded to the cluster's <span class=\"fixed_width\">/shared/files/</span> directory.<br />
+			<i>If the cluster is remote and your internet connection is slow, this could take a very long time.</i><br />
+			<br />
+		</td>
+	</tr>
+	<form method=\"get\">
+	<tr>
+		<td>
+			Image Name:
+		</td>
+		<td>
+				<input type=\"text\" name=\"name\" value=\"$name\" style=\"width: 250px;\">
+		</td>
+		<td class=\"subtle_text\" style=\"text-align: left;\">
+			This is the name that will be given to the DVD or CD image.
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<input type=\"hidden\" name=\"dev\" value=\"$dev\">
+			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
+			<input type=\"hidden\" name=\"task\" value=\"upload\">
+			<input type=\"hidden\" name=\"confirm\" value=\"true\">
+			<div class=\"align_right\"><input type=\"submit\" name=\"null\" value=\"Confirm\" class=\"button\"></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+		}
+	}
+	
+	return (0);
 }
 
 # This tries to see of there is a DVD or CD in the local drive (if there is a
@@ -32,17 +306,9 @@ sub check_local_dvd
 {
 	my ($conf) = @_;
 	
-	print "
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\">
-			Optical Drive
-		</td>
-	</tr>
-";
 	my $dev = "";
 	my $sc  = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh  = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 	while(<$fh>)
@@ -68,8 +334,8 @@ sub check_local_dvd
 		}
 		elsif ($line =~ /No medium found/i)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disk:true\n");
-			$conf->{drive}{$dev}{no_disk} = 1;
+			record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disc:true\n");
+			$conf->{drive}{$dev}{no_disc} = 1;
 			last;
 		}
 		elsif ($line =~ /unknown filesystem/i)
@@ -80,91 +346,64 @@ sub check_local_dvd
 		}
 		else
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:$line\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:$line\n");
 		}
 	}
 	$fh->close;
-	
-	foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
-	{
-		my $disk_name = "";
-		my $upload    = "--";
-		if ($conf->{drive}{$dev}{reload})
-		{
-			$disk_name = "Disk read failed, please reload to try again.";
-		}
-		elsif ($conf->{drive}{$dev}{no_disk})
-		{
-			$disk_name = "No disk found.";
-		}
-		elsif ($conf->{drive}{$dev}{volume})
-		{
-			$disk_name = $conf->{drive}{$dev}{volume};
-			$upload    = "upload";
-		}
-		elsif ($conf->{drive}{$dev}{volume_set})
-		{
-			$disk_name = $conf->{drive}{$dev}{volume_set};
-			$upload    = "upload";
-		}
-		else
-		{
-			$disk_name = "Unknown problem reading drive: [$dev]";
-		}
-		print "
-	<tr>
-		<td>
-			$dev
-		</td>
-		<td>
-			$disk_name
-		</td>
-		<td>
-			$upload
-		</td>
-	</tr>
-";
-	}
-	
-	print "
-</table>
-</br />
-";
 
 	return(0);
 }
 
-# This tries to log into each node in the cluster. The first one it connects to
-# which has /shared/files mounted is the one it will use to up upload the ISO
-# and generate the list of available media. It also compiles a list of which 
-# VMs are on each node.
-sub read_shared
+# This prints a small header with the current status of any background running
+# jobs
+sub check_status
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; In read_shared().\n");
 	
-	# Let the user know that this might take a bit.
-	print "
-<div id=\"hide_when_loaded\">
+	if (not -e $conf->{path}{status})
+	{
+		print "
 <table align=\"center\">
 	<tr>
 		<td>
-			<b>Please be patient.</b><br />
-			Gathering information from $conf->{cgi}{cluster}.<br />
-			This could take a minute to complete.
+			<span class=\"highlight_bad\">Configuration Error</span>
 		</td>
 		<td>
-			<img src=\"/img/gather_info.gif\" border=\"0\">
+			The directory: <span class=\"fixed_fidth\">$conf->{path}{status}</span> does not exist.
 		</td>
 	</tr>
 </table>
-<br />
-</div>
-	";
+";
+	}
+	elsif (not -r $conf->{path}{status})
+	{
+		my $user = getpwuid($<);
+		print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<span class=\"highlight_bad\">Configuration Error</span>
+		</td>
+		<td>
+			The directory: <span class=\"fixed_fidth\">$conf->{path}{status}</span> is not readible by the <span class=\"fixed_fidth\">$user</span> user.
+		</td>
+	</tr>
+</table>
+";
+	}
 	
-	my $cluster      = $conf->{cgi}{cluster};
-	my $connected    = 0;
+	return (0);
+}
+
+# This looks for a node we have access to and returns the first one available.
+sub read_files_on_shared
+{
+	my ($conf) = @_;
+	
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	my $connected = "";
+	my $cluster   = $conf->{cgi}{cluster};
+	delete $conf->{files} if exists $conf->{files};
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		next if $connected;
@@ -256,7 +495,7 @@ sub read_shared
 			}
 			
 			# If I made it this far, I've got a connection.
-			$connected = 1;
+			$connected = $node;
 			if ($line =~ /\s(\d+)-blocks\s/)
 			{
 				$conf->{partition}{shared}{block_size} = $1;
@@ -304,13 +543,95 @@ sub read_shared
 		}
 	}
 	
+	if (not $connected)
+	{
+		print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\">
+			Unable to connect to the <span class=\"highlight_detail\">${cluster}</span> cluster!
+		</td>
+	</tr>
+";
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{node}})
+		{
+			my $state = $conf->{node}{$node}{info}{'state'};
+			my $note  = $conf->{node}{$node}{info}{note};
+			print "
+	<tr>
+		<td>
+			<span class=\"fixed_width\">$node</span>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$state</span>
+		</td>
+		<td>
+			$note
+		</td>
+	</tr>
+";
+		}
+		print "
+	<tr>
+		<td colspan=\"3\">
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+";
+	}
+		print "
+</table>
+<br />
+";
+	
+	return ($connected);
+}
+
+# This tries to log into each node in the cluster. The first one it connects to
+# which has /shared/files mounted is the one it will use to up upload the ISO
+# and generate the list of available media. It also compiles a list of which 
+# VMs are on each node.
+sub read_shared
+{
+	my ($conf) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; In read_shared().\n");
+	
+	check_status($conf);
+	
+	# Let the user know that this might take a bit.
+	print "
+<div id=\"hide_when_loaded\">
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from $conf->{cgi}{cluster}.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src=\"/img/gather_info.gif\" border=\"0\">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+	";
+	
+	my $cluster      = $conf->{cgi}{cluster};
+	my $connected    = 0;
+	
+	# This returns the name of the node used to read /shared/files/. If no
+	# node was available, it returns an empty string.
+	my ($node) = read_files_on_shared($conf);
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	
 	print "
 <table class=\"hidden_table\" align=\"center\" border=\"0\">
 	<tr>
 		<td class=\"td_hidden\">
-
 ";
-	if ($connected)
+	if ($node)
 	{
 		my $block_size       = $conf->{partition}{shared}{block_size};
 		my $total_space      = ($conf->{partition}{shared}{total_space} * $block_size);
@@ -394,8 +715,59 @@ sub read_shared
 	<tr>
 </table>
 <br />
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\">
+			Optical Drive
+		</td>
+	</tr>
 ";
 		check_local_dvd($conf);
+		foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
+		{
+			my $cluster   = $conf->{cgi}{cluster};
+			my $disc_name = "";
+			my $upload    = "--";
+			if ($conf->{drive}{$dev}{reload})
+			{
+				$disc_name = "Disc read failed, please reload to try again.";
+			}
+			elsif ($conf->{drive}{$dev}{no_disc})
+			{
+				$disc_name = "No disc found.";
+			}
+			elsif ($conf->{drive}{$dev}{volume})
+			{
+				$disc_name = $conf->{drive}{$dev}{volume};
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$disc_name.iso\">upload</a>";
+			}
+			elsif ($conf->{drive}{$dev}{volume_set})
+			{
+				$disc_name = $conf->{drive}{$dev}{volume_set};
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$disc_name.iso\">upload</a>";
+			}
+			else
+			{
+				$disc_name = "Unknown problem reading drive: [$dev]";
+			}
+			print "
+	<tr>
+		<td>
+			<span class=\"fixed_width\">$dev</span>
+		</td>
+		<td>
+			$disc_name
+		</td>
+		<td>
+			$upload
+		</td>
+	</tr>
+";
+		}
+		print "
+</table>
+</br />
+";
 	}
 	else
 	{
