@@ -212,25 +212,15 @@ sub image_and_upload
 	return (0);
 }
 
-
-# Do whatever the user has asked.
-sub process_task
+# This asks the user to confirm the image and upload task. It also gives a
+# chance for the user to name the image before upload.
+sub confirm_image_and_upload
 {
 	my ($conf) = @_;
 	
-	if ($conf->{cgi}{task} eq "upload")
-	{
-		if ($conf->{cgi}{confirm})
-		{
-			# Proceed.
-			image_and_upload($conf);
-		}
-		else
-		{
-			# Get the user to confirm.
-			my $dev  = $conf->{cgi}{dev};
-			my $name = $conf->{cgi}{name};
-			print "
+	my $dev  = $conf->{cgi}{dev};
+	my $name = $conf->{cgi}{name};
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
@@ -294,6 +284,160 @@ sub process_task
 </table>
 <br />
 ";
+	
+	return (0);
+}
+
+# This asks the user to confirm that s/he wants to delete the image.
+sub confirm_delete_file
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $name    = $conf->{cgi}{name};
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_ready\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Caution!</b></span>
+		</td>
+		<td colspan=\"2\" align=\"left\">
+			<br />
+			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!<br />
+			<br />
+			<i>This action can not be undone!</i><br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+# This deletes a file from the cluster.
+sub delete_file
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $name    = $conf->{cgi}{name};
+	my ($node) = read_files_on_shared($conf);
+	if (exists $conf->{files}{shared}{$name})
+	{
+		# Do the delete.
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_ready\">Deleting <span class=\"fixed_width\">$name</span>...</span>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<br />
+			Any output from the shell will be below (none expected):
+			<pre>
+";
+		my $sc = "$conf->{path}{ssh} root\@$node \"rm -f /shared/files/$name\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh  = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			print $_;
+		}
+		$fh->close;
+		print "
+			</pre>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			Done!
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	else
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster failed!</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning\"><b>Failed!</b></span>
+		</td>
+		<td colspan=\"2\" align=\"left\">
+			<br />
+			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> cluster is already gone.<br />
+			It is possible that another user deleted this file already.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
+			&nbsp;
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+	}
+	
+	return (0);
+}
+
+# Do whatever the user has asked.
+sub process_task
+{
+	my ($conf) = @_;
+	
+	if ($conf->{cgi}{task} eq "upload")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			image_and_upload($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			confirm_image_and_upload($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "delete")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			delete_file($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			confirm_delete_file($conf);
 		}
 	}
 	
@@ -644,19 +788,19 @@ sub read_shared
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\">
-			Cluster <span class=\"highlight_detail\">${cluster}</span>'s <span class=\"fixed_width\">/shared</span> details:
+		<td colspan=\"3\" class=\"highlight_good\">
+			Cluster <span class=\"fixed_width\">${cluster}</span>'s <span class=\"fixed_width\">/shared</span> details:
 		</td>
 	</tr>
 	<tr>
 		<td>
-			Total Space
+			<span class=\"table_header\">Total Space</span>
 		</td>
 		<td>
-			Used Space
+			<span class=\"table_header\">Used Space</span>
 		</td>
 		<td>
-			Free Space
+			<span class=\"table_header\">Free Space</span>
 		</td>
 	</tr>
 	<tr>
@@ -674,8 +818,8 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\">
-			Existing Files
+		<td colspan=\"3\" class=\"highlight_good\">
+			Existing File(s)
 		</td>
 	</tr>
 	<tr>
@@ -683,10 +827,10 @@ sub read_shared
 			&nbsp;
 		</td>
 		<td>
-			File Name
+			<span class=\"table_header\">File Name</span>
 		</td>
 		<td>
-			Size
+			<span class=\"table_header\">Size</span>
 		</td>
 	</tr>
 ";
@@ -699,13 +843,13 @@ sub read_shared
 			print "
 	<tr>
 		<td>
-			<a href=\"cluster=$cluster&task=delete&file=$file\"><span class=\"highlight_bad\">X</span></a>
+			<span class=\"fixed_width\">$say_size</span>
 		</td>
 		<td>
 			<span class=\"fixed_width\">$file</span>
 		</td>
 		<td>
-			<span class=\"fixed_width\">$say_size</span>
+			<a href=\"?cluster=$cluster&task=delete&name=$file\"><span class=\"highlight_bad\">Delete</span></a>
 		</td>
 	</tr>
 ";
@@ -717,8 +861,19 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\">
-			Optical Drive
+		<td colspan=\"3\" class=\"highlight_good\">
+			Optical Drive(s)
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"table_header\">Device</span>
+		</td>
+		<td>
+			<span class=\"table_header\">Disc Name</span>
+		</td>
+		<td>
+			&nbsp;
 		</td>
 	</tr>
 ";
@@ -738,13 +893,13 @@ sub read_shared
 			}
 			elsif ($conf->{drive}{$dev}{volume})
 			{
-				$disc_name = $conf->{drive}{$dev}{volume};
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$disc_name.iso\">upload</a>";
+				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\">Upload</a>";
 			}
 			elsif ($conf->{drive}{$dev}{volume_set})
 			{
-				$disc_name = $conf->{drive}{$dev}{volume_set};
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$disc_name.iso\">upload</a>";
+				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\">Upload</a>";
 			}
 			else
 			{
