@@ -1,10 +1,9 @@
-AN!CDB - Cluster Dashboard v1.0-rc1
-
-Please note: This is a release candidate of this program.
+Please note: This is a pre-release program. It may not work or may break in
+             unpredictable and damaging ways.
 
 This program talks to cluster nodes using password-less ssh shared keys. It
 presents the user with a view of their current VMs and the remaining free
-resources on their cluster. 
+resources on their cluster.
 
 This program provides full control of a cluster's VMs and the host nodes. From
 it, you can cold boot, cold stop, boot, power off, fence, withdraw from and
