@@ -44,12 +44,16 @@ convert_cluster_config($conf);
 
 get_cgi_vars($conf, [
 	"cluster",
-	"task",
 	"confirm",
 	"dev",
-	"name",
 	"file",
+	"name",
+	"task",
+	"url",
 ]);
+
+# Make STDOUT hot.
+$| = 1;
 
 header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
 

@@ -58,7 +58,214 @@ sub process_task
 	{
 		save_file_to_disk($conf);
 	}
+	elsif ($conf->{cgi}{task} eq "download_url")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			download_url($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			confirm_download_url($conf);
+		}
+	}
 	
+	return (0);
+}
+
+# This downloads a given URL directly to the cluster using 'wget'.
+sub download_url
+{
+	my ($conf) = @_;
+	
+	my $cluster       = $conf->{cgi}{cluster};
+	my $url           = $conf->{cgi}{url};
+	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
+	
+	my ($node) = read_files_on_shared($conf);
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Downloading from the web.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			<span class=\"highlight_warning\">Please be patient!</span><br />
+			<br />
+			I will now download:<br />
+			<span class=\"fixed_width\">$file</span><br />
+			From the website:<br />
+			<span class=\"fixed_width\">$url</span><br />
+			<br />
+";
+	my $next_percent = 10;
+	my $sc = "$conf->{path}{ssh} root\@$node \"wget -c $url -O /shared/files/$file\"";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh  = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/“/"/g;
+		$line =~ s/”/"/g;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^(\d+)K .*? (\d+)% (.*?)(\w) (.*?)$/)
+		{
+			my $received = $1;
+			my $percent  = $2;
+			my $rate     = $3;
+			my $rate_suf = $4;
+			my $time     = $5;
+			#record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent].\n");
+			if ($percent eq "100")
+			{
+				print "<span class=\"highlight_good\">Download Completed.<br />\n";
+			}
+			elsif ($percent >= $next_percent)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent], received: [$received], rate: [$rate], time: [$time].\n");
+				# This prevents multiple prints when the file
+				# is partially downloaded.
+				while ($percent >= $next_percent)
+				{
+					$next_percent    += 10;
+				}
+				$received        *= 1024;
+				my $say_received =  bytes_to_hr($conf, $received);
+				#record($conf, "$THIS_FILE ".__LINE__."; received: [$received] -> [$say_received]\n");
+				if (uc($rate_suf) eq "M")
+				{
+					$rate            =  int(($rate * (1024 * 1024)));
+				}
+				elsif (uc($rate_suf) eq "K")
+				{
+					$rate            =  int(($rate * 1024));
+				}
+				my $say_rate     =  bytes_to_hr($conf, $rate);
+				#record($conf, "$THIS_FILE ".__LINE__."; rate: [$rate] -> [$say_rate]\n");
+				my $hours   = 0;
+				my $minutes = 0;
+				my $seconds = 0;
+				if ($time =~ /(\d+)h/)
+				{
+					$hours  = $1;
+				}
+				if ($time =~ /(\d+)m/)
+				{
+					$minutes = $1;
+				}
+				if ($time =~ /(\d+)s/)
+				{
+					$seconds = $1;
+				}
+				#record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> h[$hours], m[$minutes], s[$seconds]\n");
+				my $say_hour   = $hours   == 1 ? "hour"   : "hours";
+				my $say_minute = $minutes == 1 ? "minute" : "minutes";
+				my $say_second = $seconds == 1 ? "second" : "seconds";
+				my $say_time_remaining;
+				if ($hours)
+				{
+					$say_time_remaining = "<b>$hours</b> $say_hour, <b>$minutes</b> $say_minute and <b>$seconds</b> $say_second"; 
+				}
+				elsif ($minutes)
+				{
+					$say_time_remaining = "<b>$minutes</b> $say_minute and <b>$seconds</b> $say_second"; 
+				}
+				else
+				{
+					$say_time_remaining = "<b>$seconds</b> $say_second"; 
+				}
+				#record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> [$say_time_remaining]\n");
+				print "Progress: <span class=\"fixed_width\">$percent%</span> finished, <span class=\"fixed_width\">$say_received</span> downloaded at ~ <span class=\"fixed_width\">$say_rate MiB/sec</span>.<br />\n";
+				print "Approximately $say_time_remaining remaining.<br />\n";
+			}
+		}
+		else
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			print "<span class=\"fixed_width\">$line</span><br />\n";
+		}
+	}
+	$fh->close;
+	print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Done!
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+# This prompts the user to confirm the download of a file from the web.
+sub confirm_download_url
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $url     = $conf->{cgi}{url};
+	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_ready\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> cluster.</span>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Download
+		</td>
+		<td colspan=\"2\">
+			<br />
+			The file:<br />
+			<span class=\"fixed_width\">$file</span><br />
+			Found at the web address:<br />
+			<span class=\"fixed_width\">$base</span><br />
+			Will be downloaded directly to the <span class=\"fixed_width\">$cluster</span> cluster.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			<b>Caution!</b>
+		</td>
+		<td colspan=\"2\" align=\"left\">
+			<br />
+			<i>Downloading a file from the internet can take a long time!</i><br />
+			<br />
+			Please be sure that the web address above is a direct link to the file you want to download.<br />
+			<br />
+			Some webistes use referal links which may not work here.<br />
+			If the file you download doesn't work, please delete it from the cluster and then download the file yourself.<br />
+			Once you have the file, you can upload it to the cluster from your computer.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+
 	return (0);
 }
 
@@ -388,7 +595,7 @@ sub confirm_image_and_upload
 			Image Name:
 		</td>
 		<td>
-				<input type=\"text\" name=\"name\" value=\"$name\" style=\"width: 250px;\">
+			<input type=\"text\" name=\"name\" value=\"$name\" style=\"width: 250px;\">
 		</td>
 		<td class=\"subtle_text\" style=\"text-align: left;\">
 			This is the name that will be given to the DVD or CD image.
@@ -472,8 +679,8 @@ sub delete_file
 	<tr>
 		<td colspan=\"3\">
 			<br />
-			Any output from the shell will be below (none expected):
-			<pre>
+			Any output from the shell will be below (none expected):<br />
+			<br />
 ";
 		my $sc = "$conf->{path}{ssh} root\@$node \"rm -f /shared/files/$name\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -481,15 +688,16 @@ sub delete_file
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 		while(<$fh>)
 		{
-			print $_;
+			chomp;
+			my $line = $_;
+			print "<span class=\"fixed_width\">$line</span><br />\n";
 		}
 		$fh->close;
 		print "
-			</pre>
 		</td>
 	</tr>
 	<tr>
-		<td colspan=\"3\">
+		<td colspan=\"3\" class=\"highlight_ready\">
 			Done!
 		</td>
 	</tr>
@@ -878,7 +1086,7 @@ sub read_shared
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_good\">
+		<td colspan=\"3\" class=\"highlight_ready\">
 			Cluster <span class=\"fixed_width\">${cluster}</span>'s <span class=\"fixed_width\">/shared</span> details:
 		</td>
 	</tr>
@@ -908,7 +1116,7 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_good\">
+		<td colspan=\"3\" class=\"highlight_ready\">
 			Existing File(s)
 		</td>
 	</tr>
@@ -952,8 +1160,8 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_good\">
-			Optical Drive(s)
+		<td colspan=\"3\" class=\"highlight_ready\">
+			Upload from DVD or CD drive
 		</td>
 	</tr>
 	<tr>
@@ -1016,11 +1224,49 @@ sub read_shared
 </br />
 ";
 
+		# Show the option to download an ISO directly from a URL.
+		print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\" class=\"highlight_ready\">
+			Download directly from a website address to the cluster.
+		</td>
+	</tr>
+	<form method=\"post\" enctype=\"multipart/form-data\">
+	<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
+	<input type=\"hidden\" name=\"task\" value=\"download_url\">
+	<tr>
+		<td>
+			Address
+		</td>
+		<td>
+			<input type=\"text\" name=\"url\" value=\"\" style=\"width: 250px;\">
+		</td>
+		<td>
+			<input type=\"submit\" name=\"null\" value=\"Download\" class=\"button\">
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			Note!
+		</td>
+		<td colspan=\"3\">
+			<br />
+			If the server hosting this file is slow or if the file is big,<br />
+			the download might take a long time to complete.<br />
+			<br />
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+
 		# Show the option to upload from the user's local machine.
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_good\">
+		<td colspan=\"3\" class=\"highlight_ready\">
 			Upload a file from your computer.
 		</td>
 	</tr>
@@ -1050,6 +1296,8 @@ sub read_shared
 		</td>
 	</tr>
 	</form>
+</table>
+<br />
 ";
 	}
 	else
@@ -1072,7 +1320,6 @@ sub read_shared
 		</td>
 	</tr>
 </table>
-<br />
 ";
 	return($connected);
 }
