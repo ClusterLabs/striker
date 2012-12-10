@@ -243,6 +243,11 @@ sub get_cgi_vars
 		$conf->{cgi}{$var}="";
 		if (defined $cgi->param($var))
 		{
+			if ($var eq "file")
+			{
+				$conf->{cgi_fh}{$var} = $cgi->upload($var);
+				record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}]\n");
+			}
 			$conf->{cgi}{$var} = $cgi->param($var);
 			# Make this UTF8 if it isn't already.
 			if (not Encode::is_utf8( $conf->{cgi}{$var} ))
@@ -459,7 +464,7 @@ sub bytes_to_hr
 	{
 		$hr_size = $sign.$hr_size;
 	}
-	$hr_size .= $suffix;
+	$hr_size .= " $suffix";
 
 	return($hr_size);
 }

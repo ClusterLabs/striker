@@ -23,6 +23,113 @@ $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-mc.lib";
 
 
+# Do whatever the user has asked.
+sub process_task
+{
+	my ($conf) = @_;
+	
+	if ($conf->{cgi}{task} eq "image_and_upload")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			image_and_upload($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			confirm_image_and_upload($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "delete")
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Proceed.
+			delete_file($conf);
+		}
+		else
+		{
+			# Get the user to confirm.
+			confirm_delete_file($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "upload_file")
+	{
+		save_file_to_disk($conf);
+	}
+	
+	return (0);
+}
+
+# This saves a file to disk from a user's upload.
+sub save_file_to_disk
+{
+	my ($conf) = @_;
+	
+	my ($node) = read_files_on_shared($conf);
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready\">
+			Saving the file to the server's storage.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			Please be patient!<br />
+			<br />
+			If the file is big and if your network is slow,<br />
+			This could take a while.<br />
+			<br />
+";
+	my $in_fh    = $conf->{cgi_fh}{file};
+	my $out_file = $conf->{path}{media}.$conf->{cgi}{file};
+	my $sc = "$out_file";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc] with cgi fh: [$in_fh].\n");
+	my $fh = IO::Handle->new();
+	open ($fh, ">$sc") or die "Failed to call: [$sc]\n";
+	binmode $fh;
+	while(<$in_fh>)
+	{
+		print $fh $_;
+	}
+	$fh->close;
+	print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Upload to the server is finished.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			Now uploading to the cluster.<br />
+			<br />
+			If the connection between the Dashboard server and the cluster is slow<br />
+			and if the file is big, this might also take a while to finish.<br />
+			<br />
+			<pre>";
+	upload_to_shared($conf, $node, $out_file);
+	unlink $out_file;
+	print "
+			</pre>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Upload to the cluster is finished.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
 # This images and uploads a DVD or CD disc
 sub image_and_upload
 {
@@ -67,6 +174,7 @@ sub image_and_upload
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	else
@@ -95,6 +203,7 @@ sub image_and_upload
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 		elsif ($conf->{drive}{$dev}{reload})
@@ -119,6 +228,7 @@ sub image_and_upload
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 		elsif ($conf->{drive}{$dev}{no_disc})
@@ -142,6 +252,7 @@ sub image_and_upload
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 		else
@@ -185,15 +296,7 @@ sub image_and_upload
 			This could take a long time, depending on the speed of the connection between the dashboard appliance and cluster.<br />
 			<pre>
 ";
-			$sc = "$conf->{path}{rsync} $conf->{args}{rsync} $out_file root\@$node:$conf->{path}{shared}";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			$fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				print $_;
-			}
-			$fh->close;
+			upload_to_shared($conf, $node, $out_file);
 			unlink $out_file;
 			print "
 			</pre>
@@ -205,9 +308,29 @@ sub image_and_upload
 		</td>
 	</tr>
 </table>
+<br />
 ";
 		}
 	}
+	
+	return (0);
+}
+
+# This takes a path to a file on the dashboard and uploads it to the cluster's
+# /shared/files/ folder.
+sub upload_to_shared
+{
+	my ($conf, $node, $source_file) = @_;
+	
+	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		print $_;
+	}
+	$fh->close;
 	
 	return (0);
 }
@@ -259,7 +382,7 @@ sub confirm_image_and_upload
 			<br />
 		</td>
 	</tr>
-	<form method=\"get\">
+	<form method=\"post\">
 	<tr>
 		<td>
 			Image Name:
@@ -275,7 +398,7 @@ sub confirm_image_and_upload
 		<td colspan=\"3\">
 			<input type=\"hidden\" name=\"dev\" value=\"$dev\">
 			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
-			<input type=\"hidden\" name=\"task\" value=\"upload\">
+			<input type=\"hidden\" name=\"task\" value=\"image_and_upload\">
 			<input type=\"hidden\" name=\"confirm\" value=\"true\">
 			<div class=\"align_right\"><input type=\"submit\" name=\"null\" value=\"Confirm\" class=\"button\"></div>
 		</td>
@@ -409,41 +532,6 @@ sub delete_file
 	return (0);
 }
 
-# Do whatever the user has asked.
-sub process_task
-{
-	my ($conf) = @_;
-	
-	if ($conf->{cgi}{task} eq "upload")
-	{
-		if ($conf->{cgi}{confirm})
-		{
-			# Proceed.
-			image_and_upload($conf);
-		}
-		else
-		{
-			# Get the user to confirm.
-			confirm_image_and_upload($conf);
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "delete")
-	{
-		if ($conf->{cgi}{confirm})
-		{
-			# Proceed.
-			delete_file($conf);
-		}
-		else
-		{
-			# Get the user to confirm.
-			confirm_delete_file($conf);
-		}
-	}
-	
-	return (0);
-}
-
 # This tries to see of there is a DVD or CD in the local drive (if there is a
 # local drive at all).
 sub check_local_dvd
@@ -462,29 +550,29 @@ sub check_local_dvd
 		if ($line =~ /CD location\s+:\s+(.*)/i)
 		{
 			$dev = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:device:$dev\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:device:$dev\n");
 		}
 		elsif ($line =~ /Volume\s+:\s+(.*)/i)
 		{
 			my $volume = $1;
 			$conf->{drive}{$dev}{volume} = $volume;
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume:$volume\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume:$volume\n");
 		}
 		elsif ($line =~ /Volume Set\s+:\s+(.*)/i)
 		{
 			my $volume_set = $1;
 			$conf->{drive}{$dev}{volume_set} = $volume_set;
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume set:$volume_set\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume set:$volume_set\n");
 		}
 		elsif ($line =~ /No medium found/i)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disc:true\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disc:true\n");
 			$conf->{drive}{$dev}{no_disc} = 1;
 			last;
 		}
 		elsif ($line =~ /unknown filesystem/i)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; cd-info:reload needed:true\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cd-info:reload needed:true\n");
 			$conf->{drive}{$dev}{reload} = 1;
 			last;
 		}
@@ -517,6 +605,7 @@ sub check_status
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	elsif (not -r $conf->{path}{status})
@@ -533,6 +622,7 @@ sub check_status
 		</td>
 	</tr>
 </table>
+<br />
 ";
 	}
 	
@@ -849,12 +939,13 @@ sub read_shared
 			<span class=\"fixed_width\">$file</span>
 		</td>
 		<td>
-			<a href=\"?cluster=$cluster&task=delete&name=$file\"><span class=\"highlight_bad\">Delete</span></a>
+			<a href=\"?cluster=$cluster&task=delete&name=$file\"><span class=\"highlight_bad\"><i>Delete</i></span></a>
 		</td>
 	</tr>
 ";
 		}
 		
+		# Read from the DVD drive(s), if found.
 		print "
 	<tr>
 </table>
@@ -877,6 +968,7 @@ sub read_shared
 		</td>
 	</tr>
 ";
+
 		check_local_dvd($conf);
 		foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
 		{
@@ -894,12 +986,12 @@ sub read_shared
 			elsif ($conf->{drive}{$dev}{volume})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\">Upload</a>";
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\"><b>Upload</b></a>";
 			}
 			elsif ($conf->{drive}{$dev}{volume_set})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\">Upload</a>";
+				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\"><b>Upload</b></a>";
 			}
 			else
 			{
@@ -922,6 +1014,42 @@ sub read_shared
 		print "
 </table>
 </br />
+";
+
+		# Show the option to upload from the user's local machine.
+		print "
+<table width=\"100%\">
+	<tr>
+		<td colspan=\"3\" class=\"highlight_good\">
+			Upload a file from your computer.
+		</td>
+	</tr>
+	<form method=\"post\" enctype=\"multipart/form-data\">
+	<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
+	<input type=\"hidden\" name=\"task\" value=\"upload_file\">
+	<tr>
+		<td>
+			File
+		</td>
+		<td>
+			<input type=\"file\" name=\"file\" value=\"\">
+		</td>
+		<td>
+			<input type=\"submit\" name=\"null\" value=\"Upload\" class=\"button\">
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			Note!
+		</td>
+		<td colspan=\"3\">
+			<br />
+			<i>There is no confirmation for this action.</i></br />
+			Uploading a big file over a slow link might take a long time.<br />
+			<br />
+		</td>
+	</tr>
+	</form>
 ";
 	}
 	else
