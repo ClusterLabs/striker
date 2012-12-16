@@ -295,6 +295,261 @@ sub read_conf
 	return(0);
 }
 
+# This builds an HTML select field.
+sub build_select
+{
+	my ($conf, $name, $sort, $blank, $width, $selected, $options) = @_;
+	
+	my $select = "<select name=\"$name\">\n";
+	if ($width)
+	{
+		$select = "<select name=\"$name\" style=\"width: ${width}px;\">\n";
+	}
+	
+	# Insert a blank line.
+	if ($blank)
+	{
+		$select .= "<option value=\"\"></option>\n";
+	}
+	
+	# This needs to be smarter.
+	if ($sort)
+	{
+		foreach my $entry (sort {$a cmp $b} @{$options})
+		{
+			next if not $entry;
+			if ($entry =~ /^(.*?)#!#(.*)$/)
+			{
+				my $value = $1;
+				my $desc  = $2;
+				$select .= "<option value=\"$value\">$desc</option>\n";
+			}
+			else
+			{
+				$select .= "<option value=\"$entry\">$entry</option>\n";
+			}
+		}
+	}
+	else
+	{
+		foreach my $entry (@{$options})
+		{
+			next if not $entry;
+			if ($entry =~ /^(.*?)#!#(.*)$/)
+			{
+				my $value = $1;
+				my $desc  = $2;
+				$select .= "<option value=\"$value\">$desc</option>\n";
+			}
+			else
+			{
+				$select .= "<option value=\"$entry\">$entry</option>\n";
+			}
+		}
+	}
+	
+	if ($selected)
+	{
+		$select =~ s/value=\"$selected\">/value=\"$selected\" selected>/m;
+	}
+	
+	$select .= "</select>\n";
+	
+	return ($select);
+}
+
+# This looks for a node we have access to and returns the first one available.
+sub read_files_on_shared
+{
+	my ($conf) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	my $connected = "";
+	my $cluster   = $conf->{cgi}{cluster};
+	delete $conf->{files} if exists $conf->{files};
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		next if $connected;
+		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
+		my $fail = 0;
+		my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			$raw .= $_;
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			next if $fail;
+			
+			# This catches connectivity problems.
+			if ($line =~ /No route to host/i)
+			{
+				my $local_access = on_same_network($conf, $node);
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
+				if ($local_access)
+				{
+					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
+				}
+				else
+				{
+					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
+				}
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /host key verification failed/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
+				$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /could not resolve hostname/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
+				$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /permission denied/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /connection refused/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /Connection timed out/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /Network is unreachable/i)
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
+				$fail = 1;
+				next;
+			}
+			elsif ($line =~ /\@\@\@\@/)
+			{
+				# When the host-key fails to match, a box made
+				# of '@@@@' is displayed, and is the entire 
+				# first line.
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+				$fail = 1;
+				next;
+			}
+			
+			# If I made it this far, I've got a connection.
+			$connected = $node;
+			if ($line =~ /\s(\d+)-blocks\s/)
+			{
+				$conf->{partition}{shared}{block_size} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
+				next;
+			}
+			if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
+			{
+				$conf->{partition}{shared}{total_space}  = $1;
+				$conf->{partition}{shared}{used_space}   = $2;
+				$conf->{partition}{shared}{free_space}   = $3;
+				$conf->{partition}{shared}{used_percent} = $4;
+				#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
+				next;
+			}
+			if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
+			{
+				my $type   = $1;
+				my $mode   = $2;
+				my $user   = $3;
+				my $group  = $4;
+				my $size   = $5;
+				my $month  = $6;
+				my $day    = $7;
+				my $time   = $8; # might be a year, look for '\d+:\d+'.
+				my $file   = $9;
+				my $target = "";
+				if ($type eq "l")
+				{
+					# It's a symlink, strip off the destination.
+					($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
+				}
+				$conf->{files}{shared}{$file}{type}   = $type;
+				$conf->{files}{shared}{$file}{mode}   = $mode;
+				$conf->{files}{shared}{$file}{user}   = $user;
+				$conf->{files}{shared}{$file}{group}  = $group;
+				$conf->{files}{shared}{$file}{size}   = $size;
+				$conf->{files}{shared}{$file}{month}  = $month;
+				$conf->{files}{shared}{$file}{day}    = $day;
+				$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
+				$conf->{files}{shared}{$file}{target} = $target;
+				#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
+				next;
+			}
+		}
+	}
+	
+	if (not $connected)
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			Unable to connect to the <span class=\"highlight_detail\">${cluster}</span> cluster!
+		</td>
+	</tr>
+";
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{node}})
+		{
+			my $state = $conf->{node}{$node}{info}{'state'};
+			my $note  = $conf->{node}{$node}{info}{note};
+			print "
+	<tr>
+		<td>
+			<span class=\"fixed_width\">$node</span>
+		</td>
+		<td>
+			<span class=\"fixed_width\">$state</span>
+		</td>
+		<td>
+			$note
+		</td>
+	</tr>
+";
+		}
+		print "
+	<tr>
+		<td colspan=\"3\">
+			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+";
+	}
+		print "
+</table>
+<br />
+";
+	
+	return ($connected);
+}
+
 # Record a message to the log file.
 sub record
 {
@@ -327,6 +582,213 @@ sub scan_cluster
 	}
 
 	return(0);
+}
+
+sub check_nodes
+{
+	my ($conf) = @_;
+	
+	print "
+<div id=\"hide_when_loaded\">
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from $conf->{cgi}{cluster}.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src=\"/img/gather_info.gif\" border=\"0\">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+	";
+	
+	# Start your engines!
+	check_node_status($conf);
+	
+	return (0);
+}
+
+# This attempts to gather all information about a node in one SSH call. It's
+# done to minimize the ssh overhead on slow links.
+sub check_node_status
+{
+	my ($conf) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		gather_node_details($conf, $node);
+		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
+	}
+	
+	# If I have no nodes up, exit.
+	$conf->{'system'}{up_nodes}     = @{$conf->{up_nodes}};
+	$conf->{'system'}{online_nodes} = @{$conf->{online_nodes}};
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}], online nodes: [$conf->{'system'}{online_nodes}]\n");
+	if ($conf->{'system'}{up_nodes} < 1)
+	{
+		# Neither node is up. If I can power them on, then I will show
+		# the node section to enable power up.
+		if (not $conf->{'system'}{show_nodes})
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td>
+			I could not reach either node in this cluster.
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	else
+	{
+		post_scan_calculations($conf);
+	}
+	
+	return (0);
+}
+
+# This sorts out some stuff after both nodes have been scanned.
+sub post_scan_calculations
+{
+	my ($conf) = @_;
+	
+	$conf->{resources}{total_ram}     = 0;
+	$conf->{resources}{total_cores}   = 0;
+	$conf->{resources}{total_threads} = 0;
+	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
+	{
+		# Record this node's RAM and CPU as the maximum available if
+		# the max cores and max ram is 0 or greater than that on this
+		# node.
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
+		{
+			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
+		{
+			$conf->{resources}{total_cores} = $conf->{node}{$node}{hardware}{total_node_cores};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}]\n");
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}], hardware total node threads: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		if ((not $conf->{resources}{total_threads}) || ($conf->{node}{$node}{hardware}{total_node_threads} < $conf->{resources}{total_threads}))
+		{
+			$conf->{resources}{total_threads} = $conf->{node}{$node}{hardware}{total_node_threads};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}]\n");
+		}
+		
+		# Record the VG info. I only record the first node I see as I
+		# only care about clustered VGs and they are, by definition,
+		# identical.
+		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}], PV: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}]\n");
+			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
+			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
+			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
+			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
+			$conf->{resources}{vg}{$vg}{size}       = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}       if not $conf->{resources}{vg}{$vg}{size};
+			$conf->{resources}{vg}{$vg}{used_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_pe}    if not $conf->{resources}{vg}{$vg}{used_pe};
+			$conf->{resources}{vg}{$vg}{used_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space} if not $conf->{resources}{vg}{$vg}{used_space};
+			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
+			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
+			$conf->{resources}{vg}{$vg}{pv_name}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}    if not $conf->{resources}{vg}{$vg}{pv_name};
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}], PV: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
+		}
+	}
+	
+	# If both nodes have a given daemon down, then some data may be
+	# unavailable. This saves logic when such checks are needed.
+	my $this_cluster = $conf->{cgi}{cluster};
+	my $node1 = $conf->{'system'}{cluster}{node1_name};
+	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1_long = $conf->{node}{$node1}{info}{host_name};
+	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	$conf->{'system'}{gfs2_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{gfs2_down} = 1;
+	}
+	$conf->{'system'}{clvmd_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{clvmd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{clvmd}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{clvmd_down} = 1;
+	}
+	$conf->{'system'}{drbd_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{drbd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{drbd}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{drbd_down} = 1;
+	}
+	$conf->{'system'}{rgmanager_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{rgmanager}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{rgmanager}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{rgmanager_down} = 1;
+	}
+	$conf->{'system'}{cman_down} = 0;
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+	{
+		$conf->{'system'}{cman_down} = 1;
+	}
+	
+	# I want to map storage service to nodes for the "Withdraw" buttons.
+# 	foreach my $service (sort {$a cmp $b} keys %{$conf->{service}})
+# 	{
+# 		#record($conf, "$THIS_FILE ".__LINE__."; service: [$service]\n");
+# 		my $service_host  = $conf->{service}{$service}{host};
+# 		my $service_state = $conf->{service}{$service}{'state'};
+# 		next if $service !~ /storage/;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; service_host: [$service_host], service_state: [$service_state]\n");
+# 
+# 		my $short_host_name =  $service_host;
+# 		   $short_host_name =~ s/\..*?//;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; short_host_name: [$short_host_name]\n");
+# 		#record($conf, "$THIS_FILE ".__LINE__."; node1:           [$conf->{node}{$node1}{info}{short_host_name}]\n");
+# 		#record($conf, "$THIS_FILE ".__LINE__."; node2:           [$conf->{node}{$node2}{info}{short_host_name}]\n");
+# 		if ($short_host_name eq $conf->{node}{$node1}{info}{short_host_name})
+# 		{
+# 			$conf->{node}{$node1}{storage_service_name}  = $service;
+# 			$conf->{node}{$node1}{storage_service_state} = $service_state;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node1}{storage_service_name}], state: [$conf->{node}{$node1}{storage_service_state}]\n");
+# 		}
+# 		elsif ($short_host_name eq $conf->{node}{$node2}{info}{short_host_name})
+# 		{
+# 			$conf->{node}{$node2}{storage_service_name}  = $service;
+# 			$conf->{node}{$node2}{storage_service_state} = $service_state;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node2}{storage_service_name}], state: [$conf->{node}{$node2}{storage_service_state}]\n");
+# 		}
+# 	}
+	
+	return (0);
+}
+
+# This sorts out some values once the parsing is collected.
+sub post_node_calculations
+{
+	my ($conf, $node) = @_;
+	
+	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+	#if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
+	if (not $conf->{node}{$node}{hardware}{total_memory})
+	{
+		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+	}
+	
+	return (0);
 }
 
 # This takes a large number and inserts commas every three characters left of
@@ -467,6 +929,146 @@ sub bytes_to_hr
 	$hr_size .= " $suffix";
 
 	return($hr_size);
+}
+
+# This takes a "human readable" size with an ISO suffix and converts it back to
+# a base byte size as accurately as possible.
+sub hr_to_bytes
+{
+	my ($conf, $size, $type, $use_base2) = @_;
+	# use_base2 will be set automatically *if* not passed by the caller.
+	
+	$size    =~ s/ //g;
+	$type    =~ s/ //g;
+	
+	# Store and strip the sign
+	my $sign = "";
+	if ( $size =~ /^-/ )
+	{
+		$sign =  "-";
+		$size =~ s/^-//;
+	}
+	$size =~ s/,//g;
+	$size =~ s/^\+//g;
+	
+	# If I don't have a passed type, see if there is a letter or letters
+	# after the size to hack off.
+	if ((not $type) && ($size =~ /[a-zA-Z]$/))
+	{
+		($size, $type) = ($size =~ /^(.*\d)(\D+)/);
+	}
+	$type = lc($type);
+	
+	# Make sure that 'size' is now an integer or float.
+	if ($size !~ /\d+[\.\d+]?/)
+	{
+		my $line = __LINE__;
+		print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_bad\">
+			Error in <span class=\"code\">hr_to_bytes()</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			The passed byte size: [<span class=\"code\">$size</span>] in the string: [sign: <span class=\"code\">$sign</span>, size: <span class=\"code\">$size</span>, type: <span class=\"code\">$type</span>] contains an illegal value.<br />
+			Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.<br />
+			This is probably a program error ($THIS_FILE, line $line)<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		return (undef);
+	}
+
+	# If 'type' is still blank, set it to 'b'.
+	$type = "b" if not $type;
+	
+	# If the "type" is "Xib", make sure we're running in Base2 notation.
+	# Conversly, if the type is "Xb", make sure that we're running in
+	# Base10 notation. In either case, shorten the 'type' to just the first
+	# letter to make the next sanity check simpler.
+	if ($type =~ /^(\w)ib$/)
+	{
+		# Make sure we're running in Base2.
+		$use_base2 = 1 if not defined $use_base2;
+		$type      = $1;
+	}
+	elsif ($type =~ /^(\w)b$/)
+	{
+		# Make sure we're running in Base2.
+		$use_base2 = 0 if not defined $use_base2;
+		$type      = $1;
+	}
+	
+	# Check if we have a valid '$type' and that 'Math::BigInt' is loaded,
+	# if the size is big enough to require it.
+	if (( $type eq "p" ) || ( $type eq "e" ) || ( $type eq "z" ) || ( $type eq "y" ))
+	{
+		# If this is a big size needing "Math::BigInt", check if it's loaded
+		# yet and load it, if not.
+		use Math::BigInt;
+	}
+	elsif (( $type ne "t" ) && ( $type ne "g" ) && ( $type ne "m" ) && ( $type ne "k" ))
+	{
+		# If we're here, we didn't match one of the large sizes or any
+		# of the other sizes, so die.
+		my $line = __LINE__;
+		print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_bad\">
+			Error in <span class=\"code\">hr_to_bytes()</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			The passed: [size: <span class=\"code\">$size</span>, type: <span class=\"code\">$type</span>] is not recognized.<br />
+			Either an invalid size type was passed or I failed to properly parse the size type.<br />
+			Valid size types are: '<span class=\"code\">b</span>', '<span class=\"code\">k</span>', '<span class=\"code\">m</span>', '<span class=\"code\">g</span>', '<span class=\"code\">t</span>', '<span class=\"code\">p</span>', '<span class=\"code\">e</span>', '<span class=\"code\">z</span>' or '<span class=\"code\">y</span>'.<br />
+			This is probably a program error ($THIS_FILE, line $line)<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		return (undef);
+	}
+	
+	# Now the magic... lame magic, true, but still.
+	my $bytes;
+	if ($use_base2)
+	{
+		if ( $type eq "y" ) { $bytes=Math::BigInt->new('2')->bpow('80')->bmul($size); }		# Yobibyte
+		elsif ( $type eq "z" ) { $bytes=Math::BigInt->new('2')->bpow('70')->bmul($size); }	# Zibibyte
+		elsif ( $type eq "e" ) { $bytes=Math::BigInt->new('2')->bpow('60')->bmul($size); }	# Exbibyte
+		elsif ( $type eq "p" ) { $bytes=Math::BigInt->new('2')->bpow('50')->bmul($size); }	# Pebibyte
+		elsif ( $type eq "t" ) { $bytes=($size*(2**40)) }					# Tebibyte
+		elsif ( $type eq "g" ) { $bytes=($size*(2**30)) }					# Gibibyte
+		elsif ( $type eq "m" ) { $bytes=($size*(2**20)) }					# Mebibyte
+		elsif ( $type eq "k" ) { $bytes=($size*(2**10)) }					# Kibibyte
+	}
+	else
+	{
+		if ( $type eq "y" ) { $bytes=Math::BigInt->new('10')->bpow('24')->bmul($size); }	# Yottabyte
+		elsif ( $type eq "z" ) { $bytes=Math::BigInt->new('10')->bpow('21')->bmul($size); }	# Zettabyte
+		elsif ( $type eq "e" ) { $bytes=Math::BigInt->new('10')->bpow('18')->bmul($size); }	# Exabyte
+		elsif ( $type eq "p" ) { $bytes=Math::BigInt->new('10')->bpow('15')->bmul($size); }	# Petabyte
+		elsif ( $type eq "t" ) { $bytes=($size*(10**12)) }					# Terabyte
+		elsif ( $type eq "g" ) { $bytes=($size*(10**9)) }					# Gigabyte
+		elsif ( $type eq "m" ) { $bytes=($size*(10**6)) }					# Megabyte
+		elsif ( $type eq "k" ) { $bytes=($size*(10**3)) }					# Kilobyte
+	}
+	
+	# Last, round off the byte size if it's a float.
+	if ( $bytes =~ /\./ )
+	{
+		$bytes =~ s/\..*$//;
+	}
+	
+	return ($sign.$bytes);
 }
 
 

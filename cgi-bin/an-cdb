@@ -66,6 +66,66 @@ my $conf={
 		show_nodes		=>	0,
 		footer_printed		=>	0,
 		show_refresh		=>	1,
+		unusable_ram		=>	2147483648,	# 2 GiB
+		os_variant		=>	[
+			"win7#!#Microsoft Windows 7",
+			"vista#!#Microsoft Windows Vista",
+			"winxp64#!#Microsoft Windows XP (x86_64)",
+			"winxp#!#Microsoft Windows XP",
+			"win2k#!#Microsoft Windows 2000",
+			"win2k8#!#Microsoft Windows Server 2008",
+			"win2k3#!#Microsoft Windows Server 2003",
+			"openbsd4#!#OpenBSD 4.x",
+			"freebsd8#!#FreeBSD 8.x",
+			"freebsd7#!#FreeBSD 7.x",
+			"freebsd6#!#FreeBSD 6.x",
+			"solaris9#!#Sun Solaris 9",
+			"solaris10#!#Sun Solaris 10",
+			"opensolaris#!#Sun OpenSolaris",
+			"netware6#!#Novell Netware 6",
+			"netware5#!#Novell Netware 5",
+			"netware4#!#Novell Netware 4",
+			"msdos#!#MS-DOS",
+			"generic#!#Generic",
+			"debiansqueeze#!#Debian Squeeze",
+			"debianlenny#!#Debian Lenny",
+			"debianetch#!#Debian Etch",
+			"fedora16#!#Fedora 16",
+			"fedora15#!#Fedora 15",
+			"fedora14#!#Fedora 14",
+			"fedora13#!#Fedora 13",
+			"fedora12#!#Fedora 12",
+			"fedora11#!#Fedora 11",
+			"fedora10#!#Fedora 10",
+			"fedora9#!#Fedora 9",
+			"fedora8#!#Fedora 8",
+			"fedora7#!#Fedora 7",
+			"fedora6#!#Fedora Core 6",
+			"fedora5#!#Fedora Core 5",
+			"mes5.1#!#Mandriva Enterprise Server 5.1 and later",
+			"mes5#!#Mandriva Enterprise Server 5.0",
+			"mandriva2010#!#Mandriva Linux 2010 and later",
+			"mandriva2009#!#Mandriva Linux 2009 and earlier",
+			"rhel6#!#Red Hat Enterprise Linux 6",
+			"rhel5.4#!#Red Hat Enterprise Linux 5.4 or later",
+			"rhel5#!#Red Hat Enterprise Linux 5",
+			"rhel4#!#Red Hat Enterprise Linux 4",
+			"rhel3#!#Red Hat Enterprise Linux 3",
+			"rhel2.1#!#Red Hat Enterprise Linux 2.1",
+			"sles11#!#Suse Linux Enterprise Server 11",
+			"sles10#!#Suse Linux Enterprise Server",
+			"ubuntuoneiric#!#Ubuntu 11.10 (Oneiric Ocelot)",
+			"ubuntunatty#!#Ubuntu 11.04 (Natty Narwhal)",
+			"ubuntumaverick#!#Ubuntu 10.10 (Maverick Meerkat)",
+			"ubuntulucid#!#Ubuntu 10.04 (Lucid Lynx)",
+			"ubuntukarmic#!#Ubuntu 9.10 (Karmic Koala)",
+			"ubuntujaunty#!#Ubuntu 9.04 (Jaunty Jackalope)",
+			"ubuntuintrepid#!#Ubuntu 8.10 (Intrepid Ibex)",
+			"ubuntuhardy#!#Ubuntu 8.04 LTS (Hardy Heron)",
+			"virtio26#!#Generic 2.6.25 or later kernel with virtio",
+			"generic26#!#Generic 2.6.x kernel",
+			"generic24#!#Generic 2.4.x kernel",
+		],
 	},
 };
 
@@ -104,7 +164,27 @@ get_cgi_vars($conf, [
 	"max_ram",
 	"max_cores",
 	"max_storage",
+	"install_iso",
+	"driver_iso",
+	"ram",
+	"ram_suffix",
+	"cpu_cores",
+	"vg_list",
+	"name",
+	"os_variant",
 ]);
+
+if ($conf->{cgi}{vg_list})
+{
+	my @more_vars;
+	foreach my $vg (split/,/, $conf->{cgi}{vg_list})
+	{
+		next if not $vg;
+		push @more_vars, "vg_$vg";
+		push @more_vars, "vg_suffix_$vg";
+	}
+	get_cgi_vars($conf, \@more_vars);
+}
 
 header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
 

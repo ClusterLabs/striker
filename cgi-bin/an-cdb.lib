@@ -35,52 +35,6 @@ binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cdb.lib";
 
-# This attempts to gather all information about a node in one SSH call. It's
-# done to minimize the ssh overhead on slow links.
-sub check_node_status
-{
-	my ($conf) = @_;
-	
-	my $cluster = $conf->{cgi}{cluster};
-	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
-	{
-		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
-		gather_node_details($conf, $node);
-		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
-	}
-	
-	# If I have no nodes up, exit.
-	$conf->{'system'}{up_nodes}     = @{$conf->{up_nodes}};
-	$conf->{'system'}{online_nodes} = @{$conf->{online_nodes}};
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}], online nodes: [$conf->{'system'}{online_nodes}]\n");
-	if ($conf->{'system'}{up_nodes} < 1)
-	{
-		# Neither node is up. If I can power them on, then I will show
-		# the node section to enable power up.
-		if (not $conf->{'system'}{show_nodes})
-		{
-			print "
-<table align=\"center\">
-	<tr>
-		<td>
-			I could not reach either node in this cluster.
-		</td>
-	</tr>
-</table>
-<br />
-";
-		}
-	}
-	else
-	{
-		post_scan_calculations($conf);
-	}
-	
-	return (0);
-}
-
 # This tries to ping a node given it's name. If it doesn't answer, it tries 
 # again after adding/subtracting the '.remote' suffix. If that works, it will
 # change the node name.
@@ -920,139 +874,6 @@ sub parse_vm_defs
 	return (0);
 }
 
-# This sorts out some stuff after both nodes have been scanned.
-sub post_scan_calculations
-{
-	my ($conf) = @_;
-	
-	$conf->{resources}{total_ram}     = 0;
-	$conf->{resources}{total_cores}   = 0;
-	$conf->{resources}{total_threads} = 0;
-	foreach my $node (sort {$a cmp $b} @{$conf->{up_nodes}})
-	{
-		# Record this node's RAM and CPU as the maximum available if
-		# the max cores and max ram is 0 or greater than that on this
-		# node.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
-		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
-		{
-			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
-		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
-		{
-			$conf->{resources}{total_cores} = $conf->{node}{$node}{hardware}{total_node_cores};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}]\n");
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}], hardware total node threads: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
-		if ((not $conf->{resources}{total_threads}) || ($conf->{node}{$node}{hardware}{total_node_threads} < $conf->{resources}{total_threads}))
-		{
-			$conf->{resources}{total_threads} = $conf->{node}{$node}{hardware}{total_node_threads};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}]\n");
-		}
-		
-		# Record the VG info. I only record the first node I see as I
-		# only care about clustered VGs and they are, by definition,
-		# identical.
-		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}], PV: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}]\n");
-			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
-			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
-			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
-			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
-			$conf->{resources}{vg}{$vg}{size}       = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}       if not $conf->{resources}{vg}{$vg}{size};
-			$conf->{resources}{vg}{$vg}{used_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_pe}    if not $conf->{resources}{vg}{$vg}{used_pe};
-			$conf->{resources}{vg}{$vg}{used_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space} if not $conf->{resources}{vg}{$vg}{used_space};
-			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
-			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
-			$conf->{resources}{vg}{$vg}{pv_name}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}    if not $conf->{resources}{vg}{$vg}{pv_name};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}], PV: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
-		}
-	}
-	
-	# If both nodes have a given daemon down, then some data may be
-	# unavailable. This saves logic when such checks are needed.
-	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	$conf->{'system'}{gfs2_down} = 0;
-	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} ne "0"))
-	{
-		$conf->{'system'}{gfs2_down} = 1;
-	}
-	$conf->{'system'}{clvmd_down} = 0;
-	if (($conf->{node}{$node1}{daemon}{clvmd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{clvmd}{exit_code} ne "0"))
-	{
-		$conf->{'system'}{clvmd_down} = 1;
-	}
-	$conf->{'system'}{drbd_down} = 0;
-	if (($conf->{node}{$node1}{daemon}{drbd}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{drbd}{exit_code} ne "0"))
-	{
-		$conf->{'system'}{drbd_down} = 1;
-	}
-	$conf->{'system'}{rgmanager_down} = 0;
-	if (($conf->{node}{$node1}{daemon}{rgmanager}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{rgmanager}{exit_code} ne "0"))
-	{
-		$conf->{'system'}{rgmanager_down} = 1;
-	}
-	$conf->{'system'}{cman_down} = 0;
-	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
-	{
-		$conf->{'system'}{cman_down} = 1;
-	}
-	
-	# I want to map storage service to nodes for the "Withdraw" buttons.
-# 	foreach my $service (sort {$a cmp $b} keys %{$conf->{service}})
-# 	{
-# 		#record($conf, "$THIS_FILE ".__LINE__."; service: [$service]\n");
-# 		my $service_host  = $conf->{service}{$service}{host};
-# 		my $service_state = $conf->{service}{$service}{'state'};
-# 		next if $service !~ /storage/;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; service_host: [$service_host], service_state: [$service_state]\n");
-# 
-# 		my $short_host_name =  $service_host;
-# 		   $short_host_name =~ s/\..*?//;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; short_host_name: [$short_host_name]\n");
-# 		#record($conf, "$THIS_FILE ".__LINE__."; node1:           [$conf->{node}{$node1}{info}{short_host_name}]\n");
-# 		#record($conf, "$THIS_FILE ".__LINE__."; node2:           [$conf->{node}{$node2}{info}{short_host_name}]\n");
-# 		if ($short_host_name eq $conf->{node}{$node1}{info}{short_host_name})
-# 		{
-# 			$conf->{node}{$node1}{storage_service_name}  = $service;
-# 			$conf->{node}{$node1}{storage_service_state} = $service_state;
-# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node1}{storage_service_name}], state: [$conf->{node}{$node1}{storage_service_state}]\n");
-# 		}
-# 		elsif ($short_host_name eq $conf->{node}{$node2}{info}{short_host_name})
-# 		{
-# 			$conf->{node}{$node2}{storage_service_name}  = $service;
-# 			$conf->{node}{$node2}{storage_service_state} = $service_state;
-# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node2}{storage_service_name}], state: [$conf->{node}{$node2}{storage_service_state}]\n");
-# 		}
-# 	}
-	
-	return (0);
-}
-
-# This sorts out some values once the parsing is collected.
-sub post_node_calculations
-{
-	my ($conf, $node) = @_;
-	
-	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
-	#if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
-	if (not $conf->{node}{$node}{hardware}{total_memory})
-	{
-		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
-	}
-	
-	return (0);
-}
-
 # Parse the dmidecode data.
 sub parse_dmidecode
 {
@@ -1209,10 +1030,17 @@ sub parse_dmidecode
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], RAM slots: [$conf->{node}{$node}{hardware}{ram}{slots}]\n");
 			}
 			# This needs to be converted to bytes.
+			if ($line =~ /Maximum Capacity: (\d+) (.*)$/)
+			{
+				my $size   = $1;
+				my $suffix = $2;
+				$conf->{node}{$node}{hardware}{ram}{max_support} = hr_to_bytes($conf, $size, $suffix, 1);
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], max. supported RAM: [$conf->{node}{$node}{hardware}{ram}{max_support}]\n");
+			}
 			if ($line =~ /Maximum Capacity: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{ram}{max_support} = $1;
-				$conf->{node}{$node}{hardware}{ram}{max_support} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{ram}{max_support}, 1);
+				$conf->{node}{$node}{hardware}{ram}{max_support} = hr_to_bytes($conf, $conf->{node}{$node}{hardware}{ram}{max_support}, "", 1);
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], max. supported RAM: [$conf->{node}{$node}{hardware}{ram}{max_support}]\n");
 			}
 		}
@@ -1237,7 +1065,7 @@ sub parse_dmidecode
 				}
 				else
 				{
-					$dimm_size                                   =  convert_to_bytes($conf, $dimm_size, 1);
+					$dimm_size                                   =  hr_to_bytes($conf, $dimm_size, "", 1);
 					$conf->{node}{$node}{hardware}{total_memory} += $dimm_size;
 					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
 				}
@@ -1262,7 +1090,7 @@ sub parse_meminfo
 		if ($line =~ /MemTotal:\s+(.*)/)
 		{
 			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = $1;
-			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = convert_to_bytes($conf, $conf->{node}{$node}{hardware}{meminfo}{memtotal}, 1);
+			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = hr_to_bytes($conf, $conf->{node}{$node}{hardware}{meminfo}{memtotal}, "", 1);
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
 		}
 	}
@@ -2111,7 +1939,791 @@ sub process_task
 		}
 		else
 		{
+			confirm_withdraw_node($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "join_cluster")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			join_cluster($conf);
+		}
+		else
+		{
+			confirm_join_cluster($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "dual_join")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			dual_join($conf);
+		}
+		else
+		{
+			confirm_dual_join($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "fence_node")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			fence_node($conf);
+		}
+		else
+		{
+			confirm_fence_node($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "poweroff_node")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			poweroff_node($conf);
+		}
+		else
+		{
+			confirm_poweroff_node($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "poweron_node")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			poweron_node($conf);
+		}
+		else
+		{
+			confirm_poweron_node($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "dual_boot")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			dual_boot($conf);
+		}
+		else
+		{
+			confirm_dual_boot($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "start_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			start_vm($conf);
+		}
+		else
+		{
+			confirm_start_vm($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "stop_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			stop_vm($conf);
+		}
+		else
+		{
+			confirm_stop_vm($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "force_off_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			force_off_vm($conf);
+		}
+		else
+		{
+			confirm_force_off_vm($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "delete_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			delete_vm($conf);
+		}
+		else
+		{
+			confirm_delete_vm($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "migrate_vm")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			migrate_vm($conf);
+		}
+		else
+		{
+			confirm_migrate_vm($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "provision")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			if (verify_vm_config($conf))
+			{
+				# We're golden
+				record($conf, "$THIS_FILE ".__LINE__."; VM verified, creating now.\n");
+				provision_vm($conf);
+			}
+			else
+			{
+				# Something wasn't sane.
+				record($conf, "$THIS_FILE ".__LINE__."; VM verification failed.\n");
+				confirm_provision_vm($conf);
+			}
+		}
+		else
+		{
+			confirm_provision_vm($conf);
+		}
+	}
+	else
+	{
+		print "<pre>\n";
+		foreach my $var (sort {$a cmp $b} keys %{$conf->{cgi}})
+		{
+			print "var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
+		}
+		print "</pre>";
+	}
+	
+	return(0);
+}
+
+# This actually kicks off the VM.
+sub provision_vm
+{
+	my ($conf) = @_;
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready_bold\" colspan=\"2\">
+			Creating your new $conf->{new_vm}{name} server now.
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Starting
+		</td>
+		<td>
+			In just a moment, your new server should begin installing.<br />
+			Once it starts, you will be able to see it appear in the <span class=\"code\">virt-manager</span> window under <span class=\"fixed_width\">$conf->{new_vm}{host_node}</span>.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			Note!
+		</td>
+		<td>
+			<br />
+			<i>Please leave this window open until you have rebooted the new server for the first time!</i><br />
+			<br />
+			The server is in a special state until it is rebooted.<br />
+			If you press \"Next\" before then, it may not turn back on properly.<br />
+			<br />
+			When you click \"Next\", the new server will be added to the cluster.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Beginning
+		</td>
+		<td>
+			<br />
+";
+	
+	# Create the LVs
+	my $provision;
+	my $i = 0;
+	foreach my $vg (keys %{$conf->{new_vm}{vg}})
+	{
+		if (lc($conf->{new_vm}{vg}{$vg}{lvcreate_size}) eq "all")
+		{
+			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+		}
+		else
+		{
+			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}MB -n $conf->{new_vm}{name}_$i $vg\n";
+		}
+		$i++;
+	}
+	
+	# Setup the 'virt-install' call.
+	$provision .= "virt-install --connect qemu:///system \\\\\n";
+	$provision .= "  --name $conf->{new_vm}{name} \\\\\n";
+	$provision .= "  --ram $conf->{new_vm}{ram} \\\\\n";
+	$provision .= "  --arch x86_64 \\\\\n";
+	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
+	$provision .= "  --cdrom /shared/files/$conf->{new_vm}{install_iso} \\\\\n";
+	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
+	if ($conf->{new_vm}{virtio}{nic})
+	{
+		$provision .= "  --network bridge=vbr2,model=virtio \\\\\n";
+	}
+	else
+	{
+		$provision .= "  --network bridge=vbr2,model=e1000 \\\\\n";
+	}
+	$i = 0;
+	foreach my $vg (keys %{$conf->{new_vm}{vg}})
+	{
+		my $path = "/dev/$vg/$conf->{new_vm}{name}_$i";
+		record($conf, "$THIS_FILE ".__LINE__."; LV: [$path], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");
+		$provision .= "  --disk path=$path";
+		if ($conf->{new_vm}{virtio}{disk})
+		{
+			$provision .= ",bus=virtio";
+		}
+		$provision .= " \\\\\n";
+	}
+	$provision .= "  --vnc\n";
+	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
+	
+	### TODO: Make sure the desired node is up and, if not, use the one
+	###       good node.
+	
+	# Push the provision script into a file.
+	my $script = "/shared/provision/$conf->{new_vm}{name}.sh";
+	print "\t\t\tWriting provision script to <span class=\"code\">$script</span><br />\n";
+	my $fh = IO::Handle->new();
+	my $sc = "echo \"$provision\" | $conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"cat > $script && chmod 755 $script\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		print "\t\t\t<span class=\"code\">$_</span><br />\n";
+	}
+	$fh->close();
+	print "\t\t\tDone.\n";
+	print "\t\t\t<br />\n";
+	
+	print "\t\t\tKicking off the installatio of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n";
+	print "\t\t\t<br />\n";
+	$fh = IO::Handle->new();
+	$sc = "$conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"$script\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$_</span></span><br />\n";
+	}
+	$fh->close();
+	print "\t\t\t<br />\n";
+	print "\t\t\tDone.\n";
+	print "\t\t\t<br />\n";
+	print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
+	print "\t\t\tPlease complete the install using <span class=\"code\">virt-manager</span>.<br />\n";
+	print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
+	print "\t\t\t<br />\n";
+	
+	print "
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<div class=\"align_right\"><a href=\"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$conf->{new_vm}{name}&node=$conf->{new_vm}{host_node}\" class=\"button\">Next</a></div>
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+# This sanity-checks the requested VM config prior to creating the VM itself.
+sub verify_vm_config
+{
+	my ($conf) = @_;
+	
+	# First, get a current view of the cluster.
+	my $proceed = 1;
+	scan_cluster($conf);
+	read_files_on_shared($conf);
+	
+	# If we connected, start parsing.
+	my $cluster = $conf->{cgi}{cluster};
+	my @errors;
+	if ($conf->{'system'}{up_nodes})
+	{
+		# Did the user name the VM?
+		if ($conf->{cgi}{name})
+		{
+			$conf->{cgi}{name} =~ s/^\s+//;
+			$conf->{cgi}{name} =~ s/\s+$//;
+			if ($conf->{cgi}{name} =~ /\s/)
+			{
+				push @errors, "Bad Server Name#!#The server name can't have spaces in the name.";
+			}
+			else
+			{
+				my $vm = $conf->{cgi}{name};
+				if (exists $conf->{vm}{$vm})
+				{
+					push @errors, "Duplicate Server Name#!#The server name: [<span class=\"code\">$vm</span>] is already in use.";
+				}
+				else
+				{
+					$conf->{new_vm}{name} = $vm;
+				}
+			}
+		}
+		else
+		{
+			push @errors, "Missing Server Name#!#All servers need to have a name. This is usally something like <span class=\"code\">vmXX-purpose</span>.";
+		}
+		
+		# Did the user ask for too many cores?
+		if ($conf->{cgi}{cpu_cores} =~ /\D/)
+		{
+			push @errors, "Bad CPU Count#!#Somehow, the number of requested CPUs: [<span class=\"code\">$conf->{cgi}{cpu_cores}</span>] has a non-digit in it. This is probably a program error.";
+		}
+		elsif ($conf->{cgi}{cpu_cores} > $conf->{resources}{total_threads})
+		{
+			push @errors, "Not Enough CPUs#!#The cluster reports a maximum of <span class=\"code\">$conf->{resources}{total_threads}</span> CPUs, but it looks like you asked for <span class=\"code\">$conf->{cgi}{cpu_cores}</span>. This is probably a program error.";
+		}
+		else
+		{
+			$conf->{new_vm}{cpu_cores} = $conf->{cgi}{cpu_cores};
+		}
+		
+		# Now what about RAM?
+		if ($conf->{cgi}{ram} =~ /\D/)
+		{
+			push @errors, "Bad RAM Size#!#The amount of RAM must only contain digits. It looks like you entered: [<span class=\"code\">$conf->{cgi}{ram}</span>].";
+		}
+		my $requested_ram = hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
+		if ($requested_ram > ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram}))
+		{
+			my $say_free_ram  = bytes_to_hr($conf, ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram}));
+			my $say_requested = bytes_to_hr($conf, $requested_ram);
+			push @errors, "Not Enough RAM#!#The cluster reports a maximum of <span class=\"code\">$say_free_ram</span> free RAM, but it looks like you asked for <span class=\"code\">$say_free_ram</span>.";
+		}
+		else
+		{
+			# RAM is specified as a number of MiB.
+			my $say_ram = sprintf("%.0f", ($requested_ram /= (2 ** 20)));
+			$conf->{new_vm}{ram} = $say_ram;
+		}
+		
+		# Look at the selected storage. if VGs named for two separate
+		# nodes are defined, error.
+		$conf->{new_vm}{host_node} = "";
+		foreach my $vg (split /,/, $conf->{cgi}{vg_list})
+		{
+			my $short_vg   = $vg;
+			my $short_node = $vg;
+			if ($vg =~ /^(.*?)_(vg\d+)$/)
+			{
+				$short_node = $1;
+				$short_vg   = $2;
+			}
+			my $say_node      = $short_vg;
+			my $vg_key        = "vg_$vg";
+			my $vg_suffix_key = "vg_suffix_$vg";
+			next if not $conf->{cgi}{$vg_key};
+			foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+			{
+				if ($node =~ /$short_node/)
+				{
+					$say_node = $node;
+					last;
+				}
+			}
+			if (not $conf->{new_vm}{host_node})
+			{
+				$conf->{new_vm}{host_node} = $say_node;
+			}
+			elsif ($conf->{new_vm}{host_node} ne $say_node)
+			{
+				push @errors, "Conflicting Storage#!#It looks like you asked to use storage from both nodes. This is not safe. Please clear one of the node's storage.";
+			}
+			
+			# Make to lvcreate command a MiB value.
+			my $lv_size = hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
+			$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
+			$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
+		}
+		
+		# Make sure the user specified an install disc.
+		if ($conf->{cgi}{install_iso})
+		{
+			my $file_name = $conf->{cgi}{install_iso};
+			if (exists $conf->{files}{shared}{$file_name})
+			{
+				$conf->{new_vm}{install_iso} = $conf->{cgi}{install_iso};
+			}
+			else
+			{
+				push @errors, "Install Media#!#The installation media you selected seems to have disappeared.";
+			}
+		}
+		else
+		{
+			push @errors, "Install Media#!#You did not select installation media.";
+		}
+		
+		### TODO: Find a better way to determine this.
+		# Look at the OS type to try and determine if 'e1000' or
+		# 'virtio' should be used by the network.
+		$conf->{new_vm}{virtio}{nic}  = 0;
+		$conf->{new_vm}{virtio}{disk} = 0;
+		if (($conf->{cgi}{os_variant} =~ /fedora1\d/) || 
+		    ($conf->{cgi}{os_variant} =~ /virtio/) || 
+		    ($conf->{cgi}{os_variant} =~ /ubuntu/) || 
+		    ($conf->{cgi}{os_variant} =~ /sles11/) || 
+		    ($conf->{cgi}{os_variant} =~ /rhel5/) || 
+		    ($conf->{cgi}{os_variant} =~ /rhel6/))
+		{
+			$conf->{new_vm}{virtio}{disk} = 1;
+			$conf->{new_vm}{virtio}{nic}  = 1;
+		}
+		
+		# Optional driver disk, enables virtio when appropriate
+		if ($conf->{cgi}{driver_iso})
+		{
+			my $file_name = $conf->{cgi}{driver_iso};
+			if (exists $conf->{files}{shared}{$file_name})
+			{
+				$conf->{new_vm}{driver_iso} = $conf->{cgi}{driver_iso};
+			}
+			else
+			{
+				push @errors, "Driver Media#!#The driver media you selected seems to have disappeared.";
+			}
+			
+			if (lc($file_name) =~ /virtio/)
+			{
+				$conf->{new_vm}{virtio}{disk} = 1;
+				$conf->{new_vm}{virtio}{nic}  = 1;
+			}
+		}
+		
+		# Make sure a valid os-variant was passed.
+		if ($conf->{cgi}{os_variant})
+		{
+			my $match = 0;
+			foreach my $os_variant (@{$conf->{'system'}{os_variant}})
+			{
+				my ($short_name, $desc) = ($os_variant =~ /^(.*?)#!#(.*)$/);
+				if ($conf->{cgi}{os_variant} eq $short_name)
+				{
+					$match = 1;
+				}
+			}
+			if (not $match)
+			{
+				push @errors, "OS Variant Not Found#!#Somehow, an OS optimization type was specified that is not valid. This is probably a program error.";
+			}
+		}
+		else
+		{
+			push @errors, "OS Variant#!#No operating system optimization type was specified. This is probably a program error.";
+		}
+		
+		# If there were errors, push the user back to the form.
+		if (@errors > 0)
+		{
+			$proceed = 0;
 			print "
+<table align=\"center\">
+";
+			foreach my $error (@errors)
+			{
+				my ($title, $body) = ($error =~ /^(.*?)#!#(.*)$/);
+				print "
+	<tr>
+		<td class=\"highlight_warning\">
+			$title
+		</td>
+		<td>
+			$body
+		</td>
+	</tr>
+"
+			}
+			print "
+</table>
+<br />
+";
+		}
+	}
+	else
+	{
+		# Failed to connect to the cluster, errors should already be
+		# reported to the user.
+	}
+	# Check the currently available resources on the cluster.
+	
+	return ($proceed);
+}
+
+# This doesn't so much confirm as it does ask the user how they want to build
+# the VM.
+sub confirm_provision_vm
+{
+	my ($conf) = @_;
+	
+	my ($node) = read_files_on_shared($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; read file list from node: [$node]\n");
+	return if not $node;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $images  = [];
+	foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+	{
+		next if $file !~ /iso$/i;
+		push @{$images}, $file;
+	}
+	my $cpu_cores = [];
+	foreach my $core_num (1..$conf->{cgi}{max_cores})
+	{
+		if ($conf->{cgi}{max_cores} > 9)
+		{
+			#push @{$cpu_cores}, sprintf("%.2d", $core_num);
+			push @{$cpu_cores}, $core_num;
+		}
+		else
+		{
+			push @{$cpu_cores}, $core_num;
+		}
+	}
+	$conf->{cgi}{cpu_cores}  = 2 if not $conf->{cgi}{cpu_cores};
+	my $select_cpu_cores     = build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
+	foreach my $storage (sort {$a cmp $b} split/,/, $conf->{cgi}{max_storage})
+	{
+		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
+		my $say_max_storage          =  bytes_to_hr($conf, $space);
+		$say_max_storage             =~ s/\.(\d+)//;
+		$conf->{cgi}{vg_list}        .= "$vg,";
+		my $vg_key                   =  "vg_$vg";
+		my $vg_suffix_key            =  "vg_suffix_$vg";
+		$conf->{cgi}{$vg_key}        =  ""    if not $conf->{cgi}{$vg_key};
+		$conf->{cgi}{$vg_suffix_key} =  "GiB" if not $conf->{cgi}{$vg_suffix_key};
+		my $select_vg_suffix                   =  build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB"]);
+		if ($space < (2 ** 30))
+		{
+			# Less than a Terabyte
+			$select_vg_suffix            = build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB"]);
+			$conf->{cgi}{$vg_suffix_key} = "GiB" if not $conf->{cgi}{$vg_suffix_key};
+		}
+		elsif ($space < (2 ** 20))
+		{
+			# Less than a Gigabyte
+			$select_vg_suffix            = build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB"]);
+			$conf->{cgi}{$vg_suffix_key} = "MiB" if not $conf->{cgi}{$vg_suffix_key};
+		}
+		# Devine the node associated with this VG.
+		my $short_vg   =  $vg;
+		my $short_node =  $vg;
+		if ($vg =~ /^(.*?)_(vg\d+)$/)
+		{
+			$short_node = $1;
+			$short_vg   = $2;
+		}
+		my $say_node =  $short_vg;
+		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+		{
+			if ($node =~ /$short_node/)
+			{
+				$say_node = $node;
+				last;
+			}
+		}
+		
+		$conf->{vg_selects}{$vg}{space}         = $space;
+		$conf->{vg_selects}{$vg}{say_storage}   = $say_max_storage;
+		$conf->{vg_selects}{$vg}{select_suffix} = $select_vg_suffix;
+		$conf->{vg_selects}{$vg}{say_node}      = $say_node;
+		$conf->{vg_selects}{$vg}{short_vg}      = $short_vg;
+	}
+	my $say_selects;
+	my $say_or      = "<span class=\"fixed_width\">- or -</span><br />\n";
+	foreach my $vg (sort {$a cmp $b} keys %{$conf->{vg_selects}})
+	{
+		my $space            =  $conf->{vg_selects}{$vg}{space};
+		my $say_max_storage  =  $conf->{vg_selects}{$vg}{say_storage};
+		my $select_vg_suffix =  $conf->{vg_selects}{$vg}{select_suffix};
+		my $say_node         =  $conf->{vg_selects}{$vg}{say_node};
+		$say_node            =~ s/\..*$//;
+		my $short_vg         =  $conf->{vg_selects}{$vg}{short_vg};
+		my $vg_key           =  "vg_$vg";
+		$say_selects         .= "<span class=\"fixed_width\">$say_node</span>, <span class=\"fixed_width\">$short_vg</span> (<span class=\"subtle_text\">$say_max_storage free</span>): <input type=\"text\" name=\"$vg_key\" value=\"$conf->{cgi}{$vg_key}\" style=\"width: 100px\">$select_vg_suffix<br />\n";
+		$say_selects         .= "$say_or";
+	}
+	$say_selects =~ s/$say_or$//m;
+	$say_selects .= "<input type=\"hidden\" name=\"vg_list\" value=\"$conf->{cgi}{vg_list}\">\n";
+	my $say_max_ram          = bytes_to_hr($conf, $conf->{cgi}{max_ram});
+	$conf->{cgi}{ram}        = 2 if not $conf->{cgi}{ram};
+	$conf->{cgi}{ram_suffix} = "GiB" if not $conf->{cgi}{ram_suffix};
+	my $select_ram_suffix    = build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	$conf->{cgi}{os_variant} = "generic" if not $conf->{cgi}{os_variant};
+	my $select_install_iso   = build_select($conf, "install_iso", 1, 1, 300, $conf->{cgi}{install_iso}, $images);
+	my $select_driver_iso    = build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
+	my $select_os_variant    = build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{'system'}{os_variant});
+	
+	print "
+<table align=\"center\">
+	<form method=\"post\">
+	<tr>
+		<td colspan=\"3\">
+			<span class=\"highlight_ready\">Create a new VM on the <b>$conf->{cgi}{cluster}</b> cluster</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_note\"><b>Note</b></span>:
+		</td>
+		<td colspan=\"2\">
+			<br />
+			You will need to answer some questions in order to create a new virtual server.<br />
+			If you are unsure what a certain question means, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">ask questions</a>.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Server Name</span>:
+		</td>
+		<td>
+			<input type=\"text\" name=\"name\" value=\"$conf->{cgi}{name}\" style=\"width: 300px\">
+		</td>
+		<td class=\"subtle_text\">
+			This can be whatever you want, but it must be unique.<br />
+			It's good to keep this short.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			Careful!
+		</td>
+		<td colspan=\"2\">
+			If a server with this name used to exist, and if it's storage remains, it will be deleted and replaced!<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Optimize for</span>:
+		</td>
+		<td>
+			<!-- Update this list by referencing 'virt-install --os_variant list' and feeding it through 'parse-os_variant.pl'. -->
+			$select_os_variant
+		</td>
+		<td class=\"subtle_text\">
+			This fine-tunes the cluster for your operating system.<br />
+			If your OS is not listed, choose the one that is the closest match.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Install From</span>:
+		</td>
+		<td>
+			$select_install_iso
+		</td>
+		<td class=\"subtle_text\">
+			You server will boot off of this disc image.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Driver Disc</span>:
+		</td>
+		<td>
+			$select_driver_iso
+		</td>
+		<td class=\"subtle_text\">
+			This is optional.<br />
+			If you need a drivers to install your server,<br />
+			please select the appropriate disc here.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Memory (RAM)</span>:
+		</td>
+		<td>
+			(<span class=\"subtle_text\">$say_max_ram free</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix
+		</td>
+		<td class=\"subtle_text\">
+			Most servers work well between 2 and 8 GiB.<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Number of CPUs</span>:
+		</td>
+		<td>
+			$select_cpu_cores
+		</td>
+		<td class=\"subtle_text\">
+			Windows servers tend to work best with 2 CPUs.<br />
+			Few servers need more than 4 CPUs.<br />
+			The cluster uses all CPUs to get the best performance.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\">Storage Space</span>:
+		</td>
+		<td>
+			$say_selects
+		</td>
+		<td class=\"subtle_text\">
+			Please use only one node.<br />
+			Type <span class=\"fixed_width\">all</span> to use the rest of the free space.<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
+			<input type=\"hidden\" name=\"task\" value=\"$conf->{cgi}{task}\">
+			<input type=\"hidden\" name=\"max_ram\" value=\"$conf->{cgi}{max_ram}\">
+			<input type=\"hidden\" name=\"max_cores\" value=\"$conf->{cgi}{max_cores}\">
+			<input type=\"hidden\" name=\"max_storage\" value=\"$conf->{cgi}{max_storage}\">
+			<div class=\"align_right\"><input type=\"submit\" name=\"confirm\" value=\"Confirm\" class=\"button\"></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+	
+	return (0);
+}
+
+# Confirm that the user wants to join both nodes to the cluster.
+sub confirm_withdraw_node
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2138,18 +2750,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "join_cluster")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			join_cluster($conf);
-		}
-		else
-		{
-			print "
+	
+	return (0);
+}
+
+# Confirm that the user wants to join a node to the cluster.
+sub confirm_join_cluster
+{
+	my ($conf) = @_;
+
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2177,18 +2787,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "dual_join")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			dual_join($conf);
-		}
-		else
-		{
-			print "
+
+	return (0);
+}
+
+# Confirm that the user wants to join both nodes to the cluster.
+sub confirm_dual_join
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2215,18 +2823,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "fence_node")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			fence_node($conf);
-		}
-		else
-		{
-			print "
+	
+	return (0);
+}
+
+# Confirm that the user wants to fence a nodes.
+sub confirm_fence_node
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2275,18 +2881,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "poweroff_node")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			poweroff_node($conf);
-		}
-		else
-		{
-			print "
+
+	return (0);
+}
+
+# Confirm that the user wants to power-off a nodes.
+sub confirm_poweroff_node
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2324,18 +2928,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "poweron_node")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			poweron_node($conf);
-		}
-		else
-		{
-			print "
+	
+	return (0);
+}
+
+# Confirm that the user wants to boot a nodes.
+sub confirm_poweron_node
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2374,18 +2976,15 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "dual_boot")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			dual_boot($conf);
-		}
-		else
-		{
-			print "
+	return (0);
+}
+
+# Confirm that the user wants to boot both nodes.
+sub confirm_dual_boot
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2412,18 +3011,14 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "start_vm")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			start_vm($conf);
-		}
-		else
-		{
-			print "
+	return (0);
+}
+# Confirm that the user wants to start a VM.
+sub confirm_start_vm
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2450,18 +3045,15 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "stop_vm")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			stop_vm($conf);
-		}
-		else
-		{
-			print "
+	return (0);
+}	
+
+# Confirm that the user wants to stop a VM.
+sub confirm_stop_vm
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2512,18 +3104,14 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "force_off_vm")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			force_off_vm($conf);
-		}
-		else
-		{
-			print "
+	return (0);
+}
+# Confirm that the user wants to force-off a VM.
+sub confirm_force_off_vm
+{
+	my ($conf) = @_;
+	
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2572,18 +3160,16 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "delete_vm")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			delete_vm($conf);
-		}
-		else
-		{
-			print "
+	
+	return (0);
+}
+
+# Confirm that the user wants to migrate a VM.
+sub confirm_delete_vm
+{
+	my ($conf) = @_;
+
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2636,21 +3222,19 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "migrate_vm")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			migrate_vm($conf);
-		}
-		else
-		{
-			# Calculate roughly how long the migration will take.
-			my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
-			$migration_time_estimate *= 10; # ~10s / GB
-			print "
+	
+	return (0);
+}
+
+# Confirm that the user wants to migrate a VM.
+sub confirm_migrate_vm
+{
+	my ($conf) = @_;
+	
+	# Calculate roughly how long the migration will take.
+	my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
+	$migration_time_estimate *= 10; # ~10s / GB
+	print "
 <table align=\"center\">
 	<tr>
 		<td colspan=\"2\">
@@ -2664,7 +3248,7 @@ sub process_task
 		<td>
 			<br />
 			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be migrated to cluster node <span class=\"fixed_width\">$conf->{cgi}{target}</span>.<br />
-			This VM has ".convert_from_bytes($conf, $conf->{cgi}{vm_ram})." RAM, which will take roughly $migration_time_estimate seconds to migrate.<br />
+			This VM has ".bytes_to_hr($conf, $conf->{cgi}{vm_ram})." RAM, which will take roughly $migration_time_estimate seconds to migrate.<br />
 			<br />
 		</td>
 	</tr>
@@ -2677,19 +3261,8 @@ sub process_task
 </table>
 <br />
 ";
-		}
-	}
-	else
-	{
-		print "<pre>\n";
-		foreach my $var (sort {$a cmp $b} keys %{$conf->{cgi}})
-		{
-			print "var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
-		}
-		print "</pre>";
-	}
 	
-	return(0);
+	return (0);
 }
 
 # This boots a VM on a target node.
@@ -4935,90 +5508,6 @@ sub recover_rgmanager
 	return(0);
 }
 
-# This takes a raw number of bytes and returns a human-readable number.
-sub convert_from_bytes
-{
-	my ($conf, $size) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size]\n");
-	$size = 0 if not $size;
-	
-	if ($size > 1099511627776)
-	{
-		# Tibibyte
-		$size = sprintf("%.2f", ($size / (1024 ** 4)))." TiB";
-	}
-	elsif ($size > 1073741824)
-	{
-		# Gibibyte
-		$size = sprintf("%.2f", ($size / (1024 ** 3)))." GiB";
-	}
-	elsif ($size > 1048576)
-	{
-		# Mibibyte
-		$size = sprintf("%.2f", ($size / (1024 ** 2)))." MiB";
-	}
-	elsif ($size > 1024)
-	{
-		# Mibibyte
-		$size = sprintf("%.2f", ($size / 1024))." KiB";
-	}
-	elsif ($size == 1)
-	{
-		$size .= "Byte";
-	}
-	else
-	{
-		# Byte
-		$size .= " Bytes";
-	}
-	
-	return ($size);
-}
-
-# This takes a number with a size suffix and coverts it to raw bytes. If 
-# 'use_base_2' is undefined, this will try to guess whether to use base 2
-# or base 10 notation.
-sub convert_to_bytes
-{
-	my ($conf, $size, $use_base_2) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size]\n");
-
-	($size, my $suffix) = split / /, $size, 2;
-	$suffix = "b" if not defined $suffix;
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], suffix: [$suffix]\n");
-	
-	my $bytes = 1024;
-	if (not defined $use_base_2)
-	{
-		if (lc($suffix) !~ /i/)
-		{
-			$bytes = 1000;
-		}
-	}
-	elsif ($use_base_2 == 0)
-	{
-		$bytes = 1000;
-	}
-	#record($conf, "$THIS_FILE ".__LINE__."; bytes: [$bytes]\n");
-	
-	# I only want the fist letter now.
-	$suffix =~ s/(\w).*/$1/;
-	$suffix = lc($suffix);
-	#record($conf, "$THIS_FILE ".__LINE__."; suffix: [$suffix]\n");
-	
-	if ((not $suffix) || ($suffix eq "b"))
-	{
-		# Do nothing, it's already in bytes
-	}
-	elsif ($suffix eq "k") { $size = $size * $bytes; }
-	elsif ($suffix eq "m") { $size = $size * ($bytes ** 2); }
-	elsif ($suffix eq "g") { $size = $size * ($bytes ** 3); }
-	elsif ($suffix eq "t") { $size = $size * ($bytes ** 4); }
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size]\n");
-	
-	return ($size);
-}
-
 # This is a new attempt at an interface
 sub display_details2
 {
@@ -5464,16 +5953,16 @@ sub display_free_resources
 	}
 	
 	# Always knock off 2GB of RAM for the host OS.
-	my $real_total_ram            = convert_from_bytes($conf, $conf->{resources}{total_ram});
-	$conf->{resources}{total_ram} -= 2147483648;
+	my $real_total_ram            =  bytes_to_hr($conf, $conf->{resources}{total_ram});
+	$conf->{resources}{total_ram} -= $conf->{'system'}{unusable_ram};
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
 	my $free_ram                  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : convert_from_bytes($conf, $free_ram);
-	my $say_total_ram             =  convert_from_bytes($conf, $conf->{resources}{total_ram});
-	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : convert_from_bytes($conf, $allocated_ram);
-	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_size[0]);
-	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_used[0]);
-	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : convert_from_bytes($conf, $vg_free[0]);
+	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : bytes_to_hr($conf, $free_ram);
+	my $say_total_ram             =  bytes_to_hr($conf, $conf->{resources}{total_ram});
+	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : bytes_to_hr($conf, $allocated_ram);
+	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_size[0]);
+	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_used[0]);
+	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_free[0]);
 	my $say_vg                    =  $conf->{'system'}{clvmd_down} ? "--" : $vg[0];
 	my $say_pv_name               =  $conf->{'system'}{clvmd_down} ? "--" : $pv_name[0];
 	
@@ -5522,9 +6011,9 @@ sub display_free_resources
 	{
 		for (my $i=1; $i < @vg; $i++)
 		{
-			my $say_vg_size = convert_from_bytes($conf, $vg_size[$i]);
-			my $say_vg_used = convert_from_bytes($conf, $vg_used[$i]);
-			my $say_vg_free = convert_from_bytes($conf, $vg_free[$i]);
+			my $say_vg_size = bytes_to_hr($conf, $vg_size[$i]);
+			my $say_vg_used = bytes_to_hr($conf, $vg_used[$i]);
+			my $say_vg_free = bytes_to_hr($conf, $vg_free[$i]);
 			my $say_pv_name = $pv_name[$i];
 			print "
 	<tr>
@@ -5572,23 +6061,25 @@ sub display_free_resources
 	### NOTE: Disabled in this release.
 	# If I found enough free disk space, have at least 1 GiB of free RAM 
 	# and both nodes are up, enable the "provision new VM" button.
-# 	my $node1    = $conf->{'system'}{cluster}{node1_name};
-# 	my $node2    = $conf->{'system'}{cluster}{node2_name};
-# 	my $say_link = "<span class=\"disabled_button\">Provision New VM</span>";
-# 	if (($enough_storage) && 
-# 	($free_ram > 1073741824) && 
-# 	($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && 
-# 	($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
-# 	{
-# 		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Provision New VM</a>";
-# 	}
-# 	print "
-# 	<tr>
-# 		<td colspan=\"12\">
-# 			$say_link
-# 		</td>
-# 	</tr>
-# ";
+	my $node1    = $conf->{'system'}{cluster}{node1_name};
+	my $node2    = $conf->{'system'}{cluster}{node2_name};
+	my $say_link = "<span class=\"disabled_button\">Build a New Server</span>";
+	
+	record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+	if (($enough_storage) && 
+	($free_ram > 1073741824) && 
+	($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
+	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
+	{
+		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Build a New Server</a>";
+	}
+	print "
+	<tr>
+		<td colspan=\"12\">
+			$say_link
+		</td>
+	</tr>
+";
 
 	return (0);
 }
@@ -5672,7 +6163,7 @@ sub display_vm_details
 		next if $vm !~ /^vm/;
 		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $conf->{'system'}{gfs2_down} ? "<span class=\"fixed_width\">--</span>" : convert_from_bytes($conf, $conf->{vm}{$vm}{details}{ram});
+		my $say_ram = $conf->{'system'}{gfs2_down} ? "<span class=\"fixed_width\">--</span>" : bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		
 		# Get the LV arrays populated.
@@ -5984,7 +6475,7 @@ sub read_vm_definition
 			# Record the memory, multiple by 1024 to get bytes.
 			my $units                      =  $1;
 			my $ram                        =  $2;
-			$conf->{vm}{$vm}{details}{ram} = convert_to_bytes($conf, "$ram $units", 1);
+			$conf->{vm}{$vm}{details}{ram} = hr_to_bytes($conf, $ram, $units, 1);
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		}
 		
@@ -6087,7 +6578,7 @@ sub check_lv
 	}
 	
 	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $conf->{node}{$node}{lvm}{lv}{$lv}{active};
-	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = convert_from_bytes($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
+	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = bytes_to_hr($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv], active: [$conf->{node}{$node}{lvm}{lv}{$lv}{active}], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$lv}{on_devices}]\n");
 	
 	# If there is a comman in the devices, the LV spans multiple devices.
@@ -7058,34 +7549,6 @@ sub display_node_controls
 <br />
 ";
 
-	return (0);
-}
-
-sub check_nodes
-{
-	my ($conf) = @_;
-	
-	print "
-<div id=\"hide_when_loaded\">
-<table align=\"center\">
-	<tr>
-		<td>
-			<b>Please be patient.</b><br />
-			Gathering information from $conf->{cgi}{cluster}.<br />
-			This could take a minute to complete.
-		</td>
-		<td>
-			<img src=\"/img/gather_info.gif\" border=\"0\">
-		</td>
-	</tr>
-</table>
-<br />
-</div>
-	";
-	
-	# Start your engines!
-	check_node_status($conf);
-	
 	return (0);
 }
 

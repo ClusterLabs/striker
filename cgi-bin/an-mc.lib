@@ -28,6 +28,7 @@ sub process_task
 {
 	my ($conf) = @_;
 	
+	record($conf, "$THIS_FILE ".__LINE__."; Task: [$conf->{cgi}{task}]\n");
 	if ($conf->{cgi}{task} eq "image_and_upload")
 	{
 		if ($conf->{cgi}{confirm})
@@ -222,7 +223,7 @@ sub confirm_download_url
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> cluster.</span>
+			<span class=\"highlight_ready_bold\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> cluster.</span>
 		</td>
 	</tr>
 	<tr>
@@ -278,7 +279,7 @@ sub save_file_to_disk
 	print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_ready\">
+		<td class=\"highlight_ready_bold\">
 			Saving the file to the server's storage.
 		</td>
 	</tr>
@@ -470,7 +471,7 @@ sub image_and_upload
 			print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_ready\">
+		<td class=\"highlight_ready_bold\">
 			Beginning image copy.
 		</td>
 	</tr>
@@ -493,7 +494,7 @@ sub image_and_upload
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_ready\">
+		<td class=\"highlight_ready_bold\">
 			Beginning upload. 
 		</td>
 	</tr>
@@ -510,7 +511,7 @@ sub image_and_upload
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_ready\">
+		<td class=\"highlight_ready_bold\">
 			Done!<br />
 		</td>
 	</tr>
@@ -554,7 +555,7 @@ sub confirm_image_and_upload
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready\">About to create a disc image and upload it to the cluster: [$conf->{cgi}{cluster}].</span>
+			<span class=\"highlight_ready_bold\">About to create a disc image and upload it to the cluster: [$conf->{cgi}{cluster}].</span>
 		</td>
 	</tr>
 	<tr>
@@ -569,7 +570,7 @@ sub confirm_image_and_upload
 	</tr>
 	<tr>
 		<td>
-			<span class=\"highlight_ready\"><b>Step 1</b></span>
+			<span class=\"highlight_ready_bold\"><b>Step 1</b></span>
 		</td>
 		<td colspan=\"2\">
 			</br />
@@ -580,7 +581,7 @@ sub confirm_image_and_upload
 	</tr>
 	<tr>
 		<td>
-			<span class=\"highlight_ready\"><b>Step 2</b></span>
+			<span class=\"highlight_ready_bold\"><b>Step 2</b></span>
 		</td>
 		<td colspan=\"2\">
 			</br />
@@ -629,7 +630,7 @@ sub confirm_delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!</span>
+			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!</span>
 		</td>
 	</tr>
 	<tr>
@@ -673,7 +674,7 @@ sub delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready\">Deleting <span class=\"fixed_width\">$name</span>...</span>
+			<span class=\"highlight_ready_bold\">Deleting <span class=\"fixed_width\">$name</span>...</span>
 		</td>
 	</tr>
 	<tr>
@@ -697,7 +698,7 @@ sub delete_file
 		</td>
 	</tr>
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
 			Done!
 		</td>
 	</tr>
@@ -837,198 +838,6 @@ sub check_status
 	return (0);
 }
 
-# This looks for a node we have access to and returns the first one available.
-sub read_files_on_shared
-{
-	my ($conf) = @_;
-	
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
-	my $connected = "";
-	my $cluster   = $conf->{cgi}{cluster};
-	delete $conf->{files} if exists $conf->{files};
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
-	{
-		next if $connected;
-		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
-		my $fail = 0;
-		my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		my $raw;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
-		{
-			$raw .= $_;
-			chomp;
-			my $line = $_;
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-			next if $fail;
-			
-			# This catches connectivity problems.
-			if ($line =~ /No route to host/i)
-			{
-				my $local_access = on_same_network($conf, $node);
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
-				if ($local_access)
-				{
-					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
-				}
-				else
-				{
-					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
-				}
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /host key verification failed/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
-				$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /could not resolve hostname/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
-				$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /permission denied/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /connection refused/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /Connection timed out/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /Network is unreachable/i)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
-				$fail = 1;
-				next;
-			}
-			elsif ($line =~ /\@\@\@\@/)
-			{
-				# When the host-key fails to match, a box made
-				# of '@@@@' is displayed, and is the entire 
-				# first line.
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
-				$fail = 1;
-				next;
-			}
-			
-			# If I made it this far, I've got a connection.
-			$connected = $node;
-			if ($line =~ /\s(\d+)-blocks\s/)
-			{
-				$conf->{partition}{shared}{block_size} = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
-				next;
-			}
-			if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
-			{
-				$conf->{partition}{shared}{total_space}  = $1;
-				$conf->{partition}{shared}{used_space}   = $2;
-				$conf->{partition}{shared}{free_space}   = $3;
-				$conf->{partition}{shared}{used_percent} = $4;
-				#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
-				next;
-			}
-			if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
-			{
-				my $type   = $1;
-				my $mode   = $2;
-				my $user   = $3;
-				my $group  = $4;
-				my $size   = $5;
-				my $month  = $6;
-				my $day    = $7;
-				my $time   = $8; # might be a year, look for '\d+:\d+'.
-				my $file   = $9;
-				my $target = "";
-				if ($type eq "l")
-				{
-					# It's a symlink, strip off the destination.
-					($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
-				}
-				$conf->{files}{shared}{$file}{type}   = $type;
-				$conf->{files}{shared}{$file}{mode}   = $mode;
-				$conf->{files}{shared}{$file}{user}   = $user;
-				$conf->{files}{shared}{$file}{group}  = $group;
-				$conf->{files}{shared}{$file}{size}   = $size;
-				$conf->{files}{shared}{$file}{month}  = $month;
-				$conf->{files}{shared}{$file}{day}    = $day;
-				$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
-				$conf->{files}{shared}{$file}{target} = $target;
-				#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
-				next;
-			}
-		}
-	}
-	
-	if (not $connected)
-	{
-		print "
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\">
-			Unable to connect to the <span class=\"highlight_detail\">${cluster}</span> cluster!
-		</td>
-	</tr>
-";
-		foreach my $node (sort {$a cmp $b} keys %{$conf->{node}})
-		{
-			my $state = $conf->{node}{$node}{info}{'state'};
-			my $note  = $conf->{node}{$node}{info}{note};
-			print "
-	<tr>
-		<td>
-			<span class=\"fixed_width\">$node</span>
-		</td>
-		<td>
-			<span class=\"fixed_width\">$state</span>
-		</td>
-		<td>
-			$note
-		</td>
-	</tr>
-";
-		}
-		print "
-	<tr>
-		<td colspan=\"3\">
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
-		</td>
-	</tr>
-";
-	}
-		print "
-</table>
-<br />
-";
-	
-	return ($connected);
-}
-
 # This tries to log into each node in the cluster. The first one it connects to
 # which has /shared/files mounted is the one it will use to up upload the ISO
 # and generate the list of available media. It also compiles a list of which 
@@ -1086,8 +895,8 @@ sub read_shared
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
-			Cluster <span class=\"fixed_width\">${cluster}</span>'s <span class=\"fixed_width\">/shared</span> details:
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
+			Shared space on <i>${cluster}</i>:
 		</td>
 	</tr>
 	<tr>
@@ -1116,8 +925,8 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
-			Existing File(s)
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
+			Files already on the shared space:
 		</td>
 	</tr>
 	<tr>
@@ -1160,8 +969,8 @@ sub read_shared
 <br />
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
-			Upload from DVD or CD drive
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
+			Create an image of your disc and upload it to the cluster
 		</td>
 	</tr>
 	<tr>
@@ -1194,12 +1003,12 @@ sub read_shared
 			elsif ($conf->{drive}{$dev}{volume})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\"><b>Upload</b></a>";
+				$upload    = "<a href=\"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\"><b>Upload</b></a>";
 			}
 			elsif ($conf->{drive}{$dev}{volume_set})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\"><b>Upload</b></a>";
+				$upload    = "<a href=\"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\"><b>Upload</b></a>";
 			}
 			else
 			{
@@ -1228,7 +1037,7 @@ sub read_shared
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
 			Download directly from a website address to the cluster.
 		</td>
 	</tr>
@@ -1237,7 +1046,7 @@ sub read_shared
 	<input type=\"hidden\" name=\"task\" value=\"download_url\">
 	<tr>
 		<td>
-			Address
+			<span class=\"fixed_width\">Address</a>:
 		</td>
 		<td>
 			<input type=\"text\" name=\"url\" value=\"\" style=\"width: 250px;\">
@@ -1266,7 +1075,7 @@ sub read_shared
 		print "
 <table width=\"100%\">
 	<tr>
-		<td colspan=\"3\" class=\"highlight_ready\">
+		<td colspan=\"3\" class=\"highlight_ready_bold\">
 			Upload a file from your computer.
 		</td>
 	</tr>
@@ -1275,7 +1084,7 @@ sub read_shared
 	<input type=\"hidden\" name=\"task\" value=\"upload_file\">
 	<tr>
 		<td>
-			File
+			<span class=\"fixed_width\">File</span>:
 		</td>
 		<td>
 			<input type=\"file\" name=\"file\" value=\"\">
