@@ -2097,6 +2097,12 @@ sub process_task
 			confirm_provision_vm($conf);
 		}
 	}
+	elsif ($conf->{cgi}{task} eq "add_vm")
+	{
+		# This is called after provisioning a VM usually, so no need to
+		# confirm
+		add_vm_to_cluster($conf);
+	}
 	else
 	{
 		print "<pre>\n";
@@ -2108,6 +2114,19 @@ sub process_task
 	}
 	
 	return(0);
+}
+
+sub add_vm_to_cluster
+{
+	my ($conf) = @_;
+	
+	# Two steps needed; Dump the definition and use ccs to add it to the 
+	# cluster.
+	my $cluster = $conf->{cgi}{cluster};
+	my $vm      = $conf->{cgi}{name};
+# 	my $node    = 
+	
+	return (0);
 }
 
 # This actually kicks off the VM.
@@ -2179,6 +2198,10 @@ sub provision_vm
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
 	$provision .= "  --cdrom /shared/files/$conf->{new_vm}{install_iso} \\\\\n";
+	if ($conf->{cgi}{driver_iso})
+	{
+		$provision .= "  --disk path=/shared/files/$conf->{new_vm}{driver_iso},device=cdrom \\\\\n";
+	}
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
 	if ($conf->{new_vm}{virtio}{nic})
 	{

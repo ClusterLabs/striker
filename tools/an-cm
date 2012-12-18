@@ -44,7 +44,7 @@ my $conf = {
 		helo_domain		=>	"alteeve.ca",
 	},
 	mail_data		=>	{
-		to			=>	"alert\@alteeve.ca",
+		to			=>	"change.me\@alteeve.ca",
 		cc                      =>      "",
 		sending_domain		=>	"mail.alteeve.ca",
 		subject			=>	"",
