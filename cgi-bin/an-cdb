@@ -68,6 +68,7 @@ my $conf={
 		show_nodes		=>	0,
 		footer_printed		=>	0,
 		show_refresh		=>	1,
+		ignore_missing_vm	=>	0,
 		unusable_ram		=>	2147483648,	# 2 GiB
 		os_variant		=>	[
 			"win7#!#Microsoft Windows 7",

@@ -2122,15 +2122,427 @@ sub add_vm_to_cluster
 	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
-	my $cluster = $conf->{cgi}{cluster};
-	my $vm      = $conf->{cgi}{name};
-	my $node    = $conf->{cgi}{name};
+	my $cluster    = $conf->{cgi}{cluster};
+	my $vm         = $conf->{cgi}{name};
+	my $node       = $conf->{cgi}{node};
+	my $definition = "/shared/definitions/$vm.xml";
+	my $peer;
+	foreach my $this_node (@{$conf->{clusters}{$cluster}{nodes}})
+	{
+		if ($this_node ne $node)
+		{
+			$peer = $this_node;
+		}
+	}
+	my $failover_domain;
 	
-	# Example ccs adding of a VM:
-	# ccs -h localhost --activate --sync --addvm vm02-win7-01 domain="primary_n01" path="/shared/definitions/" autostart="0" exclusive="0" recovery="restart" max_restarts="2" restart_expire_time="600"
+	# First, find the failover domain...
+	$conf->{'system'}{ignore_missing_vm} = 1;
+	scan_cluster($conf);
+	foreach my $fod (keys %{$conf->{failoverdomain}})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; fod: [$fod]\n");
+		if ($fod =~ /primary_(.*?)$/)
+		{
+			my $node_suffix = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix]\n");
+			if ($node =~ /$node_suffix/)
+			{
+				$failover_domain = $fod;
+				record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
+				last;
+			}
+		}
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
 	
-	# I need to find the proper domain.
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready_bold\" colspan=\"2\">
+			Adding the new $vm server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
+		</td>
+	</tr>
+	";
+
+	if (not $failover_domain)
+	{
+		print "
+	<tr>
+		<td class=\"highlight_bad\">
+			<b>Error</b>
+		</td>
+		<td>
+			I was unable to determine which failover domain to use for this new machine.<br />
+			<br />
+			I am sorry, but without this information, I can not continue.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+		";
+		return (1);
+	}
 	
+	print "
+	<tr>
+		<td class=\"highlight_good\">
+			Checking VM State
+		</td>
+		<td>
+			<br />
+			Checking now to make sure the new virtual server is up and running.
+			<br />
+	";
+
+	# On occasion, the installed VM will power off, not reboot. So this
+	# checks to see if the VM needs to be kicked awake.
+	my $sc = "$conf->{path}{ssh} root\@$node \"virsh list --all\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /\s$vm\s/)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Found the VM.\n");
+			if ($line =~ /^-/)
+			{
+				# It looks off... We have to go deeper!
+				print "It appears to be off. Checking the peer to see if it is running there.<br />\n";
+				record($conf, "$THIS_FILE ".__LINE__."; The VM appears to be off. Checking the peer to see if it is running there.\n");
+				my $on_peer = 0;
+				my $found   = 0;
+				my $sc = "$conf->{path}{ssh} root\@$peer \"virsh list --all\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					next if not $line;
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /\s$vm\s/)
+					{
+						print "Found it on the peer node. Checking if it's running there.<br />\n";
+						record($conf, "$THIS_FILE ".__LINE__."; Found it on the peer. Checking if it's running.\n");
+						if ($line =~ /^\d/)
+						{
+							$found   = 1;
+							$on_peer = 1;
+							$node    = $peer;
+							print "It is, I will use that node for the next steps.<br />\n";
+							record($conf, "$THIS_FILE ".__LINE__."; It is. Will proceed using: [$node].\n");
+						}
+						else
+						{
+							$found = 1;
+							print "It is not running on the peer.<br />\n";
+							record($conf, "$THIS_FILE ".__LINE__."; It is not running on the peer.\n");
+						}
+					}
+				}
+				$fh->close();
+				if (($found) && (not $on_peer))
+				{
+					print "I did not find it on the peer node, which is normal.<br />\n";
+					record($conf, "$THIS_FILE ".__LINE__."; I did not find it on the peer node, which is normal.\n");
+				}
+				if (not $on_peer)
+				{
+					print "I will now boot the VM.<br />\n";
+					record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
+					my $virsh_exit_code;
+					my $sc = "$conf->{path}{ssh} root\@$node \"virsh start $vm; echo virsh:\\\$?\"";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					my $fh = IO::Handle->new();
+					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					while(<$fh>)
+					{
+						chomp;
+						my $line = $_;
+						$line =~ s/^\s+//;
+						$line =~ s/\s+$//;
+						next if not $line;
+						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						if ($line =~ /virsh:(\d+)/)
+						{
+							$virsh_exit_code = $1;
+						}
+					}
+					$fh->close();
+					record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+					if ($virsh_exit_code eq "0")
+					{
+						print "It should now be booting up.<br />\n";
+					}
+					else
+					{
+						print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			<b>Warning</b>
+		</td>
+		<td>
+			<br />
+			It would appear that something went wrong!<br />
+			The new <span class=\"fixed_width\">$vm</span> server didn't start on reboot.<br />
+			I tried to start it, but the command should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+						return (1);
+					}
+				}
+			}
+			else
+			{
+				print "It is already running, as expected.<br />\n";
+			}
+		}
+	}
+	print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Creating Definition
+		</td>
+		<td>
+			<br />
+			The cluster needs to know what \"hardware\" to create for the new virtual server when it starts.<br />
+			This is done using a \"definition\" file, which I will record now.
+	";
+	my $virsh_exit_code;
+	$sc = "$conf->{path}{ssh} root\@$node \"virsh dumpxml $vm > $definition; echo virsh:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /virsh:(\d+)/)
+		{
+			$virsh_exit_code = $1;
+		}
+	}
+	$fh->close();
+	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+	if ($virsh_exit_code eq "0")
+	{
+		print "Saved successfully as <span class=\"fixed_width\">$definition</span>.<br />\n";
+	}
+	else
+	{
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			<b>Warning</b>
+		</td>
+		<td>
+			It would appear that something went wrong!<br />
+			I tried to record the definition file and the command should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		return (1);
+	}
+	
+	# If I've made it this far, I am ready to add it to the cluster configuration.
+	print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Configuring Cluster
+		</td>
+		<td>
+			<br />
+			I will now add the new virtual server to the cluster.
+			<br />
+";
+	
+	my $ccs_exit_code;
+	$sc =  "$conf->{path}{ssh} root\@$node \"ccs ";
+	$sc .= "-h localhost $conf->{cgi}{vm} --activate --sync --addvm $vm ";
+	$sc .= "domain=\"$failover_domain\" ";
+	$sc .= "path=\"/shared/definitions/\" ";
+	$sc .= "autostart=\"0\" ";
+	$sc .= "exclusive=\"0\" ";
+	$sc .= "recovery=\"restart\" ";
+	$sc .= "max_restarts=\"2\" ";
+	$sc .= "restart_expire_time=\"600\"";
+	$sc .= "; echo ccs:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /ccs:(\d+)/)
+		{
+			$ccs_exit_code = $1;
+		}
+		else
+		{
+			$line = parse_text_line($conf, $line);
+			print "<span class=\"fixed_width\">$line</span><br />\n";
+		}
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
+	if ($ccs_exit_code eq "0")
+	{
+		print "The VM has been added successfully.<br />\n";
+		
+		### TODO: Make this watch 'clustat' for the VM to appear.
+		sleep 10;
+	}
+	else
+	{
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_bad\">
+			<b>Error</b>
+		</td>
+		<td>
+			<br />
+			It would appear that something went wrong!<br />
+			The call to add the new VM to the cluster should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$ccs_exit_code</span> was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+		";
+		return (1);
+	}
+	print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Enabling the VM
+		</td>
+		<td>
+			<br />
+			Informing the cluster that the VM is running.<br />
+			<br />
+";
+	
+	### TODO: Get the cluster's idea of the node name and use '-m ...'.
+	# Tell the cluster to start the VM. I don't bother to check for 
+	# readiness because I confirmed it was running on this node earlier.
+	my $clusvcadm_exit_code;
+	$sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm; echo clusvcadm:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /clusvcadm:(\d+)/)
+		{
+			$clusvcadm_exit_code = $1;
+		}
+		else
+		{
+			$line = parse_text_line($conf, $line);
+			print "<span class=\"fixed_width\">$line</span><br />\n";
+		}
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; clusvcadm exit code: [$clusvcadm_exit_code]\n");
+	if ($clusvcadm_exit_code eq "0")
+	{
+		print "The VM has been added to the cluster.<br />\n";
+	}
+	else
+	{
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_bad\">
+			<b>Error</b>
+		</td>
+		<td>
+			<br />
+			It would appear that something went wrong!<br />
+			The call to tell the cluster that the new VM is running should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$clusvcadm_exit_code</span> was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+		";
+		return (1);
+	}
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			<b>Success</b>!
+		</td>
+		<td>
+			The new virtual machine has been added to the cluster.
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+";
+
 	return (0);
 }
 
@@ -2171,7 +2583,7 @@ sub provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_ready\">
+		<td class=\"highlight_good\">
 			Beginning
 		</td>
 		<td>
@@ -3119,7 +3531,7 @@ sub confirm_stop_vm
 			<br />
 			If $conf->{cgi}{vm} is not listening to ACPI calls, this attempt to shut down the node will fail!<br />
 			Make sure that Linux machines are running <span class=\"code\">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />
-			If <span class=\"fixed_width\">$conf->{cgi}{vm}</span> doesn't shut down within <u>60 seconds</u>, it will be <span class=\"highlight_dangerous\"><b>forced off</b></span>!<br />
+			If <span class=\"fixed_width\">$conf->{cgi}{vm}</span> doesn't shut down within <u>120 seconds</u>, it will be <span class=\"highlight_dangerous\"><b>forced off</b></span>!<br />
 			<br />
 		</td>
 	</tr>
@@ -3324,7 +3736,7 @@ sub start_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Booting $vm on $node_cluster_name now...</b></span>
+			<span class=\"highlight_ready\"><b>Booting $vm on $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3337,7 +3749,7 @@ sub start_vm
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e vm:$vm -m $node_cluster_name\"";
+		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -3390,7 +3802,7 @@ sub start_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Booting of $vm on $node_cluster_name failed!</span>
+			<span class=\"highlight_bad\"><b>Booting of $vm on $node_cluster_name failed!</span>
 		</td>
 	</tr>
 	<tr>
@@ -3461,7 +3873,7 @@ sub migrate_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Migrating $vm to $target now...</b></span>
+			<span class=\"highlight_ready\"><b>Migrating $vm to $target now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -3527,7 +3939,7 @@ sub migrate_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Migration of $vm to $target aborted!</span>
+			<span class=\"highlight_bad\"><b>Migration of $vm to $target aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -3568,7 +3980,7 @@ sub stop_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Attempting orderly shut down of $vm now...</b></span><br />
+			<span class=\"highlight_ready\"><b>Attempting orderly shut down of $vm now...</b></span><br />
 			This can take a while, please be patient!
 		</td>
 	</tr>
@@ -3664,7 +4076,7 @@ sub join_cluster
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</b></span><br />
+			<span class=\"highlight_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</b></span><br />
 			This can take a while, please be patient!<br />
 			This process will complete before the storage service starts. Please give a minute or two for storage to come online.<br />
 		</td>
@@ -3732,7 +4144,7 @@ sub join_cluster
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Joining of $node_cluster_name to $conf->{cgi}{cluster} aborted!</span>
+			<span class=\"highlight_bad\"><b>Joining of $node_cluster_name to $conf->{cgi}{cluster} aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -3793,7 +4205,7 @@ sub dual_join
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</b></span><br />
+			<span class=\"highlight_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</b></span><br />
 			This can take a while, please be patient!<br />
 			This process will complete before the storage services start. Please give then minute or two for storage to come online.<br />
 		</td>
@@ -3933,7 +4345,7 @@ sub dual_join
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Joining of both nodes to the $conf->{cgi}{cluster} cluster aborted!</span>
+			<span class=\"highlight_bad\"><b>Joining of both nodes to the $conf->{cgi}{cluster} cluster aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -3980,7 +4392,7 @@ sub force_off_vm
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Forcibly shutting down $vm now...</b></span><br />
+			<span class=\"highlight_bad\"><b>Forcibly shutting down $vm now...</b></span><br />
 			This can take a while, please be patient!
 		</td>
 	</tr>
@@ -4108,7 +4520,7 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --rmvm $conf->{cgi}{vm} --activate --sync; echo ccs:\\\$?\"";
+		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -4136,9 +4548,9 @@ sub delete_vm
 		}
 		else
 		{
-			print "<span class=\"highlight_bad\">Error</span>! It would appear that something went wrong!<br />\n";
+			print "</br ><span class=\"highlight_bad\"><b>Error</b></span>! It would appear that something went wrong!<br />\n";
 			print "The removal call should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$ccs_exit_code</span> was received.<br />\n";
-			print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+			print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 		}
 		print "
 			<br />
@@ -4186,9 +4598,9 @@ sub delete_vm
 			}
 			else
 			{
-				print "<span class=\"highlight_bad\">Error</span>! It would appear that something went wrong!<br />\n";
+				print "</br ><span class=\"highlight_bad\"><b>Error</b></span>! It would appear that something went wrong!<br />\n";
 				print "The call to destroy the VM should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />\n";
-				print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+				print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 			}
 			print "
 			<br />
@@ -4238,9 +4650,9 @@ sub delete_vm
 				}
 				else
 				{
-					print "<span class=\"highlight_warning\">Warning</span>! It would appear that <span class=\"fixed_width\">$lv</span> was not removed.<br />\n";
+					print "<br /><span class=\"highlight_warning\"><b>Warning</b></span>! It would appear that <span class=\"fixed_width\">$lv</span> was not removed.<br />\n";
 					print "The call to remove the VM's storage should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$lvremove_exit_code</span> was received.<br />\n";
-					print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+					print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 				}
 			}
 			
@@ -4293,10 +4705,10 @@ sub remove_vm_definition
 	# We only delete VM definition files.
 	if ($file !~ /^\/shared\/definitions\/.*?\.xml/)
 	{
-		print "<span class=\"highlight_bad\">CRITICAL ERROR</span>! It would appear that something went very wrong!<br />\n";
+		print "<br /><span class=\"highlight_bad\"><b><u>CRITICAL ERROR</u></b></span>! It would appear that something went very wrong!<br />\n";
 		print "I was asked to delete a VM definition file, but was asked to delete <span class=\"fixed_width\">$file</span>.<br />\n";
 		print "For security reasons, only files in <span class=\"fixed_width\">/shared/definitions/</span> can be deleted.<br />\n";
-		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 		return (1);
 	}
 	
@@ -4332,10 +4744,10 @@ sub remove_vm_definition
 	}
 	else
 	{
-		print "<span class=\"highlight_bad\">Warning</span>! It would appear that something went wrong!<br />\n";
+		print "<br /><span class=\"highlight_bad\"><b<Warning</b></span>! It would appear that something went wrong!<br />\n";
 		print "I tried to delete the file <span class=\"fixed_width\">$file</span> and then verify that it was indeed removed.<br />\n";
 		print "This should have returned <span class=\"fixed_width\">2</span>, but <span class=\"fixed_width\">$ls_exit_code</span> was returned instead.<br />\n";
-		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 	}
 	
 	return (0);
@@ -4383,10 +4795,10 @@ sub archive_file
 	}
 	else
 	{
-		print "<span class=\"highlight_bad\">Warning</span>! It would appear that something went wrong!<br />\n";
+		print "<br /><span class=\"highlight_bad\"><b>Warning</b></span>! It would appear that something went wrong!<br />\n";
 		print "I tried to archive the file <span class=\"fixed_width\">$file</span> as <span class=\"fixed_width\">$dest</span>.<br />\n";
 		print "This should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$cp_exit_code</span> was returned instead.<br />\n";
-		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 	}
 	
 	return (0);
@@ -4431,7 +4843,7 @@ sub poweroff_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Shutting down $node_cluster_name now...</b></span>
+			<span class=\"highlight_ready\"><b>Shutting down $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -4498,7 +4910,7 @@ sub poweroff_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
+			<span class=\"highlight_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -4587,7 +4999,7 @@ sub dual_boot
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on both nodes in the cluster now...</b></span>
+			<span class=\"highlight_ready\"><b>Powering on both nodes in the cluster now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -4650,7 +5062,7 @@ sub dual_boot
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Booting both nodes in the $conf->{cgi}{cluster} cluster aborted!</span>
+			<span class=\"highlight_bad\"><b>Booting both nodes in the $conf->{cgi}{cluster} cluster aborted!</span>
 		</td>
 	</tr>
 ";
@@ -4717,7 +5129,7 @@ sub poweron_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_ready\"><b>Powering on $node_cluster_name now...</b></span>
+			<span class=\"highlight_ready\"><b>Powering on $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -4814,7 +5226,7 @@ sub poweron_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name failed!</span>
+			<span class=\"highlight_bad\"><b>Powering on of $node_cluster_name failed!</span>
 		</td>
 	</tr>
 	<tr>
@@ -4842,7 +5254,7 @@ sub poweron_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name aborted!</span>
+			<span class=\"highlight_bad\"><b>Powering on of $node_cluster_name aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -4934,7 +5346,7 @@ sub fence_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Fencing $node_cluster_name now...</b></span>
+			<span class=\"highlight_warning\"><b>Fencing $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
@@ -5114,7 +5526,7 @@ sub fence_node
 		print "
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Powering on of $node_cluster_name aborted!</span>
+			<span class=\"highlight_bad\"><b>Powering on of $node_cluster_name aborted!</span>
 		</td>
 	</tr>
 ";
@@ -5167,13 +5579,13 @@ sub withdraw_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Withdrawing $node_cluster_name from the cluster now...</b></span>
+			<span class=\"highlight_ready\"><b>Withdrawing $node_cluster_name from the cluster now...</b></span>
 		</td>
 	</tr>
 	<tr>
 		<td>
 			Stopping the cluster resource manager now...<br />
-			<span class=\"highligh_ready_bold\">Please be patient</span>! This can take a minute.
+			<span class=\"highlight_ready_bold\">Please be patient</span>! This can take a minute.
 		</td>
 	</tr>
 	<tr>
@@ -5368,8 +5780,10 @@ sub withdraw_node
 					print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			Unable to start the cluster communication layer!<br />
-			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			Please <a href=\"https://alteeve.ca/w/Support\">call support immediately</a>.
+			<br />
 		</td>
 	</tr>
 ";
@@ -5407,7 +5821,7 @@ sub withdraw_node
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highligh_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
+			<span class=\"highlight_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
 		</td>
 	</tr>
 	<tr>
@@ -5655,8 +6069,10 @@ sub recover_rgmanager
 						print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			The <span class=\"fixed_width_button\">$storage_service</span> storage service failed to restart!<br />
 			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			<br />
 		</td>
 	</tr>
 ";
@@ -5667,8 +6083,10 @@ sub recover_rgmanager
 					print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			The <span class=\"fixed_width_button\">$storage_service</span> storage service failed to disable!<br />
 			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			<br />
 		</td>
 	</tr>
 ";
@@ -5693,8 +6111,10 @@ sub recover_rgmanager
 			print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			Unable to identify the storage service for this node! This is likely a program error.<br />
 			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			<br />
 		</td>
 	</tr>
 ";
@@ -5705,8 +6125,10 @@ sub recover_rgmanager
 		print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			Failed to start the <span class=\"fixed_width_button\">rgmanager</span> daemon back up!<br />
 			Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.
+			<br />
 		</td>
 	</tr>
 ";

@@ -90,7 +90,7 @@ sub download_url
 <table align=\"center\">
 	<tr>
 		<td class=\"highlight_ready_bold\">
-			Downloading from the web.
+			Downloading from a website.
 		</td>
 	</tr>
 	<tr>
