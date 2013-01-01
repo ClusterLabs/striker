@@ -41,18 +41,20 @@ my $conf={
 	up_nodes		=>	[],
 	online_nodes		=>	[],
 	path			=>	{
+		'an-cdb_files'		=>	"/var/www/home",
 		an_conf			=>	"/etc/an/an.conf",
 		cat			=>	"/bin/cat",
+		ccs			=>	"/usr/sbin/ccs",
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
+		fence_ipmilan		=>	"/sbin/fence_ipmilan",
+		gethostip		=>	"/bin/gethostip",
+		ifconfig		=>	"/sbin/ifconfig",
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
 		ping			=>	"/usr/bin/ping",
 		ssh			=>	"/usr/bin/ssh",
-		fence_ipmilan		=>	"/sbin/fence_ipmilan",
-		'an-cdb_files'		=>	"/var/www/home",
-		gethostip		=>	"/bin/gethostip",
-		ifconfig		=>	"/sbin/ifconfig",
+		virsh			=>	"/usr/bin/virsh",
 	},
 	handles			=>	{
 		'log'			=>	"",
@@ -129,6 +131,7 @@ my $conf={
 	},
 };
 
+find_executables($conf);
 read_conf($conf);
 
 # I need to convert the global configuration of the clusters to the format I use here.

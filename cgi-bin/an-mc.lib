@@ -96,15 +96,19 @@ sub download_url
 	<tr>
 		<td>
 			<br />
-			<span class=\"highlight_warning\">Please be patient!</span><br />
+			<span class=\"highlight_warning\"><b>Please be patient!</b></span><br />
 			<br />
 			I will now download:<br />
+			<br />
 			<span class=\"fixed_width\">$file</span><br />
+			<br />
 			From the website:<br />
+			<br />
 			<span class=\"fixed_width\">$url</span><br />
 			<br />
 ";
-	my $next_percent = 10;
+	my $progress_points = 5;
+	my $next_percent    = $progress_points;
 	my $sc = "$conf->{path}{ssh} root\@$node \"wget -c $url -O /shared/files/$file\"";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh  = IO::Handle->new();
@@ -137,7 +141,7 @@ sub download_url
 				# is partially downloaded.
 				while ($percent >= $next_percent)
 				{
-					$next_percent    += 10;
+					$next_percent += $progress_points;
 				}
 				$received        *= 1024;
 				my $say_received =  bytes_to_hr($conf, $received);

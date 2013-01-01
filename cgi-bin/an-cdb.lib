@@ -2124,7 +2124,12 @@ sub add_vm_to_cluster
 	# cluster.
 	my $cluster = $conf->{cgi}{cluster};
 	my $vm      = $conf->{cgi}{name};
-# 	my $node    = 
+	my $node    = $conf->{cgi}{name};
+	
+	# Example ccs adding of a VM:
+	# ccs -h localhost --activate --sync --addvm vm02-win7-01 domain="primary_n01" path="/shared/definitions/" autostart="0" exclusive="0" recovery="restart" max_restarts="2" restart_expire_time="600"
+	
+	# I need to find the proper domain.
 	
 	return (0);
 }
@@ -2245,7 +2250,7 @@ sub provision_vm
 	print "\t\t\tDone.\n";
 	print "\t\t\t<br />\n";
 	
-	print "\t\t\tKicking off the installatio of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n";
+	print "\t\t\tKicking off the installation of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n";
 	print "\t\t\t<br />\n";
 	$fh = IO::Handle->new();
 	$sc = "$conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"$script\"";
@@ -2661,6 +2666,18 @@ sub confirm_provision_vm
 		<td class=\"subtle_text\">
 			This fine-tunes the cluster for your operating system.<br />
 			If your OS is not listed, choose the one that is the closest match.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good\" class=\"button\">New Media</span>:
+		</td>
+		<td>
+			<a href=\"an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Add Files</a>
+		</td>
+		<td class=\"subtle_text\">
+			This will open a new window where you can upload new disks to choose from.<br />
+			Once finished, please reload this page to see them.<br />
 		</td>
 	</tr>
 	<tr>
@@ -3217,10 +3234,10 @@ sub confirm_delete_vm
 		<td>
 			<br />
 			<u><b>This is a permanent and unreversable action!</b></u><br />
+			<br />
 			The virtual machine, along with all of it's data, will be deleted.<br />
-			If the virtual machine is running, it will be stopped via the cluster.<br />
-			Once off, it will be removed from the cluster's management.<br />
-			Finally, it's definition file will be deleted and it's backing storage will be freed up.<br />
+			It will be removed from the cluster's management and forced off, if necessary.<br />
+			The definition file will be deleted and it's backing storage will be wiped clean.<br />
 			<br />
 		</td>
 	</tr>
@@ -3230,9 +3247,7 @@ sub confirm_delete_vm
 		</td>
 		<td>
 			<br />
-			This is effectively the same as reformatting a server's hard drive,<br />
-			pulling apart a server and making all of it's resources available for new servers later.<br />
-			There is no way to undo this action! Ensure you have backed up any data on the machine before proceeding!<br />
+			Ensure you have backed up any data on the machine before proceeding!<br />
 			<br />
 		</td>
 	</tr>
@@ -4056,12 +4071,6 @@ sub delete_vm
 	my $node         = $conf->{'system'}{cluster}{node1_name};
 	my $node1        = $conf->{'system'}{cluster}{node1_name};
 	my $node2        = $conf->{'system'}{cluster}{node2_name};
-	# I need both nodes to be running for this.
-	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
-	{
-		$proceed      = 0;
-		$abort_reason = "<b>Removal of $say_vm has been aborted!</b><br />\nThis program requires that both nodes be running in order to remove a VM.<br />If this is not possible, manual removal of the VM will be required.\n";
-	}
 	if (not $conf->{vm}{$vm}{host})
 	{
 		$proceed      = 0;
@@ -4073,37 +4082,82 @@ sub delete_vm
 		$say_host = $conf->{vm}{$vm}{host};
 		$host     = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
 	}
+	
 	# Get to work!
 	print "
 <table align=\"center\">
 	<tr>
-		<td>
-			<span class=\"highligh_bad\"><b>Begining the process of deleting $say_vm now...</b></span><br />
-			This can take a while, please be patient!
+		<td class=\"highlight_ready\">
+			<b>Begining the process of deleting $say_vm now...</b></span><br />
 		</td>
 	</tr>
 ";
+
 	if ($proceed)
 	{
 		print "
 	<tr>
 		<td>
-			System call output below:<br />
-			Please be patient, this might take a few minutes.<br />
+			<br />
+			Removing the VM from cluster management:<br />
+";
+		### Note: I don't use 'path' for these calls as the location of
+		###       a program on the cluster may differ from the local
+		###       copy. Further, I will have $PATH on the far side of
+		###       the ssh call anyway.
+		# First, delete the VM from the cluster.
+		my $ccs_exit_code;
+		   $proceed = 0;
+		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --rmvm $conf->{cgi}{vm} --activate --sync; echo ccs:\\\$?\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /ccs:(\d+)/)
+			{
+				$ccs_exit_code = $1;
+			}
+			else
+			{
+				$line = parse_text_line($conf, $line);
+				print "<span class=\"fixed_width\">$line</span><br />\n";
+			}
+		}
+		record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
+		if ($ccs_exit_code eq "0")
+		{
+			print "The VM has been removed successfully.<br />\n";
+			$proceed = 1;
+		}
+		else
+		{
+			print "<span class=\"highlight_bad\">Error</span>! It would appear that something went wrong!<br />\n";
+			print "The removal call should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$ccs_exit_code</span> was received.<br />\n";
+			print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+		}
+		print "
+			<br />
 		</td>
 	</tr>
 ";
-		# Stop the VM if needed.
-		my $stop_exit_code = 1;
-		if ($stop_vm)
+		my $stop_exit_code;
+		if (($stop_vm) && ($ccs_exit_code eq "0"))
 		{
 			print "
 	<tr>
 		<td>
 			<br />
-			<table class=\"hidden_table\" width=\"100%\">
+			The VM appears to still be running. I will force it off now.
+			<br />
 ";
-			my $sc = "$conf->{path}{ssh} root\@$host \"$conf->{path}{clusvcadm} -d $vm; echo clusvcadm:\\\$?\"";
+			   $proceed = 0;
+			my $virsh_exit_code;
+			my $sc = "$conf->{path}{ssh} root\@$host \"virsh destroy $say_vm; echo virsh:\\\$?\"";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
 			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -4111,78 +4165,101 @@ sub delete_vm
 			{
 				chomp;
 				my $line = $_;
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
-				$line =~ s/Local machine/$say_host/;
+				next if not $line;
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				if ($line =~ /clusvcadm:(\d+)/)
+				if ($line =~ /virsh:(\d+)/)
 				{
-					$stop_exit_code = $1;
+					$virsh_exit_code = $1;
 				}
 				else
 				{
 					$line = parse_text_line($conf, $line);
-					my $message = ($line =~ /^(.*)\[/)[0];
-					my $status  = ($line =~ /(\[.*)$/)[0];
-					if (not $message)
-					{
-						$message = $line;
-						$status  = "";
-					}
-					print "
-				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
-						$message
-					</td>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
-						$status
-					</td>
-				</tr>
-";
+					print "<span class=\"fixed_width\">$line</span><br />\n";
 				}
 			}
 			$fh->close();
+			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+			if ($virsh_exit_code eq "0")
+			{
+				print "The VM has been forced off.<br />\n";
+				$proceed = 1;
+			}
+			else
+			{
+				print "<span class=\"highlight_bad\">Error</span>! It would appear that something went wrong!<br />\n";
+				print "The call to destroy the VM should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />\n";
+				print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+			}
 			print "
-			</table>
 			<br />
 		</td>
 	</tr>
 ";
 		}
-		my $edit_cluster_conf = 0;
-		if ($stop_exit_code)
+		
+		# Now delete the backing LVs
+		if ($proceed)
 		{
-			# Failed to stop, abort.
 			print "
 	<tr>
 		<td>
-			Stopping the $say_vm virtual machine failed. Aborting.
+			<br />
+			Freeing up the VM's storage now.<br />
+			<br />
+";
+			foreach my $lv (keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
+			{
+				print "Deleting <span class=\"fixed_width\">$lv</span>...<br />\n";
+				my $lvremove_exit_code;
+				my $sc = "$conf->{path}{ssh} root\@$host \"lvremove -f $lv; echo lvremove:\\\$?\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					next if not $line;
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /lvremove:(\d+)/)
+					{
+						$lvremove_exit_code = $1;
+					}
+					else
+					{
+						$line = parse_text_line($conf, $line);
+						print "<span class=\"fixed_width\">$line</span><br />\n";
+					}
+				}
+				record($conf, "$THIS_FILE ".__LINE__."; lvremove exit code: [$lvremove_exit_code]\n");
+				if ($lvremove_exit_code eq "0")
+				{
+					print "Removed successfully<br />\n";
+				}
+				else
+				{
+					print "<span class=\"highlight_warning\">Warning</span>! It would appear that <span class=\"fixed_width\">$lv</span> was not removed.<br />\n";
+					print "The call to remove the VM's storage should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$lvremove_exit_code</span> was received.<br />\n";
+					print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+				}
+			}
+			
+			# Regardless of whether the removal succeeded, archive
+			# and then delete the definition file.
+			my $file   = $conf->{vm}{$vm}{definition_file};
+			archive_file($conf, $host, $file);
+			remove_vm_definition($conf, $host, $file);
+			print "
+			<br />
 		</td>
 	</tr>
 	<tr>
 		<td>
-			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
-			&nbsp;
+			<span class=\"highlight_good\">Success</span>! The server <span class=\"fixed_width\">$say_vm</span> has been removed.<br />
 		</td>
 	</tr>
-</table>
-<br />
 ";
-			footer($conf);
-			exit(1);
 		}
-		
-		# VM has stopped. Delete it from the cluster.
-		print "
-	<tr>
-		<td>
-			Stopping the $say_vm virtual machine succeeded.<br />
-			Removing it from the cluster now.<br />
-		</td>
-	</tr>
-";
-		update_cluster_conf($conf, "remove", $vm, $node);
 	}
 	else
 	{
@@ -4206,6 +4283,113 @@ sub delete_vm
 ";
 	
 	return(0);
+}
+
+# This deletes a VM definition file.
+sub remove_vm_definition
+{
+	my ($conf, $node, $file) = @_;
+	
+	# We only delete VM definition files.
+	if ($file !~ /^\/shared\/definitions\/.*?\.xml/)
+	{
+		print "<span class=\"highlight_bad\">CRITICAL ERROR</span>! It would appear that something went very wrong!<br />\n";
+		print "I was asked to delete a VM definition file, but was asked to delete <span class=\"fixed_width\">$file</span>.<br />\n";
+		print "For security reasons, only files in <span class=\"fixed_width\">/shared/definitions/</span> can be deleted.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+		return (1);
+	}
+	
+	# 'rm' seems to return '0' no matter what. So I use the 'ls' to ensure
+	# the file is gone. 'ls' will return '2' on file not found.
+	my $ls_exit_code;
+	my $sc = "$conf->{path}{ssh} root\@$node \"rm -f $file; ls $file; echo ls:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /ls:(\d+)/)
+		{
+			$ls_exit_code = $1;
+		}
+		else
+		{
+			### There will be output, I don't care about it.
+			#$line = parse_text_line($conf, $line);
+			#print "<span class=\"fixed_width\">$line</span><br />\n";
+		}
+	}
+	$fh->close();
+	record($conf, "$THIS_FILE ".__LINE__."; ls exit code: [$ls_exit_code]\n");
+	if ($ls_exit_code eq "2")
+	{
+		print "The file <span class=\"fixed_width\">$file</span> has been deleted.<br />\n";
+	}
+	else
+	{
+		print "<span class=\"highlight_bad\">Warning</span>! It would appear that something went wrong!<br />\n";
+		print "I tried to delete the file <span class=\"fixed_width\">$file</span> and then verify that it was indeed removed.<br />\n";
+		print "This should have returned <span class=\"fixed_width\">2</span>, but <span class=\"fixed_width\">$ls_exit_code</span> was returned instead.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+	}
+	
+	return (0);
+}
+
+# This copies the passed file to 'node:/shared/archive'
+sub archive_file
+{
+	my ($conf, $node, $file) = @_;
+	
+	### TODO: Check/create the archive directory.
+	
+	my ($dir, $file_name) = ($file =~ /^(.*)\/(.*?)$/);
+	my @time = localtime;
+	# This appends ".yyyy-mm-dd_hh:mm:ss" to the file name
+	my $date = ($time[5] += 1900)."-".sprintf("%.2d", ($time[4]++))."-".sprintf("%.2d", $time[3])."_".sprintf("%.2d", $time[2]).":".sprintf("%.2d", $time[1]).":".sprintf("%.2d", $time[0]);
+	my $dest = "/shared/archive/$file_name.$date";
+
+	my $cp_exit_code;
+	my $sc = "$conf->{path}{ssh} root\@$node \"cp $file $dest; echo cp:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /cp:(\d+)/)
+		{
+			$cp_exit_code = $1;
+		}
+		else
+		{
+			$line = parse_text_line($conf, $line);
+			print "<span class=\"fixed_width\">$line</span><br />\n";
+		}
+	}
+	$fh->close();
+	record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
+	if ($cp_exit_code eq "0")
+	{
+		print "The file <span class=\"fixed_width\">$file</span> has been archived as <span class=\"fixed_width\">$dest</span>.<br />\n";
+	}
+	else
+	{
+		print "<span class=\"highlight_bad\">Warning</span>! It would appear that something went wrong!<br />\n";
+		print "I tried to archive the file <span class=\"fixed_width\">$file</span> as <span class=\"fixed_width\">$dest</span>.<br />\n";
+		print "This should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$cp_exit_code</span> was returned instead.<br />\n";
+		print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />\n";
+	}
+	
+	return (0);
 }
 
 # This adds or removes a VM from the cluster.conf file.
@@ -5670,7 +5854,7 @@ sub display_details2
 			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
-		my $stop_button      = "<span class=\"disabled_button\">Shut Down</span>";
+		my $stop_button      = "<span class=\"disabled_button\">Power Off</span>";
 		my $force_off_button = "<span class=\"disabled_button\">Force Off</span>";
 		if ($conf->{vm}{$vm}{can_stop})
 		{
@@ -5688,7 +5872,8 @@ sub display_details2
 		
 		# I need both nodes up to delete a VM.
 		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
-		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 		{
 			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		}
@@ -6441,10 +6626,14 @@ sub read_vm_definition
 	{
 		error($conf, "I was asked to look at a VM's definition file, but no VM was specified.", 1);
 	}
-	my $this_vm = ($vm =~ /vm:(.*)/)[0];
+	my $this_vm = $vm;
+	if ($vm =~ /vm:(.*)/)
+	{
+		$this_vm = $1;
+	}
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); VM: [$vm]/[$this_vm], node: [$node], definition: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
@@ -6564,19 +6753,19 @@ sub read_vm_definition
 		# Pull out disk info.
 		if (($line =~ /<disk/) && ($line =~ /type='block'/) && ($line =~ /device='disk'/))
 		{
-			$in_disk=1;
+			$in_disk = 1;
 			next;
 		}
 		elsif ($line =~ /<\/disk/)
 		{
-			$in_disk=0;
+			$in_disk = 0;
 			next;
 		}
 		if ($in_disk)
 		{
 			if ($line =~ /source dev='(.*?)'/)
 			{
-				my $lv=$1;
+				my $lv = $1;
 				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], checking LV: [$lv]\n");
 				check_lv($conf, $node, $vm, $lv);
 			}
@@ -6853,8 +7042,7 @@ sub display_vm_state_and_controls
 	print "
 <table width=\"100%\">
 	<tr>
-		<!-- Reset to '10' when enabling VM deletion -->
-		<td colspan=\"8\">
+		<td colspan=\"10\">
 			<b>Virtual Machines - Status and Control</b>
 		</td>
 	</tr>
@@ -6871,8 +7059,7 @@ sub display_vm_state_and_controls
 		<td>
 			Prefered Host
 		</td>
-		<!-- Reset to '6' when enabling VM deletion -->
-		<td colspan=\"4\">
+		<td colspan=\"6\">
 			<i>Controls</i>
 		</td>
 	</tr>
@@ -6936,8 +7123,11 @@ sub display_vm_state_and_controls
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
 		# I need both nodes up to delete a VM.
+		#my $say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
+		# I need both nodes up to delete a VM.
 		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
-		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
+		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 		{
 			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		}
@@ -6986,14 +7176,12 @@ sub display_vm_state_and_controls
 		<td>
 			$force_off_button
 		</td>
-		<!-- Disabled in this release
 		<td>
 			&nbsp;
 		</td>
 		<td>
 			$say_delete_button
 		</td>
-		-->
 	</tr>
 ";
 	}

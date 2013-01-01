@@ -192,6 +192,38 @@ sub header
 	return (0);
 }
 
+# This looks for an executable.
+sub find_executables
+{
+	my ($conf) = @_;
+	
+	my $search = $ENV{'PATH'};
+	#print "Searching in: [$search] for programs.\n";
+	foreach my $prog (keys %{$conf->{path}})
+	{
+		#print "Seeing if: [$prog] is really at: [$conf->{path}{$prog}]: ";
+		if ( -e $conf->{path}{$prog} )
+		{
+			#print "Found it.\n";
+		}
+		else
+		{
+			#print "Not found, searching for it now.\n";
+			foreach my $dir (split /:/, $search)
+			{
+				my $full_path = "$dir/$prog";
+				if ( -e $full_path )
+				{
+					$conf->{path}{$prog} = $full_path;
+					#print "Found it in: [$full_path]\n";
+				}
+			}
+		}
+	}
+	
+	return (0);
+}
+
 sub footer
 {
 	my ($conf) = @_;
