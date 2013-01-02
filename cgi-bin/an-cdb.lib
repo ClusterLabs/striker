@@ -1136,7 +1136,7 @@ sub parse_drbd_status
 	if (not $resources)
 	{
 		# DRBD isn't running.
-		record($conf, "$THIS_FILE ".__LINE__."; DRBD does not appear to be running on node: [$node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; DRBD does not appear to be running on node: [$node]\n");
 	}
 	
 	return(0);
@@ -1251,7 +1251,7 @@ sub parse_clustat
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
-			record($conf, "$THIS_FILE ".__LINE__."; CMAN does not appear to be running on node: [$node]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; CMAN does not appear to be running on node: [$node]\n");
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 			$conf->{node}{$node}{enable_join}                = 1;
 		}
@@ -2103,6 +2103,30 @@ sub process_task
 		# confirm
 		add_vm_to_cluster($conf);
 	}
+	elsif ($conf->{cgi}{task} eq "manage_vm")
+	{
+	}
+	elsif ($conf->{cgi}{task} eq "media")
+	{
+		if ($conf->{cgi}{name} =~ /^mount:(.*)/)
+		{
+			# Mount the disc
+			my $media_name = $1;
+			mount_media($conf, $media_name);
+		}
+		elsif ($conf->{cgi}{name} =~ /^unmount:(.*)/)
+		{
+			# Unmount the disk
+			my $media_name = $1;
+			unmount_media($conf, $media_name);
+		}
+		else
+		{
+			# Show the list of available media with the 
+			# mount/unmount options.
+			show_media($conf);
+		}
+	}
 	else
 	{
 		print "<pre>\n";
@@ -2114,6 +2138,20 @@ sub process_task
 	}
 	
 	return(0);
+}
+
+# This takes a disc image name and "ejects" it from the specified VM 
+sub mount_media
+{
+	my ($conf) = @_;
+}
+
+sub unmount_media
+{
+}
+
+sub show_media
+{
 }
 
 sub add_vm_to_cluster
@@ -2159,8 +2197,8 @@ sub add_vm_to_cluster
 	print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_ready_bold\" colspan=\"2\">
-			Adding the new $vm server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
+		<td colspan=\"2\">
+			<b>Adding the new <span class=\"fixed_width\">$vm</span> server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
 		</td>
 	</tr>
 	";
@@ -2169,8 +2207,8 @@ sub add_vm_to_cluster
 	{
 		print "
 	<tr>
-		<td class=\"highlight_bad\">
-			<b>Error</b>
+		<td class=\"highlight_bad_bold\">
+			Error
 		</td>
 		<td>
 			I was unable to determine which failover domain to use for this new machine.<br />
@@ -2188,7 +2226,7 @@ sub add_vm_to_cluster
 	
 	print "
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Checking VM State
 		</td>
 		<td>
@@ -2294,8 +2332,8 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_warning\">
-			<b>Warning</b>
+		<td class=\"highlight_warning_bold\">
+			Warning
 		</td>
 		<td>
 			<br />
@@ -2324,7 +2362,7 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Creating Definition
 		</td>
 		<td>
@@ -2363,8 +2401,8 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_warning\">
-			<b>Warning</b>
+		<td class=\"highlight_warning_bold\">
+			Warning
 		</td>
 		<td>
 			It would appear that something went wrong!<br />
@@ -2385,7 +2423,7 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Configuring Cluster
 		</td>
 		<td>
@@ -2396,7 +2434,7 @@ sub add_vm_to_cluster
 	
 	my $ccs_exit_code;
 	$sc =  "$conf->{path}{ssh} root\@$node \"ccs ";
-	$sc .= "-h localhost $conf->{cgi}{vm} --activate --sync --addvm $vm ";
+	$sc .= "-h localhost $conf->{cgi}{vm} --activate --sync --password \"$conf->{'system'}{ricci_password}\" --addvm $vm ";
 	$sc .= "domain=\"$failover_domain\" ";
 	$sc .= "path=\"/shared/definitions/\" ";
 	$sc .= "autostart=\"0\" ";
@@ -2425,6 +2463,7 @@ sub add_vm_to_cluster
 		}
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
+	$ccs_exit_code = "-" if not defined $ccs_exit_code;
 	if ($ccs_exit_code eq "0")
 	{
 		print "The VM has been added successfully.<br />\n";
@@ -2439,13 +2478,13 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_bad\">
-			<b>Error</b>
+		<td class=\"highlight_bad_bold\">
+			Error
 		</td>
 		<td>
 			<br />
 			It would appear that something went wrong!<br />
-			The call to add the new VM to the cluster should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$ccs_exit_code</span> was received.<br />
+			The call to add the new VM to the cluster should have returned: [<span class=\"fixed_width\">0</span>], but [<span class=\"fixed_width\">$ccs_exit_code</span>] was received.<br />
 			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
 			<br />
 		</td>
@@ -2460,7 +2499,7 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Enabling the VM
 		</td>
 		<td>
@@ -2505,8 +2544,8 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_bad\">
-			<b>Error</b>
+		<td class=\"highlight_bad_bold\">
+			Error
 		</td>
 		<td>
 			<br />
@@ -2526,8 +2565,8 @@ sub add_vm_to_cluster
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
-			<b>Success</b>!
+		<td class=\"highlight_good_bold\">
+			Success!
 		</td>
 		<td>
 			The new virtual machine has been added to the cluster.
@@ -2554,12 +2593,12 @@ sub provision_vm
 	print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_ready_bold\" colspan=\"2\">
-			Creating your new $conf->{new_vm}{name} server now.
+		<td colspan=\"2\">
+			<b>Creating your new <span class=\"fixed_width\">$conf->{new_vm}{name}</span> server now.</b>
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Starting
 		</td>
 		<td>
@@ -2568,7 +2607,7 @@ sub provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_warning\">
+		<td class=\"highlight_warning_bold\">
 			Note!
 		</td>
 		<td>
@@ -2583,7 +2622,7 @@ sub provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_good\">
+		<td class=\"highlight_good_bold\">
 			Beginning
 		</td>
 		<td>
@@ -3033,7 +3072,7 @@ sub confirm_provision_vm
 	<form method=\"post\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready\">Create a new VM on the <b>$conf->{cgi}{cluster}</b> cluster</span>
+			<b>Create a new VM on the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster</b>
 		</td>
 	</tr>
 	<tr>
@@ -3048,8 +3087,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Server Name</span>:
+		<td class=\"highlight_good_bold\">
+			Server Name:
 		</td>
 		<td>
 			<input type=\"text\" name=\"name\" value=\"$conf->{cgi}{name}\" style=\"width: 300px\">
@@ -3060,16 +3099,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td class=\"highlight_warning\">
-			Careful!
-		</td>
-		<td colspan=\"2\">
-			If a server with this name used to exist, and if it's storage remains, it will be deleted and replaced!<br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_good\">Optimize for</span>:
+		<td class=\"highlight_good_bold\">
+			Optimize for:
 		</td>
 		<td>
 			<!-- Update this list by referencing 'virt-install --os_variant list' and feeding it through 'parse-os_variant.pl'. -->
@@ -3081,20 +3112,20 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\" class=\"button\">New Media</span>:
+		<td class=\"highlight_good_bold\">
+			New Media:
 		</td>
 		<td>
-			<a href=\"an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Add Files</a>
+			<a href=\"an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Add a New Disc</a>
 		</td>
 		<td class=\"subtle_text\">
-			This will open a new window where you can upload new disks to choose from.<br />
+			This will open a new window where you can upload new disc images.<br />
 			Once finished, please reload this page to see them.<br />
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Install From</span>:
+		<td class=\"highlight_good_bold\">
+			Install From:
 		</td>
 		<td>
 			$select_install_iso
@@ -3104,8 +3135,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Driver Disc</span>:
+		<td class=\"highlight_good_bold\">
+			Driver Disc:
 		</td>
 		<td>
 			$select_driver_iso
@@ -3117,8 +3148,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Memory (RAM)</span>:
+		<td class=\"highlight_good_bold\">
+			Memory (RAM):
 		</td>
 		<td>
 			(<span class=\"subtle_text\">$say_max_ram free</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix
@@ -3128,8 +3159,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Number of CPUs</span>:
+		<td class=\"highlight_good_bold\">
+			Number of CPUs:
 		</td>
 		<td>
 			$select_cpu_cores
@@ -3141,8 +3172,8 @@ sub confirm_provision_vm
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class=\"highlight_good\">Storage Space</span>:
+		<td class=\"highlight_good_bold\">
+			Storage Space:
 		</td>
 		<td>
 			$say_selects
@@ -4520,7 +4551,7 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
+		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --password \"$conf->{'system'}{ricci_password}\" --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -4848,8 +4879,10 @@ sub poweroff_node
 	</tr>
 	<tr>
 		<td>
+			<br />
 			This will complete once $node_cluster_name has closed the connection.<br />
 			It may take a minute before the node shows as powered off on the dashboard.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -5584,8 +5617,10 @@ sub withdraw_node
 	</tr>
 	<tr>
 		<td>
+			<br />
 			Stopping the cluster resource manager now...<br />
 			<span class=\"highlight_ready_bold\">Please be patient</span>! This can take a minute.
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -5641,8 +5676,10 @@ sub withdraw_node
 			print "
 	<tr>
 		<td>
+			<br />
 			Cluster resource manager stopped successfully.<br />
 			Stopping the cluster communication layer now...<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -5699,18 +5736,24 @@ sub withdraw_node
 			print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			Cluster communication layer failed to stop!<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
 		<td>
+			<br />
 			<b>Was something holding open the cluster storage?</b><br />
 			If a shell was logged in and sitting in a shared directory, a failure like this can occur.<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
 		<td class=\"highlight_ready\">
+			<br />
 			Attempting to recover now...<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -5767,7 +5810,9 @@ sub withdraw_node
 					print "
 	<tr>
 		<td class=\"highlight_ready\">
+			<br />
 			Cluster communication layer started successfully!<br />
+			<br />
 		</td>
 	</tr>
 ";
@@ -5796,9 +5841,11 @@ sub withdraw_node
 			print "
 	<tr>
 		<td class=\"highlight_bad\">
+			<br />
 			Cluster resource manager failed to stop!<br />
 			Was something holding open the cluster storage?<br />
 			If a shell was logged in and sitting in a shared directory, a failure like this can occur.<br />
+			<br />
 		</td>
 	</tr>
 ";
@@ -5821,7 +5868,9 @@ sub withdraw_node
 <table align=\"center\">
 	<tr>
 		<td>
+			<br />
 			<span class=\"highlight_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -6695,7 +6744,7 @@ sub display_free_resources
 	my $node2    = $conf->{'system'}{cluster}{node2_name};
 	my $say_link = "<span class=\"disabled_button\">Build a New Server</span>";
 	
-	record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($enough_storage) && 
 	($free_ram > 1073741824) && 
 	($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
@@ -7291,12 +7340,13 @@ sub check_vms
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
-		if (not $conf->{vm}{$vm}{host})
+		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{'system'}{ignore_missing_vm}))
 		{
 			error($conf, "I found a definition for a VM named: [<span class=\"highlight_detail\">$say_vm</span>], but there doesn't seem to be an entry in <span class=\"highlight_detail\">cluster.conf</span> for it.", 0);
 			next;
 		}
 		
+		$conf->{vm}{$vm}{host} = "" if not defined $conf->{vm}{$vm}{host};
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{host}], node1 / node2 short names: [$short_node1] / [$short_node2]\n");
 		if ($conf->{vm}{$vm}{host} =~ /$short_node1/)
 		{
@@ -7510,7 +7560,8 @@ sub display_vm_state_and_controls
 		{
 			my $on_host =  $conf->{vm}{$vm}{host};
 			   $on_host =~ s/\..*$//;
-			if ($on_host eq $prefered_host)
+			#record($conf, "$THIS_FILE ".__LINE__."; on_host: [$on_host], prefered_host: [$prefered_host]\n");
+			if (($on_host eq $prefered_host) || ($on_host eq "none"))
 			{
 				$prefered_host = "<span class=\"highlight_good\">$prefered_host</span>";
 			}
@@ -7518,6 +7569,7 @@ sub display_vm_state_and_controls
 			{
 				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
 			}
+			#record($conf, "$THIS_FILE ".__LINE__."; prefered_host: [$prefered_host]\n");
 		}
 		
 		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
@@ -7575,7 +7627,7 @@ sub display_vm_state_and_controls
 		print "
 	<tr>
 		<td>
-			<span class=\"fixed_width\">$say_vm</span>
+			<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>
 		</td>
 		<td>
 			$conf->{vm}{$vm}{say_node1}

@@ -84,16 +84,23 @@ td {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 }
 
+.highlight_detail_bold {
+	color: #13749a;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-weight: bold;
+}
+
 .highlight_good {
 	color: #1a9a13;
 }
 
-.highlight_ready {
-	color: #13749a;
+.highlight_good_bold {
+	color: #1a9a13;
+	font-weight: bold;
 }
 
-.highlight_note {
-	color: #009999;
+.highlight_ready {
+	color: #13749a;
 }
 
 .highlight_ready_bold {
@@ -101,14 +108,34 @@ td {
 	font-weight: bold;
 }
 
+.highlight_note {
+	color: #009999;
+}
+
+.highlight_note_bold {
+	color: #009999;
+	font-weight: bold;
+}
+
 .highlight_warning {
 	color: #936c02;
-/* 	font-weight: bold; */
 	font-style: italic;
+}
+
+.highlight_warning_bold {
+	color: #936c02;
+	font-style: italic;
+	font-weight: bold;
 }
 
 .highlight_bad {
 	color: #9a131a;
+}
+
+.highlight_bad_bold {
+	color: #9a131a;
+	font-style: italic;
+	font-weight: bold;
 }
 
 .highlight_dangerous {

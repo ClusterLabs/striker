@@ -61,6 +61,7 @@ my $conf={
 	},
 	'system'		=>	{
 		debug			=>	1,
+		ricci_password		=>	"file:/var/www/home/ricci_pw.txt",
 		username		=>	getpwuid( $< ),
 		config_read		=>	0,
 		up_nodes		=>	0,
@@ -134,6 +135,23 @@ my $conf={
 
 find_executables($conf);
 read_conf($conf);
+
+# Read/escape passwords.
+if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
+{
+	my $file = $1;
+	my $sc = "$file";
+	#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		$conf->{'system'}{ricci_password} = $_;
+		last;
+	}
+	$fh->close();
+}
 
 # I need to convert the global configuration of the clusters to the format I use here.
 convert_cluster_config($conf);
