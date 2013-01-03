@@ -2105,6 +2105,7 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "manage_vm")
 	{
+		manage_vm($conf);
 	}
 	elsif ($conf->{cgi}{task} eq "media")
 	{
@@ -2152,6 +2153,321 @@ sub unmount_media
 
 sub show_media
 {
+}
+
+# This shows or changes the configuration of the VM, including mounted media.
+sub manage_vm
+{
+	my ($conf) = @_;
+	
+	# I need to get a list of the running VM's resource/media, read the
+	# VM's current XML if it's up, otherwise read the stored XML, read the
+	# available ISOs and then display everything in a form. If the user
+	# submits the form and something is different, re-write the stored 
+	# config and, if possible, make the required changes immediately.
+	my $cluster = $conf->{cgi}{cluster};
+	my $vm      = $conf->{cgi}{vm};
+	my $say_vm  = ($vm =~ /vm:(.*)/)[0];
+	my $node1   = $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2   = $conf->{clusters}{$cluster}{nodes}[1];
+	
+	# First, see if the VM is up.
+	scan_cluster($conf);
+	
+	# First up, if the cluster is not running, go no further.
+	record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::gfs2::exit_code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}], node::${node2}::daemon::gfs2::exit_code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
+	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code}))
+	{
+		print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Not Ready
+		</td>
+		<td>
+			I am sorry, but the cluster storage isn't running on either node.<br />
+			Please try again once the cluster is storage has started on at least one of the nodes.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	
+	# Now choose the node to work through.
+	my $node;
+	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
+	if ($conf->{vm}{$vm}{current_host})
+	{
+		# Read the current VM config from virsh.
+		$node = $conf->{vm}{$vm}{current_host};
+		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is running on: [$node], will read: [$conf->{vm}{$vm}{definition_file}].\n");
+	}
+	else
+	{
+		if ($conf->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0")
+		{
+			# Node 1 is up.
+			$node = $node1;
+		}
+		else
+		{
+			# Node 2 must be up.
+			$node = $node2;
+		}
+		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is not running, will read: [$conf->{vm}{$vm}{definition_file}]. Will use: [$node].\n");
+	}
+	
+	# Get the list of files on the /shared/files/ directory.
+	my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		if ($line =~ /\s(\d+)-blocks\s/)
+		{
+			$conf->{partition}{shared}{block_size} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
+		}
+		elsif ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
+		{
+			$conf->{partition}{shared}{total_space}  = $1;
+			$conf->{partition}{shared}{used_space}   = $2;
+			$conf->{partition}{shared}{free_space}   = $3;
+			$conf->{partition}{shared}{used_percent} = $4;
+			#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
+		}
+		elsif ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
+		{
+			my $type   = $1;
+			my $mode   = $2;
+			my $user   = $3;
+			my $group  = $4;
+			my $size   = $5;
+			my $month  = $6;
+			my $day    = $7;
+			my $time   = $8; # might be a year, look for '\d+:\d+'.
+			my $file   = $9;
+			my $target = "";
+			if ($type eq "l")
+			{
+				# It's a symlink, strip off the destination.
+				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
+			}
+			$conf->{files}{shared}{$file}{type}   = $type;
+			$conf->{files}{shared}{$file}{mode}   = $mode;
+			$conf->{files}{shared}{$file}{user}   = $user;
+			$conf->{files}{shared}{$file}{group}  = $group;
+			$conf->{files}{shared}{$file}{size}   = $size;
+			$conf->{files}{shared}{$file}{month}  = $month;
+			$conf->{files}{shared}{$file}{day}    = $day;
+			$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
+			$conf->{files}{shared}{$file}{target} = $target;
+			#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
+		}
+	}
+	$fh->close();
+	
+	#read_vm_definition($conf, $node, $vm);
+# 	foreach my $var (sort {$a cmp $b} keys %{$conf->{vm}{$vm}})
+# 	{
+# 		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], var: [$var] -> [$conf->{vm}{$vm}{$var}].\n");
+# 	}
+
+	# Find which ISOs are mounted currently.
+	my $device   = "";
+	my $media    = "";
+	my $in_cdrom = 0;
+	### TODO: Find out why the XML data is doubled up.
+	foreach my $line (@{$conf->{vm}{$vm}{xml}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], xml line: [$line].\n");
+		last if $line =~ /<\/domain>/;
+		if ($line =~ /device='cdrom'/)
+		{
+			$in_cdrom = 1;
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into a CD-ROM child element on: [$line].\n");
+		}
+		elsif (($line =~ /<\/disk>/) && ($in_cdrom))
+		{
+			# Record what I found/
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting a CD-ROM child element on: [$line].\n");
+			$conf->{vm}{$vm}{cdrom}{$device}{media} = $media ? $media : "";
+			record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::cdrom::${device}::media: [$conf->{vm}{$vm}{cdrom}{$device}{media}].\n");
+			$in_cdrom = 0;
+			$device   = "";
+			$media    = "";
+		}
+		
+		if ($in_cdrom)
+		{
+			if ($line =~ /source file='(.*?)'/)
+			{
+				$media  = $1;
+				$media  =~ s/^.*\/(.*?)$/$1/;
+			}
+			elsif ($line =~ /target dev='(.*?)'/)
+			{
+				$device = $1;
+			}
+		}
+	}
+	
+	# Count how much RAM and CPU cores have been allocated.
+	$conf->{resources}{available_ram}   = 0;
+	$conf->{resources}{max_cpu_cores}   = 0;
+	$conf->{resources}{allocated_cores} = 0;
+	$conf->{resources}{allocated_ram}   = 0;
+	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	{
+		next if $vm !~ /^vm/;
+		# I check GFS2 because, without it, I can't read the VM's details.
+		if ($conf->{'system'}{gfs2_down})
+		{
+			$conf->{resources}{allocated_ram}   = "--";
+			$conf->{resources}{allocated_cores} = "--";
+		}
+		else
+		{
+			$conf->{resources}{allocated_ram}   += $conf->{vm}{$vm}{details}{ram};
+			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$conf->{resources}{allocated_ram}], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$conf->{resources}{allocated_cores} += $conf->{vm}{$vm}{details}{cpu_count};
+			#record($conf, "$THIS_FILE ".__LINE__."; allocated_cores: [$conf->{resources}{allocated_cores}], vm: [$vm], cpu_count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
+		}
+	}
+	
+	# Always knock off 2GB of RAM for the host OS.
+	$conf->{resources}{total_ram} -= $conf->{'system'}{unusable_ram};
+	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
+	$conf->{resources}{free_ram}  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $conf->{resources}{allocated_ram};
+	
+	# RAM, in bytes and CPU.
+	my $current_ram       = $conf->{vm}{$vm}{details}{ram};
+	my $current_cpu_count = $conf->{vm}{$vm}{details}{cpu_count};
+	my $available_ram     = $conf->{resources}{free_ram};
+	#record($conf, "$THIS_FILE ".__LINE__."; current_cpu_count: [$current_cpu_count], current_ram: [$current_ram (".bytes_to_hr($conf, $current_ram).")], available_ram: [$available_ram (".bytes_to_hr($conf, $available_ram).")]\n");
+	my $max_ram           = $available_ram + $current_ram;
+	my $max_cpu_count     = $conf->{resources}{total_threads};
+	#record($conf, "$THIS_FILE ".__LINE__."; max_ram: [$max_ram (".bytes_to_hr($conf, $max_ram).")], max_cpu_count: [$max_cpu_count]\n");
+	
+	# Create the media select boxes.
+	my $width = 400;
+	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
+	{
+		my $key                                      =  "media_$device";
+		$conf->{vm}{$vm}{cdrom}{device_keys}         .= "$key,";
+		$conf->{vm}{$vm}{cdrom}{$device}{say_select} =  "<select name=\"$key\" style=\"width: ${width}px;\">\n";
+		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
+		{
+			### TODO: If the media no longer exists, re-write the
+			###       XML definition immediately.
+			# Offer the eject button.
+			$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"eject\" selected>Eject $conf->{vm}{$vm}{cdrom}{$device}{media}</option>\n";
+		}
+		else
+		{
+			# Offer a blank entry
+			$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"empty\" selected>Leave empty</option>\n";
+		}
+		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+		{
+			next if ($file eq $conf->{vm}{$vm}{cdrom}{$device}{media});
+			$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\">Insert $file</option>\n";
+		}
+		$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "</select>\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; Media in: [$device] -> [$conf->{vm}{$vm}{cdrom}{$device}{media}]. [Select: $conf->{vm}{$vm}{cdrom}{$device}{say_select}]\n");
+	}
+	
+	# Allow the user to select the number of CPUs.
+	my $cpu_cores = [];
+	foreach my $core_num (1..$max_cpu_count)
+	{
+		if ($max_cpu_count > 9)
+		{
+			#push @{$cpu_cores}, sprintf("%.2d", $core_num);
+			push @{$cpu_cores}, $core_num;
+		}
+		else
+		{
+			push @{$cpu_cores}, $core_num;
+		}
+	}
+	$conf->{cgi}{cpu_cores} = $current_cpu_count if not $conf->{cgi}{cpu_cores};
+	my $select_cpu_cores    = build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
+	#record($conf, "$THIS_FILE ".__LINE__."; select_cpu_cores: [$select_cpu_cores]\n");
+	
+	# If the user sets the RAM to less than 1 GiB, warn them. If the user
+	# sets the RAM to less that 32 MiB, error out.
+	my $say_max_ram          = bytes_to_hr($conf, $max_ram);
+	my $say_current_ram      = bytes_to_hr($conf, $current_ram);
+	my ($current_ram_value, $current_ram_suffix) = (split/ /, $say_current_ram);
+	$conf->{cgi}{ram}        = $current_ram_value if not $conf->{cgi}{ram};
+	$conf->{cgi}{ram_suffix} = $current_ram_suffix if not $conf->{cgi}{ram_suffix};
+	my $select_ram_suffix    = build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	#record($conf, "$THIS_FILE ".__LINE__."; (<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix\n");
+	
+	# Finally, print it all
+	print "
+<table align=\"center\">
+	<form method=\"post\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Adjust the <span class=\"fixed_width\">$say_vm</span> server.</b>
+		</td>
+	</tr>
+";
+	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
+	{
+		next if $device eq "device_keys";
+		print "
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Optical Drive <span class=\"fixed_width\">$device</span>
+		</td>
+		<td>
+			$conf->{vm}{$vm}{cdrom}{$device}{say_select}
+		</td>
+	</tr>
+";
+	}
+	print "
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Memory (RAM):
+		</td>
+		<td style=\"text-align: left;\">
+			(<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Number of CPUs:
+		</td>
+		<td style=\"text-align: left;\">
+			$select_cpu_cores
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
+			<input type=\"hidden\" name=\"vm\" value=\"$conf->{cgi}{vm}\">
+			<input type=\"hidden\" name=\"device_keys\" value=\"$conf->{vm}{$vm}{cdrom}{device_keys}\">
+			<div class=\"align_right\"><input type=\"submit\" name=\"confirm\" value=\"Confirm\" class=\"button\"></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+";
+	
+	return (0);
 }
 
 sub add_vm_to_cluster
@@ -5032,7 +5348,7 @@ sub dual_boot
 <table align=\"center\">
 	<tr>
 		<td>
-			<span class=\"highlight_ready\"><b>Powering on both nodes in the cluster now...</b></span>
+			<b>Powering on both nodes in the cluster now...</b>
 		</td>
 	</tr>
 	<tr>
@@ -6605,7 +6921,7 @@ sub display_free_resources
 		# sufficient.
 		if (not $conf->{'system'}{clvmd_down})
 		{
-			$enough_storage =  1 if $conf->{resources}{vg}{$vg}{free_space} > 1073741824;
+			$enough_storage =  1 if $conf->{resources}{vg}{$vg}{free_space} > (2**30);
 			$vg_link        .= "$vg:$conf->{resources}{vg}{$vg}{free_space},";
 		}
 	}

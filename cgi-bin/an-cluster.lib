@@ -236,7 +236,7 @@ sub footer
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
-			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2012<br />
+			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2013<br />
 			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
 			</span>
 		</td>
@@ -802,7 +802,7 @@ sub post_scan_calculations
 # 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node2}{storage_service_name}], state: [$conf->{node}{$node2}{storage_service_state}]\n");
 # 		}
 # 	}
-	
+
 	return (0);
 }
 

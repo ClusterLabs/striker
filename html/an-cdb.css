@@ -195,6 +195,7 @@ select {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	color: #1f1f1f;
 	padding: 4px;
+	background-color: #ffffff;
 }
 
 /* Links */

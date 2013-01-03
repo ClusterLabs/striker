@@ -668,6 +668,8 @@ sub delete_file
 {
 	my ($conf) = @_;
 	
+	### TODO: Make sure to unmount from (and rewrite definition files of)
+	###       VMs currently using the file being deleted.
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
 	my ($node) = read_files_on_shared($conf);

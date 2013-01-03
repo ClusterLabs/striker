@@ -136,6 +136,7 @@ my $conf={
 find_executables($conf);
 read_conf($conf);
 
+### TODO: This has to be a PW per cluster
 # Read/escape passwords.
 if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
 {
@@ -152,6 +153,8 @@ if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
 	}
 	$fh->close();
 }
+$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
+$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
 
 # I need to convert the global configuration of the clusters to the format I use here.
 convert_cluster_config($conf);
@@ -194,6 +197,7 @@ get_cgi_vars($conf, [
 	"vg_list",
 	"name",
 	"os_variant",
+	"device_keys",
 ]);
 
 if ($conf->{cgi}{vg_list})
