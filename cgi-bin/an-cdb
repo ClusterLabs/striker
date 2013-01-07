@@ -201,6 +201,7 @@ get_cgi_vars($conf, [
 	"device",
 	"do",
 	"insert",
+	"change",
 ]);
 
 if ($conf->{cgi}{vg_list})

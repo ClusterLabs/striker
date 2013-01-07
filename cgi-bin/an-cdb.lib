@@ -1301,9 +1301,27 @@ sub parse_clustat
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$host], state: [$state]\n");
-				if ($state eq "disabled")
+				if (($state eq "disabled") || ($state eq "stopped"))
 				{
 					$host = "none";
+				}
+				if ($state eq "failed")
+				{
+					# Disable the VM.
+					my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					my $fh = IO::Handle->new();
+					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					while(<$fh>)
+					{
+						chomp;
+						my $line = $_;
+						$line =~ s/^\s+//;
+						$line =~ s/\s+$//;
+						$line =~ s/\s+/ /g;
+						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					}
+					$fh->close();
 				}
 				
 				# If the service is disabled, it will 
@@ -2141,6 +2159,29 @@ sub manage_vm
 	# First, see if the VM is up.
 	scan_cluster($conf);
 	
+	# Count how much RAM and CPU cores have been allocated.
+	$conf->{resources}{available_ram}   = 0;
+	$conf->{resources}{max_cpu_cores}   = 0;
+	$conf->{resources}{allocated_cores} = 0;
+	$conf->{resources}{allocated_ram}   = 0;
+	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	{
+		next if $vm !~ /^vm/;
+		# I check GFS2 because, without it, I can't read the VM's details.
+		if ($conf->{'system'}{gfs2_down})
+		{
+			$conf->{resources}{allocated_ram}   = "--";
+			$conf->{resources}{allocated_cores} = "--";
+		}
+		else
+		{
+			$conf->{resources}{allocated_ram}   += $conf->{vm}{$vm}{details}{ram};
+			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$conf->{resources}{allocated_ram}], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$conf->{resources}{allocated_cores} += $conf->{vm}{$vm}{details}{cpu_count};
+			#record($conf, "$THIS_FILE ".__LINE__."; allocated_cores: [$conf->{resources}{allocated_cores}], vm: [$vm], cpu_count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
+		}
+	}
+	
 	# First up, if the cluster is not running, go no further.
 	#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::gfs2::exit_code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}], node::${node2}::daemon::gfs2::exit_code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code}))
@@ -2188,6 +2229,227 @@ sub manage_vm
 		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is not running, will read: [$conf->{vm}{$vm}{definition_file}]. Will use: [$node].\n");
 	}
 	
+	# If I need to change the number of CPUs, do so now.
+	if ($conf->{cgi}{change})
+	{
+		my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+		
+		# Read the values the user passed, see if they differ from what
+		# was read in the config and, if they do differ, make sure the
+		# requested resources are available. If all this passes, 
+		# rewrite the definition file and tell the user to stop/start
+		# their server for the changes to take effect.
+		my $current_ram    =  $conf->{vm}{$vm}{details}{ram};
+		my $available_ram  =  ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+		   $current_ram    /= 1024;
+		my $requested_ram  =  hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
+		   $requested_ram  /= 1024;
+		my $max_ram        =  $available_ram / 1024;
+		my $current_cpus   =  $conf->{vm}{$vm}{details}{cpu_count};
+		my $requested_cpus =  $conf->{cgi}{cpu_cores};
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; - requested RAM:          [$requested_ram]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; - current RAM:            [$current_ram]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; - requested CPUs: [$requested_cpus]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
+		
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Changing <span class=\"fixed_width\">$say_vm</span>'s CPU and RAM...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Changing
+		</td>
+		<td>
+";
+		# Make sure something changed.
+		if (($current_ram ne $requested_ram) || ($current_cpus ne $requested_cpus))
+		{
+			# Something has changed. Make sure the request is sane,
+			my $max_cpus      = $conf->{resources}{total_threads};
+			record($conf, "$THIS_FILE ".__LINE__."; requested ram:    [$requested_ram]\n");
+			record($conf, "$THIS_FILE ".__LINE__.";       max ram:    [$max_ram]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; requested cpus:   [$requested_cpus]\n");
+			#record($conf, "$THIS_FILE ".__LINE__.";       max cpus:   [$max_cpus]\n");
+			if ($requested_ram > $max_ram)
+			{
+				my $say_requested_ram = bytes_to_hr($conf, ($requested_ram * 1024));
+				my $say_max_ram       = bytes_to_hr($conf, ($max_ram * 1024));
+				print "
+				Requested RAM was higher than available.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning!
+		</td>
+		<td>
+			You've requested that the new RAM for this server be: [<span class=\"fixed_width\">$say_requested_ram</span>].<br />
+			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$say_max_ram</span>].<br />
+			Did someone else allocate some of the free RAM to another server?<br />
+			No changes were made.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+				
+			}
+			elsif ($requested_cpus > $max_cpus)
+			{
+				print "
+				Requested CPU count was higher than available.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning!
+		</td>
+		<td>
+			You've requested that the CPU count for this server be: [<span class=\"fixed_width\">$requested_cpus</span>].<br />
+			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$max_cpus</span>].<br />
+			No changes were made.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			}
+			else
+			{
+				# Rewrite the XML file.
+				print "Setting the RAM to [<span class=\"fixed_width\">$conf->{cgi}{ram} $conf->{cgi}{ram_suffix}</span>] and the number of CPUs to: [<span class=\"fixed_width\">$requested_cpus</span>].<br />\n";
+				my $new_definition = "";
+				my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
+				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				my $raw;
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
+					if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
+					{
+						my $prefix = $1;
+						$line = "${prefix}<memory>$requested_ram<\/memory>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					if ($line =~ /^(.*?)<memory unit='.*?'>\d+<\/memory>/)
+					{
+						my $prefix = $1;
+						$line = "${prefix}<memory unit='KiB'>$requested_ram<\/memory>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					if ($line =~ /^(.*?)<currentMemory>\d+<\/currentMemory>/)
+					{
+						my $prefix = $1;
+						$line = "${prefix}<currentMemory>$requested_ram<\/currentMemory>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					if ($line =~ /^(.*?)<currentMemory unit='.*?'>\d+<\/currentMemory>/)
+					{
+						my $prefix = $1;
+						$line = "${prefix}<currentMemory unit='KiB'>$requested_ram<\/currentMemory>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					if ($line =~ /^(.*?)<vcpu>(\d+)<\/vcpu>/)
+					{
+						my $prefix = $1;
+						$line = "${prefix}<vcpu>$requested_cpus<\/vcpu>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					if ($line =~ /^(.*?)<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
+					{
+						my $prefix    = $1;
+						my $placement = $2;
+						$line = "${prefix}<vcpu placement='$placement'>$requested_cpus<\/vcpu>";
+						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					}
+					$new_definition .= "$line\n";
+				}
+				$fh->close();
+				$new_definition =~ s/(\S)\s+$/$1\n/;
+				#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+				
+				# Write the new definition file.
+				$fh = IO::Handle->new();
+				$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
+				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					print "\t\t\t<span class=\"code\">$_</span><br />\n";
+				}
+				$fh->close();
+				
+				# Wipe and re-read the definition file's XML and reset
+				# the amount of RAM and the number of CPUs allocated
+				# to this machine.
+				$conf->{vm}{$vm}{xml}                = [];	# this is probably redundant
+				@{$conf->{vm}{$vm}{xml}}             = split/\n/, $new_definition;
+				record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram KiB (".bytes_to_hr($conf, ($requested_ram * 1024)).")], vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+				$conf->{vm}{$vm}{details}{ram}       = ($requested_ram * 1024);
+				record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+				$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
+				$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
+				print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note_bold\">
+			Note!
+		</td>
+		<td>
+			You need to power off the server for the changes to take effect.<br />
+			<br />
+			There are two ways to do this:<br />
+			<br />
+			<table class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\" style=\"text-align: left;\">
+						<span class=\"code\">1.</span> Gracefully power off and then boot back up the server.<br />
+						<span class=\"code\">2.</span> While logged into your server, directly shut the OS down.<br />
+						<span class=\"code\"> &nbsp;</span> The cluster will automatically restart the server with the new settings.<br />
+					</td>
+				</tr>
+			</table>
+			<br />
+			Please don't just reboot. The configuration file is read on initial boot only.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			}
+		}
+		else
+		{
+			# Nothing changed.
+			print "
+			It looks like neither the amount of RAM or the number of CPUs has changed.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			No change was made to the server.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	
 	# If I've been asked to insert a disc, do so now.
 	my $do_insert    = 0;
 	my $insert_media = "";
@@ -2205,7 +2467,7 @@ sub manage_vm
 			$insert_media = $conf->{cgi}{$device_key};
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
 	if ($do_insert)
 	{
 		# Archive the current config, just in case.
@@ -2571,7 +2833,7 @@ sub manage_vm
 	
 	# Get the list of files on the /shared/files/ directory.
 	my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	my $raw;
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -2625,12 +2887,6 @@ sub manage_vm
 		}
 	}
 	$fh->close();
-	
-	#read_vm_definition($conf, $node, $vm);
-# 	foreach my $var (sort {$a cmp $b} keys %{$conf->{vm}{$vm}})
-# 	{
-# 		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], var: [$var] -> [$conf->{vm}{$vm}{$var}].\n");
-# 	}
 
 	# Find which ISOs are mounted currently.
 	my $this_device = "";
@@ -2670,41 +2926,9 @@ sub manage_vm
 			}
 		}
 	}
-	
-	# Count how much RAM and CPU cores have been allocated.
-	$conf->{resources}{available_ram}   = 0;
-	$conf->{resources}{max_cpu_cores}   = 0;
-	$conf->{resources}{allocated_cores} = 0;
-	$conf->{resources}{allocated_ram}   = 0;
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
-	{
-		next if $vm !~ /^vm/;
-		# I check GFS2 because, without it, I can't read the VM's details.
-		if ($conf->{'system'}{gfs2_down})
-		{
-			$conf->{resources}{allocated_ram}   = "--";
-			$conf->{resources}{allocated_cores} = "--";
-		}
-		else
-		{
-			$conf->{resources}{allocated_ram}   += $conf->{vm}{$vm}{details}{ram};
-			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$conf->{resources}{allocated_ram}], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
-			$conf->{resources}{allocated_cores} += $conf->{vm}{$vm}{details}{cpu_count};
-			#record($conf, "$THIS_FILE ".__LINE__."; allocated_cores: [$conf->{resources}{allocated_cores}], vm: [$vm], cpu_count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
-		}
-	}
-	
-	# Always knock off 2GB of RAM for the host OS.
-	$conf->{resources}{total_ram} -= $conf->{'system'}{unusable_ram};
-	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
-	$conf->{resources}{free_ram}  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $conf->{resources}{allocated_ram};
-	
-	# RAM, in bytes and CPU.
-	my $current_ram       = $conf->{vm}{$vm}{details}{ram};
-	my $current_cpu_count = $conf->{vm}{$vm}{details}{cpu_count};
-	my $available_ram     = $conf->{resources}{free_ram};
+
 	#record($conf, "$THIS_FILE ".__LINE__."; current_cpu_count: [$current_cpu_count], current_ram: [$current_ram (".bytes_to_hr($conf, $current_ram).")], available_ram: [$available_ram (".bytes_to_hr($conf, $available_ram).")]\n");
-	my $max_ram           = $available_ram + $current_ram;
+	my $current_cpu_count = $conf->{vm}{$vm}{details}{cpu_count};
 	my $max_cpu_count     = $conf->{resources}{total_threads};
 	#record($conf, "$THIS_FILE ".__LINE__."; max_ram: [$max_ram (".bytes_to_hr($conf, $max_ram).")], max_cpu_count: [$max_cpu_count]\n");
 	
@@ -2766,6 +2990,11 @@ sub manage_vm
 	my $select_cpu_cores    = build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
 	#record($conf, "$THIS_FILE ".__LINE__."; select_cpu_cores: [$select_cpu_cores]\n");
 	
+	# Something has changed. Make sure the request is sane,
+	my $current_ram   = $conf->{vm}{$vm}{details}{ram};
+	my $available_ram = ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	my $max_ram       = $available_ram;
+	
 	# If the user sets the RAM to less than 1 GiB, warn them. If the user
 	# sets the RAM to less that 32 MiB, error out.
 	my $say_max_ram          = bytes_to_hr($conf, $max_ram);
@@ -2793,10 +3022,12 @@ sub manage_vm
 		next if $device eq "device_keys";
 		my $say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_select};
 		my $say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_insert};
+		my $say_state  = "Drive empty";
 		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
 		{
 			$say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_in_drive};
 			$say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_eject};
+			$say_state  = "Disc in drive";
 		}
 		print "
 	<tr>
@@ -2804,6 +3035,7 @@ sub manage_vm
 			Optical Drive $i
 		</td>
 		<td style=\"text-align: left;\">
+			<span class=\"subtle_text\">$say_state</span><br />
 			$say_disk
 		</td>
 		<td>
@@ -2813,18 +3045,18 @@ sub manage_vm
 			$say_button
 		</td>
 	</tr>
-	<!-- <tr><td style=\"height:10px; padding:0px\" colspan=\"5\"></td></tr> -->
+	<tr><td style=\"height:10px; padding:0px\" colspan=\"5\"></td></tr>
 ";
 		$i++;
 	}
 	
 	print "
-	<!-- <tr>
+	<tr>
 		<td class=\"highlight_good_bold\">
 			Memory (RAM):
 		</td>
 		<td style=\"text-align: left;\">
-			<span class=\"subtle_text\">Maximum $say_max_ram</span><br />
+			<span class=\"subtle_text\">Currently $say_current_ram, Maximum $say_max_ram</span><br />
 			<input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix
 		</td>
 		<td>
@@ -2840,12 +3072,13 @@ sub manage_vm
 			Number of CPUs:
 		</td>
 		<td style=\"text-align: left;\">
+			<span class=\"subtle_text\">Currently $conf->{vm}{$vm}{details}{cpu_count}</span><br />
 			$select_cpu_cores
 		</td>
 		<td>
 			&nbsp;
 		</td>
-	</tr> -->
+	</tr>
 	<tr>
 		<td colspan=\"4\">
 			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
@@ -4599,6 +4832,109 @@ sub start_vm
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /Fail/i)
+			{
+				# The VM failed to start. Call a stop against it.
+				print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"highlight_warning_bold\" align=\"center\">
+						Warning!
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						It looks like the attempt to start the VM Failed. Will try to recover now...<br />
+					</td>
+				</tr>
+";
+				my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line = parse_text_line($conf, $line);
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$status
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$message
+					</td>
+				</tr>
+";
+				}
+				$fh->close();
+				print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"highlight_ready_bold\" align=\"center\">
+						Retry
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						Trying again to start the VM<br />
+					</td>
+				</tr>
+";
+				$sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				$fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line = parse_text_line($conf, $line);
+					if ($line =~ /Fail/i)
+					{
+						# The VM failed to start. Call a stop against it.
+						print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"highlight_bad_bold\" align=\"center\">
+						Error!
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						It looks like there is a problem with this server.<br />
+						Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+					</td>
+				</tr>
+";
+					}
+					my $message = ($line =~ /^(.*)\[/)[0];
+					my $status  = ($line =~ /(\[.*)$/)[0];
+					if (not $message)
+					{
+						$message = $line;
+						$status  = "";
+					}
+					print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+						$status
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						$message
+					</td>
+				</tr>
+";
+				}
+				$fh->close();
+			}
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -4610,10 +4946,10 @@ sub start_vm
 			print "
 				<tr>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
-						$message
+						$status
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
-						$status
+						$message
 					</td>
 				</tr>
 ";
@@ -8439,7 +8775,7 @@ sub display_vm_state_and_controls
 		#my $say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		# I need both nodes up to delete a VM.
 		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 		{
 			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
