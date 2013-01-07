@@ -141,6 +141,10 @@ sub header
 	{
 		#$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\" id=\"show_when_loaded\" style=\"display: none\"></a>";
 		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"/img/back.png\" alt=\"back\"></a>";
+		if ($conf->{cgi}{task} eq "manage_vm")
+		{
+			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+		}
 	}
 	else
 	{

@@ -198,6 +198,9 @@ get_cgi_vars($conf, [
 	"name",
 	"os_variant",
 	"device_keys",
+	"device",
+	"do",
+	"insert",
 ]);
 
 if ($conf->{cgi}{vg_list})
@@ -208,6 +211,18 @@ if ($conf->{cgi}{vg_list})
 		next if not $vg;
 		push @more_vars, "vg_$vg";
 		push @more_vars, "vg_suffix_$vg";
+	}
+	get_cgi_vars($conf, \@more_vars);
+}
+if ($conf->{cgi}{device_keys})
+{
+	my @more_vars;
+	foreach my $device (split/,/, $conf->{cgi}{device_keys})
+	{
+		next if not $device;
+		push @more_vars, "$device";
+		my $drive = ($device =~ /media_(.*)/)[0];
+		push @more_vars, "insert_$drive";
 	}
 	get_cgi_vars($conf, \@more_vars);
 }

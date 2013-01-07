@@ -284,7 +284,7 @@ sub save_file_to_disk
 <table align=\"center\">
 	<tr>
 		<td class=\"highlight_ready_bold\">
-			Saving the file to the server's storage.
+			Saving the file to the cluster's storage.
 		</td>
 	</tr>
 	<tr>
@@ -312,7 +312,7 @@ sub save_file_to_disk
 	</tr>
 	<tr>
 		<td class=\"highlight_good\">
-			Upload to the server is finished.<br />
+			Upload to the server is starting.<br />
 		</td>
 	</tr>
 	<tr>
