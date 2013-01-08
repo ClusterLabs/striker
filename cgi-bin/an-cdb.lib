@@ -1308,7 +1308,7 @@ sub parse_clustat
 				if ($state eq "failed")
 				{
 					# Disable the VM.
-					my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
+					my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d $vm\"";
 					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 					my $fh = IO::Handle->new();
 					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -1357,6 +1357,42 @@ sub parse_clustat
 				my $host  = $2;
 				my $state = $3;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name], host: [$host], state: [$state]\n");
+				
+				if ($state eq "failed")
+				{
+					# Disable the service and then call a
+					# start against it.
+					# Disable the VM.
+					my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d service:$name\"";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					my $fh = IO::Handle->new();
+					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					while(<$fh>)
+					{
+						chomp;
+						my $line = $_;
+						$line =~ s/^\s+//;
+						$line =~ s/\s+$//;
+						$line =~ s/\s+/ /g;
+						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					}
+					$fh->close();
+					sleep 5;
+					$sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e service:$name\"";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					$fh = IO::Handle->new();
+					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					while(<$fh>)
+					{
+						chomp;
+						my $line = $_;
+						$line =~ s/^\s+//;
+						$line =~ s/\s+$//;
+						$line =~ s/\s+/ /g;
+						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					}
+					$fh->close();
+				}
 				
 				# If the service is disabled, it will 
 				# have '()' which I need to remove.
@@ -5657,6 +5693,7 @@ sub delete_vm
 	my $node         = $conf->{'system'}{cluster}{node1_name};
 	my $node1        = $conf->{'system'}{cluster}{node1_name};
 	my $node2        = $conf->{'system'}{cluster}{node2_name};
+	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::host: [$conf->{vm}{$vm}{host}]\n");
 	if (not $conf->{vm}{$vm}{host})
 	{
 		$proceed      = 0;
@@ -5667,6 +5704,23 @@ sub delete_vm
 		$stop_vm  = 1;
 		$say_host = $conf->{vm}{$vm}{host};
 		$host     = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+	}
+	else
+	{
+		# Pick the first up node to use.
+		if ($conf->{node}{$node1}{up})
+		{
+			$host = $node1;
+		}
+		elsif ($conf->{node}{$node2}{up})
+		{
+			$host = $node2;
+		}
+		else
+		{
+			$proceed      = 0;
+			$abort_reason = "Can't delete: [$say_vm] until at least one node is online.";
+		}
 	}
 	
 	# Get to work!
