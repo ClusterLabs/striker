@@ -28,6 +28,11 @@
 #   it on the appropriate node.
 # - Add a "Cancel" button to each "Confirm" box.
 # - Add an ability to trigger a status email. SIGUSR1 via script -> email
+# - Allow users to rename VMs.
+# - Add 'virsh undefine' when deleting VMs if 'virsh list --all' shows it still
+#   defined on one of the VMs.
+# - Build a VM outside of the cluster and sort out a way to have the dashboard
+#   insert it into the cluster.
 
 use strict;
 use warnings;

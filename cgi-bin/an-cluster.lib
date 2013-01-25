@@ -832,6 +832,7 @@ sub post_node_calculations
 sub comma
 {
 	my ($conf, $number) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; >> comma(); number: [$number]\n");
 	
 	# Return if nothing passed.
 	return undef if not defined $number;
@@ -839,11 +840,14 @@ sub comma
 	# Strip out any existing commas.
 	$number =~ s/,//g;
 	$number =~ s/^\+//g;
+	#record($conf, "$THIS_FILE ".__LINE__."; 1. number: [$number]\n");
 
 	# Split on the left-most period.
 	my ($whole, $decimal) = split/\./, $number, 2;
+	#record($conf, "$THIS_FILE ".__LINE__."; >> whole: [$whole], decimal: [$decimal]\n");
 	$whole   = "" if not defined $whole;
 	$decimal = "" if not defined $decimal;
+	#record($conf, "$THIS_FILE ".__LINE__."; << whole: [$whole], decimal: [$decimal]\n");
 
 	# Now die if either number has a non-digit character in it.
 	if (($whole =~ /\D/) || ($decimal =~ /\D/))
@@ -859,6 +863,7 @@ sub comma
 
 	my $return = $decimal ? "$whole.$decimal" : $whole;
 
+	record($conf, "$THIS_FILE ".__LINE__."; << comma(); number: [$number]\n");
 	return ($return);
 }
 
@@ -953,7 +958,12 @@ sub bytes_to_hr
 	}
 	else
 	{
+		### TODO: I don't know why, but $hr_size is being set to "" 
+		###       when comma() returns 0. Fix this.
+		#record($conf, "$THIS_FILE ".__LINE__."; >> bytes_to_hr; hr_size: [$hr_size]\n");
 		$hr_size = comma($conf, $hr_size);
+		$hr_size = 0 if $hr_size eq "";
+		#record($conf, "$THIS_FILE ".__LINE__."; << bytes_to_hr; hr_size: [$hr_size]\n");
 		$suffix  = "bytes";
 	}
 

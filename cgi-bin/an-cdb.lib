@@ -7823,6 +7823,7 @@ sub display_free_resources
 		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
 		push @vg_free, $conf->{resources}{vg}{$vg}{free_space};
 		push @pv_name, $conf->{resources}{vg}{$vg}{pv_name};
+		#record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], size: [$conf->{resources}{vg}{$vg}{size}], used space: [$conf->{resources}{vg}{$vg}{used_space}], free space: [$conf->{resources}{vg}{$vg}{free_space}], pv name: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
@@ -7963,22 +7964,38 @@ sub display_free_resources
 	### NOTE: Disabled in this release.
 	# If I found enough free disk space, have at least 1 GiB of free RAM 
 	# and both nodes are up, enable the "provision new VM" button.
-	my $node1    = $conf->{'system'}{cluster}{node1_name};
-	my $node2    = $conf->{'system'}{cluster}{node2_name};
-	my $say_link = "<span class=\"disabled_button\">Build a New Server</span>";
+	my $node1   = $conf->{'system'}{cluster}{node1_name};
+	my $node2   = $conf->{'system'}{cluster}{node2_name};
+	my $say_bns = "<span class=\"disabled_button\">Build a New Server</span>";
+	my $say_mc  = "<span class=\"disabled_button\">Media Connector</span>";
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
-	if (($enough_storage) && 
-	($free_ram > 1073741824) && 
-	($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
-		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Build a New Server</a>";
+		# The cluster is running, so enable the media connector link.
+		$say_mc = "<a href=\"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Media Connector</a>";
+		
+		# Enable the "New Server" button if there is enough free memory
+		# and storage space.
+		if (($enough_storage) && ($free_ram > 1073741824))
+		{
+			$say_bns = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Build a New Server</a>";
+		}
 	}
 	print "
 	<tr>
 		<td colspan=\"12\">
-			$say_link
+			<table class=\"hidden_table\" width=\"100%\">
+				<tr>
+					<td width=\"50%\" class=\"td_hidden\">
+						$say_bns
+					</td>
+					<td width=\"50%\" class=\"td_hidden\">
+						$say_mc
+					</td>
+				</tr>
+			</table>
 		</td>
 	</tr>
 ";
@@ -8853,10 +8870,20 @@ sub display_vm_state_and_controls
 			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">Ready</span>";
 		}
 		#record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+		
+		# I don't want to make the VM editable until the cluster is
+		# runnong on at least one node.
+		my $dual_join   = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
+		my $say_vm_link = "<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>";
+		if ($dual_join)
+		{
+			$say_vm_link   = "<span class=\"highlight_unavailable\">$say_vm</span>";
+		}
+		
 		print "
 	<tr>
 		<td>
-			<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>
+			$say_vm_link
 		</td>
 		<td>
 			$conf->{vm}{$vm}{say_node1}
