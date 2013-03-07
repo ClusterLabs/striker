@@ -69,6 +69,9 @@ my $conf = {
 		apcaccess		=>	"/sbin/apcaccess",
 	},
 	alerts			=>	{
+		### NOTE: All temperatures here need to be in Celcius. If the
+		###       user wants temperatures in fahrenheit, the 
+		###       temperature is adjusted just prior to display.
 		storage			=>	{
 			delta			=>	5,	# A change of this amoint between scans will trigger an email. Factor the 'sleep_time' below.
 			upper_threshold		=>	45,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
@@ -119,8 +122,16 @@ my $conf = {
 		disable_emergency_shutdown	=>	0,	# The client must *physically sign* that they wish to disable automated shutdown. Enabling this option removed the ability for the node to power off to avoid physical damage. ENABLING THIS OPTION WILL VOID THE HARDWARE WARRANTY IF UPPER THRESHOLDS ARE EXCEEDED!
 		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
 		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
+		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.
 	},
 };
+
+# print "[".convert_to_fahrenheit($conf, "22.512 degrees Celcius")."]\n";
+# print "[".convert_to_fahrenheit($conf, "22.512")."]\n";
+# print "[".convert_to_fahrenheit($conf, "15*C")."]\n";
+# print "[".convert_to_fahrenheit($conf, "40 *C")."]\n";
+# print "[".convert_to_fahrenheit($conf, "40")."]\n";
+# exit;
 
 # Should I live?
 avoid_duplicate_run($conf);

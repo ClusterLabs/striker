@@ -106,6 +106,347 @@ sub ping_node
 	return ($node);
 }
 
+# This does the actual call out to get the data and parse the returned data.
+sub gather_node_details
+{
+	my ($conf, $node) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
+	
+	# This will flip true if I see 'start dmidecode' (the first line to
+	# return from the client).
+	$conf->{node}{$node}{connected}      = 0;
+	$conf->{node}{$node}{info}{'state'}  = "<span class=\"highlight_unavailable\">Unknown</span>";
+	$conf->{node}{$node}{info}{note}     = "";
+	$conf->{node}{$node}{up}             = 0;
+	$conf->{node}{$node}{enable_poweron} = 0;
+	
+	# Check to see if I can ping the nodes as they're named.
+	#($node) = ping_node($conf, $node);
+	
+	# I echo 'start purpose:' before each call so that I know for
+	# sure when I am switching between shell calls.
+	my $sc =  "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"";
+	   $sc .= "echo \\\"start dmidecode:\\\"; dmidecode -t 4,16,17; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start meminfo:\\\"; cat /proc/meminfo; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start drbd-status:\\\"; drbdadm status; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start drbd-res-file:\\\"; cat /etc/drbd.d/r?.res; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start clustat:\\\"; clustat; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start cluster.conf:\\\"; cat /etc/cluster/cluster.conf; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start daemons:\\\"; ";
+	   $sc .= "/etc/init.d/rgmanager status; echo an-sve:rgmanager:\\\$?; ";
+	   $sc .= "/etc/init.d/cman status; echo an-sve:cman:\\\$?; ";
+	   $sc .= "/etc/init.d/drbd status; echo an-sve:drbd:\\\$?; ";
+	   $sc .= "/etc/init.d/clvmd status; echo an-sve:clvmd:\\\$?; ";
+	   $sc .= "/etc/init.d/gfs2 status; echo an-sve:gfs2:\\\$?; ";
+	   $sc .= "/etc/init.d/libvirtd status; echo an-sve:libvirtd:\\\$?; ";
+	   $sc .= "echo \\\"lvm-scan start:\\\"; pvscan; vgscan; lvscan; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"lvm-data start:\\\"; ";
+	   $sc .= "pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ";
+	   $sc .= "vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; ";
+	   $sc .= "lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ";
+	   $sc .= "echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start virsh:\\\"; virsh list --all; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start vm defs:\\\"; cat /shared/definitions/*; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond0:\\\"; cat /proc/net/bonding/bond0; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond1:\\\"; cat /proc/net/bonding/bond1; echo \\\"#!end!#\\\"; ";
+	   $sc .= "echo \\\"start bond2:\\\"; cat /proc/net/bonding/bond2; echo \\\"#!end!#\\\"; ";
+	   $sc .= "\"";
+	   #$sc = "./data_${node}.txt";
+	# These keep track of where I am.
+	my $in_dmidecode     = 0;
+	my $in_meminfo       = 0;
+	my $in_drbd_status   = 0;
+	my $in_drbd_res_file = 0;
+	my $in_clustat       = 0;
+	my $in_cluster_conf  = 0;
+	my $in_daemons       = 0;
+	my $in_lvm_scan      = 0;
+	my $in_lvm_data      = 0;
+	my $in_gfs2          = 0;
+	my $in_virsh         = 0;
+	my $in_vm_defs       = 0;
+	my $in_bond          = 0;
+	
+	# This is used to track the bond I am reading.
+	my $bond = "";
+	
+	# These store the data read.
+	my @dmidecode;
+	my @meminfo;
+	my @drbd_status;
+	my @drbd_res_file;
+	my @clustat;
+	my @cluster_conf;
+	my @daemons;
+	my @lvm_scan;
+	my @lvm_data;
+	my @gfs2;
+	my @virsh;
+	my @vm_defs;
+	my @bond;
+	
+	### NOTE: This is over 1 KiB long and causes some IDEs, like 'kate', to
+	### flip the file into read-only mode. Enable only when needed.
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	#open ($fh, "<$sc") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		#$raw .= $_;
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		
+		# This catches connectivity problems.
+		if ($line =~ /No route to host/i)
+		{
+			my $local_access = on_same_network($conf, $node);
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
+			if ($local_access)
+			{
+				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
+			}
+			else
+			{
+				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
+			}
+			last;
+		}
+		elsif ($line =~ /host key verification failed/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
+			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /could not resolve hostname/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
+			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /permission denied/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /connection refused/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /Connection timed out/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /Network is unreachable/i)
+		{
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		elsif ($line =~ /\@\@\@\@/)
+		{
+			# When the host-key fails to match, a box made
+			# of '@@@@' is displayed, and is the entire 
+			# first line.
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
+			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed! If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+			last;
+		}
+		
+		# Catch the end of sections
+		if ($line =~ /#!end!#/)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; end\n");
+			$in_dmidecode    = 0;
+			$in_meminfo      = 0;
+			$in_drbd_status  = 0;
+			$in_clustat      = 0;
+			$in_cluster_conf = 0;
+			$in_daemons      = 0;
+			$in_lvm_scan     = 0;
+			$in_lvm_data     = 0;
+			$in_gfs2         = 0;
+			$in_virsh        = 0;
+			$in_vm_defs      = 0;
+			$in_bond         = 0;
+			$bond            = "";
+		}
+		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
+		
+		# Figure out where I am.
+		if ($line =~ /^start dmidecode:/)
+		{
+			$conf->{node}{$node}{connected}     = 1;
+			$in_dmidecode                       = 1;
+			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_good\">Up!</span>";
+			next;
+		}
+		if ($line =~ /^start meminfo:/)       { $in_meminfo       = 1; next; }
+		if ($line =~ /^start drbd-status:/)   { $in_drbd_status   = 1; next; }
+		if ($line =~ /^start drbd-res-file:/) { $in_drbd_res_file = 1; next; }
+		if ($line =~ /^start clustat:/)       { $in_clustat       = 1; next; }
+		if ($line =~ /^start cluster.conf:/)  { $in_cluster_conf  = 1; next; }
+		if ($line =~ /^start daemons:/)       { $in_daemons       = 1; next; }
+		if ($line =~ /^lvm-scan start:/)      { $in_lvm_scan      = 1; next; }
+		if ($line =~ /^lvm-data start:/)      { $in_lvm_data      = 1; next; }
+		if ($line =~ /^start gfs2:/)          { $in_gfs2          = 1; next; }
+		if ($line =~ /^start virsh:/)         { $in_virsh         = 1; next; }
+		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
+		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
+		if ($line =~ /^start bond(\d+):/)
+		{
+			$bond       = $1;
+			$in_vm_defs = 1;
+			next;
+		}
+		
+		# If I am in a section, push the lines into the
+		# appropriate array.
+		if ($in_dmidecode)     { push @dmidecode,     $line; }
+		if ($in_meminfo)       { push @meminfo,       $line; }
+		if ($in_drbd_status)   { push @drbd_status,   $line; }
+		if ($in_drbd_res_file) { push @drbd_res_file, $line; }
+		if ($in_clustat)       { push @clustat,       $line; }
+		if ($in_cluster_conf)  { push @cluster_conf,  $line; }
+		if ($in_daemons)       { push @daemons,       $line; }
+		if ($in_lvm_scan)      { push @lvm_scan,      $line; }
+		if ($in_lvm_data)      { push @lvm_data,      $line; }
+		if ($in_gfs2)          { push @gfs2,          $line; }
+		if ($in_virsh)         { push @virsh,         $line; }
+		if ($in_vm_defs)       { push @vm_defs,       $line; }
+		if ($in_bond)
+		{
+			push @bond, "$bond:$line";
+		}
+	}
+	$fh->close();
+	#record($conf, "$THIS_FILE ".__LINE__."; raw $node:\n===========================\n$raw\n===========================\n");
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
+	if ($conf->{node}{$node}{connected})
+	{
+		$conf->{'system'}{show_nodes} = 1;
+		$conf->{node}{$node}{up}      = 1;
+		push @{$conf->{up_nodes}}, $node;
+		parse_dmidecode    ($conf, $node, \@dmidecode);
+		parse_meminfo      ($conf, $node, \@meminfo);
+		parse_drbd_status  ($conf, $node, \@drbd_status);
+		parse_drbd_res_file($conf, $node, \@drbd_res_file);
+		parse_clustat      ($conf, $node, \@clustat);
+		parse_cluster_conf ($conf, $node, \@cluster_conf);
+		parse_daemons      ($conf, $node, \@daemons);
+		parse_lvm_scan     ($conf, $node, \@lvm_scan);
+		parse_lvm_data     ($conf, $node, \@lvm_data);
+		parse_gfs2         ($conf, $node, \@gfs2);
+		parse_virsh        ($conf, $node, \@virsh);
+		parse_vm_defs      ($conf, $node, \@vm_defs);
+		parse_bonds        ($conf, $node, \@bond);
+		# Some stuff, like setting the system memory, needs some
+		# post-scan math.
+		post_node_calculations($conf, $node);
+	}
+	else
+	{
+		check_if_on($conf, $node);
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		if ($conf->{node}{$node}{is_on} == 0)
+		{
+			$conf->{'system'}{show_nodes}         = 1;
+			$conf->{node}{$node}{enable_poweron}  = 1;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{enable_fence}    = 0;
+			#$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">Powered Off</span>";
+			#$conf->{node}{$node}{info}{note}    = "The node <span class=\"fixed_width\">$node</span> is powered down.";
+		}
+		elsif ($conf->{node}{$node}{is_on} == 1)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 1;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 1;
+			# Disable poweroff if I wasn't able to SSH into the
+			# node.
+			if (not $conf->{node}{$node}{connected})
+			{
+				$conf->{node}{$node}{enable_poweroff} = 0;
+			}
+			$conf->{node}{$node}{enable_fence}    = 1;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		elsif ($conf->{node}{$node}{is_on} == 2)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 0;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the cluster and update the cluster's fencing information if needed.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		elsif ($conf->{node}{$node}{is_on} == 3)
+		{
+			# The node is on but unreachable.
+			$conf->{'system'}{show_nodes}         = 0;
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		else
+		{
+			# Unable to determine node state.
+			$conf->{node}{$node}{enable_poweron}  = 0;
+			$conf->{node}{$node}{enable_poweroff} = 0;
+			$conf->{node}{$node}{enable_fence}    = 0;
+			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />";
+			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+		}
+		
+		# If I have confirmed the node is powered off, don't display this.
+		#record($conf, "$THIS_FILE ".__LINE__."; enable power on: [$conf->{node}{$node}{enable_poweron}], task: [$conf->{cgi}{task}]\n");
+		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
+		{
+			print "
+<table align=\"center\">
+	<tr>
+		<td>
+			$conf->{node}{$node}{info}{'state'}
+		</td>
+		<td>
+			$conf->{node}{$node}{info}{note}
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	
+	return (0);
+}
+
 # This sets all of the daemons to a given state.
 sub set_daemons
 {
@@ -7482,6 +7823,7 @@ sub display_free_resources
 		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
 		push @vg_free, $conf->{resources}{vg}{$vg}{free_space};
 		push @pv_name, $conf->{resources}{vg}{$vg}{pv_name};
+		#record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], size: [$conf->{resources}{vg}{$vg}{size}], used space: [$conf->{resources}{vg}{$vg}{used_space}], free space: [$conf->{resources}{vg}{$vg}{free_space}], pv name: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
@@ -7622,22 +7964,38 @@ sub display_free_resources
 	### NOTE: Disabled in this release.
 	# If I found enough free disk space, have at least 1 GiB of free RAM 
 	# and both nodes are up, enable the "provision new VM" button.
-	my $node1    = $conf->{'system'}{cluster}{node1_name};
-	my $node2    = $conf->{'system'}{cluster}{node2_name};
-	my $say_link = "<span class=\"disabled_button\">Build a New Server</span>";
+	my $node1   = $conf->{'system'}{cluster}{node1_name};
+	my $node2   = $conf->{'system'}{cluster}{node2_name};
+	my $say_bns = "<span class=\"disabled_button\">Build a New Server</span>";
+	my $say_mc  = "<span class=\"disabled_button\">Media Connector</span>";
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
-	if (($enough_storage) && 
-	($free_ram > 1073741824) && 
-	($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
+	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
-		$say_link = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Build a New Server</a>";
+		# The cluster is running, so enable the media connector link.
+		$say_mc = "<a href=\"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Media Connector</a>";
+		
+		# Enable the "New Server" button if there is enough free memory
+		# and storage space.
+		if (($enough_storage) && ($free_ram > 1073741824))
+		{
+			$say_bns = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">Build a New Server</a>";
+		}
 	}
 	print "
 	<tr>
 		<td colspan=\"12\">
-			$say_link
+			<table class=\"hidden_table\" width=\"100%\">
+				<tr>
+					<td width=\"50%\" class=\"td_hidden\">
+						$say_bns
+					</td>
+					<td width=\"50%\" class=\"td_hidden\">
+						$say_mc
+					</td>
+				</tr>
+			</table>
 		</td>
 	</tr>
 ";
@@ -8370,6 +8728,21 @@ sub find_prefered_host
 	return ($prefered_host);
 }
 
+# This function simply sets a couple variables using the node names as set in
+# the $conf hash declaration
+sub set_node_names
+{
+	my ($conf) = @_;
+	
+	# First pull the names into easier to follow variables.
+	my $this_cluster = $conf->{cgi}{cluster};
+	$conf->{'system'}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
+	$conf->{'system'}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
+	#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{'system'}{cluster}{node1_name}], node2: [$conf->{'system'}{cluster}{node2_name}]\n");
+	
+	return (0);
+}
+
 # This shows the current state of the VMs as well as the available control
 # buttons.
 sub display_vm_state_and_controls
@@ -8497,10 +8870,20 @@ sub display_vm_state_and_controls
 			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">Ready</span>";
 		}
 		#record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+		
+		# I don't want to make the VM editable until the cluster is
+		# runnong on at least one node.
+		my $dual_join   = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
+		my $say_vm_link = "<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>";
+		if ($dual_join)
+		{
+			$say_vm_link   = "<span class=\"highlight_unavailable\">$say_vm</span>";
+		}
+		
 		print "
 	<tr>
 		<td>
-			<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>
+			$say_vm_link
 		</td>
 		<td>
 			$conf->{vm}{$vm}{say_node1}

@@ -3789,6 +3789,57 @@ sub get_storage_lsi_adapter_info
 	return(0);
 }
 
+# This takes a string, pulls out the number and converts it to fahrenheit. It
+# also changes the word "celcius" to "fahrenheit" or "C" to "F". If it fails to
+# read a digit it will return the original string.
+sub convert_to_fahrenheit
+{
+	my ($conf, $say_temp) = @_;
+	
+	#$say_temp =~ s/^\s+//;
+	my $new_temp;
+	my $temp_c;
+	my $string;
+	if ($say_temp =~ /^(\d+\.\d+)(.*)/)
+	{
+		$temp_c = $1;
+		$string = $2;
+	}
+	elsif ($say_temp =~ /^(\d+)(.*)/)
+	{
+		$temp_c = $1;
+		$string = $2;
+	}
+	#$string =~ s/^\s+//;
+	#print "Temp C: [$temp_c], string: [$string]\n";
+	
+	if ($temp_c !~ /^\d/)
+	{
+		# No digit was parsed, return as-is.
+		record($conf, "$THIS_FILE ".__LINE__."; Unable to parse out a temperature from: [$say_temp]. Returning the value unconverted.\n");
+		return($say_temp);
+	}
+	
+	# Convert the temperature.
+	my $temp_f = ($temp_c * 1.8) + 32;
+	if ($temp_c =~ /\./)
+	{
+		$temp_f    = sprintf("%.1f", $temp_f);
+	}
+	else
+	{
+		$temp_f    = sprintf("%.0f", $temp_f);
+	}
+	
+	$string =~ s/Celcius/Fahrenheit/;
+	$string =~ s/celcius/fahrenheit/;
+	$string =~ s/C/F/;
+	$new_temp = $temp_f.$string;
+	#print "C: [$say_temp], F: [$new_temp]\n";
+	
+	return($new_temp);
+}
+
 # This adds information from LSI controller(s) to the current state body.
 sub get_current_state_lsi
 {
@@ -3828,6 +3879,11 @@ sub get_current_state_lsi
 			{
 				my $say_temp =  $temperature;
 				$say_temp    =~ s/C/degrees Celcius/;
+				# Convert to fahrenheit if needed.
+				if ($conf->{'system'}{use_fahrenheit})
+				{
+					$say_temp = convert_to_fahrenheit($conf, $say_temp);
+				}
 				$bbu_string = "$part_name, sn: $serial_number
 	        Failing:  $bbu_is_failing
                 Capacity: $pack_energy, $design_capacity design
@@ -3915,6 +3971,10 @@ Adapter: #$adapter
 				{
 					$say_temp =  $1;
 					$say_temp .= " degrees Celcius";
+					if ($conf->{'system'}{use_fahrenheit})
+					{
+						$say_temp = convert_to_fahrenheit($conf, $say_temp);
+					}
 				}
 				my $say_slot = $slot;
 				$say_slot =~ s/^0//;
@@ -4961,6 +5021,11 @@ Interface: $dev
 			$say_psu1_temp_inlet .= " *C";
 			$say_psu2_temp_inlet =~ s/\s.*//g;
 			$say_psu2_temp_inlet .= " *C";
+			if ($conf->{'system'}{use_fahrenheit})
+			{
+				$say_psu1_temp_inlet = convert_to_fahrenheit($conf, $say_psu1_temp_inlet);
+				$say_psu2_temp_inlet = convert_to_fahrenheit($conf, $say_psu2_temp_inlet);
+			}
 			my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
 			my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
 
@@ -4970,6 +5035,11 @@ Interface: $dev
 			$say_psu1_temp .= " *C";
 			$say_psu2_temp =~ s/\s.*//g;
 			$say_psu2_temp .= " *C";
+			if ($conf->{'system'}{use_fahrenheit})
+			{
+				$say_psu1_temp = convert_to_fahrenheit($conf, $say_psu1_temp);
+				$say_psu2_temp = convert_to_fahrenheit($conf, $say_psu2_temp);
+			}
 			my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
 			my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
 		
@@ -4982,7 +5052,7 @@ Interface: $dev
 +---------------+--------+------------+-------------+
 
 		+----------------+----------------+
-Power Supplies |     Intake     |      Core      |
+ Power Supplies |     Intake     |      Core      |
 +---------------+----------------+----------------+
 |     PSU 1     | $say_psu1_intake | $say_psu1_core |
 |     PSU 2     | $say_psu2_intake | $say_psu2_core |
@@ -5023,9 +5093,14 @@ Power Supplies |     Intake     |      Core      |
 		$body .= "+------------------+--------------+--------------+--------------+\n";
 		
 		# Temperature readings.
+		my $say_units = "*C";
+		if ($conf->{'system'}{use_fahrenheit})
+		{
+			$say_units = "*F";
+		}
 		$body .= "
                  +-----------+-----------+
-  Temperatures   |   State   | Temp (*C) |
+  Temperatures   |   State   | Temp ($say_units) |
 +----------------+-----------+-----------+
 ";
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
@@ -5037,6 +5112,10 @@ Power Supplies |     Intake     |      Core      |
 			if ($say_val  =~ /(.*?) degrees C/i)
 			{
 				my $temp = $1;
+				if ($conf->{'system'}{use_fahrenheit})
+				{
+					$temp = convert_to_fahrenheit($conf, $temp);
+				}
 				$say_temp = sprintf("%-9s", "$temp");
 			}
 			else
@@ -5103,6 +5182,10 @@ Unable to connect to the IPMI's BMC or no IPMI available on this node.
 			my $say_self_test       = defined $conf->{data}{ups}{new}{ups_name}{$ups_name}{SELFTEST} ? $conf->{data}{ups}{new}{ups_name}{$ups_name}{SELFTEST} : "--";
 			   $say_internal_temp   =~ s/(\d) .*$/$1/;
 			   $say_internal_temp   .= " *C";
+			if ($conf->{'system'}{use_fahrenheit})
+			{
+				$say_internal_temp = convert_to_fahrenheit($conf, $say_internal_temp);
+			}
 			   $say_load_percentage =~ s/(\d) .*$/$1/;
 			   $say_load_percentage .= " %";
 			   $say_battery_charge  =~ s/(\d) .*$/$1/;
@@ -5525,9 +5608,16 @@ sub compare_new_and_old
 								if ($delta >= $alert)
 								{
 									#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+									my $units = "*C";
+									if ($conf->{'system'}{use_fahrenheit})
+									{
+										$old_temp = convert_to_fahrenheit($conf, $old_temp);
+										$new_temp = convert_to_fahrenheit($conf, $new_temp);
+										$units = "*F";
+									}
 									$conf->{'system'}{warning_event} = 1;
 									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-									$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+									$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 								}
 								else
 								{
@@ -5538,8 +5628,14 @@ sub compare_new_and_old
 							else
 							{
 								# No prior temparature.
+								my $units = "*C";
+								if ($conf->{'system'}{use_fahrenheit})
+								{
+									$new_temp = convert_to_fahrenheit($conf, $new_temp);
+									$units = "*F";
+								}
 								$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" seen for the first time.\n";
-								$changes .= "  --\t-> $new_temp *C\n";
+								$changes .= "  --\t-> $new_temp $units\n";
 							}
 							
 							# Check the current temperature and see if it's above threasholds.
@@ -5547,20 +5643,34 @@ sub compare_new_and_old
 							my $power_down_threshold = $conf->{alerts}{bbu}{powerdown_temp};
 							if ($new_temp >= $power_down_threshold)
 							{
+								my $units = "*C";
+								if ($conf->{'system'}{use_fahrenheit})
+								{
+									$old_temp = convert_to_fahrenheit($conf, $old_temp);
+									$new_temp = convert_to_fahrenheit($conf, $new_temp);
+									$units = "*F";
+								}
 								$conf->{'system'}{migration_target}   = 0;
 								$conf->{'system'}{emergency_shutdown} = 1;
 								$changes .= "\n#######################################################################\n";
 								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
-								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+								$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 								$changes .= "#######################################################################\n";
 							}
 							elsif ($new_temp >= $upper_threshold)
 							{
 								#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+								my $units = "*C";
+								if ($conf->{'system'}{use_fahrenheit})
+								{
+									$old_temp = convert_to_fahrenheit($conf, $old_temp);
+									$new_temp = convert_to_fahrenheit($conf, $new_temp);
+									$units = "*F";
+								}
 								$conf->{'system'}{migration_target} = 0;
 								$conf->{'system'}{warning_event}    = 1;
 								$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
-								$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+								$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 							}
 						}
 						elsif ($var eq "base_voltage")
@@ -5705,9 +5815,16 @@ sub compare_new_and_old
 										if ($delta >= $alert)
 										{
 											#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+											my $units = "*C";
+											if ($conf->{'system'}{use_fahrenheit})
+											{
+												$old_temp = convert_to_fahrenheit($conf, $old_temp);
+												$new_temp = convert_to_fahrenheit($conf, $new_temp);
+												$units = "*F";
+											}
 											$conf->{'system'}{warning_event} = 1;
 											$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-											$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+											$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 										}
 										else
 										{
@@ -5718,8 +5835,14 @@ sub compare_new_and_old
 									else
 									{
 										# No prior temparature.
+										my $units = "*C";
+										if ($conf->{'system'}{use_fahrenheit})
+										{
+											$new_temp = convert_to_fahrenheit($conf, $new_temp);
+											$units = "*F";
+										}
 										$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" seen for the first time.\n";
-										$changes .= "  --\t-> $new_temp *C\n";
+										$changes .= "  --\t-> $new_temp $units\n";
 									}
 									
 									# Check the current temperature and see if it's above threasholds.
@@ -5727,20 +5850,34 @@ sub compare_new_and_old
 									my $power_down_threshold = $conf->{alerts}{storage}{power_down_threshold};
 									if ($new_temp >= $power_down_threshold)
 									{
+										my $units = "*C";
+										if ($conf->{'system'}{use_fahrenheit})
+										{
+											$old_temp = convert_to_fahrenheit($conf, $old_temp);
+											$new_temp = convert_to_fahrenheit($conf, $new_temp);
+											$units = "*F";
+										}
 										$conf->{'system'}{migration_target}   = 0;
 										$conf->{'system'}{emergency_shutdown} = 1;
 										$changes .= "\n#######################################################################\n";
 										$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
-										$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+										$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 										$changes .= "#######################################################################\n";
 									}
 									elsif ($new_temp >= $upper_threshold)
 									{
 										#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+										my $units = "*C";
+										if ($conf->{'system'}{use_fahrenheit})
+										{
+											$old_temp = convert_to_fahrenheit($conf, $old_temp);
+											$new_temp = convert_to_fahrenheit($conf, $new_temp);
+											$units = "*F";
+										}
 										$conf->{'system'}{migration_target} = 0;
 										$conf->{'system'}{warning_event}    = 1;
 										$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" is at or above the warning level of $upper_threshold *C!\n";
-										$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+										$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 									}
 								}
 								else
@@ -5823,9 +5960,16 @@ sub compare_new_and_old
 						if ($delta >= $alert)
 						{
 							#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+							my $units = "*C";
+							if ($conf->{'system'}{use_fahrenheit})
+							{
+								$old_temp = convert_to_fahrenheit($conf, $old_temp);
+								$new_temp = convert_to_fahrenheit($conf, $new_temp);
+								$units = "*F";
+							}
 							$conf->{'system'}{warning_event} = 1;
 							$changes .= "\nRAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-							$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+							$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 						}
 						else
 						{
@@ -5836,8 +5980,14 @@ sub compare_new_and_old
 					else
 					{
 						# No prior temparature.
+						my $units = "*C";
+						if ($conf->{'system'}{use_fahrenheit})
+						{
+							$new_temp = convert_to_fahrenheit($conf, $new_temp);
+							$units = "*F";
+						}
 						$changes .= "\nRAID ${adapter}'s ROC temperature seen for the first time.\n";
-						$changes .= "  --\t-> $new_temp *C\n";
+						$changes .= "  --\t-> $new_temp $units\n";
 					}
 					
 					# Check the current temperature and see if it's above threasholds.
@@ -5845,20 +5995,34 @@ sub compare_new_and_old
 					my $power_down_threshold = $conf->{alerts}{storage}{roc_powerdown_temp};
 					if ($new_temp >= $power_down_threshold)
 					{
+						my $units = "*C";
+						if ($conf->{'system'}{use_fahrenheit})
+						{
+							$old_temp = convert_to_fahrenheit($conf, $old_temp);
+							$new_temp = convert_to_fahrenheit($conf, $new_temp);
+							$units = "*F";
+						}
 						$conf->{'system'}{migration_target}   = 0;
 						$conf->{'system'}{emergency_shutdown} = 1;
 						$changes .= "\n#######################################################################\n";
 						$changes .= "RAID ${adapter}'s ROC temperature is at or above the critical level of $power_down_threshold *C!\n";
-						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+						$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 						$changes .= "#######################################################################\n";
 					}
 					elsif ($new_temp >= $upper_threshold)
 					{
+						my $units = "*C";
+						if ($conf->{'system'}{use_fahrenheit})
+						{
+							$old_temp = convert_to_fahrenheit($conf, $old_temp);
+							$new_temp = convert_to_fahrenheit($conf, $new_temp);
+							$units = "*F";
+						}
 						#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 						$conf->{'system'}{migration_target} = 0;
 						$conf->{'system'}{warning_event}    = 1;
 						$changes .= "\nRAID ${adapter}'s ROC temperature is at or above the warning level of $upper_threshold *C!\n";
-						$changes .= "  $old_temp *C\t-> $new_temp *C\n";
+						$changes .= "  $old_temp $units\t-> $new_temp $units\n";
 					}
 				}
 				elsif (ref($conf->{data}{lsi}{new}{adapter}{$adapter}{$key}) eq "ARRAY")
@@ -6002,28 +6166,63 @@ sub compare_new_and_old
 			my $clear_threshold = $upper_threshold - 5;
 			#record($conf, "$THIS_FILE ".__LINE__." Alert: [$alert], upper threshold: [$upper_threshold], power down threshold: [$power_down_threshold]\n");
 			
-			check_temperature($conf, $changes, {
-				var				=>	$var,
-				old_state			=>	$old_state,
-				new_state			=>	$new_state,
-				old_value			=>	$old_value,
-				new_value			=>	$new_value,
-				old_temp			=>	$old_temp,
-				new_temp			=>	$new_temp,
-				delta_threshold			=>	$alert,
-				upper_threshold			=>	$upper_threshold,
-				power_down_threshold		=>	$power_down_threshold,
-				clear_threshold			=>	$clear_threshold,
-				message_upper_to_power_down	=>	"Host's \"$say_translation\" temperature is now at or above the critical level of $power_down_threshold *C!",
-				log_upper_to_power_down		=>	"Host's \"$say_translation\" temperature is now critical but poweroff has been disabled; $old_state, $old_value -> $new_state, $new_value.",
-				message_power_down_to_upper	=>	"Host's \"$say_translation\" temperature is dropping, but it is still above the alert threshold of $upper_threshold *C!",
-				log_power_down_to_upper		=>	"Host's \"$say_translation\" temperature is dropping, but it is still above alert levels; $old_state, $old_value -> $new_state, $new_value.",
-				message_clear_threshold		=>	"Host's \"$say_translation\" temperature has returned to safe levels. Alert cleared.",
-				log_in_alert_change		=>	"Host's \"$say_translation\" temperature is good now, but it hasn't dropped below the clear thredshold of $clear_threshold *C; $old_state, $old_value -> $new_state, $new_value.",
-				message_over_power_down		=>	"Host's \"$say_translation\" temperature is suddenly at or above the critical level of $power_down_threshold *C!",
-				message_over_alert		=>	"Host's \"$say_translation\" temperature has risen to or above the alert threshold of $upper_threshold *C!",
-				log_normal_change		=>	"Host's \"$say_translation\" temperature has changed; old: $old_state, $old_value -> $new_state, $new_value.",
-			});
+			if ($conf->{'system'}{use_fahrenheit})
+			{
+				$old_temp             = convert_to_fahrenheit($conf, $old_temp);
+				$new_temp             = convert_to_fahrenheit($conf, $new_temp);
+				$upper_threshold      = convert_to_fahrenheit($conf, $upper_threshold);
+				$power_down_threshold = convert_to_fahrenheit($conf, $power_down_threshold);
+				$clear_threshold      = convert_to_fahrenheit($conf, $clear_threshold);
+				check_temperature($conf, $changes, {
+					var				=>	$var,
+					old_state			=>	$old_state,
+					new_state			=>	$new_state,
+					old_value			=>	$old_value,
+					new_value			=>	$new_value,
+					old_temp			=>	$old_temp,
+					new_temp			=>	$new_temp,
+					delta_threshold			=>	$alert,
+					upper_threshold			=>	$upper_threshold,
+					power_down_threshold		=>	$power_down_threshold,
+					clear_threshold			=>	$clear_threshold,
+					message_upper_to_power_down	=>	"Host's \"$say_translation\" temperature is now at or above the critical level of $power_down_threshold *F!",
+					log_upper_to_power_down		=>	"Host's \"$say_translation\" temperature is now critical but poweroff has been disabled; $old_state, $old_value -> $new_state, $new_value.",
+					message_power_down_to_upper	=>	"Host's \"$say_translation\" temperature is dropping, but it is still above the alert threshold of $upper_threshold *F!",
+					log_power_down_to_upper		=>	"Host's \"$say_translation\" temperature is dropping, but it is still above alert levels; $old_state, $old_value -> $new_state, $new_value.",
+					message_clear_threshold		=>	"Host's \"$say_translation\" temperature has returned to safe levels. Alert cleared.",
+					log_in_alert_change		=>	"Host's \"$say_translation\" temperature is good now, but it hasn't dropped below the clear thredshold of $clear_threshold *F; $old_state, $old_value -> $new_state, $new_value.",
+					message_over_power_down		=>	"Host's \"$say_translation\" temperature is suddenly at or above the critical level of $power_down_threshold *F!",
+					message_over_alert		=>	"Host's \"$say_translation\" temperature has risen to or above the alert threshold of $upper_threshold *F!",
+					log_normal_change		=>	"Host's \"$say_translation\" temperature has changed; old: $old_state, $old_value -> $new_state, $new_value.",
+					units				=>	"*F",
+				});
+			}
+			else
+			{
+				check_temperature($conf, $changes, {
+					var				=>	$var,
+					old_state			=>	$old_state,
+					new_state			=>	$new_state,
+					old_value			=>	$old_value,
+					new_value			=>	$new_value,
+					old_temp			=>	$old_temp,
+					new_temp			=>	$new_temp,
+					delta_threshold			=>	$alert,
+					upper_threshold			=>	$upper_threshold,
+					power_down_threshold		=>	$power_down_threshold,
+					clear_threshold			=>	$clear_threshold,
+					message_upper_to_power_down	=>	"Host's \"$say_translation\" temperature is now at or above the critical level of $power_down_threshold *C!",
+					log_upper_to_power_down		=>	"Host's \"$say_translation\" temperature is now critical but poweroff has been disabled; $old_state, $old_value -> $new_state, $new_value.",
+					message_power_down_to_upper	=>	"Host's \"$say_translation\" temperature is dropping, but it is still above the alert threshold of $upper_threshold *C!",
+					log_power_down_to_upper		=>	"Host's \"$say_translation\" temperature is dropping, but it is still above alert levels; $old_state, $old_value -> $new_state, $new_value.",
+					message_clear_threshold		=>	"Host's \"$say_translation\" temperature has returned to safe levels. Alert cleared.",
+					log_in_alert_change		=>	"Host's \"$say_translation\" temperature is good now, but it hasn't dropped below the clear thredshold of $clear_threshold *C; $old_state, $old_value -> $new_state, $new_value.",
+					message_over_power_down		=>	"Host's \"$say_translation\" temperature is suddenly at or above the critical level of $power_down_threshold *C!",
+					message_over_alert		=>	"Host's \"$say_translation\" temperature has risen to or above the alert threshold of $upper_threshold *C!",
+					log_normal_change		=>	"Host's \"$say_translation\" temperature has changed; old: $old_state, $old_value -> $new_state, $new_value.",
+					units				=>	"*C",
+				});
+			}
 		}
 		elsif ($new_value =~ /^(\d+\.*\d*) Volts/i)
 		{
@@ -6531,6 +6730,7 @@ sub check_temperature
 	my $message_over_power_down     = $vars->{message_over_power_down};
 	my $message_over_alert          = $vars->{message_over_alert};
 	my $log_normal_change           = $vars->{log_normal_change};
+	my $units                       = $vars->{units};
 	
 	# Old value.
 	my $scan  =  $conf->{'system'}{sleep_time};
@@ -6551,7 +6751,7 @@ sub check_temperature
 				$conf->{'system'}{emergency_shutdown} = 1;
 				$changes .= "\n#######################################################################\n";
 				$changes .= "$message_upper_to_power_down\n";
-				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+				$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
 				$changes .= "#######################################################################\n";
 			}
 			else
@@ -6568,7 +6768,7 @@ sub check_temperature
 				$conf->{'system'}{warning_event}    = 1;
 				$conf->{'system'}{migration_target} = 0;
 				$changes .= "\n$message_power_down_to_upper\n";
-				$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+				$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
 			}
 			else
 			{
@@ -6583,7 +6783,7 @@ sub check_temperature
 			$conf->{'system'}{migration_target} = 1;
 			$conf->{'system'}{clear_event}      = 1;
 			$changes .= "\n$message_clear_threshold\n";
-			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
 		}
 		else
 		{
@@ -6603,7 +6803,7 @@ sub check_temperature
 			$conf->{'system'}{migration_target}   = 0;
 			$changes .= "\n#######################################################################\n";
 			$changes .= "$message_over_power_down\n";
-			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
 			$changes .= "#######################################################################\n";
 		}
 		elsif ($delta >= $delta_threshold)
@@ -6612,7 +6812,7 @@ sub check_temperature
 			$conf->{'system'}{warning_event}    = 1;
 			$conf->{'system'}{migration_target} = 0;
 			$changes .= "\n$message_over_alert\n";
-			$changes .= "  $old_state, $old_temp *C\t-> $new_state, $new_temp *C\n";
+			$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
 		}
 		else
 		{

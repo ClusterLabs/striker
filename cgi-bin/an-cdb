@@ -28,6 +28,11 @@
 #   it on the appropriate node.
 # - Add a "Cancel" button to each "Confirm" box.
 # - Add an ability to trigger a status email. SIGUSR1 via script -> email
+# - Allow users to rename VMs.
+# - Add 'virsh undefine' when deleting VMs if 'virsh list --all' shows it still
+#   defined on one of the VMs.
+# - Build a VM outside of the cluster and sort out a way to have the dashboard
+#   insert it into the cluster.
 
 use strict;
 use warnings;
@@ -213,43 +218,7 @@ header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
 # Do I have a cluster name?
 if ($conf->{cgi}{cluster})
 {
-	# Read/escape passwords.
-	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
-	{
-		my $file    = $1;
-		my $cluster = $conf->{cgi}{cluster};
-		my $sc      = "$file";
-		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line =  $_;
-			# record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			$line =~ s/#.*//;
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			if ($line =~ /^$cluster.*?=(.*)/)
-			{
-				my $password =  $1;
-				$password    =~ s/^\s+//;
-				$password    =~ s/\s+$//;
-				# protect escaped double-quotes.
-				$password    =~ s/\\\"/#!ESCAPED_DQ!#/g;
-				$password    =~ s/^"(.*?)"$/$1/;
-				$password    =~ s/#!ESCAPED_DQ!#/"/g;
-				$password    =~ s/'/\\\\\\\'/g;
-				$password    =~ s/ /\\\\\\\ /g;
-				$conf->{'system'}{ricci_password} = $password;
-				# record($conf, "$THIS_FILE ".__LINE__."; ricci pass: [$conf->{'system'}{ricci_password}]\n");
-				last;
-			}
-		}
-		$fh->close();
-	}
-	# record($conf, "$THIS_FILE ".__LINE__."; cluster: [$conf->{cgi}{cluster}], ricci pass: [$conf->{'system'}{ricci_password}]\n");
-	
+	read_ricci_pw($conf);
 	if ($conf->{cgi}{task})
 	{
 		$conf->{'system'}{show_refresh} = 0;
