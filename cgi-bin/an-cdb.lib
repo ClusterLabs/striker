@@ -3352,6 +3352,7 @@ sub add_vm_to_cluster
 		record($conf, "$THIS_FILE ".__LINE__."; The VM is now running on the peer. Will proceed using: [$node].\n");
 	}
 	
+	# Dump the VM's XML definition.
 	print "
 			<br />
 		</td>
@@ -3411,6 +3412,68 @@ sub add_vm_to_cluster
 ";
 		return (1);
 	}
+
+	# Undefine the new VM
+	print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Removing libvirtd definition
+		</td>
+		<td>
+			<br />
+			We only want the cluster to be able to see and start the new server.<br />
+			Removing the <span class=\"fixed_width\">libvirtd</span> definition now.
+	";
+
+	undef $virsh_exit_code;
+	$sc = "$conf->{path}{ssh} root\@$node \"virsh undefine $vm; echo virsh:\\\$?\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /virsh:(\d+)/)
+		{
+			$virsh_exit_code = $1;
+		}
+	}
+	$fh->close();
+	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+	if ($virsh_exit_code eq "0")
+	{
+		print "Successfully removed the <span class=\"fixed_width\">libvirtd</span> definition.<br />\n";
+	}
+	else
+	{
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			It would appear that something went wrong!<br />
+			I tried to remove the <span class=\"fixed_width\">libvirtd</span> definition, which should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		return (1);
+	}
 	
 	# If I've made it this far, I am ready to add it to the cluster configuration.
 	print "
@@ -3423,7 +3486,9 @@ sub add_vm_to_cluster
 		</td>
 		<td>
 			<br />
-			I will now add the new virtual server to the cluster.
+			I will now add the new virtual server to the cluster.<br />
+			<i>Please be patient!</i></br />
+			This can take several minutes to complete.</br >
 			<br />
 ";
 	
@@ -5740,6 +5805,8 @@ sub delete_vm
 		<td>
 			<br />
 			Removing the VM from cluster management:<br />
+			<i>Please be patient!</i><br />
+			This step could take several minutes to complete.<br />
 ";
 		### Note: I don't use 'path' for these calls as the location of
 		###       a program on the cluster may differ from the local
