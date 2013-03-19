@@ -3207,7 +3207,6 @@ sub add_vm_to_cluster
 {
 	my ($conf) = @_;
 	
-	### TODO: Delete the VM from the installation host.
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
 	my $cluster    = $conf->{cgi}{cluster};
@@ -3366,6 +3365,7 @@ sub add_vm_to_cluster
 			The cluster needs to know what \"hardware\" to create for the new virtual server when it starts.<br />
 			This is done using a \"definition\" file, which I will record now.
 	";
+
 	my $virsh_exit_code;
 	my $sc = "$conf->{path}{ssh} root\@$node \"virsh dumpxml $vm > $definition; echo virsh:\\\$?\"";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -3463,16 +3463,11 @@ sub add_vm_to_cluster
 			Warning
 		</td>
 		<td>
-			It would appear that something went wrong!<br />
 			I tried to remove the <span class=\"fixed_width\">libvirtd</span> definition, which should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />
 			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
 			<br />
-		</td>
-	</tr>
-</table>
-<br />
+			This is a non-fatal error. Proceeding.<br />
 ";
-		return (1);
 	}
 	
 	# If I've made it this far, I am ready to add it to the cluster configuration.
@@ -3955,30 +3950,46 @@ sub verify_vm_config
 		# Look at the selected storage. if VGs named for two separate
 		# nodes are defined, error.
 		$conf->{new_vm}{host_node} = "";
+		#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}], vg_list: [$conf->{cgi}{vg_list}]\n");
 		foreach my $vg (split /,/, $conf->{cgi}{vg_list})
 		{
 			my $short_vg   = $vg;
 			my $short_node = $vg;
+			# Sometimes 'cXXnYY_vgZ' is used, sometimes
+			# 'cXXnYY-vgZ' is used.
+			#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node], vg: [$vg]\n");
 			if ($vg =~ /^(.*?)_(vg\d+)$/)
 			{
 				$short_node = $1;
 				$short_vg   = $2;
+				#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
+			}
+			elsif ($vg =~ /^(.*?)-(vg\d+)$/)
+			{
+				$short_node = $1;
+				$short_vg   = $2;
+				#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
 			my $say_node      = $short_vg;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
+			#record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
 			next if not $conf->{cgi}{$vg_key};
 			foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 			{
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short_node: [$short_node]\n");
 				if ($node =~ /$short_node/)
 				{
 					$say_node = $node;
+					#record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 					last;
 				}
 			}
+			#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			if (not $conf->{new_vm}{host_node})
 			{
 				$conf->{new_vm}{host_node} = $say_node;
+				#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			}
 			elsif ($conf->{new_vm}{host_node} ne $say_node)
 			{
