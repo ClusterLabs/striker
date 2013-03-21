@@ -5580,6 +5580,8 @@ sub compare_new_and_old
 						    ($var eq "fw_status_absolute_state_of_charge") ||
 						    ($var eq "average_time_to_empty") ||
 						    ($var eq "run_time_to_empty") ||
+						    ($var eq "charger_system_state") ||
+						    ($var eq "cycle_count") ||
 						    ($var eq "current")
 						)
 						{
