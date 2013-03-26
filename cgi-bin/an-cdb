@@ -115,6 +115,7 @@ my $conf={
 			"mes5#!#Mandriva Enterprise Server 5.0",
 			"mandriva2010#!#Mandriva Linux 2010 and later",
 			"mandriva2009#!#Mandriva Linux 2009 and earlier",
+			"rhel7#!#Red Hat Enterprise Linux 7",
 			"rhel6#!#Red Hat Enterprise Linux 6",
 			"rhel5.4#!#Red Hat Enterprise Linux 5.4 or later",
 			"rhel5#!#Red Hat Enterprise Linux 5",
@@ -218,6 +219,14 @@ header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
 # Do I have a cluster name?
 if ($conf->{cgi}{cluster})
 {
+	my $cluster    = $conf->{cgi}{cluster};
+	
+	# If the requested cluster isn't found in the config file, error out.
+	if (not $conf->{clusters}{$cluster}{nodes})
+	{
+		
+	}
+	
 	read_ricci_pw($conf);
 	if ($conf->{cgi}{task})
 	{
@@ -227,7 +236,6 @@ if ($conf->{cgi}{cluster})
 	else
 	{
 		# Set the node list.
-		my $cluster    = $conf->{cgi}{cluster};
 		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 		scan_cluster($conf);
 		display_details($conf);

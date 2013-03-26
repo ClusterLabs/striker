@@ -112,8 +112,8 @@ sub error
 	print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_bad\">
-			<b>Oops.</b>
+		<td class=\"highlight_warning\">
+			Note
 		</td>
 		<td>
 			$message
@@ -122,8 +122,8 @@ sub error
 </table>
 <br />
 ";
-	
 	exit(1) if $fatal;
+	
 	return(1);
 }
 

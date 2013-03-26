@@ -130,6 +130,8 @@ td {
 
 .highlight_bad {
 	color: #9a131a;
+	font-style: italic;
+	font-weight: bold;
 }
 
 .highlight_bad_bold {
