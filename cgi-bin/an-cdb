@@ -33,6 +33,9 @@
 #   defined on one of the VMs.
 # - Build a VM outside of the cluster and sort out a way to have the dashboard
 #   insert it into the cluster.
+# - Make "Node -> Offline" be a "Warning!"
+# - Make "Bond -> Down" be a warning
+
 
 use strict;
 use warnings;
@@ -188,6 +191,7 @@ get_cgi_vars($conf, [
 	"do",
 	"insert",
 	"change",
+	"boot_device",
 ]);
 
 if ($conf->{cgi}{vg_list})
@@ -219,27 +223,50 @@ header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
 # Do I have a cluster name?
 if ($conf->{cgi}{cluster})
 {
-	my $cluster    = $conf->{cgi}{cluster};
+	my $cluster = $conf->{cgi}{cluster};
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
 	{
-		
-	}
-	
-	read_ricci_pw($conf);
-	if ($conf->{cgi}{task})
-	{
-		$conf->{'system'}{show_refresh} = 0;
-		process_task($conf);
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"3\">
+			<b>Please choose a cluster</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_bad\">
+			Unknown
+		</td>
+		<td>
+			<br />
+			I am sorry, but I can not find a cluster called <span class=\"fixed_width\">$cluster</span> in the configuration file.<br />
+			<br />
+			Please update <span class=\"fixed_width\">/etc/an/an.conf</span> in order to add a new cluster to this dashboard server.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
 	}
 	else
 	{
-		# Set the node list.
-		$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
-		scan_cluster($conf);
-		display_details($conf);
-		#display_details2($conf);
+		read_ricci_pw($conf);
+		if ($conf->{cgi}{task})
+		{
+			$conf->{'system'}{show_refresh} = 0;
+			process_task($conf);
+		}
+		else
+		{
+			# Set the node list.
+			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
+			scan_cluster($conf);
+			display_details($conf);
+			#display_details2($conf);
+		}
 	}
 }
 else

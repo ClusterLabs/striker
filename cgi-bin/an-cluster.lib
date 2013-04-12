@@ -112,7 +112,7 @@ sub error
 	print "
 <table align=\"center\">
 	<tr>
-		<td class=\"highlight_warning\">
+		<td class=\"highlight_warning_bold\">
 			Note
 		</td>
 		<td>
@@ -986,6 +986,7 @@ sub hr_to_bytes
 	
 	$size    =~ s/ //g;
 	$type    =~ s/ //g;
+	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
 	
 	# Store and strip the sign
 	my $sign = "";
@@ -1004,6 +1005,7 @@ sub hr_to_bytes
 		($size, $type) = ($size =~ /^(.*\d)(\D+)/);
 	}
 	$type = lc($type);
+	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
 	
 	# Make sure that 'size' is now an integer or float.
 	if ($size !~ /\d+[\.\d+]?/)
@@ -1048,6 +1050,7 @@ sub hr_to_bytes
 		$use_base2 = 0 if not defined $use_base2;
 		$type      = $1;
 	}
+	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
 	
 	# Check if we have a valid '$type' and that 'Math::BigInt' is loaded,
 	# if the size is big enough to require it.
@@ -1055,6 +1058,7 @@ sub hr_to_bytes
 	{
 		# If this is a big size needing "Math::BigInt", check if it's loaded
 		# yet and load it, if not.
+		record($conf, "$THIS_FILE ".__LINE__."; Large number, loading Math::BigInt.\n");
 		use Math::BigInt;
 	}
 	elsif (( $type ne "t" ) && ( $type ne "g" ) && ( $type ne "m" ) && ( $type ne "k" ))
@@ -1087,6 +1091,7 @@ sub hr_to_bytes
 	my $bytes;
 	if ($use_base2)
 	{
+		#record($conf, "$THIS_FILE ".__LINE__."; << type: [$type], size:  [$size].\n");
 		if ( $type eq "y" ) { $bytes=Math::BigInt->new('2')->bpow('80')->bmul($size); }		# Yobibyte
 		elsif ( $type eq "z" ) { $bytes=Math::BigInt->new('2')->bpow('70')->bmul($size); }	# Zibibyte
 		elsif ( $type eq "e" ) { $bytes=Math::BigInt->new('2')->bpow('60')->bmul($size); }	# Exbibyte
@@ -1095,6 +1100,7 @@ sub hr_to_bytes
 		elsif ( $type eq "g" ) { $bytes=($size*(2**30)) }					# Gibibyte
 		elsif ( $type eq "m" ) { $bytes=($size*(2**20)) }					# Mebibyte
 		elsif ( $type eq "k" ) { $bytes=($size*(2**10)) }					# Kibibyte
+		#record($conf, "$THIS_FILE ".__LINE__."; >> type: [$type], bytes: [$bytes].\n");
 	}
 	else
 	{
@@ -1184,7 +1190,6 @@ sub read_ricci_pw
 	}
 	$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
 	$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
-	
 	#record($conf, "$THIS_FILE ".__LINE__."; Found the 'ricci' password for: [$cluster] -> [$conf->{'system'}{ricci_password}]\n");
 	
 	return(0);

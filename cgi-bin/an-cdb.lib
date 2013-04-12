@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# AN!CDB - Alteeve's Niche! Anvil Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -8,11 +8,11 @@
 # able to take full liability for it's use. The authors take care to prevent
 # unexpected side effects when using this program. However, no software is
 # perfect and bugs may exist which could lead to hangs or crashes in the
-# program, in your cluster and possibly even data loss.
+# program, in your Anvil and possibly even data loss.
 # 
 # If you are concerned about these risks, please stick to command line tools.
 # 
-# This program is designed to extend clusters built according to this tutorial:
+# This program is designed to extend Anvils built according to this tutorial:
 # - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
@@ -364,7 +364,7 @@ sub gather_node_details
 	$fh->close();
 	#record($conf, "$THIS_FILE ".__LINE__."; raw $node:\n===========================\n$raw\n===========================\n");
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
 	if ($conf->{node}{$node}{connected})
 	{
 		$conf->{'system'}{show_nodes} = 1;
@@ -427,7 +427,7 @@ sub gather_node_details
 			$conf->{node}{$node}{enable_poweron}  = 0;
 			$conf->{node}{$node}{enable_poweroff} = 0;
 			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the cluster and update the cluster's fencing information if needed.<br />";
+			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		elsif ($conf->{node}{$node}{is_on} == 3)
@@ -1267,7 +1267,7 @@ sub parse_clustat
 	if (not $line_count)
 	{
 		# CMAN isn't running.
-		record($conf, "$THIS_FILE ".__LINE__."; CMAN does not appear to be running on node: [$node] (nothing returned by the 'clustat' call).\n");
+		record($conf, "$THIS_FILE ".__LINE__."; The cluster manager, cman, does not appear to be running on node: [$node] (nothing returned by the 'clustat' call).\n");
 		$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		$conf->{node}{$node}{enable_join}                = 1;
 	}
@@ -1788,7 +1788,7 @@ sub parse_daemons
 		($gfs2_exit eq "0"))
 		{
 			# Uh oh...
-			error($conf, "One of more of the storage daemons are running on $node while the cluster itself is down. This is generally the sign of an unclean withdrawl of a node from the cluster! Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.\n"); 
+			error($conf, "One of more of the storage daemons are running on $node while the Anvil's cluster is down. This is generally the sign of an unclean withdrawl of a node from the cluster! Please <a href=\"https://alteeve.com/w/Support\">call support immediately</a>.\n"); 
 		}
 		else
 		{
@@ -1816,6 +1816,48 @@ sub parse_lvm_scan
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
+		{
+			my $state     = $1;
+			my $lv        = $2;
+			my $size      = $3;
+			my $bytes     = hr_to_bytes($conf, $size);
+			my $vg        = ($lv =~ /^\/dev\/(.*?)\//)[0];
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], state: [$state], vg: [$vg], lv: [$lv], size: [$size], bytes: [$bytes]\n");
+			
+			if (lc($state) eq "inactive")
+			{
+				print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Inactive LV!
+		</td>
+		<td>
+			The logical volume: [<span class=\"fixed_width\">$lv</span>] on node: [<span class=\"fixed_width\">$node</span>] is inactive!<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>, or if you are comfortable, active the LV as soon as possible.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			}
+			
+			if (exists $conf->{resources}{lv}{$lv})
+			{
+				if (($conf->{resources}{lv}{$lv}{on_vg} ne $vg) || ($conf->{resources}{lv}{$lv}{size} ne $bytes))
+				{
+					error($conf, "There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume: [$lv]. Saw sizes: [$conf->{resources}{lv}{$lv}{size}] vs. [$bytes] and the backing volume group is: [$conf->{resources}{lv}{$lv}{on_vg}] vs [$vg]", 1);
+				}
+				
+			}
+			else
+			{
+				$conf->{resources}{lv}{$lv}{on_vg} = $vg;
+				$conf->{resources}{lv}{$lv}{size}  = $bytes;
+				#record($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], vg: [$conf->{resources}{lv}{$lv}{on_vg}], size: [$conf->{resources}{lv}{$lv}{size}]\n");
+			}
+		}
 	}
 	
 	return(0);
@@ -2201,6 +2243,701 @@ sub process_task
 	return(0);
 }
 
+# This changes the amount of RAM or the number of CPUs allocated to a VM.
+sub change_vm
+{
+	my ($conf, $node) = @_;
+	
+	my $cluster             = $conf->{cgi}{cluster};
+	my $vm                  = $conf->{cgi}{vm};
+	my $say_vm              = ($vm =~ /vm:(.*)/)[0];
+	my $node1               = $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2               = $conf->{clusters}{$cluster}{nodes}[1];
+	my $device              = $conf->{cgi}{device};
+	my $definition_file     = "/shared/definitions/$say_vm.xml";
+	my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+	
+	# Read the values the user passed, see if they differ from what
+	# was read in the config and, if they do differ, make sure the
+	# requested resources are available. If all this passes, 
+	# rewrite the definition file and tell the user to stop/start
+	# their server for the changes to take effect.
+	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
+	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	   $current_ram           /= 1024;
+	my $requested_ram         =  hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
+	   $requested_ram         /= 1024;
+	my $max_ram               =  $available_ram / 1024;
+	my $current_cpus          =  $conf->{vm}{$vm}{details}{cpu_count};
+	my $requested_cpus        =  $conf->{cgi}{cpu_cores};
+	my $current_boot_device   =  $conf->{vm}{$vm}{current_boot_device};
+	my $requested_boot_device =  $conf->{cgi}{boot_device};
+	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; - requested RAM:          [$requested_ram]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; - current RAM:            [$current_ram]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; - requested CPUs: [$requested_cpus]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Updating the <span class=\"fixed_width\">$say_vm</span> server's CPU, RAM and boot devices...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			<br />
+			Changing<br />
+			<br />
+		</td>
+		<td>
+";
+	# Make sure something changed.
+	if (
+		($current_ram         ne $requested_ram)         || 
+		($current_cpus        ne $requested_cpus)        || 
+		($current_boot_device ne $requested_boot_device)
+	)
+	{
+		# Something has changed. Make sure the request is sane,
+		my $max_cpus      = $conf->{resources}{total_threads};
+		record($conf, "$THIS_FILE ".__LINE__."; requested ram:    [$requested_ram]\n");
+		record($conf, "$THIS_FILE ".__LINE__.";       max ram:    [$max_ram]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; requested cpus:   [$requested_cpus]\n");
+		#record($conf, "$THIS_FILE ".__LINE__.";       max cpus:   [$max_cpus]\n");
+		if ($requested_ram > $max_ram)
+		{
+			my $say_requested_ram = bytes_to_hr($conf, ($requested_ram * 1024));
+			my $say_max_ram       = bytes_to_hr($conf, ($max_ram * 1024));
+			print "
+				Requested RAM was higher than available.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning!
+		</td>
+		<td>
+			You've requested that the new RAM for this server be: [<span class=\"fixed_width\">$say_requested_ram</span>].<br />
+			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$say_max_ram</span>].<br />
+			Did someone else allocate some of the free RAM to another server?<br />
+			No changes were made.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+		elsif ($requested_cpus > $max_cpus)
+		{
+			print "
+				Requested CPU count was higher than available.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning!
+		</td>
+		<td>
+			You've requested that the CPU count for this server be: [<span class=\"fixed_width\">$requested_cpus</span>].<br />
+			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$max_cpus</span>].<br />
+			No changes were made.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+		else
+		{
+			# Request is sane. Archive the current definition.
+			my ($backup) = archive_file($conf, $node, $definition_file, 1);
+			
+			# Make the boot device easier to understand.
+			my $say_requested_boot_device = $requested_boot_device;
+			if ($requested_boot_device eq "hd")
+			{
+				$say_requested_boot_device = "Hard drive";
+			}
+			elsif ($requested_boot_device eq "cdrom")
+			{
+				$say_requested_boot_device = "Optical drive";
+			}
+			
+			# Rewrite the XML file.
+			print "<br />Setting the RAM to [<span class=\"fixed_width\">$conf->{cgi}{ram} $conf->{cgi}{ram_suffix}</span>], the number of CPUs to: [<span class=\"fixed_width\">$requested_cpus</span>] and the boot device to [<span class=\"fixed_width\">$say_requested_boot_device</span>].<br /><br />\n";
+			my $new_definition = "";
+			my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
+			my $fh             = IO::Handle->new();
+			my $in_os          = 0;
+			my $raw;
+			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
+				if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
+				{
+					my $prefix = $1;
+					$line = "${prefix}<memory>$requested_ram<\/memory>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /^(.*?)<memory unit='.*?'>\d+<\/memory>/)
+				{
+					my $prefix = $1;
+					$line = "${prefix}<memory unit='KiB'>$requested_ram<\/memory>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /^(.*?)<currentMemory>\d+<\/currentMemory>/)
+				{
+					my $prefix = $1;
+					$line = "${prefix}<currentMemory>$requested_ram<\/currentMemory>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /^(.*?)<currentMemory unit='.*?'>\d+<\/currentMemory>/)
+				{
+					my $prefix = $1;
+					$line = "${prefix}<currentMemory unit='KiB'>$requested_ram<\/currentMemory>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /^(.*?)<vcpu>(\d+)<\/vcpu>/)
+				{
+					my $prefix = $1;
+					$line = "${prefix}<vcpu>$requested_cpus<\/vcpu>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /^(.*?)<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
+				{
+					my $prefix    = $1;
+					my $placement = $2;
+					$line = "${prefix}<vcpu placement='$placement'>$requested_cpus<\/vcpu>";
+					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+				}
+				if ($line =~ /<os>/)
+				{
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
+					$in_os          =  1;
+					$new_definition .= "$line\n";
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+					next;
+				}
+				if ($in_os)
+				{
+					if ($line =~ /<\/os>/)
+					{
+						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
+						$in_os          =  0;
+						# Write out the new list of 
+						# boot devices. Start with the
+						# requested boot device and 
+						# then loop through the rest.
+						$new_definition .= "    <boot dev='$requested_boot_device'/>\n";
+						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding initiall boot device: [$requested_boot_device]\n");
+						foreach my $device (split /,/, $conf->{vm}{$vm}{available_boot_devices})
+						{
+							next if $device eq $requested_boot_device;
+							$new_definition .= "    <boot dev='$device'/>\n";
+							#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding device: [$device] to boot list\n");
+						}
+						
+						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+						$new_definition .= "$line\n";
+						next;
+					}
+					elsif ($line !~ /<boot dev/)
+					{
+						$new_definition .= "$line\n";
+						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding to 'os' element line: [$line].\n");
+						next;
+					}
+				}
+				else
+				{
+					$new_definition .= "$line\n";
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+				}
+			}
+			$fh->close();
+			$new_definition =~ s/(\S)\s+$/$1\n/;
+			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
+			#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+			
+			# Write the new definition file.
+			$fh = IO::Handle->new();
+			$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
+			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				print "\t\t\t<span class=\"code\">$_</span><br />\n";
+			}
+			$fh->close();
+			
+			# Wipe and re-read the definition file's XML and reset
+			# the amount of RAM and the number of CPUs allocated
+			# to this machine.
+			$conf->{vm}{$vm}{xml}                = [];	# this is probably redundant
+			@{$conf->{vm}{$vm}{xml}}             = split/\n/, $new_definition;
+			#record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram KiB (".bytes_to_hr($conf, ($requested_ram * 1024)).")], vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$conf->{vm}{$vm}{details}{ram}       = ($requested_ram * 1024);
+			#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
+			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note_bold\">
+			Note!
+		</td>
+		<td>
+			<br />
+			<i>You need to power off the server for the changes to take effect.</i><br />
+			<br />
+			There are two ways to do this:<br />
+			<br />
+			<table class=\"hidden_table\">
+				<tr>
+					<td class=\"td_hidden\" style=\"text-align: left;\">
+						<span class=\"code\">1.</span> Gracefully power off and then boot back up the server.<br />
+						<br />
+						<span class=\"code\">2.</span> While logged into your server, directly shut the OS down.<br />
+						<span class=\"code\"> &nbsp;</span> The Anvil will automatically restart the server with the new settings.<br />
+					</td>
+				</tr>
+			</table>
+			<br />
+			Please don't just reboot. The configuration file is read on initial boot only.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			<div class=\"align_right\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm\" class=\"button\">Back to Configuration</a></div>
+		</td>
+	</tr>
+</table>
+<br />
+";
+			footer($conf);
+			exit(0);
+		}
+	}
+	else
+	{
+		# Nothing changed.
+		print "
+			It looks like neither the amount of RAM or the number of CPUs has changed.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			No change was made to the server.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	
+	return (0);
+}
+
+# This inserts an ISO into the server's virtual optical drive.
+sub vm_insert_media
+{
+	my ($conf, $node, $insert_media, $insert_drive, $vm_is_running) = @_;
+	
+	my $cluster         = $conf->{cgi}{cluster};
+	my $vm              = $conf->{cgi}{vm};
+	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
+	my $node1           = $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2           = $conf->{clusters}{$cluster}{nodes}[1];
+	my $device          = $conf->{cgi}{device};
+	my $definition_file = "/shared/definitions/$say_vm.xml";
+
+	# Archive the current config, just in case.
+	my ($backup)   = archive_file($conf, $node, $definition_file, 1);
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Inserting <span class=\"fixed_width\">$insert_media</span> into <span class=\"fixed_width\">$insert_drive</span>...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Inserting
+		</td>
+		<td>
+";
+	
+	# How I do this depends on whether the VM is running or not.
+	if ($vm_is_running)
+	{
+		# It is, so I will use 'virsh'.
+		my $virsh_exit_code;
+		my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\\\$?\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			if ($line =~ /virsh:(\d+)/)
+			{
+				$virsh_exit_code = $1;
+			}
+			else
+			{
+				print "<span class=\"code\">$line</span><br />\n";
+			}
+		}
+		$fh->close();
+		if ($virsh_exit_code eq "1")
+		{
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Note
+		</td>
+		<td>
+			It looks like someone else already inserted a disc.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			# Update the definition file in case it was missed by .
+			update_vm_definition($conf, $node, $vm);
+		}
+		elsif ($virsh_exit_code eq "0")
+		{
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Success
+		</td>
+		<td>
+			The disc was inserted successfully.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+
+			# Update the definition file.
+			update_vm_definition($conf, $node, $vm);
+		}
+		else
+		{
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			It would appear that something went wrong!<br />
+			I tried to insert the disc: [$insert_media] into the drive: [$insert_drive] and the command should have returned [<span class=\"fixed_width\">0</span>], but [<span class=\"fixed_width\">$virsh_exit_code</span>] was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	else
+	{
+		# The VM isn't running. Directly re-write the XML file.
+		print "The machine is shut off.<br />\n";
+		print "Updating <span class=\"fixed_width\">$say_vm</span>'s definition file directly.<br />\n";
+		my $new_definition = "";
+		my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /dev='(.*?)'/)
+			{
+				my $this_device = $1;
+				record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
+				if ($this_device eq $insert_drive)
+				{
+					$new_definition .= "      <source file='/shared/files/$insert_media'/>\n";
+				}
+			}
+			$new_definition .= "$line\n";
+		}
+		$fh->close();
+		$new_definition =~ s/(\S)\s+$/$1\n/;
+		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+		
+		# Write the new definition file.
+		print "\t\t\tSaving the new configuration...<br />\n";
+		$fh = IO::Handle->new();
+		$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			print "\t\t\t<span class=\"code\">$_</span><br />\n";
+		}
+		$fh->close();
+		print "
+			Done!
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		# Lastly, copy the new definition to the stored XML for
+		# this VM.
+		$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
+		@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
+	}
+	
+	return(0);
+}
+
+# This ejects an ISO from a server's virtual optical drive.
+sub vm_eject_media
+{
+	my ($conf, $node, $vm_is_running) = @_;
+	
+	my $cluster         = $conf->{cgi}{cluster};
+	my $vm              = $conf->{cgi}{vm};
+	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
+	my $node1           = $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2           = $conf->{clusters}{$cluster}{nodes}[1];
+	my $device          = $conf->{cgi}{device};
+	my $definition_file = "/shared/definitions/$say_vm.xml";
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Ejecting $conf->{cgi}{device}...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Ejecting
+		</td>
+		<td>
+";
+	
+	# Archive the current config, just in case.
+	my ($backup) = archive_file($conf, $node, $definition_file, 1);
+	my $drive    = $conf->{cgi}{device};
+	
+	# How I do this depends on whether the VM is running or not.
+	if ($vm_is_running)
+	{
+		# It is, so I will use 'virsh'.
+		my $virsh_exit_code;
+		my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\\\$?\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			if ($line =~ /virsh:(\d+)/)
+			{
+				$virsh_exit_code = $1;
+			}
+			else
+			{
+				print "<span class=\"code\">$line</span><br />\n";
+			}
+		}
+		$fh->close();
+		if ($virsh_exit_code eq "1")
+		{
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Note
+		</td>
+		<td>
+			It would appear that someone else already ejected the disc.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			# Update the definition file in case it was missed by .
+			update_vm_definition($conf, $node, $vm);
+		}
+		elsif ($virsh_exit_code eq "0")
+		{
+			print "
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Success
+		</td>
+		<td>
+			The optical drive's media has been ejected.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+			
+			# Update the definition file.
+			update_vm_definition($conf, $node, $vm);
+		}
+		else
+		{
+			$virsh_exit_code = "-" if not defined $virsh_exit_code;
+			print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			It would appear that something went wrong!<br />
+			I tried to eject the disc in drive: [<span class=\"fixed_width\">$drive</span>] and the command should have returned [<span class=\"fixed_width\">0</span>], but [<span class=\"fixed_width\">$virsh_exit_code</span>] was received.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		}
+	}
+	else
+	{
+		# The VM isn't running. Directly re-write the XML file.
+		print "The machine is shut off.<br />\n";
+		print "Updating <span class=\"fixed_width\">$say_vm</span>'s definition file directly.<br />\n";
+		my $in_cdrom       = 0;
+		my $this_media     = "";
+		my $this_device    = "";
+		my $new_definition = "";
+		my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		my $raw;
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			$new_definition .= $_;
+			chomp;
+			my $line = $_;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Found a cdrom disk.\n");
+				$in_cdrom = 1;
+			}
+			if ($in_cdrom)
+			{
+				if ($line =~ /file='(.*?)'\/>/)
+				{
+					$this_media = $1;
+					record($conf, "$THIS_FILE ".__LINE__."; Found the media: [$this_media].\n");
+				}
+				if ($line =~ /dev='(.*?)'/)
+				{
+					$this_device = $1;
+					record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
+				}
+				if ($line =~ /<\/disk>/)
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; Checking if: [$this_device] is the device: [$conf->{cgi}{device}] I want to eject...\n");
+					if ($this_device eq $conf->{cgi}{device})
+					{
+						# This is the device I want to unmount.
+						record($conf, "$THIS_FILE ".__LINE__."; It is!\n");
+						$new_definition =~ s/<disk(.*?)device='cdrom'(.*?)<source file='$this_media'\/>\s+(.*?)<\/disk>/<disk${1}device='cdrom'${2}${3}<\/disk>/s;
+					}
+					else
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; It is not.\n");
+					}
+					$in_cdrom    = 0;
+					$this_device = "";
+					$this_media  = "";
+				}
+			}
+		}
+		$fh->close();
+		$new_definition =~ s/(\S)\s+$/$1\n/;
+		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+		
+		# Write the new definition file.
+		print "\t\t\tSaving the new configuration...<br />\n";
+		$fh = IO::Handle->new();
+		$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			print "\t\t\t<span class=\"code\">$_</span><br />\n";
+		}
+		$fh->close();
+		print "
+			Done!
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		# Lastly, copy the new definition to the stored XML for
+		# this VM.
+		$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
+		@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
+	}
+	
+	return(0);
+}
+
 # This shows or changes the configuration of the VM, including mounted media.
 sub manage_vm
 {
@@ -2256,8 +2993,8 @@ sub manage_vm
 			Not Ready
 		</td>
 		<td>
-			I am sorry, but the cluster storage isn't running on either node.<br />
-			Please try again once the cluster is storage has started on at least one of the nodes.<br />
+			I am sorry, but the Anvil's storage isn't running on either node.<br />
+			Please try again once the Anvil's storage has started on at least one of the nodes.<br />
 		</td>
 	</tr>
 </table>
@@ -2292,225 +3029,69 @@ sub manage_vm
 		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is not running, will read: [$conf->{vm}{$vm}{definition_file}]. Will use: [$node].\n");
 	}
 	
-	# If I need to change the number of CPUs, do so now.
+	# Find the list of bootable devices and present them in a selection
+	# box.
+	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
+	#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	$conf->{vm}{$vm}{current_boot_device}    = "";
+	$conf->{vm}{$vm}{available_boot_devices} = "";
+	my $say_current_boot_device              = "";
+	my $in_os                                = 0;
+	foreach my $line (@{$conf->{vm}{$vm}{xml}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], xml line: [$line].\n");
+		last if $line =~ /<\/domain>/;
+		
+		if ($line =~ /<os>/)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
+			$in_os = 1;
+			next;
+		}
+		if ($in_os)
+		{
+			if ($line =~ /<\/os>/)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
+				$in_os = 0;
+				last;
+			}
+			elsif ($line =~ /<boot dev='(.*?)'/)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], OS boot line: [$line].\n");
+				my $device                               =  $1;
+				my $say_device                           =  $device;
+				$conf->{vm}{$vm}{available_boot_devices} .= "$device,";
+				if ($device eq "hd")
+				{
+					$say_device = "Hard Drive";
+				}
+				elsif ($device eq "cdrom")
+				{
+					$say_device = "Optical Drive";
+				}
+				
+				my $selected = "";
+				if (not $conf->{vm}{$vm}{current_boot_device})
+				{
+					$conf->{vm}{$vm}{current_boot_device} = $device;
+					$say_current_boot_device = $say_device;
+					$selected = "selected";
+				}
+				
+				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
+				#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+			}
+		}
+	}
+	$boot_select .= "</select>";
+	#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	
+	# If I need to change the number of CPUs or the amount of RAM, do so
+	# now.
 	if ($conf->{cgi}{change})
 	{
-		my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
-		
-		# Read the values the user passed, see if they differ from what
-		# was read in the config and, if they do differ, make sure the
-		# requested resources are available. If all this passes, 
-		# rewrite the definition file and tell the user to stop/start
-		# their server for the changes to take effect.
-		my $current_ram    =  $conf->{vm}{$vm}{details}{ram};
-		my $available_ram  =  ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
-		   $current_ram    /= 1024;
-		my $requested_ram  =  hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
-		   $requested_ram  /= 1024;
-		my $max_ram        =  $available_ram / 1024;
-		my $current_cpus   =  $conf->{vm}{$vm}{details}{cpu_count};
-		my $requested_cpus =  $conf->{cgi}{cpu_cores};
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; - requested RAM:          [$requested_ram]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; - current RAM:            [$current_ram]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; - requested CPUs: [$requested_cpus]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
-		
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"2\">
-			<b>Changing <span class=\"fixed_width\">$say_vm</span>'s CPU and RAM...</b>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Changing
-		</td>
-		<td>
-";
-		# Make sure something changed.
-		if (($current_ram ne $requested_ram) || ($current_cpus ne $requested_cpus))
-		{
-			# Something has changed. Make sure the request is sane,
-			my $max_cpus      = $conf->{resources}{total_threads};
-			record($conf, "$THIS_FILE ".__LINE__."; requested ram:    [$requested_ram]\n");
-			record($conf, "$THIS_FILE ".__LINE__.";       max ram:    [$max_ram]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; requested cpus:   [$requested_cpus]\n");
-			#record($conf, "$THIS_FILE ".__LINE__.";       max cpus:   [$max_cpus]\n");
-			if ($requested_ram > $max_ram)
-			{
-				my $say_requested_ram = bytes_to_hr($conf, ($requested_ram * 1024));
-				my $say_max_ram       = bytes_to_hr($conf, ($max_ram * 1024));
-				print "
-				Requested RAM was higher than available.<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning_bold\">
-			Warning!
-		</td>
-		<td>
-			You've requested that the new RAM for this server be: [<span class=\"fixed_width\">$say_requested_ram</span>].<br />
-			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$say_max_ram</span>].<br />
-			Did someone else allocate some of the free RAM to another server?<br />
-			No changes were made.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-				
-			}
-			elsif ($requested_cpus > $max_cpus)
-			{
-				print "
-				Requested CPU count was higher than available.<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning_bold\">
-			Warning!
-		</td>
-		<td>
-			You've requested that the CPU count for this server be: [<span class=\"fixed_width\">$requested_cpus</span>].<br />
-			Unfortunately, the highest you can use is: [<span class=\"fixed_width\">$max_cpus</span>].<br />
-			No changes were made.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			}
-			else
-			{
-				# Rewrite the XML file.
-				print "Setting the RAM to [<span class=\"fixed_width\">$conf->{cgi}{ram} $conf->{cgi}{ram_suffix}</span>] and the number of CPUs to: [<span class=\"fixed_width\">$requested_cpus</span>].<br />\n";
-				my $new_definition = "";
-				my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				my $raw;
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
-				{
-					chomp;
-					my $line = $_;
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
-					if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
-					{
-						my $prefix = $1;
-						$line = "${prefix}<memory>$requested_ram<\/memory>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					if ($line =~ /^(.*?)<memory unit='.*?'>\d+<\/memory>/)
-					{
-						my $prefix = $1;
-						$line = "${prefix}<memory unit='KiB'>$requested_ram<\/memory>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					if ($line =~ /^(.*?)<currentMemory>\d+<\/currentMemory>/)
-					{
-						my $prefix = $1;
-						$line = "${prefix}<currentMemory>$requested_ram<\/currentMemory>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					if ($line =~ /^(.*?)<currentMemory unit='.*?'>\d+<\/currentMemory>/)
-					{
-						my $prefix = $1;
-						$line = "${prefix}<currentMemory unit='KiB'>$requested_ram<\/currentMemory>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					if ($line =~ /^(.*?)<vcpu>(\d+)<\/vcpu>/)
-					{
-						my $prefix = $1;
-						$line = "${prefix}<vcpu>$requested_cpus<\/vcpu>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					if ($line =~ /^(.*?)<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
-					{
-						my $prefix    = $1;
-						my $placement = $2;
-						$line = "${prefix}<vcpu placement='$placement'>$requested_cpus<\/vcpu>";
-						#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
-					}
-					$new_definition .= "$line\n";
-				}
-				$fh->close();
-				$new_definition =~ s/(\S)\s+$/$1\n/;
-				#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
-				
-				# Write the new definition file.
-				$fh = IO::Handle->new();
-				$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
-				{
-					chomp;
-					print "\t\t\t<span class=\"code\">$_</span><br />\n";
-				}
-				$fh->close();
-				
-				# Wipe and re-read the definition file's XML and reset
-				# the amount of RAM and the number of CPUs allocated
-				# to this machine.
-				$conf->{vm}{$vm}{xml}                = [];	# this is probably redundant
-				@{$conf->{vm}{$vm}{xml}}             = split/\n/, $new_definition;
-				record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram KiB (".bytes_to_hr($conf, ($requested_ram * 1024)).")], vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
-				$conf->{vm}{$vm}{details}{ram}       = ($requested_ram * 1024);
-				record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
-				$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
-				$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
-				print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note_bold\">
-			Note!
-		</td>
-		<td>
-			You need to power off the server for the changes to take effect.<br />
-			<br />
-			There are two ways to do this:<br />
-			<br />
-			<table class=\"hidden_table\">
-				<tr>
-					<td class=\"td_hidden\" style=\"text-align: left;\">
-						<span class=\"code\">1.</span> Gracefully power off and then boot back up the server.<br />
-						<span class=\"code\">2.</span> While logged into your server, directly shut the OS down.<br />
-						<span class=\"code\"> &nbsp;</span> The cluster will automatically restart the server with the new settings.<br />
-					</td>
-				</tr>
-			</table>
-			<br />
-			Please don't just reboot. The configuration file is read on initial boot only.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			}
-		}
-		else
-		{
-			# Nothing changed.
-			print "
-			It looks like neither the amount of RAM or the number of CPUs has changed.<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning_bold\">
-			Warning
-		</td>
-		<td>
-			No change was made to the server.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-		}
+		change_vm($conf, $node);
 	}
 	
 	# If I've been asked to insert a disc, do so now.
@@ -2530,372 +3111,22 @@ sub manage_vm
 			$insert_media = $conf->{cgi}{$device_key};
 		}
 	}
+	
+	### TODO: Merge insert and eject into one function.
 	#record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
 	if ($do_insert)
 	{
-		# Archive the current config, just in case.
-		my ($backup)   = archive_file($conf, $node, $definition_file, 1);
-		
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"2\">
-			<b>Inserting <span class=\"fixed_width\">$insert_media</span> into <span class=\"fixed_width\">$insert_drive</span>...</b>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Inserting
-		</td>
-		<td>
-";
-		
-		# How I do this depends on whether the VM is running or not.
-		if ($vm_is_running)
-		{
-			# It is, so I will use 'virsh'.
-			my $virsh_exit_code;
-			my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\\\$?\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			my $raw;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				my $line = $_;
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
-				next if not $line;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-				if ($line =~ /virsh:(\d+)/)
-				{
-					$virsh_exit_code = $1;
-				}
-				else
-				{
-					print "<span class=\"code\">$line</span><br />\n";
-				}
-			}
-			$fh->close();
-			if ($virsh_exit_code eq "1")
-			{
-				print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Note
-		</td>
-		<td>
-			It looks like someone else already inserted a disc.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-				# Update the definition file in case it was missed by .
-				update_vm_definition($conf, $node, $vm);
-			}
-			elsif ($virsh_exit_code eq "0")
-			{
-				print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good_bold\">
-			Success
-		</td>
-		<td>
-			The disc was inserted successfully.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-				
-				# Update the definition file.
-				update_vm_definition($conf, $node, $vm);
-			}
-			else
-			{
-					print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning_bold\">
-			Warning
-		</td>
-		<td>
-			It would appear that something went wrong!<br />
-			I tried to insert the disc: [$insert_media] into the drive: [$insert_drive] and the command should have returned [<span class=\"fixed_width\">0</span>], but [<span class=\"fixed_width\">$virsh_exit_code</span>] was received.<br />
-			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			}
-		}
-		else
-		{
-			# The VM isn't running. Directly re-write the XML file.
-			print "The machine is shut off.<br />\n";
-			print "Updating <span class=\"fixed_width\">$say_vm</span>'s definition file directly.<br />\n";
-			my $new_definition = "";
-			my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			my $raw;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				chomp;
-				my $line = $_;
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				if ($line =~ /dev='(.*?)'/)
-				{
-					my $this_device = $1;
-					record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
-					if ($this_device eq $insert_drive)
-					{
-						$new_definition .= "      <source file='/shared/files/$insert_media'/>\n";
-					}
-				}
-				$new_definition .= "$line\n";
-			}
-			$fh->close();
-			$new_definition =~ s/(\S)\s+$/$1\n/;
-			#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
-			
-			# Write the new definition file.
-			print "\t\t\tSaving the new configuration...<br />\n";
-			$fh = IO::Handle->new();
-			$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				chomp;
-				print "\t\t\t<span class=\"code\">$_</span><br />\n";
-			}
-			$fh->close();
-			print "
-			Done!
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			# Lastly, copy the new definition to the stored XML for
-			# this VM.
-			$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
-			@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
-		}
+		vm_insert_media($conf, $node, $insert_media, $insert_drive, $vm_is_running);
 	}
 	
 	# If I've been asked to eject a disc, do so now.
 	if ($conf->{cgi}{'do'} eq "eject")
 	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"2\">
-			<b>Ejecting $conf->{cgi}{device}...</b>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Ejecting
-		</td>
-		<td>
-";
-		
-		# Archive the current config, just in case.
-		my ($backup) = archive_file($conf, $node, $definition_file, 1);
-		my $drive    = $conf->{cgi}{device};
-		
-		# How I do this depends on whether the VM is running or not.
-		if ($vm_is_running)
-		{
-			# It is, so I will use 'virsh'.
-			my $virsh_exit_code;
-			my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\\\$?\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			my $raw;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				my $line = $_;
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
-				next if not $line;
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-				if ($line =~ /virsh:(\d+)/)
-				{
-					$virsh_exit_code = $1;
-				}
-				else
-				{
-					print "<span class=\"code\">$line</span><br />\n";
-				}
-			}
-			$fh->close();
-			if ($virsh_exit_code eq "1")
-			{
-				print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Note
-		</td>
-		<td>
-			It would appear that someone else already ejected the disc.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-				# Update the definition file in case it was missed by .
-				update_vm_definition($conf, $node, $vm);
-			}
-			elsif ($virsh_exit_code eq "0")
-			{
-				print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good_bold\">
-			Success
-		</td>
-		<td>
-			The optical drive's media has been ejected.<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-				
-				# Update the definition file.
-				update_vm_definition($conf, $node, $vm);
-			}
-			else
-			{
-				$virsh_exit_code = "-" if not defined $virsh_exit_code;
-				print "
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning_bold\">
-			Warning
-		</td>
-		<td>
-			It would appear that something went wrong!<br />
-			I tried to eject the disc in drive: [<span class=\"fixed_width\">$drive</span>] and the command should have returned [<span class=\"fixed_width\">0</span>], but [<span class=\"fixed_width\">$virsh_exit_code</span>] was received.<br />
-			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			}
-		}
-		else
-		{
-			# The VM isn't running. Directly re-write the XML file.
-			print "The machine is shut off.<br />\n";
-			print "Updating <span class=\"fixed_width\">$say_vm</span>'s definition file directly.<br />\n";
-			my $in_cdrom       = 0;
-			my $this_media     = "";
-			my $this_device    = "";
-			my $new_definition = "";
-			my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			my $raw;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				$new_definition .= $_;
-				chomp;
-				my $line = $_;
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
-				{
-					record($conf, "$THIS_FILE ".__LINE__."; Found a cdrom disk.\n");
-					$in_cdrom = 1;
-				}
-				if ($in_cdrom)
-				{
-					if ($line =~ /file='(.*?)'\/>/)
-					{
-						$this_media = $1;
-						record($conf, "$THIS_FILE ".__LINE__."; Found the media: [$this_media].\n");
-					}
-					if ($line =~ /dev='(.*?)'/)
-					{
-						$this_device = $1;
-						record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
-					}
-					if ($line =~ /<\/disk>/)
-					{
-						record($conf, "$THIS_FILE ".__LINE__."; Checking if: [$this_device] is the device: [$conf->{cgi}{device}] I want to eject...\n");
-						if ($this_device eq $conf->{cgi}{device})
-						{
-							# This is the device I want to unmount.
-							record($conf, "$THIS_FILE ".__LINE__."; It is!\n");
-							$new_definition =~ s/<disk(.*?)device='cdrom'(.*?)<source file='$this_media'\/>\s+(.*?)<\/disk>/<disk${1}device='cdrom'${2}${3}<\/disk>/s;
-						}
-						else
-						{
-							record($conf, "$THIS_FILE ".__LINE__."; It is not.\n");
-						}
-						$in_cdrom    = 0;
-						$this_device = "";
-						$this_media  = "";
-					}
-				}
-			}
-			$fh->close();
-			$new_definition =~ s/(\S)\s+$/$1\n/;
-			#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
-			
-			# Write the new definition file.
-			print "\t\t\tSaving the new configuration...<br />\n";
-			$fh = IO::Handle->new();
-			$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
-			{
-				chomp;
-				print "\t\t\t<span class=\"code\">$_</span><br />\n";
-			}
-			$fh->close();
-			print "
-			Done!
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
-			# Lastly, copy the new definition to the stored XML for
-			# this VM.
-			$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
-			@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
-		}
+		vm_eject_media($conf, $node, $vm_is_running);
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
-	my $sc   = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	my $raw;
@@ -3079,6 +3310,7 @@ sub manage_vm
 	</tr>
 	<tr><td style=\"height:10px; padding:0px\" colspan=\"4\"></td></tr>
 ";
+
 	my $i = 1;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
 	{
@@ -3113,7 +3345,72 @@ sub manage_vm
 		$i++;
 	}
 	
+	### NOTE: This is likely not going to happen in this version.
+# 	# Figure out which storage pool the server is on.
+# 	my ($on_vg, $lv_size) = find_node_storage_pool($conf);
+# 	
+# 	# Now that I know the LV, get it's size and parse out the VG.
+# 	my $printed_header = 0;
+# 	my @candidate_vgs;
+# 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
+# 	{
+# 		next if $vg eq $on_vg;
+# 		my $clustered   = $conf->{resources}{vg}{$vg}{clustered};
+# 		my $free_space  = $conf->{resources}{vg}{$vg}{free_space};
+# 		my $used_space  = $conf->{resources}{vg}{$vg}{used_space};
+# 		my $total_space = $conf->{resources}{vg}{$vg}{size};
+# 		
+# 		if (($clustered) && ($lv_size >= $free_space))
+# 		{
+# 			if (not $printed_header)
+# 			{
+# 				print "
+# 	<tr>
+# ";
+# 			}
+# 			print "
+# 		<td class=\"highlight_good_bold\">
+# 			Storage
+# 		</td>
+# 		<td>
+# 			Permanently move to storage pool <span class=\"fixed_width\">$vg</span>
+# 		</td>
+# 		<td>
+# 			<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{vm}{$vm}&task=move_storage&target=$vg\">Permanently Move</a>
+# 		</td>
+# ";
+# # 			my $string = "vg=$vg,clustered=1,free_space=$free_space,used_space=$used_space,total_space=$total_space";
+# # 			push @candidate_vgs, $string;
+# # 			record($conf, "$THIS_FILE ".__LINE__."; candidate target vg: [$vg] ($string)\n");
+# 		}
+# 	}
+# 	if ($printed_header)
+# 	{
+# 		# Print the footer
+# 		print "
+# 	</tr>
+# 	<tr><td style=\"height:10px; padding:0px\" colspan=\"3\"></td></tr>
+# ";
+# 	}
+	
+	
 	print "
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Boot Drive:
+		</td>
+		<td style=\"text-align: left;\">
+			<span class=\"subtle_text\">Currently booting from the $say_current_boot_device.</span><br />
+			$boot_select
+		</td>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan=\"2\" rowspan=\"5\">
+			<input type=\"submit\" name=\"change\" value=\"Change\" class=\"button\">
+		</td>
+	</tr>
+	<tr><td style=\"height:10px; padding:0px\" colspan=\"3\"></td></tr>
 	<tr>
 		<td class=\"highlight_good_bold\">
 			Memory (RAM):
@@ -3124,9 +3421,6 @@ sub manage_vm
 		</td>
 		<td>
 			&nbsp;
-		</td>
-		<td colspan=\"2\" rowspan=\"3\">
-			<input type=\"submit\" name=\"change\" value=\"Change\" class=\"button\">
 		</td>
 	</tr>
 	<tr><td style=\"height:10px; padding:0px\" colspan=\"3\"></td></tr>
@@ -3158,6 +3452,46 @@ sub manage_vm
 ";
 	
 	return (0);
+}
+
+# This looks at a VM and determines which storage pool it is on.
+sub find_node_storage_pool
+{
+	my ($conf) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in find_node_storage_pool().\n");
+	
+	my $vm     = $conf->{cgi}{vm};
+	my $say_vm = ($vm =~ /^vm:(.*)/)[0];
+	
+	my $current_lv = "";
+	my $in_block   = 0;
+	foreach my $line (sort {$a cmp $b} @{$conf->{vm}{$vm}{xml}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], xml line: [$line]\n");
+		if (($line =~ /<disk/) && ($line =~ /type='block'/))
+		{
+			$in_block = 1;
+			next;
+		}
+		if ($in_block)
+		{
+			if ($line =~ /<\/disk>/)
+			{
+				$in_block = 0;
+				next;
+			}
+			elsif (($line =~ /source/) && ($line =~ /dev='(.*?)'/))
+			{
+				$current_lv = $1;
+				last;
+			}
+		}
+	}
+	my $lv_size = $conf->{resources}{lv}{$current_lv}{size};
+	my $on_vg   = $conf->{resources}{lv}{$current_lv}{on_vg};
+	record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], current_lv: [$current_lv], size: [$lv_size], on_vg: [$on_vg]\n");
+	
+	return($on_vg, $lv_size);
 }
 
 # This calls 'virsh dumpxml' against the given VM.
@@ -3786,10 +4120,7 @@ sub provision_vm
 			<br />
 			<i>Please leave this window open until you have rebooted the new server for the first time!</i><br />
 			<br />
-			The server is in a special state until it is rebooted.<br />
-			If you press \"Next\" before then, it may not turn back on properly.<br />
-			<br />
-			When you click \"Next\", the new server will be added to the cluster.<br />
+			The server is in a special state until it is rebooted. It must exit this state before being added to the cluster.<br />
 			<br />
 		</td>
 	</tr>
@@ -3904,7 +4235,7 @@ sub provision_vm
 	</tr>
 	<tr>
 		<td colspan=\"2\">
-			<div class=\"align_right\"><a href=\"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$conf->{new_vm}{name}&node=$conf->{new_vm}{host_node}\" class=\"button\">Next</a></div>
+			<div class=\"align_right\"><b>After</b> the OS install is complete, please <a href=\"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$conf->{new_vm}{name}&node=$conf->{new_vm}{host_node}\" class=\"button\">click here</a> to add the VM to the cluster.</div>
 		</td>
 	</tr>
 </table>
@@ -6138,7 +6469,7 @@ sub archive_file
 		chomp;
 		my $line = $_;
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /cp:(\d+)/)
 		{
 			$cp_exit_code = $1;
@@ -6150,7 +6481,7 @@ sub archive_file
 		}
 	}
 	$fh->close();
-	record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
 	if ($cp_exit_code eq "0")
 	{
 		if (not $quiet)
@@ -6962,7 +7293,7 @@ sub withdraw_node
 		<td>
 			<br />
 			Stopping the cluster resource manager now...<br />
-			<span class=\"highlight_ready_bold\">Please be patient</span>! This can take a minute.
+			<span class=\"highlight_ready_bold\">Please be patient</span>! This can take a minute.<br />
 			<br />
 		</td>
 	</tr>
@@ -7816,7 +8147,7 @@ sub display_details
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"2\">
-			<b>Cluster Offline</b>
+			<b>Anvil Offline</b>
 		</td>
 	</tr>
 	<tr>
@@ -7824,7 +8155,7 @@ sub display_details
 			Offline
 		</td>
 		<td>
-			Both cluster nodes appear to be powered off. Cluster details are not available at this time.
+			Both physical nodes appear to be powered off. Anvil details are not available at this time.
 		</td>
 	</tr>
 </table>
@@ -8669,6 +9000,7 @@ sub check_vms
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	
 	#record($conf, "$THIS_FILE ".__LINE__."; node 1: n[$node1] s[$conf->{node}{$node1}{info}{short_host_name}] l[$conf->{node}{$node1}{info}{host_name}], node 2: n[$node2] s[$conf->{node}{$node2}{info}{short_host_name}] l[$conf->{node}{$node2}{info}{host_name}]\n");
 	my $short_node1 = "$conf->{node}{$node1}{info}{short_host_name}";
 	my $short_node2 = "$conf->{node}{$node2}{info}{short_host_name}";
@@ -8708,7 +9040,24 @@ sub check_vms
 		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{'system'}{ignore_missing_vm}))
 		{
-			error($conf, "I found a definition for a VM named: [<span class=\"highlight_detail\">$say_vm</span>], but there doesn't seem to be an entry in <span class=\"highlight_detail\">cluster.conf</span> for it.", 0);
+			# Pull the host node and current state out of the hash.
+			my $host_node = "";
+			my $vm_state  = "";
+			foreach my $node (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}})
+			{
+				$host_node = $node;
+				foreach my $key (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{virsh}})
+				{
+					if ($key eq "state") 
+					{
+						$vm_state = $conf->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
+					}
+					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], virsh '$key': [$conf->{vm}{$vm}{node}{$node}{virsh}{$key}]\n");
+				}
+			}
+			$conf->{vm}{$vm}{say_node1} = "--";
+			$conf->{vm}{$vm}{say_node2} = "--";
+			error($conf, "I found a server with the name: [<span class=\"highlight_detail\">$say_vm</span>] which is not managed by the Anvil! yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href=\"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state\"><b>click here to add it</b></a> to this Anvil! now.", 0);
 			next;
 		}
 		
@@ -9062,7 +9411,7 @@ sub display_drbd_details
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"9\">
-			<b>DRBD - Replicated Storage</b>
+			<b>Replicated Storage</b>
 		</td>
 	</tr>
 	<tr>
@@ -9246,7 +9595,7 @@ sub display_gfs2_details
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"6\">
-			<b>GFS2 - Shared File Systems</b>
+			<b>Shared File Systems</b>
 		</td>
 	</tr>
 	<tr>

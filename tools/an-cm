@@ -126,13 +126,6 @@ my $conf = {
 	},
 };
 
-# print "[".convert_to_fahrenheit($conf, "22.512 degrees Celcius")."]\n";
-# print "[".convert_to_fahrenheit($conf, "22.512")."]\n";
-# print "[".convert_to_fahrenheit($conf, "15*C")."]\n";
-# print "[".convert_to_fahrenheit($conf, "40 *C")."]\n";
-# print "[".convert_to_fahrenheit($conf, "40")."]\n";
-# exit;
-
 # Should I live?
 avoid_duplicate_run($conf);
 

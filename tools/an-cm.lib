@@ -65,9 +65,12 @@ sub read_states
 	check_storage($conf);
 	check_host($conf);
 	check_ups($conf);
+	check_vms($conf);
 	
 	return(0);
 }
+
+# This reads the list of running and defined servers. 
 
 # This checks to see if apcupsd is installed and, if so, reads it's config
 # file(s), then calls apcaccess using the data found within.
@@ -6357,7 +6360,14 @@ sub compare_new_and_old
 				
 				if ($var =~ /STATUS/i)
 				{
-					if ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /ONLINE/i)
+					if ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/i)
+					{
+						$conf->{'system'}{clear_event} = 0;
+						$conf->{'system'}{ups_alert}{$ups_name}{status} = 1;
+						$changes .= "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
+						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					}
+					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /ONLINE/i)
 					{
 						$conf->{'system'}{clear_event} = 1;
 						delete $conf->{'system'}{ups_alert}{$ups_name}{status};
