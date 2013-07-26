@@ -5592,6 +5592,11 @@ sub compare_new_and_old
 							next;
 						}
 						
+						# If I am in a learn state, ignore BBU related alerts
+						if ($var eq "learn_cycle_active")
+						{
+							
+						}
 						
 						# I need to watch for ranges in temperature, voltage and Joules.
 						if ($new_value =~ /^(\d+\.*\d*) C$/)
@@ -6365,6 +6370,13 @@ sub compare_new_and_old
 						$conf->{'system'}{clear_event} = 0;
 						$conf->{'system'}{ups_alert}{$ups_name}{status} = 1;
 						$changes .= "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
+						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					}
+					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /BOOST ONLINE/i)
+					{
+						$conf->{'system'}{clear_event} = 0;
+						$conf->{'system'}{ups_alert}{$ups_name}{status} = 1;
+						$changes .= "\nUPS ${ups_name}'s is in 'BOOST ONLINE', which means it is compensating for low input voltage, called a \"brown out\". Power from the mains circuit sub-optimal.\n";
 						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
 					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /ONLINE/i)

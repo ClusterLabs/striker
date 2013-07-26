@@ -324,7 +324,9 @@ sub install_apps
 	my ($conf) = @_;
 	
 	# Read all currently installed packages.
+	print "Checking list of already-installed applications.\n";
 	read_installed_rpms($conf);
+	print "Done! Checking for apps that need to be installed...\n";
 	
 	# First, install
 	my $install = "";
@@ -332,9 +334,10 @@ sub install_apps
 	{
 		# Is the app already installed?
 		next if not $install_app;
-		if (ref($conf->{installed_apps}) ne "HASH")
+		if (not exists $conf->{installed_apps})
 		{
 			# No, add it.
+			print " - Will install: [$install_app]\n";
 			$install .= "$install_app ";
 		}
 	}
@@ -356,6 +359,10 @@ sub install_apps
 		$fh->close();
 		print "\\----------\n";
 		print "Done.\n";
+	}
+	else
+	{
+		print "No apps need to be installed.\n";
 	}
 	
 	# Now add repos and install their packages.
