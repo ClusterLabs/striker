@@ -6840,7 +6840,7 @@ sub poweron_node
 	check_if_on($conf, $node);
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 	my $proceed      = 0;
-	my $abort_reason = "";
+	my $abort_reason = "An unknown error has occured. Is <span class=\"code\">${node}</span>'s IPMI interface reachable?";
 	if ($conf->{node}{$node}{is_on} == 0)
 	{
 		$proceed = 1;
