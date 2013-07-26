@@ -3037,9 +3037,10 @@ sub manage_vm
 	$conf->{vm}{$vm}{available_boot_devices} = "";
 	my $say_current_boot_device              = "";
 	my $in_os                                = 0;
+	my $saw_cdrom                            = 0;
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], xml line: [$line].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; in_os: [$in_os] vm: [$vm], xml line: [$line].\n");
 		last if $line =~ /<\/domain>/;
 		
 		if ($line =~ /<os>/)
@@ -3048,13 +3049,22 @@ sub manage_vm
 			$in_os = 1;
 			next;
 		}
-		if ($in_os)
+		if ($in_os == 1)
 		{
 			if ($line =~ /<\/os>/)
 			{
 				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
 				$in_os = 0;
-				last;
+				if ($saw_cdrom)
+				{
+					last;
+				}
+				else
+				{
+					# I didn't see a CD-ROM boot option, so
+					# keep looking.
+					$in_os = 2;
+				}
 			}
 			elsif ($line =~ /<boot dev='(.*?)'/)
 			{
@@ -3069,6 +3079,7 @@ sub manage_vm
 				elsif ($device eq "cdrom")
 				{
 					$say_device = "Optical Drive";
+					$saw_cdrom  = 1;
 				}
 				
 				my $selected = "";
@@ -3081,6 +3092,20 @@ sub manage_vm
 				
 				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
 				#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+			}
+		}
+		elsif ($in_os == 2)
+		{
+			# I'm out of the OS block, but I haven't seen a CD-ROM
+			# yet, so keep looping and looking for one.
+			if ($line =~ /<disk .*?device='cdrom'/)
+			{
+				# There is a CD-ROM, add it as a boot option.
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Found a CDROM drive, adding it as a boot option.\n");
+				my $say_device  =  "Optical Drive";
+				   $boot_select .= "<option value=\"cdrom\">$say_device</option>";
+				   $in_os = 0;
+				last;
 			}
 		}
 	}
