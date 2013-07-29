@@ -34,7 +34,7 @@ done
 yum -y groupinstall basic-desktop development x11 fonts
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd virt-manager screen ccs vim \
-               mlocate wget firefox man qemu-kvm libvirt
+               mlocate wget firefox man qemu-kvm libvirt gedit
 yum -y update
 
 export PERL_MM_USE_DEFAULT=1
