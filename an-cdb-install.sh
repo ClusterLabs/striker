@@ -43,7 +43,7 @@ perl -MCPAN -e 'install Moose::Role'
 perl -MCPAN -e 'install Throwable::Error'
 perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
 
-cat /den/null > /etc/libvirt/qemu/networks/default.xml
+cat /dev/null > /etc/libvirt/qemu/networks/default.xml
 
 if [ ! -e "/var/www/home" ]
 then
@@ -107,6 +107,23 @@ then
 	su alteeve -c "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa"
 	chmod +x /home/alteeve/Desktop/mozilla-firefox.desktop
 	chmod +x /home/alteeve/Desktop/virt-manager.desktop
+	
+	# This disables virt-manager's autoconnect to localhost.
+	VMFILE="/home/alteeve/.gconf/apps/virt-manager/connections/%gconf.xml"
+	mkdir -p /home/alteeve/.gconf/apps/virt-manager/connections
+	touch $VMFILE
+	echo '<?xml version="1.0"?>' > $VMFILE
+	echo '<gconf>' >> $VMFILE
+	echo '	<entry name="autoconnect" mtime="1375139570" type="list" ltype="string">' >> $VMFILE
+	echo '	</entry>' >> $VMFILE
+	echo '	<entry name="uris" mtime="1375139415" type="list" ltype="string">' >> $VMFILE
+	echo '		<li type="string">' >> $VMFILE
+	echo '			<stringvalue>qemu:///system</stringvalue>' >> $VMFILE
+	echo '		</li>' >> $VMFILE
+	echo '	</entry>' >> $VMFILE
+	echo '</gconf>' >> $VMFILE
+	chown -R alteeve:alteeve /home/alteeve/.gconf
+	chmod go-rwx -R /home/alteeve/.gconf
 fi
 echo $PASSWORD | passwd --stdin alteeve
 
@@ -152,7 +169,7 @@ fi
 su apache -c "htpasswd -cdb /var/www/home/htpasswd admin $PASSWORD"
 if [ ! -e "/var/www/home/an-cdb" ]
 then
-	su apache -c "cd ~ && git clone git://github.com/digimer/an-cdb.git"
+	su apache -c "cd ~ && git clone https://github.com/digimer/an-cdb.git"
 	rsync -av /var/www/home/an-cdb/html /var/www/
 	rsync -av /var/www/home/an-cdb/cgi-bin /var/www/
 	rsync -av /var/www/home/an-cdb/tools /var/www/
