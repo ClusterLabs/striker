@@ -942,6 +942,19 @@ sub ask_questions
 		$fh->close();
 		print "\\----------\n";
 		print "Done.\n";
+		
+		sleep 1;
+		if (not -e "/usr/sbin/brctl")
+		{
+			print q|
+[ ERROR ] - I was unable to install the 'bridge-utils' package!
+[ ERROR ] - Without it, the network can not be configured.
+[ ERROR ] - Do you have an internet connection?
+[ ERROR ] - If this is a RHEL server, is this system registered with RHN?
+[ ERROR ] - Configuration aborted.
+|;
+			exit (1);
+		}
 	}
 	
 	configure_nics($conf);
