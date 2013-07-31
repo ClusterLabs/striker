@@ -45,8 +45,7 @@ my $conf = {
 			"ntp",
 			"OpenIPMI",
 			"OpenIPMI-libs",
-			"OpenIPMI-perl",
-			"OpenIPMI-tools",
+			"python-virtinst",
 			"qemu-kvm",
 			"qemu-kvm-tools",
 			"ricci",
@@ -54,7 +53,6 @@ my $conf = {
 			"rsync",
 			"screen",
 			"syslinux", 
-			"virt-install",
 			"virt-viewer",
 			"wget",
 		],
@@ -86,6 +84,7 @@ my $conf = {
 			elrepo		=>	{
 				key		=>	"http://elrepo.org/RPM-GPG-KEY-elrepo.org",
 				rpm		=>	"http://elrepo.org/elrepo-release-6-4.el6.elrepo.noarch.rpm",
+				file		=>	"/etc/yum.repos.d/elrepo.repo",
 				install		=>	["drbd83-utils", "kmod-drbd83"],
 			},
 		},
@@ -121,12 +120,15 @@ install_acpupsd($conf);
 modify_daemons($conf);
 set_text_boot($conf);
 
+my $say_cluster = "$conf->{answers}{customer_prefix}-cluster-$conf->{answers}{cluster_id}";
+my $say_vg1     = "$conf->{answers}{customer_prefix}-c$conf->{answers}{node_id}n01_vg0";
+my $say_vg2     = "$conf->{answers}{customer_prefix}-c$conf->{answers}{node_id}n02_vg0";
 print "Initial configuration is complete!\n";
 print "Manual tasks remaining;\n\n";
 print " - Manually create the ~/.ssh/authorized_keys file.\n";
 print " - Merge /etc/hosts and add foundation pack devices.\n";
 print " - Create the DRBD partition(s)\n";
-print " - Reboot and run the following;\n";
+print " - Reboot and run the following commands;\n\n";
 print "passwd\n";
 print "passwd ricci\n";
 print "modprobe drbd\n";
@@ -137,17 +139,15 @@ print "On one node only:\n";
 print "drbdadm -- --clear-bitmap new-current-uuid r{0,1}\n";
 print "On both:\n";
 print "drbdadm primary r{0,1}\n";
-print "
-pvcreate /dev/drbd{0,1}
-vgcreate -c y n01_vg0 /dev/drbd0
-vgcreate -c y n02_vg0 /dev/drbd1
-lvcreate -L 40G -n shared n01_vg0
-mkfs.gfs2 -p lock_dlm -j 2 -t $conf->{answers}{customer_prefix}-cluster-$conf->{answers}{cluster_id}:shared /dev/n01_vg0/shared
-mkdir /shared
-mount /dev/n01_vg0/shared /shared/
-echo `gfs2_tool sb /dev/n01_vg0/shared uuid | awk '/uuid =/ { print $4; }' | sed -e \"s/\(.*\)/UUID=\\L\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab
-/etc/init.d/gfs2 status
-";
+print "pvcreate /dev/drbd{0,1}\n";
+print "vgcreate -c y $say_vg1 /dev/drbd0\n";
+print "vgcreate -c y $say_vg2 /dev/drbd1\n";
+print "lvcreate -L 40G -n shared $say_vg1\n";
+print "mkfs.gfs2 -p lock_dlm -j 2 -t $say_cluster:shared /dev/$say_vg1/shared\n";
+print "mkdir /shared\n";
+print "mount /dev/$say_vg1/shared /shared\n";
+print "echo `gfs2_tool sb /dev/$say_vg1/shared uuid | awk '/uuid =/ { print \$4; }' | sed -e \"s/\(.*\)/UUID=\\L\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab\n";
+print "/etc/init.d/gfs2 status\n";
 
 ###############################################################################
 # Functions                                                                   #
@@ -233,7 +233,12 @@ sub disable_selinux
 	my ($conf) = @_;
 	
 	print "Disabling SELinux\n";
-	my $sc = "setenforce 0 && sed -i 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
+	if (-e "/etc/selinux/config.bak")
+	{
+		print " - Already disabled, skipping.\n";
+		return(0);
+	}
+	my $sc = "setenforce 0 && sed -i.bak 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
 	while(<$fh>)
@@ -243,7 +248,7 @@ sub disable_selinux
 		print " - $line\n";
 	}
 	$fh->close();
-	print "Done.\n";
+	print " - Done.\n";
 	
 	return (0);
 }
@@ -300,7 +305,7 @@ sub disable_libvirt_bridge
 		$fh->close();
 	}
 	
-	print "Done.\n";
+	print " - Done.\n";
 	
 	
 	return(0);
@@ -322,7 +327,7 @@ sub set_text_boot
 		#print " - $line\n"
 	}
 	$fh->close();
-	print "Done.\n";
+	print " - Done.\n";
 	
 	return(0);
 }
@@ -346,7 +351,7 @@ sub modify_daemons
 			print " - $line\n"
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	# Enable daemons
@@ -364,7 +369,7 @@ sub modify_daemons
 			print " - $line\n"
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	return(0);
@@ -395,7 +400,7 @@ sub setup_ntpd
 	
 	if ($done)
 	{
-		print "The NTP server: [$ntp_server] is already in: [/etc/ntpd.conf], skipping.\n";
+		print " - The NTP server: [$ntp_server] is already in: [/etc/ntpd.conf], skipping.\n";
 		return (0);
 	}
 	
@@ -421,7 +426,7 @@ sub setup_ntpd
 			#print "| $line\n"
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	return(0);
@@ -443,6 +448,7 @@ sub install_apps
 		if (ref($conf->{installed_apps}{$install_app}) ne "HASH")
 		{
 			# No, add it.
+			print " - Didn't find the application: [$install_app]\n";
 			$install .= "$install_app ";
 		}
 	}
@@ -463,7 +469,7 @@ sub install_apps
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	# Now add repos and install their packages.
@@ -472,8 +478,14 @@ sub install_apps
 		my $key           = $conf->{apps}{repos}{$repo}{key};
 		my $rpm           = $conf->{apps}{repos}{$repo}{rpm};
 		my $install_array = $conf->{apps}{repos}{$repo}{install};
+		my $file          = $conf->{apps}{repos}{$repo}{file};
 		
 		print "Installing the: [$repo] repository key.\n";
+		if (-e $file)
+		{
+			print " - Already installed, skipping.\n";
+			next;
+		}
 		my $sc = "rpm --import $key";
 		print "Calling: [$sc]\n";
 		my $fh = IO::Handle->new();
@@ -485,7 +497,7 @@ sub install_apps
 			print " - $line\n"
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 		
 		print "Installing the: [$repo] repository RPM.\n";
 		$sc = "rpm -Uvh $rpm";
@@ -501,7 +513,7 @@ sub install_apps
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	
 		# First, install
 		$install = "";
@@ -526,7 +538,7 @@ sub install_apps
 			}
 			$fh->close();
 			print "\\----------\n";
-			print "Done.\n";
+			print " - Done.\n";
 		}
 	}
 	
@@ -544,7 +556,7 @@ sub install_apps
 	}
 	$fh->close();
 	print "\\----------\n";
-	print "Done.\n";
+	print " - Done.\n";
 	
 	# Grab the DRBD fence agent.
 	if (not -e "/sbin/rhcs_fence")
@@ -562,7 +574,7 @@ sub install_apps
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	### TODO: Update this to edit the default files. Create a downloadable
@@ -583,7 +595,7 @@ sub install_apps
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	# Setup clustered LVM.
@@ -602,7 +614,7 @@ sub install_apps
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	return (0);
@@ -920,7 +932,7 @@ sub ask_questions
 			my $line = $_;
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	if (not -e "/usr/sbin/brctl")
@@ -938,7 +950,7 @@ sub ask_questions
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 		
 		sleep 1;
 		if (not -e "/usr/sbin/brctl")
@@ -1010,7 +1022,7 @@ sub write_hosts
 		my $line = $_;
 	}
 	$fh->close();
-	print "Done.\n";
+	print " - Done.\n";
 	
 	return(0);
 }
@@ -1076,7 +1088,7 @@ sub configure_nics
 				print $fh "ONBOOT=\"yes\"\n";
 				print $fh "BOOTPROTO=\"$proto\"\n";
 				$fh->close();
-				print "Done.\n";
+				print " - Done.\n";
 			}
 		
 			# Now restart networking to ensure all NICs are currently up.
@@ -1170,7 +1182,7 @@ sub configure_nics
 				my $line = $_;
 			}
 			$fh->close();
-			print "Done.\n";
+			print " - Done.\n";
 		}
 		else
 		{
@@ -1230,7 +1242,7 @@ sub configure_nics
 			print $fh "MASTER=\"$bond\"\n";
 			print $fh "SLAVE=\"yes\"\n";
 			$fh->close();
-			print "Done.\n";
+			print " - Done.\n";
 		}
 		
 		if ($conf->{nic}{ifn_count} == 1)
@@ -1282,7 +1294,7 @@ sub configure_nics
 					print $fh "NETMASK=\"$nm\"\n";
 				}
 				$fh->close();
-				print "Done.\n";
+				print " - Done.\n";
 			}
 			
 			# Write the bridge.
@@ -1303,7 +1315,7 @@ sub configure_nics
 			print $fh "DNS2=\"$conf->{answers}{dns2}\"\n";
 			print $fh "DEFROUTE=\"$conf->{answers}{ifn_dg}\"\n";
 			$fh->close();
-			print "Done.\n";
+			print " - Done.\n";
 		}
 		elsif ($conf->{nic}{ifn_count} == 2)
 		{
@@ -1327,7 +1339,7 @@ sub configure_nics
 			my $line = $_;
 		}
 		$fh->close();
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	print "The network should now be configured.\n";
@@ -1411,7 +1423,7 @@ sub restart_network
 	}
 	$fh->close();
 	sleep 5;	# Give the NICs time to come up
-	print "Done.\n";
+	print " - Done.\n";
 	
 	return(0);
 }
@@ -1442,7 +1454,7 @@ sub backup_ifcfg_files
 		print "."
 	}
 	$fh->close();
-	print "Done.\n";
+	print " - Done.\n";
 	
 	return(1);
 }
@@ -1472,7 +1484,7 @@ sub setup_ssh
 		}
 		$fh->close();
 		print "\\----------\n";
-		print "Done.\n";
+		print " - Done.\n";
 	}
 	
 	return(0);
