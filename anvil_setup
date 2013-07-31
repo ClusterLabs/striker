@@ -29,36 +29,34 @@ my $conf = {
 		ipmi_netmask	=>	"255.255.0.0",
 		dns1		=>	"8.8.8.8",
 		dns2		=>	"8.8.4.4",
-		install_bu	=>	0,
 	},
 	apps		=>	{
 		install		=>	[
 			"cman",
 			"corosync",
-			"rgmanager",
-			"ricci",
 			"freeipmi",
 			"freeipmi-bmc-watchdog",
 			"freeipmi-ipmidetectd",
 			"gd",
 			"gfs2-utils",
 			"gpm",
-			"ntp",
 			"libvirt",
 			"lvm2-cluster",
+			"ntp",
 			"OpenIPMI",
 			"OpenIPMI-libs",
 			"OpenIPMI-perl",
 			"OpenIPMI-tools",
 			"qemu-kvm",
 			"qemu-kvm-tools",
-			"virt-install",
-			"virt-viewer",
-			"syslinux", 
-			"wget",
-			"gpm",
+			"ricci",
+			"rgmanager",
 			"rsync",
 			"screen",
+			"syslinux", 
+			"virt-install",
+			"virt-viewer",
+			"wget",
 		],
 		remove		=>	[
 			"NetworkManager",
@@ -442,7 +440,7 @@ sub install_apps
 	{
 		# Is the app already installed?
 		next if not $install_app;
-		if (ref($conf->{installed_apps}) ne "HASH")
+		if (ref($conf->{installed_apps}{$install_app}) ne "HASH")
 		{
 			# No, add it.
 			$install .= "$install_app ";
@@ -859,12 +857,11 @@ sub ask_questions
 	}
 	
 	# Check for required networking tools.
-	if ( not -e "/usr/sbin/brctl")
+	if (not -e "/usr/sbin/brctl")
 	{
 		# Install the bridge utilities now.
 		print "The bridge utilities are not yet installed. This is needed before the network\n";
 		print "can be configured. It will be installed before the network is reconfigured.\n";
-		$conf->{answers}{install_bu} = 1;
 	}
 	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
@@ -883,7 +880,7 @@ sub ask_questions
 	{
 		print " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n";
 	}
-	if ($conf->{answers}{install_bu})
+	if (not -e "/usr/sbin/brctl")
 	{
 		print " - Bridge utilities will be installed.\n";
 	}
@@ -926,7 +923,7 @@ sub ask_questions
 		print "Done.\n";
 	}
 	
-	if ($conf->{answers}{install_bu})
+	if (not -e "/usr/sbin/brctl")
 	{
 		print "Installing 'bridge-utils'.\n";
 		my $sc = "yum -y install bridge-utils";
