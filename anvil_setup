@@ -400,11 +400,15 @@ sub setup_ntpd
 	}
 	
 	# Ask the user before proceeding.
-	print "Proceed? [y/N] ";
+	print "Proceed? [Y/n] ";
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
 	chomp($proceed);
-	if ((lc($proceed) eq "y") or (lc($proceed) eq "yes"))
+	if ((lc($proceed) eq "n") or (lc($proceed) eq "no"))
+	{
+		print "Skipping\n";
+	}
+	else
 	{
 		print "Proceeding... ";
 		my $sc = "echo \"server $ntp_server\" >> /etc/ntp.conf && echo \"restrict $ntp_server mask 255.255.255.255 nomodify notrap noquery\" >> /etc/ntp.conf";
@@ -418,10 +422,6 @@ sub setup_ntpd
 		}
 		$fh->close();
 		print "Done.\n";
-	}
-	else
-	{
-		print "Skipping\n";
 	}
 	
 	return(0);
