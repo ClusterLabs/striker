@@ -29,6 +29,7 @@ my $conf = {
 		ipmi_netmask	=>	"255.255.0.0",
 		dns1		=>	"8.8.8.8",
 		dns2		=>	"8.8.4.4",
+		install_bu	=>	0,
 	},
 	apps		=>	{
 		install		=>	[
@@ -684,7 +685,10 @@ sub ask_questions
 	my ($conf) = @_;
 	read_answers($conf);
 	
-	print "\nNOTE: There is _no_ sanity checking of answers yet. Please answer carefully.\n\n";
+	print "\n##############################################################################\n";
+	print "# NOTE: There is *no* sanity checking of answers yet.                        #\n";
+	print "#       Please answer carefully.                                             #\n";
+	print "##############################################################################\n\n";
 	
 	print "What is the customer's two or three letter prefix?\n - [$conf->{answers}{customer_prefix}] ";
 	my $customer_prefix = <STDIN>;
@@ -854,6 +858,15 @@ sub ask_questions
 		write_answers($conf);
 	}
 	
+	# Check for required networking tools.
+	if ( not -e "/usr/sbin/brctl")
+	{
+		# Install the bridge utilities now.
+		print "The bridge utilities are not yet installed. This is needed before the network\n";
+		print "can be configured. It will be installed before the network is reconfigured.\n";
+		$conf->{answers}{install_bu} = 1;
+	}
+	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
 	write_answers($conf);
 	print "\nSummary;\n";
@@ -869,6 +882,10 @@ sub ask_questions
 	if ($two_ifn)
 	{
 		print " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n";
+	}
+	if ($conf->{answers}{install_bu})
+	{
+		print " - Bridge utilities will be installed.\n";
 	}
 	
 	print "Proceed? [Y/n] ";
@@ -906,6 +923,24 @@ sub ask_questions
 			my $line = $_;
 		}
 		$fh->close();
+		print "Done.\n";
+	}
+	
+	if ($conf->{answers}{install_bu})
+	{
+		print "Installing 'bridge-utils'.\n";
+		my $sc = "yum -y install bridge-utils";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		print "/----------\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			print "| $line\n"
+		}
+		$fh->close();
+		print "\\----------\n";
 		print "Done.\n";
 	}
 	
