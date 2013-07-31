@@ -972,7 +972,7 @@ sub write_hosts
 	if (not -e "/etc/hosts.an")
 	{
 		print " - Backing up the original /etc/hosts as /etc/hosts.an: \n";
-		my $sc = "rsync -av /etc/hosts /etc/hosts.an";
+		my $sc = "cp /etc/hosts /etc/hosts.an";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
 		while(<$fh>)
@@ -1423,14 +1423,19 @@ sub backup_ifcfg_files
 {
 	my ($conf) = @_;
 	
-	if (-e "/root/network-scripts.orig")
+	my $backup_dir = "/root/network-scripts.orig";
+	if (-e "$backup_dir")
 	{
 		print "Backup already performed, skipping.\n";
 		return(0);
 	}
+	else
+	{
+		mkdir "$backup_dir" or warn "Failed to create the directory: [$backup_dir]. The error was: $!\n";
+	}
 	
 	print "Archiving the current interface configuration files in /root/network-scripts.orig.\n";
-	my $sc = "rsync -av /etc/sysconfig/network-scripts/* /root/network-scripts.orig";
+	my $sc = "cp /etc/sysconfig/network-scripts/* /root/network-scripts.orig";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
 	while(<$fh>)
