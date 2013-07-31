@@ -106,7 +106,7 @@ my $conf = {
 	},
 };
 
-print "\n-=] AN!Cluster Configuration\n\n";
+print "\n-=] Anvil! Configuration Tool\n\n";
 
 ### TODO: If this is a RHEL box, ask the user to authenticate before
 ###       proceeding.
@@ -698,7 +698,7 @@ sub ask_questions
 	$conf->{answers}{customer_domain} = $customer_domain if $customer_domain;
 	write_answers($conf);
 	
-	print "What is the cluster sequence ID number?\n - [$conf->{answers}{cluster_id}] ";
+	print "What is the Anvil! sequence ID number?\n - [$conf->{answers}{cluster_id}] ";
 	my $cluster_id = <STDIN>;
 	chomp($cluster_id);
 	if ($cluster_id)
@@ -859,7 +859,7 @@ sub ask_questions
 	print "\nSummary;\n";
 	print " - Customer prefix: [$conf->{answers}{customer_prefix}]\n";
 	print " - Customer domain: [$conf->{answers}{customer_domain}]\n";
-	print " - Cluster ID:      [$conf->{answers}{cluster_id}]\n";
+	print " - Anvil! ID:       [$conf->{answers}{cluster_id}]\n";
 	print " - Node ID:         [$conf->{answers}{node_id}]\n";
 	print " - Host Name:       [$conf->{answers}{hostname}]\n";
 	print " - BCN Network:     [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n";
@@ -1023,7 +1023,7 @@ sub configure_nics
 				my $sc = $file;
 				my $fh = IO::Handle->new();
 				open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
-				print $fh "# Temporary configuration written by AN!Cluster Setup.\n";
+				print $fh "# Temporary configuration written by the Anvil! configuration tool.\n";
 				print $fh "# Original copy stored as: /root/network-scripts.orig/ifcfg-$nic.\n";
 				print $fh "HWADDR=\"$say_mac\"\n";
 				print $fh "DEVICE=\"$nic\"\n";
