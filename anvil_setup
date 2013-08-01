@@ -96,7 +96,8 @@ my $conf = {
 		'ssh-keygen'	=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa",
 	},
 	files		=>	{
-		answers		=>	"an-cluster_setup.txt",
+		answers		=>	"anvil_setup.answers",
+		install_log	=>	"anvil_setup.log",
 	},
 	nic		=>	{
 		count		=>	0,
@@ -104,7 +105,7 @@ my $conf = {
 	},
 };
 
-print "\n-=] Anvil! Configuration Tool\n\n";
+record($conf, "\n-=] Anvil! Configuration Tool\n\n");
 
 ### TODO: If this is a RHEL box, ask the user to authenticate before
 ###       proceeding.
@@ -123,35 +124,107 @@ set_text_boot($conf);
 my $say_cluster = "$conf->{answers}{customer_prefix}-cluster-$conf->{answers}{cluster_id}";
 my $say_vg1     = "$conf->{answers}{customer_prefix}-c$conf->{answers}{node_id}n01_vg0";
 my $say_vg2     = "$conf->{answers}{customer_prefix}-c$conf->{answers}{node_id}n02_vg0";
-print "Initial configuration is complete!\n";
-print "Manual tasks remaining;\n\n";
-print " - Manually create the ~/.ssh/authorized_keys file.\n";
-print " - Merge /etc/hosts and add foundation pack devices.\n";
-print " - Create the DRBD partition(s)\n";
-print " - Reboot and run the following commands;\n\n";
-print "passwd\n";
-print "passwd ricci\n";
-print "modprobe drbd\n";
-print "drbdadm create-md r{0,1}\n";
-print "drbdadm attach r{0,1}\n";
-print "drbdadm connect r{0,1}\n";
-print "On one node only:\n";
-print "drbdadm -- --clear-bitmap new-current-uuid r{0,1}\n";
-print "On both:\n";
-print "drbdadm primary r{0,1}\n";
-print "pvcreate /dev/drbd{0,1}\n";
-print "vgcreate -c y $say_vg1 /dev/drbd0\n";
-print "vgcreate -c y $say_vg2 /dev/drbd1\n";
-print "lvcreate -L 40G -n shared $say_vg1\n";
-print "mkfs.gfs2 -p lock_dlm -j 2 -t $say_cluster:shared /dev/$say_vg1/shared\n";
-print "mkdir /shared\n";
-print "mount /dev/$say_vg1/shared /shared\n";
-print "echo `gfs2_tool sb /dev/$say_vg1/shared uuid | awk '/uuid =/ { print \$4; }' | sed -e \"s/\(.*\)/UUID=\\L\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab\n";
-print "/etc/init.d/gfs2 status\n";
+record($conf, "Initial configuration is complete!\n");
+record($conf, "Manual tasks remaining;\n\n");
+record($conf, " - Manually create the ~/.ssh/authorized_keys file.\n");
+record($conf, " - Merge /etc/hosts and add foundation pack devices.\n");
+record($conf, " - Create the DRBD partition(s)\n");
+record($conf, " - Reboot and run the following commands;\n\n");
+record($conf, "passwd\n");
+record($conf, "passwd ricci\n");
+record($conf, "modprobe drbd\n");
+record($conf, "drbdadm create-md r{0,1}\n");
+record($conf, "drbdadm attach r{0,1}\n");
+record($conf, "drbdadm connect r{0,1}\n");
+record($conf, "On one node only:\n");
+record($conf, "drbdadm -- --clear-bitmap new-current-uuid r{0,1}\n");
+record($conf, "On both:\n");
+record($conf, "drbdadm primary r{0,1}\n");
+record($conf, "pvcreate /dev/drbd{0,1}\n");
+record($conf, "vgcreate -c y $say_vg1 /dev/drbd0\n");
+record($conf, "vgcreate -c y $say_vg2 /dev/drbd1\n");
+record($conf, "lvcreate -L 40G -n shared $say_vg1\n");
+record($conf, "mkfs.gfs2 -p lock_dlm -j 2 -t $say_cluster:shared /dev/$say_vg1/shared\n");
+record($conf, "mkdir /shared\n");
+record($conf, "mount /dev/$say_vg1/shared /shared\n");
+record($conf, "echo `gfs2_tool sb /dev/$say_vg1/shared uuid | awk '/uuid =/ { print \$4; }' | sed -e \"s/\(.*\)/UUID=\\L\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab\n");
+record($conf, "/etc/init.d/gfs2 status\n");
 
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# This handles any exit or die scenario.
+sub nice_exit
+{
+	my ($conf, $exit_code, $message) = @_;
+	$exit_code = 99 if not define $exit_code;
+	$message   = "" if not defined $message;
+	
+	if ($message)
+	{
+		record($conf, $message);
+	}
+	exit($exit_code);
+}
+
+# This formats the current date and time.
+sub get_current_date_time
+{
+	my ($conf) = @_;
+	my $date_and_time = "";
+	
+	my %time          = ();
+	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime();
+	
+	# Increment the month by one.
+	$time{mon}++;
+	
+	# 24h time.
+	$time{pad_hour} = sprintf("%02d", $time{hour});
+	$time{suffix}   = "";
+	
+	$time{pad_min}  = sprintf("%02d", $time{min});
+	$time{pad_sec}  = sprintf("%02d", $time{sec});
+	$time{year}     = ($time{year} + 1900);
+	$time{pad_mon}  = sprintf("%02d", $time{mon});
+	$time{pad_mday} = sprintf("%02d", $time{mday});
+	$time{mon}++;
+	
+	my $date          = $time{year}."/".$time{pad_mon}."/".$time{pad_mday};
+	my $time          = $time{pad_hour}.":".$time{pad_min}.":".$time{pad_sec};
+	   $date_and_time = "$date $time";
+	
+	return ($date_and_time);
+}
+
+# This records messages to the log and prints them to the screen.
+sub record
+{
+	my ($conf, $message) = @_;
+	
+	# If the log file isn't open yet, open it.
+	my $log_fh;
+	if (exists $conf->{'system'}{log_fh})
+	{
+		$log_fh = $conf->{'system'}{log_fh};
+	}
+	else
+	{
+		my $log_file = $conf->{files}{install_log};
+		   $log_fh   = IO::Handle->new();
+		# I can't use "nice_exit" here as a failure would trigger an
+		# infinite loop.
+		open ($log_fh, ">$log_file") or die "Failed to open the log file: [$log_file], the error was: $!\n";
+		$conf->{'system'}{log_fh} = $log_fh;
+		print $log_fh "-=] anvil_setup install log started on: [".get_current_date_time($conf)."]\n";
+	}
+	
+	print $log_fh $message;
+	print $message;
+	
+	return(0);
+}
 
 sub install_acpupsd
 {
@@ -232,23 +305,23 @@ sub disable_selinux
 {
 	my ($conf) = @_;
 	
-	print "Disabling SELinux\n";
+	record($conf, "Disabling SELinux\n");
 	if (-e "/etc/selinux/config.bak")
 	{
-		print " - Already disabled, skipping.\n";
+		record($conf, " - Already disabled, skipping.\n");
 		return(0);
 	}
 	my $sc = "setenforce 0 && sed -i.bak 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		print " - $line\n";
+		record($conf, " - $line\n");
 	}
 	$fh->close();
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	return (0);
 }
@@ -257,13 +330,13 @@ sub disable_libvirt_bridge
 {
 	my ($conf) = @_;
 	
-	print "Disabling the libvirtd default bridge\n";
+	record($conf, "Disabling the libvirtd default bridge\n");
 	
 	# First see if the bridge is up
 	my $up = 0;
 	my $sc = "ifconfig -a";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
@@ -278,34 +351,34 @@ sub disable_libvirt_bridge
 	
 	if ($up)
 	{
-		print " - The libvirtd bridge appears to be up, disabling it.\n";
+		record($conf, " - The libvirtd bridge appears to be up, disabling it.\n");
 		my $sc = "virsh net-destroy default && virsh net-autostart default --disable && virsh net-undefine default && /etc/init.d/iptables stop";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print " - $line\n";
+			record($conf, " - $line\n");
 		}
 		$fh->close();
 	}
 	else
 	{
-		print " - The libvirtd bridge appears to not be up, deleting it.\n";
+		record($conf, " - The libvirtd bridge appears to not be up, deleting it.\n");
 		my $sc = "cat /dev/null >/etc/libvirt/qemu/networks/default.xml";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print " - $line\n";
+			record($conf, " - $line\n");
 		}
 		$fh->close();
 	}
 	
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	
 	return(0);
@@ -315,19 +388,19 @@ sub set_text_boot
 {
 	my ($conf) = @_;
 	
-	print "Configuring the operating system for textual booting.\n";
-	print "This can take a minute, please be patient.\n";
+	record($conf, "Configuring the operating system for textual booting.\n");
+	record($conf, "This can take a minute, please be patient.\n");
 	my $sc = "plymouth-set-default-theme details -R";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		#print " - $line\n"
+		#record($conf, " - $line\n)"
 	}
 	$fh->close();
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
@@ -340,36 +413,36 @@ sub modify_daemons
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{apps}{disable}})
 	{
 		next if not $daemon;
-		print "Disabling: [$daemon]";
+		record($conf, "Disabling: [$daemon]");
 		my $sc = "chkconfig $daemon off && /etc/init.d/$daemon stop";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print " - $line\n"
+			record($conf, " - $line\n");
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 	}
 	
 	# Enable daemons
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{apps}{enable}})
 	{
 		next if not $daemon;
-		print "Enabling: [$daemon]";
+		record($conf, "Enabling: [$daemon]");
 		my $sc = "chkconfig $daemon on && /etc/init.d/$daemon start";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print " - $line\n"
+			record($conf, " - $line\n");
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 	}
 	
 	return(0);
@@ -380,12 +453,12 @@ sub setup_ntpd
 	my ($conf) = @_;
 	
 	# If the NTP server IP is already in the file, skip.
-	print "This next step will configure the network time server.\n";
+	record($conf, "This next step will configure the network time server.\n");
 	my $ntp_server = $conf->{'system'}{ntp_server};
 	my $done = 0;
 	my $sc = "/etc/ntp.conf";
 	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error: $!\n";
+	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
@@ -400,33 +473,33 @@ sub setup_ntpd
 	
 	if ($done)
 	{
-		print " - The NTP server: [$ntp_server] is already in: [/etc/ntpd.conf], skipping.\n";
+		record($conf, " - The NTP server: [$ntp_server] is already in: [/etc/ntpd.conf], skipping.\n");
 		return (0);
 	}
 	
 	# Ask the user before proceeding.
-	print "Proceed? [Y/n] ";
+	record($conf, "Proceed? [Y/n] ");
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
 	chomp($proceed);
 	if ((lc($proceed) eq "n") or (lc($proceed) eq "no"))
 	{
-		print "Skipping\n";
+		record($conf, "Skipping\n");
 	}
 	else
 	{
-		print "Proceeding... ";
+		record($conf, "Proceeding... ");
 		my $sc = "echo \"server $ntp_server\" >> /etc/ntp.conf && echo \"restrict $ntp_server mask 255.255.255.255 nomodify notrap noquery\" >> /etc/ntp.conf";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			#print "| $line\n"
+			#record($conf, "| $line\n");
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 	}
 	
 	return(0);
@@ -448,7 +521,7 @@ sub install_apps
 		if (ref($conf->{installed_apps}{$install_app}) ne "HASH")
 		{
 			# No, add it.
-			print " - Didn't find the application: [$install_app]\n";
+			record($conf, " - Didn't find the application: [$install_app]\n");
 			$install .= "$install_app ";
 		}
 	}
@@ -456,20 +529,20 @@ sub install_apps
 	# Proceed with the install if any packages are not yet installed.
 	if ($install)
 	{
-		print "Installing missing applications.\n";
+		record($conf, "Installing missing applications.\n");
 		my $sc = "yum -y install $install";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	}
 	
 	# Now add repos and install their packages.
@@ -480,40 +553,40 @@ sub install_apps
 		my $install_array = $conf->{apps}{repos}{$repo}{install};
 		my $file          = $conf->{apps}{repos}{$repo}{file};
 		
-		print "Installing the: [$repo] repository key.\n";
+		record($conf, "Installing the: [$repo] repository key.\n");
 		if (-e $file)
 		{
-			print " - Already installed, skipping.\n";
+			record($conf, " - Already installed, skipping.\n");
 			next;
 		}
 		my $sc = "rpm --import $key";
-		print "Calling: [$sc]\n";
+		record($conf, "Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print " - $line\n"
+			record($conf, " - $line\n");
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 		
-		print "Installing the: [$repo] repository RPM.\n";
+		record($conf, "Installing the: [$repo] repository RPM.\n");
 		$sc = "rpm -Uvh $rpm";
-		print "Calling: [$sc]\n";
+		record($conf, "Calling: [$sc]\n");
 		$fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	
 		# First, install
 		$install = "";
@@ -524,57 +597,57 @@ sub install_apps
 		}
 		if ($install)
 		{
-			print "Installing the: [$repo] repository package(s).\n";
+			record($conf, "Installing the: [$repo] repository package(s).\n");
 			my $sc = "yum -y install $install";
-			print "Calling: [$sc]\n";
+			record($conf, "Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-			print "/----------\n";
+			open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+			record($conf, "/----------\n");
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				print "| $line\n"
+				record($conf, "| $line\n");
 			}
 			$fh->close();
-			print "\\----------\n";
-			print " - Done.\n";
+			record($conf, "\\----------\n");
+			record($conf, " - Done.\n");
 		}
 	}
 	
 	# Update the OS
-	print "Updating the operating system.\n";
+	record($conf, "Updating the operating system.\n");
 	my $sc = "yum -y update";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-	print "/----------\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+	record($conf, "/----------\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		print "| $line\n"
+		record($conf, "| $line\n");
 	}
 	$fh->close();
-	print "\\----------\n";
-	print " - Done.\n";
+	record($conf, "\\----------\n");
+	record($conf, " - Done.\n");
 	
 	# Grab the DRBD fence agent.
 	if (not -e "/sbin/rhcs_fence")
 	{
-		print "Installing the DRBD fence handler\n";
+		record($conf, "Installing the DRBD fence handler\n");
 		my $sc = "wget -c https://raw.github.com/digimer/rhcs_fence/master/rhcs_fence -O /sbin/rhcs_fence && chmod 755 /sbin/rhcs_fence && ls -lah /sbin/rhcs_fence";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	}
 	
 	### TODO: Update this to edit the default files. Create a downloadable
@@ -582,39 +655,39 @@ sub install_apps
 	# Grab the default DRBD config files
 	if (not -e "/etc/drbd.d/global_common.conf.orig")
 	{
-		print "Installing the DRBD initial config files.\n";
+		record($conf, "Installing the DRBD initial config files.\n");
 		my $sc = "mv /etc/drbd.d/global_common.conf /etc/drbd.d/global_common.conf.orig && wget -c https://alteeve.ca/files/global_common.conf -O /etc/drbd.d/global_common.conf && wget -c https://alteeve.ca/files/r0.res -O /etc/drbd.d/r0.res";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	}
 	
 	# Setup clustered LVM.
 	if (not -e "/etc/lvm/lvm.conf.orig")
 	{
-		print "Installing the clustered LVM configuration file.\n";
+		record($conf, "Installing the clustered LVM configuration file.\n");
 		my $sc = "mv /etc/lvm/lvm.conf /etc/lvm/lvm.conf.orig && wget -c https://alteeve.ca/files/lvm.conf -O /etc/lvm/lvm.conf";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	}
 	
 	return (0);
@@ -626,7 +699,7 @@ sub read_installed_rpms
 	
 	my $sc = "yum list installed";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
@@ -657,7 +730,7 @@ sub read_answers
 	
 	my $sc = "$conf->{files}{answers}";
 	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error: $!\n";
+	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
@@ -680,7 +753,7 @@ sub write_answers
 	
 	my $sc = "$conf->{files}{answers}";
 	my $fh = IO::Handle->new();
-	open ($fh, ">$sc") or die "Failed to write: [$sc], error: $!\n";
+	open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 	foreach my $var (sort {$a cmp $b} keys %{$conf->{answers}})
 	{
 		print $fh "answer:$var#!#$conf->{answers}{$var}\n";
@@ -695,24 +768,24 @@ sub ask_questions
 	my ($conf) = @_;
 	read_answers($conf);
 	
-	print "\n##############################################################################\n";
-	print "# NOTE: There is *no* sanity checking of answers yet.                        #\n";
-	print "#       Please answer carefully.                                             #\n";
-	print "##############################################################################\n\n";
+	record($conf, "\n##############################################################################\n");
+	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
+	record($conf, "#       Please answer carefully.                                             #\n");
+	record($conf, "##############################################################################\n\n");
 	
-	print "What is the customer's two or three letter prefix?\n - [$conf->{answers}{customer_prefix}] ";
+	record($conf, "What is the customer's two or three letter prefix?\n - [$conf->{answers}{customer_prefix}] ");
 	my $customer_prefix = <STDIN>;
 	chomp($customer_prefix);
 	$conf->{answers}{customer_prefix} = $customer_prefix if $customer_prefix;
 	write_answers($conf);
 	
-	print "What is the customer's domain?\n - [$conf->{answers}{customer_domain}] ";
+	record($conf, "What is the customer's domain?\n - [$conf->{answers}{customer_domain}] ");
 	my $customer_domain = <STDIN>;
 	chomp($customer_domain);
 	$conf->{answers}{customer_domain} = $customer_domain if $customer_domain;
 	write_answers($conf);
 	
-	print "What is the Anvil! sequence ID number?\n - [$conf->{answers}{cluster_id}] ";
+	record($conf, "What is the Anvil! sequence ID number?\n - [$conf->{answers}{cluster_id}] ");
 	my $cluster_id = <STDIN>;
 	chomp($cluster_id);
 	if ($cluster_id)
@@ -722,7 +795,7 @@ sub ask_questions
 	$conf->{answers}{cluster_id} = $cluster_id if $cluster_id;
 	write_answers($conf);
 	
-	print "What is the node's sequence ID number?\n - [$conf->{answers}{node_id}] ";
+	record($conf, "What is the node's sequence ID number?\n - [$conf->{answers}{node_id}] ");
 	my $node_id = <STDIN>;
 	chomp($node_id);
 	if ($node_id)
@@ -762,39 +835,39 @@ sub ask_questions
 	}
 	
 	# Back-Channel Network
-	print "What IP address would you like to use for the BCN?\n - [$conf->{answers}{bcn_ip}] ";
+	record($conf, "What IP address would you like to use for the BCN?\n - [$conf->{answers}{bcn_ip}] ");
 	my $bcn_ip = <STDIN>;
 	chomp($bcn_ip);
 	$conf->{answers}{bcn_ip} = $bcn_ip if $bcn_ip;
 	write_answers($conf);
 	
-	print "What subnet mask would you like to use for the BCN?\n - [$conf->{answers}{bcn_netmask}] ";
+	record($conf, "What subnet mask would you like to use for the BCN?\n - [$conf->{answers}{bcn_netmask}] ");
 	my $bcn_netmask = <STDIN>;
 	chomp($bcn_netmask);
 	$conf->{answers}{bcn_netmask} = $bcn_netmask if $bcn_netmask;
 	write_answers($conf);
 	
 	# IPMI Interface
-	print "What IP address would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_ip}] ";
+	record($conf, "What IP address would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_ip}] ");
 	my $ipmi_ip = <STDIN>;
 	chomp($ipmi_ip);
 	$conf->{answers}{ipmi_ip} = $ipmi_ip if $ipmi_ip;
 	write_answers($conf);
 	
-	print "What subnet mask would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_netmask}] ";
+	record($conf, "What subnet mask would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_netmask}] ");
 	my $ipmi_netmask = <STDIN>;
 	chomp($ipmi_netmask);
 	$conf->{answers}{ipmi_netmask} = $ipmi_netmask if $ipmi_netmask;
 	write_answers($conf);
 	
 	# Storage Network
-	print "What IP address would you like to use for the SN?\n - [$conf->{answers}{sn_ip}] ";
+	record($conf, "What IP address would you like to use for the SN?\n - [$conf->{answers}{sn_ip}] ");
 	my $sn_ip = <STDIN>;
 	chomp($sn_ip);
 	$conf->{answers}{sn_ip} = $sn_ip if $sn_ip;
 	write_answers($conf);
 	
-	print "What subnet mask would you like to use for the SN?\n - [$conf->{answers}{sn_netmask}] ";
+	record($conf, "What subnet mask would you like to use for the SN?\n - [$conf->{answers}{sn_netmask}] ");
 	my $sn_netmask = <STDIN>;
 	chomp($sn_netmask);
 	$conf->{answers}{sn_netmask} = $sn_netmask if $sn_netmask;
@@ -802,37 +875,37 @@ sub ask_questions
 	
 	### TODO: Add "first" to "IFN"
 	# Internet-Facing Network
-	print "What IP address would you like to use for the IFN?\n - [$conf->{answers}{ifn_ip}] ";
+	record($conf, "What IP address would you like to use for the IFN?\n - [$conf->{answers}{ifn_ip}] ");
 	my $ifn_ip = <STDIN>;
 	chomp($ifn_ip);
 	$conf->{answers}{ifn_ip} = $ifn_ip if $ifn_ip;
 	write_answers($conf);
 	
-	print "What subnet mask would you like to use for the IFN?\n - [$conf->{answers}{ifn_netmask}] ";
+	record($conf, "What subnet mask would you like to use for the IFN?\n - [$conf->{answers}{ifn_netmask}] ");
 	my $ifn_netmask = <STDIN>;
 	chomp($ifn_netmask);
 	$conf->{answers}{ifn_netmask} = $ifn_netmask if $ifn_netmask;
 	write_answers($conf);
 	
-	print "What gateway would you like to use for the IFN?\n - [$conf->{answers}{ifn_gateway}] ";
+	record($conf, "What gateway would you like to use for the IFN?\n - [$conf->{answers}{ifn_gateway}] ");
 	my $ifn_gateway = <STDIN>;
 	chomp($ifn_gateway);
 	$conf->{answers}{ifn_gateway} = $ifn_gateway if $ifn_gateway;
 	write_answers($conf);
 	
-	print "Will the IFN be the default gateway?\n - [$conf->{answers}{ifn_dg}] ";
+	record($conf, "Will the IFN be the default gateway?\n - [$conf->{answers}{ifn_dg}] ");
 	my $ifn_dg = <STDIN>;
 	chomp($ifn_dg);
 	$conf->{answers}{ifn_dg} = $ifn_dg if $ifn_dg;
 	write_answers($conf);
 	
-	print "What will be the first DNS server?\n - [$conf->{answers}{dns1}] ";
+	record($conf, "What will be the first DNS server?\n - [$conf->{answers}{dns1}] ");
 	my $dns1 = <STDIN>;
 	chomp($dns1);
 	$conf->{answers}{dns1} = $dns1 if $dns1;
 	write_answers($conf);
 	
-	print "What will be the second DNS server?\n - [$conf->{answers}{dns2}] ";
+	record($conf, "What will be the second DNS server?\n - [$conf->{answers}{dns2}] ");
 	my $dns2 = <STDIN>;
 	chomp($dns2);
 	$conf->{answers}{dns2} = $dns2 if $dns2;
@@ -843,25 +916,25 @@ sub ask_questions
 	if ($two_ifn)
 	{
 		# Internet-Facing Network B
-		print "What IP address would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_ip}] ";
+		record($conf, "What IP address would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_ip}] ");
 		my $ifn2_ip = <STDIN>;
 		chomp($ifn2_ip);
 		$conf->{answers}{ifn2_ip} = $ifn2_ip if $ifn2_ip;
 		write_answers($conf);
 		
-		print "What subnet mask would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_netmask}] ";
+		record($conf, "What subnet mask would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_netmask}] ");
 		my $ifn2_netmask = <STDIN>;
 		chomp($ifn2_netmask);
 		$conf->{answers}{ifn2_netmask} = $ifn2_netmask if $ifn2_netmask;
 		write_answers($conf);
 		
-		print "What gateway would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_gateway}] ";
+		record($conf, "What gateway would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_gateway}] ");
 		my $ifn2_gateway = <STDIN>;
 		chomp($ifn2_gateway);
 		$conf->{answers}{ifn2_gateway} = $ifn2_gateway if $ifn2_gateway;
 		write_answers($conf);
 		
-		print "Will the second IFN be the default gateway?\n - [$conf->{answers}{ifn2_dg}] ";
+		record($conf, "Will the second IFN be the default gateway?\n - [$conf->{answers}{ifn2_dg}] ");
 		my $ifn2_dg = <STDIN>;
 		chomp($ifn2_dg);
 		$conf->{answers}{ifn2_dg} = $ifn2_dg if $ifn2_dg;
@@ -872,97 +945,94 @@ sub ask_questions
 	if (not -e "/usr/sbin/brctl")
 	{
 		# Install the bridge utilities now.
-		print "The bridge utilities are not yet installed. This is needed before the network\n";
-		print "can be configured. It will be installed before the network is reconfigured.\n";
+		record($conf, "The bridge utilities are not yet installed. This is needed before the network\n");
+		record($conf, "can be configured. It will be installed before the network is reconfigured.\n");
 	}
 	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
 	write_answers($conf);
-	print "\nSummary;\n";
-	print " - Customer prefix: [$conf->{answers}{customer_prefix}]\n";
-	print " - Customer domain: [$conf->{answers}{customer_domain}]\n";
-	print " - Anvil! ID:       [$conf->{answers}{cluster_id}]\n";
-	print " - Node ID:         [$conf->{answers}{node_id}]\n";
-	print " - Host Name:       [$conf->{answers}{hostname}]\n";
-	print " - BCN Network:     [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n";
-	print " - IPMI Network:    [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n";
-	print " - SN Network:      [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n";
-	print " - IFN Network:     [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n";
+	record($conf, "\nSummary;\n");
+	record($conf, " - Customer prefix: [$conf->{answers}{customer_prefix}]\n");
+	record($conf, " - Customer domain: [$conf->{answers}{customer_domain}]\n");
+	record($conf, " - Anvil! ID:       [$conf->{answers}{cluster_id}]\n");
+	record($conf, " - Node ID:         [$conf->{answers}{node_id}]\n");
+	record($conf, " - Host Name:       [$conf->{answers}{hostname}]\n");
+	record($conf, " - BCN Network:     [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n");
+	record($conf, " - IPMI Network:    [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n");
+	record($conf, " - SN Network:      [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
+	record($conf, " - IFN Network:     [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
 	if ($two_ifn)
 	{
-		print " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n";
+		record($conf, " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n");
 	}
 	if (not -e "/usr/sbin/brctl")
 	{
-		print " - Bridge utilities will be installed.\n";
+		record($conf, " - Bridge utilities will be installed.\n");
 	}
 	
-	print "Proceed? [Y/n] ";
+	record($conf, "Proceed? [Y/n] ");
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
 	chomp($proceed);
 	if ((lc($proceed) eq "n") or (lc($proceed) eq "no"))
 	{
-		print "Returning to questions.\n";
+		record($conf, "Returning to questions.\n");
 		ask_questions($conf);
 	}
 	else
 	{
-		print "Proceeding.\n";
+		record($conf, "Proceeding.\n");
 	}
 	
 	if (1)
 	{
 		# Write the file and then set the active hostname.
-		print "Recording and setting the host name... ";
+		record($conf, "Recording and setting the host name... ");
 		my $file = "/etc/sysconfig/network";
 		my $sc = $file;
 		my $fh = IO::Handle->new();
-		open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
+		open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 		print $fh "NETWORKING=yes\n";
 		print $fh "HOSTNAME=$conf->{answers}{hostname}\n";
 		$fh->close();
 		
 		$sc = "hostname $conf->{answers}{hostname}";
 		$fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 	}
 	
 	if (not -e "/usr/sbin/brctl")
 	{
-		print "Installing 'bridge-utils'.\n";
+		record($conf, "Installing 'bridge-utils'.\n");
 		my $sc = "yum -y install bridge-utils";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 		
 		sleep 1;
 		if (not -e "/usr/sbin/brctl")
 		{
-			print q|
-[ ERROR ] - I was unable to install the 'bridge-utils' package!
-[ ERROR ] - Without it, the network can not be configured.
-[ ERROR ] - Do you have an internet connection?
-[ ERROR ] - If this is a RHEL server, is this system registered with RHN?
-[ ERROR ] - Configuration aborted.
-|;
-			exit (1);
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
 		}
 	}
 	
@@ -977,21 +1047,21 @@ sub write_hosts
 {
 	my ($conf) = @_;
 	
-	print "Writing the hosts file... ";
+	record($conf, "Writing the hosts file... ");
 	if (not -e "/etc/hosts.an")
 	{
-		print " - Backing up the original /etc/hosts as /etc/hosts.an: \n";
+		record($conf, " - Backing up the original /etc/hosts as /etc/hosts.an: \n");
 		my $sc = "cp /etc/hosts /etc/hosts.an";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "."
+			record($conf, ".");
 		}
 		$fh->close();
-		print " Done.\n";
+		record($conf, " Done.\n");
 	}
 	
 	my $say_bcn_ip     = $conf->{answers}{bcn_ip};
@@ -1004,7 +1074,7 @@ sub write_hosts
 	my $file = "/etc/hosts";
 	my $sc = $file;
 	my $fh = IO::Handle->new();
-	open ($fh, ">>$file") or die "Failed to append: [$sc], error: $!\n";
+	open ($fh, ">>$file") or nice_exit($conf, 1, "Failed to append: [$sc], error: $!\n");
 	print $fh "\n";
 	print $fh "# Cluster $conf->{answers}{cluster_id}, Node $conf->{answers}{node_id}\n";
 	print $fh "$say_bcn_ip\t$short_hostname ${short_hostname}.bcn $say_hostname\n";
@@ -1015,14 +1085,14 @@ sub write_hosts
 	
 	$sc = "hostname $say_hostname";
 	$fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
 	}
 	$fh->close();
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
@@ -1031,7 +1101,7 @@ sub configure_nics
 {
 	my ($conf) = @_;
 	
-	print "\n-=] NIC configuration\n\n";
+	record($conf, "\n-=] NIC configuration\n\n");
 	if ($conf->{nic}{count} > 6)
 	{
 		$conf->{nic}{ifn_count} = 2;
@@ -1041,13 +1111,13 @@ sub configure_nics
 		foreach my $nic (sort {$a cmp $b} keys %{$conf->{nic}})
 		{
 			# Skip entries that aren't actually NICs.
-			#print "NIC: [$nic] (".ref($conf->{nic}{$nic}).")\n";
+			#record($conf, "NIC: [$nic] (".ref($conf->{nic}{$nic}).")\n");
 			next if ref($conf->{nic}{$nic}) ne "HASH";
-			#print " - NIC: [$nic]\n";
+			#record($conf, " - NIC: [$nic]\n");
 			my $say_mac = uc($conf->{nic}{$nic}{mac});
 			my $say_ip  = $conf->{nic}{$nic}{ip} ? $conf->{nic}{$nic}{ip} : "--";
 			my $say_nm  = $conf->{nic}{$nic}{nm} ? $conf->{nic}{$nic}{nm} : "--";
-			print " - nic: [$nic], MAC: [$say_mac], current IP: [$say_ip / $say_nm]\n";
+			record($conf, " - nic: [$nic], MAC: [$say_mac], current IP: [$say_ip / $say_nm]\n");
 		}
 	}
 	
@@ -1061,14 +1131,14 @@ sub configure_nics
 	{
 		# First, re-write all of the network configuration files to
 		# the initial format.
-		print "I found: [$conf->{nic}{count}] NICs; IFN Count: [$conf->{nic}{ifn_count}].\n";
+		record($conf, "I found: [$conf->{nic}{count}] NICs; IFN Count: [$conf->{nic}{ifn_count}].\n");
 		if (backup_ifcfg_files($conf))
 		{
 			foreach my $nic (sort {$a cmp $b} keys %{$conf->{nic}})
 			{
 				next if ref($conf->{nic}{$nic}) ne "HASH";
 				my $file = "/etc/sysconfig/network-scripts/ifcfg-$nic";
-				print "Re-writing the config for: [$nic]... ";
+				record($conf, "Re-writing the config for: [$nic]... ");
 				my $say_mac = uc($conf->{nic}{$nic}{mac});
 				my $say_ip  = $conf->{nic}{$nic}{ip} ? $conf->{nic}{$nic}{ip} : "";
 				my $proto = "none";
@@ -1079,7 +1149,7 @@ sub configure_nics
 				}
 				my $sc = $file;
 				my $fh = IO::Handle->new();
-				open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
+				open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 				print $fh "# Temporary configuration written by the Anvil! configuration tool.\n";
 				print $fh "# Original copy stored as: /root/network-scripts.orig/ifcfg-$nic.\n";
 				print $fh "HWADDR=\"$say_mac\"\n";
@@ -1088,7 +1158,7 @@ sub configure_nics
 				print $fh "ONBOOT=\"yes\"\n";
 				print $fh "BOOTPROTO=\"$proto\"\n";
 				$fh->close();
-				print " - Done.\n";
+				record($conf, " - Done.\n");
 			}
 		
 			# Now restart networking to ensure all NICs are currently up.
@@ -1096,57 +1166,41 @@ sub configure_nics
 		}
 		else
 		{
-			print "It looks like the original interface configuration files were backed up and rewritten already. Skipping.\n";
+			record($conf, "It looks like the original interface configuration files were backed up and rewritten already. Skipping.\n");
 		}
 		
 		# Read the last line in the syslog file.
 		my ($last_line) = read_syslog($conf, "");
 		
-		print "It appears that we have not reordered the NICs yet.\n";
+		record($conf, "It appears that we have not reordered the NICs yet.\n");
 		for (my $i = 0; $i < $conf->{nic}{count}; $i++)
 		{
 			my $current_nic    = "";
 			my $desired_nic = "eth$i";
 			my $done        = 0;
-			print "Please unplug the interface you wish to make: [$desired_nic]\n";
+			record($conf, "Please unplug the interface you wish to make: [$desired_nic]\n");
 			while (not $done)
 			{
 				sleep 1;
 				my ($this_last_line) = read_syslog($conf, $last_line);
-				#print "Does: old last line: [$last_line]\n";
-				#print "and: new last line:  [$this_last_line] differ?\n";
+				#record($conf, "Does: old last line: [$last_line]\n");
+				#record($conf, "and: new last line:  [$this_last_line] differ?\n");
 				if ($this_last_line ne $last_line)
 				{
-					#print "New data, parsing: [".@{$conf->{syslog}{new_lines}}."] new lines.\n";
+					#record($conf, "New data, parsing: [".@{$conf->{syslog}{new_lines}}."] new lines.\n");
 					# Parse the new lines looking for interface notes.
 					foreach my $line (@{$conf->{syslog}{new_lines}})
 					{
-						#print "new line: [$line]\n";
+						#record($conf, "new line: [$line]\n");
 						if ($line =~ /\s(\S+?) NIC Link is Down/)
 						{
 							$current_nic = $1;
-							print " - That appears to be: [$current_nic]. Shall I move this to: [$desired_nic]? [Y/n] ";
-							my $proceed = <STDIN>;
-							#my $proceed = "y";
-							chomp($proceed);
-							if ((lc($proceed) eq "n") or (lc($proceed) eq "no"))
-							{
-								print " - Skipping. Please unplug the interface you wish to make: [$desired_nic]\n";
-							}
-							else
-							{
-								print " - Selected. Please plug the cable back in.\n";
-								$conf->{map_nic}{$desired_nic} = $current_nic;
-								$done = 1;
-								last;
-							}
+							record($conf, " - That appears to be: [$current_nic]. I will move this to: [$desired_nic].\n");
+							$conf->{map_nic}{$desired_nic} = $current_nic;
+							$done = 1;
 						}
 					}
 					$last_line = $this_last_line;
-				}
-				else
-				{
-					#print "Same. NEXT!\n";
 				}
 			}
 		}
@@ -1155,45 +1209,44 @@ sub configure_nics
 		{
 			my $current_nic = $conf->{map_nic}{$desired_nic};
 			my $desired_mac = uc($conf->{nic}{$current_nic}{mac});
-			print "Moving interface with MAC: [$desired_mac] from: [$current_nic] to: [$desired_nic]\n";
+			record($conf, "Moving interface with MAC: [$desired_mac] from: [$current_nic] to: [$desired_nic]\n");
 			$conf->{new_nic}{$desired_nic} = $desired_mac;
 		}
 		
 		# Shut down the network and delete udev file.
-		print "\n##############################################################################\n";
-		print "The next step will take down the network and (likely) change the IP address.\n";
-		print "If you are running this via ssh, be sure to be running in 'screen'. Otherwise,\n";
-		print "this program will die in the middle of modifying the network and likely leave\n";
-		print "you with no remote access at all!\n";
-		print "##############################################################################\n\n";
-		print "Proceed? [y/N] ";
+		record($conf, "\n##############################################################################\n");
+		record($conf, "The next step will take down the network and (likely) change the IP address.\n");
+		record($conf, "If you are running this via ssh, be sure to be running in 'screen'. Otherwise,\n");
+		record($conf, "this program will die in the middle of modifying the network and likely leave\n");
+		record($conf, "you with no remote access at all!\n");
+		record($conf, "##############################################################################\n\n");
+		record($conf, "Proceed? [y/N] ");
 		my $proceed = <STDIN>;
 		#my $proceed = "y";
 		chomp($proceed);
 		if ((lc($proceed) eq "y") or (lc($proceed) eq "yes"))
 		{
-			print "Proceeding... ";
+			record($conf, "Proceeding... ");
 			my $sc = "/etc/init.d/network stop && rm -f /etc/udev/rules.d/70-persistent-net.rules";
 			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+			open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
 			}
 			$fh->close();
-			print " - Done.\n";
+			record($conf, " - Done.\n");
 		}
 		else
 		{
-			print "Aborting. Please restart at your leisure and re-run this program.\n";
-			exit(1);
+			nice_exit($conf, 1, "Aborting. Please restart at your leisure and re-run this program.\n");
 		}
 		
 		foreach my $nic (sort {$a cmp $b} keys %{$conf->{new_nic}})
 		{
 			my $file = "/etc/sysconfig/network-scripts/ifcfg-$nic";
-			print "Re-writing the config for: [$nic]... ";
+			record($conf, "Re-writing the config for: [$nic]... ");
 			my $say_mac = uc($conf->{new_nic}{$nic});
 			my $say_ip  = $conf->{nic}{$nic}{ip} ? $conf->{nic}{$nic}{ip} : "";
 			my $proto = "none";
@@ -1212,7 +1265,7 @@ sub configure_nics
 				elsif ($nic eq "eth3") { $bond = "bond0"; $comment = "Back-Channel Network - Link 2"; }
 				elsif ($nic eq "eth4") { $bond = "bond1"; $comment = "Storage Network - Link 2"; }
 				elsif ($nic eq "eth5") { $bond = "bond2"; $comment = "Internet-Facing Network - Link 2"; }
-				else { die "Unknown NIC: [$nic]\n"; }
+				else { nice_exit($conf, 1, "Unknown NIC: [$nic]\n"); }
 			}
 			elsif ($conf->{nic}{ifn_count} == 2)
 			{
@@ -1224,15 +1277,15 @@ sub configure_nics
 				elsif ($nic eq "eth5") { $bond = "bond1"; $comment = "Storage Network - Link 2"; }
 				elsif ($nic eq "eth6") { $bond = "bond2"; $comment = "Internet-Facing Network A - Link 2"; }
 				elsif ($nic eq "eth7") { $bond = "bond3"; $comment = "Internet-Facing Network B - Link 2"; }
-				else { die "Unknown NIC: [$nic]\n"; }
+				else { nice_exit($conf, 1, "Unknown NIC: [$nic]\n"); }
 			}
 			else
 			{
-				die "Unknown number of IFNs: [$conf->{nic}{ifn_count}]\n";
+				nice_exit($conf, 1, "Unknown number of IFNs: [$conf->{nic}{ifn_count}]\n");
 			}
 			my $sc = $file;
 			my $fh = IO::Handle->new();
-			open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
+			open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 			print $fh "# $comment\n";
 			print $fh "HWADDR=\"$say_mac\"\n";
 			print $fh "DEVICE=\"$nic\"\n";
@@ -1242,7 +1295,7 @@ sub configure_nics
 			print $fh "MASTER=\"$bond\"\n";
 			print $fh "SLAVE=\"yes\"\n";
 			$fh->close();
-			print " - Done.\n";
+			record($conf, " - Done.\n");
 		}
 		
 		if ($conf->{nic}{ifn_count} == 1)
@@ -1252,10 +1305,10 @@ sub configure_nics
 			{
 				my $device = "bond".$i;
 				my $file   = "/etc/sysconfig/network-scripts/ifcfg-$device";
-				print "Writing the config for: [$device]... ";
+				record($conf, "Writing the config for: [$device]... ");
 				my $sc = $file;
 				my $fh = IO::Handle->new();
-				open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
+				open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 				my $primary = "eth0";
 				my $comment = "Back-Channel Network - Bond";
 				my $bridge  = "";
@@ -1294,16 +1347,16 @@ sub configure_nics
 					print $fh "NETMASK=\"$nm\"\n";
 				}
 				$fh->close();
-				print " - Done.\n";
+				record($conf, " - Done.\n");
 			}
 			
 			# Write the bridge.
 			my $device = "vbr2";
 			my $file   = "/etc/sysconfig/network-scripts/ifcfg-$device";
-			print "Writing the config for: [$device]... ";
+			record($conf, "Writing the config for: [$device]... ");
 			my $sc = $file;
 			my $fh = IO::Handle->new();
-			open ($fh, ">$file") or die "Failed to write: [$sc], error: $!\n";
+			open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 			print $fh "# Internet-Facing Network - Bridge\n";
 			print $fh "DEVICE=\"vbr2\"\n";
 			print $fh "TYPE=\"Bridge\"\n";
@@ -1315,34 +1368,34 @@ sub configure_nics
 			print $fh "DNS2=\"$conf->{answers}{dns2}\"\n";
 			print $fh "DEFROUTE=\"$conf->{answers}{ifn_dg}\"\n";
 			$fh->close();
-			print " - Done.\n";
+			record($conf, " - Done.\n");
 		}
 		elsif ($conf->{nic}{ifn_count} == 2)
 		{
 			# Two bridges, four bonds.
-			print "Two IFNs not yet implemented...\n";
+			record($conf, "Two IFNs not yet implemented...\n");
 		}
 		else
 		{
-			die "Unknown number of IFNs: [$conf->{nic}{ifn_count}]\n";
+			nice_exit($conf, 1, "Unknown number of IFNs: [$conf->{nic}{ifn_count}]\n");
 		}
 		
 		# Rewrite udev and start the network.
-		print "Note: You may safely ignore any errors like:\n";
-		print " - \"bonding: cannot add bond bondX; already exists\"\n";
+		record($conf, "Note: You may safely ignore any errors like:\n");
+		record($conf, " - \"bonding: cannot add bond bondX; already exists\"\n");
 		my $sc = "start_udev && /etc/init.d/network start";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
 		}
 		$fh->close();
-		print " - Done.\n";
+		record($conf, " - Done.\n");
 	}
 	
-	print "The network should now be configured.\n";
+	record($conf, "The network should now be configured.\n");
 	
 	return(0);
 }
@@ -1358,20 +1411,20 @@ sub read_syslog
 	
 	my $sc = "/var/log/messages";
 	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error: $!\n";
+	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		#print "syslog line: [$line]\n";
+		#record($conf, "syslog line: [$line]\n");
 		if (not $previous_last_line)
 		{
-			#print "No previous last syslog line. Keeping array empty.\n" if $show_message;
+			#record($conf, "No previous last syslog line. Keeping array empty.\n") if $show_message;
 			$show_message = 0;
 		}
 		elsif ($line eq $previous_last_line)
 		{
-			#print "Found the last line: [$line], beginning recording.\n";
+			#record($conf, "Found the last line: [$line], beginning recording.\n");
 			$record = 1;
 		}
 		elsif ($record)
@@ -1385,7 +1438,7 @@ sub read_syslog
 	}
 	$fh->close();
 	
-	#print "Last syslog line: [$last_line]\n";
+	#record($conf, "Last syslog line: [$last_line]\n");
 	return($last_line);
 }
 
@@ -1393,18 +1446,17 @@ sub restart_network
 {
 	my ($conf) = @_;
 	
-	print "Restarting the network. This may close ssh sessions. Proceed? [y/N] ";
+	record($conf, "Restarting the network. This may close ssh sessions. Proceed? [y/N] ");
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
 	chomp($proceed);
 	if ((lc($proceed) eq "y") or (lc($proceed) eq "yes"))
 	{
-		print "Proceeding... ";
+		record($conf, "Proceeding... ");
 	}
 	else
 	{
-		print "Aborting. Please restart at your leisure and re-run this program.\n";
-		exit(1);
+		nice_exit($conf, 1, "Aborting. Please restart at your leisure and re-run this program.\n");
 	}
 	
 	# Disable network manager
@@ -1414,16 +1466,16 @@ sub restart_network
 		$sc = "chkconfig network on && /etc/init.d/network restart";
 	}
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		print "."
+		record($conf, ".");
 	}
 	$fh->close();
 	sleep 5;	# Give the NICs time to come up
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
@@ -1435,7 +1487,7 @@ sub backup_ifcfg_files
 	my $backup_dir = "/root/network-scripts.orig";
 	if (-e "$backup_dir")
 	{
-		print "Backup already performed, skipping.\n";
+		record($conf, "Backup already performed, skipping.\n");
 		return(0);
 	}
 	else
@@ -1443,18 +1495,18 @@ sub backup_ifcfg_files
 		mkdir "$backup_dir" or warn "Failed to create the directory: [$backup_dir]. The error was: $!\n";
 	}
 	
-	print "Archiving the current interface configuration files in /root/network-scripts.orig.\n";
+	record($conf, "Archiving the current interface configuration files in /root/network-scripts.orig.\n");
 	my $sc = "cp /etc/sysconfig/network-scripts/* /root/network-scripts.orig";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		print "."
+		record($conf, ".");
 	}
 	$fh->close();
-	print " - Done.\n";
+	record($conf, " - Done.\n");
 	
 	return(1);
 }
@@ -1463,28 +1515,28 @@ sub setup_ssh
 {
 	my ($conf) = @_;
 	
-	print "Configuring the SSH keys.\n";
+	record($conf, "Configuring the SSH keys.\n");
 	if (-e "/root/.ssh/id_rsa")
 	{
-		print " - Found an existing key, not generating a new one.\n";
+		record($conf, " - Found an existing key, not generating a new one.\n");
 	}
 	else
 	{
 		# Generating a new RSA key.
-		print "Generating a new RSA key for the root user.\n";
+		record($conf, "Generating a new RSA key for the root user.\n");
 		my $sc = "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa";
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
-		print "/----------\n";
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			print "| $line\n"
+			record($conf, "| $line\n");
 		}
 		$fh->close();
-		print "\\----------\n";
-		print " - Done.\n";
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 	}
 	
 	return(0);
@@ -1495,7 +1547,7 @@ sub collect_data
 	my ($conf) = @_;
 	
 	# Get the current host name.
-	#foreach my $var (sort {$a cmp $b} keys %ENV) { print "var: [$var] -> [$ENV{$var}]\n"; }
+	#foreach my $var (sort {$a cmp $b} keys %ENV) { record($conf, "var: [$var] -> [$ENV{$var}]\n"); }
 	$conf->{collected}{hostname} = $ENV{HOSTNAME};
 	
 	# Read the number of NICs.
@@ -1512,19 +1564,19 @@ sub get_nic_details
 	my $this_mac;
 	my $sc = "ifconfig -a";
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		#print "line: [$line]\n";
+		#record($conf, "line: [$line]\n");
 
 		# New line == new device.
 		if (($line eq "") or ($line =~ /^\s+$/))
 		{
 			$this_nic = "";
 			$this_mac = "";
-			#print "clear.\n";
+			#record($conf, "clear.\n");
 		}
 
 		# EL6-style stuff
@@ -1535,20 +1587,20 @@ sub get_nic_details
 			$this_mac =~ s/\s+$//;
 			$conf->{nic}{$this_nic}{mac} = $this_mac;
 			$conf->{nic}{count}++;
-			#print "found nic: [$this_nic] -> MAC: [$conf->{nic}{$this_nic}{mac} ($this_mac)]\n";
+			#record($conf, "found nic: [$this_nic] -> MAC: [$conf->{nic}{$this_nic}{mac} ($this_mac)]\n");
 		}
 		elsif ($this_nic)
 		{
-			#print "parsing for NIC: [$this_nic]: [$line]\n";
+			#record($conf, "parsing for NIC: [$this_nic]: [$line]\n");
 			if ($line =~ /inet addr:(\d+\.\d+\.\d+\.\d+)/)
 			{
 				$conf->{nic}{$this_nic}{ip} = $1;
-				#print " - IP: [$conf->{nic}{$this_nic}{ip}]\n";
+				#record($conf, " - IP: [$conf->{nic}{$this_nic}{ip}]\n");
 			}
 			if ($line =~ /Mask:(\d+\.\d+\.\d+\.\d+)/)
 			{
 				$conf->{nic}{$this_nic}{nm} = $1;
-				#print " - NM: [$conf->{nic}{$this_nic}{nm}]\n";
+				#record($conf, " - NM: [$conf->{nic}{$this_nic}{nm}]\n");
 			}
 		}
 	}
