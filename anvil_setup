@@ -380,7 +380,7 @@ sub install_acpupsd
 	}
 	
 	record($conf, "Backing up the default 'apcupsd' init.d script:\n");
-	if (-e "/root/apcupsd.anvil")
+	if (-e "/etc/init.d/apcupsd.anvil")
 	{
 		record($conf, " - The '/etc/init.d/apcupsd.anvil' backup init.d script was already created.\n");
 	}
@@ -465,43 +465,60 @@ sub install_acpupsd
 		$fh->close();
 	}
 	
-	record($conf, "Modifying the 'apcupsd' init.d script:\n");
-	
-=pod
-	### Modify ups 0
-	BATTERYLEVEL 5				->	BATTERYLEVEL 0
-	MINUTES 3				->	MINUTES 0
-	SCRIPTDIR /etc/apcupsd			->	SCRIPTDIR /etc/apcupsd/null
-	PWRFAILDIR /etc/apcupsd			->	PWRFAILDIR /etc/apcupsd/null
-	NOLOGINDIR /etc				->	NOLOGINDIR /etc/apcupsd/null
-	NISPORT 3551				->	NISPORT $ups0_nisport
-	EVENTSFILE /var/log/apcupsd.events	->	EVENTSFILE $ups0_events
-	
-	### modify ups 1
-	#UPSNAME				->	UPSNAME $aps1_name
-	UPSTYPE apcsmart			->	UPSTYPE snmp
-	DEVICE /dev/ttyS0			->	DEVICE $ups1_addr:$ups1_port:$ups1_vendor:$ups1_community
-	#POLLTIME 60				->	POLLTIME $ups1_polltime
-	BATTERYLEVEL 5				->	BATTERYLEVEL 0
-	MINUTES 3				->	MINUTES 0
-	SCRIPTDIR /etc/apcupsd			->	SCRIPTDIR /etc/apcupsd/null
-	PWRFAILDIR /etc/apcupsd			->	PWRFAILDIR /etc/apcupsd/null
-	NOLOGINDIR /etc				->	NOLOGINDIR /etc/apcupsd/null
-	NISPORT 3551				->	NISPORT $ups1_nisport
-	EVENTSFILE /var/log/apcupsd.events	->	EVENTSFILE $ups1_events
-	
-	### Modify the init.d script
-	mv /etc/init.d/apcupsd /etc/init.d/apcupsd.anvil
-	wget https://alteeve.ca/files/apcupsd/apcupsd -O /etc/init.d/apcupsd
-	chmod 755 /etc/init.d/apcupsd
-	/etc/init.d/apcupsd start
-	chkconfig apcupsd on
-	
-	### Verify that both UPSes are accessible
-	apcaccess status localhost:$ups0_nisport
-		# grep for;
+	record($conf, "Downloading modified the 'apcupsd' init.d script:\n");
+	if (-e "/etc/init.d/apcupsd")
+	{
+		record($conf, " - Removing the old 'apcupsd' init.d scipt.\n");
+		unlink "/etc/init.d/apcupsd" or nice_exit($conf, 1, "Failed to remove: [/etc/init.d/apcupsd], error: $!\n");
+	}
+	if (not -e "/etc/init.d/apcupsd")
+	{
+		record($conf, " - Installing the modified 'apcupsd' init.d script.\n");
+		my $sc = "wget https://alteeve.ca/files/apcupsd/apcupsd -O /etc/init.d/apcupsd && chmod 755 /etc/init.d/apcupsd";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
 		
-=cut
+		record($conf, " - Setting 'apcupsd' to start on boot.\n");
+		$sc = "chkconfig apcupsd on";
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+		
+		record($conf, " - Starting the 'apcupsd' daemons.\n");
+		$sc = "/etc/init.d/apcupsd start";
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+	}
+	else
+	{
+		record($conf, "[ WARNING ] - Unable to remove the old '/etc/init.d/apcupsd' file!\n");
+		record($conf, "[ WARNING ] - Aborting 'apcupsd' init.d configuration!\n");
+	}
 	
 	return(0);
 }
@@ -1269,7 +1286,7 @@ sub ask_questions_ups
 			   $say_ups       =~ s/^ups/UPS #0/;
 			   $ups_number    =~ s/^\D*/0/;
 			$conf->{answers}{ups}{$ups}{name}    =  $conf->{answers}{customer_prefix}."-u".$ups_number;
-			record($conf, "Questions for $say_ups:\n");
+			record($conf, "\nQuestions for $say_ups:\n");
 			record($conf, " - UPS name: [$conf->{answers}{ups}{$ups}{name}] ");
 			my $ups_name = <STDIN>;
 			chomp($ups_name);
@@ -1305,22 +1322,9 @@ sub ask_questions_ups
 	return (0);
 }
 
-sub ask_questions
+sub chech_core_dependencies
 {
 	my ($conf) = @_;
-	read_answers($conf);
-	
-	record($conf, "\n##############################################################################\n");
-	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
-	record($conf, "#       Please answer carefully.                                             #\n");
-	record($conf, "##############################################################################\n");
-	
-	ask_questions_customer($conf);
-	ask_questions_ups($conf);	# This must follow the customer questions
-	ask_questions_node_ips($conf);	# This must follow the customer questions
-	ask_questions_misc($conf);
-	ask_questions_storage($conf);	# This must follow the customer questions
-	
 	
 	# Check for required networking tools.
 	if (not -e "/usr/sbin/brctl")
@@ -1337,6 +1341,130 @@ sub ask_questions
 		record($conf, "The storage configuration tool 'parted' is not yet installed. It is needed in\n");
 		record($conf, "order to prepare the node's replicated storage. It will be installed.\n");
 	}
+	
+	return(0);
+}
+
+sub install_core_dependencies
+{
+	my ($conf) = @_;
+	
+	if ((not -e "/usr/sbin/brctl") && (-e "/sbin/parted"))
+	{
+		record($conf, "Installing 'bridge-utils' and 'parted'.\n");
+		my $sc = "yum -y install bridge-utils parted";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
+		
+		sleep 1;
+		my $fatal = 0;
+		if (not -e "/usr/sbin/brctl")
+		{
+			$fatal = 1;
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+		}
+		if (not -e "/sbin/parted")
+		{
+			$fatal = 1;
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+		}
+		if ($fatal)
+		{
+			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
+		}
+	}
+	elsif (not -e "/usr/sbin/brctl")
+	{
+		record($conf, "Installing 'bridge-utils'.\n");
+		my $sc = "yum -y install bridge-utils";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
+		
+		sleep 1;
+		if (not -e "/usr/sbin/brctl")
+		{
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
+		}
+	}
+	elsif (not -e "/sbin/parted")
+	{
+		record($conf, "Installing 'parted'.\n");
+		my $sc = "yum -y install parted";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
+		
+		sleep 1;
+		if (not -e "/sbin/parted")
+		{
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
+		}
+	}
+	
+	return(0);
+}
+
+sub ask_questions
+{
+	my ($conf) = @_;
+	read_answers($conf);
+	
+	record($conf, "\n##############################################################################\n");
+	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
+	record($conf, "#       Please answer carefully.                                             #\n");
+	record($conf, "##############################################################################\n");
+	
+	# TODO: Make each one of these it's own section that the user can
+	#       independantly verify and, if needed, restart.
+	ask_questions_customer($conf);
+	ask_questions_ups($conf);	# This must follow the customer questions
+	ask_questions_node_ips($conf);	# This must follow the customer questions
+	ask_questions_misc($conf);
+	ask_questions_storage($conf);	# This must follow the customer questions
+	chech_core_dependencies($conf);
 	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
 	write_answers($conf);
@@ -1392,90 +1520,38 @@ sub ask_questions
 		record($conf, "Proceeding.\n");
 	}
 	
-	if (1)
-	{
-		# Write the file and then set the active hostname.
-		record($conf, "Recording and setting the host name... ");
-		my $file = "/etc/sysconfig/network";
-		my $sc = $file;
-		my $fh = IO::Handle->new();
-		open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
-		print $fh "NETWORKING=yes\n";
-		print $fh "HOSTNAME=$conf->{answers}{hostname}\n";
-		$fh->close();
-		
-		$sc = "hostname $conf->{answers}{hostname}";
-		$fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-		}
-		$fh->close();
-		record($conf, " - Done.\n");
-	}
-	
-	if (not -e "/usr/sbin/brctl")
-	{
-		record($conf, "Installing 'bridge-utils'.\n");
-		my $sc = "yum -y install bridge-utils";
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
-		record($conf, "/----------\n");
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			record($conf, "| $line\n");
-		}
-		$fh->close();
-		record($conf, "\\----------\n");
-		record($conf, " - Done.\n");
-		
-		sleep 1;
-		if (not -e "/usr/sbin/brctl")
-		{
-			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
-			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
-			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
-			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
-			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
-		}
-	}
-	if (not -e "/sbin/parted")
-	{
-		record($conf, "Installing 'parted'.\n");
-		my $sc = "yum -y install parted";
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
-		record($conf, "/----------\n");
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			record($conf, "| $line\n");
-		}
-		$fh->close();
-		record($conf, "\\----------\n");
-		record($conf, " - Done.\n");
-		
-		sleep 1;
-		if (not -e "/sbin/parted")
-		{
-			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
-			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
-			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
-			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
-			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
-		}
-	}
-	
-	
-	
+	set_hostname($conf);
+	install_core_dependencies($conf);
 	configure_nics($conf);
-	
 	write_hosts($conf);
+	
+	return(0);
+}
+
+sub set_hostname
+{
+	my ($conf) = @_;
+	
+	# Write the file and then set the active hostname.
+	record($conf, "Recording and setting the host name... ");
+	my $file = "/etc/sysconfig/network";
+	my $sc = $file;
+	my $fh = IO::Handle->new();
+	open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+	print $fh "NETWORKING=yes\n";
+	print $fh "HOSTNAME=$conf->{answers}{hostname}\n";
+	$fh->close();
+	
+	$sc = "hostname $conf->{answers}{hostname}";
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+	}
+	$fh->close();
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
@@ -1519,6 +1595,18 @@ sub write_hosts
 	print $fh "$say_sn_ip\t${short_hostname}.sn\n";
 	print $fh "$say_ifn_ip\t${short_hostname}.ifn\n";
 	$fh->close();
+	
+	print $fh "\n";
+	print $fh "# Foundation pack\n";
+	# TODO: Switches
+	# TODO: PDUs
+	foreach my $ups (sort {$a cmp $b} keys %{$conf->{answers}{ups}})
+	{
+		my $say_ip    = $conf->{answers}{ups}{$ups}{address};
+		my $say_name  = $conf->{answers}{ups}{$ups}{name};
+		my $full_name = $say_name.".".$conf->{answers}{customer_domain};
+		print $fh "$say_ip\t$say_name $full_name\n";
+	}
 	
 	$sc = "hostname $say_hostname";
 	$fh = IO::Handle->new();
