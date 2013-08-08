@@ -29,6 +29,33 @@ my $conf = {
 		ipmi_netmask	=>	"255.255.0.0",
 		dns1		=>	"8.8.8.8",
 		dns2		=>	"8.8.4.4",
+		shared_storage	=>	"40",
+		storage_pool_1	=>	"0",
+		storage_pool_2	=>	"0",
+		ntp_server	=>	"tick.redhat.com",
+		configure_ups	=>	"yes",
+		ups		=>	{
+			ups1		=>	{
+				name		=>	"",
+				address		=>	"10.20.30.1",
+				snmp_port	=>	161,
+				snmp_vendor	=>	"APC_NOTRAP",
+				community	=>	"private",
+				nisport		=>	"6551",
+				events		=>	"",
+				polltime	=>	30,
+			},
+			ups2		=>	{
+				name		=>	"",
+				address		=>	"10.20.30.2",
+				snmp_port	=>	161,
+				snmp_vendor	=>	"APC_NOTRAP",
+				community	=>	"private",
+				nisport		=>	"6552",
+				events		=>	"",
+				polltime	=>	30,
+			},
+		},
 	},
 	apps		=>	{
 		install		=>	[
@@ -42,6 +69,7 @@ my $conf = {
 			"gpm",
 			"libvirt",
 			"lvm2-cluster",
+			"mlocate",
 			"ntp",
 			"OpenIPMI",
 			"OpenIPMI-libs",
@@ -78,7 +106,7 @@ my $conf = {
 			"rgmanager",
 		],
 		from_http	=>	{
-			apcupsd		=>	"https://alteeve.ca/cluster/apcupsd-latest.el6.x86_64.rpm",
+			apcupsd		=>	"https://alteeve.ca/files/apcupsd/apcupsd-latest.el6.x86_64.rpm",
 		},
 		repos		=>	{
 			elrepo		=>	{
@@ -88,9 +116,6 @@ my $conf = {
 				install		=>	["drbd83-utils", "kmod-drbd83"],
 			},
 		},
-	},
-	'system'	=>	{
-		ntp_server	=>	"tick.redhat.com",
 	},
 	commands	=>	{
 		'ssh-keygen'	=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa",
@@ -230,40 +255,220 @@ sub install_acpupsd
 {
 	my ($conf) = @_;
 	
-	my $apcupsd_rpm    = $conf->{apps}{from_http}{apcupsd};
+	# TODO: Make the apcupsd install component optional.
+	record($conf, "Installing and configuring the UPS monitoring application.\n");
 	
-	# UPS 0
-	my $aps0_name      = "an-u01";
-	my $ups0_addr      = "10.20.3.1";
-	my $ups0_port      = "161";
-	my $ups0_vendor    = "APC_NOTRAP";
-	my $ups0_community = "private";
-	my $ups0_polltime  = "30";
-	my $ups0_nisport   = "6551";
-	my $ups0_events    = "/var/log/apcupsd.0.events";
+	# Short names for easier code reading
+	my $ups1 = $conf->{answers}{ups}{ups1}{name};
+	my $ups2 = $conf->{answers}{ups}{ups2}{name};
 	
-	# UPS 1
-	my $aps1_name      = "an-u02";
-	my $ups1_addr      = "10.20.3.2";
-	my $ups1_port      = "161";
-	my $ups1_vendor    = "APC_NOTRAP";
-	my $ups1_community = "private";
-	my $ups1_polltime  = "30";
-	my $ups1_nisport   = "6552";
-	my $ups1_events    = "/var/log/apcupsd.1.events";
+	# Install the apcupsd RPM if needed.
+	record($conf, "Installing 'apcupsd':\n");
+	if (-e "/etc/init.d/apcupsd")
+	{
+		record($conf, " - The 'apcupsd' program has already been installed.\n");
+	}
+	else
+	{
+		my $apcupsd_rpm = $conf->{apps}{from_http}{apcupsd};
+		my $sc          = "rpm -Uvh $apcupsd_rpm";
+		my $fh          = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+		if (-e "/etc/init.d/apcupsd")
+		{
+			record($conf, " - Done.\n");
+		}
+		else
+		{
+			record($conf, " - Failed!\n");
+			nice_exit($conf, 1, "I was unable to install: [apcupsd] from: [$apcupsd_rpm].\n");
+		}
+	}
+	
+	# Make the null script directory.
+	record($conf, "Creating the 'null' scripts directory:\n");
+	if (-e "/etc/apcupsd/null")
+	{
+		record($conf, " - The null script directory already exists.\n");
+	}
+	else
+	{
+		my $apcupsd_rpm = $conf->{apps}{from_http}{apcupsd};
+		my $sc          = "rpm -Uvh $apcupsd_rpm";
+		my $fh          = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+		if (-e "/etc/init.d/apcupsd")
+		{
+			record($conf, " - Done.\n");
+		}
+		else
+		{
+			record($conf, " - Failed!\n");
+			nice_exit($conf, 1, "I was unable to install: [apcupsd] from: [$apcupsd_rpm].\n");
+		}
+	}
+	
+	record($conf, "Configuring 'apcupsd' and modifying it to support two UPSes:\n");
+	if (-e "/etc/apcupsd/apcupsd.conf.anvil")
+	{
+		record($conf, " - Backup of 'apcupsd.conf' already created.\n");
+	}
+	else
+	{
+		my $sc = "cp /etc/apcupsd/apcupsd.conf /etc/apcupsd/apcupsd.conf.anvil";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+	}
+	
+	record($conf, "Copying the default configuration to the '$ups1' configuration:\n");
+	if (-e "/etc/apcupsd/apcupsd.${ups1}.conf")
+	{
+		record($conf, " - The 'apcupsd.${ups1}.conf' configuration file already created.\n");
+	}
+	else
+	{
+		my $sc = "cp /etc/apcupsd/apcupsd.conf /etc/apcupsd/apcupsd.${ups1}.conf";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+	}
+	
+	record($conf, "Copying the base '${ups1}' configuration to the '${ups2}' configuration:\n");
+	if (-e "/etc/apcupsd/apcupsd.${ups2}.conf")
+	{
+		record($conf, " - The 'apcupsd.${ups2}.conf' configuration file already created.\n");
+	}
+	else
+	{
+		my $sc = "cp /etc/apcupsd/apcupsd.${ups1}.conf /etc/apcupsd/apcupsd.${ups2}.conf";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+	}
+	
+	record($conf, "Backing up the default 'apcupsd' init.d script:\n");
+	if (-e "/root/apcupsd.anvil")
+	{
+		record($conf, " - The '/etc/init.d/apcupsd.anvil' backup init.d script was already created.\n");
+	}
+	else
+	{
+		my $sc = "/etc/init.d/apcupsd /etc/init.d/apcupsd.anvil";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+	}
+	
+	record($conf, "Configuring UPS #1's confguration file:\n");
+	foreach my $ups (sort {$a cmp $b} keys %{$conf->{ups}})
+	{
+		my $config_file   = "/etc/apcupsd/apcupsd.${ups}.conf";
+		my $name          = $conf->{answers}{ups}{$ups}{name};
+		my $address       = $conf->{answers}{ups}{$ups}{address};
+		my $snmp_port     = $conf->{answers}{ups}{$ups}{snmp_port};
+		my $snmp_vendor   = $conf->{answers}{ups}{$ups}{snmp_vendor};
+		my $community     = $conf->{answers}{ups}{$ups}{community};
+		my $polltime      = $conf->{answers}{ups}{$ups}{polltime};
+		my $nisport       = $conf->{answers}{ups}{$ups}{nisport};
+		my $events        = $conf->{answers}{ups}{$ups}{events};
+		my $device_string = "${address}:${snmp_port}:${snmp_vendor}:${community}";
+		my @lines;
+		
+		my $sc = "$config_file";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, " - $line\n");
+			
+			# Strip off the leading # from UPSNAME and then set the
+			# name of the UPS. This is done in two steps to make
+			# sure this works on re-runs of the script
+			$line =~ s/^#UPSNAME/UPSNAME/;
+			$line =~ s/^UPSNAME.*/UPSNAME $name/;
+			
+			# Set the UPS type to SNMP and set the connection 
+			# details.
+			$line =~ s/^UPSTYPE.*/UPSTYPE snmp/;
+			$line =~ s/^DEVICE.*/UPSTYPE $device_string/;
+			
+			# Setup the poll time. Remove the leading # again.
+			$line =~ s/^#POLLTIME/POLLTIME/;
+			$line =~ s/^POLLTIME.*/POLLTIME $polltime/;
+			
+			# Set some static values
+			$line =~ s/^BATTERYLEVEL.*/BATTERYLEVEL 5/;
+			$line =~ s/^MINUTES.*/MINUTES 0/;
+			$line =~ s/^SCRIPTDIR.*/SCRIPTDIR \/etc\/apcupsd\/null/;
+			$line =~ s/^PWRFAILDIR.*/PWRFAILDIR \/etc\/apcupsd\/null/;
+			$line =~ s/^NOLOGINDIR.*/NOLOGINDIR \/etc\/apcupsd\/null/;
+			
+			# Set the NIS port
+			$line =~ s/^NISPORT.*/NISPORT $nisport/;
+			
+			# Set the event file
+			$line =~ s/^EVENTSFILE.*/EVENTSFILE $events/;
+
+			push @lines, "$line\n";
+		}
+		$fh->close();
+		
+		# Write the config file back out.
+		$sc = "$config_file";
+		$fh = IO::Handle->new();
+		open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+		foreach my $line (@lines)
+		{
+			print $line;
+		}
+		$fh->close();
+	}
+	
+	record($conf, "Modifying the 'apcupsd' init.d script:\n");
+	
 =pod
-	rpm -Uvh $apcupsd_rpm
-	mkdir /etc/apcupsd/null
-	cp /etc/apcupsd/apcupsd.conf      /etc/apcupsd/apcupsd.conf.orig
-	mv /etc/apcupsd/apcupsd.conf      /etc/apcupsd/apcupsd.ups0.conf
-	cp /etc/apcupsd/apcupsd.ups0.conf /etc/apcupsd/apcupsd.ups1.conf
-	cp /etc/init.d/apcupsd            /root/apcupsd.init.orig
-	
 	### Modify ups 0
-	#UPSNAME				->	UPSNAME $aps0_name
-	UPSTYPE apcsmart			->	UPSTYPE snmp
-	DEVICE /dev/ttyS0			->	DEVICE $ups0_addr:$ups0_port:$ups0_vendor:$ups0_community
-	#POLLTIME 60				->	POLLTIME $ups0_polltime
 	BATTERYLEVEL 5				->	BATTERYLEVEL 0
 	MINUTES 3				->	MINUTES 0
 	SCRIPTDIR /etc/apcupsd			->	SCRIPTDIR /etc/apcupsd/null
@@ -286,8 +491,8 @@ sub install_acpupsd
 	EVENTSFILE /var/log/apcupsd.events	->	EVENTSFILE $ups1_events
 	
 	### Modify the init.d script
-	rm -f /etc/init.d/apcupsd
-	wget https://alteeve.ca/files/apcupsd -O /etc/init.d/apcupsd
+	mv /etc/init.d/apcupsd /etc/init.d/apcupsd.anvil
+	wget https://alteeve.ca/files/apcupsd/apcupsd -O /etc/init.d/apcupsd
 	chmod 755 /etc/init.d/apcupsd
 	/etc/init.d/apcupsd start
 	chkconfig apcupsd on
@@ -306,12 +511,12 @@ sub disable_selinux
 	my ($conf) = @_;
 	
 	record($conf, "Disabling SELinux\n");
-	if (-e "/etc/selinux/config.bak")
+	if (-e "/etc/selinux/config.anvil")
 	{
 		record($conf, " - Already disabled, skipping.\n");
 		return(0);
 	}
-	my $sc = "setenforce 0 && sed -i.bak 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
+	my $sc = "setenforce 0 && sed -i.anvil 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
@@ -454,7 +659,7 @@ sub setup_ntpd
 	
 	# If the NTP server IP is already in the file, skip.
 	record($conf, "This next step will configure the network time server.\n");
-	my $ntp_server = $conf->{'system'}{ntp_server};
+	my $ntp_server = $conf->{answers}{ntp_server};
 	my $done = 0;
 	my $sc = "/etc/ntp.conf";
 	my $fh = IO::Handle->new();
@@ -477,30 +682,17 @@ sub setup_ntpd
 		return (0);
 	}
 	
-	# Ask the user before proceeding.
-	record($conf, "Proceed? [Y/n] ");
-	my $proceed = <STDIN>;
-	#my $proceed = "y";
-	chomp($proceed);
-	if ((lc($proceed) eq "n") or (lc($proceed) eq "no"))
+	$sc = "echo \"server $ntp_server\" >> /etc/ntp.conf && echo \"restrict $ntp_server mask 255.255.255.255 nomodify notrap noquery\" >> /etc/ntp.conf";
+	$fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+	while(<$fh>)
 	{
-		record($conf, "Skipping\n");
+		chomp;
+		my $line = $_;
+		record($conf, "| $line\n");
 	}
-	else
-	{
-		record($conf, "Proceeding... ");
-		my $sc = "echo \"server $ntp_server\" >> /etc/ntp.conf && echo \"restrict $ntp_server mask 255.255.255.255 nomodify notrap noquery\" >> /etc/ntp.conf";
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			#record($conf, "| $line\n");
-		}
-		$fh->close();
-		record($conf, " - Done.\n");
-	}
+	$fh->close();
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
@@ -653,10 +845,10 @@ sub install_apps
 	### TODO: Update this to edit the default files. Create a downloadable
 	###       version with substitution keys.
 	# Grab the default DRBD config files
-	if (not -e "/etc/drbd.d/global_common.conf.orig")
+	if (not -e "/etc/drbd.d/global_common.conf.anvil")
 	{
 		record($conf, "Installing the DRBD initial config files.\n");
-		my $sc = "mv /etc/drbd.d/global_common.conf /etc/drbd.d/global_common.conf.orig && wget -c https://alteeve.ca/files/global_common.conf -O /etc/drbd.d/global_common.conf && wget -c https://alteeve.ca/files/r0.res -O /etc/drbd.d/r0.res";
+		my $sc = "mv /etc/drbd.d/global_common.conf /etc/drbd.d/global_common.conf.anvil && wget -c https://alteeve.ca/files/global_common.conf -O /etc/drbd.d/global_common.conf && wget -c https://alteeve.ca/files/r0.res -O /etc/drbd.d/r0.res";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		record($conf, "/----------\n");
@@ -672,10 +864,10 @@ sub install_apps
 	}
 	
 	# Setup clustered LVM.
-	if (not -e "/etc/lvm/lvm.conf.orig")
+	if (not -e "/etc/lvm/lvm.conf.anvil")
 	{
 		record($conf, "Installing the clustered LVM configuration file.\n");
-		my $sc = "mv /etc/lvm/lvm.conf /etc/lvm/lvm.conf.orig && wget -c https://alteeve.ca/files/lvm.conf -O /etc/lvm/lvm.conf";
+		my $sc = "mv /etc/lvm/lvm.conf /etc/lvm/lvm.conf.anvil && wget -c https://alteeve.ca/files/lvm.conf -O /etc/lvm/lvm.conf";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		record($conf, "/----------\n");
@@ -731,16 +923,26 @@ sub read_answers
 	my $sc = "$conf->{files}{answers}";
 	my $fh = IO::Handle->new();
 	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
-	while(<$fh>)
+	while (<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		if ($line =~ /answer:(.*?)#!#(.*)/)
-		{
-			my $var = $1;
-			my $val = $2;
-			$conf->{answers}{$var} = $val;
-		}
+		#record($conf, "answers line: [$line]\n");
+		next if not $line;
+		next if $line !~ /=/;
+		$line         =~ s/^\s+//;
+		$line         =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		
+		_make_hash_reference($conf, $var, $val);
 	}
 	$fh->close();
 	
@@ -749,29 +951,36 @@ sub read_answers
 
 sub write_answers
 {
-	my ($conf) = @_;
+	my ($conf, $hash_ref, $key) = @_;
+	$hash_ref = $conf->{answers} if not defined $hash_ref;
+	$key      = "answers"        if not defined $key;
 	
 	my $sc = "$conf->{files}{answers}";
 	my $fh = IO::Handle->new();
 	open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
-	foreach my $var (sort {$a cmp $b} keys %{$conf->{answers}})
+	foreach my $var (sort {$a cmp $b} keys %{$hash_ref})
 	{
-		print $fh "answer:$var#!#$conf->{answers}{$var}\n";
+		#print "var: [$var] is HASH? [".ref($hash_ref->{$var})."] ($hash_ref->{$var})\n";
+		if (ref($hash_ref->{$var}) eq "HASH")
+		{
+			my $new_key = "${key}::${var}";
+			write_answers($conf, $hash_ref->{$var}, $new_key);
+		}
+		else
+		{
+			print $fh "${key}::${var} = $hash_ref->{$var}\n";
+		}
 	}
 	$fh->close();
 	
 	return(0);
 }
 
-sub ask_questions
+sub ask_questions_customer
 {
 	my ($conf) = @_;
-	read_answers($conf);
 	
-	record($conf, "\n##############################################################################\n");
-	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
-	record($conf, "#       Please answer carefully.                                             #\n");
-	record($conf, "##############################################################################\n\n");
+	record($conf, "\n-=] Customer and node questions:\n\n");
 	
 	record($conf, "What is the customer's two or three letter prefix?\n - [$conf->{answers}{customer_prefix}] ");
 	my $customer_prefix = <STDIN>;
@@ -804,6 +1013,22 @@ sub ask_questions
 	}
 	$conf->{answers}{node_id} = $node_id if $node_id;
 	write_answers($conf);
+	
+	# Ask the user what time server they want to use.
+	record($conf, "What time server do you want to use?\n - [$conf->{answers}{ntp_server}] ");
+	my $ifn2_gateway = <STDIN>;
+	chomp($ifn2_gateway);
+	$conf->{answers}{ifn2_gateway} = $ifn2_gateway if $ifn2_gateway;
+	write_answers($conf);
+	
+	return(0);
+}
+
+sub ask_questions_node_ips
+{
+	my ($conf) = @_;
+	
+	record($conf, "\n-=] Node IP address questions:\n\n");
 	
 	# IP addresses. If the IPs is only two octals, use the cluster ID to
 	# set the third octal.
@@ -912,8 +1137,8 @@ sub ask_questions
 	write_answers($conf);
 	
 	### TODO: More sensibly support a second IFN.
-	my $two_ifn = 0;
-	if ($two_ifn)
+	$conf->{'system'}{two_ifn} = 0;
+	if ($conf->{'system'}{two_ifn})
 	{
 		# Internet-Facing Network B
 		record($conf, "What IP address would you like to use for the second IFN?\n - [$conf->{answers}{ifn2_ip}] ");
@@ -941,6 +1166,162 @@ sub ask_questions
 		write_answers($conf);
 	}
 	
+	return (0);
+}
+
+sub ask_questions_misc
+{
+	my ($conf) = @_;
+	
+	#record($conf, "\n-=] Miscellaneous node configuration questions:\n\n");
+	
+	return (0);
+}
+
+sub ask_questions_storage
+{
+	my ($conf) = @_;
+	
+	record($conf, "\n-=] Storage related questions:\n\n");
+	
+	### Storage questions.
+	if (($conf->{answers}{node_id} eq "1") or ($conf->{answers}{node_id} eq "01"))
+	{
+		# Tell the user roughly how much free space is available.
+		record($conf, "The root device: [$conf->{'system'}{root}{device}] has approximately: [$conf->{'system'}{root}{free_space_gb_rounded} GB] of free space.\n");
+		if ($conf->{'system'}{root}{free_space_gb_rounded} > 50)
+		{
+			# Ask the user how much space they want to assign to /shared
+			my $remaining_free_space = $conf->{'system'}{root}{free_space_gb_rounded};
+			record($conf, "How much space would you like for the shared storage?\n - [$conf->{answers}{shared_storage}] / $remaining_free_space GB ");
+			my $shared_storage = <STDIN>;
+			chomp($shared_storage);
+			$conf->{answers}{shared_storage} = $shared_storage if $shared_storage;
+			write_answers($conf);
+			
+			# Subtract the answer and then ask how much space to allocate 
+			# to the first VM storage pool.
+			$remaining_free_space            -= $conf->{answers}{shared_storage};
+			$conf->{answers}{storage_pool_1} =  $remaining_free_space / 2;
+			$conf->{answers}{storage_pool_1} =~ s/\..*//;
+			record($conf, "How much space would you like for the servers that will run on node 01?\n - [$conf->{answers}{storage_pool_1}] / $remaining_free_space GB ");
+			my $storage_pool_1 = <STDIN>;
+			chomp($storage_pool_1);
+			$conf->{answers}{storage_pool_1} = $storage_pool_1 if $storage_pool_1;
+			write_answers($conf);
+			
+			$remaining_free_space            -= $storage_pool_1;
+			if ($remaining_free_space < 1)
+			{
+				$conf->{answers}{storage_pool_1} = 0;
+				record($conf, "There is no space left for servers on node 02.\n");
+			}
+			else
+			{
+				
+				$conf->{answers}{storage_pool_2} =  $remaining_free_space;
+				$conf->{answers}{storage_pool_2} =~ s/\..*//;
+				record($conf, "That leaves: [$conf->{answers}{storage_pool_2} GB] for servers that will run on node 02.\n");
+			}
+		}
+		else
+		{
+			# Can't set it up ourselves...
+			record($conf, "-------------------------------------------------------------------------------\n");
+			record($conf, "Currently, this installer only supports hardware RAID without LVM. It would\n");
+			record($conf, "appear that either their is not enough free space of '/dev/sda' or another\n");
+			record($conf, "block device or storage manager is in use. Please configure storage manually\n");
+			record($conf, "after this installer has completed.\n");
+			record($conf, "-------------------------------------------------------------------------------\n");
+		}
+	}
+	else
+	{
+		record($conf, "This is the second node in the Anvil!. Please copy the post-install script from\n");
+		record($conf, "the first node and run it here in order to configure this node's storage to\n");
+		record($conf, "match.\n");
+	}
+	
+	return (0);
+}
+
+sub ask_questions_ups
+{
+	my ($conf) = @_;
+	
+	record($conf, "\n-=] UPS monitoring questions:\n\n");
+	
+	# APC UPS questions.
+	record($conf, "Would you like to configure UPS monitoring now? [Y/n] ");
+	my $config_ups = <STDIN>;
+	#my $config_ups = "y";
+	chomp($config_ups);
+	if ((lc($config_ups) eq "n") or (lc($config_ups) eq "no"))
+	{
+		record($conf, " - Skipping APC UPS monitoring setup.\n");
+	}
+	else
+	{
+		foreach my $ups ("ups1", "ups2")
+		{
+			my $say_ups       =  $ups;
+			my $ups_number    =  $ups;
+			   $say_ups       =~ s/^ups/UPS #0/;
+			   $ups_number    =~ s/^\D*/0/;
+			$conf->{answers}{ups}{$ups}{name}    =  $conf->{answers}{customer_prefix}."-u".$ups_number;
+			record($conf, "Questions for $say_ups:\n");
+			record($conf, " - UPS name: [$conf->{answers}{ups}{$ups}{name}] ");
+			my $ups_name = <STDIN>;
+			chomp($ups_name);
+			$conf->{answers}{ups}{$ups}{name}   = $ups_name if $ups_name;
+			$conf->{answers}{ups}{$ups}{events} = "/var/log/apcupsd.".$conf->{answers}{ups}{$ups}{name}.".events";
+			write_answers($conf);
+			
+			# Setup defaults
+			my $nis_port      =  $ups;
+			my $last_ip_octal =  ($conf->{answers}{ups}{ups1}{name} =~ /^.*(\d+)$/);
+			   $nis_port      =~ s/^\D*/655/;
+			   $last_ip_octal =~ s/^0//g;
+			$conf->{answers}{ups}{$ups}{address} =~ s/\.\d+$/\.$last_ip_octal/;
+			$conf->{answers}{ups}{$ups}{nisport} =  $nis_port;
+			
+			record($conf, " - UPS IP address: [$conf->{answers}{ups}{$ups}{address}] ");
+			my $ups_address = <STDIN>;
+			$conf->{answers}{ups}{$ups}{address} = $ups_address if $ups_address;
+			write_answers($conf);
+			
+			record($conf, " - Check frequency (in seconds): [$conf->{answers}{ups}{$ups}{polltime}] ");
+			my $polltime = <STDIN>;
+			$conf->{answers}{ups}{$ups}{polltime} = $polltime if $polltime;
+			write_answers($conf);
+			
+			record($conf, " - NIS TCP Port: [$conf->{answers}{ups}{$ups}{nisport}] ");
+			my $nisport = <STDIN>;
+			$conf->{answers}{ups}{$ups}{nisport} = $nisport if $nisport;
+			write_answers($conf);
+		}
+	}
+	
+	return (0);
+}
+
+sub ask_questions
+{
+	my ($conf) = @_;
+	read_answers($conf);
+	
+	record($conf, "\n##############################################################################\n");
+	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
+	record($conf, "#       Please answer carefully.                                             #\n");
+	record($conf, "##############################################################################\n");
+	
+	ask_questions_customer($conf);
+	ask_questions_ups($conf);	# This must follow the customer questions
+	ask_questions_node_ips($conf);	# This must follow the customer questions
+	ask_questions_misc($conf);
+	ask_questions_storage($conf);	# This must follow the customer questions
+	
+	
 	# Check for required networking tools.
 	if (not -e "/usr/sbin/brctl")
 	{
@@ -949,25 +1330,51 @@ sub ask_questions
 		record($conf, "can be configured. It will be installed before the network is reconfigured.\n");
 	}
 	
+	# Check for parted so that we can configure the storage
+	if (not -e "/sbin/parted")
+	{
+		# Install it
+		record($conf, "The storage configuration tool 'parted' is not yet installed. It is needed in\n");
+		record($conf, "order to prepare the node's replicated storage. It will be installed.\n");
+	}
+	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
 	write_answers($conf);
 	record($conf, "\nSummary;\n");
-	record($conf, " - Customer prefix: [$conf->{answers}{customer_prefix}]\n");
-	record($conf, " - Customer domain: [$conf->{answers}{customer_domain}]\n");
-	record($conf, " - Anvil! ID:       [$conf->{answers}{cluster_id}]\n");
-	record($conf, " - Node ID:         [$conf->{answers}{node_id}]\n");
-	record($conf, " - Host Name:       [$conf->{answers}{hostname}]\n");
-	record($conf, " - BCN Network:     [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n");
-	record($conf, " - IPMI Network:    [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n");
-	record($conf, " - SN Network:      [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
-	record($conf, " - IFN Network:     [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
-	if ($two_ifn)
+	record($conf, " - Customer prefix:   [$conf->{answers}{customer_prefix}]\n");
+	record($conf, " - Customer domain:   [$conf->{answers}{customer_domain}]\n");
+	record($conf, " - Anvil! ID:         [$conf->{answers}{cluster_id}]\n");
+	record($conf, " - Node ID:           [$conf->{answers}{node_id}]\n");
+	record($conf, " - Host Name:         [$conf->{answers}{hostname}]\n");
+	record($conf, " - BCN Network:       [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n");
+	record($conf, " - IPMI Network:      [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n");
+	record($conf, " - SN Network:        [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
+	record($conf, " - IFN Network:       [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
+	record($conf, " - /shared Storage:   [$conf->{answers}{shared_storage} GB]\n");
+	record($conf, " - Storage Pool 01:   [$conf->{answers}{storage_pool_1} GB]\n");
+	record($conf, " - Storage Pool 02:   [$conf->{answers}{storage_pool_2} GB]\n");
+	record($conf, " - UPS #1\n");
+	record($conf, "   - Name:            [$conf->{answers}{ups}{ups1}{name}]\n");
+	record($conf, "   - Address:         [$conf->{answers}{ups}{ups1}{address}]\n");
+	record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups1}{nisport}]\n");
+	record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups1}{polltime}] seconds\n");
+	record($conf, " - UPS #2\n");
+	record($conf, "   - Name:            [$conf->{answers}{ups}{ups2}{name}]\n");
+	record($conf, "   - Address:         [$conf->{answers}{ups}{ups2}{address}]\n");
+	record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups2}{nisport}]\n");
+	record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups2}{polltime}] seconds\n");
+	if ($conf->{'system'}{two_ifn})
 	{
 		record($conf, " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n");
 	}
 	if (not -e "/usr/sbin/brctl")
 	{
 		record($conf, " - Bridge utilities will be installed.\n");
+	}
+	if (not -e "/sbin/parted")
+	{
+		# Install it
+		record($conf, " - Partition manuipulation program will be installed.\n");
 	}
 	
 	record($conf, "Proceed? [Y/n] ");
@@ -978,6 +1385,7 @@ sub ask_questions
 	{
 		record($conf, "Returning to questions.\n");
 		ask_questions($conf);
+		return(0);
 	}
 	else
 	{
@@ -1035,6 +1443,35 @@ sub ask_questions
 			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
 		}
 	}
+	if (not -e "/sbin/parted")
+	{
+		record($conf, "Installing 'parted'.\n");
+		my $sc = "yum -y install parted";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
+		
+		sleep 1;
+		if (not -e "/sbin/parted")
+		{
+			record($conf, "[ ERROR ] - I was unable to install the 'bridge-utils' package!\n");
+			record($conf, "[ ERROR ] - Without it, the network can not be configured.\n");
+			record($conf, "[ ERROR ] - Do you have an internet connection?\n");
+			record($conf, "[ ERROR ] - If this is a RHEL server, is this system registered with RHN?\n");
+			nice_exit($conf, 1, "[ ERROR ] - Configuration aborted.\n");
+		}
+	}
+	
+	
 	
 	configure_nics($conf);
 	
@@ -1151,7 +1588,7 @@ sub configure_nics
 				my $fh = IO::Handle->new();
 				open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 				print $fh "# Temporary configuration written by the Anvil! configuration tool.\n";
-				print $fh "# Original copy stored as: /root/network-scripts.orig/ifcfg-$nic.\n";
+				print $fh "# Original copy stored as: /root/network-scripts.anvil/ifcfg-$nic.\n";
 				print $fh "HWADDR=\"$say_mac\"\n";
 				print $fh "DEVICE=\"$nic\"\n";
 				print $fh "NM_CONTROLLED=\"no\"\n";
@@ -1484,7 +1921,7 @@ sub backup_ifcfg_files
 {
 	my ($conf) = @_;
 	
-	my $backup_dir = "/root/network-scripts.orig";
+	my $backup_dir = "/root/network-scripts.anvil";
 	if (-e "$backup_dir")
 	{
 		record($conf, "Backup already performed, skipping.\n");
@@ -1495,8 +1932,8 @@ sub backup_ifcfg_files
 		mkdir "$backup_dir" or warn "Failed to create the directory: [$backup_dir]. The error was: $!\n";
 	}
 	
-	record($conf, "Archiving the current interface configuration files in /root/network-scripts.orig.\n");
-	my $sc = "cp /etc/sysconfig/network-scripts/* /root/network-scripts.orig";
+	record($conf, "Archiving the current interface configuration files in /root/network-scripts.anvil.\n");
+	my $sc = "cp /etc/sysconfig/network-scripts/* /root/network-scripts.anvil";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
@@ -1553,7 +1990,133 @@ sub collect_data
 	# Read the number of NICs.
 	get_nic_details($conf);
 	
+	# Get storage data
+	get_storage_details($conf);
+	
 	return(0);
+}
+
+# This collects the storage details.
+sub get_storage_details
+{
+	my ($conf) = @_;
+	
+	# For now, I only care about the / backing device's free space as that
+	# is what AN! uses. Later this should be make more intelligent.
+	find_root_device($conf);
+	storage_device_details($conf, $conf->{'system'}{root}{device});
+	
+	return(0);
+}
+
+# This takes a block device path and uses 'fdisk' to determine roughly how much
+# free space there is left.
+sub storage_device_details
+{
+	my ($conf, $device) = @_;
+
+	my $total_size       = 0;	
+	my $sector_size      = 0;
+	my $last_used_sector = 0;
+
+	my $fh = IO::Handle->new();
+	my $sc = "/sbin/fdisk -luc $device";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error was: $!\n");
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#print "line: [$line]\n";
+		if ($line =~ /Disk $device:.* (\d+) bytes/)
+		{
+			$total_size = $1;
+		}
+		elsif ($line =~ /Sector size \(logical\/physical\): (\d+) bytes \/ (\d+) bytes/)
+		{
+			$sector_size = $1;
+		}
+		elsif ($line =~ /^$device\d+ .*?\d+\s+(\d+)\s+\d+\s/)
+		{
+			my $this_last_sector = $1;
+			   $last_used_sector = $this_last_sector if $this_last_sector > $last_used_sector;
+			#record($conf, "This last sector is: [$this_last_sector (".($this_last_sector * $sector_size).")], last sector value: [$last_used_sector (".($last_used_sector * $sector_size).")]\n");
+		}
+	}
+	$fh->close();
+
+	$conf->{'system'}{root}{sector_size}         = $sector_size;
+	$conf->{'system'}{root}{total_size}          = $total_size;
+	$conf->{'system'}{root}{last_sector}         = $last_used_sector;
+	$conf->{'system'}{root}{start_free_space}    = $last_used_sector * $sector_size;
+
+	# parted uses base10, not base2.
+	#$conf->{'system'}{root}{total_size_gb}       = $total_size / (1024 ** 3);
+	$conf->{'system'}{root}{total_size_gb}       = $total_size / (10 ** 9);
+	$conf->{'system'}{root}{total_size_gb}       = 0 if not $conf->{'system'}{root}{total_size_gb};
+	#$conf->{'system'}{root}{start_free_space_gb} = $conf->{'system'}{root}{start_free_space} / (1024 ** 3);
+	$conf->{'system'}{root}{start_free_space_gb} = $conf->{'system'}{root}{start_free_space} / (10 ** 9);
+	$conf->{'system'}{root}{start_free_space_gb} = 0 if not $conf->{'system'}{root}{start_free_space_gb};
+	
+	# Round down the full size.
+	$conf->{'system'}{root}{total_size_gb_rounded} =  $conf->{'system'}{root}{total_size_gb};
+	$conf->{'system'}{root}{total_size_gb_rounded} =~ s/\..*+//;
+
+	# Round up the free space.
+	if ($conf->{'system'}{root}{start_free_space_gb} =~ /\./)
+	{
+		$conf->{'system'}{root}{start_free_space_gb_rounded} =  $conf->{'system'}{root}{start_free_space_gb};
+		$conf->{'system'}{root}{start_free_space_gb_rounded} +=  1;
+		$conf->{'system'}{root}{start_free_space_gb_rounded} =~ s/\..*+//;
+	}
+	else
+	{
+		$conf->{'system'}{root}{start_free_space_gb_rounded} = $conf->{'system'}{root}{start_free_space_gb};
+	}
+
+	$conf->{'system'}{root}{free_space_gb_rounded} = $conf->{'system'}{root}{total_size_gb_rounded} - $conf->{'system'}{root}{start_free_space_gb_rounded};
+
+	#record($conf, "Device: [$device] has: [$conf->{'system'}{root}{free_space_gb_rounded}] GB of free space.\n");
+	#record($conf, " - Sector size: [$conf->{'system'}{root}{sector_size}]\n");
+	#record($conf, " - Last Sector: [$conf->{'system'}{root}{last_sector}]\n");
+	#record($conf, " - Device size:          [$conf->{'system'}{root}{total_size_gb_rounded} GB]\n");
+	#record($conf, " - Free Space Starts at: [$conf->{'system'}{root}{start_free_space_gb_rounded} GB]\n");
+	#record($conf, " - Free Space:           [$conf->{'system'}{root}{free_space_gb_rounded} GB]\n");
+	
+	return(0);
+}
+
+# This uses 'df' to determine what the device name is behind the / partition.
+sub find_root_device
+{
+	my ($conf) = @_;
+	
+	my $root_device = "";
+
+	my $fh = IO::Handle->new();
+	my $sc = "/bin/df -hP";
+	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#record($conf, "line: [$line]\n");
+		if ($line =~ /^(.*?)\s.*\s\/$/)
+		{
+			$root_device =  $1;
+			$root_device =~ s/\d+$//;
+			#record($conf, "Found root device: [$root_device]\n");
+			last;
+		}
+	}
+	$fh->close();
+	
+	if (not $root_device)
+	{
+		nice_exit($conf, 1, "Failed to find the root device.\n");
+	}
+	$conf->{'system'}{root}{device} = $root_device;
+	
+	return($root_device);
 }
 
 sub get_nic_details
@@ -1607,4 +2170,51 @@ sub get_nic_details
 	$fh->close();
 	
 	return(0);
+}
+
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			#record($conf, "answers key: [$key] is a hash reference.\n");
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			#record($conf, "answers recording: [$key]\n");
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }
