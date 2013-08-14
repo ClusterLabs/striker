@@ -1608,6 +1608,8 @@ sub parse_cluster_conf
 			my $address  = $line =~ /ipaddr="(.*?)"/ ? $1 : "";
 			my $login    = $line =~ /login="(.*?)"/  ? $1 : "";
 			my $password = $line =~ /passwd="(.*?)"/ ? $1 : "";
+			# If the password has a single-quote, ricci changes it to &apos;. We need to change it back.
+			$password =~ s/&apos;/'/g;
 			$conf->{fence}{$name}{agent}    = $agent;
 			$conf->{fence}{$name}{address}  = $address;
 			$conf->{fence}{$name}{login}    = $login;
