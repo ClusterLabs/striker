@@ -456,7 +456,7 @@ sub install_acpupsd
 			# Set the UPS type to SNMP and set the connection 
 			# details.
 			$line =~ s/^UPSTYPE.*/UPSTYPE snmp/;
-			$line =~ s/^DEVICE.*/UPSTYPE $device_string/;
+			$line =~ s/^DEVICE.*/DEVICE $device_string/;
 			
 			# Setup the poll time. Remove the leading # again.
 			$line =~ s/^#POLLTIME/POLLTIME/;
@@ -858,7 +858,7 @@ sub install_apps
 		record($conf, " - Done.\n");
 	
 		# First, install
-		$install = "";
+		my $install = "";
 		foreach my $install_app (sort {$a cmp $b} @{$install_array})
 		{
 			next if not $install_app;
@@ -1308,6 +1308,8 @@ sub ask_questions_storage
 	
 	record($conf, "\n-=] Storage related questions:\n\n");
 	
+	# TODO: Figure out why it's not using cached values.
+	record($conf, "cached; answers::shared_storage: [$conf->{answers}{shared_storage}], answers::storage_pool_1: [$conf->{answers}{storage_pool_1}], answers::storage_pool_2: [$conf->{answers}{storage_pool_2}]\n");
 	### Storage questions.
 	if (($conf->{answers}{node_id} eq "1") or ($conf->{answers}{node_id} eq "01"))
 	{
@@ -1317,7 +1319,7 @@ sub ask_questions_storage
 		{
 			# Ask the user how much space they want to assign to /shared
 			my $remaining_free_space = $conf->{'system'}{root}{free_space_gb_rounded};
-			record($conf, "How much space would you like for the shared storage?\n - [$conf->{answers}{shared_storage}] / $remaining_free_space GB ");
+			record($conf, "How much space would you like for the shared storage?\n - [$conf->{answers}{shared_storage}] / $remaining_free_space GB: ");
 			my $shared_storage = <STDIN>;
 			chomp($shared_storage);
 			$conf->{answers}{shared_storage} = $shared_storage if $shared_storage;
@@ -1326,26 +1328,28 @@ sub ask_questions_storage
 			# Subtract the answer and then ask how much space to allocate 
 			# to the first VM storage pool.
 			$remaining_free_space            -= $conf->{answers}{shared_storage};
-			$conf->{answers}{storage_pool_1} =  $remaining_free_space / 2;
-			$conf->{answers}{storage_pool_1} =~ s/\..*//;
-			record($conf, "How much space would you like for the servers that will run on node 01?\n - [$conf->{answers}{storage_pool_1}] / $remaining_free_space GB ");
+			if (not $conf->{answers}{storage_pool_1})
+			{
+				$conf->{answers}{storage_pool_1} =  $remaining_free_space / 2;
+				$conf->{answers}{storage_pool_1} =~ s/\..*//;
+			}
+			record($conf, "How much space would you like for the servers that will run on node 01?\n - [$conf->{answers}{storage_pool_1}] / $remaining_free_space GB: ");
 			my $storage_pool_1 = <STDIN>;
 			chomp($storage_pool_1);
 			$conf->{answers}{storage_pool_1} = $storage_pool_1 if $storage_pool_1;
 			write_answers($conf);
 			
-			$remaining_free_space            -= $storage_pool_1;
+			$remaining_free_space            -= $conf->{answers}{storage_pool_1};
 			if ($remaining_free_space < 1)
 			{
 				$conf->{answers}{storage_pool_1} = 0;
-				record($conf, "There is no space left for servers on node 02.\n");
+				record($conf, "There is no space left for servers on node 02.\n\n");
 			}
 			else
 			{
-				
 				$conf->{answers}{storage_pool_2} =  $remaining_free_space;
 				$conf->{answers}{storage_pool_2} =~ s/\..*//;
-				record($conf, "That leaves: [$conf->{answers}{storage_pool_2} GB] for servers that will run on node 02.\n");
+				record($conf, "That leaves: [$conf->{answers}{storage_pool_2} GB] for servers that will run on node 02.\n\n");
 			}
 		}
 		else
@@ -1461,7 +1465,7 @@ sub install_core_dependencies
 {
 	my ($conf) = @_;
 	
-	if ((not -e "/usr/sbin/brctl") && (-e "/sbin/parted"))
+	if ((not -e "/usr/sbin/brctl") && (not -e "/sbin/parted"))
 	{
 		record($conf, "Installing 'bridge-utils' and 'parted'.\n");
 		my $sc = "yum -y install bridge-utils parted";
@@ -1572,10 +1576,10 @@ sub ask_questions
 	# TODO: Make each one of these it's own section that the user can
 	#       independantly verify and, if needed, restart.
 	ask_questions_customer($conf);
+	ask_questions_storage($conf);	# This must follow the customer questions
 	ask_questions_ups($conf);	# This must follow the customer questions
 	ask_questions_node_ips($conf);	# This must follow the customer questions
 	ask_questions_misc($conf);
-	ask_questions_storage($conf);	# This must follow the customer questions
 	chech_core_dependencies($conf);
 	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
@@ -1636,9 +1640,9 @@ sub ask_questions
 	
 	set_hostname($conf);
 	install_core_dependencies($conf);
+	partition_disk($conf);
 	configure_nics($conf);
 	write_hosts($conf);
-	partition_disk($conf);
 	
 	return(0);
 }
@@ -1648,31 +1652,35 @@ sub partition_disk
 {
 	my ($conf) = @_;
 	
+	# TODO: Make this not try to create the second resource if insufficient
+	#       space was left for it.
 	my $shared_space = $conf->{answers}{shared_storage};
 	my $pool1_space  = $conf->{answers}{storage_pool_1};
 	my $pool2_space  = $conf->{answers}{storage_pool_2};
 	my $root_device  = $conf->{'system'}{root}{device};
+	record($conf, "Partitioning: [$root_device]...\n");
+	#record($conf, "shared_space: [$shared_space], pool1_space: [$pool1_space], pool2_space: [$pool2_space], root_device: [$root_device]\n");
 	
 	my $partition1_space = $shared_space + $pool1_space;
 	my $partition2_space = $pool2_space;
+	#record($conf, "partition1_space: [$partition1_space], partition2_space: [$partition2_space]\n");
 	
 	# Get the start and end size of the free space.
-	my $parted_free_space_start      = 0;
-	my $parted_free_space_start_unit = "";
-	my $parted_free_space_end        = 0;
-	my $parted_free_space_end_unit   = "";
-	my $parted_free_space_total      = 0;
-	my $parted_free_space_total_unit = "";
+	$conf->{parted}{free_space_start}      = 0;
+	$conf->{parted}{free_space_end}        = 0;
+	$conf->{parted}{free_space_total}      = 0;
 	if (1)
 	{
 		# -m == machine parsable, -s == script, don't prompt
-		my $sc = "parted -a opt -m -s $root_device \"print free\"";
+		my $sc = "parted -a opt -m -s $root_device \"unit GB print free\"";
+		#record($conf, "sc: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
+			record($conf, "line: [$line]\n");
 			# Often there is a small amount of free space at the
 			# start of the disk, so I let this loop and overright 
 			# older values on purpose.
@@ -1681,16 +1689,15 @@ sub partition_disk
 				my $start = $1;
 				my $end   = $2;
 				my $size  = $3;
-				# I only want the first letter of the size unit (G, T, etc).
-				my ($start_size, $start_unit) = ($start =~ /(\d+)(\D)/);
-				my ($end_size, $end_unit)     = ($end   =~ /(\d+)(\D)/);
-				my ($size_size, $size_unit)   = ($size  =~ /(\d+)(\D)/);
-				   $parted_free_space_start      = 0;
-				   $parted_free_space_start_unit = "";
-				   $parted_free_space_end        = 0;
-				   $parted_free_space_end_unit   = "";
-				   $parted_free_space_total      = 0;
-				   $parted_free_space_total_unit = "";
+				#record($conf, ">> start: [$start], end: [$end], size: [$size]\n");
+				# The unit is always GB so I just strip the
+				# letters off.
+				($conf->{parted}{free_space_start}) = ($start =~ /^(\d+[\.\d]*)/);
+				($conf->{parted}{free_space_end})    = ($end   =~ /^(\d+[\.\d]*)/);
+				($conf->{parted}{free_space_total})  = ($size  =~ /^(\d+[\.\d]*)/);
+				#record($conf, "parted::free_space_start:  [$conf->{parted}{free_space_start}]G\n");
+				#record($conf, "parted::free_space_end:    [$conf->{parted}{free_space_end}]G\n");
+				#record($conf, "parted::free_space_total:  [$conf->{parted}{free_space_total}]G\n");
 			}
 		}
 		$fh->close();
@@ -1699,11 +1706,71 @@ sub partition_disk
 	# Create the extended and logical partitions.
 	if (1)
 	{
-		# parted -a opt -m -s /dev/sda "mkpart extended 47.5G 1497G"
-		# parted -a opt -m -s /dev/sda "mkpart logical 47.5G 793G"
-		# parted -a opt -m -s /dev/sda "mkpart logical 793G 1497G"
-		# parted -a opt -m -s /dev/sda "align-check opt 5"
-		# parted -a opt -m -s /dev/sda "align-check opt 6"
+		my $extended_start = $conf->{parted}{free_space_start};
+		my $extended_end   = $conf->{parted}{free_space_end};
+		my $make_extended  = "parted -a opt -m -s $root_device \"mkpart extended ${extended_start}G ${extended_end}G\"";
+		
+		my $part1_start    = $conf->{parted}{free_space_start};
+		if ($part1_start =~ /\./)
+		{
+			# Round it up.
+			$part1_start += 1;
+			$part1_start =~ s/\..*//;
+		}
+		my $part1_end    = $part1_start + $pool1_space + $shared_space;
+		if ($part1_end =~ /\./)
+		{
+			# Round it up.
+			$part1_end += 1;
+			$part1_end =~ s/\..*//;
+		}
+		my $make_logical1 = "parted -a opt -m -s $root_device \"mkpart logical ${part1_start}G ${part1_end}G\"";
+		
+		my $part2_start = $part1_end;
+		if ($part1_start =~ /\./)
+		{
+			# Round it up.
+			$part1_start += 1;
+			$part1_start =~ s/\..*//;
+		}
+		my $part2_end     = $conf->{parted}{free_space_end};
+		my $make_logical2 = "parted -a opt -m -s $root_device \"mkpart logical ${part2_start}G ${part2_end}G\"";
+		
+		record($conf, "Creating extended partition from: [${extended_start} GB] to: [${extended_end} GB]\n");
+		#record($conf, "Extended: [$make_extended]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$make_extended 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_extended], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "line: [$line]\n");
+		}
+		$fh->close();
+		
+		record($conf, "Creating storage pool 1 from: [${part1_start} GB] to: [${part1_end} GB]\n");
+		#record($conf, "Logical1: [$make_logical1]\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$make_logical1 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "line: [$line]\n");
+		}
+		$fh->close();
+		
+		record($conf, "Creating storage pool 2 from: [${part2_start} GB] to: [${part2_end} GB]\n");
+		#record($conf, "Logical2: [$make_logical2]\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$make_logical1 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "line: [$line]\n");
+		}
+		$fh->close();
 	}
 	
 	return($conf);
