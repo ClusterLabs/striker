@@ -390,7 +390,7 @@ sub gather_node_details
 	else
 	{
 		check_if_on($conf, $node);
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 0)
 		{
 			$conf->{'system'}{show_nodes}         = 1;
@@ -492,12 +492,14 @@ sub set_daemons
 sub check_if_on
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in check_if_on(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in check_if_on(); node: [$node]\n");
 	
 	# If the peer is on, use it to check the power.
 	my $peer                    = "";
 	$conf->{node}{$node}{is_on} = 9;
 	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	### TODO: This fails when node 1 is down because it has not yet looked
+	###       for node 2 to see if it is on or not. Check manually.
 	if ($conf->{'system'}{up_nodes} == 1)
 	{
 		# It has to be the peer of this node.
@@ -512,6 +514,12 @@ sub check_if_on
 		{
 			error($conf, "I was asked to check the power staus of: [$node] via it's peer: [$peer], but the power check command is empty.<br />\nThis is likely a program error.\n");
 		}
+		else
+		{
+			# Escape out password double-quotes.
+			$conf->{node}{$node}{info}{power_check_command} =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
+			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		}
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o status\"";
 		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -521,16 +529,16 @@ sub check_if_on
 		{
 			chomp;
 			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 			}
 			if ($line =~ / Off$/i)
 			{
 				$conf->{node}{$node}{is_on} = 0;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 			}
 		}
 		$fh->close();
@@ -832,11 +840,7 @@ sub read_node_cache
 			$var =~ s/\s+$//;
 			$val =~ s/^\s+//;
 			$val =~ s/\s+$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; >> var: [$var], val: [$val]\n");
-			
-			# Escape out password double-quotes.
-			$val =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
-			#record($conf, "$THIS_FILE ".__LINE__."; << var: [$var], val: [$val]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; var: [$var], val: [$val]\n");
 			
 			$conf->{node}{$node}{info}{$var} = $val;
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
