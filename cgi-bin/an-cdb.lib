@@ -832,7 +832,12 @@ sub read_node_cache
 			$var =~ s/\s+$//;
 			$val =~ s/^\s+//;
 			$val =~ s/\s+$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; var: [$var], val: [$val]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> var: [$var], val: [$val]\n");
+			
+			# Escape out password double-quotes.
+			$val =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
+			#record($conf, "$THIS_FILE ".__LINE__."; << var: [$var], val: [$val]\n");
+			
 			$conf->{node}{$node}{info}{$var} = $val;
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 		}

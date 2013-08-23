@@ -51,34 +51,45 @@ then
 fi
 chown apache:apache /var/www/home/
 
-if [ ! -e "/etc/selinux/config.bak" ]
+if [ ! -e "/etc/selinux/config.anvil" ]
 then
-	sed -i.bak 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+	sed -i.anvil 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
 fi
-if [ ! -e "/etc/inittab.bak" ]
+if [ ! -e "/etc/inittab.anvil" ]
 then
-	sed -i.bak 's/id:3:initdefault/id:5:initdefault/' /etc/inittab
+	sed -i.anvil 's/id:3:initdefault/id:5:initdefault/' /etc/inittab
 fi
 # If there is already a backup, keep it as it will be the original version.
-if [ -e "/etc/sysconfig/network.bak" ]
+if [ -e "/etc/sysconfig/network.anvil" ]
 then
 	sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/" /etc/sysconfig/network
 else
-	sed -i.bak "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/" /etc/sysconfig/network
+	sed -i.anvil "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/" /etc/sysconfig/network
 fi
-if [ ! -e "/etc/passwd.bak" ]
+if [ ! -e "/etc/passwd.anvil" ]
 then
-	sed -i.bak 's/apache\(.*\)www:\/sbin\/nologin/apache\1www\/home:\/bin\/bash/g' /etc/passwd	
+	sed -i.anvil 's/apache\(.*\)www:\/sbin\/nologin/apache\1www\/home:\/bin\/bash/g' /etc/passwd	
 fi
 # If there is already a backup, just edit the customer's name
-if [ -e "/etc/httpd/conf/httpd.conf.bak" ]
+if [ -e "/etc/httpd/conf/httpd.conf.anvil" ]
 then
-	sed -i 's/Cluster Dashboard - .*/Cluster Dashboard - $CUSTOMER/' /etc/httpd/conf/httpd.conf
+	sed -i.anvil 's/Cluster Dashboard - .*/Cluster Dashboard - $CUSTOMER/' /etc/httpd/conf/httpd.conf
 else
-	cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.bak
+	cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.anvil
 	sed -i 's/Timeout 60/Timeout 6000/' /etc/httpd/conf/httpd.conf
 	sed -i "/Directory \"\/var\/www\/cgi-bin\"/ a\    # Password login\n    AuthType Basic\n    AuthName \"AN!Cluster Dashboard - $CUSTOMER\"\n    AuthUserFile /var/www/home/htpasswd\n    Require user admin" /etc/httpd/conf/httpd.conf
 fi
+
+if [ ! -e "/etc/ssh/sshd_config.anvil" ]
+then
+	# This prevents long delays logging in when the net is down.
+	sed -i.anvil 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/'   /etc/ssh/sshd_config
+	sed -i       's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
+	sed -i       's/#UseDNS yes/UseDNS yes/'                             /etc/ssh/sshd_config
+	/etc/init.d/sshd restart
+fi
+
+
 hostname $HOSTNAME
 
 chkconfig iptables off
@@ -91,6 +102,8 @@ setenforce 0
 /etc/init.d/ip6tables stop
 /etc/init.d/httpd start
 
+### TODO: This fails if the user was created by kickstart, so break out the 
+###       individual components.
 # I always reset the password in case the user re-ran this script
 if [ ! -e "/home/alteeve" ]
 then
