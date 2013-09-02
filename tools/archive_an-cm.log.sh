@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Run monthly to keep 6 months worth of records.
+# crontab: 0 0 1 * *  /root/archive_an-cm.log.sh > /dev/null
 
 # Delete the oldest archive
 if [ -e "/var/log/an-cm.log.6.bz2" ]

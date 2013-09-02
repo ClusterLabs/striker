@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Run daily to keep 5 days worth of records.
+# crontab: 0 1 * * *  /root/archive_megasas.log.sh > /dev/null
 
 # Delete the oldest archive
 if [ -e "/root/MegaSAS.log.5.bz2" ]
