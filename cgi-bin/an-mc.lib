@@ -227,7 +227,7 @@ sub confirm_download_url
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> cluster.</span>
+			<span class=\"highlight_ready_bold\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.</span>
 		</td>
 	</tr>
 	<tr>
@@ -240,7 +240,7 @@ sub confirm_download_url
 			<span class=\"fixed_width\">$file</span><br />
 			Found at the web address:<br />
 			<span class=\"fixed_width\">$base</span><br />
-			Will be downloaded directly to the <span class=\"fixed_width\">$cluster</span> cluster.<br />
+			Will be downloaded directly to the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.<br />
 			<br />
 		</td>
 	</tr>
@@ -255,8 +255,8 @@ sub confirm_download_url
 			Please be sure that the web address above is a direct link to the file you want to download.<br />
 			<br />
 			Some webistes use referal links which may not work here.<br />
-			If the file you download doesn't work, please delete it from the cluster and then download the file yourself.<br />
-			Once you have the file, you can upload it to the cluster from your computer.<br />
+			If the file you download doesn't work, please delete it from the <i>Anvil!</i> and then download the file yourself.<br />
+			Once you have the file, you can upload it to the <i>Anvil!</i> from your computer.<br />
 			<br />
 		</td>
 	</tr>
@@ -284,7 +284,7 @@ sub save_file_to_disk
 <table align=\"center\">
 	<tr>
 		<td class=\"highlight_ready_bold\">
-			Saving the file to the cluster's storage.
+			Saving the file to the <i>Anvil!</i>'s storage.
 		</td>
 	</tr>
 	<tr>
@@ -318,9 +318,9 @@ sub save_file_to_disk
 	<tr>
 		<td>
 			<br />
-			Now uploading to the cluster.<br />
+			Now uploading to the <i>Anvil!</i>.<br />
 			<br />
-			If the connection between the Dashboard server and the cluster is slow<br />
+			If the connection between the Dashboard server and the <i>Anvil!</i> is slow<br />
 			and if the file is big, this might also take a while to finish.<br />
 			<br />
 			<pre>";
@@ -332,7 +332,7 @@ sub save_file_to_disk
 	</tr>
 	<tr>
 		<td class=\"highlight_good\">
-			Upload to the cluster is finished.<br />
+			Upload to the <i>Anvil!</i> is finished.<br />
 		</td>
 	</tr>
 </table>
@@ -380,7 +380,7 @@ sub image_and_upload
 		</td>
 		<td>
 			<br />
-			There is a file on the cluster called <span class=\"fixed_width\">$name</span> on the cluster.<br />
+			There is a file on the <i>Anvil!</i> called <span class=\"fixed_width\">$name</span> on the <i>Anvil!</i>.<br />
 			Please go back and give the file a different name.<br />
 			<br />
 		</td>
@@ -504,8 +504,8 @@ sub image_and_upload
 	</tr>
 	<tr>
 		<td>
-			Uploading image file: <span class=\"fixed_width\">$name</span> to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster.<br />
-			This could take a long time, depending on the speed of the connection between the dashboard appliance and cluster.<br />
+			Uploading image file: <span class=\"fixed_width\">$name</span> to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> <i>Anvil!</i>.<br />
+			This could take a long time, depending on the speed of the connection between the dashboard appliance and <i>Anvil!</i>.<br />
 			<pre>
 ";
 			upload_to_shared($conf, $node, $out_file);
@@ -559,7 +559,7 @@ sub confirm_image_and_upload
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to create a disc image and upload it to the cluster: [$conf->{cgi}{cluster}].</span>
+			<span class=\"highlight_ready_bold\">About to create a disc image and upload it to the <i>Anvil!</i>: [$conf->{cgi}{cluster}].</span>
 		</td>
 	</tr>
 	<tr>
@@ -589,8 +589,8 @@ sub confirm_image_and_upload
 		</td>
 		<td colspan=\"2\">
 			</br />
-			The image will be uploaded to the cluster's <span class=\"fixed_width\">/shared/files/</span> directory.<br />
-			<i>If the cluster is remote and your internet connection is slow, this could take a very long time.</i><br />
+			The image will be uploaded to the <i>Anvil!</i>'s <span class=\"fixed_width\">/shared/files/</span> directory.<br />
+			<i>If the <i>Anvil!</i> is remote and your internet connection is slow, this could take a very long time.</i><br />
 			<br />
 		</td>
 	</tr>
@@ -634,7 +634,7 @@ sub confirm_delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!</span>
+			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.</span>
 		</td>
 	</tr>
 	<tr>
@@ -643,7 +643,7 @@ sub confirm_delete_file
 		</td>
 		<td colspan=\"2\" align=\"left\">
 			<br />
-			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster!<br />
+			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.<br />
 			<br />
 			<i>This action can not be undone!</i><br />
 			<br />
@@ -718,7 +718,7 @@ sub delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> cluster failed!</span>
+			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i> failed!</span>
 		</td>
 	</tr>
 	<tr>
@@ -727,7 +727,7 @@ sub delete_file
 		</td>
 		<td colspan=\"2\" align=\"left\">
 			<br />
-			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> cluster is already gone.<br />
+			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i> is already gone.<br />
 			It is possible that another user deleted this file already.<br />
 			<br />
 		</td>
@@ -844,7 +844,7 @@ sub check_status
 	return (0);
 }
 
-# This tries to log into each node in the cluster. The first one it connects to
+# This tries to log into each node in the Anvil!. The first one it connects to
 # which has /shared/files mounted is the one it will use to up upload the ISO
 # and generate the list of available media. It also compiles a list of which 
 # VMs are on each node.
@@ -976,7 +976,7 @@ sub read_shared
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Create an image of your disc and upload it to the cluster
+			Create an image of your disc and upload it to the <i>Anvil!</i>
 		</td>
 	</tr>
 	<tr>
@@ -1044,7 +1044,7 @@ sub read_shared
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Download directly from a website address to the cluster.
+			Download directly from a website address to the <i>Anvil!</i>.
 		</td>
 	</tr>
 	<form method=\"post\" enctype=\"multipart/form-data\">
@@ -1124,7 +1124,7 @@ sub read_shared
 			<span class=\"highlight_warning\">Inaccessible</span>
 		</td>
 		<td>
-			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> cluster.
+			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.
 		</td>
 	<tr>
 </table>

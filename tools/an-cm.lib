@@ -65,7 +65,7 @@ sub read_states
 	check_storage($conf);
 	check_host($conf);
 	check_ups($conf);
-	check_vms($conf);
+	#check_vms($conf);
 	
 	return(0);
 }
@@ -705,6 +705,7 @@ sub get_storage_lsi_bbu_info
 		$line =~ s/\s+/ /g;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		
 		if ($line =~ /^BBU status for Adapter\s*:\s*(\d+)/i)
 		{
@@ -3877,6 +3878,8 @@ sub get_current_state_lsi
 			my $hold_up_time     = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_backup_charge_time}                   ? $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_backup_charge_time}                   : "--";
 			my $pack_energy      = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_energy}                                  ? $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{pack_energy}                                  : "--";
 			my $temperature      = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_temperature}                             ? $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{base_temperature}                             : "--";
+			my $relearn_active   = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}                           ? $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}                           : "--"; # Relearn cycle active if 'Yes'.
+			my $next_learn_time  = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time}                              ? $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time}                              : "--";
 			
 			if ($part_name =~ /SuperCaP/i)
 			{
@@ -3888,20 +3891,26 @@ sub get_current_state_lsi
 					$say_temp = convert_to_fahrenheit($conf, $say_temp);
 				}
 				$bbu_string = "$part_name, sn: $serial_number
-	        Failing:  $bbu_is_failing
-                Capacity: $pack_energy, $design_capacity design
-                Voltage:  $current_voltage, $design_voltage design
-                Temp:     $say_temp";
+	 - Failing:      $bbu_is_failing
+	 - Capacity:     $pack_energy, $design_capacity design
+	 - Voltage:      $current_voltage, $design_voltage design
+	 - Temp:         $say_temp
+	 - Learn Active: $relearn_active
+	 - Next Learn:   $next_learn_time
+";
 			}
 			elsif ($part_name =~ /iBBU/i)
 			{
 				$bbu_string = "$part_name, pn: $part_number, sn: $serial_number
-	        Failing:  $bbu_is_failing
-                Charge:   $relative_charge, $absolute_charge of design
-                Capacity: $current_charge / $current_capacity, $design_capacity design
-                Voltage:  $current_voltage, $design_voltage design
-                Cycles:   $cycle_count
-                Hold-Up:  $hold_up_time";
+	 - Failing:      $bbu_is_failing
+	 - Charge:       $relative_charge, $absolute_charge of design
+	 - Capacity:     $current_charge / $current_capacity, $design_capacity design
+	 - Voltage:      $current_voltage, $design_voltage design
+	 - Cycles:       $cycle_count
+	 - Hold-Up:      $hold_up_time
+	 - Learn Active: $relearn_active
+	 - Next Learn:   $next_learn_time
+";
 			}
 		}
 
@@ -5569,11 +5578,74 @@ sub compare_new_and_old
 						next if $new_value eq $old_value;
 						#record($conf, "$THIS_FILE ".__LINE__."; RAID adapter $adapter, BBU $say_translation ($var); old: [$old_value], new: [$new_value]\n");
 						
+						# If the learn cycle changes from yes to no and the battery is still Inoperative, error.
+						### TODO ; learn_cycle_active
+						if ($var eq "learn_cycle_active")
+						{
+							### Relearn cycle variables that change;
+							# battery_state;          "Operational" -> "Non Operational"
+							# remaining_capacity_low; "No" -> "Yes"
+							# current_cache_policy;   "WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU"
+							#                      -> "WriteThrough, ReadAheadNone, Direct, No Write Cache if Bad BBU"
+							
+							# When it comes out of a learn cycle, make sure that;
+							# - Cache policy is  'WriteBack'
+							# - Battery state is 'Operational'
+							# - Capacity Low is  'No'
+							#$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}
+							if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}) eq "yes")
+							{
+								# Learn cycle started.
+								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle beginning **\n");
+								next;
+							}
+							else
+							{
+								# Learn cycle completed.
+								my $next_learn_time = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time};
+								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle complete **. Next relearn cycle scheduled for: [$next_learn_time]\n");
+								
+								# Make sure everything is healthy.
+								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}) =~ /non/)
+								{
+									$conf->{'system'}{warning_event} = 1;
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
+									$changes .= "  The battery many need to be replaced.\n";
+								}
+								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}) =~ /yes/)
+								{
+									$conf->{'system'}{warning_event} = 1;
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
+									$changes .= "  The battery many need to be replaced.\n";
+								}
+								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current_cache_policy}) =~ /writethrough/)
+								{
+									$conf->{'system'}{warning_event} = 1;
+									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
+									$changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
+								}
+								next;
+							}
+						}
+						
+						# If a relearn cycle is active,
+						# ignore the expected-to-change
+						# variables.
+						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}) eq "yes")
+						{
+							if (($var eq "battery_state") ||
+							($var eq "remaining_capacity_low") ||
+							($var eq "current_cache_policy"))
+							{
+								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle active **: RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+								next;
+							}
+						}
+						
 						# These cause unnecessary emails
 						if (($var eq "next_learn_time") ||
 						    ($var eq "bbu_gasgauge_status") ||
 						    ($var eq "learn_cycle_requested") ||
-						    ($var eq "learn_cycle_active") ||
 						    ($var eq "charging_status") ||
 						    ($var eq "pack_stat_configuration") ||
 						    ($var eq "estimated_time_to_full_recharge") ||
@@ -5590,12 +5662,6 @@ sub compare_new_and_old
 						{
 							record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
 							next;
-						}
-						
-						# If I am in a learn state, ignore BBU related alerts
-						if ($var eq "learn_cycle_active")
-						{
-							
 						}
 						
 						# I need to watch for ranges in temperature, voltage and Joules.

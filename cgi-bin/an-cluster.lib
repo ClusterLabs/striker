@@ -1129,6 +1129,7 @@ sub read_ricci_pw
 	
 	# Read/escape passwords.
 	my $cluster = $conf->{cgi}{cluster};
+	#record($conf, "$THIS_FILE ".__LINE__."; In: read_ricci_pw(), cluster: [$cluster], system::ricci_password: [$conf->{'system'}{ricci_password}]\n");
 	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
 	{
 		my $file          = $1;
@@ -1142,18 +1143,22 @@ sub read_ricci_pw
 		{
 			chomp;
 			my $line = $_;
+			##record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
 			next if $line =~ /^#/;
 			next if not $line;
+			#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
 			
 			if ($line =~ /^(.*?)=(.*)/)
 			{
 				# looks like a cluster = password pair.
 				$this_cluster  = $1;
 				$this_password = $2;
+				#record($conf, "$THIS_FILE ".__LINE__."; >> this_cluster: [$this_cluster], this_password: [$this_password]\n");
 				
 				# Cleanup the cluster name
 				$this_cluster =~ s/^\s+//;
 				$this_cluster =~ s/\s+$//;
+				#record($conf, "$THIS_FILE ".__LINE__."; << this_cluster: [$this_cluster], this_password: [$this_password]\n");
 			}
 			next if $this_cluster ne $cluster;
 			# If I'm still alive, I am looking at the right
@@ -1188,6 +1193,26 @@ sub read_ricci_pw
 		}
 		$fh->close();
 	}
+	
+	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
+	{
+		my $password_file = $1;
+		$conf->{'system'}{ricci_password} = "";
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_warning\">
+			<b>Password</b>
+		</td>
+		<td>
+			There was no password in: <span class=\"fixed_width\">$password_file</span> for the <i>Anvil!</i>: <span class=\"fixed_width\">$cluster</span>!
+		</td>
+	</tr>
+</table>
+<br />
+	";
+	}
+	
 	$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
 	$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
 	#record($conf, "$THIS_FILE ".__LINE__."; Found the 'ricci' password for: [$cluster] -> [$conf->{'system'}{ricci_password}]\n");

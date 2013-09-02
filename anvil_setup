@@ -151,6 +151,11 @@ my $conf = {
 		count		=>	0,
 		ifn_count	=>	1,
 	},
+	'system'	=>	{
+		reboot_required	=>	0,
+		skip_network	=>	0,
+		skip_ups	=>	0,
+	},
 };
 
 record($conf, "\n-=] Anvil! Configuration Tool\n\n");
@@ -1154,6 +1159,23 @@ sub ask_questions_node_ips
 	
 	record($conf, "\n-=] Node IP address questions:\n\n");
 	
+	# If 'vbr2' exists, ask the user if they want to skip the network
+	# config.
+	if (-e "/etc/sysconfig/network-scripts/ifcfg-vbr2")
+	{
+		record($conf, "It looks like the network has already been configured.\n");
+		record($conf, " - Do you want to skip the network configuration? [y/N] ");
+		my $configure = <STDIN>;
+		chomp($configure);
+		if ((lc($configure) eq "y") || (lc($configure) eq "yes"))
+		{
+			record($conf, " - Skipping network config.\n");
+			$conf->{'system'}{skip_network} = 1;
+		}
+		write_answers($conf);
+	}
+	return (0) if $conf->{'system'}{skip_network};
+	
 	# IP addresses. If the IPs is only two octals, use the cluster ID to
 	# set the third octal.
 	my $third_octal  =  $conf->{answers}{cluster_id};
@@ -1386,6 +1408,7 @@ sub ask_questions_ups
 	chomp($config_ups);
 	if ((lc($config_ups) eq "n") or (lc($config_ups) eq "no"))
 	{
+		$conf->{'system'}{skip_ups} = 1;
 		record($conf, " - Skipping APC UPS monitoring setup.\n");
 	}
 	else
@@ -1568,6 +1591,7 @@ sub ask_questions
 	my ($conf) = @_;
 	read_answers($conf);
 	
+	system("clear");
 	record($conf, "\n##############################################################################\n");
 	record($conf, "# NOTE: There is *no* sanity checking of answers yet.                        #\n");
 	record($conf, "#       Please answer carefully.                                             #\n");
@@ -1590,25 +1614,37 @@ sub ask_questions
 	record($conf, " - Anvil! ID:         [$conf->{answers}{cluster_id}]\n");
 	record($conf, " - Node ID:           [$conf->{answers}{node_id}]\n");
 	record($conf, " - Host Name:         [$conf->{answers}{hostname}]\n");
-	record($conf, " - BCN Network:       [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n");
-	record($conf, " - IPMI Network:      [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n");
-	record($conf, " - SN Network:        [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
-	record($conf, " - IFN Network:       [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
+	if ($conf->{'system'}{skip_network})
+	{
+		record($conf, " - Network configuration skipped.\n");
+	}
+	else
+	{
+		record($conf, " - BCN Network:       [".sprintf("%-15s", $conf->{answers}{bcn_ip})." / $conf->{answers}{bcn_netmask}]\n");
+		record($conf, " - IPMI Network:      [".sprintf("%-15s", $conf->{answers}{ipmi_ip})." / $conf->{answers}{ipmi_netmask}]\n");
+		record($conf, " - SN Network:        [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
+		record($conf, " - IFN Network:       [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
+	}
 	record($conf, " - /shared Storage:   [$conf->{answers}{shared_storage} GB]\n");
 	record($conf, " - Storage Pool 01:   [$conf->{answers}{storage_pool_1} GB]\n");
 	record($conf, " - Storage Pool 02:   [$conf->{answers}{storage_pool_2} GB]\n");
-	record($conf, " - UPS #1\n");
-	
-	# TODO: Doesn't display properly, doesn't record to cache
-	record($conf, "   - Name:            [$conf->{answers}{ups}{ups1}{name}]\n");
-	record($conf, "   - Address:         [$conf->{answers}{ups}{ups1}{address}]\n");
-	record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups1}{nisport}]\n");
-	record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups1}{polltime}] seconds\n");
-	record($conf, " - UPS #2\n");
-	record($conf, "   - Name:            [$conf->{answers}{ups}{ups2}{name}]\n");
-	record($conf, "   - Address:         [$conf->{answers}{ups}{ups2}{address}]\n");
-	record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups2}{nisport}]\n");
-	record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups2}{polltime}] seconds\n");
+	if ($conf->{'system'}{skip_ups})
+	{
+		record($conf, " - UPS configuration skipped.\n");
+	}
+	else
+	{
+		record($conf, " - UPS #1\n");
+		record($conf, "   - Name:            [$conf->{answers}{ups}{ups1}{name}]\n");
+		record($conf, "   - Address:         [$conf->{answers}{ups}{ups1}{address}]\n");
+		record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups1}{nisport}]\n");
+		record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups1}{polltime}] seconds\n");
+		record($conf, " - UPS #2\n");
+		record($conf, "   - Name:            [$conf->{answers}{ups}{ups2}{name}]\n");
+		record($conf, "   - Address:         [$conf->{answers}{ups}{ups2}{address}]\n");
+		record($conf, "   - NIS TCP Port:    [$conf->{answers}{ups}{ups2}{nisport}]\n");
+		record($conf, "   - Check frequency: [$conf->{answers}{ups}{ups2}{polltime}] seconds\n");
+	}
 	if ($conf->{'system'}{two_ifn})
 	{
 		record($conf, " - IFN B Network:   [$conf->{answers}{ifn2_ip} / $conf->{answers}{ifn2_netmask}]\n");
@@ -1673,7 +1709,7 @@ sub partition_disk
 	{
 		# -m == machine parsable, -s == script, don't prompt
 		my $sc = "parted -a opt -m -s $root_device \"unit GB print free\"";
-		#record($conf, "sc: [$sc]\n");
+		record($conf, "sc: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
@@ -1875,6 +1911,11 @@ sub configure_nics
 	my ($conf) = @_;
 	
 	record($conf, "\n-=] NIC configuration\n\n");
+	if ($conf->{'system'}{skip_network})
+	{
+		record($conf, " - Skipped.\n");
+		return(0);
+	}
 	if ($conf->{nic}{count} > 6)
 	{
 		$conf->{nic}{ifn_count} = 2;
@@ -2411,12 +2452,12 @@ sub storage_device_details
 
 	$conf->{'system'}{root}{free_space_gb_rounded} = $conf->{'system'}{root}{total_size_gb_rounded} - $conf->{'system'}{root}{start_free_space_gb_rounded};
 
-	#record($conf, "Device: [$device] has: [$conf->{'system'}{root}{free_space_gb_rounded}] GB of free space.\n");
-	#record($conf, " - Sector size: [$conf->{'system'}{root}{sector_size}]\n");
-	#record($conf, " - Last Sector: [$conf->{'system'}{root}{last_sector}]\n");
-	#record($conf, " - Device size:          [$conf->{'system'}{root}{total_size_gb_rounded} GB]\n");
-	#record($conf, " - Free Space Starts at: [$conf->{'system'}{root}{start_free_space_gb_rounded} GB]\n");
-	#record($conf, " - Free Space:           [$conf->{'system'}{root}{free_space_gb_rounded} GB]\n");
+	record($conf, "Device: [$device] has: [$conf->{'system'}{root}{free_space_gb_rounded}] GB of free space.\n");
+	record($conf, " - Sector size: [$conf->{'system'}{root}{sector_size}]\n");
+	record($conf, " - Last Sector: [$conf->{'system'}{root}{last_sector}]\n");
+	record($conf, " - Device size:          [$conf->{'system'}{root}{total_size_gb_rounded} GB]\n");
+	record($conf, " - Free Space Starts at: [$conf->{'system'}{root}{start_free_space_gb_rounded} GB]\n");
+	record($conf, " - Free Space:           [$conf->{'system'}{root}{free_space_gb_rounded} GB]\n");
 	
 	return(0);
 }

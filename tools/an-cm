@@ -86,7 +86,7 @@ my $conf = {
 			powerdown_temp		=>	50,	# Max for the BBO08 is 55 *C
 			base_voltage_diff	=>	1000,	# This is how many mV below 'design_voltage' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this voltage.
 			base_joules_diff	=>	100,	# This is how many J below 'design_capacity' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this energery.
-			max_milliamperage_delta	=>	600,	# A variation of more than this amount triggers this alert.
+			max_milliamperage_delta	=>	65536,	# A variation of more than this amount triggers this alert.
 		},
 		host			=>	{
 			cpu_temp_delta		=>	10,	# CPU change

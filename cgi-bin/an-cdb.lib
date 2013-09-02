@@ -3640,6 +3640,33 @@ sub add_vm_to_cluster
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
 	
+	# If there is no password set, abort.
+	if (not $conf->{'system'}{ricci_password})
+	{
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_bad_bold\">
+			Failure!
+		</td>
+		<td>
+			Unable to add the new <span class=\"fixed_width\">$vm</span> server to the cluster without a <span class=\"fixed_width\">ricci</span> password!
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning\">
+			Password
+		</td>
+		<td>
+			Please add the password to the file named above and then reload this page ('<span class=\"fixed_width\">&lt;ctrl&gt;</span> + <span class=\"fixed_width\">r</span>' on most browsers).
+		</td>
+	</tr>
+</table>
+<br />
+	";
+		return(1);
+	}
+	
 	print "
 <table align=\"center\">
 	<tr>
