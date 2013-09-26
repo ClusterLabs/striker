@@ -55,6 +55,7 @@ sub ask_which_cluster
 	
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
+		next if not $cluster;
 		print "
 	<tr>
 		<td>
@@ -84,11 +85,13 @@ sub convert_cluster_config
 	
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
+		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
 		my $name = $conf->{cluster}{$cluster}{name};
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}]\n");
+		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$cluster}{ricci_pw};
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -1123,102 +1126,141 @@ sub hr_to_bytes
 	return ($sign.$bytes);
 }
 
-sub read_ricci_pw
-{
-	my ($conf) = @_;
-	
-	# Read/escape passwords.
-	my $cluster = $conf->{cgi}{cluster};
-	#record($conf, "$THIS_FILE ".__LINE__."; In: read_ricci_pw(), cluster: [$cluster], system::ricci_password: [$conf->{'system'}{ricci_password}]\n");
-	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
-	{
-		my $file          = $1;
-		my $this_cluster  = "";
-		my $this_password = "";
-		my $sc            = "$file";
-		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			##record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
-			next if $line =~ /^#/;
-			next if not $line;
-			#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
-			
-			if ($line =~ /^(.*?)=(.*)/)
-			{
-				# looks like a cluster = password pair.
-				$this_cluster  = $1;
-				$this_password = $2;
-				#record($conf, "$THIS_FILE ".__LINE__."; >> this_cluster: [$this_cluster], this_password: [$this_password]\n");
-				
-				# Cleanup the cluster name
-				$this_cluster =~ s/^\s+//;
-				$this_cluster =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; << this_cluster: [$this_cluster], this_password: [$this_password]\n");
-			}
-			next if $this_cluster ne $cluster;
-			# If I'm still alive, I am looking at the right
-			# account.
-			
-			# Protect escaped \".
-			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
-			$this_password =~ s/\\\"/#!escaped-double-quote!#/;
-			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
-			
-			# If the password has two ", take the contents as the
-			# password. Otherwise, strip the leading and trailing
-			# white spaces.
-			if ($this_password =~ /"(.*)"/)
-			{
-				$this_password = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
-			}
-			else
-			{
-				$this_password =~ s/^\s+//;
-				$this_password =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
-			}
-			
-			# Restore escaped ".
-			$this_password =~ s/#!escaped-double-quote!#/"/;
-			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
-			
-			$conf->{'system'}{ricci_password} = $this_password;
-			last;
-		}
-		$fh->close();
-	}
-	
-	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
-	{
-		my $password_file = $1;
-		$conf->{'system'}{ricci_password} = "";
-	print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_warning\">
-			<b>Password</b>
-		</td>
-		<td>
-			There was no password in: <span class=\"fixed_width\">$password_file</span> for the <i>Anvil!</i>: <span class=\"fixed_width\">$cluster</span>!
-		</td>
-	</tr>
-</table>
-<br />
-	";
-	}
-	
-	$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
-	$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
-	#record($conf, "$THIS_FILE ".__LINE__."; Found the 'ricci' password for: [$cluster] -> [$conf->{'system'}{ricci_password}]\n");
-	
-	return(0);
-}
+# sub read_ricci_pw
+# {
+# 	my ($conf) = @_;
+# 	
+# 	# Read/escape passwords.
+# 	my $cluster = $conf->{cgi}{cluster};
+# 	
+# 	foreach my $foo (sort {$a cmp $b} keys %{$conf->{cluster}})
+# 	{
+# 		record($conf, "cluster: [$cluster], foo: [$foo]\n");
+# 	}
+# 	die "testing...\n";
+# 	
+# 	if (not $conf->{'system'}{ricci_password})
+# 	{
+# 		my $password_file = $1;
+# 		$conf->{'system'}{ricci_password} = "";
+# 	print "
+# <table align=\"center\">
+# 	<tr>
+# 		<td class=\"highlight_warning\">
+# 			<b>Password</b>
+# 		</td>
+# 		<td>
+# 			There was no password in: <span class=\"fixed_width\">$password_file</span> for the <i>Anvil!</i>: <span class=\"fixed_width\">$cluster</span>!
+# 		</td>
+# 	</tr>
+# </table>
+# <br />
+# 	";
+# 	}
+# 	
+# 	$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
+# 	$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
+# 	record($conf, "$THIS_FILE ".__LINE__."; Found the 'ricci' password for: [$cluster] -> [$conf->{'system'}{ricci_password}]\n");
+# 	
+# 	return(0);
+# }
+# 
+# sub old_read_ricci_pw
+# {
+# 	my ($conf) = @_;
+# 	
+# 	# Read/escape passwords.
+# 	my $cluster = $conf->{cgi}{cluster};
+# 	#record($conf, "$THIS_FILE ".__LINE__."; In: read_ricci_pw(), cluster: [$cluster], system::ricci_password: [$conf->{'system'}{ricci_password}]\n");
+# 	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
+# 	{
+# 		my $file          = $1;
+# 		my $this_cluster  = "";
+# 		my $this_password = "";
+# 		my $sc            = "$file";
+# 		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+# 		my $fh = IO::Handle->new();
+# 		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+# 		while(<$fh>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			##record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+# 			next if $line =~ /^#/;
+# 			next if not $line;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+# 			
+# 			if ($line =~ /^(.*?)=(.*)/)
+# 			{
+# 				# looks like a cluster = password pair.
+# 				$this_cluster  = $1;
+# 				$this_password = $2;
+# 				#record($conf, "$THIS_FILE ".__LINE__."; >> this_cluster: [$this_cluster], this_password: [$this_password]\n");
+# 				
+# 				# Cleanup the cluster name
+# 				$this_cluster =~ s/^\s+//;
+# 				$this_cluster =~ s/\s+$//;
+# 				#record($conf, "$THIS_FILE ".__LINE__."; << this_cluster: [$this_cluster], this_password: [$this_password]\n");
+# 			}
+# 			next if $this_cluster ne $cluster;
+# 			# If I'm still alive, I am looking at the right
+# 			# account.
+# 			
+# 			# Protect escaped \".
+# 			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
+# 			$this_password =~ s/\\\"/#!escaped-double-quote!#/;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
+# 			
+# 			# If the password has two ", take the contents as the
+# 			# password. Otherwise, strip the leading and trailing
+# 			# white spaces.
+# 			if ($this_password =~ /"(.*)"/)
+# 			{
+# 				$this_password = $1;
+# 				#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
+# 			}
+# 			else
+# 			{
+# 				$this_password =~ s/^\s+//;
+# 				$this_password =~ s/\s+$//;
+# 				#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
+# 			}
+# 			
+# 			# Restore escaped ".
+# 			$this_password =~ s/#!escaped-double-quote!#/"/;
+# 			#record($conf, "$THIS_FILE ".__LINE__."; this_password: [$this_password]\n");
+# 			
+# 			$conf->{'system'}{ricci_password} = $this_password;
+# 			last;
+# 		}
+# 		$fh->close();
+# 	}
+# 	
+# 	if ($conf->{'system'}{ricci_password} =~ /^file:(.*)/)
+# 	{
+# 		my $password_file = $1;
+# 		$conf->{'system'}{ricci_password} = "";
+# 	print "
+# <table align=\"center\">
+# 	<tr>
+# 		<td class=\"highlight_warning\">
+# 			<b>Password</b>
+# 		</td>
+# 		<td>
+# 			There was no password in: <span class=\"fixed_width\">$password_file</span> for the <i>Anvil!</i>: <span class=\"fixed_width\">$cluster</span>!
+# 		</td>
+# 	</tr>
+# </table>
+# <br />
+# 	";
+# 	}
+# 	
+# 	$conf->{'system'}{ricci_password} =~ s/'/\\\\\\\'/g;
+# 	$conf->{'system'}{ricci_password} =~ s/ /\\\\\\\ /g;
+# 	#record($conf, "$THIS_FILE ".__LINE__."; Found the 'ricci' password for: [$cluster] -> [$conf->{'system'}{ricci_password}]\n");
+# 	
+# 	return(0);
+# }
 
 ###############################################################################
 # Sssh, there are private functions                                           #

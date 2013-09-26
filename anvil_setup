@@ -70,7 +70,6 @@ my $conf = {
 			"cman",
 			"ccs", 
 			"corosync",
-			"cpan", 
 			"dmidecode", 
 			"fence-agents", 
 			"freeipmi",
@@ -91,6 +90,7 @@ my $conf = {
 			"openssh-clients", 
 			"openssl-devel", 
 			"perl-CGI", 
+			"perl-CPAN", 
 			"perl-Net-SSLeay", 
 			"perl-YAML-Tiny", 
 			"python-virtinst",
@@ -102,10 +102,10 @@ my $conf = {
 			"screen",
 			"syslinux", 
 			"telnet", 
-			"vim", 
-			"virt-install", 
+			"vim-enhanced", 
 			"virt-viewer",
 			"wget",
+			"yum-utils",
 		],
 		remove		=>	[
 			"NetworkManager",
@@ -118,14 +118,15 @@ my $conf = {
 			"gpm",
 		],
 		disable		=>	[
+			"acpid", 
+			"clvmd",
+			"cman",
+			"drbd",
+			"gfs2",
+			"ip6tables",
+			"iptables",
 			"kdump",
 			"NetworkManager",
-			"iptables",
-			"ip6tables",
-			"drbd",
-			"clvmd",
-			"gfs2",
-			"cman",
 			"rgmanager",
 		],
 		from_http	=>	{
@@ -155,6 +156,7 @@ my $conf = {
 		reboot_required	=>	0,
 		skip_network	=>	0,
 		skip_ups	=>	0,
+		skip_disk	=>	0,
 	},
 };
 
@@ -163,7 +165,9 @@ record($conf, "\n-=] Anvil! Configuration Tool\n\n");
 ### TODO: If this is a RHEL box, ask the user to authenticate before
 ###       proceeding.
 
+record($conf, ">\n");
 collect_data($conf);
+record($conf, "<\n");
 ask_questions($conf);
 disable_selinux($conf);
 setup_ssh($conf);
@@ -173,6 +177,8 @@ disable_libvirt_bridge($conf);
 install_acpupsd($conf);
 modify_daemons($conf);
 set_text_boot($conf);
+set_password($conf);
+write_out_scripts($conf);
 
 my $say_cluster = "$conf->{answers}{customer_prefix}-cluster-$conf->{answers}{cluster_id}";
 my $say_vg1     = "$conf->{answers}{customer_prefix}-c$conf->{answers}{node_id}n01_vg0";
@@ -183,8 +189,6 @@ record($conf, " - Manually create the ~/.ssh/authorized_keys file.\n");
 record($conf, " - Merge /etc/hosts and add foundation pack devices.\n");
 record($conf, " - Create the DRBD partition(s)\n");
 record($conf, " - Reboot and run the following commands;\n\n");
-record($conf, "passwd\n");
-record($conf, "passwd ricci\n");
 record($conf, "modprobe drbd\n");
 record($conf, "drbdadm create-md r{0,1}\n");
 record($conf, "drbdadm attach r{0,1}\n");
@@ -200,12 +204,21 @@ record($conf, "lvcreate -L 40G -n shared $say_vg1\n");
 record($conf, "mkfs.gfs2 -p lock_dlm -j 2 -t $say_cluster:shared /dev/$say_vg1/shared\n");
 record($conf, "mkdir /shared\n");
 record($conf, "mount /dev/$say_vg1/shared /shared\n");
-record($conf, "echo `gfs2_tool sb /dev/$say_vg1/shared uuid | awk '/uuid =/ { print \$4; }' | sed -e \"s/\(.*\)/UUID=\\L\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab\n");
+record($conf, "echo `gfs2_tool sb /dev/$say_vg1/shared uuid | awk '/uuid =/ { print \$4; }' | sed -e \"s/\(.*\)/UUID=\\L\\1\\E \/shared\\t\\tgfs2\\tdefaults,noatime,nodiratime\\t0 0/\"` >> /etc/fstab\n");
 record($conf, "/etc/init.d/gfs2 status\n");
 
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+sub write_out_scripts
+{
+	my ($conf) = @_;
+	
+	# Write out node #2's stage #1 script.
+	
+	return(0);
+}
 
 # This handles any exit or die scenario.
 sub nice_exit
@@ -279,9 +292,42 @@ sub record
 	return(0);
 }
 
+sub set_password
+{
+	my ($conf) = @_;
+	
+	record($conf, "Setting the password for the 'root' and 'ricci' users.\n");
+	if (not $conf->{answers}{password})
+	{
+		record($conf, " - Skipping. No password specified!\n");
+	}
+	
+	#echo $PASSWORD | passwd --stdin alteeve
+	foreach my $user ("root", "ricci")
+	{
+		record($conf, " - Setting password for: [$user]\n");
+		my $sc          = "echo $conf->{answers}{password} | passwd --stdin $user";
+		my $fh          = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - $line\n");
+		}
+		$fh->close();
+	}
+	record($conf, " - Done!\n");
+	
+	return(0);
+}
+
 sub install_acpupsd
 {
 	my ($conf) = @_;
+	
+	# Bail if the user has not asked to setup UPSes.
+	return(0) if $conf->{'system'}{skip_ups};
 	
 	# TODO: Make the apcupsd install component optional.
 	record($conf, "Installing and configuring the UPS monitoring application.\n");
@@ -752,12 +798,16 @@ sub install_apps
 	read_installed_groups($conf);
 	read_installed_rpms($conf);
 	
+	#foreach my $app (sort {$a cmp $b} keys %{$conf->{installed_apps}}) { record ($conf, "App: [$app], arch: [$conf->{installed_apps}{$app}{arch}]\n"); }
+	
 	# First, install
+	record($conf, "Looking for packages that need to be installed.\n");
 	my $apps_install = "";
 	foreach my $install_app (sort {$a cmp $b} @{$conf->{apps}{install}})
 	{
 		# Is the app already installed?
 		next if not $install_app;
+		#record($conf, "Checking if: [$install_app] is installed.\n");
 		if (ref($conf->{installed_apps}{$install_app}) ne "HASH")
 		{
 			# No, add it.
@@ -785,8 +835,13 @@ sub install_apps
 		record($conf, " - Done.\n");
 		$apps_install = "";
 	}
+	else
+	{
+		record($conf, " - Nothing to install.\n");
+	}
 	
 	# Now install groups if needed.
+	record($conf, "Looking for package groups that need to be installed.\n");
 	my $groups_install = "";
 	foreach my $install_group (sort {$a cmp $b} @{$conf->{groups}{install}})
 	{
@@ -817,6 +872,10 @@ sub install_apps
 		record($conf, "\\----------\n");
 		record($conf, " - Done.\n");
 		$groups_install = "";
+	}
+	else
+	{
+		record($conf, " - Nothing to install.\n");
 	}
 	
 	# Now add repos and install their packages.
@@ -900,6 +959,11 @@ sub install_apps
 		chomp;
 		my $line = $_;
 		record($conf, "| $line\n");
+		if ($line =~ /kernel/)
+		{
+			record ($conf, "| Reboot required for this update to take effect.\n");
+			$conf->{'system'}{reboot_required} = 1;
+		}
 	}
 	$fh->close();
 	record($conf, "\\----------\n");
@@ -971,25 +1035,42 @@ sub read_installed_rpms
 {
 	my ($conf) = @_;
 	
-	my $sc = "yum list installed";
+	record($conf, "Checking which packages are already installed.\n");
+	#my $sc = "yum list installed";
+	my $sc = "rpm -qa";
+	#record($conf, "sc: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		if ($line =~ /^(\S+)\s+(\S+)\s+(\@.*)/)
-		{
-			my $rpm  = $1;
-			my $ver  = $2;
-			my $repo = $3;
-			
-			my ($app, $arch) = ($rpm =~ /^(.*?)\.(.*)/);
+		#record($conf, "> line: [$line]\n");
+# 		next if $line =~ /^\s/;
+# 		record($conf, "< line: [$line]\n");
+# 		if ($line =~ /^(.*?)\s/)
+# 		{
+# 			my $rpm  = $1;
+# 			record($conf, "> rpm: [$rpm]\n");
+# 			next if $rpm !~ /\./;
+			my $app = "";
+			my $arch = "";
+			if ($line =~ /^(.*)\.(.*)/)
+			{
+				$app  = $1;
+				$arch = $2;
+			}
+			else
+			{
+				$app  = $line;
+				$arch = "noarch";
+			}
+			$app =~ s/-\d+\.\d+.*$//;
+			$app =~ s/\.el6$//;
+			#record($conf, "< app: [$app], arch: [$arch]\n");
 			
 			$conf->{installed_apps}{$app}{arch} = $arch;
-			$conf->{installed_apps}{$app}{ver}  = $ver;
-			$conf->{installed_apps}{$app}{repo} = $repo;
-		}
+# 		}
 	}
 	$fh->close();
 	
@@ -1000,6 +1081,7 @@ sub read_installed_groups
 {
 	my ($conf) = @_;
 	
+	record($conf, "Checking which groups are already installed.\n");
 	my $in_installed = 0;
 	my $sc = "yum grouplist -v";
 	my $fh = IO::Handle->new();
@@ -1024,7 +1106,7 @@ sub read_installed_groups
 			{
 				my $group  = $1;
 				$conf->{installed_groups}{$group} = 1;
-				record($conf, "Found installed group: [$group]\n");
+				#record($conf, "Found installed group: [$group]\n");
 			}
 		}
 	}
@@ -1143,6 +1225,21 @@ sub ask_questions_customer
 	$conf->{answers}{node_id} = $node_id if $node_id;
 	write_answers($conf);
 	
+	record($conf, "*WARNING* - The answer to the next question will be displayed on the screen!\n");
+	record($conf, "What password shall I set for 'ricci' and 'root'?\n - [$conf->{answers}{password}] ");
+	my $password = <STDIN>;
+	chomp($password);
+	if ($password)
+	{
+		$conf->{answers}{password} = $password;
+	}
+	else
+	{
+		$conf->{answers}{password} = "";
+		record($conf, "No password specified. Will not set the root or user password.\n");
+	}
+	write_answers($conf);
+	
 	# Ask the user what time server they want to use.
 	record($conf, "What time server do you want to use?\n - [$conf->{answers}{ntp_server}] ");
 	my $ifn2_gateway = <STDIN>;
@@ -1156,6 +1253,9 @@ sub ask_questions_customer
 sub ask_questions_node_ips
 {
 	my ($conf) = @_;
+
+	$conf->{'system'}{skip_network} = 1;
+	return(0);
 	
 	record($conf, "\n-=] Node IP address questions:\n\n");
 	
@@ -1174,6 +1274,18 @@ sub ask_questions_node_ips
 		}
 		write_answers($conf);
 	}
+	return (0) if $conf->{'system'}{skip_network};
+	
+	# Ask if the user wants to configure the network.
+	record($conf, "Do you wish to configure networking? [Y/n] ");
+	my $configure = <STDIN>;
+	chomp($configure);
+	if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+	{
+		record($conf, " - Skipping network config.\n");
+		$conf->{'system'}{skip_network} = 1;
+	}
+	write_answers($conf);
 	return (0) if $conf->{'system'}{skip_network};
 	
 	# IP addresses. If the IPs is only two octals, use the cluster ID to
@@ -1327,11 +1439,12 @@ sub ask_questions_misc
 sub ask_questions_storage
 {
 	my ($conf) = @_;
+	return (0) if $conf->{'system'}{skip_disk};
 	
 	record($conf, "\n-=] Storage related questions:\n\n");
 	
 	# TODO: Figure out why it's not using cached values.
-	record($conf, "cached; answers::shared_storage: [$conf->{answers}{shared_storage}], answers::storage_pool_1: [$conf->{answers}{storage_pool_1}], answers::storage_pool_2: [$conf->{answers}{storage_pool_2}]\n");
+	#record($conf, "cached; answers::shared_storage: [$conf->{answers}{shared_storage}], answers::storage_pool_1: [$conf->{answers}{storage_pool_1}], answers::storage_pool_2: [$conf->{answers}{storage_pool_2}]\n");
 	### Storage questions.
 	if (($conf->{answers}{node_id} eq "1") or ($conf->{answers}{node_id} eq "01"))
 	{
@@ -1398,6 +1511,9 @@ sub ask_questions_storage
 sub ask_questions_ups
 {
 	my ($conf) = @_;
+
+	$conf->{'system'}{skip_ups} = 1;
+	return(0);
 	
 	record($conf, "\n-=] UPS monitoring questions:\n\n");
 	
@@ -1461,7 +1577,7 @@ sub ask_questions_ups
 	return (0);
 }
 
-sub chech_core_dependencies
+sub check_core_dependencies
 {
 	my ($conf) = @_;
 	
@@ -1604,7 +1720,7 @@ sub ask_questions
 	ask_questions_ups($conf);	# This must follow the customer questions
 	ask_questions_node_ips($conf);	# This must follow the customer questions
 	ask_questions_misc($conf);
-	chech_core_dependencies($conf);
+	check_core_dependencies($conf);
 	
 	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
 	write_answers($conf);
@@ -1671,7 +1787,7 @@ sub ask_questions
 	}
 	else
 	{
-		record($conf, "Proceeding.\n");
+		record($conf, "Proceeding.\n\n");
 	}
 	
 	set_hostname($conf);
@@ -1679,6 +1795,13 @@ sub ask_questions
 	partition_disk($conf);
 	configure_nics($conf);
 	write_hosts($conf);
+	
+	record($conf, "The setup is complete!\n");
+	if ($conf->{'system'}{reboot_required})
+	{
+		record ($conf, " - One or more changes require a reboot.\n");
+		record ($conf, " - Please reboot your node as soon as possible.\n");
+	}
 	
 	return(0);
 }
@@ -1688,12 +1811,19 @@ sub partition_disk
 {
 	my ($conf) = @_;
 	
+	if ($conf->{'system'}{skip_disk})
+	{
+		record($conf, "Skipping disk partitioning.\n");
+		return(0);
+	}
+	
 	# TODO: Make this not try to create the second resource if insufficient
 	#       space was left for it.
 	my $shared_space = $conf->{answers}{shared_storage};
 	my $pool1_space  = $conf->{answers}{storage_pool_1};
 	my $pool2_space  = $conf->{answers}{storage_pool_2};
 	my $root_device  = $conf->{'system'}{root}{device};
+	
 	record($conf, "Partitioning: [$root_device]...\n");
 	#record($conf, "shared_space: [$shared_space], pool1_space: [$pool1_space], pool2_space: [$pool2_space], root_device: [$root_device]\n");
 	
@@ -1709,7 +1839,7 @@ sub partition_disk
 	{
 		# -m == machine parsable, -s == script, don't prompt
 		my $sc = "parted -a opt -m -s $root_device \"unit GB print free\"";
-		record($conf, "sc: [$sc]\n");
+		#record($conf, "sc: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
@@ -1746,19 +1876,16 @@ sub partition_disk
 		my $extended_end   = $conf->{parted}{free_space_end};
 		my $make_extended  = "parted -a opt -m -s $root_device \"mkpart extended ${extended_start}G ${extended_end}G\"";
 		
-		my $part1_start    = $conf->{parted}{free_space_start};
-		if ($part1_start =~ /\./)
-		{
-			# Round it up.
-			$part1_start += 1;
-			$part1_start =~ s/\..*//;
-		}
-		my $part1_end    = $part1_start + $pool1_space + $shared_space;
+		my $part1_start   = $conf->{parted}{free_space_start};
+		my $part1_end     = $part1_start + $pool1_space + $shared_space;
+		# Parted likes to round, so head it off at the past lest the
+		# start of the second partition be ahead of the end of the
+		# first partition.
 		if ($part1_end =~ /\./)
 		{
-			# Round it up.
-			$part1_end += 1;
-			$part1_end =~ s/\..*//;
+			#record($conf, "> part1_end: [$part1_end]\n");
+			$part1_end = int($part1_end + 1);
+			#record($conf, "< part1_end: [$part1_end]\n");
 		}
 		my $make_logical1 = "parted -a opt -m -s $root_device \"mkpart logical ${part1_start}G ${part1_end}G\"";
 		
@@ -1771,42 +1898,74 @@ sub partition_disk
 		}
 		my $part2_end     = $conf->{parted}{free_space_end};
 		my $make_logical2 = "parted -a opt -m -s $root_device \"mkpart logical ${part2_start}G ${part2_end}G\"";
+		#record($conf, "Extended: [$make_extended]\n");
+		#record($conf, "Logical1: [$make_logical1]\n");
+		#record($conf, "Logical2: [$make_logical2]\n");
 		
 		record($conf, "Creating extended partition from: [${extended_start} GB] to: [${extended_end} GB]\n");
-		#record($conf, "Extended: [$make_extended]\n");
+		record($conf, "Extended: [$make_extended]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$make_extended 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_extended], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "line: [$line]\n");
+			#record($conf, "line: [$line]\n");
+			if ($line =~ /reboot/)
+			{
+				record($conf, "Kernel could not read the new partition, a reboot will be required.\n");
+				$conf->{'system'}{reboot_required} = 1;
+			}
 		}
 		$fh->close();
+		sleep 1;
 		
 		record($conf, "Creating storage pool 1 from: [${part1_start} GB] to: [${part1_end} GB]\n");
-		#record($conf, "Logical1: [$make_logical1]\n");
+		record($conf, "Logical1: [$make_logical1]\n");
 		$fh = IO::Handle->new();
 		open ($fh, "$make_logical1 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "line: [$line]\n");
+			#record($conf, "line: [$line]\n");
+			if ((not $conf->{'system'}{reboot_required}) && ($line =~ /reboot/))
+			{
+				record($conf, "Kernel could not read the new partition, a reboot will be required.\n");
+				$conf->{'system'}{reboot_required} = 1;
+			}
 		}
 		$fh->close();
+		sleep 1;
 		
 		record($conf, "Creating storage pool 2 from: [${part2_start} GB] to: [${part2_end} GB]\n");
-		#record($conf, "Logical2: [$make_logical2]\n");
+		record($conf, "Logical2: [$make_logical2]\n");
 		$fh = IO::Handle->new();
-		open ($fh, "$make_logical1 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
+		open ($fh, "$make_logical2 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "line: [$line]\n");
+			#record($conf, "line: [$line]\n");
+			if ((not $conf->{'system'}{reboot_required}) && ($line =~ /reboot/))
+			{
+				record($conf, "Kernel could not read the new partition, a reboot will be required.\n");
+				$conf->{'system'}{reboot_required} = 1;
+			}
 		}
 		$fh->close();
+		sleep 1;
+
+# 		record($conf, "New partition layout;\n");
+# 		$fh = IO::Handle->new();
+# 		open ($fh, "parted -a opt $root_device \"print free\" 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$make_logical1], error: $!\n");
+# 		while(<$fh>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			record($conf, "line: [$line]\n");
+# 		}
+# 		$fh->close();
 	}
 	
 	return($conf);
@@ -1878,19 +2037,23 @@ sub write_hosts
 	print $fh "$say_ipmi_ip\t${short_hostname}.ipmi\n";
 	print $fh "$say_sn_ip\t${short_hostname}.sn\n";
 	print $fh "$say_ifn_ip\t${short_hostname}.ifn\n";
-	$fh->close();
 	
 	print $fh "\n";
-	print $fh "# Foundation pack\n";
+	print $fh "### Foundation pack\n";
 	# TODO: Switches
 	# TODO: PDUs
-	foreach my $ups (sort {$a cmp $b} keys %{$conf->{answers}{ups}})
+	
+	if (not $conf->{'system'}{skip_ups})
 	{
-		my $say_ip    = $conf->{answers}{ups}{$ups}{address};
-		my $say_name  = $conf->{answers}{ups}{$ups}{name};
-		my $full_name = $say_name.".".$conf->{answers}{customer_domain};
-		print $fh "$say_ip\t$say_name $full_name\n";
+		foreach my $ups (sort {$a cmp $b} keys %{$conf->{answers}{ups}})
+		{
+			my $say_ip    = $conf->{answers}{ups}{$ups}{address};
+			my $say_name  = $conf->{answers}{ups}{$ups}{name};
+			my $full_name = $say_name.".".$conf->{answers}{customer_domain};
+			print $fh "$say_ip\t$say_name $full_name\n";
+		}
 	}
+	$fh->close();
 	
 	$sc = "hostname $say_hostname";
 	$fh = IO::Handle->new();
@@ -1909,6 +2072,9 @@ sub write_hosts
 sub configure_nics
 {
 	my ($conf) = @_;
+	
+	# Bail if the user has not asked to setup networking.
+	return(0) if $conf->{'system'}{skip_network};
 	
 	record($conf, "\n-=] NIC configuration\n\n");
 	if ($conf->{'system'}{skip_network})
@@ -2412,11 +2578,19 @@ sub storage_device_details
 		{
 			$sector_size = $1;
 		}
-		elsif ($line =~ /^$device\d+ .*?\d+\s+(\d+)\s+\d+\s/)
+		elsif ($line =~ /^$device(\d+) .*?\d+\s+(\d+)\s+\d+\s/)
 		{
-			my $this_last_sector = $1;
+			my $partition  = $1;
+			my $this_last_sector = $2;
 			   $last_used_sector = $this_last_sector if $this_last_sector > $last_used_sector;
-			#record($conf, "This last sector is: [$this_last_sector (".($this_last_sector * $sector_size).")], last sector value: [$last_used_sector (".($last_used_sector * $sector_size).")]\n");
+			if ($partition == 4)
+			{
+				$conf->{'system'}{skip_disk} = 1;
+				record($conf, "The disk has already been partitioned, skipping.\n");
+				record($conf, " - If you want to reconfigure storage, use 'fdisk' or 'parted' to delete the logical and extended partitions.\n");
+				return(1);
+			}
+			record($conf, "This last sector on device: [$device] is: [$this_last_sector (".($this_last_sector * $sector_size).")], last sector value: [$last_used_sector (".($last_used_sector * $sector_size).")]. Read partition: [$partition]\n");
 		}
 	}
 	$fh->close();

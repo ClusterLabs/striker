@@ -18,11 +18,11 @@ $SIG{TERM} = \&catch_sig;
 $| = 1;
 
 my $conf = {
-	cluster		=>	{
-		company			=>	"Alteeve's Niche!",
-		description		=>	"Cluster 05 - \"Tyson\"",
-		nodes			=>	[],
-	},
+# 	cluster		=>	{
+# 		company			=>	"Alteeve's Niche!",
+# 		description		=>	"Cluster 05 - \"Tyson\"",
+# 		nodes			=>	[],
+# 	},
 	node		=>	{
 		me			=>	{
 			long_name		=>	"",
@@ -33,23 +33,23 @@ my $conf = {
 			short_name		=>	"",
 		},
 	},
-	smtp			=>	{
-		server			=>	"mail.alteeve.ca",
-		port			=>	587,
-		timeout			=>	60,
-		username		=>	"clusters\@alteeve.ca",
-		password		=>	"file:./email_pw.txt",
-		security		=>	"STARTTLS",
-		encrypt_pass		=>	1,
-		helo_domain		=>	"alteeve.ca",
-	},
-	mail_data		=>	{
-		to			=>	"change.me\@alteeve.ca",
-		cc                      =>      "",
-		sending_domain		=>	"mail.alteeve.ca",
-		subject			=>	"",
-		body			=>	"",
-	},
+# 	smtp			=>	{
+# 		server			=>	"mail.alteeve.ca",
+# 		port			=>	587,
+# 		timeout			=>	60,
+# 		username		=>	"clusters\@alteeve.ca",
+# 		password		=>	"file:./email_pw.txt",
+# 		security		=>	"STARTTLS",
+# 		encrypt_pass		=>	1,
+# 		helo_domain		=>	"alteeve.ca",
+# 	},
+# 	mail_data		=>	{
+# 		to			=>	"change.me\@alteeve.ca",
+# 		cc                      =>      "",
+# 		sending_domain		=>	"mail.alteeve.ca",
+# 		subject			=>	"",
+# 		body			=>	"",
+# 	},
 	handles			=>	{
 		'log'			=>	"",
 	},
@@ -119,7 +119,7 @@ my $conf = {
 		warning_event		=>	0,		# This is set true when a serious event has occured.
 		critical_event		=>	0,		# This is set true when an alert is critical.
 		emergency_shutdown	=>	0,		# This is set true when a significant fault has been detected requiring an automated shutdown of the cluster.
-		disable_emergency_shutdown	=>	0,	# The client must *physically sign* that they wish to disable automated shutdown. Enabling this option removed the ability for the node to power off to avoid physical damage. ENABLING THIS OPTION WILL VOID THE HARDWARE WARRANTY IF UPPER THRESHOLDS ARE EXCEEDED!
+		disable_emergency_shutdown	=>	1,	# The client must *physically sign* that they wish to disable automated shutdown. Enabling this option removed the ability for the node to power off to avoid physical damage. ENABLING THIS OPTION WILL VOID THE HARDWARE WARRANTY IF UPPER THRESHOLDS ARE EXCEEDED!
 		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
 		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
 		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.

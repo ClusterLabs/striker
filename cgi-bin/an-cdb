@@ -23,6 +23,8 @@
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 # TODO:
+# - Adding a VM that is running on the "wrong" node gets it added to the wrong
+#   failover domain.
 # - Read and cache each cluster's /etc/hosts file.
 # - Check to see if a VM is running outside of clustat and, if so, auto-enable
 #   it on the appropriate node.
@@ -69,7 +71,7 @@ my $conf={
 	},
 	'system'		=>	{
 		debug			=>	1,
-		ricci_password		=>	"file:/var/www/home/ricci_pw.txt",
+		#ricci_password		=>	"file:/var/www/home/ricci_pw.txt",
 		username		=>	getpwuid( $< ),
 		config_read		=>	0,
 		up_nodes		=>	0,
@@ -253,7 +255,7 @@ if ($conf->{cgi}{cluster})
 	}
 	else
 	{
-		read_ricci_pw($conf);
+		#read_ricci_pw($conf);
 		if ($conf->{cgi}{task})
 		{
 			$conf->{'system'}{show_refresh} = 0;
@@ -262,6 +264,7 @@ if ($conf->{cgi}{cluster})
 		else
 		{
 			# Set the node list.
+			#record($conf, "cluster: [$cluster], ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}]\n");
 			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 			scan_cluster($conf);
 			display_details($conf);

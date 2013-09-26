@@ -3641,9 +3641,9 @@ sub add_vm_to_cluster
 	record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
 	
 	# If there is no password set, abort.
-	if (not $conf->{'system'}{ricci_password})
+	if (not $conf->{clusters}{$cluster}{ricci_pw})
 	{
-	print "
+		print "
 <table align=\"center\">
 	<tr>
 		<td class=\"highlight_bad_bold\">
@@ -3666,15 +3666,6 @@ sub add_vm_to_cluster
 	";
 		return(1);
 	}
-	
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"2\">
-			<b>Adding the new <span class=\"fixed_width\">$vm</span> server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
-		</td>
-	</tr>
-	";
 
 	if (not $failover_domain)
 	{
@@ -3698,6 +3689,12 @@ sub add_vm_to_cluster
 	}
 	
 	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"2\">
+			<b>Adding the new <span class=\"fixed_width\">$vm</span> server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
+		</td>
+	</tr>
 	<tr>
 		<td class=\"highlight_good_bold\">
 			Checking VM State
@@ -3706,7 +3703,7 @@ sub add_vm_to_cluster
 			<br />
 			Checking now to make sure the new virtual server is up and running.
 			<br />
-	";
+";
 
 	# On occasion, the installed VM will power off, not reboot. So this
 	# checks to see if the VM needs to be kicked awake.
@@ -3741,7 +3738,38 @@ sub add_vm_to_cluster
 		}
 		else
 		{
-			print "
+			# If something undefined the VM already and the server
+			# is not running, this will fail. Try to start the
+			# server using the definition file before giving up.
+			print "It didn't start on the first try. Trying again with the definition file.<br />\n";
+			record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
+			my $virsh_exit_code;
+			my $sc = "$conf->{path}{ssh} root\@$node \"virsh create /shared/definitions/${vm}.xml; echo virsh:\\\$?\"";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				next if not $line;
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /virsh:(\d+)/)
+				{
+					$virsh_exit_code = $1;
+				}
+			}
+			$fh->close();
+			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+			if ($virsh_exit_code eq "0")
+			{
+				print "It should now be booting up.<br />\n";
+			}
+			else
+			{
+				print "
 			<br />
 		</td>
 	</tr>
@@ -3761,7 +3789,8 @@ sub add_vm_to_cluster
 </table>
 <br />
 ";
-			return (1);
+				return (1);
+			}
 		}
 	}
 	elsif ($host eq $node)
@@ -3790,6 +3819,29 @@ sub add_vm_to_cluster
 			This is done using a \"definition\" file, which I will record now.
 	";
 
+	if (not $vm)
+	{
+		print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_warning_bold\">
+			Warning
+		</td>
+		<td>
+			<br />
+			It would appear that something went wrong!<br />
+			I was about to add a server to the Anvil! but I don't have the new server's name. This is likely a software error.<br />
+			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+		return (1);
+	}
 	my $virsh_exit_code;
 	my $sc = "$conf->{path}{ssh} root\@$node \"virsh dumpxml $vm > $definition; echo virsh:\\\$?\"";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -3912,8 +3964,8 @@ sub add_vm_to_cluster
 ";
 	
 	my $ccs_exit_code;
-	$sc =  "$conf->{path}{ssh} root\@$node \"ccs ";
-	$sc .= "-h localhost $conf->{cgi}{vm} --activate --sync --password \"$conf->{'system'}{ricci_password}\" --addvm $vm ";
+	$sc =  "$conf->{path}{ssh} root\@$node 'ccs ";
+	$sc .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
 	$sc .= "domain=\"$failover_domain\" ";
 	$sc .= "path=\"/shared/definitions/\" ";
 	$sc .= "autostart=\"0\" ";
@@ -3921,7 +3973,7 @@ sub add_vm_to_cluster
 	$sc .= "recovery=\"restart\" ";
 	$sc .= "max_restarts=\"2\" ";
 	$sc .= "restart_expire_time=\"600\"";
-	$sc .= "; echo ccs:\\\$?\"";
+	$sc .= "; echo ccs:\$?'";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	$fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -4039,6 +4091,7 @@ sub add_vm_to_cluster
 			<br />
 			It would appear that something went wrong!<br />
 			The call to tell the cluster that the new VM is running should have returned <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$clusvcadm_exit_code</span> was received.<br />
+			Is the <span class=\"fixed_width\">ricci_pw</span> set correctly in <span class=\"fixed_width\">/etc/an/an.conf</span> for this Anvil!?<br />
 			Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br />
 			<br />
 		</td>
@@ -4432,10 +4485,18 @@ sub verify_vm_config
 				push @errors, "Conflicting Storage#!#It looks like you asked to use storage from both nodes. This is not safe. Please clear one of the node's storage.";
 			}
 			
-			# Make to lvcreate command a MiB value.
-			my $lv_size = hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
-			$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
-			$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
+			# Setup the 'lvcreate' call
+			if ($conf->{cgi}{$vg_key} eq "all")
+			{
+				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "all";
+			}
+			else
+			{
+				# Make to lvcreate command a MiB value.
+				my $lv_size = hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
+				$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
+				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
+			}
 		}
 		
 		# Make sure the user specified an install disc.
@@ -6262,7 +6323,7 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --password \"$conf->{'system'}{ricci_password}\" --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
+		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
