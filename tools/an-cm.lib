@@ -5568,6 +5568,33 @@ sub compare_new_and_old
 				}
 				elsif ($key eq "bbu")
 				{
+					# If the BBU post-learn cycle times is
+					# set, see if it's expired.
+					if ($conf->{'system'}{check_bbu_health} > time)
+					{
+						# Make sure everything is healthy.
+						$conf->{'system'}{check_bbu_health} = 0;
+						record($conf, "$THIS_FILE ".__LINE__."; ** Post relearn cycle timer expired **. Checking BBU health.\n");
+						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}) =~ /non/)
+						{
+							$conf->{'system'}{warning_event} = 1;
+							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
+							$changes .= "  The battery many need to be replaced.\n";
+						}
+						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}) =~ /yes/)
+						{
+							$conf->{'system'}{warning_event} = 1;
+							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
+							$changes .= "  The battery many need to be replaced.\n";
+						}
+						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current_cache_policy}) =~ /writethrough/)
+						{
+							$conf->{'system'}{warning_event} = 1;
+							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
+							$changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
+						}
+					}
+					
 					foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}})
 					{
 						my $say_translation = $conf->{translate}{lsi}{$var} ? $conf->{translate}{lsi}{$var} : $var;
@@ -5605,26 +5632,8 @@ sub compare_new_and_old
 								my $next_learn_time = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{next_learn_time};
 								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle complete **. Next relearn cycle scheduled for: [$next_learn_time]\n");
 								
-								# Make sure everything is healthy.
-								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}) =~ /non/)
-								{
-									$conf->{'system'}{warning_event} = 1;
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
-									$changes .= "  The battery many need to be replaced.\n";
-								}
-								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}) =~ /yes/)
-								{
-									$conf->{'system'}{warning_event} = 1;
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
-									$changes .= "  The battery many need to be replaced.\n";
-								}
-								if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current_cache_policy}) =~ /writethrough/)
-								{
-									$conf->{'system'}{warning_event} = 1;
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
-									$changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
-								}
-								next;
+								# Set the health check timer.
+								$conf->{'system'}{check_bbu_health} = time + $conf->{'system'}{check_bbu_health_after};
 							}
 						}
 						

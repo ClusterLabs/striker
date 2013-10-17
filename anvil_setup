@@ -2,6 +2,8 @@
 #
 # TODO:
 #  - Add support for updating sshd_config to not do DNS lookup.
+# Test VM iface up/down with:
+# - virsh domif-setlink an-c06n01 vnet0 down
 
 use strict;
 use warnings;
@@ -29,6 +31,8 @@ my $conf = {
 		ifn2_dg		=>	"no",
 		ipmi_ip		=>	"10.20.",
 		ipmi_netmask	=>	"255.255.0.0",
+		ipmi_gateway	=>	"",
+		ipmi_user	=>	"admin",
 		dns1		=>	"8.8.8.8",
 		dns2		=>	"8.8.4.4",
 		shared_storage	=>	"40",
@@ -36,26 +40,27 @@ my $conf = {
 		storage_pool_2	=>	"0",
 		ntp_server	=>	"tick.redhat.com",
 		configure_ups	=>	"yes",
+		password	=>	"",
 		ups		=>	{
 			ups1		=>	{
 				name		=>	"",
-				address		=>	"10.20.30.1",
+				address		=>	"10.20.3.",
 				snmp_port	=>	161,
 				snmp_vendor	=>	"APC_NOTRAP",
 				community	=>	"private",
-				nisport		=>	"6551",
+				nisport		=>	"",
 				events		=>	"",
-				polltime	=>	30,
+				polltime	=>	10,
 			},
 			ups2		=>	{
 				name		=>	"",
-				address		=>	"10.20.30.2",
+				address		=>	"10.20.3.",
 				snmp_port	=>	161,
 				snmp_vendor	=>	"APC_NOTRAP",
 				community	=>	"private",
-				nisport		=>	"6552",
+				nisport		=>	"",
 				events		=>	"",
-				polltime	=>	30,
+				polltime	=>	10,
 			},
 		},
 	},
@@ -126,7 +131,6 @@ my $conf = {
 			"ip6tables",
 			"iptables",
 			"kdump",
-			"NetworkManager",
 			"rgmanager",
 		],
 		from_http	=>	{
@@ -142,11 +146,17 @@ my $conf = {
 		},
 	},
 	commands	=>	{
-		'ssh-keygen'	=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa",
+		'ssh-keygen'	=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f ",
+		fingerprint	=>	"ssh-keygen -lf ",
 	},
 	files		=>	{
 		answers		=>	"anvil_setup.answers",
 		install_log	=>	"anvil_setup.log",
+		n1_rsa_private	=>	"/root/.ssh/id_rsa",
+		n1_rsa_public	=>	"/root/.ssh/id_rsa.pub",
+		n2_rsa_private	=>	"/tmp/n2-id_rsa",
+		n2_rsa_public	=>	"/tmp/n2-id_rsa.pub",
+		# known_hosts format is '{ip|hostname} id_rsa $rsa_pub_key'
 	},
 	nic		=>	{
 		count		=>	0,
@@ -165,9 +175,7 @@ record($conf, "\n-=] Anvil! Configuration Tool\n\n");
 ### TODO: If this is a RHEL box, ask the user to authenticate before
 ###       proceeding.
 
-record($conf, ">\n");
 collect_data($conf);
-record($conf, "<\n");
 ask_questions($conf);
 disable_selinux($conf);
 setup_ssh($conf);
@@ -216,6 +224,21 @@ sub write_out_scripts
 	my ($conf) = @_;
 	
 	# Write out node #2's stage #1 script.
+	#write_out_script_node2_stage1($conf);
+	
+	#write_out_script_node1_stage2($conf);
+	#write_out_script_node2_stage2($conf);
+	
+	return(0);
+}
+
+sub write_out_script_node2_stage1
+{
+	my ($conf) = @_;
+	
+	my @node2_stage1 = [];
+	
+	
 	
 	return(0);
 }
@@ -224,7 +247,7 @@ sub write_out_scripts
 sub nice_exit
 {
 	my ($conf, $exit_code, $message) = @_;
-	$exit_code = 99 if not define $exit_code;
+	$exit_code = 99 if not defined $exit_code;
 	$message   = "" if not defined $message;
 	
 	if ($message)
@@ -335,7 +358,7 @@ sub install_acpupsd
 	# Short names for easier code reading
 	my $ups1 = $conf->{answers}{ups}{ups1}{name};
 	my $ups2 = $conf->{answers}{ups}{ups2}{name};
-	record($conf, "ups1: [$ups1], ups2: [$ups2]\n");
+	#record($conf, "- ups1: [$ups1], ups2: [$ups2]\n");
 	
 	# Install the apcupsd RPM if needed.
 	record($conf, "Installing 'apcupsd':\n");
@@ -375,8 +398,7 @@ sub install_acpupsd
 	}
 	else
 	{
-		my $apcupsd_rpm = $conf->{apps}{from_http}{apcupsd};
-		my $sc          = "rpm -Uvh $apcupsd_rpm";
+		my $sc          = "mkdir /etc/apcupsd/null";
 		my $fh          = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
@@ -386,14 +408,14 @@ sub install_acpupsd
 			record($conf, " - $line\n");
 		}
 		$fh->close();
-		if (-e "/etc/init.d/apcupsd")
+		if (-e "/etc/apcupsd/null")
 		{
 			record($conf, " - Done.\n");
 		}
 		else
 		{
 			record($conf, " - Failed!\n");
-			nice_exit($conf, 1, "I was unable to install: [apcupsd] from: [$apcupsd_rpm].\n");
+			nice_exit($conf, 1, "I was unable to create the: [/etc/apcupsd/null] directory.\n");
 		}
 	}
 	
@@ -414,6 +436,7 @@ sub install_acpupsd
 			record($conf, " - $line\n");
 		}
 		$fh->close();
+		record($conf, " - Done.\n");
 	}
 	
 	record($conf, "Copying the default configuration to the '$ups1' configuration:\n");
@@ -433,6 +456,7 @@ sub install_acpupsd
 			record($conf, " - $line\n");
 		}
 		$fh->close();
+		record($conf, " - Done.\n");
 	}
 	
 	record($conf, "Copying the base '${ups1}' configuration to the '${ups2}' configuration:\n");
@@ -452,6 +476,7 @@ sub install_acpupsd
 			record($conf, " - $line\n");
 		}
 		$fh->close();
+		record($conf, " - Done.\n");
 	}
 	
 	record($conf, "Backing up the default 'apcupsd' init.d script:\n");
@@ -461,7 +486,7 @@ sub install_acpupsd
 	}
 	else
 	{
-		my $sc = "/etc/init.d/apcupsd /etc/init.d/apcupsd.anvil";
+		my $sc = "cp /etc/init.d/apcupsd /etc/init.d/apcupsd.anvil";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
@@ -471,13 +496,14 @@ sub install_acpupsd
 			record($conf, " - $line\n");
 		}
 		$fh->close();
+		record($conf, " - Done.\n");
 	}
 	
-	record($conf, "Configuring UPS #1's confguration file:\n");
-	foreach my $ups (sort {$a cmp $b} keys %{$conf->{ups}})
+	record($conf, "Configuring UPS confguration files:\n");
+	foreach my $ups ("ups1", "ups2")
 	{
-		my $config_file   = "/etc/apcupsd/apcupsd.${ups}.conf";
 		my $name          = $conf->{answers}{ups}{$ups}{name};
+		my $config_file   = "/etc/apcupsd/apcupsd.${name}.conf";
 		my $address       = $conf->{answers}{ups}{$ups}{address};
 		my $snmp_port     = $conf->{answers}{ups}{$ups}{snmp_port};
 		my $snmp_vendor   = $conf->{answers}{ups}{$ups}{snmp_vendor};
@@ -486,7 +512,7 @@ sub install_acpupsd
 		my $nisport       = $conf->{answers}{ups}{$ups}{nisport};
 		my $events        = $conf->{answers}{ups}{$ups}{events};
 		my $device_string = "${address}:${snmp_port}:${snmp_vendor}:${community}";
-		record($conf, "config_file: [$config_file], name: [$name], device_string: [$device_string], polltime: [$polltime], nisport: [$nisport], events: [$events]\n");
+		#record($conf, " - name: [$name], device_string: [$device_string], polltime: [$polltime], nisport: [$nisport], events: [$events]\n");
 		my @lines;
 		
 		my $sc = "$config_file";
@@ -501,6 +527,7 @@ sub install_acpupsd
 			# Strip off the leading # from UPSNAME and then set the
 			# name of the UPS. This is done in two steps to make
 			# sure this works on re-runs of the script
+			#print ">> line: $line\n";
 			$line =~ s/^#UPSNAME/UPSNAME/;
 			$line =~ s/^UPSNAME.*/UPSNAME $name/;
 			
@@ -525,20 +552,23 @@ sub install_acpupsd
 			
 			# Set the event file
 			$line =~ s/^EVENTSFILE.*/EVENTSFILE $events/;
+			#print "<< line: $line\n";
 
 			push @lines, "$line\n";
 		}
 		$fh->close();
 		
 		# Write the config file back out.
+		record($conf, " - Updating ${ups}'s: [$config_file]\n");
 		$sc = "$config_file";
 		$fh = IO::Handle->new();
 		open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 		foreach my $line (@lines)
 		{
-			print $line;
+			print $fh $line;
 		}
 		$fh->close();
+		record($conf, " - Done.\n");
 	}
 	
 	record($conf, "Downloading modified the 'apcupsd' init.d script:\n");
@@ -546,6 +576,7 @@ sub install_acpupsd
 	{
 		record($conf, " - Removing the old 'apcupsd' init.d scipt.\n");
 		unlink "/etc/init.d/apcupsd" or nice_exit($conf, 1, "Failed to remove: [/etc/init.d/apcupsd], error: $!\n");
+		record($conf, " - Done.\n");
 	}
 	if (not -e "/etc/init.d/apcupsd")
 	{
@@ -579,6 +610,7 @@ sub install_acpupsd
 		
 		record($conf, " - Starting the 'apcupsd' daemons.\n");
 		$sc = "/etc/init.d/apcupsd start";
+		record($conf, "/----------\n");
 		$fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		while(<$fh>)
@@ -588,6 +620,7 @@ sub install_acpupsd
 			record($conf, "| $line\n");
 		}
 		$fh->close();
+		record($conf, "\\----------\n");
 		record($conf, " - Done.\n");
 	}
 	else
@@ -1073,6 +1106,7 @@ sub read_installed_rpms
 # 		}
 	}
 	$fh->close();
+	record($conf, " - Done!\n");
 	
 	return (0);
 }
@@ -1111,6 +1145,7 @@ sub read_installed_groups
 		}
 	}
 	$fh->close();
+	record($conf, " - Done!\n");
 	
 	return (0);
 }
@@ -1226,12 +1261,16 @@ sub ask_questions_customer
 	write_answers($conf);
 	
 	record($conf, "*WARNING* - The answer to the next question will be displayed on the screen!\n");
-	record($conf, "What password shall I set for 'ricci' and 'root'?\n - [$conf->{answers}{password}] ");
+	record($conf, "What password shall I set for 'ricci', 'root' and the IPMI user?\n - [$conf->{answers}{password}] ");
 	my $password = <STDIN>;
 	chomp($password);
 	if ($password)
 	{
 		$conf->{answers}{password} = $password;
+	}
+	elsif ($conf->{answers}{password})
+	{
+		# User is using the same password as before
 	}
 	else
 	{
@@ -1254,8 +1293,8 @@ sub ask_questions_node_ips
 {
 	my ($conf) = @_;
 
-	$conf->{'system'}{skip_network} = 1;
-	return(0);
+# 	$conf->{'system'}{skip_network} = 1;
+# 	return(0);
 	
 	record($conf, "\n-=] Node IP address questions:\n\n");
 	
@@ -1264,28 +1303,34 @@ sub ask_questions_node_ips
 	if (-e "/etc/sysconfig/network-scripts/ifcfg-vbr2")
 	{
 		record($conf, "It looks like the network has already been configured.\n");
-		record($conf, " - Do you want to skip the network configuration? [y/N] ");
+		record($conf, " - Do you want to skip the network configuration? [Y/n] ");
 		my $configure = <STDIN>;
 		chomp($configure);
-		if ((lc($configure) eq "y") || (lc($configure) eq "yes"))
+		if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+		{
+			record($conf, " - Configuring network...\n");
+			$conf->{'system'}{skip_network} = 0;
+		}
+		else
 		{
 			record($conf, " - Skipping network config.\n");
 			$conf->{'system'}{skip_network} = 1;
 		}
 		write_answers($conf);
 	}
-	return (0) if $conf->{'system'}{skip_network};
-	
-	# Ask if the user wants to configure the network.
-	record($conf, "Do you wish to configure networking? [Y/n] ");
-	my $configure = <STDIN>;
-	chomp($configure);
-	if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+	else
 	{
-		record($conf, " - Skipping network config.\n");
-		$conf->{'system'}{skip_network} = 1;
+		# Ask if the user wants to configure the network.
+		record($conf, "Do you wish to configure networking? [Y/n] ");
+		my $configure = <STDIN>;
+		chomp($configure);
+		if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+		{
+			record($conf, " - Skipping network config.\n");
+			$conf->{'system'}{skip_network} = 1;
+		}
+		write_answers($conf);
 	}
-	write_answers($conf);
 	return (0) if $conf->{'system'}{skip_network};
 	
 	# IP addresses. If the IPs is only two octals, use the cluster ID to
@@ -1328,19 +1373,6 @@ sub ask_questions_node_ips
 	my $bcn_netmask = <STDIN>;
 	chomp($bcn_netmask);
 	$conf->{answers}{bcn_netmask} = $bcn_netmask if $bcn_netmask;
-	write_answers($conf);
-	
-	# IPMI Interface
-	record($conf, "What IP address would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_ip}] ");
-	my $ipmi_ip = <STDIN>;
-	chomp($ipmi_ip);
-	$conf->{answers}{ipmi_ip} = $ipmi_ip if $ipmi_ip;
-	write_answers($conf);
-	
-	record($conf, "What subnet mask would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_netmask}] ");
-	my $ipmi_netmask = <STDIN>;
-	chomp($ipmi_netmask);
-	$conf->{answers}{ipmi_netmask} = $ipmi_netmask if $ipmi_netmask;
 	write_answers($conf);
 	
 	# Storage Network
@@ -1425,6 +1457,52 @@ sub ask_questions_node_ips
 	}
 	
 	return (0);
+}
+
+sub ask_questions_ipmi
+{
+	my ($conf) = @_;
+	
+	record($conf, "\n-=] IPMI BMC questions:\n\n");
+	
+	# Ask if the user wants to configure IPMI.
+	record($conf, "Do you wish to configure the IPMI BMC? [Y/n] ");
+	my $configure = <STDIN>;
+	chomp($configure);
+	if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+	{
+		record($conf, " - Skipping IPMI config.\n");
+		$conf->{'system'}{skip_ipmi} = 1;
+	}
+	write_answers($conf);
+	return (0) if $conf->{'system'}{skip_ipmi};
+	
+	# IPMI Interface
+	record($conf, "What IP address would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_ip}] ");
+	my $ipmi_ip = <STDIN>;
+	chomp($ipmi_ip);
+	$conf->{answers}{ipmi_ip} = $ipmi_ip if $ipmi_ip;
+	write_answers($conf);
+	
+	record($conf, "What subnet mask would you like to use for the IPMI BMC?\n - [$conf->{answers}{ipmi_netmask}] ");
+	my $ipmi_netmask = <STDIN>;
+	chomp($ipmi_netmask);
+	$conf->{answers}{ipmi_netmask} = $ipmi_netmask if $ipmi_netmask;
+	write_answers($conf);
+	
+	record($conf, "What gateway would you like to use for the IPMI BMC (leave blank for none)?\n - [$conf->{answers}{ipmi_gateway}] ");
+	my $ipmi_gateway = <STDIN>;
+	chomp($ipmi_gateway);
+	$conf->{answers}{ipmi_gateway} = $ipmi_gateway if $ipmi_gateway;
+	write_answers($conf);
+	
+	record($conf, "What IPMI user shall I set/update the password for (required for fencing)?\n - [$conf->{answers}{ipmi_user}] ");
+	my $ipmi_user = <STDIN>;
+	chomp($ipmi_user);
+	$conf->{answers}{ipmi_user} = $ipmi_user if $ipmi_user;
+	write_answers($conf);
+	
+	return(0);
 }
 
 sub ask_questions_misc
@@ -1512,66 +1590,93 @@ sub ask_questions_ups
 {
 	my ($conf) = @_;
 
-	$conf->{'system'}{skip_ups} = 1;
-	return(0);
+# 	$conf->{'system'}{skip_ups} = 1;
+# 	return(0);
 	
 	record($conf, "\n-=] UPS monitoring questions:\n\n");
 	
 	# APC UPS questions.
-	record($conf, "Would you like to configure UPS monitoring now? [Y/n] ");
-	my $config_ups = <STDIN>;
-	#my $config_ups = "y";
-	chomp($config_ups);
-	if ((lc($config_ups) eq "n") or (lc($config_ups) eq "no"))
+	if (-e "/etc/apcupsd/apcupsd.conf.anvil")
 	{
-		$conf->{'system'}{skip_ups} = 1;
-		record($conf, " - Skipping APC UPS monitoring setup.\n");
+		record($conf, " - It appears that UPS monitoring is already configured.\n");
+		record($conf, " - Do you want to re-run UPS monitoring configuration? [y/N] ");
+		my $config_ups = <STDIN>;
+		#my $config_ups = "y";
+		chomp($config_ups);
+		if ((lc($config_ups) eq "y") or (lc($config_ups) eq "yes"))
+		{
+			$conf->{'system'}{skip_ups} = 0;
+		}
+		else
+		{
+			$conf->{'system'}{skip_ups} = 1;
+			record($conf, " - Skipping.\n");
+		}
 	}
 	else
 	{
-		foreach my $ups ("ups1", "ups2")
+		record($conf, "Would you like to configure UPS monitoring now? [Y/n] ");
+		my $config_ups = <STDIN>;
+		#my $config_ups = "y";
+		chomp($config_ups);
+		if ((lc($config_ups) eq "n") or (lc($config_ups) eq "no"))
 		{
-			my $say_ups       =  $ups;
-			my $ups_number    =  $ups;
-			   $say_ups       =~ s/^ups/UPS #0/;
-			   $ups_number    =~ s/^\D*/0/;
-			#print "say_ups: [$say_ups], ups_number: [$ups_number]\n";
-			$conf->{answers}{ups}{$ups}{name}    =  $conf->{answers}{customer_prefix}."-u".$ups_number;
-			record($conf, "\nQuestions for $say_ups:\n");
-			record($conf, " - UPS name: [$conf->{answers}{ups}{$ups}{name}] ");
-			my $ups_name = <STDIN>;
-			chomp($ups_name);
-			$conf->{answers}{ups}{$ups}{name}   = $ups_name if $ups_name;
-			$conf->{answers}{ups}{$ups}{events} = "/var/log/apcupsd.".$conf->{answers}{ups}{$ups}{name}.".events";
-			write_answers($conf);
-			
-			# Setup defaults
-			my $nis_port      =  $ups;
-			my $last_ip_octal =  ($conf->{answers}{ups}{$ups}{name} =~ /^.*(\d+)$/)[0];
-			   $nis_port      =~ s/^\D*/655/;
-			   $last_ip_octal =~ s/^0//g;
-			$conf->{answers}{ups}{$ups}{address} =~ s/\.\d+$/\.$last_ip_octal/;
-			$conf->{answers}{ups}{$ups}{nisport} =  $nis_port;
-			
-			### TODO: Doesn't use .2
-			record($conf, " - UPS IP address: [$conf->{answers}{ups}{$ups}{address}] ");
-			my $ups_address = <STDIN>;
-			chomp $ups_address;
-			$conf->{answers}{ups}{$ups}{address} = $ups_address if $ups_address;
-			write_answers($conf);
-			
-			record($conf, " - Check frequency (in seconds): [$conf->{answers}{ups}{$ups}{polltime}] ");
-			my $polltime = <STDIN>;
-			chomp $polltime;
-			$conf->{answers}{ups}{$ups}{polltime} = $polltime if $polltime;
-			write_answers($conf);
-			
-			record($conf, " - NIS TCP Port: [$conf->{answers}{ups}{$ups}{nisport}] ");
-			my $nisport = <STDIN>;
-			chomp $nisport;
-			$conf->{answers}{ups}{$ups}{nisport} = $nisport if $nisport;
-			write_answers($conf);
+			$conf->{'system'}{skip_ups} = 1;
+			record($conf, " - Skipping APC UPS monitoring setup.\n");
 		}
+	}
+	return(0) if $conf->{'system'}{skip_ups};
+	
+	foreach my $ups ("ups1", "ups2")
+	{
+		my $say_ups       =  $ups;
+		my $ups_number    =  $ups;
+			$say_ups       =~ s/^ups/UPS #0/;
+			$ups_number    =~ s/^\D*/0/;
+		#print "say_ups: [$say_ups], ups_number: [$ups_number]\n";
+		$conf->{answers}{ups}{$ups}{name}    =  $conf->{answers}{customer_prefix}."-u".$ups_number;
+		record($conf, "\nQuestions for $say_ups:\n");
+		record($conf, " - UPS name: [$conf->{answers}{ups}{$ups}{name}] ");
+		my $ups_name = <STDIN>;
+		chomp($ups_name);
+		$conf->{answers}{ups}{$ups}{name}   = $ups_name if $ups_name;
+		$conf->{answers}{ups}{$ups}{events} = "/var/log/apcupsd.".$conf->{answers}{ups}{$ups}{name}.".events";
+		write_answers($conf);
+		
+		# Setup defaults if the default IP (without the fourth
+		# octal) is currently in use.
+		#record($conf, "answers::ups::${ups}::address: [$conf->{answers}{ups}{$ups}{address}]\n");
+		if ($conf->{answers}{ups}{$ups}{address} =~ /\.$/)
+		{
+			# No final octal, use the UPS's name to
+			# determine the last octal.
+			my $last_ip_octal = ($conf->{answers}{ups}{$ups}{name} =~ /(\d+)$/)[0];
+			#record($conf, ">> last_ip_octal: [$last_ip_octal]\n");
+				$last_ip_octal =~ s/^0//g;
+			#record($conf, "<< last_ip_octal: [$last_ip_octal]\n");
+			$conf->{answers}{ups}{$ups}{address} .= $last_ip_octal;
+			$conf->{answers}{ups}{$ups}{nisport} =  "355".$last_ip_octal;
+			#record($conf, "address: [$conf->{answers}{ups}{$ups}{address}], nisport: [$conf->{answers}{ups}{$ups}{nisport}]\n");
+		}
+		
+		### TODO: Doesn't use .2
+		record($conf, " - UPS IP address: [$conf->{answers}{ups}{$ups}{address}] ");
+		my $ups_address = <STDIN>;
+		chomp $ups_address;
+		$conf->{answers}{ups}{$ups}{address} = $ups_address if $ups_address;
+		write_answers($conf);
+		
+		record($conf, " - Check frequency (in seconds): [$conf->{answers}{ups}{$ups}{polltime}] ");
+		my $polltime = <STDIN>;
+		chomp $polltime;
+		$conf->{answers}{ups}{$ups}{polltime} = $polltime if $polltime;
+		write_answers($conf);
+		
+		record($conf, " - NIS TCP Port: [$conf->{answers}{ups}{$ups}{nisport}] ");
+		my $nisport = <STDIN>;
+		chomp $nisport;
+		$conf->{answers}{ups}{$ups}{nisport} = $nisport if $nisport;
+		write_answers($conf);
 	}
 	
 	return (0);
@@ -1719,10 +1824,11 @@ sub ask_questions
 	ask_questions_storage($conf);	# This must follow the customer questions
 	ask_questions_ups($conf);	# This must follow the customer questions
 	ask_questions_node_ips($conf);	# This must follow the customer questions
+	ask_questions_ipmi($conf);
 	ask_questions_misc($conf);
 	check_core_dependencies($conf);
 	
-	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};;
+	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};
 	write_answers($conf);
 	record($conf, "\nSummary;\n");
 	record($conf, " - Customer prefix:   [$conf->{answers}{customer_prefix}]\n");
@@ -1741,6 +1847,17 @@ sub ask_questions
 		record($conf, " - SN Network:        [".sprintf("%-15s", $conf->{answers}{sn_ip})." / $conf->{answers}{sn_netmask}]\n");
 		record($conf, " - IFN Network:       [".sprintf("%-15s", $conf->{answers}{ifn_ip})." / $conf->{answers}{ifn_netmask}]\n");
 	}
+	if ($conf->{'system'}{skip_ipmi})
+	{
+		record($conf, " - IPMI BMC configuration skipped.\n");
+	}
+	else
+	{
+		record($conf, " - IPMI user:         [$conf->{answers}{ipmi_user}]\n");
+		record($conf, " - IPMI Network:      [$conf->{answers}{ipmi_ip} / $conf->{answers}{ipmi_netmask}]\n");
+		record($conf, " - IPMI Gateway       [$conf->{answers}{ipmi_gateway}]\n");
+	}
+	
 	record($conf, " - /shared Storage:   [$conf->{answers}{shared_storage} GB]\n");
 	record($conf, " - Storage Pool 01:   [$conf->{answers}{storage_pool_1} GB]\n");
 	record($conf, " - Storage Pool 02:   [$conf->{answers}{storage_pool_2} GB]\n");
@@ -1794,6 +1911,7 @@ sub ask_questions
 	install_core_dependencies($conf);
 	partition_disk($conf);
 	configure_nics($conf);
+	configure_ipmi($conf);
 	write_hosts($conf);
 	
 	record($conf, "The setup is complete!\n");
@@ -1801,6 +1919,210 @@ sub ask_questions
 	{
 		record ($conf, " - One or more changes require a reboot.\n");
 		record ($conf, " - Please reboot your node as soon as possible.\n");
+	}
+	
+	return(0);
+}
+
+# This configures the IPMI BMC.
+sub configure_ipmi
+{
+	my ($conf) = @_;
+	
+	return (0) if $conf->{'system'}{skip_ipmi};
+	record($conf, "Configuring the IPMI BMC.\n");
+	
+	# First up, determine the LAN channel and the user we will update.
+	my $ipmi_user = $conf->{answers}{ipmi_user};
+	my $channel;
+	my $user_id;
+	foreach my $this_channel (1..9)
+	{
+		record($conf, " - Checking LAN channel: [$this_channel]\n");
+		my $sc = "ipmitool lan print $this_channel";
+		#record($conf, "sc: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, " - line: [$line]\n");
+			next if $channel;
+			if ($line =~ /Set in Progress/)
+			{
+				$channel = $this_channel;
+				record($conf, " - Found! Using channel: [$channel]\n");
+			}
+			elsif ($line =~ /not a LAN channel/)
+			{
+				record($conf, " - Not found.\n");
+				next;
+			}
+		}
+		$fh->close();
+		last if $channel;
+	}
+	
+	# Find the requested user ID
+	if ($channel)
+	{
+		record($conf, " - Searching IPMI user list for: [$ipmi_user]\n");
+		my $sc = "ipmitool user list $channel";
+		#record($conf, "sc: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, " - line: [$line]\n");
+			if ($line =~ /^(\d+)\s+(\w+)\s/)
+			{
+				my $id   = $1;
+				my $name = $2;
+				record($conf, " - Checking ID: [$id] and name: [$name]\n");
+				if (lc($ipmi_user) eq lc($name))
+				{
+					$user_id = $id;
+					record($conf, " - Match found!\n");
+					last;
+				}
+			}
+		}
+		$fh->close();
+	}
+	else
+	{
+		record($conf, " - Unable to find either the IPMI LAN channel, skipping user search.\n");
+	}
+	
+	my $proceed = 0;
+	if (not $channel)
+	{
+		record($conf, " - Unable to find either the IPMI LAN channel or the user.\n");
+		record($conf, "   Did 'ipmid' start properly?\n");
+	}
+	elsif (not $user_id)
+	{
+		record($conf, " - The user ID for: [$ipmi_user] was not found. Was the name mis-spelled?\n");
+		record($conf, " - Configuring network address only.\n");
+		$proceed = 1;
+	}
+	else
+	{
+		$proceed = 1;
+	}
+	
+	if (not $proceed)
+	{
+		record($conf, "IPMI *NOT* configured! Please re-run this tool or configure it manually later.\n");
+		return(1);
+	}
+	
+	my $ip = $conf->{answers}{ipmi_ip};
+	my $nm = $conf->{answers}{ipmi_netmask};
+	my $gw = $conf->{answers}{ipmi_gateway} ? $conf->{answers}{ipmi_gateway} : "";
+	my $pw = $conf->{answers}{password}     ? $conf->{answers}{password}     : "";
+	
+	record($conf, "Setting IPMI network values.\n");
+	if (($ip) && ($nm))
+	{
+		# This should not print anything.
+		record($conf, " - Setting IPMI to 'static'.\n");
+		my $sc = "ipmitool lan set $channel ipsrc static";
+		#record($conf, "sc: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - line: [$line]\n");
+		}
+		$fh->close();
+		
+		record($conf, " - Setting IP: [$ip]\n");
+		$sc = "ipmitool lan set $channel ipaddr $ip";
+		#record($conf, "sc: [$sc]\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		
+		record($conf, " - Setting netmask: [$nm].\n");
+		$sc = "ipmitool lan set $channel netmask $nm";
+		#record($conf, "sc: [$sc]\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		
+		# Set the default gateway if it's been defined.
+		if ($gw)
+		{
+			record($conf, " - Setting default gateway: [$gw].\n");
+			my $sc = "ipmitool lan set $channel defgw ipaddr $gw";
+			#record($conf, "sc: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+			record($conf, "/----------\n");
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "| $line\n");
+			}
+			$fh->close();
+			record($conf, "\\----------\n");
+		}
+		
+		record($conf, "Printing IPMI configuration:\n");
+		$sc = "ipmitool lan print $channel";
+		#record($conf, "sc: [$sc]\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		record($conf, "/----------\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+	}
+	
+	# Set the password if the user ID and password are set.
+	if (($pw) && ($user_id))
+	{
+		# No output is expected.
+		record($conf, "Setting the user/ID: [$ipmi_user/$user_id]'s password to: [$pw]\n");
+		my $sc = "ipmitool user set password $user_id $pw";
+		#record($conf, "sc: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "line: [$line]\n");
+		}
+		$fh->close();
 	}
 	
 	return(0);
@@ -2494,9 +2816,61 @@ sub backup_ifcfg_files
 sub setup_ssh
 {
 	my ($conf) = @_;
-	
 	record($conf, "Configuring the SSH keys.\n");
-	if (-e "/root/.ssh/id_rsa")
+	
+	# Setup the local SSH key
+	setup_ssh_keys($conf, "local");
+	setup_ssh_keys($conf, "remote");
+	
+	# Change the hostname in the other node's public key.
+	my $local_hostname = $conf->{answers}{hostname};
+	my $peer_hostname  = $conf->{answers}{hostname};
+	#record($conf, ">> local: [$local_hostname], remote: [$peer_hostname]\n");
+	if ($conf->{answers}{hostname} =~ /01/)
+	{
+		$peer_hostname =~ s/01/02/;
+	}
+	else
+	{
+		$peer_hostname =~ s/02/01/;
+	}
+	#record($conf, "<< local: [$local_hostname], remote: [$peer_hostname]\n");
+	#record($conf, ">> n2_public_key: [$conf->{'system'}{ssh}{n2_public_key}]\n");
+	$conf->{'system'}{ssh}{n2_public_key} =~ s/$local_hostname/$peer_hostname/;
+	#record($conf, "<< n2_public_key: [$conf->{'system'}{ssh}{n2_public_key}]\n");
+	
+	if (1)
+	{
+		#record($conf, "Local machine SSH keys:\n");
+		#record($conf, "==[ Public ]==========\n$conf->{'system'}{ssh}{n1_public_key}\n==[ Private ]==========\n$conf->{'system'}{ssh}{n1_private_key}\n=======================\n");
+		#record($conf, "Remote machines SSH keys:\n");
+		#record($conf, "==[ Public ]==========\n$conf->{'system'}{ssh}{n2_public_key}\n==[ Private ]==========\n$conf->{'system'}{ssh}{n2_private_key}\n=======================\n");
+	}
+	
+	return(0);
+}
+
+sub setup_ssh_keys
+{
+	my ($conf, $node) = @_;
+	
+	my $private_file_key = "n1_rsa_private";
+	my $public_file_key  = "n1_rsa_public";
+	my $private_data_key = "n1_private_key";
+	my $public_data_key  = "n1_public_key";
+	if ($node eq "local")
+	{
+		record($conf, "Configuring this node's SSH keys.\n");
+	}
+	else
+	{
+		record($conf, "Configuring remote node's SSH keys.\n");
+		$private_file_key = "n2_rsa_private";
+		$public_file_key  = "n2_rsa_public";
+		$private_data_key = "n2_private_key";
+		$public_data_key  = "n2_public_key";
+	}
+	if (-e $conf->{files}{$public_file_key})
 	{
 		record($conf, " - Found an existing key, not generating a new one.\n");
 	}
@@ -2504,7 +2878,8 @@ sub setup_ssh
 	{
 		# Generating a new RSA key.
 		record($conf, "Generating a new RSA key for the root user.\n");
-		my $sc = "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa";
+# 		#my $sc = "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa";
+		my $sc = "$conf->{commands}{'ssh-keygen'} $conf->{files}{$private_file_key}";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		record($conf, "/----------\n");
@@ -2518,6 +2893,31 @@ sub setup_ssh
 		record($conf, "\\----------\n");
 		record($conf, " - Done.\n");
 	}
+	
+	# Read in this node's public key for later addition to node 2's stage-1 script.
+	record($conf, "Reading public key: [$conf->{files}{$public_file_key}].\n");
+	my $sc = "$conf->{files}{$public_file_key}";
+	my $fh = IO::Handle->new();
+	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+	$conf->{'system'}{ssh}{$public_data_key} = "";
+	while(<$fh>)
+	{
+		$conf->{'system'}{ssh}{$public_data_key} .= $_;
+	}
+	$fh->close();
+	record($conf, " - Done.\n");
+
+	record($conf, "Reading private key: [$conf->{files}{$private_file_key}].\n");
+	$sc = "$conf->{files}{$private_file_key}";
+	$fh = IO::Handle->new();
+	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+	$conf->{'system'}{ssh}{$private_data_key} = "";
+	while(<$fh>)
+	{
+		$conf->{'system'}{ssh}{$private_data_key} .= $_;
+	}
+	$fh->close();
+	record($conf, " - Done.\n");
 	
 	return(0);
 }
