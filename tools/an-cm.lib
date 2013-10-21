@@ -5577,18 +5577,21 @@ sub compare_new_and_old
 						record($conf, "$THIS_FILE ".__LINE__."; ** Post relearn cycle timer expired **. Checking BBU health.\n");
 						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}) =~ /non/)
 						{
+							my $say_translation = $conf->{translate}{lsi}{battery_state} ? $conf->{translate}{lsi}{battery_state} : "battery state";
 							$conf->{'system'}{warning_event} = 1;
 							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
 							$changes .= "  The battery many need to be replaced.\n";
 						}
 						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}) =~ /yes/)
 						{
+							my $say_translation = $conf->{translate}{lsi}{battery_state} ? $conf->{translate}{lsi}{battery_state} : "remaining capacity low";
 							$conf->{'system'}{warning_event} = 1;
 							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
 							$changes .= "  The battery many need to be replaced.\n";
 						}
 						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current_cache_policy}) =~ /writethrough/)
 						{
+							my $say_translation = $conf->{translate}{lsi}{current_cache_policy} ? $conf->{translate}{lsi}{current_cache_policy} : "current cache policy";
 							$conf->{'system'}{warning_event} = 1;
 							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
 							$changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
@@ -7347,11 +7350,13 @@ sub read_conf
 	
 	my $fh=IO::Handle->new();
 	my $sc="$conf->{path}{an_conf}";
+	#print "sc: [$sc]\n";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
 		my $line = $_;
+		#print "line: [$line]\n";
 		next if not $line;
 		next if $line !~ /=/;
 		$line =~ s/^\s+//;
@@ -7364,9 +7369,24 @@ sub read_conf
 		$val =~ s/^\s+//;
 		$val =~ s/\s+$//;
 		next if (not $var);
+		#print "var: [$var], val: [$val]\n";
 		_make_hash_reference($conf, $var, $val);
 	}
 	$fh->close();
+	
+	# Here, I need to dig out the active cluster and push their variable 
+	# values into base hash keys.
+	foreach my $this_sequence (sort {$a cmp $b} keys %{$conf->{cluster}})
+	{
+		if ($conf->{this_cluster} eq $conf->{cluster}{$this_sequence}{name})
+		{
+			# Found the matching cluster.
+			$conf->{cluster}{company}     = $conf->{cluster}{$this_sequence}{company};
+			$conf->{cluster}{description} = $conf->{cluster}{$this_sequence}{description};
+			$conf->{cluster}{nodes}       = $conf->{cluster}{$this_sequence}{nodes};
+			last;
+		}
+	}
 	
 	return(0);
 }

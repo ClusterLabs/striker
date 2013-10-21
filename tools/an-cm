@@ -135,6 +135,7 @@ avoid_duplicate_run($conf);
 get_hostname($conf);
 
 # What cluster am I in?
+read_conf($conf);
 read_cluster_conf($conf);
 
 $conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
