@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 #
 # TODO:
-#  - Add support for updating sshd_config to not do DNS lookup.
 # Test VM iface up/down with:
 # - virsh domif-setlink an-c06n01 vnet0 down
 
@@ -12,161 +11,200 @@ use IO::Handle;
 $| = 1;
 
 my $conf = {
-	answers		=>	{
-		customer_prefix	=>	"xx",
-		customer_domain	=>	"example.com",
-		cluster_id	=>	"01",
-		node_id		=>	"01",
-		bcn_ip		=>	"10.20.",
-		bcn_netmask	=>	"255.255.0.0",
-		sn_ip		=>	"10.10.",
-		sn_netmask	=>	"255.255.0.0",
-		ifn_ip		=>	"10.255.",
-		ifn_netmask	=>	"255.255.0.0",
-		ifn_gateway	=>	"10.255.255.254",
-		ifn_dg		=>	"yes",
-		ifn2_ip		=>	"10.254.",
-		ifn2_netmask	=>	"255.255.0.0",
-		ifn2_gateway	=>	"10.254.255.254",
-		ifn2_dg		=>	"no",
-		ipmi_ip		=>	"10.20.",
-		ipmi_netmask	=>	"255.255.0.0",
-		ipmi_gateway	=>	"",
-		ipmi_user	=>	"admin",
-		dns1		=>	"8.8.8.8",
-		dns2		=>	"8.8.4.4",
-		shared_storage	=>	"40",
-		storage_pool_1	=>	"0",
-		storage_pool_2	=>	"0",
-		ntp_server	=>	"tick.redhat.com",
-		configure_ups	=>	"yes",
-		password	=>	"",
-		ups		=>	{
-			ups1		=>	{
-				name		=>	"",
-				address		=>	"10.20.3.",
-				snmp_port	=>	161,
-				snmp_vendor	=>	"APC_NOTRAP",
-				community	=>	"private",
-				nisport		=>	"",
-				events		=>	"",
-				polltime	=>	10,
+	answers			=>	{
+		customer_prefix		=>	"xx",
+		customer_domain		=>	"example.com",
+		cluster_id		=>	"01",
+		node_id			=>	"01",
+		bcn_ip			=>	"10.20.",
+		bcn_netmask		=>	"255.255.0.0",
+		sn_ip			=>	"10.10.",
+		sn_netmask		=>	"255.255.0.0",
+		ifn_ip			=>	"10.255.",
+		ifn_netmask		=>	"255.255.0.0",
+		ifn_gateway		=>	"10.255.255.254",
+		ifn_dg			=>	"yes",
+		ifn2_ip			=>	"10.254.",
+		ifn2_netmask		=>	"255.255.0.0",
+		ifn2_gateway		=>	"10.254.255.254",
+		ifn2_dg			=>	"no",
+		ipmi_ip			=>	"10.20.",
+		ipmi_netmask		=>	"255.255.0.0",
+		ipmi_gateway		=>	"",
+		ipmi_user		=>	"admin",
+		dns1			=>	"8.8.8.8",
+		dns2			=>	"8.8.4.4",
+		shared_storage		=>	"40",
+		storage_pool_1		=>	"0",
+		storage_pool_2		=>	"0",
+		ntp_server		=>	"tick.redhat.com",
+		configure_ups		=>	"yes",
+		password		=>	"",
+		ups			=>	{
+			ups1			=>	{
+				name			=>	"",
+				address			=>	"10.20.3.",
+				snmp_port		=>	161,
+				snmp_vendor		=>	"APC_NOTRAP",
+				community		=>	"private",
+				nisport			=>	"",
+				events			=>	"",
+				polltime		=>	10,
 			},
-			ups2		=>	{
-				name		=>	"",
-				address		=>	"10.20.3.",
-				snmp_port	=>	161,
-				snmp_vendor	=>	"APC_NOTRAP",
-				community	=>	"private",
-				nisport		=>	"",
-				events		=>	"",
-				polltime	=>	10,
+			ups2			=>	{
+				name			=>	"",
+				address			=>	"10.20.3.",
+				snmp_port		=>	161,
+				snmp_vendor		=>	"APC_NOTRAP",
+				community		=>	"private",
+				nisport			=>	"",
+				events			=>	"",
+				polltime		=>	10,
+			},
+		},
+		ssh_keys		=>	{
+			node1			=>	{
+				private			=>	"",
+				public			=>	"",
+			},
+			node2			=>	{
+				private			=>	"",
+				public			=>	"",
 			},
 		},
 	},
-	groups		=>	{
-		install		=>	[
+	groups			=>	{
+		install			=>	[
 			"development",
 		],
 	},
-	apps		=>	{
-		install		=>	[
-			"acpid", 
-			"cman",
-			"ccs", 
-			"corosync",
-			"dmidecode", 
-			"fence-agents", 
-			"freeipmi",
-			"freeipmi-bmc-watchdog",
-			"freeipmi-ipmidetectd",
-			"gcc", 
-			"gd",
-			"gfs2-utils",
-			"gpm",
-			"libvirt",
-			"lvm2-cluster",
-			"make",
-			"man", 
-			"mlocate",
-			"ntp",
-			"OpenIPMI",
-			"OpenIPMI-libs",
-			"openssh-clients", 
-			"openssl-devel", 
-			"perl-CGI", 
-			"perl-CPAN", 
-			"perl-Net-SSLeay", 
-			"perl-YAML-Tiny", 
-			"python-virtinst",
-			"qemu-kvm",
-			"qemu-kvm-tools",
-			"ricci",
-			"rgmanager",
-			"rsync",
-			"screen",
-			"syslinux", 
-			"telnet", 
-			"vim-enhanced", 
-			"virt-viewer",
-			"wget",
-			"yum-utils",
+	apps			=>	{
+		install			=>	[
+				"acpid", 
+				"cman",
+				"ccs", 
+				"corosync",
+				"dmidecode", 
+				"fence-agents", 
+				"freeipmi",
+				"freeipmi-bmc-watchdog",
+				"freeipmi-ipmidetectd",
+				"gcc", 
+				"gd",
+				"gfs2-utils",
+				"gpm",
+				"libvirt",
+				"lvm2-cluster",
+				"make",
+				"man", 
+				"mlocate",
+				"ntp",
+				"OpenIPMI",
+				"OpenIPMI-libs",
+				"openssh-clients", 
+				"openssl-devel", 
+				"perl-CGI", 
+				"perl-CPAN", 
+				"perl-Net-SSLeay", 
+				"perl-YAML-Tiny", 
+				"python-virtinst",
+				"qemu-kvm",
+				"qemu-kvm-tools",
+				"ricci",
+				"rgmanager",
+				"rsync",
+				"screen",
+				"syslinux", 
+				"telnet", 
+				"vim-enhanced", 
+				"virt-viewer",
+				"wget",
+				"yum-utils",
 		],
-		remove		=>	[
-			"NetworkManager",
+		remove			=>	[
+				"NetworkManager",
 		],
-		enable		=>	[
-			"ipmi",
-			"ntpd",
-			"ricci",
-			"modclusterd",
-			"gpm",
+		enable			=>	[
+				"ipmi",
+				"ntpd",
+				"ricci",
+				"modclusterd",
+				"gpm",
 		],
-		disable		=>	[
-			"acpid", 
-			"clvmd",
-			"cman",
-			"drbd",
-			"gfs2",
-			"ip6tables",
-			"iptables",
-			"kdump",
-			"rgmanager",
+		disable			=>	[
+				"acpid", 
+				"clvmd",
+				"cman",
+				"drbd",
+				"gfs2",
+				"ip6tables",
+				"iptables",
+				"kdump",
+				"rgmanager",
 		],
-		from_http	=>	{
-			apcupsd		=>	"https://alteeve.ca/files/apcupsd/apcupsd-latest.el6.x86_64.rpm",
+		from_http		=>	{
+			apcupsd			=>	"https://alteeve.ca/files/apcupsd/apcupsd-latest.el6.x86_64.rpm",
 		},
-		repos		=>	{
-			elrepo		=>	{
-				key		=>	"http://elrepo.org/RPM-GPG-KEY-elrepo.org",
-				rpm		=>	"http://elrepo.org/elrepo-release-6-4.el6.elrepo.noarch.rpm",
-				file		=>	"/etc/yum.repos.d/elrepo.repo",
-				install		=>	["drbd83-utils", "kmod-drbd83"],
+		repos				=>	{
+			elrepo				=>	{
+				key				=>	"http://elrepo.org/RPM-GPG-KEY-elrepo.org",
+				rpm				=>	"http://elrepo.org/elrepo-release-6-4.el6.elrepo.noarch.rpm",
+				file				=>	"/etc/yum.repos.d/elrepo.repo",
+				install				=>	["drbd83-utils", "kmod-drbd83"],
 			},
 		},
 	},
-	commands	=>	{
-		'ssh-keygen'	=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f ",
-		fingerprint	=>	"ssh-keygen -lf ",
+	commands		=>	{
+		'ssh-keygen'		=>	"ssh-keygen -t rsa -N \"\" -b 4095 -f",
+		fingerprint		=>	"ssh-keygen -lf",
 	},
-	files		=>	{
-		answers		=>	"anvil_setup.answers",
-		install_log	=>	"anvil_setup.log",
-		n1_rsa_private	=>	"/root/.ssh/id_rsa",
-		n1_rsa_public	=>	"/root/.ssh/id_rsa.pub",
-		n2_rsa_private	=>	"/tmp/n2-id_rsa",
-		n2_rsa_public	=>	"/tmp/n2-id_rsa.pub",
+	files			=>	{
+		answers			=>	"anvil_setup.answers",
+		install_log		=>	"anvil_setup.log",
+		ssh_keys		=>	{
+			node1			=>	{
+				private			=>	"",
+				public			=>	"",
+				hostname		=>	"",	# This may seem odd to be here, but it's used in generating ssh's known_hosts and authorized_keys.
+				shortname		=>	"",
+				contents		=>	{
+					private			=>	"",
+					public			=>	"",
+				},
+			},
+			node2			=>	{
+				private			=>	"",
+				public			=>	"",
+				hostname		=>	"",
+				shortname		=>	"",
+				contents		=>	{
+					private			=>	"",
+					public			=>	"",
+				},
+			},
+			local_key		=>	"/root/.ssh/id_rsa",
+			peer_key		=>	"/tmp/peer_id_rsa",
+			public_suffix		=>	".pub",
+		},
 		# known_hosts format is '{ip|hostname} id_rsa $rsa_pub_key'
 	},
-	nic		=>	{
-		count		=>	0,
-		ifn_count	=>	1,
+	nic			=>	{
+		count			=>	0,
+		ifn_count		=>	1,
 	},
-	'system'	=>	{
-		reboot_required	=>	0,
-		skip_network	=>	0,
-		skip_ups	=>	0,
-		skip_disk	=>	0,
+	'system'		=>	{
+		reboot_required		=>	0,
+		skip_network		=>	0,
+		skip_ups		=>	0,
+		skip_disk		=>	0,
+		local_hostname		=>	"",
+		local_shortname		=>	"",
+		local_key		=>	"",
+		peer_key		=>	"",
+		peer_hostname		=>	"",
+		peer_shortname		=>	"",
+		ssh_use_cache_local	=>	1,
+		ssh_use_cache_peer	=>	1,
 	},
 };
 
@@ -175,8 +213,17 @@ record($conf, "\n-=] Anvil! Configuration Tool\n\n");
 ### TODO: If this is a RHEL box, ask the user to authenticate before
 ###       proceeding.
 
+# Setup
 collect_data($conf);
 ask_questions($conf);
+
+# Configure
+set_hostname($conf);
+install_core_dependencies($conf);
+partition_disk($conf);
+configure_nics($conf);
+configure_ipmi($conf);
+write_hosts($conf);
 disable_selinux($conf);
 setup_ssh($conf);
 install_apps($conf);
@@ -195,8 +242,11 @@ record($conf, "Initial configuration is complete!\n");
 record($conf, "Manual tasks remaining;\n\n");
 record($conf, " - Manually create the ~/.ssh/authorized_keys file.\n");
 record($conf, " - Merge /etc/hosts and add foundation pack devices.\n");
-record($conf, " - Create the DRBD partition(s)\n");
-record($conf, " - Reboot and run the following commands;\n\n");
+if ($conf->{'system'}{reboot_required})
+{
+	record ($conf, " - One or more changes require a reboot.\n");
+	record ($conf, " - Please reboot your node as soon as possible.\n");
+}
 record($conf, "modprobe drbd\n");
 record($conf, "drbdadm create-md r{0,1}\n");
 record($conf, "drbdadm attach r{0,1}\n");
@@ -642,7 +692,7 @@ sub disable_selinux
 		record($conf, " - Already disabled, skipping.\n");
 		return(0);
 	}
-	my $sc = "setenforce 0 && sed -i.anvil 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
+	my $sc = "setenforce 0; sed -i.anvil 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
@@ -719,19 +769,39 @@ sub set_text_boot
 {
 	my ($conf) = @_;
 	
-	record($conf, "Configuring the operating system for textual booting.\n");
-	record($conf, "This can take a minute, please be patient.\n");
-	my $sc = "plymouth-set-default-theme details -R";
+	record($conf, "Checking what plymouth theme is active.\n");
+	my $current_theme = "";
+	my $sc = "plymouth-set-default-theme";
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		#record($conf, " - $line\n)"
+		$current_theme = $line;
 	}
 	$fh->close();
-	record($conf, " - Done.\n");
+	
+	if ($current_theme eq "details")
+	{
+		record($conf, " - Current plymout boot theme is already: [details].\n - Done.\n");
+	}
+	else
+	{
+		record($conf, "Current plymout boot theme is: [$current_theme]. Changing to: [details].\n");
+		record($conf, " - This can take a minute, please be patient.\n");
+		my $sc = "plymouth-set-default-theme details -R";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, " - $line\n)"
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+	}
 	
 	return(0);
 }
@@ -741,10 +811,11 @@ sub modify_daemons
 	my ($conf) = @_;
 	
 	# Disable daemons
+	record($conf, "Disabling daemons may produce '[FAILED]' errors, these are safe to ingore.\n");
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{apps}{disable}})
 	{
 		next if not $daemon;
-		record($conf, "Disabling: [$daemon]");
+		record($conf, "Disabling: [$daemon]\n");
 		my $sc = "chkconfig $daemon off && /etc/init.d/$daemon stop";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
@@ -762,7 +833,7 @@ sub modify_daemons
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{apps}{enable}})
 	{
 		next if not $daemon;
-		record($conf, "Enabling: [$daemon]");
+		record($conf, "Enabling: [$daemon].\n");
 		my $sc = "chkconfig $daemon on && /etc/init.d/$daemon start";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
@@ -1156,6 +1227,7 @@ sub read_answers
 	
 	return if not -e $conf->{files}{answers};
 	
+	my $private_key = "";
 	my $sc = "$conf->{files}{answers}";
 	my $fh = IO::Handle->new();
 	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
@@ -1163,6 +1235,16 @@ sub read_answers
 	{
 		chomp;
 		my $line = $_;
+		#record($conf, "private key: [$private_key], line: [$line]\n");
+		if ($private_key)
+		{
+			$conf->{answers}{ssh_keys}{$private_key}{private} .= "$line\n";
+			if ($line =~ /END RSA PRIVATE KEY/)
+			{
+				$private_key = "";
+			}
+			next;
+		}
 		#record($conf, "answers line: [$line]\n");
 		next if not $line;
 		next if $line !~ /=/;
@@ -1177,10 +1259,28 @@ sub read_answers
 		$val =~ s/^\s+//;
 		$val =~ s/\s+$//;
 		next if (not $var);
+		#record($conf, "var: [$var], val: [$val]\n");
 		
 		_make_hash_reference($conf, $var, $val);
+		
+		# Special handling needed for the nodes' private RSA key
+		# values.
+		if (($var =~ /node1::private$/) && ($val =~ /BEGIN RSA PRIVATE KEY/))
+		{
+			$private_key = "node1";
+			$conf->{answers}{ssh_keys}{$private_key}{private} .= "\n";
+		}
+		elsif (($var =~ /node2::private$/) && ($val =~ /BEGIN RSA PRIVATE KEY/))
+		{
+			$private_key = "node2";
+			$conf->{answers}{ssh_keys}{$private_key}{private} .= "\n";
+		}
 	}
 	$fh->close();
+	
+	#use Data::Dumper;
+	#print Dumper $conf;
+	#die "testing...\n";
 	
 	return(0);
 }
@@ -1195,6 +1295,7 @@ sub write_answers
 	my $sc = "$conf->{files}{answers}";
 	if (not $fh)
 	{
+		#print "Opening: [$sc]\n";
 		$fh = IO::Handle->new();
 		open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
 	}
@@ -1205,19 +1306,23 @@ sub write_answers
 		{
 			my $new_key = "${key}::${var}";
 			$i++;
+			#print " > Re-entering 'write_answers()' with key: [$new_key]\n";
 			write_answers($conf, $hash_ref->{$var}, $new_key, $fh, $i);
+			#print " < Returning from 'write_answers();'\n";
 			$i--;
 		}
 		else
 		{
 			print $fh "${key}::${var} = $hash_ref->{$var}\n";
-			#print "cache: ${key}::${var} = $hash_ref->{$var}\n";
+			#print "cache: [${key}::${var} = $hash_ref->{$var}]\n";
 		}
 	}
 	if ($i == 0)
 	{
+		#print "Closing: [$sc]\n";
 		$fh->close();
 	}
+	#die "testing...\n";
 	
 	return(0);
 }
@@ -1303,10 +1408,10 @@ sub ask_questions_node_ips
 	if (-e "/etc/sysconfig/network-scripts/ifcfg-vbr2")
 	{
 		record($conf, "It looks like the network has already been configured.\n");
-		record($conf, " - Do you want to skip the network configuration? [Y/n] ");
+		record($conf, " - Do you want to re-run the network configuration? [y/N] ");
 		my $configure = <STDIN>;
 		chomp($configure);
-		if ((lc($configure) eq "n") || (lc($configure) eq "no"))
+		if ((lc($configure) eq "y") || (lc($configure) eq "yes"))
 		{
 			record($conf, " - Configuring network...\n");
 			$conf->{'system'}{skip_network} = 0;
@@ -1464,6 +1569,8 @@ sub ask_questions_ipmi
 	my ($conf) = @_;
 	
 	record($conf, "\n-=] IPMI BMC questions:\n\n");
+	
+	$conf->{'system'}{skip_ipmi} = 1; return(0);
 	
 	# Ask if the user wants to configure IPMI.
 	record($conf, "Do you wish to configure the IPMI BMC? [Y/n] ");
@@ -1821,14 +1928,29 @@ sub ask_questions
 	# TODO: Make each one of these it's own section that the user can
 	#       independantly verify and, if needed, restart.
 	ask_questions_customer($conf);
+	
+	# Once I know the hostname, I need to sort out if this is node 1 or 2.
+	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};
+	if ($conf->{answers}{hostname} =~ /01/)
+	{
+		$conf->{'system'}{this_is_node} = 1;
+		$conf->{'system'}{peer_is_node} = 2;
+	}
+	else
+	{
+		$conf->{'system'}{this_is_node} = 2;
+		$conf->{'system'}{peer_is_node} = 1;
+	}
+	
+	# Back to our regularly scheduled user grilling...
 	ask_questions_storage($conf);	# This must follow the customer questions
 	ask_questions_ups($conf);	# This must follow the customer questions
 	ask_questions_node_ips($conf);	# This must follow the customer questions
 	ask_questions_ipmi($conf);
 	ask_questions_misc($conf);
+	ask_questions_ssh($conf);
 	check_core_dependencies($conf);
 	
-	$conf->{answers}{hostname} = "$conf->{answers}{customer_prefix}-c".$conf->{answers}{cluster_id}."n".$conf->{answers}{node_id}.".".$conf->{answers}{customer_domain};
 	write_answers($conf);
 	record($conf, "\nSummary;\n");
 	record($conf, " - Customer prefix:   [$conf->{answers}{customer_prefix}]\n");
@@ -1892,7 +2014,7 @@ sub ask_questions
 		record($conf, " - Partition manuipulation program will be installed.\n");
 	}
 	
-	record($conf, "Proceed? [Y/n] ");
+	record($conf, "\nProceed with setup? [Y/n] ");
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
 	chomp($proceed);
@@ -1907,18 +2029,340 @@ sub ask_questions
 		record($conf, "Proceeding.\n\n");
 	}
 	
-	set_hostname($conf);
-	install_core_dependencies($conf);
-	partition_disk($conf);
-	configure_nics($conf);
-	configure_ipmi($conf);
-	write_hosts($conf);
+	return(0);
+}
+
+# Ask questions about SSH keys
+sub ask_questions_ssh
+{
+	my ($conf) = @_;
+
+	record($conf, "\n-=] SSH questions (if any)\n\n");
 	
-	record($conf, "The setup is complete!\n");
-	if ($conf->{'system'}{reboot_required})
+	# First thing to do is setup which node is local and which is the peer.
+	$conf->{'system'}{local_hostname} = $conf->{answers}{hostname};
+	$conf->{'system'}{peer_hostname}  = $conf->{answers}{hostname};
+	$conf->{'system'}{local_key}      = "node1";
+	$conf->{'system'}{peer_key}       = "node2";
+	if ($conf->{'system'}{this_is_node} == 1)
 	{
-		record ($conf, " - One or more changes require a reboot.\n");
-		record ($conf, " - Please reboot your node as soon as possible.\n");
+		$conf->{'system'}{peer_hostname}           =~ s/01/02/;
+	}
+	else
+	{
+		$conf->{'system'}{peer_hostname}           =~ s/02/01/;
+		$conf->{'system'}{local_key}               =  "node2";
+		$conf->{'system'}{peer_key}                =  "node1";
+	}
+
+	my $local_key = $conf->{'system'}{local_key};
+	my $peer_key  = $conf->{'system'}{peer_key};
+	$conf->{files}{ssh_keys}{$local_key}{private}   =  $conf->{files}{ssh_keys}{local_key};
+	$conf->{files}{ssh_keys}{$local_key}{public}    =  $conf->{files}{ssh_keys}{local_key}.$conf->{files}{ssh_keys}{public_suffix};
+	$conf->{files}{ssh_keys}{$local_key}{hostname}  =  $conf->{'system'}{local_hostname};
+	$conf->{files}{ssh_keys}{$local_key}{shortname} =  ($conf->{'system'}{local_hostname} =~ /^(.*?)\./)[0];
+	$conf->{files}{ssh_keys}{$peer_key}{private}    =  $conf->{files}{ssh_keys}{peer_key};
+	$conf->{files}{ssh_keys}{$peer_key}{public}     =  $conf->{files}{ssh_keys}{peer_key}.$conf->{files}{ssh_keys}{public_suffix};
+	$conf->{files}{ssh_keys}{$peer_key}{hostname}   =  $conf->{'system'}{peer_hostname};
+	$conf->{files}{ssh_keys}{$peer_key}{shortname}  =  ($conf->{'system'}{peer_hostname} =~ /^(.*?)\./)[0];
+	
+	$conf->{'system'}{local_shortname} = ($conf->{'system'}{local_hostname} =~ /^(.*?)\./)[0];
+	$conf->{'system'}{peer_shortname}  = ($conf->{'system'}{peer_hostname}  =~ /^(.*?)\./)[0];
+#	record($conf, " - Local hash key: [$local_key], peer hash key: [$peer_key]\n");
+# 	record($conf, " - Local hostname: [$conf->{'system'}{local_shortname} ($conf->{'system'}{local_hostname})], peer hostname: [$conf->{'system'}{peer_shortname} ($conf->{'system'}{peer_hostname})]\n");
+# 	record($conf, " - Local node: [$conf->{files}{ssh_keys}{$local_key}{shortname} ($conf->{files}{ssh_keys}{$local_key}{hostname})], private key file: [$conf->{files}{ssh_keys}{$local_key}{private}], public key file: [$conf->{files}{ssh_keys}{$local_key}{private}]\n");
+# 	record($conf, " - Peer node:  [$conf->{files}{ssh_keys}{$peer_key}{shortname} ($conf->{files}{ssh_keys}{$peer_key}{hostname})], private key file: [$conf->{files}{ssh_keys}{$peer_key}{private}], public key file: [$conf->{files}{ssh_keys}{$peer_key}{private}]\n");
+# 	die "testing...\n";
+
+	# Read in keys already on disk.
+	record($conf, " - Reading SSH keys from disk, if they exist.\n");
+	read_ssh_keys($conf);
+	
+	# If any of the answer keys are blank but the matching file content has
+	# a value, use the file's key as the answer.
+	#record($conf, " - local private key on disk:      [$conf->{files}{ssh_keys}{$local_key}{contents}{private}]\n");
+	#record($conf, " - local private key from answers: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+	if (($conf->{files}{ssh_keys}{$local_key}{contents}{private}) && (not $conf->{answers}{ssh_keys}{$local_key}{private}))
+	{
+		#record($conf, ">> answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+		$conf->{answers}{ssh_keys}{$local_key}{private} = $conf->{files}{ssh_keys}{$local_key}{contents}{private};
+		#record($conf, "<< answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+		record($conf, " - Local SSH private key on disk but not in 'answers', adding it.\n");
+	}
+	#record($conf, " - local public key on disk:       [$conf->{files}{ssh_keys}{$local_key}{contents}{public}]\n");
+	#record($conf, " - local public key from answers:  [$conf->{answers}{ssh_keys}{$local_key}{public}]\n");
+	if (($conf->{files}{ssh_keys}{$local_key}{contents}{public}) && (not $conf->{answers}{ssh_keys}{$local_key}{public}))
+	{
+		$conf->{answers}{ssh_keys}{$local_key}{public} = $conf->{files}{ssh_keys}{$local_key}{contents}{public};
+		record($conf, " - Local SSH public key on disk but not in 'answers', adding it.\n");
+	}
+	#record($conf, " - peer private key on disk:        [$conf->{files}{ssh_keys}{$peer_key}{contents}{private}]\n");
+	#record($conf, " - peer private key from answers:   [$conf->{answers}{ssh_keys}{$peer_key}{private}]\n");
+	if (($conf->{files}{ssh_keys}{$peer_key}{contents}{private}) && (not $conf->{answers}{ssh_keys}{$peer_key}{private}))
+	{
+		$conf->{answers}{ssh_keys}{$peer_key}{private} = $conf->{files}{ssh_keys}{$peer_key}{contents}{private};
+		record($conf, " - Peer SSH private key on disk but not in 'answers', adding it.\n");
+	}
+	#record($conf, " - peer public key on disk:         [$conf->{files}{ssh_keys}{$peer_key}{contents}{public}]\n");
+	#record($conf, " - peer public key from answers:    [$conf->{answers}{ssh_keys}{$peer_key}{public}]\n");
+	if (($conf->{files}{ssh_keys}{$peer_key}{contents}{public}) && (not $conf->{answers}{ssh_keys}{$peer_key}{public}))
+	{
+		$conf->{answers}{ssh_keys}{$peer_key}{public} = $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+		record($conf, " - Peer SSH public key on disk but not in 'answers', adding it.\n");
+	}
+	
+	# If the disk keys exist and either the public or private key is
+	# missing, blank the other because we can't/won't use it. Same for the
+	# keys from the answers file.
+	### Keys from disk
+	if ((not $conf->{files}{ssh_keys}{$local_key}{contents}{private}) || (not $conf->{answers}{ssh_keys}{$local_key}{public}))
+	{
+		$conf->{files}{ssh_keys}{$local_key}{contents}{private} = "";
+		$conf->{files}{ssh_keys}{$local_key}{contents}{public}  = "";
+	}
+	if ((not $conf->{files}{ssh_keys}{$peer_key}{contents}{private}) || (not $conf->{answers}{ssh_keys}{$peer_key}{public}))
+	{
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{private} = "";
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{public}  = "";
+	}
+	### Keys from answers
+	if ((not $conf->{answers}{ssh_keys}{$local_key}{private}) || (not $conf->{answers}{ssh_keys}{$local_key}{public}))
+	{
+		$conf->{answers}{ssh_keys}{$local_key}{private} = "";
+		$conf->{answers}{ssh_keys}{$local_key}{public}  = "";
+	}
+	if ((not $conf->{answers}{ssh_keys}{$peer_key}{private}) || (not $conf->{answers}{ssh_keys}{$peer_key}{public}))
+	{
+		$conf->{answers}{ssh_keys}{$peer_key}{private} = "";
+		$conf->{answers}{ssh_keys}{$peer_key}{public}  = "";
+	}
+	
+	# From here on, we can assume that if the public key exists, so does
+	# the private key. So now, if the key from answers and disks exists and
+	# differ, ask the user which to use.
+	### Local keys
+	record($conf, " - Checking for conflicts between keys from 'answers' and keys on disk.\n");
+	record($conf, " - Checking local keys.\n");
+	if (($conf->{files}{ssh_keys}{$local_key}{contents}{private}) && ($conf->{answers}{ssh_keys}{$local_key}{private}) &&
+	    ($conf->{files}{ssh_keys}{$local_key}{contents}{private} ne $conf->{answers}{ssh_keys}{$local_key}{private}))
+	{
+		# Two keys exist and they differ.
+		record($conf, "The SSH key on disk differs from the one in the \"anvil_setup.answers\" file.");
+		record($conf, " - Shall I replace the keys on disk with the one from answers? [Y/n] ");
+		my $ssh_use_cache_local = <STDIN>;
+		chomp($ssh_use_cache_local);
+		if ((lc($ssh_use_cache_local) eq "n") || (lc($ssh_use_cache_local) eq "no"))
+		{
+			# Replace the answers version with the contents from
+			# the disk keys.
+			record($conf, " - Replacing local node's keys in \"anvil_setup.answers\" with those from disk.\n");
+			#record($conf, ">> answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+			$conf->{answers}{ssh_keys}{$local_key}{private} = $conf->{files}{ssh_keys}{$local_key}{contents}{private};
+			#record($conf, "<< answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+			$conf->{answers}{ssh_keys}{$local_key}{public}  = $conf->{files}{ssh_keys}{$local_key}{contents}{public};
+			write_answers($conf);
+		}
+		else
+		{
+			# Write out the key files.
+			record($conf, " - Replacing local node's keys from disk with those from \"anvil_setup.answers\".\n");
+			my $local_private_file = $conf->{files}{ssh_keys}{$local_key}{private};
+			my $local_public_file  = $conf->{files}{ssh_keys}{$local_key}{public};
+			my $local_private_data = $conf->{files}{ssh_keys}{$local_key}{contents}{private};
+			my $local_public_data  = $conf->{files}{ssh_keys}{$local_key}{contents}{public};
+			
+			# Write the public file
+			write_file($conf, $local_private_file, $local_private_data, "root:root", "600");
+			write_file($conf, $local_public_file,  $local_public_data,  "root:root", "644");
+			
+			# Replace the in-memory file contents with the data
+			# from the answers file.
+			$conf->{files}{ssh_keys}{$local_key}{contents}{private} = $conf->{answers}{ssh_keys}{$local_key}{private};
+			$conf->{files}{ssh_keys}{$local_key}{contents}{public}  = $conf->{answers}{ssh_keys}{$local_key}{public};
+		}
+		record($conf, " - Done.\n");
+	}
+	### Peer keys
+	record($conf, " - Checking peer keys.\n");
+	if (($conf->{files}{ssh_keys}{$peer_key}{contents}{private}) && ($conf->{answers}{ssh_keys}{$peer_key}{private}) &&
+	    ($conf->{files}{ssh_keys}{$peer_key}{contents}{private} ne $conf->{answers}{ssh_keys}{$peer_key}{private}))
+	{
+		# Two keys exist and they differ.
+		record($conf, "The SSH key for the peer: [$conf->{'system'}{peer_shortname}] on disk differs from the one in the \"anvil_setup.answers\" file.");
+		record($conf, " - Shall I replace the peer's keys on disk with the one from answers? [Y/n] ");
+		my $ssh_use_cache_local = <STDIN>;
+		chomp($ssh_use_cache_local);
+		if ((lc($ssh_use_cache_local) eq "n") || (lc($ssh_use_cache_local) eq "no"))
+		{
+			# Change the "answers" to the keys I read from disk.
+			record($conf, " - Replacing peer node's keys in \"anvil_setup.answers\" with those from disk.\n");
+			$conf->{answers}{ssh_keys}{$peer_key}{private} = $conf->{files}{ssh_keys}{$peer_key}{contents}{private};
+			$conf->{answers}{ssh_keys}{$peer_key}{public}  = $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+			write_answers($conf);
+		}
+		else
+		{
+			# Write out the cached keys to the peer files now.
+			record($conf, " - Replacing peer node's keys from disk with those from \"anvil_setup.answers\".\n");
+			my $peer_private_file = $conf->{files}{ssh_keys}{$peer_key}{private};
+			my $peer_public_file  = $conf->{files}{ssh_keys}{$peer_key}{public};
+			my $peer_private_data = $conf->{files}{ssh_keys}{$peer_key}{contents}{private};
+			my $peer_public_data  = $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+			
+			# Write the public file
+			write_file($conf, $peer_private_file, $peer_private_data, "root:root", "600");
+			write_file($conf, $peer_public_file,  $peer_public_data,  "root:root", "644");
+			
+			# Replace the in-memory file contents with the data
+			# from the answers file.
+			$conf->{files}{ssh_keys}{$peer_key}{contents}{private} = $conf->{answers}{ssh_keys}{$peer_key}{private};
+			$conf->{files}{ssh_keys}{$peer_key}{contents}{public}  = $conf->{answers}{ssh_keys}{$peer_key}{public};
+		}
+		record($conf, " - Done.\n");
+	}
+	#die "testing...\n";
+	
+	return(0);
+}
+
+# Writes out the given file and, if passed, set the owner and mode.
+sub write_file
+{
+	my ($conf, $file, $contents, $owner, $mode) = @_;
+	
+	use bytes;
+	my $size      = legnth($contents);
+	my $say_bytes = "bytes";
+	if ($size == 1)
+	{
+		$say_bytes = "byte";
+	}
+	
+	record($conf, "Writing out: [$size] $say_bytes to: [$file]\n");
+	my $sc = $file;
+	my $fh = IO::Handle->new();
+	open ($fh, ">$file") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+	print $fh $contents;
+	$fh->close();
+	record($conf, " - Done.\n");
+	
+	if ($owner)
+	{
+		record($conf, " - Setting ownership of: [$file] to: [$owner].\n");
+		$sc = "chown $owner $file";
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2&>1 |") or nice_exit($conf, 1, "Failed to run: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - output: [$line]\n");
+		}
+		$fh->close();
+		record($conf, " - Done!\n");
+	}
+	
+	if ($mode)
+	{
+		record($conf, " - Setting mode of: [$file] to: [$mode].\n");
+		$sc = "chmod $mode $file";
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2&>1 |") or nice_exit($conf, 1, "Failed to own: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - output: [$line]\n");
+		}
+		$fh->close();
+		record($conf, " - Done!\n");
+	}
+	
+	return(0);
+}
+
+# This looks on disk for existing SSH keys.
+sub read_ssh_keys
+{
+	my ($conf) = @_;
+	
+	my $local_key = $conf->{'system'}{local_key};
+	my $peer_key  = $conf->{'system'}{peer_key};
+
+	### TODO: Comment out these messages... too noisy.
+	# Read in any existing key files.
+	record($conf, " - Checking for existing SSH keys.\n");
+	if (-e $conf->{files}{ssh_keys}{$local_key}{private})
+	{
+		record($conf, " - Found local RSA private key: [$conf->{files}{ssh_keys}{$local_key}{private}].\n");
+		my $sc = "$conf->{files}{ssh_keys}{$local_key}{private}";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{files}{ssh_keys}{$local_key}{contents}{private} = "";
+		while(<$fh>)
+		{
+			$conf->{files}{ssh_keys}{$local_key}{contents}{private} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Read.\n");
+	}
+	else
+	{
+		record($conf, " - Local private key: [$conf->{files}{ssh_keys}{$local_key}{private}] does not exist.\n");
+	}
+	if (-e $conf->{files}{ssh_keys}{$local_key}{public})
+	{
+		record($conf, " - Found local RSA public key: [$conf->{files}{ssh_keys}{$local_key}{public}].\n");
+		my $sc = "$conf->{files}{ssh_keys}{$local_key}{public}";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{files}{ssh_keys}{$local_key}{contents}{public} = "";
+		while(<$fh>)
+		{
+			$conf->{files}{ssh_keys}{$local_key}{contents}{public} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Read.\n");
+	}
+	else
+	{
+		record($conf, " - Local public key: [$conf->{files}{ssh_keys}{$local_key}{public}] does not exist.\n");
+	}
+	if (-e $conf->{files}{ssh_keys}{$peer_key}{private})
+	{
+		record($conf, " - Found peer's RSA private key: [$conf->{files}{ssh_keys}{$peer_key}{private}].\n");
+		my $sc = "$conf->{files}{ssh_keys}{$peer_key}{private}";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{private} = "";
+		while(<$fh>)
+		{
+			$conf->{files}{ssh_keys}{$peer_key}{contents}{private} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Read.\n");
+	}
+	else
+	{
+		record($conf, " - Peer private key: [$conf->{files}{ssh_keys}{$peer_key}{private}] does not exist.\n");
+	}
+	if (-e $conf->{files}{ssh_keys}{$peer_key}{public})
+	{
+		record($conf, " - Found peer's RSA public key: [$conf->{files}{ssh_keys}{$peer_key}{public}].\n");
+		my $sc = "$conf->{files}{ssh_keys}{$peer_key}{public}";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{public} = "";
+		while(<$fh>)
+		{
+			$conf->{files}{ssh_keys}{$peer_key}{contents}{public} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Read.\n");
+	}
+	else
+	{
+		record($conf, " - Peer public key: [$conf->{files}{ssh_keys}{$peer_key}{public}] does not exist.\n");
 	}
 	
 	return(0);
@@ -2298,7 +2742,7 @@ sub set_hostname
 	my ($conf) = @_;
 	
 	# Write the file and then set the active hostname.
-	record($conf, "Recording and setting the host name... ");
+	record($conf, "Recording and setting the host name.\n");
 	my $file = "/etc/sysconfig/network";
 	my $sc = $file;
 	my $fh = IO::Handle->new();
@@ -2325,7 +2769,7 @@ sub write_hosts
 {
 	my ($conf) = @_;
 	
-	record($conf, "Writing the hosts file... ");
+	record($conf, "Writing the hosts file.\n");
 	if (not -e "/etc/hosts.an")
 	{
 		record($conf, " - Backing up the original /etc/hosts as /etc/hosts.an: \n");
@@ -2339,7 +2783,7 @@ sub write_hosts
 			record($conf, ".");
 		}
 		$fh->close();
-		record($conf, " Done.\n");
+		record($conf, " - Done.\n");
 	}
 	
 	my $say_bcn_ip     = $conf->{answers}{bcn_ip};
@@ -2817,69 +3261,135 @@ sub setup_ssh
 {
 	my ($conf) = @_;
 	record($conf, "Configuring the SSH keys.\n");
+
+	my $local_key = $conf->{'system'}{local_key};
+	my $peer_key  = $conf->{'system'}{peer_key};
+=pod
+	$conf->{files}{ssh_keys}{$local_key}{private}   =  $conf->{files}{ssh_keys}{local_key};
+	$conf->{files}{ssh_keys}{$local_key}{public}    =  $conf->{files}{ssh_keys}{local_key}.".".$conf->{files}{ssh_keys}{public_suffix};
+	$conf->{files}{ssh_keys}{$local_key}{hostname}  =  $conf->{'system'}{local_hostname};
+	$conf->{files}{ssh_keys}{$local_key}{shortname} =  ($conf->{'system'}{local_hostname} =~ /^(.*?)\./)[0];
+	$conf->{files}{ssh_keys}{$peer_key}{private}    =  $conf->{files}{ssh_keys}{peer_key};
+	$conf->{files}{ssh_keys}{$peer_key}{public}     =  $conf->{files}{ssh_keys}{peer_key}.".".$conf->{files}{ssh_keys}{public_suffix};
+	$conf->{files}{ssh_keys}{$peer_key}{hostname}   =  $conf->{'system'}{peer_hostname};
+	$conf->{files}{ssh_keys}{$peer_key}{shortname}  =  ($conf->{'system'}{peer_hostname} =~ /^(.*?)\./)[0];
+	
+	$conf->{files}{ssh_keys}{$local_key}{contents}{private}
+	$conf->{files}{ssh_keys}{$local_key}{contents}{public}
+	$conf->{files}{ssh_keys}{$peer_key}{contents}{private}
+	$conf->{files}{ssh_keys}{$peer_key}{contents}{public}
+	
+	$conf->{answers}{ssh_keys}{$local_key}{private}
+	$conf->{answers}{ssh_keys}{$local_key}{public}
+	$conf->{answers}{ssh_keys}{$peer_key}{private}
+	$conf->{answers}{ssh_keys}{$peer_key}{public}
+=cut
+	
+	# Sort out the hostnames.
+	my $local_hostname  = $conf->{files}{ssh_keys}{$local_key}{hostname};
+	my $local_shortname = $conf->{files}{ssh_keys}{$local_key}{shortname};
+	my $peer_hostname   = $conf->{files}{ssh_keys}{$peer_key}{hostname};
+	my $peer_shortname  = $conf->{files}{ssh_keys}{$peer_key}{shortname};
+	record($conf, " - This node is: [$local_shortname ($local_hostname)], peer is: [$peer_shortname ($peer_hostname)]\n");
+	
+	# Makes some keys easier to read.
+	# Key contents
+	my $local_file_private_key    = $conf->{files}{ssh_keys}{$local_key}{contents}{private};
+	my $local_file_public_key     = $conf->{files}{ssh_keys}{$local_key}{contents}{public};
+	my $local_answers_private_key = $conf->{answers}{ssh_keys}{$local_key}{private};
+	my $local_answers_public_key  = $conf->{answers}{ssh_keys}{$local_key}{public};
+	my $peer_file_private_key     = $conf->{files}{ssh_keys}{$peer_key}{contents}{private};
+	my $peer_file_public_key      = $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+	my $peer_answers_private_key  = $conf->{answers}{ssh_keys}{$peer_key}{private};
+	my $peer_answers_public_key   = $conf->{answers}{ssh_keys}{$peer_key}{public};
+	# File names
+	my $local_private_file = $conf->{files}{ssh_keys}{$local_key}{private};
+	my $local_public_file  = $conf->{files}{ssh_keys}{$local_key}{public};
+	my $peer_private_file  = $conf->{files}{ssh_keys}{$peer_key}{private};
+	my $peer_public_file   = $conf->{files}{ssh_keys}{$peer_key}{public};
 	
 	# Setup the local SSH key
-	setup_ssh_keys($conf, "local");
-	setup_ssh_keys($conf, "remote");
-	
-	# Change the hostname in the other node's public key.
-	my $local_hostname = $conf->{answers}{hostname};
-	my $peer_hostname  = $conf->{answers}{hostname};
-	#record($conf, ">> local: [$local_hostname], remote: [$peer_hostname]\n");
-	if ($conf->{answers}{hostname} =~ /01/)
+	record($conf, "Setting up local SSH keys.\n");
+	if (($local_file_private_key) && ($local_file_public_key))
 	{
-		$peer_hostname =~ s/01/02/;
+		# Ok, so there are keys on disk. If they match 'answers',
+		# nothing needs to be done.
+		if (($local_file_private_key eq $local_answers_private_key) &&
+		    ($local_file_public_key  eq $local_answers_public_key))
+		{
+			# Match, nothing to do.
+			record($conf, " - Key on disk matches key in 'answers', nothing to do.\n");
+		}
+		else
+		{
+			# WTF? 
+			record($conf, " - [ WARNING ] - Something went wrong.\n");
+			record($conf, "   There are keys in 'answers' that differ from the keys on disk.\n");
+			record($conf, "   This should have been resolved during the question stage.\n");
+		}
 	}
 	else
 	{
-		$peer_hostname =~ s/02/01/;
+		# If there are no contents, there is no key. If there is an
+		# answers key, write it out. Otherwise, generate the SSH key.
+		if (($local_answers_private_key) && ($local_file_public_key))
+		{
+			# Cache exists, using it.
+			record($conf, " - Writing out SSH keys using keys from \"anvil_setup.answers\".\n");
+			
+			# Write the private key
+			write_file($conf, $local_private_file, $local_file_private_key, "root:root", "600");
+			# Write the public key
+			write_file($conf, $local_public_file,  $local_file_public_key,  "root:root", "644");
+			record($conf, " - Done.\n");
+		}
+		else
+		{
+			# Create a new key
+			record($conf, " - Local SSH keys need to be created.\n");
+			my $sc = "$conf->{commands}{'ssh-keygen'} $local_private_file";
+			#record($conf, " - sc: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+			record($conf, "/----------\n");
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "| $line\n");
+			}
+			$fh->close();
+			record($conf, "\\----------\n");
+			record($conf, " - Done.\n");
+		}
 	}
-	#record($conf, "<< local: [$local_hostname], remote: [$peer_hostname]\n");
-	#record($conf, ">> n2_public_key: [$conf->{'system'}{ssh}{n2_public_key}]\n");
-	$conf->{'system'}{ssh}{n2_public_key} =~ s/$local_hostname/$peer_hostname/;
-	#record($conf, "<< n2_public_key: [$conf->{'system'}{ssh}{n2_public_key}]\n");
 	
-	if (1)
+	# Setting up peer's SSH keys
+	record($conf, "Setting up peer's SSH keys.\n");
+	if (($peer_file_private_key) && ($peer_file_public_key))
 	{
-		#record($conf, "Local machine SSH keys:\n");
-		#record($conf, "==[ Public ]==========\n$conf->{'system'}{ssh}{n1_public_key}\n==[ Private ]==========\n$conf->{'system'}{ssh}{n1_private_key}\n=======================\n");
-		#record($conf, "Remote machines SSH keys:\n");
-		#record($conf, "==[ Public ]==========\n$conf->{'system'}{ssh}{n2_public_key}\n==[ Private ]==========\n$conf->{'system'}{ssh}{n2_private_key}\n=======================\n");
-	}
-	
-	return(0);
-}
-
-sub setup_ssh_keys
-{
-	my ($conf, $node) = @_;
-	
-	my $private_file_key = "n1_rsa_private";
-	my $public_file_key  = "n1_rsa_public";
-	my $private_data_key = "n1_private_key";
-	my $public_data_key  = "n1_public_key";
-	if ($node eq "local")
-	{
-		record($conf, "Configuring this node's SSH keys.\n");
+		# Ok, so there are keys on disk. If they match 'answers',
+		# nothing needs to be done.
+		if (($peer_file_private_key eq $peer_answers_private_key) &&
+		    ($peer_file_public_key  eq $peer_answers_public_key))
+		{
+			# Match, nothing to do.
+			record($conf, " - Key on disk matches key in 'answers', nothing to do.\n");
+		}
+		else
+		{
+			# WTF? 
+			record($conf, " - [ WARNING ] - Something went wrong.\n");
+			record($conf, "   There are keys in 'answers' that differ from the keys on disk.\n");
+			record($conf, "   This should have been resolved during the question stage.\n");
+		}
 	}
 	else
 	{
-		record($conf, "Configuring remote node's SSH keys.\n");
-		$private_file_key = "n2_rsa_private";
-		$public_file_key  = "n2_rsa_public";
-		$private_data_key = "n2_private_key";
-		$public_data_key  = "n2_public_key";
-	}
-	if (-e $conf->{files}{$public_file_key})
-	{
-		record($conf, " - Found an existing key, not generating a new one.\n");
-	}
-	else
-	{
-		# Generating a new RSA key.
-		record($conf, "Generating a new RSA key for the root user.\n");
-# 		#my $sc = "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa";
-		my $sc = "$conf->{commands}{'ssh-keygen'} $conf->{files}{$private_file_key}";
+		# Generate the peer's keys.
+		record($conf, " - Peer's SSH keys need to be created.\n");
+		my $sc = "$conf->{commands}{'ssh-keygen'} $peer_private_file";
+		#record($conf, " - sc: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
 		record($conf, "/----------\n");
@@ -2892,32 +3402,236 @@ sub setup_ssh_keys
 		$fh->close();
 		record($conf, "\\----------\n");
 		record($conf, " - Done.\n");
+		
+		# The peer's public key generates with this node's hostname.
+		# Fix it.
+		# Read in the new key;
+		record($conf, " - Updating the hostname in the peer's public ssh key.\n");
+		$sc = "$conf->{files}{ssh_keys}{$peer_key}{public}";
+		$fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{public} = "";
+		while(<$fh>)
+		{
+			$conf->{files}{ssh_keys}{$peer_key}{contents}{public} .= $_;
+		}
+		$fh->close();
+		
+		# Replace the host name
+		$conf->{files}{ssh_keys}{$peer_key}{contents}{public} =~ s/$local_shortname/$peer_shortname/;
+		
+		# Write it back out.
+		$sc = "$conf->{files}{ssh_keys}{$peer_key}{public}";
+		$fh = IO::Handle->new();
+		open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+		print $fh $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+		$fh->close();
+		record($conf, " - Read.\n");
 	}
 	
-	# Read in this node's public key for later addition to node 2's stage-1 script.
-	record($conf, "Reading public key: [$conf->{files}{$public_file_key}].\n");
-	my $sc = "$conf->{files}{$public_file_key}";
-	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
-	$conf->{'system'}{ssh}{$public_data_key} = "";
-	while(<$fh>)
+	# Read in the new keys.
+	read_ssh_keys($conf);
+	
+	# Copy the read keys into answers and then write the update answers file.
+	#record($conf, ">> answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+	$conf->{answers}{ssh_keys}{$local_key}{private} = $conf->{files}{ssh_keys}{$local_key}{contents}{private};
+	#record($conf, "<< answers::ssh_keys::${local_key}::private: [$conf->{answers}{ssh_keys}{$local_key}{private}]\n");
+	$conf->{answers}{ssh_keys}{$local_key}{public}  = $conf->{files}{ssh_keys}{$local_key}{contents}{public};
+	$conf->{answers}{ssh_keys}{$peer_key}{private}  = $conf->{files}{ssh_keys}{$peer_key}{contents}{private};
+	$conf->{answers}{ssh_keys}{$peer_key}{public}   = $conf->{files}{ssh_keys}{$peer_key}{contents}{public};
+	write_answers($conf);
+	
+	# Update /etc/ssh/sshd_config to not require DNS.
+	my $sshd_config = "/etc/ssh/sshd_config";
+	if (-e "${sshd_config}.anvil")
 	{
-		$conf->{'system'}{ssh}{$public_data_key} .= $_;
+		record($conf, "SSH daemon configuration update already done, skipping.\n");
 	}
-	$fh->close();
-	record($conf, " - Done.\n");
+	else
+	{
+		record($conf, "Updating SSH daemon to not lookup IPs of incoming connections.\n");
+		record($conf, " - Backing up: [$sshd_config] to: [${sshd_config}.anvil].\n");
+		my $sc = "cp $sshd_config ${sshd_config}.anvil";
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, " - output: [$line]\n");
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+		
+		record($conf, " - Reading SSH config file: [$sshd_config].\n");
+		my @data;
+		$sc = "$sshd_config";
+		$fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			
+			if ($line)
+			{
+				$line =~ s/^GSSAPIAuthentication yes/#GSSAPIAuthentication yes/;
+				$line =~ s/#GSSAPIAuthentication no/GSSAPIAuthentication no/;
+				$line =~ s/#UseDNS yes/UseDNS no/;
+			}
+			
+			push @data, "$line\n";
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+		
+		record($conf, "Writing updated SSH config file: [$sshd_config].\n");
+		$sc = "$sshd_config";
+		$fh = IO::Handle->new();
+		open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+		foreach my $line (@data)
+		{
+			print $fh $line;
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+		
+		# Reload the ssh daemon
+		record($conf, "Restarting the SSH daemon.\n");
+		$sc = "/etc/init.d/sshd restart";
+		record($conf, "/----------\n");
+		$fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "| $line\n");
+		}
+		$fh->close();
+		record($conf, "\\----------\n");
+		record($conf, " - Done.\n");
+	}
+	
+	# Finally, write out 'known_hosts'.
+	
+	
+	return(0);
+}
 
-	record($conf, "Reading private key: [$conf->{files}{$private_file_key}].\n");
-	$sc = "$conf->{files}{$private_file_key}";
-	$fh = IO::Handle->new();
-	open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
-	$conf->{'system'}{ssh}{$private_data_key} = "";
-	while(<$fh>)
+sub setup_ssh_keys
+{
+	my ($conf, $node) = @_;
+	
+	record($conf, " - Setting up SSH keys for: [$node]\n");
+	my $private_file_key = "local_rsa_private";
+	my $public_file_key  = "local_rsa_public";
+	my $private_data_key = "local_private_key";
+	my $public_data_key  = "local_public_key";
+	if ($node eq "local")
 	{
-		$conf->{'system'}{ssh}{$private_data_key} .= $_;
+		record($conf, "Configuring this node's SSH keys.\n");
 	}
-	$fh->close();
-	record($conf, " - Done.\n");
+	else
+	{
+		record($conf, "Configuring remote node's SSH keys.\n");
+		$private_file_key = "peer_rsa_private";
+		$public_file_key  = "peer_rsa_public";
+		$private_data_key = "peer_private_key";
+		$public_data_key  = "peer_public_key";
+	}
+	if (-e $conf->{files}{$public_file_key})
+	{
+		record($conf, " - Found an existing key, not generating a new one.\n");
+	}
+	else
+	{
+		# Use the key from 'answers' if they exists. Otherwise, generate
+		# a new key.
+		if (($conf->{'system'}{ssh}{$private_file_key}) && ($conf->{'system'}{ssh}{$public_file_key}))
+		{
+			record($conf, "Creating SSH public and private key from values in memory\n");
+			my $private_key = $conf->{'system'}{ssh}{$private_file_key};
+			my $public_key  = $conf->{'system'}{ssh}{$public_file_key};
+			
+			# Write the public key
+			record($conf, " - Writing the public key: [$conf->{files}{$public_file_key}]\n");
+			my $sc = "$conf->{files}{$public_file_key}";
+			my $fh = IO::Handle->new();
+			open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+			print $fh $public_key;
+			$fh->close();
+			record($conf, " - Done!\n");
+			
+			# Write the private key
+			record($conf, " - Writing the private key: [$conf->{files}{$private_file_key}]\n");
+			$sc = "$conf->{files}{$private_file_key}";
+			$fh = IO::Handle->new();
+			open ($fh, ">$sc") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+			print $fh $public_key;
+			$fh->close();
+			record($conf, " - Done!\n");
+			
+			# Set the permissions.
+			record($conf, " - Setting permissions of key files\n");
+			$sc = "chmod 600 $conf->{files}{$private_file_key} && chmod 644 $conf->{files}{$public_file_key}";
+			$fh = IO::Handle->new();
+			open ($fh, "$sc 2&>1 |") or nice_exit($conf, 1, "Failed to write: [$sc], error: $!\n");
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, " - output: [$line]\n");
+			}
+			$fh->close();
+			record($conf, " - Done!\n");
+		}
+		else
+		{
+			# Generating a new RSA key.
+			record($conf, "Generating a new RSA key for the root user.\n");
+	# 		#my $sc = "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa";
+			my $sc = "$conf->{commands}{'ssh-keygen'} $conf->{files}{$private_file_key}";
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or nice_exit($conf, 1, "Failed to call: [$sc], error: $!\n");
+			record($conf, "/----------\n");
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "| $line\n");
+			}
+			$fh->close();
+			record($conf, "\\----------\n");
+			record($conf, " - Done.\n");
+		}
+		
+		### TODO: Make the 'read_ssh_keys' selectable and then remove this.
+		# Read in this node's public key for later addition to node 2's stage-1 script.
+		record($conf, "Reading public key: [$conf->{files}{$public_file_key}].\n");
+		my $sc = "$conf->{files}{$public_file_key}";
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{'system'}{ssh}{$public_data_key} = "";
+		while(<$fh>)
+		{
+			$conf->{'system'}{ssh}{$public_data_key} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+
+		record($conf, "Reading private key: [$conf->{files}{$private_file_key}].\n");
+		$sc = "$conf->{files}{$private_file_key}";
+		$fh = IO::Handle->new();
+		open ($fh, "<$sc") or nice_exit($conf, 1, "Failed to read: [$sc], error: $!\n");
+		$conf->{'system'}{ssh}{$private_data_key} = "";
+		while(<$fh>)
+		{
+			$conf->{'system'}{ssh}{$private_data_key} .= $_;
+		}
+		$fh->close();
+		record($conf, " - Done.\n");
+	}
 	
 	return(0);
 }
@@ -2985,12 +3699,16 @@ sub storage_device_details
 			   $last_used_sector = $this_last_sector if $this_last_sector > $last_used_sector;
 			if ($partition == 4)
 			{
+				# TODO: Read in the existing partitions and 
+				# make sure they're recorded in the answers
+				# file.
 				$conf->{'system'}{skip_disk} = 1;
 				record($conf, "The disk has already been partitioned, skipping.\n");
-				record($conf, " - If you want to reconfigure storage, use 'fdisk' or 'parted' to delete the logical and extended partitions.\n");
+				record($conf, " - If you want to reconfigure storage, use 'fdisk' or 'parted' to delete the\n");
+				record($conf, "   logical and extended partitions.\n");
 				return(1);
 			}
-			record($conf, "This last sector on device: [$device] is: [$this_last_sector (".($this_last_sector * $sector_size).")], last sector value: [$last_used_sector (".($last_used_sector * $sector_size).")]. Read partition: [$partition]\n");
+			#record($conf, "This last sector on device: [$device] is: [$this_last_sector (".($this_last_sector * $sector_size).")], last sector value: [$last_used_sector (".($last_used_sector * $sector_size).")]. Read partition: [$partition]\n");
 		}
 	}
 	$fh->close();
