@@ -47,8 +47,8 @@ sub ask_which_cluster
 	print "
 <table align=\"center\">
 	<tr>
-		<td colspan=\"3\">
-			<b>Please choose a cluster</b>
+		<td colspan=\"4\">
+			<b>Please choose an <i>Anvil!</i></b>
 		</td>
 	</tr>
 	";
@@ -56,6 +56,11 @@ sub ask_which_cluster
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
 		next if not $cluster;
+		my $say_url = "&nbsp;";
+		if ($conf->{clusters}{$cluster}{url})
+		{
+			$say_url = "<a href=\"$conf->{clusters}{$cluster}{url}\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
+		}
 		print "
 	<tr>
 		<td>
@@ -66,6 +71,9 @@ sub ask_which_cluster
 		</td>
 		<td>
 			$conf->{clusters}{$cluster}{description}
+		</td>
+		<td>
+			$say_url
 		</td>
 	</tr>
 ";
@@ -90,6 +98,7 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
+		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$cluster}{url};
 		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$cluster}{ricci_pw};
 		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}]\n");
 		

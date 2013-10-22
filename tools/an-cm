@@ -123,7 +123,7 @@ my $conf = {
 		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
 		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
 		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.
-		check_bbu_health_after	=>	3600,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU.
+		check_bbu_health_after	=>	7200,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU.
 		check_bbu_health	=>	0,		# This gets set to 'time + check_bbu_health_after' after a learn cycle completes. Once this unix time passes, the health of the BBU is checked and then this is 0'ed out.
 	},
 };
@@ -136,6 +136,10 @@ get_hostname($conf);
 
 # What cluster am I in?
 read_conf($conf);
+
+# TODO: If 'this_cluster' is blank, pull the cluster name from cluster.conf (if
+#       it's been configured yet) and use that to find the appropriate entry in
+#       an.conf.
 read_cluster_conf($conf);
 
 $conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";

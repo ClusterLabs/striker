@@ -5570,7 +5570,8 @@ sub compare_new_and_old
 				{
 					# If the BBU post-learn cycle times is
 					# set, see if it's expired.
-					if ($conf->{'system'}{check_bbu_health} > time)
+					#record($conf, "$THIS_FILE ".__LINE__."; time: [".time."] > system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]?\n");
+					if (($conf->{'system'}{check_bbu_health}) && (time > $conf->{'system'}{check_bbu_health}))
 					{
 						# Make sure everything is healthy.
 						$conf->{'system'}{check_bbu_health} = 0;
@@ -5623,7 +5624,7 @@ sub compare_new_and_old
 							# - Battery state is 'Operational'
 							# - Capacity Low is  'No'
 							#$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}
-							if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}) eq "yes")
+							if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}) eq "yes")
 							{
 								# Learn cycle started.
 								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle beginning **\n");
@@ -5643,11 +5644,15 @@ sub compare_new_and_old
 						# If a relearn cycle is active,
 						# ignore the expected-to-change
 						# variables.
-						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}) eq "yes")
+						#record($conf, "$THIS_FILE ".__LINE__."; var: [$var ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})], data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [".lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active})."], time: [".time."], system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]\n");
+						if ((lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}) eq "yes") || (time > $conf->{'system'}{check_bbu_health}))
 						{
 							if (($var eq "battery_state") ||
 							($var eq "remaining_capacity_low") ||
-							($var eq "current_cache_policy"))
+							($var eq "current_cache_policy") ||
+							($var eq "battery_backup_charge_time") ||
+							($var eq "base_voltage")
+							)
 							{
 								record($conf, "$THIS_FILE ".__LINE__."; ** Relearn cycle active **: RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
 								next;
@@ -6513,7 +6518,7 @@ sub compare_new_and_old
 						else
 						{
 							# Voltage changed but we're not in the clear.
-							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] line voltage has changed but is still outside tolerances. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage has changed but is still outside tolerances. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
 						}
 					}
 					else
@@ -6521,7 +6526,7 @@ sub compare_new_and_old
 						# If it's within spec, just log the change.
 						if (($line_voltage >= $min_voltage) && ($line_voltage <= $max_voltage))
 						{
-							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] line voltage has changed but it is within acceptable range. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage has changed but it is within acceptable range. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
 						}
 						else
 						{
@@ -6539,7 +6544,7 @@ sub compare_new_and_old
 					my $load_alert   = $conf->{alerts}{ups}{upper_load_threshold};
 					my $clear_alert  = $load_alert - 5;	# Prevent bouncy alerts
 					my $current_load = ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /^(\d+\.*\d*) /)[0];
-					#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name], Checking if current load: [$current_load] is greater than alert threshold of: [$load_alert]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s, Checking if current load: [$current_load] is greater than alert threshold of: [$load_alert]\n");
 					
 					# Is there an existing alert?
 					if ($conf->{'system'}{ups_alert}{$ups_name}{load_alert})
@@ -6547,7 +6552,7 @@ sub compare_new_and_old
 						if ($current_load >= $load_alert)
 						{
 							# Still over loaded.
-							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load is still over the alert threshold of: [$load_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s load is still over the alert threshold of: [$load_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
 						}
 						elsif ($current_load <= $clear_alert)
 						{
@@ -6560,7 +6565,7 @@ sub compare_new_and_old
 						else
 						{
 							# Looking good, but not clear yet.
-							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load is back under the alert threshold of: [$load_alert %] but it is still above the clear threshold of: [$clear_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s load is back under the alert threshold of: [$load_alert %] but it is still above the clear threshold of: [$clear_alert %]; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
 							$changes .= "\nUPS ${ups_name}'s load has fallen back down below: [$clear_alert %]. Alert cleared.\n";
 							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 						}
@@ -6580,7 +6585,7 @@ sub compare_new_and_old
 						else
 						{
 							# Still over loaded.
-							record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups_name] load has changed; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s load has changed; $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} -> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n");
 						}
 					}
 				}
@@ -6800,7 +6805,7 @@ unexpected, please feel free to contact support.
 ----------------------------------------------------------------------
 $changes";
 		send_email($conf);
-		record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
 		#die "testing...\n";
 	}
 	

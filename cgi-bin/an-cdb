@@ -234,7 +234,7 @@ if ($conf->{cgi}{cluster})
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<b>Please choose a cluster</b>
+			<b>Please choose an <i>Anvil!</i></b>
 		</td>
 	</tr>
 	<tr>
