@@ -317,8 +317,8 @@ sub read_conf
 {
 	my ($conf) = @_;
 	
-	my $fh=IO::Handle->new();
-	my $sc="$conf->{path}{an_conf}";
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{an_conf}";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{

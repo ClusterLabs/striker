@@ -4,9 +4,9 @@
 # TODO: Make this less stupid.
 
 # Change the following variables to suit your setup.
-PASSWORD="secret"
-HOSTNAME="an-m03.alteeve.ca"
-CUSTOMER="Alteeve's Niche!"
+PASSWORD=""
+HOSTNAME=$(hostname)
+CUSTOMER=""
 
 clear;
 echo ""
@@ -15,21 +15,40 @@ echo "# AN!CDB - Alteeve's Niche! - Cluster Dashboard                           
 echo "#                                                          Install Beginning #"
 echo "##############################################################################"
 echo ""
-echo "I will set the dashboard's 'admin' user and the local 'alteeve' user passwords"
-echo "to: [$PASSWORD]"
+echo "What is the host name of this dashboard?"
+echo -n "[$HOSTNAME] "
+read NEWHOSTNAME
+if [ "$NEWHOSTNAME" != "" ]; then
+	HOSTNAME=$NEWHOSTNAME
+fi
 echo ""
-echo "I will set the hostname for this dashboard to: [$HOSTNAME]"
+echo "NOTE: The password you enter will be echoed back to you."
+echo "What password do you want for the local 'alteeve' user and for the dashboard's"
+echo "'admin' user? "
+echo -n "[] "
+read PASSWORD
 echo ""
-echo "I will set the client's company name on the dashboard's login prompt to:"
-echo "[$CUSTOMER]"
+echo "What is the company or organization to use for the Dashboard password prompt?"
+echo -n "[] "
+read CUSTOMER
 echo ""
-echo "Shall I proceed? (1 -> Yes, 2 -> No)"
-select yn in "Yes" "No"; do
-    case $yn in
-        Yes ) echo " - Beginning now."; break;;
-        No ) echo "Update this script and try again. Exiting." && exit;;
-    esac
-done
+echo "Using the following values:"
+echo " - Host name: [$HOSTNAME]"
+echo " - Customer:  [$CUSTOMER]"
+echo " - Password:  [$PASSWORD]"
+echo ""
+echo "Shall I proceed? [y/N]"
+read proceed
+# Lower-case the answer.
+proceed=${proceed,,}
+if [ "$proceed" == "y" ] || [ "$proceed" == "yes" ]; then
+	echo " - Beginning now.";
+else
+	echo " - Please re-run this script. Exiting."
+	exit;
+fi
+
+exit
 
 yum -y groupinstall basic-desktop development x11 fonts
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
@@ -222,7 +241,7 @@ echo "# need to do this once per node.                                          
 echo "#                                                                            #"
 echo "# Please reboot to ensure the latest kernel is being used.                   #"
 echo "#                                                                            #"
-echo "# Remember to update: [/var/www/home/ricci_pw.txt] and: [/etc/an/an.conf]!!  #"
+echo "# Remember to update: [/etc/an/an.conf] and then copy it to each node!       #"
 echo "#                                                                            #"
 echo "##############################################################################"
 echo ""

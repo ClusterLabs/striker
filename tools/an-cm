@@ -18,11 +18,6 @@ $SIG{TERM} = \&catch_sig;
 $| = 1;
 
 my $conf = {
-# 	cluster		=>	{
-# 		company			=>	"Alteeve's Niche!",
-# 		description		=>	"Cluster 05 - \"Tyson\"",
-# 		nodes			=>	[],
-# 	},
 	node		=>	{
 		me			=>	{
 			long_name		=>	"",
@@ -33,23 +28,6 @@ my $conf = {
 			short_name		=>	"",
 		},
 	},
-# 	smtp			=>	{
-# 		server			=>	"mail.alteeve.ca",
-# 		port			=>	587,
-# 		timeout			=>	60,
-# 		username		=>	"clusters\@alteeve.ca",
-# 		password		=>	"file:./email_pw.txt",
-# 		security		=>	"STARTTLS",
-# 		encrypt_pass		=>	1,
-# 		helo_domain		=>	"alteeve.ca",
-# 	},
-# 	mail_data		=>	{
-# 		to			=>	"change.me\@alteeve.ca",
-# 		cc                      =>      "",
-# 		sending_domain		=>	"mail.alteeve.ca",
-# 		subject			=>	"",
-# 		body			=>	"",
-# 	},
 	handles			=>	{
 		'log'			=>	"",
 	},
@@ -123,7 +101,7 @@ my $conf = {
 		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
 		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
 		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.
-		check_bbu_health_after	=>	7200,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU.
+		check_bbu_health_after	=>	10800,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU. Typical recharge is a little over 2.5 hours. The default setting here is 10,800s (3h).
 		check_bbu_health	=>	0,		# This gets set to 'time + check_bbu_health_after' after a learn cycle completes. Once this unix time passes, the health of the BBU is checked and then this is 0'ed out.
 	},
 };
@@ -136,39 +114,29 @@ get_hostname($conf);
 
 # What cluster am I in?
 read_conf($conf);
+if (not $conf->{this_cluster})
+{
+	# Either the config doesn't exist yet or 'this_cluster' hasn't need 
+	# defined and cluster.conf does not yet exist.
+	$conf->{mail_data}{subject} = "Cluster Monitor Start - Unknown Anvil!";
+	$conf->{mail_data}{body}    = "
+The AN!CM monitor has started, but no cluster is defined in /etc/an/an.conf
+and there is no /etc/cluster/cluster.conf file to refer to. Entering loop
+and will wait for one of these to appear.
 
-# TODO: If 'this_cluster' is blank, pull the cluster name from cluster.conf (if
-#       it's been configured yet) and use that to find the appropriate entry in
-#       an.conf.
-read_cluster_conf($conf);
-
-$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
-$conf->{mail_data}{body_suffix}    = "
---[ Source Details ]--------------------------------------------------
-
-Company: $conf->{cluster}{company}
-Cluster: $conf->{cluster}{description}
-Node:    $conf->{node}{me}{long_name}
-Description:
- - $conf->{cluster}{description}
-
-If you have any questions or concerns, please don't hesitate to
-contact support. 
-
-                    https://alteeve.ca/w/Support
-
-                                                     Alteeve's Niche!
-                                                      Cluster Monitor
-----------------------------------------------------------------------
---
-You received this email because you were listed as a contact for the
-AN!Cluster described in this email. If you do not wish to receives
-these emails, please contact your systems administrator. AN!CM runs on
-cluster nodes directly, and are not sent by Alteeve's Niche!. If you
-do not know who controls these servers, please visit the support link
-above and we will try to help you identify the person who can assist
-you.
+No action is required. The monitor will begin once this cluster is defined or
+detected.
 ";
+	send_email($conf);
+	while (not $conf->{this_cluster})
+	{
+		sleep 30;
+		read_conf($conf);
+	}
+}
+
+# Read in cluster.conf.
+read_cluster_conf($conf);
 
 # How am I?
 read_states($conf);
@@ -182,6 +150,11 @@ while (1)
 	#record($conf, "$THIS_FILE ".__LINE__."; Checking for changes.\n");
 	check_for_changes($conf);
 	sleep $conf->{'system'}{sleep_time};
+	
+	# Re-read the config files if they exist. Existence check to avoid
+	# closing the program if the configs get moved temporarily.
+	read_cluster_conf($conf) if -e $conf->{path}{cluster_conf};
+	read_conf($conf)         if -e $conf->{path}{an_conf};
 }
 
 exit(0);

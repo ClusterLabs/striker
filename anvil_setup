@@ -591,11 +591,12 @@ sub install_acpupsd
 			$line =~ s/^POLLTIME.*/POLLTIME $polltime/;
 			
 			# Set some static values
-			$line =~ s/^BATTERYLEVEL.*/BATTERYLEVEL 5/;
+			$line =~ s/^BATTERYLEVEL.*/BATTERYLEVEL 0/;
 			$line =~ s/^MINUTES.*/MINUTES 0/;
 			$line =~ s/^SCRIPTDIR.*/SCRIPTDIR \/etc\/apcupsd\/null/;
 			$line =~ s/^PWRFAILDIR.*/PWRFAILDIR \/etc\/apcupsd\/null/;
-			$line =~ s/^NOLOGINDIR.*/NOLOGINDIR \/etc\/apcupsd\/null/;
+			$line =~ s/^ANNOY.*/ANNOY 0/;
+			#$line =~ s/^NOLOGINDIR.*/NOLOGINDIR \/etc\/apcupsd\/null/;  # I don't think this is needed because "NOLOGON disable" is default.
 			
 			# Set the NIS port
 			$line =~ s/^NISPORT.*/NISPORT $nisport/;

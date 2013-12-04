@@ -1291,6 +1291,15 @@ sub get_storage_lsi_physical_disk_info
 			#record($conf, "$THIS_FILE ".__LINE__."; slot_number: [$slot_number]\n");
 			next;
 		}
+		if ($line =~ /^(Drive's position): DiskGroup: (\d+), Span: (\d+), Arm: (\d+)/i)
+		{
+			$conf->{translate}{lsi}{diskgroup} = $1;
+			$diskgroup = $2;
+			$span      = $3;
+			$arm       = $4;
+			#record($conf, "$THIS_FILE ".__LINE__."; drives_postion; disk group: [$diskgroup], span: [$span], arm: [$arm]\n");
+			next;
+		}
 		if ($line =~ /^(Drive's postion)\s*:\s*DiskGroup\s*:\s*(\d+),\s*Span\s*:\s*(\d+),\s*Arm\s*:\s*(\d+)/i)
 		{
 			$conf->{translate}{lsi}{diskgroup} = $1;
@@ -3954,8 +3963,10 @@ Adapter: #$adapter
 			{
 				#record($conf, "$THIS_FILE ".__LINE__."; - slot: [$slot]\n");
 				# Connected Path Number is in the format 'X(pathY)'.
+				#record($conf, "$THIS_FILE ".__LINE__."; - data::lsi::new::adapter::${adapter}::slot::${slot}::diskgroup: [$conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{diskgroup}]\n");
 				my $diskgroup       = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{diskgroup} ? $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{diskgroup} : "--";
 				# Skip this disk if it's not in this virtual disk.
+				#record($conf, "$THIS_FILE ".__LINE__."; - diskgroup: [$diskgroup], vd: [$vd]\n");
 				next if $diskgroup ne $vd;
 				
 				my $span            = defined $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{span}                            ? $conf->{data}{lsi}{new}{adapter}{$adapter}{slot}{$slot}{span}                            : "--";
@@ -7139,6 +7150,40 @@ sub send_email
 {
 	my ($conf) = @_;
 	
+	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
+	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
+	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
+	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
+	if (not $conf->{mail_data}{subject_prefix})
+	{
+		$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
+	}
+	if (not $conf->{mail_data}{body_suffix})
+	{
+		$conf->{mail_data}{body_suffix} = "
+==[ Source Details ]==================================================
+
+Company: $conf->{cluster}{company}
+Anvil!:  $conf->{cluster}{name}
+Node:    $conf->{node}{me}{long_name}
+Description:
+ - $conf->{cluster}{description}
+
+If you have any questions or concerns, please don't hesitate to
+contact support. 
+
+                    https://alteeve.ca/w/Support
+
+                                                     Alteeve's Niche!
+                                                      Cluster Monitor
+======================================================================
+--
+You received this email because you were listed as a contact for the
+Anvil! described in this email. If you do not wish to receive these
+emails, please contact your systems administrator. AN!CM runs on
+Anvil! nodes directly and are not sent by Alteeve's Niche!.";
+	}
+	
 	# If the password is in a file, read it.
 	if ($conf->{smtp}{password} =~ /^file:(.*)/)
 	{
@@ -7336,6 +7381,10 @@ sub read_cluster_conf
 		if ($line =~ /<cluster.*name="(.*?)"/)
 		{
 			$conf->{cluster}{name} = $1;
+			if ($conf->{cluster}{name} ne $conf->{this_cluster})
+			{
+				$conf->{this_cluster} = $conf->{cluster}{name};
+			}
 		}
 		if ($line =~ /<clusternode.*name="(.*?)"/)
 		{
@@ -7353,8 +7402,8 @@ sub read_conf
 {
 	my ($conf) = @_;
 	
-	my $fh=IO::Handle->new();
-	my $sc="$conf->{path}{an_conf}";
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{an_conf}";
 	#print "sc: [$sc]\n";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
@@ -7379,17 +7428,44 @@ sub read_conf
 	}
 	$fh->close();
 	
+	### Note: By default, 'this_cluster' is not specified in an.conf. The
+	###       user should simply load their cluster.conf file.
+	# If I still don't have 'this_cluster', look for 'cluster.conf'.
+	if ((not $conf->{this_cluster}) && (-e "/etc/cluster/cluster.conf"))
+	{
+		my $fh=IO::Handle->new();
+		my $sc="/etc/cluster/cluster.conf";
+		#print "sc: [$sc]\n";
+		open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+		while (<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /<cluster\s.*?name="(.*?)"/)
+			{
+				$conf->{this_cluster} = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$conf->{this_cluster}]\n");
+				last if $conf->{this_cluster};
+			}
+		}
+		$fh->close();
+	}
+	
 	# Here, I need to dig out the active cluster and push their variable 
 	# values into base hash keys.
-	foreach my $this_sequence (sort {$a cmp $b} keys %{$conf->{cluster}})
+	if ($conf->{this_cluster})
 	{
-		if ($conf->{this_cluster} eq $conf->{cluster}{$this_sequence}{name})
+		foreach my $this_sequence (sort {$a cmp $b} keys %{$conf->{cluster}})
 		{
-			# Found the matching cluster.
-			$conf->{cluster}{company}     = $conf->{cluster}{$this_sequence}{company};
-			$conf->{cluster}{description} = $conf->{cluster}{$this_sequence}{description};
-			$conf->{cluster}{nodes}       = $conf->{cluster}{$this_sequence}{nodes};
-			last;
+			if ($conf->{this_cluster} eq $conf->{cluster}{$this_sequence}{name})
+			{
+				# Found the matching cluster.
+				$conf->{cluster}{company}     = $conf->{cluster}{$this_sequence}{company};
+				$conf->{cluster}{description} = $conf->{cluster}{$this_sequence}{description};
+				$conf->{cluster}{nodes}       = $conf->{cluster}{$this_sequence}{nodes};
+				last;
+			}
 		}
 	}
 	
