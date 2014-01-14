@@ -55,8 +55,8 @@ my $conf = {
 			upper_threshold		=>	45,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
 			power_down_threshold	=>	50,	# A temperature above this will trigger a complete shutdown of the server. Be sure to reference the OEM specs and leave enough of a buffer to give the machine time to shutdown before passing the maximum temp.
 			roc_delta		=>	10,	# RAID on Chip (RAID controller CPU) delta
-			roc_threshold		=>	75,	# ROC alert temp
-			roc_powerdown_temp	=>	85,	# ROC power down temp. # TODO: Confirm these temperatures with LSI
+			roc_threshold		=>	95,	# ROC alert temp
+			roc_powerdown_temp	=>	100,	# ROC power down temp. # TODO: Confirm these temperatures with LSI
 		},
 		bbu			=>	{
 			delta_temp		=>	5,

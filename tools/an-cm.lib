@@ -7378,12 +7378,15 @@ sub read_cluster_conf
 		chomp;
 		my $line = $_;
 		next if not $line;
-		if ($line =~ /<cluster.*name="(.*?)"/)
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /<cluster .*?name="(.*?)"/)
 		{
 			$conf->{cluster}{name} = $1;
+			#record($conf, "$THIS_FILE ".__LINE__."; cluster::name: [$conf->{cluster}{name}]\n");
 			if ($conf->{cluster}{name} ne $conf->{this_cluster})
 			{
 				$conf->{this_cluster} = $conf->{cluster}{name};
+				#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$conf->{this_cluster}]\n");
 			}
 		}
 		if ($line =~ /<clusternode.*name="(.*?)"/)
@@ -7442,7 +7445,7 @@ sub read_conf
 			chomp;
 			my $line = $_;
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line =~ /<cluster\s.*?name="(.*?)"/)
+			if ($line =~ /<cluster .*?name="(.*?)"/)
 			{
 				$conf->{this_cluster} = $1;
 				#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$conf->{this_cluster}]\n");
@@ -7454,16 +7457,19 @@ sub read_conf
 	
 	# Here, I need to dig out the active cluster and push their variable 
 	# values into base hash keys.
+	#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$conf->{this_cluster}]\n");
 	if ($conf->{this_cluster})
 	{
 		foreach my $this_sequence (sort {$a cmp $b} keys %{$conf->{cluster}})
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; this_sequence: [$this_sequence]\n");
 			if ($conf->{this_cluster} eq $conf->{cluster}{$this_sequence}{name})
 			{
 				# Found the matching cluster.
 				$conf->{cluster}{company}     = $conf->{cluster}{$this_sequence}{company};
 				$conf->{cluster}{description} = $conf->{cluster}{$this_sequence}{description};
 				$conf->{cluster}{nodes}       = $conf->{cluster}{$this_sequence}{nodes};
+				#record($conf, "$THIS_FILE ".__LINE__."; cluster::company: [$conf->{cluster}{company}], cluster::description: [$conf->{cluster}{description}], cluster::nodes: [$conf->{cluster}{nodes}]\n");
 				last;
 			}
 		}
