@@ -304,7 +304,7 @@ sub get_cgi_vars
 			}
 			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
+		#record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
@@ -719,12 +719,22 @@ sub post_scan_calculations
 		# Record this node's RAM and CPU as the maximum available if
 		# the max cores and max ram is 0 or greater than that on this
 		# node.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
 		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
 		}
+		record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		
+		# Set by meminfo, if less (needed to catch mirrored RAM)
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+		if ($conf->{node}{$node}{hardware}{meminfo}{memtotal} < $conf->{resources}{total_ram})
+		{
+			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		}
+		
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
 		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
 		{

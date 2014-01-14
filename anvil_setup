@@ -138,7 +138,7 @@ my $conf = {
 				"drbd",
 				"gfs2",
 				"ip6tables",
-				"iptables",
+				#"iptables",
 				"kdump",
 				"rgmanager",
 		],
@@ -205,6 +205,7 @@ my $conf = {
 		peer_shortname		=>	"",
 		ssh_use_cache_local	=>	1,
 		ssh_use_cache_peer	=>	1,
+		disable_selinux		=>	0,
 	},
 };
 
@@ -686,6 +687,12 @@ sub install_acpupsd
 sub disable_selinux
 {
 	my ($conf) = @_;
+	
+	if ($conf->{'system'}{disable_selinux})
+	{
+		record($conf, "SELinux _note_disabled.\n");
+		return;
+	}
 	
 	record($conf, "Disabling SELinux\n");
 	if (-e "/etc/selinux/config.anvil")
@@ -2922,10 +2929,10 @@ sub configure_nics
 		record($conf, "It appears that we have not reordered the NICs yet.\n");
 		for (my $i = 0; $i < $conf->{nic}{count}; $i++)
 		{
-			my $current_nic    = "";
+			my $current_nic = "";
 			my $desired_nic = "eth$i";
 			my $done        = 0;
-			record($conf, "Please unplug the interface you wish to make: [$desired_nic]\n");
+			record($conf, "Please unplug and then plug in the interface you wish to make: [$desired_nic]\n");
 			while (not $done)
 			{
 				sleep 1;
@@ -2938,11 +2945,21 @@ sub configure_nics
 					# Parse the new lines looking for interface notes.
 					foreach my $line (@{$conf->{syslog}{new_lines}})
 					{
+						# This is printed when a copper NIC drops
 						#record($conf, "new line: [$line]\n");
 						if ($line =~ /\s(\S+?) NIC Link is Down/)
 						{
 							$current_nic = $1;
-							record($conf, " - That appears to be: [$current_nic]. I will move this to: [$desired_nic].\n");
+							record($conf, " - That appears to be: [$current_nic] (copper). I will move this to: [$desired_nic].\n");
+							$conf->{map_nic}{$desired_nic} = $current_nic;
+							$done = 1;
+						}
+						# This is printed when an SFP(+) Cable goes UP only (no message on drop)
+						#record($conf, "new line: [$line]\n");
+						if ($line =~ /\s(\S+?): detected SFP/)
+						{
+							$current_nic = $1;
+							record($conf, " - That appears to be: [$current_nic] (fiber). I will move this to: [$desired_nic].\n");
 							$conf->{map_nic}{$desired_nic} = $current_nic;
 							$done = 1;
 						}
