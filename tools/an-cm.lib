@@ -6398,7 +6398,7 @@ sub compare_new_and_old
 				my $subject =  "Memory sensor lost.";
 				my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
 				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
-				send_debug_email($conf, $subject);
+				send_debug_email($conf, $subject, $body);
 			}
 			else
 			{
