@@ -6389,8 +6389,22 @@ sub compare_new_and_old
 		{
 			$old_state = "--" if not defined $old_state;
 			$old_value = "--" if not defined $old_value;
-			$changes .= "\nHost sensor \"$say_translation\" has change!\n";
-			$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			
+			# Some servers periodically lose MEM sensor values. 
+			# When that happens, we will log but not alert.
+			if (($say_translation =~ /MEM (\w+)/) && ($new_state eq "ns"))
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has change!; $old_state, $old_value\t-> $new_state, $new_value.\n");
+				my $subject =  "Memory sensor lost.";
+				my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
+				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				send_debug_email($conf, $subject);
+			}
+			else
+			{
+				$changes .= "\nHost sensor \"$say_translation\" has change!\n";
+				$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
 		}
 	}
 	
@@ -7141,6 +7155,74 @@ sub copy_hash
 			$conf->{data}{ups}{$dst}{ups_name}{$ups_name}{$var} = $conf->{data}{ups}{$src}{ups_name}{$ups_name}{$var};
 		}
 	}
+	
+	return(0);
+}
+
+# This sends a special debug email. These are messages AN! wants to see but
+# aren't important enough to bother clients about.
+sub send_debug_email
+{
+	my ($conf, $subject, $body) = @_;
+	
+	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
+	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
+	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
+	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
+	my $debug_subject_prefix      = "[ AN!CM - Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
+	my $debug_body_suffix         = "
+==[ Source Details ]==================================================
+
+Company: $conf->{cluster}{company}
+Anvil!:  $conf->{cluster}{name}
+Node:    $conf->{node}{me}{long_name}
+Description:
+ - $conf->{cluster}{description}
+======================================================================
+";
+	
+	# If the password is in a file, read it.
+	if ($conf->{smtp}{password} =~ /^file:(.*)/)
+	{
+		my $file = $1;
+		my $sc = "$file";
+		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			$conf->{smtp}{password} = $_;
+			last;
+		}
+		$fh->close();
+	}
+	
+	my $debug_subject =  "$conf->{mail_data}{subject_prefix} - $subject";
+	my $debug_body    .= $body;
+	
+	my $transport = Email::Sender::Transport::SMTP::TLS->new(
+		host		=>	$conf->{smtp}{server},
+		port		=>	$conf->{smtp}{port},
+		username	=>	$conf->{smtp}{username},
+		password	=>	$conf->{smtp}{password},
+		helo		=>	$conf->{smtp}{helo_domain},
+	);
+
+	my $message = Email::Simple->create(
+		header	=> [
+			From	=>	$conf->{smtp}{username},
+			To	=>	$conf->{mail_data}{debug_to},
+			Subject	=>	$debug_subject,
+		],
+		body	=>	$debug_body,
+	);
+	
+	try {
+		sendmail($message, { transport => $transport });
+	} catch {
+		die "Error sending email: $_";
+	};
 	
 	return(0);
 }
