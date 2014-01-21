@@ -5858,8 +5858,15 @@ sub compare_new_and_old
 						}
 						elsif ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
 						{
-							$changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
-							$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
+							if ($var eq "learn_cycle_active")
+							{
+								record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery \"$say_translation\" has changed!; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+							}
+							else
+							{
+								$changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
+								$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
+							}
 						}
 					}
 				}
@@ -6400,6 +6407,14 @@ sub compare_new_and_old
 				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 				send_debug_email($conf, $subject, $body);
 			}
+			elsif (($say_translation =~ /iRMC/) && ($old_state eq "--"))
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has returned!; $new_state, $new_value.\n");
+				my $subject =  "IPMI sensor returned.";
+				my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
+				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				send_debug_email($conf, $subject, $body);
+			}
 			else
 			{
 				$changes .= "\nHost sensor \"$say_translation\" has change!\n";
@@ -6803,8 +6818,18 @@ sub compare_new_and_old
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
 	{
 		my $say_var = $conf->{translate}{ipmi}{$key};
-		$changes .= "\nThe IPMI \"$say_var\" value has disappeared!\n";
-		delete $conf->{data}{ipmi}{old}{$key};
+		if ($say_var =~ /iRMC/)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Host IPMI \"$say_var\" has disappeard!\n");
+			my $subject =  "IPMI sensor lost.";
+			my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
+			send_debug_email($conf, $subject, $body);
+		}
+		else
+		{
+			$changes .= "\nThe IPMI \"$say_var\" value has disappeared!\n";
+			delete $conf->{data}{ipmi}{old}{$key};
+		}
 	}
 	delete $conf->{data}{ipmi}{diff};
 	
