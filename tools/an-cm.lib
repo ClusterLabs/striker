@@ -5719,9 +5719,18 @@ sub compare_new_and_old
 										$new_temp = convert_to_fahrenheit($conf, $new_temp);
 										$units = "*F";
 									}
-									$conf->{'system'}{warning_event} = 1;
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-									$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+									if ($new_temp > $old_temp)
+									{
+										#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+										$conf->{'system'}{warning_event} = 1;
+										$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+										$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+									}
+									else
+									{
+										# Drops in temperature are not a concern.
+										record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has dropped; $old_temp *C -> $new_temp *C\n");
+									}
 								}
 								else
 								{
@@ -5933,9 +5942,18 @@ sub compare_new_and_old
 												$new_temp = convert_to_fahrenheit($conf, $new_temp);
 												$units = "*F";
 											}
-											$conf->{'system'}{warning_event} = 1;
-											$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-											$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+											if ($new_temp > $old_temp)
+											{
+												#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+												$conf->{'system'}{warning_event} = 1;
+												$changes .= "\nRAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+												$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+											}
+											else
+											{
+												# Drops in temperature are not a concern.
+												record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Physical Disk ${say_slot}'s \"$say_translation\" has dropped; $old_temp *C -> $new_temp *C\n");
+											}
 										}
 										else
 										{
@@ -6070,7 +6088,6 @@ sub compare_new_and_old
 						$delta    =~ s/^-//;
 						if ($delta >= $alert)
 						{
-							#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
 							my $units = "*C";
 							if ($conf->{'system'}{use_fahrenheit})
 							{
@@ -6078,9 +6095,18 @@ sub compare_new_and_old
 								$new_temp = convert_to_fahrenheit($conf, $new_temp);
 								$units = "*F";
 							}
-							$conf->{'system'}{warning_event} = 1;
-							$changes .= "\nRAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
-							$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+							if ($new_temp > $old_temp)
+							{
+								#record($conf, "$THIS_FILE ".__LINE__."; Setting warning.\n");
+								$conf->{'system'}{warning_event} = 1;
+								$changes .= "\nRAID ${adapter}'s ROC temperature has rapidly changed (greater than $alert *C in $scan seconds)!\n";
+								$changes .= "  $old_temp $units\t-> $new_temp $units\n";
+							}
+							else
+							{
+								# Drops in temperature are not a concern.
+								record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s ROC temperature has dropped; $old_temp *C -> $new_temp *C\n");
+							}
 						}
 						else
 						{
