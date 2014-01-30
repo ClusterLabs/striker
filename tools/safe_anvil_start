@@ -1,0 +1,376 @@
+#!/usr/bin/perl
+#
+# This will automatically start the Anvil!'s cluster stack on boot.
+# 
+# If you don't know what an Anvil! is, see:
+# - https://alteeve.ca/w/AN!Cluster_Tutorial_2
+#
+# Exit Codes:
+# 0  - OK
+# 1  - Couldn't find peer's host name.
+# 2  - Daemon status returned unhandled return code.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $conf =  {
+	cluster		=>	{
+		name		=>	"",
+	},
+	daemons		=>	{
+		cman		=>	"/etc/init.d/cman",
+		rgmanager	=>	"/etc/init.d/rgmanager",
+	},
+	debug		=>	0,
+	exit_after	=>	600,
+	path		=>	{
+		cluster_conf	=>	"/etc/cluster/cluster.conf",
+		echo		=>	"/bin/echo",
+		hostname	=>	"/bin/hostname",
+		ssh		=>	"/usr/bin/ssh",
+	},
+	nodes		=>	{
+		me		=>	{
+			hostname	=>	"",
+			short_name	=>	"",
+			daemon		=>	{},
+		},
+		peer		=>	{
+			hostname	=>	"",
+			short_name	=>	"",
+			reachable	=>	0,
+			daemon		=>	{},
+		}
+	},
+	
+};
+
+read_hostname($conf);
+read_cluster_conf($conf);
+### TODO: Provide an optional max wait time where the wait ends and the peer
+###       is fenced so that start up can complete.
+for (0..$conf->{exit_after})
+{
+	last if check_peer_connection($conf);
+	sleep 1;
+};
+check_daemons($conf);
+
+# Now the fun starts
+start_cluster($conf, "cman");
+sleep 2;
+start_cluster($conf, "rgmanager");
+exit(0);
+
+# This will fork to call both nodes at the same time.
+sub start_cluster
+{
+	my ($conf, $daemon) = @_;
+	print __LINE__."; [ DEBUG ] - start_cluster(); daemon: [$daemon]\n" if $conf->{debug};
+	
+	
+	# I need to fork here because the calls won't return until cman
+	# either talks to it's peer or fences it.
+	my $parent_pid = $$;
+	print __LINE__."; [ DEBUG ] - My PID: [$parent_pid]\n" if $conf->{debug};
+	
+	my %pids;
+	
+	defined(my $pid = fork) or die "Can't fork(), error was: $!\n";
+	if ($pid)
+	{
+		# Parent thread; local daemon start
+		$pids{$pid} = 1;
+		print __LINE__."; [ DEBUG ] - Spawned child with PID: [$pid] to start: [$daemon] on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug};
+		if ($conf->{me}{daemon}{$daemon}{rc} eq "3")
+		{
+			# Start the daemon locally.
+			my $fh = IO::Handle->new();
+			my $sc = "$conf->{daemons}{$daemon} start; echo $daemon:\$?";
+			print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+			}
+			$fh->close();
+		}
+		elsif ($conf->{me}{daemon}{$daemon}{rc} eq "0")
+		{
+			print __LINE__."; [ DEBUG ] - Daemon: [$daemon] already running locally.\n" if $conf->{debug};
+		}
+		else
+		{
+			# wtf? 
+		}
+	}
+	else
+	{
+		# Child thread; peer daemon start
+		if ($conf->{peer}{daemon}{$daemon}{rc} eq "3")
+		{
+			# Start needed on the peer.
+			my $fh = IO::Handle->new();
+			my $sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} start; echo $daemon:\\\$?\"";
+			print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+			}
+			$fh->close();
+		}
+		elsif ($conf->{peer}{daemon}{$daemon}{rc} eq "0")
+		{
+			print __LINE__."; [ DEBUG ] - Daemon: [$daemon] already running on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug};
+		}
+		else
+		{
+			# wtf? 
+		}
+		# Kill the child process.
+		exit;
+	}
+	
+	# Now loop until both child processes are dead.
+	# This helps to catch hung children.
+	my $saw_reaped = 0;
+	
+	# If I am here, then I am the parent process and all the child process have
+	# been spawned. I will not enter a while() loop that will exist for however
+	# long the %pids hash has data.
+	while (%pids)
+	{
+		# This is a bit of an odd loop that put's the while()
+		# at the end. It will cycle once per child-exit event.
+		my $pid;
+		do
+		{
+			# 'wait' returns the PID of each child as they
+			# exit. Once all children are gone it returns 
+			# '-1'.
+			$pid = wait;
+			if ($pid < 1)
+			{
+				print __LINE__."; [ DEBUG ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n" if $conf->{debug};
+			}
+			else
+			{
+				print __LINE__."; [ DEBUG ] - Parent process told that child with PID: [$pid] has exited.\n" if $conf->{debug};
+			}
+			
+			# This deletes the just-exited child process' PID from the
+			# %pids hash.
+			delete $pids{$pid};
+			
+			# This counter is a safety mechanism. If I see more PIDs exit
+			# than I spawned, something went oddly and I need to bail.
+			$saw_reaped++;
+			if ($saw_reaped > 2)
+			{
+				print "All children should be gone now but it seems the program went into an infinit loop.\n";
+				exit(3);
+			}
+		}
+		while $pid > 0;	# This re-enters the do() loop for as
+				# long as the PID returned by wait()
+				# was >0.
+	}
+	
+	return(0);
+}
+
+sub get_daemon_state
+{
+	my ($conf, $daemon, $node) = @_;
+	print __LINE__."; [ DEBUG ] - get_daemon_state(); daemon: [$daemon], node: [$node]\n" if $conf->{debug};
+	
+#	   $sc .= "/etc/init.d/rgmanager status; echo an-sve:rgmanager:\\\$?; ";
+
+	# Return code:
+	# 0   == Started
+	# 1   == Bad call
+	# 3   == Stopped
+	# 127 == File not found
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{daemons}{$daemon} status; echo $daemon:\$?";
+	if ($node eq "peer")
+	{
+		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} status; echo $daemon:\\\$?\"";
+	}
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /$daemon:(\d+)/)
+		{
+			$conf->{$node}{daemon}{$daemon}{rc} = $1;
+			print __LINE__."; [ DEBUG ] - ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}]\n" if $conf->{debug};
+		}
+		elsif ($line =~ /No such file or directory/)
+		{
+			print "Unable to find daemon script: [$conf->{daemon}{$daemon}] on: [$conf->{nodes}{$node}{hostname}]\n";
+		}
+		else
+		{
+			print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	if (($conf->{$node}{daemon}{$daemon}{rc} ne "0") && ($conf->{$node}{daemon}{$daemon}{rc} ne "3"))
+	{
+		if ($node eq "me")
+		{
+			print "Daemon: [$daemon] is in an unknown state on this node.\n";
+		}
+		else
+		{
+			print "Daemon: [$daemon] is in an unknown state on: [$conf->{nodes}{peer}{hostname}].\n";
+		}
+		print "Status return code was: [$conf->{$node}{daemon}{$daemon}{rc}].\n";
+		print "Only '0' (started) and '3' (stopped) are handled.\n";
+		exit(2);
+	}
+	
+	return($conf->{$node}{daemon}{$daemon}{rc});
+}
+
+sub check_daemons
+{
+	my ($conf) = @_;
+	
+	foreach my $daemon (sort {$a cmp $b} keys %{$conf->{daemons}})
+	{
+		print __LINE__."; [ DEBUG ] - Checking daemon: [$daemon] using: [$conf->{daemons}{$daemon}]\n" if $conf->{debug};
+		get_daemon_state($conf, $daemon, "me");
+		get_daemon_state($conf, $daemon, "peer");
+	}
+	
+	return(0);
+}
+
+sub check_peer_connection
+{
+	my ($conf) = @_;
+	
+	if (not $conf->{nodes}{peer}{hostname})
+	{
+		print "Can't connect to peer, peer host name unknown.\n";
+		exit(1);
+	}
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{echo} 1\"";
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		# I don't care about this output
+		chomp;
+		my $line = $_;
+		if ($line eq "1")
+		{
+			$conf->{nodes}{peer}{reachable} = 1; 
+			print __LINE__."; [ DEBUG ] - nodes::peer_reachable: [$conf->{nodes}{peer}{reachable}]\n" if $conf->{debug};
+		}
+		else
+		{
+			print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	return($conf->{nodes}{peer}{reachable});
+}
+
+sub read_cluster_conf
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{cluster_conf}";
+	print __LINE__."; [ DEBUG ] - File read: [$sc]\n" if $conf->{debug};
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		# I don't care about this output
+		chomp;
+		my $line = $_;
+		#print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug};
+		if ($line =~ /<cluster .*?name="(.*?)"/)
+		{
+			$conf->{cluster}{name} = $1;
+			print __LINE__."; [ DEBUG ] - cluster::name: [$conf->{cluster}{name}]\n" if $conf->{debug};
+		}
+		if ($line =~ /<clusternode .*?name="(.*?)"/)
+		{
+			my $node = $1;
+			if ($node ne $conf->{nodes}{me}{hostname})
+			{
+				# Shorten the names and see if they match.
+				#print __LINE__."; [ DEBUG ] - nodes::me::hostname: [$conf->{nodes}{me}{hostname}], node: [$node]\n" if $conf->{debug};
+				my ($short_hostname) = ($conf->{nodes}{me}{hostname} =~ /^(.*?)\./);
+				my ($short_nodename) = ($node                        =~ /^(.*?)\./);
+				#print __LINE__."; [ DEBUG ] - short_hostname: [$short_hostname], short_nodename: [$short_nodename]\n" if $conf->{debug};
+				if ($short_hostname ne $short_nodename)
+				{
+					$conf->{nodes}{peer}{hostname}   = $node;
+					$conf->{nodes}{peer}{short_name} = $short_nodename;
+					$conf->{nodes}{me}{short_name}   = $short_hostname;
+					print __LINE__."; [ DEBUG ] - nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}], nodes::peer::short_name: [$conf->{nodes}{peer}{short_name}], nodes::me::short_name: [$conf->{nodes}{me}{short_name}]\n" if $conf->{debug};
+				}
+			}
+		}
+		if ($line =~ /<script file="(.*?)"/)
+		{
+			my $script_path = $1;
+			my ($script_name) = ($script_path =~ /.*?\/(\w+)$/);
+			#print __LINE__."; [ DEBUG ] - script_path: [$script_path], script_name: [$script_name]\n" if $conf->{debug};
+			$conf->{daemons}{$script_name} = $script_path;
+			print __LINE__."; [ DEBUG ] - daemons::$script_name: [$conf->{daemons}{$script_name}]\n" if $conf->{debug};
+		}
+		if (($line =~ /<clusterfs /) && ($line =~ /device=/))
+		{
+			my ($device)     = ($line =~ /device="(.*?)"/);
+			my ($mountpoint) = ($line =~ /mountpoint="(.*?)"/);
+			my ($name)       = ($line =~ /name="(.*?)"/);
+			$conf->{cluster}{gfs2}{$name} = {
+				device		=>	$device,
+				mountpoint	=>	$mountpoint,
+			};
+			print __LINE__."; [ DEBUG ] - cluster::gfs2::${name}::device: [$conf->{cluster}{gfs2}{$name}{device}], cluster::gfs2::${name}::mountpoint: [$conf->{cluster}{gfs2}{$name}{mountpoint}]\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+sub read_hostname
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{hostname}";
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		# I don't care about this output
+		chomp;
+		$conf->{nodes}{me}{hostname} = $_;
+		print __LINE__."; [ DEBUG ] - nodes::me::hostname: [$conf->{nodes}{me}{hostname}]\n" if $conf->{debug};
+	}
+	$fh->close();
+	
+	return($conf->{nodes}{me}{hostname});
+}

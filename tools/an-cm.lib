@@ -6844,18 +6844,11 @@ sub compare_new_and_old
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
 	{
 		my $say_var = $conf->{translate}{ipmi}{$key};
-		if ($say_var =~ /iRMC/)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; Host IPMI \"$say_var\" has disappeard!\n");
-			my $subject =  "IPMI sensor lost.";
-			my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
-			send_debug_email($conf, $subject, $body);
-		}
-		else
-		{
-			$changes .= "\nThe IPMI \"$say_var\" value has disappeared!\n";
-			delete $conf->{data}{ipmi}{old}{$key};
-		}
+		record($conf, "$THIS_FILE ".__LINE__."; Host IPMI \"$say_var\" has disappeard!\n");
+		my $subject =  "IPMI sensor lost.";
+		my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
+		delete $conf->{data}{ipmi}{old}{$key};
+		send_debug_email($conf, $subject, $body);
 	}
 	delete $conf->{data}{ipmi}{diff};
 	
