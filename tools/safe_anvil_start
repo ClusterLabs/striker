@@ -9,11 +9,14 @@
 # 0  - OK
 # 1  - Couldn't find peer's host name.
 # 2  - Daemon status returned unhandled return code.
+# 3  - Both nodes have either failed services, badly mounted cluster
+#      filesystems or a combination of the two.
 # 
 
 use strict;
 use warnings;
 use IO::Handle;
+use File::Basename;
 
 my $conf =  {
 	cluster		=>	{
@@ -23,35 +26,48 @@ my $conf =  {
 		cman		=>	"/etc/init.d/cman",
 		rgmanager	=>	"/etc/init.d/rgmanager",
 	},
-	debug		=>	0,
-	exit_after	=>	600,
+	debug		=>	1,
+	failoverdomain	=>	{},
 	path		=>	{
+		clustat		=>	"/usr/sbin/clustat",
 		cluster_conf	=>	"/etc/cluster/cluster.conf",
+		df		=>	"/bin/df",
 		echo		=>	"/bin/echo",
 		hostname	=>	"/bin/hostname",
+		ls		=>	"/bin/ls",
 		ssh		=>	"/usr/bin/ssh",
 	},
 	nodes		=>	{
 		me		=>	{
-			hostname	=>	"",
-			short_name	=>	"",
+			clusterfs	=>	{},
 			daemon		=>	{},
+			healthy		=>	0,	# 0 == not ready, 1 == healthy, 2 == fatal error, won't run Servers.
+			hostname	=>	"",
+			mounts		=>	{},
+			short_name	=>	"",
 		},
 		peer		=>	{
-			hostname	=>	"",
-			short_name	=>	"",
-			reachable	=>	0,
+			clusterfs	=>	{},
 			daemon		=>	{},
+			healthy		=>	0,
+			hostname	=>	"",
+			mounts		=>	{},
+			short_name	=>	"",
 		}
 	},
-	
+	services	=>	{},
+	timeouts	=>	{
+		wait_for_node_health	=>	300,	# number of seconds
+		wait_for_peer		=>	600,	# number of seconds
+	},
+	vms		=>	{},
 };
 
 read_hostname($conf);
 read_cluster_conf($conf);
 ### TODO: Provide an optional max wait time where the wait ends and the peer
 ###       is fenced so that start up can complete.
-for (0..$conf->{exit_after})
+for (0..$conf->{timeouts}{wait_for_peer})
 {
 	last if check_peer_connection($conf);
 	sleep 1;
@@ -60,9 +76,285 @@ check_daemons($conf);
 
 # Now the fun starts
 start_cluster($conf, "cman");
-sleep 2;
+sleep 2;	# This may not be needed, but is here just in case a race
+		# condition is possible.
 start_cluster($conf, "rgmanager");
+
+# Check the health of each node's daemons, clusterfs mounts and services.
+check_node_health($conf);
+
+print "safe_anvil_start completed, exiting.\n";
 exit(0);
+
+# This checks to see if a file is a symlink or not. If so, it returns the
+# target.
+sub check_if_symlink
+{
+	my ($conf, $file, $node) = @_;
+	print __LINE__."; [ DEBUG ] - check_if_symlink(); file: [$file], node: [$node]\n" if $conf->{debug};
+	my $target = "";
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{ls} -l $file";
+	if ($node eq "peer")
+	{
+		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{ls} -l $file\"";
+	}
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+		if ($line =~ /$file\s->\s(.*)/)
+		{
+			$target = $1;
+			print __LINE__."; [ DEBUG ] - target: [$target].\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	if ($target =~ /^\.\.\//)
+	{
+		my $path = dirname $file;
+		print __LINE__."; [ DEBUG ] - file: [$file], path: [$path], target: [$target].\n" if $conf->{debug};
+		while ($target =~ /^\.\.\//)
+		{
+			$path   =  dirname $path;
+			$target =~ s/^\.\.\///;
+			print __LINE__."; [ DEBUG ] - target: [$target], path: [$path].\n" if $conf->{debug};
+		}
+		$target =  $path."/".$target;
+		$target =~ s/\/\//\//g;
+	}
+	
+	print __LINE__."; [ DEBUG ] - target: [$target].\n" if $conf->{debug};
+	return ($target);
+}
+
+# This calls 'clustat' and checks to make sure no services are in a 'failed'
+# state.
+sub check_clustat
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{clustat}";
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+		next if ($line !~ /^\//);
+		if ($line =~ /service:(.*?)\s+(.*?)\s+(.*?)/)
+		{
+			my $service = $1;
+			my $host    = $2;
+			my $state   = $3;
+			print __LINE__."; [ DEBUG ] - service: [$service], host: [$host], state: [$state].\n" if $conf->{debug};
+			$conf->{services}{$service} = {
+				host	=>	$host,
+				'state'	=>	$state
+			};
+			print __LINE__."; [ DEBUG ] - service::${service}::host: [$conf->{services}{$service}{host}], service::${service}::state: [$conf->{services}{$service}{state}].\n" if $conf->{debug};
+		}
+		if ($line =~ /vm:(.*?)\s+(.*?)\s+(.*?)/)
+		{
+			my $name  = $1;
+			my $host  = $2;
+			my $state = $3;
+			print __LINE__."; [ DEBUG ] - name: [$name], host: [$host], state: [$state].\n" if $conf->{debug};
+
+			$conf->{vm}{$name} = {
+				host	=>	$host,
+				'state'	=>	$state,
+			};
+			print __LINE__."; [ DEBUG ] - vm::${name}::host: [$conf->{vm}{$name}{host}], vm::${name}::state: [$conf->{vm}{$name}{'state'}].\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This calls 'df -P' and parses the output.
+sub read_df
+{
+	my ($conf, $node) = @_;
+	print __LINE__."; [ DEBUG ] - read_df(); node: [$node]\n" if $conf->{debug};
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{df} -P";
+	if ($node eq "peer")
+	{
+		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{df} -P\"";
+	}
+	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+		next if ($line !~ /^\//);
+		if ($line =~ /^(\/.*?)\s.*?(\/.*)/)
+		{
+			my $device     = $1;
+			my $mountpoint = $2;
+			print __LINE__."; [ DEBUG ] - device: [$device], mountpoint: [$mountpoint].\n" if $conf->{debug};
+			$conf->{nodes}{$node}{mounts}{$device} = $mountpoint;
+			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}].\n" if $conf->{debug};
+		}
+	}
+	$fh->close();
+	
+	# I need to get the device-mapper name for the mounts, if there is one,
+	# as the LVs behind the gfs2 partitions often display in 'df' 
+	# differently that is listed in cluster.conf'.
+	foreach my $device (sort {$a cmp $b} keys %{$conf->{nodes}{$node}{mounts}})
+	{
+		my $mountpoint = $conf->{nodes}{$node}{mounts}{$device};
+		print __LINE__."; [ DEBUG ] - Checking if: [$device], mounted at: [$mountpoint] is a symlink.\n" if $conf->{debug};
+		my ($target) = check_if_symlink($conf, $device, $node);
+		print __LINE__."; [ DEBUG ] - target: [$target].\n" if $conf->{debug};
+		if ($target)
+		{
+			$conf->{nodes}{$node}{mounts}{$target} = $mountpoint;
+			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${target}: [$conf->{nodes}{$node}{mounts}{$target}].\n" if $conf->{debug};
+		}
+		else
+		{
+			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}, mounted at: [$conf->{nodes}{$node}{mounts}{$device}], is _not_ a symlink.\n" if $conf->{debug};
+		}
+	}
+	
+	return(0);
+}
+
+# This will wait for a period of time waiting for daemons and the gfs2 
+# partition started by rgmanager services to come online. If a daemon is not
+# up after the timeout, or goes into a failed state, the node will not be a 
+# host candidate for VMs. If both start cleanly, further checks of the DRBD 
+# resource(s)'s disk state will be checked in another function.
+sub check_node_health
+{
+	my ($conf) = @_;
+	
+	print __LINE__."; [ DEBUG ] - timeouts::wait_for_node_health: [$conf->{timeouts}{wait_for_node_health}]\n" if $conf->{debug};
+	for (0..$conf->{timeouts}{wait_for_node_health})
+	{
+		check_daemons($conf);
+		read_df($conf, "me");
+		read_df($conf, "peer");
+		check_clustat($conf);
+		
+		$conf->{nodes}{me}{healthy}   = 1;
+		$conf->{nodes}{peer}{healthy} = 1;
+		foreach my $daemon (sort {$a cmp $b} keys %{$conf->{daemons}})
+		{
+			print __LINE__."; [ DEBUG ] - daemon: [$daemon]\n" if $conf->{debug};
+			foreach my $node ("me", "peer")
+			{
+				print __LINE__."; [ DEBUG ] - node: [$node], ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}]\n" if $conf->{debug};
+				if ($conf->{$node}{daemon}{$daemon}{rc} ne "0")
+				{
+					$conf->{nodes}{$node}{healthy} = 0;
+					print __LINE__."; [ DEBUG ] - nodes::${node}::healthy: [$conf->{nodes}{$node}{healthy}]\n" if $conf->{debug};
+				}
+			}
+		}
+		
+		foreach my $clusterfs (sort {$a cmp $b} keys %{$conf->{cluster}{gfs2}})
+		{
+			print __LINE__."; [ DEBUG ] - clusterfs: [$clusterfs]\n" if $conf->{debug};
+			foreach my $node ("me", "peer")
+			{
+				print __LINE__."; [ DEBUG ] - node: [$node], cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]\n" if $conf->{debug};
+				my $device     = $conf->{cluster}{gfs2}{$clusterfs}{device};
+				my $mountpoint = $conf->{cluster}{gfs2}{$clusterfs}{mountpoint};
+				print __LINE__."; [ DEBUG ] - device: [$device], mountpoint: [$mountpoint]\n" if $conf->{debug};
+				my ($target) = check_if_symlink($conf, $device, $node);
+				if ($target)
+				{
+					my $old_device = $device;
+					$device        = $target;
+					$conf->{cluster}{gfs2}{$clusterfs}{device} = $target;
+					print __LINE__."; [ DEBUG ] - Adapting device to symlink target; cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], was: [$old_device].\n" if $conf->{debug};
+				}
+				
+				print __LINE__."; [ DEBUG ] - node: [$node], device: [$device].\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug};
+				if (not exists $conf->{nodes}{$node}{mounts}{$device})
+				{
+					print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device} not mounted.\n" if $conf->{debug};
+					$conf->{nodes}{$node}{healthy} = 0;
+				}
+				elsif ($conf->{nodes}{$node}{mounts}{$device} eq $conf->{cluster}{gfs2}{$clusterfs}{mountpoint})
+				{
+					print __LINE__."; [ DEBUG ] - clusterfs: [$clusterfs] mounted properly: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug};
+				}
+				else
+				{
+					print __LINE__."; [ DEBUG ] - Unexpected mount point! nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], expected: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug};
+					$conf->{nodes}{$node}{healthy} = 2;
+				}
+			}
+		}
+		foreach my $service (sort {$a cmp $b} keys %{$conf->{services}})
+		{
+			print __LINE__."; [ DEBUG ] - services::${service}::state: [$conf->{services}{$service}{'state'}], host: [$conf->{services}{$service}{host}], my host name: [$conf->{nodes}{me}{hostname}], peer's host name: [$conf->{nodes}{peer}{hostname}] \n" if $conf->{debug};
+			my $node = $conf->{services}{$service}{host} eq $conf->{nodes}{me}{hostname} ? "me" : "peer";
+			if ($conf->{services}{$service}{'state'} eq "failed")
+			{
+				print __LINE__."; [ DEBUG ] - Service: [$service] on host: [$conf->{services}{$service}{'state'}] is 'failed'. Marking node: [$conf->{nodes}{$node}{hostname} ($node)] as unhealthy.\n" if $conf->{debug};
+				$conf->{nodes}{$node}{healthy} = 2;
+			}
+			elsif ($conf->{services}{$service}{'state'} eq "started")
+			{
+				print __LINE__."; [ DEBUG ] - Service: [$service] started on host: [$conf->{services}{$service}{host}].\n" if $conf->{debug};
+			}
+			else
+			{
+				#print __LINE__."; [ DEBUG ] - Service: [$service] is in state: [$conf->{services}{$service}{'state'}].\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ] - Service: [$service] is in state: [$conf->{services}{$service}{'state'}].\n";
+				$conf->{nodes}{$node}{healthy} = 0;
+			}
+		}
+		
+		print __LINE__."; [ DEBUG ] - Node health; nodes::me::healthy: [$conf->{nodes}{me}{healthy}], nodes::peer::healthy: [$conf->{nodes}{peer}{healthy}].\n" if $conf->{debug};
+		if (($conf->{nodes}{me}{healthy} == 1) && ($conf->{nodes}{peer}{healthy} == 1))
+		{
+			print __LINE__."; [ DEBUG ] - Both nodes appear to be healthy now.\n" if $conf->{debug};
+			last;
+		}
+		elsif (($conf->{nodes}{me}{healthy} == 1) && ($conf->{nodes}{peer}{healthy} == 2))
+		{
+			print __LINE__."; [ DEBUG ] - I am healthy, but my peer is not. Exiting the health check.\n" if $conf->{debug};
+			last;
+		}
+		elsif (($conf->{nodes}{me}{healthy} == 2) && ($conf->{nodes}{peer}{healthy} == 1))
+		{
+			print __LINE__."; [ DEBUG ] - My peer is healthy, but I am not. Exiting the health check.\n" if $conf->{debug};
+			last;
+		}
+		elsif (($conf->{nodes}{me}{healthy} == 2) && ($conf->{nodes}{peer}{healthy} == 2))
+		{
+			print __LINE__."; [ DEBUG ] - Both nodes have critical issues and can not proceed.\n" if $conf->{debug};
+			print "Both nodes are in a failed state. Unable to proceed.\n";
+			exit(3);
+		}
+		sleep 1;
+	}
+	if (($conf->{nodes}{me}{healthy} != 1) && ($conf->{nodes}{peer}{healthy} != 1))
+	{
+		print __LINE__."; [ DEBUG ] - Hit the timeout waiting for the nodes to become healthy.\n" if $conf->{debug};
+	}
+
+	return(0);
+}
 
 # This will fork to call both nodes at the same time.
 sub start_cluster
@@ -70,73 +362,69 @@ sub start_cluster
 	my ($conf, $daemon) = @_;
 	print __LINE__."; [ DEBUG ] - start_cluster(); daemon: [$daemon]\n" if $conf->{debug};
 	
-	
 	# I need to fork here because the calls won't return until cman
 	# either talks to it's peer or fences it.
 	my $parent_pid = $$;
-	print __LINE__."; [ DEBUG ] - My PID: [$parent_pid]\n" if $conf->{debug};
+	print __LINE__."; [ DEBUG ($$) ] - Parent PID: [$parent_pid]\n" if $conf->{debug};
 	
 	my %pids;
-	
 	defined(my $pid = fork) or die "Can't fork(), error was: $!\n";
 	if ($pid)
 	{
-		# Parent thread; local daemon start
+		# Parent
 		$pids{$pid} = 1;
-		print __LINE__."; [ DEBUG ] - Spawned child with PID: [$pid] to start: [$daemon] on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug};
+		print __LINE__."; [ DEBUG ($$) - Parent ] - Spawned child with PID: [$pid] to start: [$daemon] on: [$conf->{nodes}{me}{hostname}].\n" if $conf->{debug};
+		print __LINE__."; [ DEBUG ($$) - Parent ] - me::daemon::${daemon}::rc: [$conf->{me}{daemon}{$daemon}{rc}].\n" if $conf->{debug};
 		if ($conf->{me}{daemon}{$daemon}{rc} eq "3")
 		{
 			# Start the daemon locally.
 			my $fh = IO::Handle->new();
 			my $sc = "$conf->{daemons}{$daemon} start; echo $daemon:\$?";
-			print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			print __LINE__."; [ DEBUG ($$) - Parent ] - shell call: [$sc]\n" if $conf->{debug};
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ($$) - Parent ] - line: [$line].\n" if $conf->{debug};
 			}
 			$fh->close();
 		}
 		elsif ($conf->{me}{daemon}{$daemon}{rc} eq "0")
 		{
-			print __LINE__."; [ DEBUG ] - Daemon: [$daemon] already running locally.\n" if $conf->{debug};
+			print __LINE__."; [ DEBUG ($$) - Parent ] - Daemon: [$daemon] already running locally.\n" if $conf->{debug};
 		}
-		else
-		{
-			# wtf? 
-		}
+		print __LINE__."; [ DEBUG ($$) - Parent ] - Parent process: [$pid ($$)] exiting.\n" if $conf->{debug};
 	}
 	else
 	{
-		# Child thread; peer daemon start
+		# Child
+		print __LINE__."; [ DEBUG ($$) - Child ] - Child process continuing.\n" if $conf->{debug};
+		print __LINE__."; [ DEBUG ($$) - Child ] - peer::daemon::${daemon}::rc: [$conf->{peer}{daemon}{$daemon}{rc}].\n" if $conf->{debug};
 		if ($conf->{peer}{daemon}{$daemon}{rc} eq "3")
 		{
 			# Start needed on the peer.
 			my $fh = IO::Handle->new();
 			my $sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} start; echo $daemon:\\\$?\"";
-			print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug};
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			print __LINE__."; [ DEBUG ($$) - Child ] - shell call: [$sc]\n" if $conf->{debug};
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ($$) - Child ] - line: [$line].\n" if $conf->{debug};
 			}
 			$fh->close();
 		}
 		elsif ($conf->{peer}{daemon}{$daemon}{rc} eq "0")
 		{
-			print __LINE__."; [ DEBUG ] - Daemon: [$daemon] already running on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug};
+			print __LINE__."; [ DEBUG ($$) - Child ] - Daemon: [$daemon] already running on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug};
 		}
-		else
-		{
-			# wtf? 
-		}
-		# Kill the child process.
+		sleep 1;	# This probably isn't needed.
+		print __LINE__."; [ DEBUG ($$) - Child ] - Child process exiting.\n" if $conf->{debug};
 		exit;
 	}
+	print __LINE__."; [ DEBUG ($$) ] - Done fork()ing.\n" if $conf->{debug};
 	
 	# Now loop until both child processes are dead.
 	# This helps to catch hung children.
@@ -158,11 +446,11 @@ sub start_cluster
 			$pid = wait;
 			if ($pid < 1)
 			{
-				print __LINE__."; [ DEBUG ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ($$) ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n" if $conf->{debug};
 			}
 			else
 			{
-				print __LINE__."; [ DEBUG ] - Parent process told that child with PID: [$pid] has exited.\n" if $conf->{debug};
+				print __LINE__."; [ DEBUG ($$) ] - Parent process told that child with PID: [$pid] has exited.\n" if $conf->{debug};
 			}
 			
 			# This deletes the just-exited child process' PID from the
@@ -182,6 +470,7 @@ sub start_cluster
 				# long as the PID returned by wait()
 				# was >0.
 	}
+	print __LINE__."; [ DEBUG ($$) ] - Done watching child processes.\n" if $conf->{debug};
 	
 	return(0);
 }
@@ -190,8 +479,6 @@ sub get_daemon_state
 {
 	my ($conf, $daemon, $node) = @_;
 	print __LINE__."; [ DEBUG ] - get_daemon_state(); daemon: [$daemon], node: [$node]\n" if $conf->{debug};
-	
-#	   $sc .= "/etc/init.d/rgmanager status; echo an-sve:rgmanager:\\\$?; ";
 
 	# Return code:
 	# 0   == Started
@@ -296,6 +583,7 @@ sub read_cluster_conf
 {
 	my ($conf) = @_;
 	
+	my $in_domain = "";
 	my $fh = IO::Handle->new();
 	my $sc = "$conf->{path}{cluster_conf}";
 	print __LINE__."; [ DEBUG ] - File read: [$sc]\n" if $conf->{debug};
@@ -305,11 +593,12 @@ sub read_cluster_conf
 		# I don't care about this output
 		chomp;
 		my $line = $_;
-		#print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug};
+		print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug};
 		if ($line =~ /<cluster .*?name="(.*?)"/)
 		{
 			$conf->{cluster}{name} = $1;
 			print __LINE__."; [ DEBUG ] - cluster::name: [$conf->{cluster}{name}]\n" if $conf->{debug};
+			next;
 		}
 		if ($line =~ /<clusternode .*?name="(.*?)"/)
 		{
@@ -329,6 +618,7 @@ sub read_cluster_conf
 					print __LINE__."; [ DEBUG ] - nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}], nodes::peer::short_name: [$conf->{nodes}{peer}{short_name}], nodes::me::short_name: [$conf->{nodes}{me}{short_name}]\n" if $conf->{debug};
 				}
 			}
+			next;
 		}
 		if ($line =~ /<script file="(.*?)"/)
 		{
@@ -337,18 +627,61 @@ sub read_cluster_conf
 			#print __LINE__."; [ DEBUG ] - script_path: [$script_path], script_name: [$script_name]\n" if $conf->{debug};
 			$conf->{daemons}{$script_name} = $script_path;
 			print __LINE__."; [ DEBUG ] - daemons::$script_name: [$conf->{daemons}{$script_name}]\n" if $conf->{debug};
+			next;
 		}
 		if (($line =~ /<clusterfs /) && ($line =~ /device=/))
 		{
 			my ($device)     = ($line =~ /device="(.*?)"/);
 			my ($mountpoint) = ($line =~ /mountpoint="(.*?)"/);
-			my ($name)       = ($line =~ /name="(.*?)"/);
-			$conf->{cluster}{gfs2}{$name} = {
+			my ($clusterfs)  = ($line =~ /name="(.*?)"/);
+			$conf->{cluster}{gfs2}{$clusterfs} = {
 				device		=>	$device,
 				mountpoint	=>	$mountpoint,
 			};
-			print __LINE__."; [ DEBUG ] - cluster::gfs2::${name}::device: [$conf->{cluster}{gfs2}{$name}{device}], cluster::gfs2::${name}::mountpoint: [$conf->{cluster}{gfs2}{$name}{mountpoint}]\n" if $conf->{debug};
+			print __LINE__."; [ DEBUG ] - cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]\n" if $conf->{debug};
+			next;
 		}
+		if ($line =~ /<vm /)
+		{
+			#<vm domain="primary_n01" name="vm07-rhel6"
+			my ($name)       =  ($line =~ / name="(.*?)"/);
+			my ($domain)     =  ($line =~ / domain="(.*?)"/);
+			my ($definition) =  ($line =~ / path="(.*?)"/);
+			$definition      .= "/${name}.xml";
+			$definition      =~ s/\/\//\//g;
+			$conf->{vm}{$name}{domain}     = $domain;
+			$conf->{vm}{$name}{definition} = $definition;
+			print __LINE__."; [ DEBUG ] - vm::${name}::domain: [$conf->{vm}{$name}{domain}], vm::${name}::definition: [$conf->{vm}{$name}{definition}]\n" if $conf->{debug};
+			next;
+		}
+		if ($line =~ /<failoverdomain .*?name="(.*?)"/)
+		{
+			$in_domain = $1;
+			print __LINE__."; [ DEBUG ] - in_domain: [$in_domain]\n" if $conf->{debug};
+			next;
+		}
+		if ($in_domain)
+		{
+			if ($line =~ /<\/failoverdomain>/)
+			{
+				$in_domain = "";
+				print __LINE__."; [ DEBUG ] - Exiting domain; in_domain: [$in_domain]\n" if $conf->{debug};
+				next;
+			}
+			else
+			{
+				if ($line =~ /<failoverdomainnode /)
+				{
+					my ($node)     = ($line =~ / name="(.*?)"/);
+					my ($priority) = ($line =~ / priority="(.*?)"/);
+					   $priority   = 99 if not $priority;
+					$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node} = $node;
+					print __LINE__."; [ DEBUG ] - failoverdomain::${in_domain}::priority::${priority}::node: [$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node}]\n" if $conf->{debug};
+					next;
+				}
+			}
+		}
+		
 	}
 	$fh->close();
 	
