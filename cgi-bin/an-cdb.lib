@@ -2241,6 +2241,10 @@ sub process_task
 	{
 		manage_vm($conf);
 	}
+	elsif ($conf->{cgi}{task} eq "display_health")
+	{
+		display_node_health($conf);
+	}
 	else
 	{
 		print "<pre>\n";
@@ -2250,6 +2254,99 @@ sub process_task
 		}
 		print "</pre>";
 	}
+	
+	return(0);
+}
+
+# This reads the sensor values of a given node and displays them. Some sensors
+# will be controllable; like failing/adding a hard drive.
+sub display_node_health
+{
+	my ($conf) = @_;
+	
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Storage - Status and Controls</b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+";
+	get_storage_data($conf, $node);
+	print "
+		</td>
+	</tr>
+</table>
+<br />
+";
+
+	return(0);
+}
+
+# This determines what kind of storage the user has and then calls the
+# appropriate function to gather the details.
+sub get_storage_data
+{
+	my ($conf, $node) = @_;
+	
+	$conf->{storage}{is}{lsi}   = "";
+	$conf->{storage}{is}{hp}    = "";
+	$conf->{storage}{is}{mdadm} = "";
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"whereis MegaCli64 hpacucli mdadm\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#print "line: [$line]\n";
+		if ($line =~ /^(.*?):\s(.*)/)
+		{
+			my $program = $1;
+			my $path    = $2;
+			#print "program: [$program], path: [$path]\n";
+			if ($program eq "MegaCli64")
+			{
+				$conf->{storage}{is}{lsi} = $path;
+			}
+			elsif ($program eq "hpacucli")
+			{
+				$conf->{storage}{is}{hp} = $path;
+			}
+			elsif ($program eq "mdadm")
+			{
+				$conf->{storage}{is}{mdadm} = $path;
+			}
+		}
+	}
+	
+	# For now, only LSI is supported.
+	if ($conf->{storage}{is}{lsi})
+	{
+		get_storage_data_lsi($conf, $node);
+	}
+	
+	return(0);
+}
+
+# This uses the 'MegaCli64' program to gather information about the LSI-based
+# storage of a node.
+sub get_storage_data_lsi
+{
+	my ($conf, $node) = @_;
+	
+	print "<pre>\n";
+	print "</pre>\n";
 	
 	return(0);
 }
@@ -7984,239 +8081,6 @@ sub recover_rgmanager
 	return(0);
 }
 
-# This is a new attempt at an interface
-sub display_details2
-{
-	my ($conf) = @_;
-	
-	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	my $rowspan    = 2;
-	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
-	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-	
-	print "
-<table class=\"hidden_table\" align=\"center\" border=\"0\">
-	<tr>
-		<td class=\"td_hidden\">
-			<table width=\"100%\" border=\"0\">
-";
-	
-	# Node header
-	my $node1_class = "highlight_unavailable";
-	if (check_node_daemons($conf, $node1))        { $node1_class = "highlight_good"; }
-	elsif ($conf->{node}{$node1}{up})             { $node1_class = "highlight_warning"; }
-	elsif ($conf->{node}{$node1}{enable_poweron}) { $node1_class = "highlight_ready"; }
-	my $node2_class = "highlight_unavailable";
-	if (check_node_daemons($conf, $node2))        { $node2_class = "highlight_good"; }
-	elsif ($conf->{node}{$node2}{up})             { $node2_class = "highlight_warning"; }
-	elsif ($conf->{node}{$node2}{enable_poweron}) { $node2_class = "highlight_ready"; }
-	print "
-				<tr>
-					<td nowrap=\"nowrap\">
-						<b>Node</b><br />
-						<span class=\"$node1_class\">$node1_long</span>
-					</td>
-					<td nowrap=\"nowrap\">
-						<b>Node</b><br />
-						<span class=\"$node2_class\">$node2_long</span>
-					</td>
-				</tr>
-";
-	
-	# Show the VMs.
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
-	{
-		# Break the name out of the hash key.
-		my ($say_vm) = ($vm =~ /^vm:(.*)/);
-		my $say_power        =  "<span class=\"highlight_unavailable\">--</span>";
-		my $say_reset        =  "<span class=\"highlight_unavailable\">--</span>";
-		my $prefered_host    =  find_prefered_host($conf, $vm);
-		   $prefered_host    =~ s/\..*$//;
-		my $say_migrate      =  "<span class=\"highlight_unavailable\">--</span>";
-		# If it's not running, setup the start button.
-		my $show_on_host;
-		if ($conf->{vm}{$vm}{host})
-		{
-			$say_power   = "S";
-			$say_reset   = "R";
-			$say_migrate = "M";
-			if ($conf->{vm}{$vm}{host} eq $node1_long)
-			{
-				$show_on_host = $node1_long;
-			}
-			elsif ($conf->{vm}{$vm}{host} eq $node2_long)
-			{
-				$show_on_host = $node2_long;
-			}
-		}
-		else
-		{
-			$say_power = "Power Up";
-			$say_reset = "&nbsp;";
-		}
-		if ($show_on_host eq $node1_long)
-		{
-			print "
-				<tr>
-					<td nowrap=\"nowrap\">
-						<span class=\"fixed_width\">$say_vm</span><br />
-						$say_reset &nbsp; $say_power &nbsp; $say_migrate ->
-					</td>
-					<td nowrap=\"nowrap\">
-						<span class=\"highlight_unavailable\">--</span>
-					</td>
-				</tr>
-";
-		}
-		else
-		{
-			print "
-				<tr>
-					<td nowrap=\"nowrap\">
-						<span class=\"highlight_unavailable\">--</span>
-					</td>
-					<td nowrap=\"nowrap\">
-						<span class=\"fixed_width\">$say_vm</span><br />
-						<- $say_migrate &nbsp; $say_power &nbsp; $say_reset
-					</td>
-				</tr>
-";
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
-		
-		# Use the node's short name for the buttons.
-		my $say_start_target     =  $conf->{vm}{$vm}{boot_target};
-		$say_start_target        =~ s/\..*?$//;
-		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
-		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
-		#record($conf, "$THIS_FILE ".__LINE__."; say_start_target: [$say_start_target], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}], start_target_long: [$start_target_long]\n");
-		
-		$prefered_host           =  find_prefered_host($conf, $vm);
-		$prefered_host           =~ s/\..*$//;
-		if ($conf->{vm}{$vm}{boot_target})
-		{
-			$prefered_host = "<span class=\"highlight_ready\">$prefered_host</span>";
-		}
-		else
-		{
-			my $on_host =  $conf->{vm}{$vm}{host};
-			   $on_host =~ s/\..*$//;
-			if ($on_host eq $prefered_host)
-			{
-				$prefered_host = "<span class=\"highlight_good\">$prefered_host</span>";
-			}
-			else
-			{
-				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
-			}
-		}
-		
-		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
-		$say_migration_target    =~ s/\..*?$//;
-		my $migrate_button = "<span class=\"disabled_button\">Migrate</span>";
-		if ($conf->{vm}{$vm}{can_migrate})
-		{
-			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">Migrate to <span class=\"fixed_width_button\">$say_migration_target</span></a>";
-		}
-		my $host_node        = "$conf->{vm}{$vm}{host}";
-		my $stop_button      = "<span class=\"disabled_button\">Power Off</span>";
-		my $force_off_button = "<span class=\"disabled_button\">Force Off</span>";
-		if ($conf->{vm}{$vm}{can_stop})
-		{
-			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
-			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">Orderly Shut Down</a>";
-			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}\" class=\"highlight_dangerous\">Force Off</a>";
-		}
-		my $start_button     = "<span class=\"disabled_button\">Boot Up</span>";
-		if ($conf->{vm}{$vm}{boot_target})
-		{
-			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">Boot Up</a>";
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
-		
-		# I need both nodes up to delete a VM.
-		my $say_delete_button = "<span class=\"disabled_button\">Delete</span>";
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
-		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
-		{
-			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
-		}
-		
-		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
-		if ($conf->{vm}{$vm}{node1_ready} == 2)
-		{
-			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">Running</span>";
-		}
-		elsif ($conf->{vm}{$vm}{node1_ready} == 1)
-		{
-			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_ready\">Ready</span>";
-		}
-		if ($conf->{vm}{$vm}{node2_ready} == 2)
-		{
-			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_good\">Running</span>";
-		}
-		elsif ($conf->{vm}{$vm}{node2_ready} == 1)
-		{
-			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">Ready</span>";
-		}
-		#record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
-# 		print "
-# 	<tr>
-# 		<td>
-# 			<span class=\"fixed_width\">$say_vm</span>
-# 		</td>
-# 		<td>
-# 			$conf->{vm}{$vm}{say_node1}
-# 		</td>
-# 		<td>
-# 			$conf->{vm}{$vm}{say_node2}
-# 		</td>
-# 		<td>
-# 			<span class=\"fixed_width\">$prefered_host</span>
-# 		</td>
-# 		<td>
-# 			$start_button
-# 		</td>
-# 		<td>
-# 			$migrate_button
-# 		</td>
-# 		<td>
-# 			$stop_button
-# 		</td>
-# 		<td>
-# 			$force_off_button
-# 		</td>
-# 		<!-- Disabled in this release
-# 		<td>
-# 			&nbsp;
-# 		</td>
-# 		<td>
-# 			$say_delete_button
-# 		</td>
-# 		-->
-# 	</tr>
-# ";
-	}
-	
-	
-	# Figure out which, if any, power buttons (boot, poweroff and fence) to enable.
-	
-	
-	print "
-			</table>
-		</td>
-	</tr>
-</table>
-<br />
-";
-	return(0);
-}
-
 # This creates the summary page after a cluster has been selected.
 sub display_details
 {
@@ -10032,11 +9896,18 @@ sub display_node_controls
 				$disable_join  = 1;
 			}
 		}
+		
+		# Make the node names click-able to show the hardware states.
+		my $say_node_name = "$conf->{node}{$node}{info}{host_name}";
+# 		if ($conf->{node}{$node}{connected})
+# 		{
+# 			$say_node_name = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name\" target=\"new\">$conf->{node}{$node}{info}{host_name}</a>";
+# 		}
 
 		print "
 	<tr>
 		<td>
-			<span class=\"fixed_width\">$conf->{node}{$node}{info}{host_name}</span>
+			<span class=\"fixed_width\">$say_node_name</span>
 		</td>
 ";
 		if ($rowspan)

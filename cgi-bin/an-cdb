@@ -269,7 +269,6 @@ if ($conf->{cgi}{cluster})
 			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 			scan_cluster($conf);
 			display_details($conf);
-			#display_details2($conf);
 		}
 	}
 }

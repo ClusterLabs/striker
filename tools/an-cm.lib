@@ -6428,17 +6428,17 @@ sub compare_new_and_old
 			if (($say_translation =~ /MEM (\w+)/) && ($new_state eq "ns"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has change!; $old_state, $old_value\t-> $new_state, $new_value.\n");
-				my $subject =  "Memory sensor lost.";
-				my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
-				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
-				send_debug_email($conf, $subject, $body);
+				#my $subject =  "Memory sensor lost.";
+				#my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
+				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				#send_debug_email($conf, $subject, $body);
 			}
 			elsif (($say_translation =~ /iRMC/) && ($old_state eq "--"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has returned!; $new_state, $new_value.\n");
-				my $subject =  "IPMI sensor returned.";
-				my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
-				   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				#my $subject =  "IPMI sensor returned.";
+				#my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
+				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 				send_debug_email($conf, $subject, $body);
 			}
 			else
@@ -6845,10 +6845,10 @@ sub compare_new_and_old
 	{
 		my $say_var = $conf->{translate}{ipmi}{$key};
 		record($conf, "$THIS_FILE ".__LINE__."; Host IPMI \"$say_var\" has disappeard!\n");
-		my $subject =  "IPMI sensor lost.";
-		my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
+		#my $subject =  "IPMI sensor lost.";
+		#my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
+		#send_debug_email($conf, $subject, $body);
 		delete $conf->{data}{ipmi}{old}{$key};
-		send_debug_email($conf, $subject, $body);
 	}
 	delete $conf->{data}{ipmi}{diff};
 	
