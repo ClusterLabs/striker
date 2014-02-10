@@ -304,10 +304,10 @@ sub get_cgi_vars
 			}
 			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
+		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
-	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
 	
 	return (0);
 }

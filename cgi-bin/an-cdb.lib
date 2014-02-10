@@ -2292,7 +2292,7 @@ sub display_node_health
 					</td>
 				</tr>
 				<tr>
-					<td rowspan=\"5\" width=\"128px\">
+					<td rowspan=\"5\" width=\"128px\" style=\"vertical-align: top;\">
 						<img src=\"/img/raid_controller_128x128.png\" border=\"0\">
 					</td>
 					<td class=\"highlight_detail_left\">
@@ -2348,7 +2348,7 @@ sub display_node_health
 		<td>
 			&nbsp;
 		</td>
-		<td>
+		<td colspan=\"2\">
 			<table width=\"100%\">
 				<tr>
 					<td colspan=\"3\">
@@ -2356,7 +2356,7 @@ sub display_node_health
 					</td>
 				</tr>
 				<tr>
-					<td rowspan=\"8\" width=\"128px\">
+					<td rowspan=\"8\" width=\"128px\" style=\"vertical-align: top;\">
 						<img src=\"/img/raid_battery_128x128.png\" border=\"0\">
 					</td>
 					<td class=\"highlight_detail_left\">
@@ -2441,15 +2441,15 @@ sub display_node_health
 		<td>
 			&nbsp;
 		</td>
-		<td>
-			<table width=\"100%\">
+		<td colspan=\"2\">
+			<table width=\"100%\" colspan=\"2\">
 				<tr>
 					<td colspan=\"3\">
 						<b>Logical Disk #$this_logical_disk</b>
 					</td>
 				</tr>
 				<tr>
-					<td rowspan=\"9\" width=\"128px\">
+					<td rowspan=\"9\" width=\"128px\" style=\"vertical-align: top;\">
  						<img src=\"/img/raid_logical-disk_128x128.png\" border=\"0\">
 					</td>
 					<td class=\"highlight_detail_left\">
@@ -2529,12 +2529,19 @@ sub display_node_health
 	</tr>
 ";
 				# Display the drives in this logical disk.
-				foreach my $this_span (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}})
+				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 				{
-					foreach my $this_arm (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}})
+					#print " | |- Enclusure Device ID: [$this_enclosure_device_id]<br />\n";
+					foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 					{
+						my $raw_size_sectors = hex($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
+						my $raw_size_bytes   = ($raw_size_sectors * $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
+						my $say_raw_size     = bytes_to_hr($conf, $raw_size_bytes);
 						print "
 	<tr>
+		<td>
+			&nbsp;
+		</td>
 		<td>
 			&nbsp;
 		</td>
@@ -2542,23 +2549,130 @@ sub display_node_health
 			<table width=\"100%\">
 				<tr>
 					<td colspan=\"3\">
-						<b>Pysical Disk [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id}:$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{slot_number}]</b>
+						<b>Physical Disk [<span class=\"fixed_width\">$this_enclosure_device_id:$this_slot_number</span>]</b>
 					</td>
 				</tr>
 				<tr>
-					<td rowspan=\"9\" width=\"128px\">
- 						<img src=\"/img/hard-drive_128x128.png\" border=\"0\">
+					<td rowspan=\"16\" width=\"128px\" style=\"vertical-align: top;\">
+						<img src=\"/img/hard-drive_128x128.png\" border=\"0\">
 					</td>
 					<td class=\"highlight_detail_left\">
-						Foo:
+						Model:
 					</td>
 					<td class=\"fixed_width_left\">
-";
-						foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}})
-						{
-							print " -> span -> $this_span -> arm -> $this_arm -> $key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{$key}<br />\n";
-						}
-						print "
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						World Wide Number:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						State:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Drive Temperature:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} &deg;C ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} &deg;F)
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Device Type:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Media Error Count:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						\"Other\" Error Count:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Predictive Failure Count:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Raw Drive Size:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_raw_size
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Interface:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Device -> Adapter Speed:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed} -> $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						SAS Address 0:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						SAS Address 01:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Span, Arm, Device ID:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Identify:
+					</td>
+					<td class=\"fixed_width_left\">
+						<a href=\"$conf->{'system'}{cgi_string}&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number\">Turn On</a> - <a href=\"$conf->{'system'}{cgi_string}&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number\">Turn Off</a>
 					</td>
 				</tr>
 			</table>
@@ -2576,12 +2690,6 @@ sub display_node_health
 </table>
 <br />
 ";
-# ";
-# 				foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}})
-# 				{
-# 					print "$key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{$key}<br />\n";
-# 				}
-# 				print "
 
 	return(0);
 }
@@ -2642,7 +2750,7 @@ sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
 	
-	#print "<pre style=\"text-align: left;\">\n";
+	#print "<pre style=\"background: white;\">";
 	
 	# This is used when recording all fields.
 	my $this_adapter = "";
@@ -2941,65 +3049,66 @@ sub get_storage_data_lsi
 			}
 			if ($line =~ /Drive's position: DiskGroup: (\d+), Span: (\d+), Arm: (\d+)/)
 			{
-				$this_disk_group = $1;
-				$this_span       = $2;
-				$this_arm        = $3;
-				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Span: [$this_span], Arm: [$this_arm].\n";
+				### TODO: Confirm that the DiskGroup is the 
+				###       link to the logical disk.
+				$this_logical_disk = $1;
+				$this_span         = $2;
+				$this_arm          = $3;
+				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
 				next;
 			}
 			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_disk_group));
 			
+			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span})
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span} = $this_span;
+			}
+			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm})
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}  = $this_arm;
+			}
+			
 			# Record the slot number.
-			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number})
-			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number} = $this_slot_number;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Slot Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number}]\n";
-			}
-			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id})
-			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id} = $this_enclosure_device_id;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Enclosure Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id}]\n";
-			}
 			
 			if ($line =~ /Device Id\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_id} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_id}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}]\n";
 			}
 			elsif ($line =~ /WWN\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{wwn} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], World Wide Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{wwn}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], World Wide Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn}]\n";
 			}
 			elsif ($line =~ /Sequence Number\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sequence_number} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Sequence Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sequence_number}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sequence Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number}]\n";
 			}
 			elsif ($line =~ /Media Error Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_error_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Media Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_error_count}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Media Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count}]\n";
 			}
 			elsif ($line =~ /Other Error Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{other_error_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Other Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{other_error_count}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Other Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count}]\n";
 			}
 			elsif ($line =~ /Predictive Failure Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{predictive_failure_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Predictive Failure Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{predictive_failure_count}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Predictive Failure Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count}]\n";
 			}
 			elsif ($line =~ /PD Type\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{pd_type} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Physical Disk Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{pd_type}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Physical Disk Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type}]\n";
 			}
 			elsif ($line =~ /Raw Size: .*? \[0x(.*?) Sectors\]/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{raw_sector_count_in_hex} = "0x".$1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Raw Sector Count in Hex: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{raw_sector_count_in_hex}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex} = "0x".$1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Raw Sector Count in Hex: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex}]\n";
 			}
 			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
 			{
@@ -3012,63 +3121,63 @@ sub get_storage_data_lsi
 				{
 					$sector_size = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} : 512;
 				}
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sector_size} = $sector_size ? $sector_size : 512;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Sector Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sector_size}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size} = $sector_size ? $sector_size : 512;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sector Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size}]\n";
 			}
 			elsif ($line =~ /Firmware state\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{firmware_state} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Firmware-Reported State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{firmware_state}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Firmware-Reported State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}]\n";
 			}
 			elsif ($line =~ /SAS Address\(0\)\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_0} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SAS Address, Port #0: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_0}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #0: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0}]\n";
 			}
 			elsif ($line =~ /SAS Address\(1\)\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_1} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SAS Address, Port #1: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_1}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #1: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1}]\n";
 			}
 			elsif ($line =~ /Connected Port Number\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{connected_port_number} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Connected Port Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{connected_port_number}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Connected Port Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number}]\n";
 			}
 			elsif ($line =~ /Inquiry Data\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{inquiry_data} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Data: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{inquiry_data}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Drive Data: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data}]\n";
 			}
 			elsif ($line =~ /Device Speed\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_speed} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Device Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_speed}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Device Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed}]\n";
 			}
 			elsif ($line =~ /Link Speed\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{link_speed} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Link Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{link_speed}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Link Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed}]\n";
 			}
 			elsif ($line =~ /Media Type\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_type} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Media Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_type}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Media Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type}]\n";
 			}
 			elsif ($line =~ /Drive Temperature\s*:\s*(\d+)C \((.*?) F\)/)
 			{
 				my $temp_c = $1;
 				my $temp_f = $2;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_c} = $temp_c;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_f} = $temp_f;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Temperature (*C): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_c}]\n";
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Temperature (*F): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_f}]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} = $temp_c;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} = $temp_f;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Drive Temperature (*C): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c}]\n";
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Drive Temperature (*F): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f}]\n";
 			}
 			elsif ($line =~ /Drive has flagged a S.M.A.R.T alert\s*:\s*(.*)/)
 			{
 				my $alert = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{smart_alert} = $alert eq "Yes" ? 1 : 0;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SMART Alert: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{smart_alert} ($alert)]\n";
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert} = $alert eq "Yes" ? 1 : 0;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SMART Alert: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert} ($alert)]\n";
 			}
 		}
 		else
@@ -3076,6 +3185,28 @@ sub get_storage_data_lsi
 			die "unknown section!, line: [$line]\n";
 		}
 	}
+	
+	#$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}
+# 	foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+# 	{
+# 		print "Adapter: [$this_adapter]\n";
+# 		foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+# 		{
+# 			print " |- Logical Disk: [$this_logical_disk]\n";
+# 			foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+# 			{
+# 				print " | |- Enclusure Device ID: [$this_enclosure_device_id]\n";
+# 				foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+# 				{
+# 					print " | | |- Slot Number: [$this_slot_number]\n";
+# 					foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}})
+# 					{
+# 						print " | | | |- $key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{$key}\n";
+# 					}
+# 				}
+# 			}
+# 		}
+# 	}
 	#print "</pre>\n";
 	
 	return(0);
