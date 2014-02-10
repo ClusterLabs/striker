@@ -2267,24 +2267,321 @@ sub display_node_health
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-
-	print "
-<table align=\"center\">
-	<tr>
-		<td>
-			<b>Storage - Status and Controls</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-";
+	
 	get_storage_data($conf, $node);
+	
 	print "
+<table align=\"center\" class=\"hidden_table\">
+	<tr>
+		<td colspan=\"3\">
+";
+	
+	# Display results.
+	if ($conf->{storage}{is}{lsi})
+	{
+		foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+		{
+			my $say_bbu   =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is}                        ? "Present" : "Not Installed";
+			my $say_flash =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is}                      ? "Present" : "Not Installed";
+			my $say_restore_hotspare_on_insert = $conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ? "Yes"     : "No";
+			print "
+			<table width=\"100%\">
+				<tr>
+					<td colspan=\"3\">
+						<b>RAID Controller #$this_adapter</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan=\"5\" width=\"128px\">
+						<img src=\"/img/raid_controller_128x128.png\" border=\"0\">
+					</td>
+					<td class=\"highlight_detail_left\">
+						Model:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Cache Size:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Battery Backup (BBU):
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_bbu
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Flash Module:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_flash
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Resore Hot-Spare on Insert:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_restore_hotspare_on_insert
+					</td>
+				</tr>
+			</table>
+			<br />
 		</td>
 	</tr>
+";
+			if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is})
+			{
+				my $say_replace_bbu = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}        ? "Yes" : "No";
+				my $say_learn_cycle = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ? "Yes" : "No";
+				print "
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<table width=\"100%\">
+				<tr>
+					<td colspan=\"3\">
+						<b>Battery Backup Unit</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan=\"8\" width=\"128px\">
+						<img src=\"/img/raid_battery_128x128.png\" border=\"0\">
+					</td>
+					<td class=\"highlight_detail_left\">
+						Model:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name}, $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Battery State:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Capacity (Current / Design):
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} / $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Current Charge:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Replacement Needed:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_replace_bbu
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Learn Cycle Active:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_learn_cycle
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Next Learn Cycle:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Total Drain/Charge Cycles:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count}
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+";
+			}
+			
+			# Show the logical disks now.
+			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+			{
+				next if $this_logical_disk eq "";
+				my $say_bad_blocks =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
+				my $say_size       =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size};
+				   $say_size       =~ s/(\w)B/$1iB/;	# The use 'GB' when it should be 'GiB'.
+				print "
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<table width=\"100%\">
+				<tr>
+					<td colspan=\"3\">
+						<b>Logical Disk #$this_logical_disk</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan=\"9\" width=\"128px\">
+ 						<img src=\"/img/raid_logical-disk_128x128.png\" border=\"0\">
+					</td>
+					<td class=\"highlight_detail_left\">
+						State:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{state}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Bad Blocks Exist:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_bad_blocks
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						RAID Level:
+					</td>
+					<td class=\"fixed_width_left\">
+						<a href=\"https://alteeve.ca/w/RAID_level_5#Level_$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}\" target=\"_new\">$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Size:
+					</td>
+					<td class=\"fixed_width_left\">
+						$say_size
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Number of Drives:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Encryption Type:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Target ID:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						LD Cache Policy:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy}
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_detail_left\">
+						Disk Cache Policy:
+					</td>
+					<td class=\"fixed_width_left\">
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy}
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+";
+				# Display the drives in this logical disk.
+				foreach my $this_span (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}})
+				{
+					foreach my $this_arm (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}})
+					{
+						print "
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<table width=\"100%\">
+				<tr>
+					<td colspan=\"3\">
+						<b>Pysical Disk [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id}:$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{slot_number}]</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan=\"9\" width=\"128px\">
+ 						<img src=\"/img/hard-drive_128x128.png\" border=\"0\">
+					</td>
+					<td class=\"highlight_detail_left\">
+						Foo:
+					</td>
+					<td class=\"fixed_width_left\">
+";
+						foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}})
+						{
+							print " -> span -> $this_span -> arm -> $this_arm -> $key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{span}{$this_span}{arm}{$this_arm}{$key}<br />\n";
+						}
+						print "
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+";
+					}
+				}
+			}
+		}
+	}
+	
+	print "
 </table>
 <br />
 ";
+# ";
+# 				foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}})
+# 				{
+# 					print "$key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{$key}<br />\n";
+# 				}
+# 				print "
 
 	return(0);
 }
@@ -2345,8 +2642,441 @@ sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
 	
-	print "<pre>\n";
-	print "</pre>\n";
+	#print "<pre style=\"text-align: left;\">\n";
+	
+	# This is used when recording all fields.
+	my $this_adapter = "";
+	
+	# Each section's title has an opening and closing line of "==". This is
+	# used to skip the first one.
+	my $skip_equal_sign_bar = 0;
+	
+	# These are used to sort out fields from Hardware Info.
+	my $in_hw_information = 0;
+	my $in_settings       = 0;
+	
+	# This is used for sorting logical disk info.
+	my $this_logical_disk = "";
+	
+	# These are used for sorting physical disks.
+	my $this_enclosure_device_id = "";
+	my $this_slot_number         = "";
+	my $this_disk_group          = "";
+	my $this_span                = "";
+	my $this_arm                 = "";
+	
+	# Now call.
+	my $in_section     = 0;
+	my $megacli64_path = $conf->{storage}{is}{lsi};
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"
+	echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; 
+	echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; 
+	echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; 
+	echo '==] Start physical_disk_info'; $megacli64_path PDList aAll\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#print "line: [$line]\n";
+		next if not $line;
+		if ($line =~ /==] Start (.*)/)
+		{
+			$in_section        = $1;
+			$this_adapter      = "";
+			$this_logical_disk = "";
+			next;
+		}
+		if ($in_section eq "adapter_info")
+		{
+			### TODO: Get the amount of cache allocated to 
+			###       write-back vs. read caching and make it
+			###       adjustable.
+			#print "in_section: [$in_section], line: [$line]\n";
+			if ($line =~ /Adapter #(\d+)/)
+			{
+				$this_adapter = $1;
+				next;
+			}
+			next if $this_adapter eq "";
+			
+			if (($skip_equal_sign_bar) && ($line =~ /^====/))
+			{
+				$skip_equal_sign_bar = 0;
+				#print "LSI Adapter: [$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name}], skip_equal_sign_bar: [$skip_equal_sign_bar]\n";
+				next;
+			}
+			
+			if ($line =~ /Product Name\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name} = $1;
+				#print "LSI Adapter number: [$this_adapter], Controller Description: [$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name}]\n";
+			}
+			
+			# Hardware Configuration values.
+			if ($line eq "HW Configuration")
+			{
+				$in_hw_information   = 1;
+				$skip_equal_sign_bar = 1;
+				#print "LSI Adapter: [$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name}], in_hw_information: [$in_hw_information], skip_equal_sign_bar: [$skip_equal_sign_bar]\n";
+				next
+			}
+			elsif ($in_hw_information)
+			{
+				if ($line =~ /^====/)
+				{
+					$in_hw_information = 0;
+					#print "LSI Adapter: [$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name}], in_hw_information: [$in_hw_information]\n";
+					next
+				}
+				elsif ($line =~ /Memory Size\s*:\s*(.*)/)
+				{
+					$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size} = $1;
+					#print "LSI Adapter number: [$this_adapter], Controller cache_size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size}]\n";
+				}
+				elsif ($line =~ /BBU\s*:\s*(.*)/)
+				{
+					my $bbu_is = $1;
+					$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is} = $bbu_is eq "Present" ? 1 : 0;
+					#print "LSI Adapter number: [$this_adapter], Controller BBU Present? [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is} ($bbu_is)]\n";
+				}
+				elsif ($line =~ /Flash\s*:\s*(.*)/)
+				{
+					my $flash_is = $1;
+					$conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is} = $flash_is eq "Present" ? 1 : 0;
+					#print "LSI Adapter number: [$this_adapter], Controller Flash Present? [$conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is} ($flash_is)]\n";
+				}
+			}
+			
+			# Settings.
+			if ($line eq "Settings")
+			{
+				$in_settings         = 1;
+				$skip_equal_sign_bar = 1;
+				next
+			}
+			elsif ($in_hw_information)
+			{
+				if ($line =~ /^====/)
+				{
+					$in_settings = 0;
+					next
+				}
+				elsif ($line =~ /Restore HotSpare on Insertion\s*:\s*(.*)/)
+				{
+					my $is_enabled = $1;
+					$conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} = $is_enabled eq "Enabled" ? 1 : 0;
+					#print "LSI Adapter number: [$this_adapter], Controller Restore HotSpare on Insertion: [$conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ($is_enabled)]\n";
+				}
+			}
+		}
+		elsif ($in_section eq "bbu_info")
+		{
+			#print "in_section: [$in_section], line: [$line]\n";
+			if ($line =~ /BBU status for Adapter\s*:\s*(\d+)/)
+			{
+				$this_adapter = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU.\n";
+				next;
+			}
+			next if $this_adapter eq "";
+			
+			if ($line =~ /BatteryType\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type}]\n";
+			}
+			elsif ($line =~ /Battery State\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state}]\n";
+			}
+			elsif ($line =~ /Learn Cycle Active\s*:\s*(.*)/)
+			{
+				my $learn_cycle_active = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} = $learn_cycle_active eq "Yes" ? 1 : 0;
+				#print "LSI Adapter number: [$this_adapter], BBU Learn Cycle Active: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ($learn_cycle_active)]\n";
+			}
+			elsif ($line =~ /Pack is about to fail & should be replaced\s*:\s*(.*)/)
+			{
+				my $replace_bbu = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu} = $replace_bbu eq "Yes" ? 1 : 0;
+				#print "LSI Adapter number: [$this_adapter], BBU Should be replaced: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu} ($replace_bbu)]\n";
+			}
+			elsif ($line =~ /Design Capacity\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Design Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity}]\n";
+			}
+			elsif ($line =~ /Remaining Capacity Alarm\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Remaining Capacity Alarm: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm}]\n";
+			}
+			elsif ($line =~ /Cycle Count\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Cycle Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count}]\n";
+			}
+			elsif ($line =~ /Next Learn time\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Next Learn Time: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time}]\n";
+			}
+			elsif ($line =~ /Remaining Capacity\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Remaining Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity}]\n";
+			}
+			elsif ($line =~ /Full Charge Capacity\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Full Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity}]\n";
+			}
+			elsif ($line =~ /Manufacture Name\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name} = $1;
+				#print "LSI Adapter number: [$this_adapter], BBU Manufactore Name: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name}]\n";
+			}
+		}
+		elsif ($in_section eq "logical_disk_info")
+		{
+			#print "in_section: [$in_section], line: [$line]\n";
+			if ($line =~ /Adapter (\d+) -- Virtual Drive Information/)
+			{
+				$this_adapter = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk.\n";
+				next;
+			}
+			next if $this_adapter eq "";
+			
+			if ($line =~ /Virtual Drive: (\d+) \(Target Id: (\d+)\)/)
+			{
+				$this_logical_disk = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id} = $2;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Target ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id}]\n";
+			}
+			next if $this_logical_disk eq "";
+			
+			if ($line =~ /^Size\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size}]\n";
+			}
+			elsif ($line =~ /State\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n";
+			}
+			elsif ($line =~ /Current Cache Policy\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Current Cache Policy: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy}]\n";
+			}
+			elsif ($line =~ /Bad Blocks Exist\s*:\s*(.*)/)
+			{
+				my $bad_blocks = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} = $bad_blocks eq "Yes" ? 1 : 0;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Bad Blocks Exist: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ($bad_blocks)]\n";
+			}
+			elsif ($line =~ /Number Of Drives\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Number of drives: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives}]\n";
+			}
+			elsif ($line =~ /Encryption Type\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Encryption Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type}]\n";
+			}
+			elsif ($line =~ /Disk Cache Policy\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Disk Cache Policy: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy}]\n";
+			}
+			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Sector size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size}]\n";
+			}
+			elsif ($line =~ /RAID Level\s*:\s*Primary-(\d+), Secondary-(\d+), RAID Level Qualifier-(\d+)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}   = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level} = $2;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier}       = $3;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Primary RAID level: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}]\n";
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Secondary RAID level: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level}]\n";
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], RAID Qualifier: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier}]\n";
+			}
+		}
+		elsif ($in_section eq "physical_disk_info")
+		{
+			### TODO: Confirm that 'Disk Group' in fact relates to
+			###       the logical disk ID.
+			#print "in_section: [$in_section], line: [$line]\n";
+			if ($line =~ /Adapter #(\d+)/)
+			{
+				$this_adapter = $1;
+				#print "LSI Adapter number: [$this_adapter], Physical Disk.\n";
+				next;
+			}
+			next if $this_adapter eq "";
+			
+			if ($line =~ /Enclosure Device ID\s*:\s*(\d+)/)
+			{
+				$this_enclosure_device_id = $1;
+				#print "LSI Adapter number: [$this_adapter], Physical Disk, Encluse Device ID: [$this_enclosure_device_id].\n";
+				next;
+			}
+			if ($line =~ /Slot Number\s*:\s*(\d+)/)
+			{
+				$this_slot_number = $1;
+				#print "LSI Adapter number: [$this_adapter], Physical Disk, Slot Number: [$this_slot_number].\n";
+				next;
+			}
+			if ($line =~ /Drive's position: DiskGroup: (\d+), Span: (\d+), Arm: (\d+)/)
+			{
+				$this_disk_group = $1;
+				$this_span       = $2;
+				$this_arm        = $3;
+				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Span: [$this_span], Arm: [$this_arm].\n";
+				next;
+			}
+			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_disk_group));
+			
+			# Record the slot number.
+			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number})
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number} = $this_slot_number;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Slot Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{slot_number}]\n";
+			}
+			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id})
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id} = $this_enclosure_device_id;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Enclosure Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{this_enclosure_device_id}]\n";
+			}
+			
+			if ($line =~ /Device Id\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_id} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_id}]\n";
+			}
+			elsif ($line =~ /WWN\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{wwn} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], World Wide Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{wwn}]\n";
+			}
+			elsif ($line =~ /Sequence Number\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sequence_number} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Sequence Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sequence_number}]\n";
+			}
+			elsif ($line =~ /Media Error Count\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_error_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Media Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_error_count}]\n";
+			}
+			elsif ($line =~ /Other Error Count\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{other_error_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Other Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{other_error_count}]\n";
+			}
+			elsif ($line =~ /Predictive Failure Count\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{predictive_failure_count} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Predictive Failure Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{predictive_failure_count}]\n";
+			}
+			elsif ($line =~ /PD Type\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{pd_type} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Physical Disk Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{pd_type}]\n";
+			}
+			elsif ($line =~ /Raw Size: .*? \[0x(.*?) Sectors\]/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{raw_sector_count_in_hex} = "0x".$1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Raw Sector Count in Hex: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{raw_sector_count_in_hex}]\n";
+			}
+			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
+			{
+				# NOTE: Some drives report 0. If this is the
+				#       case, we'll use the logical disk sector
+				#       size, if available. If not, we'll 
+				#       assume 512 bytes.
+				my $sector_size = $1;
+				if (not $sector_size)
+				{
+					$sector_size = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} : 512;
+				}
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sector_size} = $sector_size ? $sector_size : 512;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Sector Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sector_size}]\n";
+			}
+			elsif ($line =~ /Firmware state\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{firmware_state} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Firmware-Reported State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{firmware_state}]\n";
+			}
+			elsif ($line =~ /SAS Address\(0\)\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_0} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SAS Address, Port #0: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_0}]\n";
+			}
+			elsif ($line =~ /SAS Address\(1\)\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_1} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SAS Address, Port #1: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{sas_address_1}]\n";
+			}
+			elsif ($line =~ /Connected Port Number\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{connected_port_number} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Connected Port Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{connected_port_number}]\n";
+			}
+			elsif ($line =~ /Inquiry Data\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{inquiry_data} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Data: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{inquiry_data}]\n";
+			}
+			elsif ($line =~ /Device Speed\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_speed} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Device Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{device_speed}]\n";
+			}
+			elsif ($line =~ /Link Speed\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{link_speed} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Link Speed: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{link_speed}]\n";
+			}
+			elsif ($line =~ /Media Type\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_type} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Media Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{media_type}]\n";
+			}
+			elsif ($line =~ /Drive Temperature\s*:\s*(\d+)C \((.*?) F\)/)
+			{
+				my $temp_c = $1;
+				my $temp_f = $2;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_c} = $temp_c;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_f} = $temp_f;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Temperature (*C): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_c}]\n";
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], Drive Temperature (*F): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{drive_temp_f}]\n";
+			}
+			elsif ($line =~ /Drive has flagged a S.M.A.R.T alert\s*:\s*(.*)/)
+			{
+				my $alert = $1;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{smart_alert} = $alert eq "Yes" ? 1 : 0;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Span: [$this_span], Arm: [$this_arm], SMART Alert: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_disk_group}{span}{$this_span}{arm}{$this_arm}{smart_alert} ($alert)]\n";
+			}
+		}
+		else
+		{
+			die "unknown section!, line: [$line]\n";
+		}
+	}
+	#print "</pre>\n";
 	
 	return(0);
 }
@@ -9899,10 +10629,10 @@ sub display_node_controls
 		
 		# Make the node names click-able to show the hardware states.
 		my $say_node_name = "$conf->{node}{$node}{info}{host_name}";
-# 		if ($conf->{node}{$node}{connected})
-# 		{
-# 			$say_node_name = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name\" target=\"new\">$conf->{node}{$node}{info}{host_name}</a>";
-# 		}
+		if ($conf->{node}{$node}{connected})
+		{
+			$say_node_name = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name\" target=\"new\">$conf->{node}{$node}{info}{host_name}</a>";
+		}
 
 		print "
 	<tr>

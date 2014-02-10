@@ -52,7 +52,8 @@ td {
 	padding-top: 0px;
 	padding-bottom: 0px;
 /* 	border-spacing: 0px;  */
-	border: 1px solid #d1cfd3;
+/* 	border: 1px solid #d1cfd3; */
+	border-color: 1px solid red;
 }
 
 .legal {
@@ -65,6 +66,12 @@ td {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;
 	color: #1f1f1f;
+}
+.fixed_width_left {
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
+	color: #1f1f1f;
+	text-align: left;
 }
 
 .fixed_width_button {
@@ -82,6 +89,11 @@ td {
 .highlight_detail {
 	color: #13749a;
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+}
+.highlight_detail_left {
+	color: #13749a;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	text-align: left;
 }
 
 .highlight_detail_bold {
@@ -284,4 +296,5 @@ img {
 	margin-left:5px;
 	background:url(images/tt_bottom.gif) top right no-repeat;
 	overflow:hidden;
+}den;
 }

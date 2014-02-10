@@ -6439,7 +6439,7 @@ sub compare_new_and_old
 				#my $subject =  "IPMI sensor returned.";
 				#my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
 				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
-				send_debug_email($conf, $subject, $body);
+				#send_debug_email($conf, $subject, $body);
 			}
 			else
 			{
