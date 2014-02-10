@@ -1250,5 +1250,13 @@ sub read_hostname
 	}
 	$fh->close();
 	
+	# If I am node 02, sleep for 1 minutes to help avoid conflicting with
+	# the startup being performed by node 1.
+	if ($conf->{nodes}{me}{hostname} =~ /n02/)
+	{
+		print " - I am not node 1, so I will sleep for a minute.\n" if $conf->{debug} == 1;
+		sleep 60;
+	}
+	
 	return($conf->{nodes}{me}{hostname});
 }

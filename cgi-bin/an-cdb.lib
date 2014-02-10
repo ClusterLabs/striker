@@ -2274,6 +2274,21 @@ sub display_node_health
 <table align=\"center\" class=\"hidden_table\">
 	<tr>
 		<td colspan=\"3\">
+			<table width=\"100%\">
+				<tr>
+					<td colspan=\"3\">
+						<b><span class=\"fixed_width\">$cluster</span></b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"3\">
+						<br />
+						Status and Managerment of <span class=\"fixed_width\">$node_cluster_name</span>'s Storage<br />
+						<br />
+					</td>
+				</tr>
+			</table>
+			<br />
 ";
 	
 	# Display results.
