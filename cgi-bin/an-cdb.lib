@@ -2243,7 +2243,59 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "display_health")
 	{
-		display_node_health($conf);
+		print "
+<div id=\"hide_when_loaded\">
+<table align=\"center\">
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from $conf->{cgi}{cluster}.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src=\"/img/gather_info.gif\" border=\"0\">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+	";
+		get_storage_data($conf, $conf->{cgi}{node});
+		
+		my $display_details = 1;
+		if ($conf->{cgi}{'do'})
+		{
+			if ($conf->{cgi}{'do'} eq "start_id_disk")
+			{
+				lsi_control_disk_id_led($conf, "start");
+			}
+			elsif ($conf->{cgi}{'do'} eq "stop_id_disk")
+			{
+				lsi_control_disk_id_led($conf, "stop");
+			}
+			elsif ($conf->{cgi}{'do'} eq "make_disk_good")
+			{
+				lsi_control_make_disk_good($conf);
+				get_storage_data($conf, $conf->{cgi}{node});
+			}
+			elsif ($conf->{cgi}{'do'} eq "add_disk_to_array")
+			{
+				lsi_control_add_disk_to_array($conf);
+				get_storage_data($conf, $conf->{cgi}{node});
+			}
+			elsif ($conf->{cgi}{'do'} eq "put_disk_online")
+			{
+				lsi_control_put_disk_online($conf);
+				get_storage_data($conf, $conf->{cgi}{node});
+			}
+			### Prepare Unconfigured drives for removal
+			# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
+
+		}
+		if ($display_details)
+		{
+			display_node_health($conf);
+		}
 	}
 	else
 	{
@@ -2258,6 +2310,333 @@ sub process_task
 	return(0);
 }
 
+# This gets the rebuild status of a drive
+sub lsi_control_get_rebuild_progress
+{
+	my ($conf, $disk_address, $adapter) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_rebuild_progress(); disk_address: [$disk_address], adapter: [$adapter]\n");
+	
+	my $rebuild_percent   = "";
+	my $time_to_complete  = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if (lc($line) =~ /completed (\d+)% in (.*?)\./)
+		{
+			$rebuild_percent  = $1;
+			$time_to_complete = $2;
+		}
+	}
+	$fh->close();
+	
+	return($rebuild_percent, $time_to_complete);
+}
+
+# This puts an "Offline" disk into "Online" state.
+sub lsi_control_put_disk_online
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_online()\n");
+	
+	my $success           = 0;
+	my $return_string     = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$return_string .= "$line<br />\n";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if (lc($line) =~ /started rebuild progress on device/)
+		{
+			$success = 1;
+		}
+	}
+	$fh->close();
+	
+	my $message = "Successfully put the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> online.<br />";
+	if (not $success)
+	{
+		$message =  "Failed to put the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> online.<br />";
+	}
+	$message .= "Message from the controller:<br />\n";
+	$message .= "<span class=\"fixed_width\">$return_string</span>\n";
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<b><span class=\"fixed_width\">Put Physical Disk Online</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			$message<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+
+	return(0);
+}
+
+# This adds an "Unconfigured Good" disk to the specified array.
+sub lsi_control_add_disk_to_array
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_add_disk_to_array()\n");
+	
+	my $success           = 0;
+	my $return_string     = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$return_string .= "$line<br />\n";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ((lc($line) =~ /successfully added the disk/) || (lc($line) =~ /missing pd at array/))
+		{
+			$success = 1;
+		}
+	}
+	$fh->close();
+	
+	my $message = "Successfully added the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> to logical disk <span class=\"highlight_detail\">#$conf->{cgi}{logical_disk}</span>.<br />";
+	if (not $success)
+	{
+		$message =  "Failed to add the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> to logical disk <span class=\"highlight_detail\">#$conf->{cgi}{logical_disk}</span>.<br />";
+	}
+	$message .= "Message from the controller:<br />\n";
+	$message .= "<span class=\"fixed_width\">$return_string</span>\n";
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<b><span class=\"fixed_width\">Add Physical Disk to Logical Disk</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			$message<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	# If successful, put the disk Online.
+	if ($success)
+	{
+		lsi_control_put_disk_online($conf);
+	}
+	
+	return(0);
+}
+
+# This looks ip the missing disk(s) in a given degraded array
+sub lsi_control_get_missing_disks
+{
+	my ($conf, $this_adapter, $this_logical_disk) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_missing_disks(); this_adapter: [$this_adapter] this_logical_disk: [$this_logical_disk]\n");
+	
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if (lc($line) =~ /\d+\s+\d+\s+(\d+)\s(\d+)/)
+		{
+			my $this_row     =  $1;
+			my $minimum_size =  $2;		# This is in MiB and is the cooerced size.
+			   $minimum_size *= 1048576;	# Now it should be in bytes
+			$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} = $minimum_size;
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This tells the controller to make the flagged disk "Good"
+sub lsi_control_make_disk_good
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_good()\n");
+	
+	my $success           = 0;
+	my $return_string     = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$return_string .= "$line<br />\n";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if (lc($line) =~ /state changed to unconfigured-good/)
+		{
+			$success = 1;
+		}
+	}
+	$fh->close();
+	
+	my $message = "Successfully marked the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> as good.<br />";
+	if (not $success)
+	{
+		$message =  "Failed to mark the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> as good.<br />";
+	}
+	$message .= "Message from the controller:<br />\n";
+	$message .= "<span class=\"fixed_width\">$return_string</span>\n";
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<b><span class=\"fixed_width\">Mark Physical Disk as 'Good'</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			$message<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return(0);
+}
+
+# This turns on or off the "locate" LED on the hard drives.
+sub lsi_control_disk_id_led
+{
+	my ($conf, $action) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_disk_id_led(); action: [$action]\n");
+	
+	my $success           = 0;
+	my $return_string     = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $say_action        = "started";
+	if ($action eq "stop")
+	{
+		$say_action = "stopped";
+	}
+	
+	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$return_string .= "$line<br />\n";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if (lc($line) =~ /command was successfully sent to firmware/)
+		{
+			$success = 1;
+		}
+	}
+	$fh->close();
+	
+	my $message =  "Successfully <span class=\"highlight_detail\">$say_action</span> the disk ID LED for <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span>.<br />";
+	if (not $success)
+	{
+		$message =  "Failed to <span class=\"highlight_detail\">${action}</span> the disk ID LED for <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span>.<br />";
+	}
+	$message .= "Message from the controller:<br />\n";
+	$message .= "<span class=\"fixed_width\">$return_string</span>\n";
+	print "
+<table align=\"center\">
+	<tr>
+		<td>
+			<b><span class=\"fixed_width\">Disk ID Call</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			$message<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return ($success);
+}
+
 # This reads the sensor values of a given node and displays them. Some sensors
 # will be controllable; like failing/adding a hard drive.
 sub display_node_health
@@ -2268,8 +2647,6 @@ sub display_node_health
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	get_storage_data($conf, $node);
-	
 	print "
 <table align=\"center\" class=\"hidden_table\">
 	<tr>
@@ -2277,13 +2654,13 @@ sub display_node_health
 			<table width=\"100%\">
 				<tr>
 					<td colspan=\"3\">
-						<b><span class=\"fixed_width\">$cluster</span></b>
+						<b><span class=\"fixed_width\">$cluster - $node_cluster_name</span></b>
 					</td>
 				</tr>
 				<tr>
 					<td colspan=\"3\">
 						<br />
-						Status and Managerment of <span class=\"fixed_width\">$node_cluster_name</span>'s Storage<br />
+						Status and Managerment of <span class=\"highlight_detail\">$node</span>'s Storage<br />
 						<br />
 					</td>
 				</tr>
@@ -2356,8 +2733,13 @@ sub display_node_health
 ";
 			if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is})
 			{
-				my $say_replace_bbu = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}        ? "Yes" : "No";
-				my $say_learn_cycle = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ? "Yes" : "No";
+				my $say_replace_bbu     = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}        ? "Yes" : "No";
+				my $say_learn_cycle     = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ? "Yes" : "No";
+				my $battery_state_class = "highlight_good";
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} ne "Optimal")
+				{
+					$battery_state_class = "highlight_bad";
+				}
 				print "
 	<tr>
 		<td>
@@ -2375,18 +2757,18 @@ sub display_node_health
 						<img src=\"/img/raid_battery_128x128.png\" border=\"0\">
 					</td>
 					<td class=\"highlight_detail_left\">
-						Model:
+						Battery State:
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name}, $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type}
+						<span class=\"$battery_state_class\">$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state}</span>
 					</td>
 				</tr>
 				<tr>
 					<td class=\"highlight_detail_left\">
-						Battery State:
+						Model:
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state}
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name}, $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type}
 					</td>
 				</tr>
 				<tr>
@@ -2451,7 +2833,52 @@ sub display_node_health
 				my $say_bad_blocks =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
 				my $say_size       =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size};
 				   $say_size       =~ s/(\w)B/$1iB/;	# The use 'GB' when it should be 'GiB'.
-				print "
+				my $logical_disk_state_class = "highlight_good";
+				my $say_missing    = "";
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded")
+				{
+					lsi_control_get_missing_disks($conf, $this_adapter, $this_logical_disk);
+					$logical_disk_state_class = "highlight_bad";
+					$say_missing = "<br />";
+					foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
+					{
+						my $say_minimum_size =  bytes_to_hr($conf, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row});
+						$say_missing         .= " - Missing disk in row: [<span class=\"fixed_width\">$this_row</span>], replace with: [$say_minimum_size] or larger.<br />\n";
+					}
+				}
+				
+				if ($this_logical_disk == 9999)
+				{
+					# Unconfigured disks.
+					print "
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan=\"2\">
+			<table width=\"100%\" colspan=\"2\">
+				<tr>
+					<td colspan=\"2\">
+						<b>Unconfigured Physical Disks</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"2\">
+						<br />
+						The physical disks below are not currently a member of any logical disk.<br />
+						<br />
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+";
+				}
+				else
+				{
+					# Real logical disk
+					print "
 	<tr>
 		<td>
 			&nbsp;
@@ -2471,7 +2898,7 @@ sub display_node_health
 						State:
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{state}
+						<span class=\"$logical_disk_state_class\">$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{state}</span> $say_missing
 					</td>
 				</tr>
 				<tr>
@@ -2543,6 +2970,8 @@ sub display_node_health
 		</td>
 	</tr>
 ";
+				}
+				
 				# Display the drives in this logical disk.
 				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 				{
@@ -2552,6 +2981,60 @@ sub display_node_health
 						my $raw_size_sectors = hex($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
 						my $raw_size_bytes   = ($raw_size_sectors * $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
 						my $say_raw_size     = bytes_to_hr($conf, $raw_size_bytes);
+						my $disk_temp_class  = "highlight_good";
+						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 54)
+						{
+							$disk_temp_class = "highlight_dangerous";
+						}
+						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 45)
+						{
+							$disk_temp_class = "highlight_warning";
+						}
+						
+						my $dis_state_class = "highlight_good";
+						my $say_disk_action = "";
+						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
+						{
+							$dis_state_class = "highlight_bad";
+							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">Make Good</a>";
+						}
+						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
+						{
+							$dis_state_class = "highlight_detail";
+							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">Put Online</a>";
+						}
+						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
+						{
+							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($conf, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
+							$dis_state_class = "highlight_warning";
+							$say_disk_action = "<br />Rebuild is <span class=\"highlight_detail\">$rebuild_percent%</span> complete, rebuilding for <span class=\"highlight_detail\">$time_to_complete</span>.";
+						}
+						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun Up")
+						{
+							$dis_state_class = "highlight_detail";
+							foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+							{
+								next if $this_logical_disk eq "";
+								if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded")
+								{
+									foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
+									{
+										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
+										{
+											$say_disk_action =  "<br />\n" if not $say_disk_action;
+											$say_disk_action .= "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk\">Add to Logical Disk #$this_logical_disk</a><br />\n";
+										}
+									}
+								}
+							}
+						}
+						my $say_location_title = "Span, Arm, Device ID:";
+						my $say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
+						if ($this_logical_disk == 9999)
+						{
+							$say_location_title = "Device ID:";
+							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
+						}
 						print "
 	<tr>
 		<td>
@@ -2591,7 +3074,7 @@ sub display_node_health
 						State:
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}
+						<span class=\"$dis_state_class\">$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}</span> $say_disk_action
 					</td>
 				</tr>
 				<tr>
@@ -2599,7 +3082,7 @@ sub display_node_health
 						Drive Temperature:
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} &deg;C ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} &deg;F)
+						<span class=\"$disk_temp_class\">$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} &deg;C ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} &deg;F)</span>
 					</td>
 				</tr>
 				<tr>
@@ -2676,10 +3159,10 @@ sub display_node_health
 				</tr>
 				<tr>
 					<td class=\"highlight_detail_left\">
-						Span, Arm, Device ID:
+						$say_location_title
 					</td>
 					<td class=\"fixed_width_left\">
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}
+						$say_location_body
 					</td>
 				</tr>
 				<tr>
@@ -2687,7 +3170,7 @@ sub display_node_health
 						Identify:
 					</td>
 					<td class=\"fixed_width_left\">
-						<a href=\"$conf->{'system'}{cgi_string}&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number\">Turn On</a> - <a href=\"$conf->{'system'}{cgi_string}&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number\">Turn Off</a>
+						<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">Turn On</a> - <a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">Turn Off</a>
 					</td>
 				</tr>
 			</table>
@@ -2764,7 +3247,6 @@ sub get_storage_data
 sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
-	
 	#print "<pre style=\"background: white;\">";
 	
 	# This is used when recording all fields.
@@ -2788,14 +3270,17 @@ sub get_storage_data_lsi
 	my $this_span                = "";
 	my $this_arm                 = "";
 	
+	# Delete any old data.
+	delete $conf->{storage}{lsi}{adapter};
+	
 	# Now call.
 	my $in_section     = 0;
 	my $megacli64_path = $conf->{storage}{is}{lsi};
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"
-	echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; 
-	echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; 
-	echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; 
-	echo '==] Start physical_disk_info'; $megacli64_path PDList aAll\"";
+	my $sc  = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \" ";
+	   $sc .= "echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; ";
+	   $sc .= "echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
+	   $sc .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
+	   $sc .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll\"";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	my $raw;
@@ -3053,7 +3538,11 @@ sub get_storage_data_lsi
 			if ($line =~ /Enclosure Device ID\s*:\s*(\d+)/)
 			{
 				$this_enclosure_device_id = $1;
-				#print "LSI Adapter number: [$this_adapter], Physical Disk, Encluse Device ID: [$this_enclosure_device_id].\n";
+				# New device, clear the old logical disk, span and arm.
+				$this_logical_disk = "";
+				$this_span         = "";
+				$this_arm          = "";
+				#print "\nLSI Adapter number: [$this_adapter], Physical Disk, Encluse Device ID: [$this_enclosure_device_id].\n";
 				next;
 			}
 			if ($line =~ /Slot Number\s*:\s*(\d+)/)
@@ -3064,19 +3553,29 @@ sub get_storage_data_lsi
 			}
 			if ($line =~ /Drive's position: DiskGroup: (\d+), Span: (\d+), Arm: (\d+)/)
 			{
-				### TODO: Confirm that the DiskGroup is the 
-				###       link to the logical disk.
 				$this_logical_disk = $1;
 				$this_span         = $2;
 				$this_arm          = $3;
+				$this_disk_group   = $this_logical_disk;
 				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
 				next;
 			}
-			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_disk_group));
+			if (($line =~ /Enclosure position: N\/A/) && ($this_logical_disk eq ""))
+			{
+				# This is a disk not yet in any array.
+				$this_logical_disk = "9999";
+				$this_span         = "9999";
+				$this_arm          = "9999";
+				$this_disk_group   = $this_logical_disk;
+				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
+				next;
+			}
+			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_disk_group eq ""));
 			
 			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span})
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span} = $this_span;
+				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
 			}
 			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm})
 			{
@@ -3200,28 +3699,6 @@ sub get_storage_data_lsi
 			die "unknown section!, line: [$line]\n";
 		}
 	}
-	
-	#$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}
-# 	foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
-# 	{
-# 		print "Adapter: [$this_adapter]\n";
-# 		foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
-# 		{
-# 			print " |- Logical Disk: [$this_logical_disk]\n";
-# 			foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
-# 			{
-# 				print " | |- Enclusure Device ID: [$this_enclosure_device_id]\n";
-# 				foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
-# 				{
-# 					print " | | |- Slot Number: [$this_slot_number]\n";
-# 					foreach my $key (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}})
-# 					{
-# 						print " | | | |- $key -> $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{$key}\n";
-# 					}
-# 				}
-# 			}
-# 		}
-# 	}
 	#print "</pre>\n";
 	
 	return(0);

@@ -157,6 +157,10 @@ sub header
 		{
 			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 		}
+		elsif ($conf->{cgi}{task} eq "display_health")
+		{
+			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&vm=$conf->{cgi}{vm}&task=display_health\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+		}
 	}
 	else
 	{
