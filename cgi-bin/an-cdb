@@ -59,6 +59,7 @@ my $conf={
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
 		fence_ipmilan		=>	"/sbin/fence_ipmilan",
 		gethostip		=>	"/bin/gethostip",
+		'grep'			=>	"/bin/grep",
 		ifconfig		=>	"/sbin/ifconfig",
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",

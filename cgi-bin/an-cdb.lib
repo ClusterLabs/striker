@@ -2268,10 +2268,12 @@ sub process_task
 			if ($conf->{cgi}{'do'} eq "start_id_disk")
 			{
 				lsi_control_disk_id_led($conf, "start");
+				get_storage_data($conf, $conf->{cgi}{node});
 			}
 			elsif ($conf->{cgi}{'do'} eq "stop_id_disk")
 			{
 				lsi_control_disk_id_led($conf, "stop");
+				get_storage_data($conf, $conf->{cgi}{node});
 			}
 			elsif ($conf->{cgi}{'do'} eq "make_disk_good")
 			{
@@ -3035,6 +3037,14 @@ sub display_node_health
 							$say_location_title = "Device ID:";
 							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						}
+						my $disk_icon  = "/img/hard-drive_128x128.png";
+						my $id_led_url = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
+						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
+						{
+							$disk_icon  = "/img/hard-drive-with-led_128x128.png";
+							$id_led_url = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
+						}
 						print "
 	<tr>
 		<td>
@@ -3052,7 +3062,7 @@ sub display_node_health
 				</tr>
 				<tr>
 					<td rowspan=\"16\" width=\"128px\" style=\"vertical-align: top;\">
-						<img src=\"/img/hard-drive_128x128.png\" border=\"0\">
+						<a href=\"$id_led_url\"><img src=\"$disk_icon\" border=\"0\"></a>
 					</td>
 					<td class=\"highlight_detail_left\">
 						Model:
@@ -3247,7 +3257,7 @@ sub get_storage_data
 sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
-	#print "<pre style=\"background: white;\">";
+# 	print "<pre style=\"background: white;\">";
 	
 	# This is used when recording all fields.
 	my $this_adapter = "";
@@ -3273,6 +3283,10 @@ sub get_storage_data_lsi
 	# Delete any old data.
 	delete $conf->{storage}{lsi}{adapter};
 	
+	# This is set to 1 once all the discovered physical drives have been
+	# found and their ID LED statuses set to '0'.
+	my $initial_led_state_set = 0;
+	
 	# Now call.
 	my $in_section     = 0;
 	my $megacli64_path = $conf->{storage}{is}{lsi};
@@ -3280,7 +3294,8 @@ sub get_storage_data_lsi
 	   $sc .= "echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; ";
 	   $sc .= "echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
 	   $sc .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
-	   $sc .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll\"";
+	   $sc .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
+	   $sc .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \\\"PD Locate\\\" /root/MegaSAS.log;\"";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	my $raw;
@@ -3694,12 +3709,88 @@ sub get_storage_data_lsi
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SMART Alert: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert} ($alert)]\n";
 			}
 		}
+		elsif ($in_section eq "pd_id_led_state")
+		{
+			### TODO: Verify this catches/tracks unconfigured PDs.
+			# Assume all physical drives have their ID LEDs off.
+			# Not great, but there is no way to check the state
+			# directly.
+			if (not $initial_led_state_set)
+			{
+				$initial_led_state_set = 1;
+				foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+				{
+					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+					{
+						foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+						{
+							foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+							{
+								$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = 0;
+								#print ">> storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::enclosure_device_id::${this_enclosure_device_id}::slot_number::${this_slot_number}::id_led_lit: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+								#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], id_led_lit: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+							}
+						}
+					}
+				}
+			}
+			$line = lc($line);
+			$this_adapter             = "";
+			$this_logical_disk        = "";
+			$this_enclosure_device_id = "";
+			$this_slot_number         = "";
+			my $this_action           = "";
+			my $set_state             = "";
+			#print "line: [$line]\n";
+			if ($line =~ /adapter: (\d+): device at enclid-(\d+) slotid-(\d+) -- pd locate (.*?) command was successfully sent to firmware/)
+			{
+				$this_adapter             = $1;
+				$this_enclosure_device_id = $2;
+				$this_slot_number         = $3;
+				$this_action              = $4;
+				$set_state                = $this_action eq "start" ? 1 : 0;
+				#print "this_adapter: [$this_adapter], this_enclosure_device_id: [$this_enclosure_device_id], this_slot_number: [$this_slot_number], this_action: [$this_action], set_state: [$set_state]\n";
+			}
+			#print "this_adapter: [$this_adapter], this_enclosure_device_id: [$this_enclosure_device_id], this_slot_number: [$this_slot_number], this_action: [$this_action], set_state: [$set_state]\n";
+			if ($this_adapter ne "")
+			{
+				# the log doesn't reference the disk's logic
+				# drive, so we loop through all looking for a
+				# match.
+				foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+				{
+					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+					{
+						if (exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
+						{
+							$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = $set_state;
+							#print "Set State: LSI Adapter number: [$this_adapter], Logical Disk: [$this_disk_group], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], id_led_lit: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+						}
+					}
+				}
+			}
+		}
 		else
 		{
 			die "unknown section!, line: [$line]\n";
 		}
 	}
-	#print "</pre>\n";
+	
+	# This is purely debug to show the status of the drive LEDs.
+# 	foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+# 	{
+# 		foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+# 		{
+# 			foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+# 			{
+# 				foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+# 				{
+# 					print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+# 				}
+# 			}
+# 		}
+# 	}
+# 	print "</pre>\n";
 	
 	return(0);
 }
