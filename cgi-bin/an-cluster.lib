@@ -159,7 +159,7 @@ sub header
 		}
 		elsif ($conf->{cgi}{task} eq "display_health")
 		{
-			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&vm=$conf->{cgi}{vm}&task=display_health\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 		}
 	}
 	else
@@ -256,7 +256,7 @@ sub footer
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
-			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2013<br />
+			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2014<br />
 			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
 			</span>
 		</td>
@@ -723,20 +723,20 @@ sub post_scan_calculations
 		# Record this node's RAM and CPU as the maximum available if
 		# the max cores and max ram is 0 or greater than that on this
 		# node.
-		record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
 		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
 		
 		# Set by meminfo, if less (needed to catch mirrored RAM)
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
 		if ($conf->{node}{$node}{hardware}{meminfo}{memtotal} < $conf->{resources}{total_ram})
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
 		}
 		
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");

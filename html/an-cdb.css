@@ -157,6 +157,12 @@ td {
 	font-style: italic;
 }
 
+.highlight_dangerous_bold {
+	color: #a60a0a;
+	font-style: italic;
+	font-weight: bold;
+}
+
 .highlight_unavailable {
 	color: #7f7f7f;
 }
