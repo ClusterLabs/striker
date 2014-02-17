@@ -978,6 +978,12 @@ sub start_daemon_simultaneously
 	print __LINE__."; [ DEBUG ($$) ] - Done watching child processes.\n" if $conf->{debug} == 2;
 	print "   - done!\n" if $conf->{debug} == 1;
 	
+	if ($daemon eq "rgmanager")
+	{
+		print __LINE__."; [ DEBUG ] - rgmanager started, sleeping for a minute.\n" if $conf->{debug} == 2;
+		sleep 60;
+	}
+	
 	return(0);
 }
 
