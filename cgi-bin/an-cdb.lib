@@ -3329,7 +3329,7 @@ sub display_node_health
 				</tr>
 				<tr>
 					<td class=\"highlight_detail_left\">
-						Resore Hot-Spare on Insert:
+						Restore Hot-Spare on Insert:
 					</td>
 					<td class=\"fixed_width_left\">
 						$say_restore_hotspare_on_insert
@@ -3749,7 +3749,7 @@ sub display_node_health
 				</tr>
 				<tr>
 					<td class=\"highlight_detail_left\">
-						Identify:
+						Identify Light:
 					</td>
 					<td class=\"fixed_width_left\">
 						<a href=\"$id_led_url\">$say_identify</a>
@@ -7376,7 +7376,7 @@ sub confirm_start_vm
 		<td>
 			<br />
 			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be booted on cluster node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span>.<br />
-			The node was selected because it is either the prefered host or the only host ready to run this VM.<br />
+			The node was selected because it is either the preferred host or the only host ready to run this VM.<br />
 			<br />
 		</td>
 	</tr>
@@ -11272,6 +11272,7 @@ sub check_vms
 	return (0);
 }
 
+### NOTE: Yes, I know 'prefered' is spelled wrong...
 # This looks through the failover domain for a VM and returns the prefered host.
 sub find_prefered_host
 {
@@ -11348,7 +11349,7 @@ sub display_vm_state_and_controls
 			<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>
 		</td>
 		<td>
-			Prefered Host
+			Preferred Host
 		</td>
 		<td colspan=\"6\">
 			<i>Controls</i>
