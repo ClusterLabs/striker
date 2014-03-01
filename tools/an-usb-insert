@@ -1,0 +1,283 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $THIS_FILE = "an-usb-insert";
+
+my $conf = {
+	usb	=>	{
+		"1-1"	=>	{
+			sshfs	=>	{
+				host		=>	"lemass",
+				user		=>	"digimer",
+				password	=>	"niche to win",
+				local_mount	=>	"/mnt/1-1",
+				remote_mount	=>	"/media/an-m03-1-1",
+			},
+		},
+		"1-3"	=>	{
+			sshfs	=>	{
+				host		=>	"lemass",
+				user		=>	"digimer",
+				password	=>	"niche to win",
+				local_mount	=>	"/mnt/1-3",
+				remote_mount	=>	"/media/an-m03-1-3",
+			},
+		},
+	},
+	syslog	=>	[],
+	devices	=>	{},
+};
+
+#logger($conf, "AN!USB Insert Script started.");
+logger($conf, "Reading syslog.");
+read_syslog($conf);
+#logger($conf, "AN!USB Insert Script finished.");
+
+my $this_usb        = "";
+my $is_mass_storage = 0;
+my $block_device    = "";
+my $rule_found      = 0;
+foreach my $line (@{$conf->{syslog}})
+{
+	if ($line =~ /kernel: usb (.*?): New USB device found/)
+	{
+		$this_usb = $1;
+	}
+	if ($line =~ /Uniform CD-ROM driver/)
+	{
+		$block_device = 1;
+		last;
+	}
+	next if not $this_usb;
+	$line =~ s/^.*?kernel: //;
+	if ($line =~ /SCSI emulation for USB Mass Storage devices/)
+	{
+		$is_mass_storage = 1;
+	}
+	next if not $is_mass_storage;
+	if ($line =~ /sd(\w+): sd(\w+)\d/)
+	{
+		my $lhs = $1;
+		my $rhs = $2;
+		next if (($lhs) && ($lhs ne $rhs));
+		$block_device = "sd".$lhs;
+	}
+	next if not $block_device;
+	last;
+}
+if ($block_device)
+{
+	#logger($conf, "USB device: [$this_usb], block device: [$block_device]");
+	foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
+	{
+		if (exists $conf->{usb}{$this_usb})
+		{
+			   $rule_found   = 1;
+			my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+			my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+			my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+			my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
+			my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+			my $device       = "/dev/".$block_device;
+			#logger($conf, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+			last;
+		}
+	}
+	if (not $rule_found)
+	{
+		logger($conf, "The inserted block device is not using a managed USB port.");
+	}
+}
+else
+{
+	logger($conf, "The inserted device is not a block device.");
+}
+
+if ($rule_found)
+{
+	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+	my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
+	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+	my $device       = "/dev/".$block_device;
+	logger($conf, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+	
+	find_file_systems($conf, $device);
+	mount_filesystems($conf);
+}
+
+sub mount_filesystems
+{
+	my ($conf) = @_;
+	
+	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
+	{
+		logger($conf, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
+		unmount($conf, $device);
+	}
+	
+	return(0);
+}
+
+sub unmount
+{
+	my ($conf, $device) = @_;
+	
+	my $mount_point = get_mount_point($conf, $device);
+	if ($mount_point)
+	{
+		logger($conf, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
+		open my $filehandle, '-|', "umount", "$device" or die "Failed to call: [umount $device]; $!\n";
+		while (<$filehandle>)
+		{
+			chomp;
+			my $line = $_;
+		}
+		close $filehandle;
+		$mount_point = get_mount_point($conf, $device);
+		if ($mount_point)
+		{
+			logger($conf, "Failed to unmount: [$device] from: [$mount_point]");
+			exit(1);
+		}
+		logger($conf, "Device: [$device] unmounted successfully.");
+	}
+	else
+	{
+		logger($conf, "device: [$device] is not mounted.");
+	}
+	
+	return(0);
+}
+
+sub get_mount_point
+{
+	my ($conf, $device) = @_;
+	
+	my $mount_point = "";
+	my $filehandle;
+	open ($filehandle, "mount 2>&1 |") or die "Failed to call: [mount]; $!\n";
+	while (<$filehandle>)
+	{
+		chomp;
+		my $line = $_;
+		#logger($conf, "line: [$line]");
+		if ($line =~ /^$device on (.*?) /)
+		{
+			$mount_point = $1;
+			#logger($conf, "mount_point: [$mount_point]");
+		}
+	}
+	close $filehandle;
+	
+	return($mount_point);
+}
+
+sub find_file_systems
+{
+	my ($conf, $device) = @_;
+	my @filesystems;
+	
+	#open my $filehandle, '-|', "ls", "${device}*" or die "Whut? $!\n";
+	my $filehandle;
+	open ($filehandle, "ls ${device}* 2>&1 |") or die "Failed to call: [ls ${device}*]; $!\n";
+	while (<$filehandle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		#logger($conf, "line: [$line]");
+		if (($line eq $device) or ($line =~ /^$device\d+/))
+		{
+			call_blkid($conf, $line);
+		}
+	}
+	close $filehandle;
+		
+	return(0);
+}
+
+sub call_blkid
+{
+	my ($conf, $device) = @_;
+	
+	my $uuid;
+	my $fs;
+	open my $filehandle, '-|', "blkid", "-c", "/dev/null", "$device" or die "Whut? $!\n";
+	while (<$filehandle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		#logger($conf, "line: [$line]");
+		if ($line =~ /UUID="(.*?)"/)
+		{
+			$uuid = $1;
+		}
+		if ($line =~ /TYPE="(.*?)"/)
+		{
+			$fs = $1;
+		}
+	}
+	close $filehandle;
+	
+	if ($fs)
+	{
+		$conf->{devices}{$device}{fs}   = $fs;
+		$conf->{devices}{$device}{uuid} = $uuid;
+		#logger($conf, "device: [$device] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+	}
+	else
+	{
+		#logger($conf, "device: [$device] has no file system.");
+	}
+	
+	return(0);
+}
+
+sub read_syslog
+{
+	my ($conf) = @_;
+	
+	# I'm interested in the last 24 lines, but this is safer in case
+	# something is being noisy.
+	open my $filehandle, '-|', "tail", "-n", "100", "/var/log/messages" or die "Whut? $!\n";
+	while (<$filehandle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		#logger($conf, "line: [$line]");
+		next if $line !~ /kernel:/;
+		if ($line =~ /New USB device found/)
+		{
+			# Old logs, clear what I've read so far.
+			#logger($conf, "I see a message in syslog about a new USB device, clearing anything seen before.");
+			$conf->{syslog} = [];
+			push @{$conf->{syslog}}, $line;
+			next;
+		}
+		else
+		{
+			push @{$conf->{syslog}}, $line;
+		}
+	}
+	close $filehandle;
+	
+	return(0);
+}
+
+sub logger
+{
+	my ($conf, $message) = @_;
+	
+	print "$message\n";
+	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Whut? $!\n";
+	while (<$filehandle>) { print $_; }
+	close $filehandle;
+	
+	return(0);
+}

@@ -36,10 +36,19 @@ my $conf = {
 			"corosync",
 			"rgmanager",
 			"ricci",
+			"freeipmi",
+			"freeipmi-bmc-watchdog",
+			"freeipmi-ipmidetectd",
+			"gd",
 			"gfs2-utils",
+			"gpm",
 			"ntp",
 			"libvirt",
 			"lvm2-cluster",
+			"OpenIPMI",
+			"OpenIPMI-libs",
+			"OpenIPMI-perl",
+			"OpenIPMI-tools",
 			"qemu-kvm",
 			"qemu-kvm-tools",
 			"virt-install",
@@ -49,12 +58,12 @@ my $conf = {
 			"gpm",
 			"rsync",
 			"screen",
-			"gpm",
 		],
 		remove		=>	[
 			"NetworkManager",
 		],
 		enable		=>	[
+			"ipmi",
 			"ntpd",
 			"ricci",
 			"modclusterd",
@@ -71,6 +80,9 @@ my $conf = {
 			"cman",
 			"rgmanager",
 		],
+		from_http	=>	{
+			apcupsd		=>	"https://alteeve.ca/cluster/apcupsd-latest.el6.x86_64.rpm",
+		},
 		repos		=>	{
 			elrepo		=>	{
 				key		=>	"http://elrepo.org/RPM-GPG-KEY-elrepo.org",
@@ -106,6 +118,7 @@ setup_ssh($conf);
 install_apps($conf);
 setup_ntpd($conf);
 disable_libvirt_bridge($conf);
+install_acpupsd($conf);
 modify_daemons($conf);
 set_text_boot($conf);
 
@@ -140,6 +153,81 @@ echo `gfs2_tool sb /dev/n01_vg0/shared uuid | awk '/uuid =/ { print $4; }' | sed
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+sub install_acpupsd
+{
+	my ($conf) = @_;
+	
+	my $apcupsd_rpm    = $conf->{apps}{from_http}{apcupsd};
+	
+	# UPS 0
+	my $aps0_name      = "an-u01";
+	my $ups0_addr      = "10.20.3.1";
+	my $ups0_port      = "161";
+	my $ups0_vendor    = "APC_NOTRAP";
+	my $ups0_community = "private";
+	my $ups0_polltime  = "30";
+	my $ups0_nisport   = "6551";
+	my $ups0_events    = "/var/log/apcupsd.0.events";
+	
+	# UPS 1
+	my $aps1_name      = "an-u02";
+	my $ups1_addr      = "10.20.3.2";
+	my $ups1_port      = "161";
+	my $ups1_vendor    = "APC_NOTRAP";
+	my $ups1_community = "private";
+	my $ups1_polltime  = "30";
+	my $ups1_nisport   = "6552";
+	my $ups1_events    = "/var/log/apcupsd.1.events";
+=pod
+	rpm -Uvh $apcupsd_rpm
+	mkdir /etc/apcupsd/null
+	cp /etc/apcupsd/apcupsd.conf      /etc/apcupsd/apcupsd.conf.orig
+	mv /etc/apcupsd/apcupsd.conf      /etc/apcupsd/apcupsd.ups0.conf
+	cp /etc/apcupsd/apcupsd.ups0.conf /etc/apcupsd/apcupsd.ups1.conf
+	cp /etc/init.d/apcupsd            /root/apcupsd.init.orig
+	
+	### Modify ups 0
+	#UPSNAME				->	UPSNAME $aps0_name
+	UPSTYPE apcsmart			->	UPSTYPE snmp
+	DEVICE /dev/ttyS0			->	DEVICE $ups0_addr:$ups0_port:$ups0_vendor:$ups0_community
+	#POLLTIME 60				->	POLLTIME $ups0_polltime
+	BATTERYLEVEL 5				->	BATTERYLEVEL 0
+	MINUTES 3				->	MINUTES 0
+	SCRIPTDIR /etc/apcupsd			->	SCRIPTDIR /etc/apcupsd/null
+	PWRFAILDIR /etc/apcupsd			->	PWRFAILDIR /etc/apcupsd/null
+	NOLOGINDIR /etc				->	NOLOGINDIR /etc/apcupsd/null
+	NISPORT 3551				->	NISPORT $ups0_nisport
+	EVENTSFILE /var/log/apcupsd.events	->	EVENTSFILE $ups0_events
+	
+	### modify ups 1
+	#UPSNAME				->	UPSNAME $aps1_name
+	UPSTYPE apcsmart			->	UPSTYPE snmp
+	DEVICE /dev/ttyS0			->	DEVICE $ups1_addr:$ups1_port:$ups1_vendor:$ups1_community
+	#POLLTIME 60				->	POLLTIME $ups1_polltime
+	BATTERYLEVEL 5				->	BATTERYLEVEL 0
+	MINUTES 3				->	MINUTES 0
+	SCRIPTDIR /etc/apcupsd			->	SCRIPTDIR /etc/apcupsd/null
+	PWRFAILDIR /etc/apcupsd			->	PWRFAILDIR /etc/apcupsd/null
+	NOLOGINDIR /etc				->	NOLOGINDIR /etc/apcupsd/null
+	NISPORT 3551				->	NISPORT $ups1_nisport
+	EVENTSFILE /var/log/apcupsd.events	->	EVENTSFILE $ups1_events
+	
+	### Modify the init.d script
+	rm -f /etc/init.d/apcupsd
+	wget https://alteeve.ca/files/apcupsd -O /etc/init.d/apcupsd
+	chmod 755 /etc/init.d/apcupsd
+	/etc/init.d/apcupsd start
+	chkconfig apcupsd on
+	
+	### Verify that both UPSes are accessible
+	apcaccess status localhost:$ups0_nisport
+		# grep for;
+		
+=cut
+	
+	return(0);
+}
 
 sub disable_selinux
 {
@@ -287,10 +375,32 @@ sub setup_ntpd
 {
 	my ($conf) = @_;
 	
-	### TODO: cat the ntpd.conf and look for the URL
-	# Ask the user before proceeding.
+	# If the NTP server IP is already in the file, skip.
 	print "This next step will configure the network time server.\n";
-	print "NOTE: Only do this once! If you've run the setup before, please skip this step.\n";
+	my $ntp_server = $conf->{'system'}{ntp_server};
+	my $done = 0;
+	my $sc = "/etc/ntp.conf";
+	my $fh = IO::Handle->new();
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /$ntp_server/)
+		{
+			$done = 1;
+			last;
+		}
+	}
+	$fh->close();
+	
+	if ($done)
+	{
+		print "The NTP server: [$ntp_server] is already in: [/etc/ntpd.conf], skipping.\n";
+		return (0);
+	}
+	
+	# Ask the user before proceeding.
 	print "Proceed? [y/N] ";
 	my $proceed = <STDIN>;
 	#my $proceed = "y";
@@ -298,7 +408,6 @@ sub setup_ntpd
 	if ((lc($proceed) eq "y") or (lc($proceed) eq "yes"))
 	{
 		print "Proceeding... ";
-		my $ntp_server = $conf->{'system'}{ntp_server};
 		my $sc = "echo \"server $ntp_server\" >> /etc/ntp.conf && echo \"restrict $ntp_server mask 255.255.255.255 nomodify notrap noquery\" >> /etc/ntp.conf";
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
@@ -324,9 +433,7 @@ sub install_apps
 	my ($conf) = @_;
 	
 	# Read all currently installed packages.
-	print "Checking list of already-installed applications.\n";
 	read_installed_rpms($conf);
-	print "Done! Checking for apps that need to be installed...\n";
 	
 	# First, install
 	my $install = "";
@@ -334,10 +441,9 @@ sub install_apps
 	{
 		# Is the app already installed?
 		next if not $install_app;
-		if (not exists $conf->{installed_apps})
+		if (ref($conf->{installed_apps}) ne "HASH")
 		{
 			# No, add it.
-			print " - Will install: [$install_app]\n";
 			$install .= "$install_app ";
 		}
 	}
@@ -359,10 +465,6 @@ sub install_apps
 		$fh->close();
 		print "\\----------\n";
 		print "Done.\n";
-	}
-	else
-	{
-		print "No apps need to be installed.\n";
 	}
 	
 	# Now add repos and install their packages.

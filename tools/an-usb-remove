@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $conf = {
+	usb	=>	{
+		"1-3"	=>	{
+			sshfs	=>	{
+				host	=>	"lemass",
+				user	=>	"digimer",
+				pass	=>	"niche to win",
+				lmnt	=>	"/mnt/1-3",
+				rmnt	=>	"/media/an-m03",
+			}
+		}
+	}
+};
+
+read_syslog($conf);
+
+open my $filehandle, '-|', "logger", "AN!USB Removal Script" or die "Whut? $!\n";
+while (<$filehandle>)
+{
+	print $_;
+}
+close $filehandle;
+
+
+
+sub read_syslog
+{
+	my ($conf) = @_;
+	
+	open my $filehandle, '-|', "tail", "-n 25 /var/log/messages" or die "Whut? $!\n";
+	while (<$filehandle>)
+	{
+		print $_;
+	}
+	close $filehandle;
+	
+	return(0);
+}
