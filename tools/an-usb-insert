@@ -2,6 +2,13 @@
 
 use strict;
 use warnings;
+use File::Path qw(make_path);
+use Net::SSH::Perl;
+
+=pod
+rpm -Uvh http://fedora.mirror.nexicom.net/epel/6/x86_64/epel-release-6-8.noarch.rpm
+yum -y install perl-Net-SSH-Perl
+=cut 
 
 my $THIS_FILE = "an-usb-insert";
 
@@ -69,6 +76,7 @@ foreach my $line (@{$conf->{syslog}})
 }
 if ($block_device)
 {
+	$conf->{this_usb} = $this_usb;
 	#logger($conf, "USB device: [$this_usb], block device: [$block_device]");
 	foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
 	{
@@ -113,10 +121,68 @@ sub mount_filesystems
 {
 	my ($conf) = @_;
 	
+	### TODO: If I can't make a directory, make an alternative.
+	my $i = 0;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
+		my $this_usb     = $conf->{this_usb};
+		my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+		my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+		my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+		my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
+		my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+		if ($i)
+		{
+			$local_mount  .= "-$i";
+			$remote_mount .= "-$i";
+		}
 		logger($conf, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
 		unmount($conf, $device);
+		
+		if (not -e $local_mount)
+		{
+			make_path($local_mount, {
+				mode	=>	0777,
+			});
+			if (not -e $local_mount)
+			{
+				logger($conf, "Failed to create the local mount directory: [$local_mount]");
+				exit(2);
+			}
+		}
+		elsif (not -d $local_mount)
+		{
+			logger($conf, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
+			exit(3);
+		}
+		$i++;
+		
+		# Make sure the mount point is empty.
+		local(*DIR);
+		opendir(DIR, $local_mount) or die "Failed to open the directory: [$local_mount], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			logger($conf, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
+			exit(4);
+		}
+		
+		# Finally, mount the FS.
+		open my $filehandle, '-|', "mount", "$device", "$local_mount" or die "Failed to call: [mount $device $local_mount]; $!\n";
+		while (<$filehandle>)
+		{
+			chomp;
+			my $line = $_;
+		}
+		close $filehandle;
+		logger($conf, "Successfully mounted: [$device] locally on: [$local_mount].");
+		
+		# Mount the partition on the target system.
+		run_remote_command($conf, "ls $remote_mount")
+		logger($conf, "Attempting ssh: [$user\@$host]...");
+		my $ssh = Net::SSH::Perl->new($host);
+		$ssh->login($user, $password);
+		my($stdout, $stderr, $exit) = $ssh->cmd($cmd);
 	}
 	
 	return(0);
@@ -228,7 +294,8 @@ sub call_blkid
 	{
 		$conf->{devices}{$device}{fs}   = $fs;
 		$conf->{devices}{$device}{uuid} = $uuid;
-		#logger($conf, "device: [$device] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+		$conf->{devices}{$device}{path} = $device;
+		#logger($conf, "device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
 	}
 	else
 	{

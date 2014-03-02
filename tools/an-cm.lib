@@ -6433,7 +6433,7 @@ sub compare_new_and_old
 				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 				#send_debug_email($conf, $subject, $body);
 			}
-			elsif ($old_state eq "--")
+			elsif (($old_state eq "--") or ($new_state eq "--"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has returned!; $new_state, $new_value.\n");
 				#my $subject =  "IPMI sensor returned.";
