@@ -13,32 +13,21 @@ yum -y install perl-Net-SSH-Perl
 my $THIS_FILE = "an-usb-insert";
 
 my $conf = {
-	usb	=>	{
-		"1-1"	=>	{
-			sshfs	=>	{
-				host		=>	"lemass",
-				user		=>	"digimer",
-				password	=>	"niche to win",
-				local_mount	=>	"/mnt/1-1",
-				remote_mount	=>	"/media/an-m03-1-1",
-			},
-		},
-		"1-3"	=>	{
-			sshfs	=>	{
-				host		=>	"lemass",
-				user		=>	"digimer",
-				password	=>	"niche to win",
-				local_mount	=>	"/mnt/1-3",
-				remote_mount	=>	"/media/an-m03-1-3",
-			},
-		},
+	path	=>	{
+		'an-usb_conf'	=>	"/etc/an-usb.conf",
+		blkid		=>	"/sbin/blkid",
+		ls		=>	"/bin/ls",
+		mount		=>	"/bin/mount",
+		tail		=>	"/usr/bin/tail",
+		umount		=>	"/bin/umount",
 	},
 	syslog	=>	[],
 	devices	=>	{},
 };
 
-#logger($conf, "AN!USB Insert Script started.");
-logger($conf, "Reading syslog.");
+logger($conf, "AN!USB Insert Script started.");
+read_conf($conf);
+#logger($conf, "Reading syslog.");
 read_syslog($conf);
 #logger($conf, "AN!USB Insert Script finished.");
 
@@ -86,8 +75,8 @@ if ($block_device)
 			my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
 			my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
 			my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-			my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
 			my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+			my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
 			my $device       = "/dev/".$block_device;
 			#logger($conf, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
 			last;
@@ -105,13 +94,14 @@ else
 
 if ($rule_found)
 {
+	my $this_usb     = $conf->{this_usb};
 	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
 	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
 	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
+	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
 	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
 	my $device       = "/dev/".$block_device;
-	logger($conf, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+	logger($conf, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
 	
 	find_file_systems($conf, $device);
 	mount_filesystems($conf);
@@ -129,7 +119,7 @@ sub mount_filesystems
 		my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
 		my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
 		my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-		my $local_mount  = $conf->{usb}{$this_usb}{sshfs}{local_mount};
+		my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
 		my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
 		if ($i)
 		{
@@ -168,7 +158,8 @@ sub mount_filesystems
 		}
 		
 		# Finally, mount the FS.
-		open my $filehandle, '-|', "mount", "$device", "$local_mount" or die "Failed to call: [mount $device $local_mount]; $!\n";
+		my $sc = "$conf->{path}{mount} $device $local_mount";
+		open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 		while (<$filehandle>)
 		{
 			chomp;
@@ -178,14 +169,36 @@ sub mount_filesystems
 		logger($conf, "Successfully mounted: [$device] locally on: [$local_mount].");
 		
 		# Mount the partition on the target system.
-		run_remote_command($conf, "ls $remote_mount")
-		logger($conf, "Attempting ssh: [$user\@$host]...");
-		my $ssh = Net::SSH::Perl->new($host);
-		$ssh->login($user, $password);
-		my($stdout, $stderr, $exit) = $ssh->cmd($cmd);
+		my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
 	}
 	
 	return(0);
+}
+
+sub remote_call
+{
+	my ($conf, $sc) = @_;
+	
+	my $this_usb     = $conf->{this_usb};
+	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
+	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+	
+	logger($conf, "Attempting ssh: [$user\@$host] with password: [$password] and call: [$sc]...");
+	my $ssh = Net::SSH::Perl->new($host);
+	$ssh->login($user, $password);
+	$sc = "$conf->{path}{ls} -lah $remote_mount";
+	logger($conf, "Calling on: [$host] command: [$sc]...");
+	my ($stdout, $stderr, $exit) = $ssh->cmd($sc);
+	$stdout = "" if not defined $stdout;
+	$stderr = "" if not defined $stderr;
+	$exit   = 99 if not defined $exit;
+	
+	logger($conf, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
+	
+	return($stdout, $stderr, $exit);
 }
 
 sub unmount
@@ -196,7 +209,8 @@ sub unmount
 	if ($mount_point)
 	{
 		logger($conf, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
-		open my $filehandle, '-|', "umount", "$device" or die "Failed to call: [umount $device]; $!\n";
+		my $sc = "$conf->{path}{umount} $device";
+		open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc] Error: $!\n";
 		while (<$filehandle>)
 		{
 			chomp;
@@ -224,8 +238,8 @@ sub get_mount_point
 	my ($conf, $device) = @_;
 	
 	my $mount_point = "";
-	my $filehandle;
-	open ($filehandle, "mount 2>&1 |") or die "Failed to call: [mount]; $!\n";
+	my $sc = "$conf->{path}{mount}";
+	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 	while (<$filehandle>)
 	{
 		chomp;
@@ -247,9 +261,9 @@ sub find_file_systems
 	my ($conf, $device) = @_;
 	my @filesystems;
 	
-	#open my $filehandle, '-|', "ls", "${device}*" or die "Whut? $!\n";
-	my $filehandle;
-	open ($filehandle, "ls ${device}* 2>&1 |") or die "Failed to call: [ls ${device}*]; $!\n";
+	my $sc = "$conf->{path}{ls} ${device}*";
+	logger($conf, "Calling: [$sc]");
+	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 	while (<$filehandle>)
 	{
 		chomp;
@@ -272,7 +286,8 @@ sub call_blkid
 	
 	my $uuid;
 	my $fs;
-	open my $filehandle, '-|', "blkid", "-c", "/dev/null", "$device" or die "Whut? $!\n";
+	my $sc = "$conf->{path}{blkid} -c /dev/null $device";
+	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 	while (<$filehandle>)
 	{
 		chomp;
@@ -311,7 +326,8 @@ sub read_syslog
 	
 	# I'm interested in the last 24 lines, but this is safer in case
 	# something is being noisy.
-	open my $filehandle, '-|', "tail", "-n", "100", "/var/log/messages" or die "Whut? $!\n";
+	my $sc = "$conf->{path}{tail} -n 100 /var/log/messages";
+	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 	while (<$filehandle>)
 	{
 		chomp;
@@ -342,9 +358,85 @@ sub logger
 	my ($conf, $message) = @_;
 	
 	print "$message\n";
-	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Whut? $!\n";
+	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Failed to call: [logger -t $THIS_FILE $message]. Error: $!\n";
 	while (<$filehandle>) { print $_; }
 	close $filehandle;
 	
 	return(0);
+}
+
+# This reads in the configuration file.
+sub read_conf
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{'an-usb_conf'}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }

@@ -3,40 +3,93 @@
 use strict;
 use warnings;
 
-my $conf = {
-	usb	=>	{
-		"1-3"	=>	{
-			sshfs	=>	{
-				host	=>	"lemass",
-				user	=>	"digimer",
-				pass	=>	"niche to win",
-				lmnt	=>	"/mnt/1-3",
-				rmnt	=>	"/media/an-m03",
-			}
-		}
-	}
-};
+my $THIS_FILE = "an-usb-remove";
 
-read_syslog($conf);
+# All this script does is look for mounts that have lost their backing device
+# and cleans up if found.
 
-open my $filehandle, '-|', "logger", "AN!USB Removal Script" or die "Whut? $!\n";
+my $conf = {};
+
+logger($conf, "AN!USB Removal Script");
+
+my $filehandle;
+open ($filehandle, "/bin/df -hP 2>&1 |") or die "Failed to call: [/bin/df -hP]; $!\n";
 while (<$filehandle>)
 {
-	print $_;
+	chomp;
+	my $line = $_;
+	next if not $line;
+	$line =~ s/\s+/ /g;
+	next if $line !~ /^\//;
+	#logger($conf, "line: [$line]");
+	my ($device, $mount_point) = (split/ /, $line)[0,5];
+	
+	# Skip '/', '/boot' and any mount not on '/dev/sdX'.
+	next if (($mount_point eq "/") or ($mount_point eq "/boot"));
+	next if ($device !~ /^\/dev\/sd/);
+	
+	# Now check.
+	check_mount($conf, $device, $mount_point);
 }
 close $filehandle;
 
 
+exit(0);
 
-sub read_syslog
+# This checks to see if the device exists and, if not, force-unmounts the
+# mountpoint and, if the directory is empty, remove it.
+sub check_mount
 {
-	my ($conf) = @_;
+	my ($conf, $device, $mount_point) = @_;
+	logger($conf, "Device: [$device], Mount Point: [$mount_point]");
 	
-	open my $filehandle, '-|', "tail", "-n 25 /var/log/messages" or die "Whut? $!\n";
+	if (-b $device)
+	{
+		logger($conf, "Device: [$device] still exists.");
+	}
+	else
+	{
+		logger($conf, "Device: [$device] no longer exists. Cleaning up.");
+		unmount($conf, $device);
+		rmdir($mount_point) or warn "Unable to remove directory: [$mount_point]. Error: $!\n";
+		if (-d $mount_point)
+		{
+			logger($conf, "Failed to remove mount point: [$mount_point]. Are there files in the directory?");
+		}
+		else
+		{
+			logger($conf, "Mount point: [$mount_point] removed.");
+		}
+	}
+	
+	return(0);
+}
+
+sub unmount
+{
+	my ($conf, $device) = @_;
+	
+	my $filehandle;
+	open ($filehandle, "/bin/sync; /bin/umount -f $device 2>&1 |") or die "Failed to call: [/bin/sync; /bin/umount -f $device]; $!\n";
 	while (<$filehandle>)
 	{
-		print $_;
+		chomp;
+		my $line = $_;
+		logger($conf, "line: [$line]");
 	}
+	close $filehandle;
+	logger($conf, "Device: [$device] unmounted.");
+	
+	return(0);
+}
+
+sub logger
+{
+	my ($conf, $message) = @_;
+	
+	print "$message\n";
+	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Failed to call: [logger -t $THIS_FILE $message]. Error: $!\n";
+	while (<$filehandle>) { print $_; }
 	close $filehandle;
 	
 	return(0);
