@@ -6514,7 +6514,21 @@ sub compare_new_and_old
 				
 				if ($var =~ /STATUS/i)
 				{
-					if ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/i)
+					if (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/))
+					{
+						my $subject =  "UPS ${ups_name} is compensating for bad input power";
+						my $body    =  "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
+						   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						send_debug_email($conf, $subject, $body);
+					}
+					elsif (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/))
+					{
+						my $subject =  "UPS ${ups_name} has returned to normal input power";
+						my $body    =  "UPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
+						   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						send_debug_email($conf, $subject, $body);
+					}
+					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/i)
 					{
 						$conf->{'system'}{clear_event} = 0;
 						$conf->{'system'}{ups_alert}{$ups_name}{status} = 1;
@@ -6528,7 +6542,7 @@ sub compare_new_and_old
 						$changes .= "\nUPS ${ups_name}'s is in 'BOOST ONLINE', which means it is compensating for low input voltage, called a \"brown out\". Power from the mains circuit sub-optimal.\n";
 						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
-					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /ONLINE/i)
+					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} eq /^ONLINE/i)
 					{
 						$conf->{'system'}{clear_event} = 1;
 						delete $conf->{'system'}{ups_alert}{$ups_name}{status};

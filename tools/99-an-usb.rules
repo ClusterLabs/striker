@@ -1,0 +1,7 @@
+# Rules created to mount a locally inserted USB storage device on a remote
+# server. Which server the block device is mounted on (if at all) is determined
+# by the USB port used. Please see an-usb.conf (as shipped in the an-cdb/tools/
+# directory) for usage details.
+
+ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/bin/an-usb-insert"
+ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/bin/an-usb-remove"

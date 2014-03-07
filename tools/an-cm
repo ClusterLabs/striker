@@ -86,6 +86,7 @@ my $conf = {
 			high_line_volt_buffer	=>	"2",	# When the line voltage gets within this many volts of HITRANS an alert will be triggered.
 			low_line_volt_buffer	=>	"5",	# When the line voltage gets within this many volts of LOTRANS an alert will be triggered.
 			upper_load_threshold	=>	"90",	# This is the maximum "LOADPCT" over which an alert is triggered.
+			trim_to_debug_email	=>	"0",	# This controls whether an 'ONLINE <-> TRIM ONLINE' event triggers a normal 'alert' or 'debug_alert' email.
 		},
 	},
 	'system'		=>	{

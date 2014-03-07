@@ -17,6 +17,7 @@ my $conf = {
 		'an-usb_conf'	=>	"/etc/an-usb.conf",
 		blkid		=>	"/sbin/blkid",
 		ls		=>	"/bin/ls",
+		'mkdir'		=>	"/bin/mkdir",
 		mount		=>	"/bin/mount",
 		tail		=>	"/usr/bin/tail",
 		umount		=>	"/bin/umount",
@@ -170,6 +171,15 @@ sub mount_filesystems
 		
 		# Mount the partition on the target system.
 		my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
+		
+		# If the directory doesn't exist, 'stderr' will contain the
+		# error message and 'exit' will be '2'.
+		if ($stderr =~ /No such file or directory/)
+		{
+			logger($conf, "Remote machine: [$host] does not have the: [$remote_mount] mount point yet. Creating it.");
+			my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{mkdir} $remote_mount");
+			
+		}
 	}
 	
 	return(0);
