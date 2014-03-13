@@ -2,110 +2,106 @@
 
 use strict;
 use warnings;
-use File::Path qw(make_path);
-use Net::SSH::Perl;
+require "/bin/an-usb.lib";
+
+my $THIS_FILE = "an-usb-insert";
 
 =pod
 rpm -Uvh http://fedora.mirror.nexicom.net/epel/6/x86_64/epel-release-6-8.noarch.rpm
 yum -y install perl-Net-SSH-Perl
 =cut 
 
-my $THIS_FILE = "an-usb-insert";
+my $conf = init_conf();
 
-my $conf = {
-	path	=>	{
-		'an-usb_conf'	=>	"/etc/an-usb.conf",
-		blkid		=>	"/sbin/blkid",
-		ls		=>	"/bin/ls",
-		'mkdir'		=>	"/bin/mkdir",
-		mount		=>	"/bin/mount",
-		tail		=>	"/usr/bin/tail",
-		umount		=>	"/bin/umount",
-	},
-	syslog	=>	[],
-	devices	=>	{},
-};
-
-logger($conf, "AN!USB Insert Script started.");
+logger($conf, __LINE__, "AN!USB Insert Script started.");
 read_conf($conf);
-#logger($conf, "Reading syslog.");
 read_syslog($conf);
-#logger($conf, "AN!USB Insert Script finished.");
+parse_syslog($conf);
+logger($conf, __LINE__, "AN!USB Insert Script finished.");
 
-my $this_usb        = "";
-my $is_mass_storage = 0;
-my $block_device    = "";
-my $rule_found      = 0;
-foreach my $line (@{$conf->{syslog}})
+exit(0);
+
+# Parse syslog and decide what, if anything, to do.
+sub parse_syslog
 {
-	if ($line =~ /kernel: usb (.*?): New USB device found/)
+	my ($conf) = @_;
+	
+	my $this_usb        = "";
+	my $is_mass_storage = 0;
+	my $block_device    = "";
+	my $rule_found      = 0;
+	foreach my $line (@{$conf->{syslog}})
 	{
-		$this_usb = $1;
-	}
-	if ($line =~ /Uniform CD-ROM driver/)
-	{
-		$block_device = 1;
-		last;
-	}
-	next if not $this_usb;
-	$line =~ s/^.*?kernel: //;
-	if ($line =~ /SCSI emulation for USB Mass Storage devices/)
-	{
-		$is_mass_storage = 1;
-	}
-	next if not $is_mass_storage;
-	if ($line =~ /sd(\w+): sd(\w+)\d/)
-	{
-		my $lhs = $1;
-		my $rhs = $2;
-		next if (($lhs) && ($lhs ne $rhs));
-		$block_device = "sd".$lhs;
-	}
-	next if not $block_device;
-	last;
-}
-if ($block_device)
-{
-	$conf->{this_usb} = $this_usb;
-	#logger($conf, "USB device: [$this_usb], block device: [$block_device]");
-	foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
-	{
-		if (exists $conf->{usb}{$this_usb})
+		if ($line =~ /kernel: usb (.*?): New USB device found/)
 		{
-			   $rule_found   = 1;
-			my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-			my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-			my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-			my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-			my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-			my $device       = "/dev/".$block_device;
-			#logger($conf, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+			$this_usb = $1;
+		}
+		if ($line =~ /Uniform CD-ROM driver/)
+		{
+			$block_device = 1;
 			last;
 		}
+		next if not $this_usb;
+		$line =~ s/^.*?kernel: //;
+		if ($line =~ /SCSI emulation for USB Mass Storage devices/)
+		{
+			$is_mass_storage = 1;
+		}
+		next if not $is_mass_storage;
+		if ($line =~ /sd(\w+): sd(\w+)\d/)
+		{
+			my $lhs = $1;
+			my $rhs = $2;
+			next if (($lhs) && ($lhs ne $rhs));
+			$block_device = "sd".$lhs;
+		}
+		next if not $block_device;
+		last;
 	}
-	if (not $rule_found)
+	if ($block_device)
 	{
-		logger($conf, "The inserted block device is not using a managed USB port.");
+		$conf->{this_usb} = $this_usb;
+		#logger($conf, __LINE__, "USB device: [$this_usb], block device: [$block_device]");
+		foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
+		{
+			if (exists $conf->{usb}{$this_usb})
+			{
+				$rule_found   = 1;
+				my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+				my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+				my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+				my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+				my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
+				my $device       = "/dev/".$block_device;
+				#logger($conf, __LINE__, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+				last;
+			}
+		}
+		if (not $rule_found)
+		{
+			logger($conf, __LINE__, "The inserted block device is not using a managed USB port.");
+		}
 	}
-}
-else
-{
-	logger($conf, "The inserted device is not a block device.");
-}
+	else
+	{
+		logger($conf, __LINE__, "The inserted device is not a block device.");
+		exit(0);
+	}
 
-if ($rule_found)
-{
-	my $this_usb     = $conf->{this_usb};
-	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	my $device       = "/dev/".$block_device;
-	logger($conf, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
-	
-	find_file_systems($conf, $device);
-	mount_filesystems($conf);
+	if ($rule_found)
+	{
+		my $this_usb     = $conf->{this_usb};
+		my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
+		my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
+		my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
+		my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
+		my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+		my $device       = "/dev/".$block_device;
+		logger($conf, __LINE__, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+		
+		find_file_systems($conf, $device);
+		mount_filesystems($conf);
+	}
 }
 
 sub mount_filesystems
@@ -127,8 +123,28 @@ sub mount_filesystems
 			$local_mount  .= "-$i";
 			$remote_mount .= "-$i";
 		}
-		logger($conf, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
-		unmount($conf, $device);
+		
+		my $mountable = 0;
+		# Check for unmountable stuff.
+		foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
+		{
+			if ($conf->{devices}{$device}{fs} eq "crypto_LUKS")
+			{
+				logger($conf, __LINE__, "Device: [$device] has an unmountable file system: [$conf->{devices}{$device}{fs}]. Skipping it.");
+				delete $conf->{devices}{$device};
+			}
+			else
+			{
+				$mountable = 1;
+				logger($conf, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
+				unmount($conf, $device);
+			}
+		}
+		if (not $mountable)
+		{
+			logger($conf, __LINE__, "No mountable devices. Exiting.");
+			exit(10);
+		}
 		
 		if (not -e $local_mount)
 		{
@@ -137,13 +153,13 @@ sub mount_filesystems
 			});
 			if (not -e $local_mount)
 			{
-				logger($conf, "Failed to create the local mount directory: [$local_mount]");
+				logger($conf, __LINE__, "Failed to create the local mount directory: [$local_mount]");
 				exit(2);
 			}
 		}
 		elsif (not -d $local_mount)
 		{
-			logger($conf, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
+			logger($conf, __LINE__, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
 			exit(3);
 		}
 		$i++;
@@ -154,12 +170,13 @@ sub mount_filesystems
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
-			logger($conf, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
+			logger($conf, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
 			exit(4);
 		}
 		
 		# Finally, mount the FS.
 		my $sc = "$conf->{path}{mount} $device $local_mount";
+		logger($conf, __LINE__, "Calling: [$sc].");
 		open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 		while (<$filehandle>)
 		{
@@ -167,48 +184,125 @@ sub mount_filesystems
 			my $line = $_;
 		}
 		close $filehandle;
-		logger($conf, "Successfully mounted: [$device] locally on: [$local_mount].");
+		
+		# Check that it actually mounted.
+		my $mounted = 0;
+		   $sc      = "$conf->{path}{df} -hP";
+		logger($conf, __LINE__, "Calling: [$sc].");
+		open ($filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
+		while (<$filehandle>)
+		{
+			chomp;
+			my $line = $_;
+			#logger($conf, __LINE__, "line: [$line].");
+			if (($line =~ /^$device\s/) && ($line =~ /$local_mount$/))
+			{
+				$mounted = 1;
+			}
+		}
+		close $filehandle;
+		
+		if ($mounted)
+		{
+			logger($conf, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
+		}
+		else
+		{
+			logger($conf, __LINE__, "Failed to mount: [$device] locally on: [$local_mount]. Unable to proceed.");
+			exit(9);
+		}
 		
 		# Mount the partition on the target system.
 		my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
+		my $ls_data = "";
 		
 		# If the directory doesn't exist, 'stderr' will contain the
 		# error message and 'exit' will be '2'.
 		if ($stderr =~ /No such file or directory/)
 		{
-			logger($conf, "Remote machine: [$host] does not have the: [$remote_mount] mount point yet. Creating it.");
+			logger($conf, __LINE__, "Remote machine: [$host] does not have the: [$remote_mount] mount point yet. Creating it.");
 			my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{mkdir} $remote_mount");
+			if (($exit == 0) && (not $stderr))
+			{
+				logger($conf, __LINE__, "Verifying that: [$remote_mount] was proprely created on: [$conf->{usb}{$this_usb}{sshfs}{host}].");
+				my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
+				if (($exit != 0) or (not $stdout))
+				{
+					logger($conf, __LINE__, "Remote machine: [$host] appears to have failed to create: [$remote_mount]. Unable to proceed.");
+					exit(7);
+				}
+				else
+				{
+					logger($conf, __LINE__, "Copied STDOUT data to ls_data: [$ls_data]");
+					$ls_data = $stdout;
+				}
+			}
+			elsif ($stderr =~ /Permission denied/)
+			{
+				logger($conf, __LINE__, "The use: [$conf->{usb}{$this_usb}{sshfs}{user}] on: [$conf->{usb}{$this_usb}{sshfs}{host}] does not have permission to create the directory: [$remote_mount]. Unable to proceed.");
+				exit(5);
+			}
+			else
+			{
+				# Play it safe. Bail if it doesn't return what we expected.
+				logger($conf, __LINE__, "Unexpected return code and/or errors when trying to create: [$remote_mount] on: [$conf->{usb}{$this_usb}{sshfs}{host}] as the user: [$conf->{usb}{$this_usb}{sshfs}{user}]. Exit code was: [$exit], STDOUT was: [$stdout] and STDERR was: [$stderr]. Unable to proceed.");
+				exit(6);
+			}
+		}
+		elsif (($exit == 0) && ($stdout))
+		{
+			$ls_data = $stdout;
+			logger($conf, __LINE__, "Remote machine: [$host] already has: [$remote_mount], verifying it's free.");
+		}
+		
+		# Make sure nothing is in the mount mount.
+		my $empty = 1;
+		foreach my $line (split/\n/, $ls_data)
+		{
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			next if $line =~ /^total/;
+			logger($conf, __LINE__, "ls line: [$line]");
+			my $file = (split/ /, $line, 9)[8];
+			#logger($conf, __LINE__, "file: [$file], ls line: [$line]");
+			next if (($file eq ".") or ($file eq ".."));
+			if ($file)
+			{
+				$empty = 0;
+				# TODO: Simply increment the target directory
+				#       name and try again.
+				logger($conf, __LINE__, "Found a file: [$file] in the mount directory! Exiting.");
+				exit(8);
+			}
+		}
+		
+		if ($empty)
+		{
+			my $local_host     = $conf->{'local'}{host};
+			my $local_user     = $conf->{'local'}{user};
+			my $local_password = $conf->{'local'}{password};
 			
+			my $remote_sc      = "sshfs -o password_stdin -o idmap=user $local_user\@$local_host:$local_mount $remote_mount";
+			logger($conf, __LINE__, "Ready to mount local: [$local_mount] on remote: [$host] at: [$remote_mount].");
+			#logger($conf, __LINE__, " - Remote: [$user\@$host ($password)], remote_sc: [$remote_sc ($local_password)].");
+			logger($conf, __LINE__, " - Remote: [$user\@$host], remote_sc: [$remote_sc].");
+			my ($stdout, $stderr, $exit) = remote_call($conf, "echo $local_password | $remote_sc");
+			logger($conf, __LINE__, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
+	
+			if (($exit == 127) && ($stderr =~ /sshfs: command not found/))
+			{
+				logger($conf, __LINE__, "Remote machine: [$host] does not have 'sshfs' installed. Unable to proceed.");
+				exit(11);
+			}
+			elsif (($exit == 1) && ($stderr =~ /fuse: failed to exec fusermount: Permission denied/))
+			{
+				logger($conf, __LINE__, "Calling: [$remote_sc] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$user' in the 'fuse' group? Unable to proceed.");
+				exit(12);
+			}
 		}
 	}
 	
 	return(0);
-}
-
-sub remote_call
-{
-	my ($conf, $sc) = @_;
-	
-	my $this_usb     = $conf->{this_usb};
-	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	
-	logger($conf, "Attempting ssh: [$user\@$host] with password: [$password] and call: [$sc]...");
-	my $ssh = Net::SSH::Perl->new($host);
-	$ssh->login($user, $password);
-	$sc = "$conf->{path}{ls} -lah $remote_mount";
-	logger($conf, "Calling on: [$host] command: [$sc]...");
-	my ($stdout, $stderr, $exit) = $ssh->cmd($sc);
-	$stdout = "" if not defined $stdout;
-	$stderr = "" if not defined $stderr;
-	$exit   = 99 if not defined $exit;
-	
-	logger($conf, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
-	
-	return($stdout, $stderr, $exit);
 }
 
 sub unmount
@@ -218,7 +312,7 @@ sub unmount
 	my $mount_point = get_mount_point($conf, $device);
 	if ($mount_point)
 	{
-		logger($conf, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
+		logger($conf, __LINE__, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
 		my $sc = "$conf->{path}{umount} $device";
 		open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc] Error: $!\n";
 		while (<$filehandle>)
@@ -230,14 +324,14 @@ sub unmount
 		$mount_point = get_mount_point($conf, $device);
 		if ($mount_point)
 		{
-			logger($conf, "Failed to unmount: [$device] from: [$mount_point]");
+			logger($conf, __LINE__, "Failed to unmount: [$device] from: [$mount_point]");
 			exit(1);
 		}
-		logger($conf, "Device: [$device] unmounted successfully.");
+		logger($conf, __LINE__, "Device: [$device] unmounted successfully.");
 	}
 	else
 	{
-		logger($conf, "device: [$device] is not mounted.");
+		logger($conf, __LINE__, "device: [$device] is not mounted.");
 	}
 	
 	return(0);
@@ -254,11 +348,11 @@ sub get_mount_point
 	{
 		chomp;
 		my $line = $_;
-		#logger($conf, "line: [$line]");
+		#logger($conf, __LINE__, "line: [$line]");
 		if ($line =~ /^$device on (.*?) /)
 		{
 			$mount_point = $1;
-			#logger($conf, "mount_point: [$mount_point]");
+			#logger($conf, __LINE__, "mount_point: [$mount_point]");
 		}
 	}
 	close $filehandle;
@@ -272,14 +366,14 @@ sub find_file_systems
 	my @filesystems;
 	
 	my $sc = "$conf->{path}{ls} ${device}*";
-	logger($conf, "Calling: [$sc]");
+	logger($conf, __LINE__, "Calling: [$sc]");
 	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
 	while (<$filehandle>)
 	{
 		chomp;
 		my $line = $_;
 		next if not $line;
-		#logger($conf, "line: [$line]");
+		#logger($conf, __LINE__, "line: [$line]");
 		if (($line eq $device) or ($line =~ /^$device\d+/))
 		{
 			call_blkid($conf, $line);
@@ -303,7 +397,7 @@ sub call_blkid
 		chomp;
 		my $line = $_;
 		next if not $line;
-		#logger($conf, "line: [$line]");
+		#logger($conf, __LINE__, "line: [$line]");
 		if ($line =~ /UUID="(.*?)"/)
 		{
 			$uuid = $1;
@@ -320,133 +414,12 @@ sub call_blkid
 		$conf->{devices}{$device}{fs}   = $fs;
 		$conf->{devices}{$device}{uuid} = $uuid;
 		$conf->{devices}{$device}{path} = $device;
-		#logger($conf, "device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+		#logger($conf, __LINE__, "device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
 	}
 	else
 	{
-		#logger($conf, "device: [$device] has no file system.");
+		#logger($conf, __LINE__, "device: [$device] has no file system.");
 	}
 	
 	return(0);
-}
-
-sub read_syslog
-{
-	my ($conf) = @_;
-	
-	# I'm interested in the last 24 lines, but this is safer in case
-	# something is being noisy.
-	my $sc = "$conf->{path}{tail} -n 100 /var/log/messages";
-	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
-	while (<$filehandle>)
-	{
-		chomp;
-		my $line = $_;
-		next if not $line;
-		#logger($conf, "line: [$line]");
-		next if $line !~ /kernel:/;
-		if ($line =~ /New USB device found/)
-		{
-			# Old logs, clear what I've read so far.
-			#logger($conf, "I see a message in syslog about a new USB device, clearing anything seen before.");
-			$conf->{syslog} = [];
-			push @{$conf->{syslog}}, $line;
-			next;
-		}
-		else
-		{
-			push @{$conf->{syslog}}, $line;
-		}
-	}
-	close $filehandle;
-	
-	return(0);
-}
-
-sub logger
-{
-	my ($conf, $message) = @_;
-	
-	print "$message\n";
-	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Failed to call: [logger -t $THIS_FILE $message]. Error: $!\n";
-	while (<$filehandle>) { print $_; }
-	close $filehandle;
-	
-	return(0);
-}
-
-# This reads in the configuration file.
-sub read_conf
-{
-	my ($conf) = @_;
-	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{'an-usb_conf'}";
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		next if not $line;
-		next if $line !~ /=/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if $line =~ /^#/;
-		next if not $line;
-		my ($var, $val) = (split/=/, $line, 2);
-		$var =~ s/^\s+//;
-		$var =~ s/\s+$//;
-		$val =~ s/^\s+//;
-		$val =~ s/\s+$//;
-		next if (not $var);
-		_make_hash_reference($conf, $var, $val);
-	}
-	$fh->close();
-	
-	return(0);
-}
-
-###############################################################################
-# Sssh, there are private functions                                           #
-###############################################################################
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This is a helper to the below '_make_hash_reference' function. It is called
-# each time a new string is to be created as a new hash key in the passed hash
-# reference.
-sub _add_hash_reference
-{
-	my ($href1, $href2) = @_;
-
-	for my $key (keys %$href2)
-	{
-		if (ref $href1->{$key} eq 'HASH')
-		{
-			_add_hash_reference($href1->{$key}, $href2->{$key});
-		}
-		else
-		{
-			$href1->{$key} = $href2->{$key};
-		}
-	}
-}
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This takes a string with double-colon seperators and divides on those
-# double-colons to create a hash reference where each element is a hash key.
-sub _make_hash_reference
-{
-	my ($href, $key_string, $value) = @_;
-
-	my @keys            = split /::/, $key_string;
-	my $last_key        = pop @keys;
-	my $_href           = {};
-	$_href->{$last_key} = $value;
-	while (my $key = pop @keys)
-	{
-		my $elem      = {};
-		$elem->{$key} = $_href;
-		$_href        = $elem;
-	}
-	_add_hash_reference($href, $_href);
 }

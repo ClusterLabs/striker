@@ -2,69 +2,169 @@
 
 use strict;
 use warnings;
+require "/bin/an-usb.lib";
 
 my $THIS_FILE = "an-usb-remove";
 
 # All this script does is look for mounts that have lost their backing device
 # and cleans up if found.
+# fusermount -u /home/alteeve/usb 
 
-my $conf = {};
+my $conf = init_conf();
 
-logger($conf, "AN!USB Removal Script");
-
-my $filehandle;
-open ($filehandle, "/bin/df -hP 2>&1 |") or die "Failed to call: [/bin/df -hP]; $!\n";
-while (<$filehandle>)
-{
-	chomp;
-	my $line = $_;
-	next if not $line;
-	$line =~ s/\s+/ /g;
-	next if $line !~ /^\//;
-	#logger($conf, "line: [$line]");
-	my ($device, $mount_point) = (split/ /, $line)[0,5];
-	
-	# Skip '/', '/boot' and any mount not on '/dev/sdX'.
-	next if (($mount_point eq "/") or ($mount_point eq "/boot"));
-	next if ($device !~ /^\/dev\/sd/);
-	
-	# Now check.
-	check_mount($conf, $device, $mount_point);
-}
-close $filehandle;
-
+logger($conf, __LINE__, "AN!USB Removal Script");
+read_conf($conf);
+read_syslog($conf);
+parse_syslog($conf);
+cleanup_remote($conf);
+cleanup_local($conf);
+logger($conf, __LINE__, "AN!USB Removal Script finished.");
 
 exit(0);
 
-# This checks to see if the device exists and, if not, force-unmounts the
-# mountpoint and, if the directory is empty, remove it.
-sub check_mount
+# Clean up any left-over local mount(s).
+sub cleanup_local
 {
-	my ($conf, $device, $mount_point) = @_;
-	logger($conf, "Device: [$device], Mount Point: [$mount_point]");
+	my ($conf) = @_;
 	
-	if (-b $device)
+	my $filehandle;
+	open ($filehandle, "/bin/df -hP 2>&1 |") or die "Failed to call: [/bin/df -hP]; $!\n";
+	while (<$filehandle>)
 	{
-		logger($conf, "Device: [$device] still exists.");
+		chomp;
+		my $line = $_;
+		next if not $line;
+		$line =~ s/\s+/ /g;
+		next if $line !~ /^\//;
+		#logger($conf, __LINE__, "line: [$line]");
+		my ($device, $mount_point) = (split/ /, $line)[0,5];
+		
+		# Skip '/', '/boot' and any mount not on '/dev/sdX'.
+		next if (($mount_point eq "/") or ($mount_point eq "/boot"));
+		next if ($device !~ /^\/dev\/sd/);
+		
+		# Now check.
+		check_mount($conf, $device, $mount_point);
 	}
-	else
+	close $filehandle;
+	
+	return(0);
+}
+
+# Clean up the client's mount(s) if any left-over mount points.
+sub cleanup_remote
+{
+	my ($conf) = @_;
+	
+	my ($stdout, $stderr, $exit) = remote_call($conf, "mount");
+	
+	my $this_usb       = $conf->{this_usb};
+	my $host           = $conf->{usb}{$this_usb}{sshfs}{host};
+	my $user           = $conf->{usb}{$this_usb}{sshfs}{user};
+	my $password       = $conf->{usb}{$this_usb}{sshfs}{password};
+	my $remote_mount   = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+	my $local_mount    = $conf->{usb}{$this_usb}{local_mount};
+	my $local_host     = $conf->{'local'}{host};
+	my $local_user     = $conf->{'local'}{user};
+	my $local_password = $conf->{'local'}{password};
+	
+	logger($conf, __LINE__, "I will clean up mounts on: [$user\@$host] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
+	
+	foreach my $line (split/\n/, $stdout)
 	{
-		logger($conf, "Device: [$device] no longer exists. Cleaning up.");
-		unmount($conf, $device);
-		rmdir($mount_point) or warn "Unable to remove directory: [$mount_point]. Error: $!\n";
-		if (-d $mount_point)
+		logger($conf, __LINE__, "mount line: [$line]");
+		if ($line =~ /^(.*?)\@(.*?):(.*?) on (.*?) type fuse.sshfs/)
 		{
-			logger($conf, "Failed to remove mount point: [$mount_point]. Are there files in the directory?");
-		}
-		else
-		{
-			logger($conf, "Mount point: [$mount_point] removed.");
+			my $this_local_user   = $1;
+			my $this_local_host   = $2;
+			my $this_local_mount  = $3;
+			my $this_remote_mount = $4;
+			logger($conf, __LINE__, "Found sshfs; local: [$this_local_user\@$this_local_host:$this_local_mount] mounted at: [$this_remote_mount]");
+			if ($this_remote_mount =~ /^$remote_mount/)
+			{
+				logger($conf, __LINE__, " - This needs to be unmounted.");
+				my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $remote_mount");
+			}
 		}
 	}
 	
 	return(0);
 }
 
+# This checks to see if the device exists and, if not, force-unmounts the
+# mountpoint and, if the directory is empty, remove it.
+sub check_mount
+{
+	my ($conf, $device, $mount_point) = @_;
+	logger($conf, __LINE__, "Device: [$device], Mount Point: [$mount_point]");
+	
+	if (-b $device)
+	{
+		logger($conf, __LINE__, "Device: [$device] still exists.");
+	}
+	else
+	{
+		logger($conf, __LINE__, "Device: [$device] no longer exists. Cleaning up.");
+		unmount($conf, $device);
+		rmdir($mount_point) or warn "Unable to remove directory: [$mount_point]. Error: $!\n";
+		if (-d $mount_point)
+		{
+			logger($conf, __LINE__, "Failed to remove mount point: [$mount_point]. Are there files in the directory?");
+		}
+		else
+		{
+			logger($conf, __LINE__, "Mount point: [$mount_point] removed.");
+		}
+	}
+	
+	return(0);
+}
+
+# Parse the syslog and look for disconnect messages.
+sub parse_syslog
+{
+	my ($conf) = @_;
+	
+	my $this_usb        = "";
+	my $block_device    = "";
+	my $rule_found      = 0;
+	foreach my $line (@{$conf->{syslog}})
+	{
+		# This will intentionally overwrite older removal messages
+		# we might see.
+		if ($line =~ /kernel: usb (.*?): USB disconnect/)
+		{
+			$this_usb = $1;
+			logger($conf, __LINE__, "USB device: [$this_usb] removed.");
+		}
+	}
+	
+	if (not $this_usb)
+	{
+		logger($conf, __LINE__, "Removed USB device not found in /var/log/messages. Unable to proceed.\n");
+		exit(1);
+	}
+	
+	$conf->{this_usb} = $this_usb;
+	logger($conf, __LINE__, "USB device: [$this_usb]");
+	foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
+	{
+		if (exists $conf->{usb}{$this_usb})
+		{
+			$rule_found = 1;
+			last;
+		}
+	}
+	if (not $rule_found)
+	{
+		logger($conf, __LINE__, "The removed block device is not using a managed USB port.");
+		exit(0);
+	}
+	
+	return(0);
+}
+
+# Unmount local mounts.
 sub unmount
 {
 	my ($conf, $device) = @_;
@@ -75,22 +175,10 @@ sub unmount
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, "line: [$line]");
+		logger($conf, __LINE__, "line: [$line]");
 	}
 	close $filehandle;
-	logger($conf, "Device: [$device] unmounted.");
-	
-	return(0);
-}
-
-sub logger
-{
-	my ($conf, $message) = @_;
-	
-	print "$message\n";
-	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$message" or die "Failed to call: [logger -t $THIS_FILE $message]. Error: $!\n";
-	while (<$filehandle>) { print $_; }
-	close $filehandle;
+	logger($conf, __LINE__, "Device: [$device] unmounted.");
 	
 	return(0);
 }
