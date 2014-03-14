@@ -83,7 +83,9 @@ sub cleanup_remote
 			if ($this_remote_mount =~ /^$remote_mount/)
 			{
 				logger($conf, __LINE__, " - This needs to be unmounted.");
-				my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $remote_mount");
+				my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $this_remote_mount");
+				logger($conf, __LINE__, " - Should be unmounted now, removing remote mount point.");
+				($stdout, $stderr, $exit) = remote_call($conf, "rmdir $this_remote_mount");
 			}
 		}
 	}

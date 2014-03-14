@@ -109,9 +109,12 @@ sub mount_filesystems
 	my ($conf) = @_;
 	
 	### TODO: If I can't make a directory, make an alternative.
+	### TODO: Make the failure to mount one partition not block further
+	###       partitions.
 	my $i = 0;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
+		logger($conf, __LINE__, "Device: [$device].");
 		my $this_usb     = $conf->{this_usb};
 		my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
 		my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
@@ -124,22 +127,20 @@ sub mount_filesystems
 			$remote_mount .= "-$i";
 		}
 		
-		my $mountable = 0;
 		# Check for unmountable stuff.
-		foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
+		my $mountable = 0;
+		if ($conf->{devices}{$device}{fs} eq "crypto_LUKS")
 		{
-			if ($conf->{devices}{$device}{fs} eq "crypto_LUKS")
-			{
-				logger($conf, __LINE__, "Device: [$device] has an unmountable file system: [$conf->{devices}{$device}{fs}]. Skipping it.");
-				delete $conf->{devices}{$device};
-			}
-			else
-			{
-				$mountable = 1;
-				logger($conf, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
-				unmount($conf, $device);
-			}
+			logger($conf, __LINE__, "Device: [$device] has an unmountable file system: [$conf->{devices}{$device}{fs}]. Skipping it.");
+			delete $conf->{devices}{$device};
 		}
+		else
+		{
+			$mountable = 1;
+			logger($conf, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
+			unmount($conf, $device);
+		}
+		
 		if (not $mountable)
 		{
 			logger($conf, __LINE__, "No mountable devices. Exiting.");
@@ -182,6 +183,13 @@ sub mount_filesystems
 		{
 			chomp;
 			my $line = $_;
+			logger($conf, __LINE__, "mount: [$line]");
+			if ($line =~ /unknown filesystem type '(.*?)'/)
+			{
+				my $fs = $1;
+				logger($conf, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
+				exit(4);
+			}
 		}
 		close $filehandle;
 		
@@ -194,10 +202,11 @@ sub mount_filesystems
 		{
 			chomp;
 			my $line = $_;
-			#logger($conf, __LINE__, "line: [$line].");
-			if (($line =~ /^$device\s/) && ($line =~ /$local_mount$/))
+			logger($conf, __LINE__, "line: [$line].");
+			if (($line =~ /^$device /) && ($line =~ /$local_mount$/))
 			{
 				$mounted = 1;
+				logger($conf, __LINE__, " - Mounted.");
 			}
 		}
 		close $filehandle;
@@ -296,7 +305,7 @@ sub mount_filesystems
 			}
 			elsif (($exit == 1) && ($stderr =~ /fuse: failed to exec fusermount: Permission denied/))
 			{
-				logger($conf, __LINE__, "Calling: [$remote_sc] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$user' in the 'fuse' group? Unable to proceed.");
+				logger($conf, __LINE__, "Calling: [$remote_sc] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$user' user in the 'fuse' group? If not, please run: [usermod -a -G fuse $user] on the target server and try again. Unable to proceed.");
 				exit(12);
 			}
 		}

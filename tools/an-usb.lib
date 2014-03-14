@@ -131,9 +131,15 @@ sub remote_call
 	$exit   = 99 if not defined $exit;
 	
 	$stdout =~ s/\n$//;
-	$stderr =~ s/\n$//; 
+	$stderr =~ s/\n$//;
 	
 	logger($conf, __LINE__, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
+	
+	if ($stderr =~ /Timeout waiting for prompt/i)
+	{
+		logger($conf, __LINE__, "The remote machine could not log into this machine. Has this machine's host key been added to the target server user's 'known_hosts' file? If not, on the: [$host] server, as the: [$user] user, run: [ssh $conf->{'local'}{user}\@$conf->{'local'}{host}] and accept the presented fingerprint. Once done, please try again. Unable to proceed.");
+		exit(13);
+	}
 	
 	return($stdout, $stderr, $exit);
 }
