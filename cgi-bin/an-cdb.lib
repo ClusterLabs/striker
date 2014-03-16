@@ -6510,7 +6510,7 @@ sub provision_vm
 		}
 		$provision .= " \\\\\n";
 	}
-	$provision .= "  --graphics spice > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	$provision .= "  --graphics vnc > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one
@@ -8775,10 +8775,16 @@ sub get_date
 	my ($conf, $time) = @_;
 	$time = time if not defined $time;
 	
-	my @time = localtime($time);
+	my @time   = localtime($time);
+	my $year   = ($time[5] + 1900);
+	my $month  = sprintf("%.2d", ($time[4] + 1));
+	my $day    = sprintf("%.2d", $time[3]);
+	my $hour   = sprintf("%.2d", $time[2]);
+	my $minute = sprintf("%.2d", $time[1]);
+	my $second = sprintf("%.2d", $time[0]);
 	
 	# this returns "yyyy-mm-dd_hh:mm:ss".
-	my $date = ($time[5] += 1900)."-".sprintf("%.2d", ($time[4]++))."-".sprintf("%.2d", $time[3])."_".sprintf("%.2d", $time[2]).":".sprintf("%.2d", $time[1]).":".sprintf("%.2d", $time[0]);
+	my $date = "$year-$month-$day $hour:$minute:$second";
 	
 	return ($date);
 }
@@ -12068,6 +12074,15 @@ sub display_node_controls
 	
 	print "
 </table>
+<br />
+";
+
+	return (0);
+}
+
+1;
+;
+>
 <br />
 ";
 
