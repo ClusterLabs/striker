@@ -124,6 +124,19 @@ else
 		exit
 	fi
 fi
+if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+then
+	echo " - noauth .jar already exists"
+else
+	wget https://alteeve.ca/files/guacamole-auth-noauth-0.8.0.jar -O /var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar
+	if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+	then
+		echo " - noauth .jar downloaded."
+	else
+		echo " - Failed to download or save: [/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar]."
+		exit
+	fi
+fi
 
 echo "Downloading latest war file."
 if [ -e "/var/lib/guacamole/guacamole.war" ]
@@ -182,10 +195,10 @@ guacd-port:     4822
 lib-directory:  /var/lib/guacamole/classpath
 
 # Authentication provider class
-auth-provider: net.sourceforge.guacamole.net.basic.BasicFileAuthenticationProvider
+auth-provider: net.sourceforge.guacamole.net.auth.noauth.NoAuthenticationProvider
 
-# Properties used by BasicFileAuthenticationProvider
-basic-user-mapping: /etc/guacamole/user-mapping.xml
+# NoAuth properties
+noauth-config: /etc/guacamole/noauth-config.xml
 EOF
 	if [ -e "/etc/guacamole/guacamole.properties" ]
 	then
@@ -225,47 +238,40 @@ else
 fi
 echo "Install finished!"
 
+# Please now create: [/etc/guacamole/user-mapping.xml] defined for your servers.
 echo '
-Please now create: [/etc/guacamole/user-mapping.xml] defined for your servers.
+Please now create: [/etc/guacamole/noauth-config.xml] defined for your servers.
 
 Example:
 ====
-<user-mapping>
-	<!-- Per-user authentication and config information -->
-	<authorize username="admin" password="secret">
-	
+<configs>
 	<!-- Server: vm01-foo, listening on port: 5900 -->
 	<!--Host: an-c05n01 -->
-	<connection name="vm01-foo">
-        	<protocol>vnc</protocol>
-        	<param name="hostname">an-c05n01</param>
-        	<param name="port">5900</param>
-        	<param name="password"></param>
-        </connection>
+	<config name="r1server1-n01" protocol="vnc">
+		<param name="hostname" value="an-c05n01" />
+		<param name="port" value="5900" />
+	</config>
 	<!--Host: an-c05n02 -->
-	<connection name="vm01-foo">
-        	<protocol>vnc</protocol>
-        	<param name="hostname">an-c05n02</param>
-        	<param name="port">5900</param>
-        	<param name="password"></param>
-        </connection>
-
+	<config name="r1server1-n02" protocol="vnc">
+		<param name="hostname" value="an-c05n02" />
+		<param name="port" value="5900" />
+	</config>
+	
 	<!-- Server: vm02-bar, listening on port: 5901 -->
 	<!--Host: an-c05n01 -->
-	<connection name="vm02-bar">
-        	<protocol>vnc</protocol>
-        	<param name="hostname">an-c05n01</param>
-        	<param name="port">5901</param>
-        	<param name="password"></param>
-        </connection>
+	<config name="r2server1-n01" protocol="vnc">
+		<param name="hostname" value="an-c05n01" />
+		<param name="port" value="5901" />
+	</config>
 	<!--Host: an-c05n02 -->
-	<connection name="vm02-bar">
-        	<protocol>vnc</protocol>
-        	<param name="hostname">an-c05n02</param>
-        	<param name="port">5901</param>
-        	<param name="password"></param>
-        </connection>
-
-</user-mapping>
+	<config name="r2server1-n02" protocol="vnc">
+		<param name="hostname" value="an-c05n02" />
+		<param name="port" value="5901" />
+	</config>
+</configs>
 ====
+
+Then (re)start tomcat6 and guacd.
+/etc/init.d/tomcat6 restart
+/etc/init.d/guacd restart
 '
