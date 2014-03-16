@@ -5547,6 +5547,17 @@ sub manage_vm
 	my $select_ram_suffix    = build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
 	#record($conf, "$THIS_FILE ".__LINE__."; (<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix\n");
 	
+	# Setup Guacamole, if installed.
+	if (-e "/etc/guacamole/noauth-config.xml")
+	{
+		# Installed.
+		get_current_vm_vnc_port($conf, $say_vm);
+	}
+	else
+	{
+		# Not installed.
+	}
+	
 	# Finally, print it all
 	print "
 <table align=\"center\">
@@ -5592,55 +5603,6 @@ sub manage_vm
 ";
 		$i++;
 	}
-	
-	### NOTE: This is likely not going to happen in this version.
-# 	# Figure out which storage pool the server is on.
-# 	my ($on_vg, $lv_size) = find_node_storage_pool($conf);
-# 	
-# 	# Now that I know the LV, get it's size and parse out the VG.
-# 	my $printed_header = 0;
-# 	my @candidate_vgs;
-# 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
-# 	{
-# 		next if $vg eq $on_vg;
-# 		my $clustered   = $conf->{resources}{vg}{$vg}{clustered};
-# 		my $free_space  = $conf->{resources}{vg}{$vg}{free_space};
-# 		my $used_space  = $conf->{resources}{vg}{$vg}{used_space};
-# 		my $total_space = $conf->{resources}{vg}{$vg}{size};
-# 		
-# 		if (($clustered) && ($lv_size >= $free_space))
-# 		{
-# 			if (not $printed_header)
-# 			{
-# 				print "
-# 	<tr>
-# ";
-# 			}
-# 			print "
-# 		<td class=\"highlight_good_bold\">
-# 			Storage
-# 		</td>
-# 		<td>
-# 			Permanently move to storage pool <span class=\"fixed_width\">$vg</span>
-# 		</td>
-# 		<td>
-# 			<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{vm}{$vm}&task=move_storage&target=$vg\">Permanently Move</a>
-# 		</td>
-# ";
-# # 			my $string = "vg=$vg,clustered=1,free_space=$free_space,used_space=$used_space,total_space=$total_space";
-# # 			push @candidate_vgs, $string;
-# # 			record($conf, "$THIS_FILE ".__LINE__."; candidate target vg: [$vg] ($string)\n");
-# 		}
-# 	}
-# 	if ($printed_header)
-# 	{
-# 		# Print the footer
-# 		print "
-# 	</tr>
-# 	<tr><td style=\"height:10px; padding:0px\" colspan=\"3\"></td></tr>
-# ";
-# 	}
-	
 	
 	print "
 	<tr>
@@ -5700,6 +5662,19 @@ sub manage_vm
 ";
 	
 	return (0);
+}
+
+# This figures out which node a VM is running on, calls 'virsh dumpxml $vm',
+# parses out the currently used VNC port and returns the host and port.
+sub get_current_vm_vnc_port
+{
+	my ($conf, $vm) = @_;
+	
+	my $host = "";
+	my $port = "";
+	
+	
+	return($host, $port);
 }
 
 # This looks at a VM and determines which storage pool it is on.
@@ -6313,7 +6288,8 @@ sub add_vm_to_cluster
 		";
 		return (1);
 	}
-		print "
+	# Done!
+	print "
 			<br />
 		</td>
 	</tr>
@@ -6490,6 +6466,13 @@ sub provision_vm
 		$provision .= "  --disk path=/shared/files/$conf->{new_vm}{driver_iso},device=cdrom --force\\\\\n";
 	}
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
+	# VNC doesn't show the mouse pointer properly on the default 'qxl'
+	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
+	# use 'cirrus'.
+	if (($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
+	{
+		$provision .= "  --video cirrus \\\\\n";
+	}
 	if ($conf->{new_vm}{virtio}{nic})
 	{
 		$provision .= "  --network bridge=vbr2,model=virtio \\\\\n";
@@ -6510,7 +6493,7 @@ sub provision_vm
 		}
 		$provision .= " \\\\\n";
 	}
-	$provision .= "  --graphics vnc > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one
@@ -12079,4 +12062,5 @@ sub display_node_controls
 
 	return (0);
 }
+
 1;

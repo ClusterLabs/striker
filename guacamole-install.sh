@@ -236,13 +236,41 @@ else
 		exit
 	fi
 fi
+
+# Create the skeleton 'noauth-config.xml' file.
+echo "Creating base server configuration file."
+if [ -e "/etc/guacamole/noauth-config.xml" ]
+then
+	echo " - Server configuration file already exists."
+else
+	cat > /etc/guacamole/noauth-config.xml << EOF
+<configs>
+</configs>
+EOF
+	if [ -e "/etc/guacamole/noauth-config.xml" ]
+	then
+		echo " - Server configuration file successfully created."
+	else
+		echo " - Failed to create server configuration file."
+		exit
+	fi
+fi
+
+echo "Configuring the daemons to start on boot."
+chkconfig tomcat6 on
+chkconfig guacd on
+echo " - Both 'guacd' and 'tomcat6' are now enabled on boot."
+/etc/init.d/tomcat6 restart
+/etc/init.d/guacd restart
+echo " - Daemons (re)started. Safe to ignore 'stop' errors above."
 echo "Install finished!"
 
 # Please now create: [/etc/guacamole/user-mapping.xml] defined for your servers.
 echo '
-Please now create: [/etc/guacamole/noauth-config.xml] defined for your servers.
+If you are not using AN!CDB, then please modify the server configuration file:
+[/etc/guacamole/noauth-config.xml] and add your servers manually.
 
-Example:
+Sample configuration:
 ====
 <configs>
 	<!-- Server: vm01-foo, listening on port: 5900 -->
