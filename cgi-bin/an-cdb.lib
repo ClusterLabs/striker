@@ -12079,14 +12079,4 @@ sub display_node_controls
 
 	return (0);
 }
-
-1;
-;
->
-<br />
-";
-
-	return (0);
-}
-
 1;
