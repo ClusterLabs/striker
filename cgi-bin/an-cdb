@@ -60,6 +60,7 @@ my $conf={
 		fence_ipmilan		=>	"/sbin/fence_ipmilan",
 		gethostip		=>	"/bin/gethostip",
 		'grep'			=>	"/bin/grep",
+		guacamole_config	=>	"/etc/guacamole/noauth-config.xml",
 		ifconfig		=>	"/sbin/ifconfig",
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
