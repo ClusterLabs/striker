@@ -1,6 +1,3 @@
-Please note: This is a Beta release. It is believed to be stable and ready for
-             use, but bugs may exist. Please test before using in production.
-
 
   This program is a "Cluster Dashboard" designed for simple management of
 AN!Clusters[1]. It is a simple, web-based application designed to be browser
@@ -17,9 +14,9 @@ organizations with little to no in-house IT staff.
  c. Media and resource management for existing VMs
 
 
-Screenshots
+Online Documentation
 ==============================================
-- http://imgur.com/a/YPfZu
+- https://alteeve.ca/w/AN!CDB_-_Cluster_Dashboard
 
  
 Cluster and VM management
@@ -113,4 +110,4 @@ domains to the preferred host for a given VM.
 
 ==============================================
 
-1. - https://alteeve.ca/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+1. - https://alteeve.ca/w/AN!Cluster_Tutorial_2
