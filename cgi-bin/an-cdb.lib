@@ -3582,11 +3582,7 @@ sub manage_vm
 		}
 		if (not $message)
 		{
-			my ($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
-			$guacamole_url .= ":8080/guacamole/client.xhtml";
-			$guacamole_url =~ s/:\d+(:\d+)/$1/;
-			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-			#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
+			my ($guacamole_url) = get_guacamole_link($conf, $node);
 			$message = "Connect directly to this server's desktop.";
 			if (not $node)
 			{
@@ -3736,6 +3732,21 @@ sub manage_vm
 ";
 	
 	return (0);
+}
+
+# This sorts out the URL for the guacamole link
+sub get_guacamole_link
+{
+	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
+	
+	my ($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+	$guacamole_url .= ":8080/guacamole/client.xhtml";
+	$guacamole_url =~ s/:\d+(:\d+)/$1/;
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
+
+	return ($guacamole_url);
 }
 
 # This modifies the VM's XML definition file to tell it to use VNC instead of
@@ -4880,10 +4891,63 @@ sub provision_vm
 	print "\t\t\t<br />\n";
 	print "\t\t\tDone.\n";
 	print "\t\t\t<br />\n";
-	print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
-	print "\t\t\tPlease complete the install using <span class=\"code\">virt-manager</span>.<br />\n";
-	print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
-	print "\t\t\t<br />\n";
+	
+	if (-e $conf->{path}{guacamole_config})
+	{
+		# Get the VNC port and add an entry to Guacamole.
+		my $node   = $conf->{new_vm}{host_node};
+		my $say_vm = $conf->{new_vm}{name};
+		my $vm     = "vm:$say_vm";
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
+		my $icon   = "";
+		# This needs to be set manually as this server didn't exist
+		# when the cluster was scanned last.
+		$conf->{vm}{$vm}{current_host} = $node;
+		my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+		update_guacamole_config($conf, $say_vm, $node, $port);
+		my ($guacamole_url) = get_guacamole_link($conf, $node);
+		if ($node =~ /n01/)
+		{
+			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"/img/icon_server-desktop_n01.png\"></a>";
+		}
+		elsif ($node =~ /n02/)
+		{
+			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"/img/icon_server-desktop_n02.png\"></a>";
+		}
+		else
+		{
+			$icon = "<span class=\"highlight_warning\">Failed to locate the host node!</span><br />Please use 'Virtual Machine Manager' on the dashboard machine to locate this server and finish the install. Sorry for the inconvenience.";
+		}
+		
+		print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
+		print "\t\t</td>\n";
+		print "\t</tr>\n";
+		print "\t<tr>\n";
+		print "\t\t<td class=\"highlight_good_bold\">\n";
+		print "\t\t\tConnect to Server\n";
+		print "\t\t</td>\n";
+		print "\t\t<td>\n";
+		print "\t\t\tPlease click on the icon below to access your new server and finish the OS install.<br />\n";
+		print "\t\t\tThis will open a new browser tab or window.<br />\n";
+		print "\t\t\t$icon<br />\n";
+		print "\t\t</td>\n";
+		print "\t</tr>\n";
+		print "\t<tr>\n";
+		print "\t\t<td class=\"highlight_good_bold\">\n";
+		print "\t\t\tAfter Install is Complete\n";
+		print "\t\t</td>\n";
+		print "\t\t<td>\n";
+		print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
+		print "\t\t\t<br />\n";
+	}
+	else
+	{
+		print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
+		print "\t\t\tPlease complete the install using <span class=\"code\">virt-manager</span>.<br />\n";
+		print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
+		print "\t\t\t<br />\n";
+	}
 	
 	print "
 		</td>
@@ -5260,7 +5324,7 @@ sub confirm_provision_vm
 	<form method=\"post\">
 	<tr>
 		<td colspan=\"3\">
-			<b>Create a new VM on the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster</b>
+			<b>Create a new server on the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span></b> <i>Anvil!</i>
 		</td>
 	</tr>
 	<tr>
@@ -5269,7 +5333,7 @@ sub confirm_provision_vm
 		</td>
 		<td colspan=\"2\">
 			<br />
-			You will need to answer some questions in order to create a new virtual server.<br />
+			You will need to answer some questions in order to create a new server.<br />
 			If you are unsure what a certain question means, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">ask questions</a>.<br />
 			<br />
 		</td>
@@ -5407,8 +5471,8 @@ sub confirm_withdraw_node
 		</td>
 		<td>
 			<br />
-			<span class=\"fixed_width\"><u><b>$conf->{cgi}{node_cluster_name}</b></u></span> will leave the cluster.<br />
-			Once complete, it will no longer be able to run or recover any VMs until it rejoins!<br />
+			<span class=\"fixed_width\"><u><b>$conf->{cgi}{node_cluster_name}</b></u></span> will leave the <i>Anvil!</i>.<br />
+			Once complete, it will no longer be able to run or recover any servers until it rejoins the <i>Anvil!</i>.<br />
 			<br />
 		</td>
 	</tr>
@@ -5703,7 +5767,7 @@ sub confirm_start_vm
 		<td>
 			<br />
 			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be booted on cluster node <span class=\"fixed_width\">$conf->{cgi}{node_cluster_name}</span>.<br />
-			The node was selected because it is either the preferred host or the only host ready to run this VM.<br />
+			The node was selected because it is either the preferred host or the only host ready to run this server.<br />
 			<br />
 		</td>
 	</tr>
@@ -5760,9 +5824,9 @@ sub confirm_stop_vm
 		</td>
 		<td>
 			<br />
-			Before proceeding, it is <b>strongly advised</b> that you connect to the VM. If there are updates pending, please <b>reboot</b> the VM first.<br />
-			This will ensure that VM shuts down cleanly.<br />
-			Connect to this VM by using <span class=\"fixed_width\">virt-manager</span> (connecting to <span class=\"fixed_width\">$conf->{cgi}{node}</span>) or by using an RDP or SSH session.<br />
+			Before proceeding, it is <b>strongly advised</b> that you connect to the server. If there are updates pending, please <b>reboot</b> the server first.<br />
+			This will ensure that server shuts down cleanly.<br />
+			Connect to this server by using <span class=\"fixed_width\">virt-manager</span> (connecting to <span class=\"fixed_width\">$conf->{cgi}{node}</span>) or by using an RDP or SSH session.<br />
 			<br />
 		</td>
 	</tr>
@@ -5777,6 +5841,7 @@ sub confirm_stop_vm
 ";
 	return (0);
 }
+
 # Confirm that the user wants to force-off a VM.
 sub confirm_force_off_vm
 {
@@ -5807,7 +5872,7 @@ sub confirm_force_off_vm
 		<td>
 			<br />
 			This action is the same as pulling the power on a normal server!<br />
-			The virtual machine will have no chance to react and will be instantly turned off. A moment later, the cluster will restart this VM.<br />
+			The virtual machine will have no chance to react and will be instantly turned off. A moment later, the <i>Anvil!</i> will restart this server.<br />
 			<br />
 		</td>
 	</tr>
@@ -5817,7 +5882,7 @@ sub confirm_force_off_vm
 		</td>
 		<td>
 			<br />
-			This should be done as a last resort, when all other attempts to gain control of the VM have failed.<br />
+			This should be done as a last resort, when all other attempts to gain control of the server have failed.<br />
 			<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off. <br />
 			<br />
 		</td>
@@ -5917,7 +5982,7 @@ sub confirm_migrate_vm
 		<td>
 			<br />
 			The virtual machine named <span class=\"fixed_width\">$conf->{cgi}{vm}</span> will be migrated to cluster node <span class=\"fixed_width\">$conf->{cgi}{target}</span>.<br />
-			This VM has ".bytes_to_hr($conf, $conf->{cgi}{vm_ram})." RAM, which will take roughly $migration_time_estimate seconds to migrate.<br />
+			This server has ".bytes_to_hr($conf, $conf->{cgi}{vm_ram})." RAM, which will take roughly $migration_time_estimate seconds to migrate.<br />
 			<br />
 		</td>
 	</tr>
@@ -5989,7 +6054,7 @@ sub start_vm
 						Warning!
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
-						It looks like the attempt to start the VM Failed. Will try to recover now...<br />
+						It looks like the attempt to start the server Failed. Will try to recover now...<br />
 					</td>
 				</tr>
 ";
@@ -6031,7 +6096,7 @@ sub start_vm
 						Retry
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
-						Trying again to start the VM<br />
+						Trying again to start the server<br />
 					</td>
 				</tr>
 ";
