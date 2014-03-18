@@ -65,6 +65,7 @@ my $conf={
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
 		ping			=>	"/usr/bin/ping",
+		restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 		ssh			=>	"/usr/bin/ssh",
 		virsh			=>	"/usr/bin/virsh",
 	},

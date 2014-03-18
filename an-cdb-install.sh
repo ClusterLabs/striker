@@ -215,6 +215,7 @@ chown root:root /var/www/tools/check_dvd
 chown root:root /var/www/tools/do_dd
 chmod 6755 /var/www/tools/check_dvd
 chmod 6755 /var/www/tools/do_dd
+chmod 6755 /var/www/tools/restart_tomcat6
 
 # I always run this because a missing key bit have been added.
 echo "# Keys for the $HOSTNAME dashboard" > /home/alteeve/Desktop/public_keys.txt

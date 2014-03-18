@@ -327,6 +327,10 @@ sub process_task
 			display_node_health($conf);
 		}
 	}
+	elsif ($conf->{cgi}{task} eq "restart_tomcat")
+	{
+		restart_tomcat($conf);
+	}
 	else
 	{
 		print "<pre>\n";
@@ -336,6 +340,68 @@ sub process_task
 		}
 		print "</pre>";
 	}
+	
+	return(0);
+}
+
+# This restarts tomcat on the local machine.
+sub restart_tomcat
+{
+	my ($conf) = @_;
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_ready\" colspan=\"2\">
+			Restarting the remote desktop client on this dashboard.
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_warning_bold\">Note</span>
+		</td>
+		<td>
+			<br />
+			Restarting <span class=\"code\">tomcat</span> server:</br>
+			<br />
+";
+
+
+	my $sc = "$conf->{path}{restart_tomcat} restart";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	my $raw;
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$_</span></span><br />\n";
+	}
+	$fh->close();
+	
+	print "
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class=\"highlight_good_bold\">Done</span>
+		</td>
+		<td>
+			<br />
+			Any existing open connections to servers may need to be reopened.</br>
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"2\">
+			Please close this brower tab (or window).<br />
+			You should now be able to connect to your server.<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
 	
 	return(0);
 }
@@ -3717,6 +3783,18 @@ sub manage_vm
 		</td>
 	</tr>
 	<tr>
+		<td class=\"highlight_good_bold\">
+			Trouble?
+		</td>
+		<td style=\"text-align: center;\">
+			If you're having trouble connecting to the server's desktop, <a href=\"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat\" target=\"_new\">click here</a>.<br />
+			This will restart the remote desktop client on this dashboard.<br />
+		</td>
+		<td>
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
 		<td colspan=\"4\">
 			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
 			<input type=\"hidden\" name=\"vm\" value=\"$conf->{cgi}{vm}\">
@@ -3848,14 +3926,14 @@ sub update_guacamole_config
 			
 			# See of this entry matches my current VM and, if so,
 			# see if the port or host needs to be updated.
-			record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
 			if ($this_vm eq $say_vm)
 			{
 				$match_found = 1;
-				record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
 				if (($node ne $this_host) || ($port ne $this_port))
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
 					$rewrite_needed                        = 1;
 					$conf->{guacamole}{vm}{$this_vm}{host} = $node;
 					$conf->{guacamole}{vm}{$this_vm}{port} = $port;
@@ -3863,12 +3941,31 @@ sub update_guacamole_config
 				}
 				else
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
 				}
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
+				# See if this VM still exists on the cluster.
+				my $exists =  0;
+				foreach my $existing_vm (sort {$a cmp $b} keys %{$conf->{vm}})
+				{
+					$existing_vm =~ s/^vm://;
+					if ($existing_vm eq $this_vm)
+					{
+						#record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
+						$exists = 1;
+					}
+				}
+				#record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
+				if ((not $exists) && ($this_vm ne $say_vm))
+				{
+					# Delete it so that it's removed from guacamole.
+					record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
+					delete $conf->{guacamole}{vm}{$this_vm};
+					$rewrite_needed = 1;
+				}
 			}
 			
 			$this_vm   = "";
@@ -3900,7 +3997,7 @@ sub update_guacamole_config
 		$rewrite_needed                       = 1;
 		$conf->{guacamole}{vm}{$say_vm}{host} = $node;
 		$conf->{guacamole}{vm}{$say_vm}{port} = $port;
-		record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
 		record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
 	}
 	
@@ -3937,7 +4034,7 @@ sub update_guacamole_config
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
 		$fh->close();
 		
@@ -3977,7 +4074,7 @@ sub get_current_vm_vnc_info
 	if ($conf->{vm}{$vm}{current_host})
 	{
 		$node = $conf->{vm}{$vm}{current_host};
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
 		
 		# Read the current VM config from virsh.
 		read_live_xml($conf, $vm, $say_vm, $node);
@@ -3986,8 +4083,7 @@ sub get_current_vm_vnc_info
 	else
 	{
 		# The VM isn't running.
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
-		
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
 		$xml_ref = $conf->{vm}{$vm}{xml};
 	}
 	
@@ -3998,7 +4094,7 @@ sub get_current_vm_vnc_info
 			($port)   = ($line =~ / port='(\d+)'/);
 			($type)   = ($line =~ / type='(.*?)'/);
 			($listen) = ($line =~ / listen='(.*?)'/);
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
 			last;
 		}
 	}
@@ -4871,13 +4967,10 @@ sub provision_vm
 		#print "\t\t\t<span class=\"code\">$line</span><br />\n";
 	}
 	$fh->close();
-	print "\t\t\tDone.\n";
-	print "\t\t\t<br />\n";
-	
-	print "\t\t\tStarting the installation of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n";
-	print "\t\t\tPlease open <i>Virtual Machine Manager</i> on the dashboard and connect to <span class=\"code\">$conf->{new_vm}{host_node}</span>.<br />\n";
-	print "\t\t\tDouble-click on the <span class=\"code\">$conf->{new_vm}{name}</span> server to complete the OS install.<br />\n";
-	print "\t\t\t<br />\n";
+	print "
+			Done.<br />
+			Starting the installation of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n
+";
 	$fh = IO::Handle->new();
 	$sc = "$conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"$script\"";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -4885,12 +4978,12 @@ sub provision_vm
 	while(<$fh>)
 	{
 		chomp;
+		my $line = $_;
+		next if $line =~ /One or more specified logical volume\(s\) not found./;
 		print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$_</span></span><br />\n";
 	}
 	$fh->close();
-	print "\t\t\t<br />\n";
-	print "\t\t\tDone.\n";
-	print "\t\t\t<br />\n";
+	print "\t\t\tDone.<br />\n";
 	
 	if (-e $conf->{path}{guacamole_config})
 	{
@@ -4921,33 +5014,51 @@ sub provision_vm
 			$icon = "<span class=\"highlight_warning\">Failed to locate the host node!</span><br />Please use 'Virtual Machine Manager' on the dashboard machine to locate this server and finish the install. Sorry for the inconvenience.";
 		}
 		
-		print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
-		print "\t\t</td>\n";
-		print "\t</tr>\n";
-		print "\t<tr>\n";
-		print "\t\t<td class=\"highlight_good_bold\">\n";
-		print "\t\t\tConnect to Server\n";
-		print "\t\t</td>\n";
-		print "\t\t<td>\n";
-		print "\t\t\tPlease click on the icon below to access your new server and finish the OS install.<br />\n";
-		print "\t\t\tThis will open a new browser tab or window.<br />\n";
-		print "\t\t\t$icon<br />\n";
-		print "\t\t</td>\n";
-		print "\t</tr>\n";
-		print "\t<tr>\n";
-		print "\t\t<td class=\"highlight_good_bold\">\n";
-		print "\t\t\tAfter Install is Complete\n";
-		print "\t\t</td>\n";
-		print "\t\t<td>\n";
-		print "\t\t\tOnce the installation is complete, please return here and click the link below.<br />\n";
-		print "\t\t\t<br />\n";
+		print "
+			If there were no errors, the installation should now have started.<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Connect to Server
+		</td>
+		<td>
+			<br />
+			Connect to your new server!<br />
+			<br />
+			$icon<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Trouble?
+		</td>
+		<td style=\"text-align: center;\">
+			If you're having trouble connecting to the server's desktop, <a href=\"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat\" target=\"_new\">click here</a>.<br />
+			This will restart the remote desktop client on this dashboard.<br />
+		</tr>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			After First Reboot
+		</td>
+		<td>
+			<br />
+			Once the installation is complete, please return here and click the link below.<br />
+			<br />
+		</td>
+";
 	}
 	else
 	{
-		print "\t\t\tIf there were no errors, the installation should now have started.<br />\n";
-		print "\t\t\tPlease complete the install using <span class=\"code\">virt-manager</span>.<br />\n";
-		print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
-		print "\t\t\t<br />\n";
+		print "
+			If there were no errors, the installation should now have started.<br />
+			Please complete the install using <span class=\"code\">virt-manager</span>.<br />
+			Once the installation is complete, please return here and click the link below.<br />
+			<br />
+";
 	}
 	
 	print "
