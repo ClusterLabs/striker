@@ -4903,6 +4903,7 @@ sub provision_vm
 		# This needs to be set manually as this server didn't exist
 		# when the cluster was scanned last.
 		$conf->{vm}{$vm}{current_host} = $node;
+		sleep 3;
 		my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		update_guacamole_config($conf, $say_vm, $node, $port);
@@ -4938,7 +4939,7 @@ sub provision_vm
 		print "\t\t\tAfter Install is Complete\n";
 		print "\t\t</td>\n";
 		print "\t\t<td>\n";
-		print "\t\t\tOnce the installation is complete, please return here and click \"Next\".<br />\n";
+		print "\t\t\tOnce the installation is complete, please return here and click the link below.<br />\n";
 		print "\t\t\t<br />\n";
 	}
 	else
@@ -4990,8 +4991,9 @@ sub verify_vm_config
 			}
 			else
 			{
-				my $vm = $conf->{cgi}{name};
-				if (exists $conf->{vm}{$vm})
+				my $vm     = $conf->{cgi}{name};
+				my $vm_key = "vm:$vm";
+				if (exists $conf->{vm}{$vm_key})
 				{
 					push @errors, "Duplicate Server Name#!#The server name: [<span class=\"code\">$vm</span>] is already in use.";
 				}

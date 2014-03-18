@@ -73,7 +73,6 @@ my $conf={
 	},
 	'system'		=>	{
 		debug			=>	1,
-		#ricci_password		=>	"file:/var/www/home/ricci_pw.txt",
 		username		=>	getpwuid( $< ),
 		config_read		=>	0,
 		up_nodes		=>	0,
@@ -83,7 +82,7 @@ my $conf={
 		show_refresh		=>	1,
 		ignore_missing_vm	=>	0,
 		#unusable_ram		=>	2147483648,	# 2 GiB
-		unusable_ram		=>	3048259584,	# 2 GiB
+		unusable_ram		=>	3048259584,	# ~4 GiB, rounds to leave a clean number of GB on systems with mirrored memory.
 		os_variant		=>	[
 			"win7#!#Microsoft Windows 7",
 			"vista#!#Microsoft Windows Vista",
