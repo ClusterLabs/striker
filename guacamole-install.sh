@@ -150,12 +150,12 @@ else
 		rm -f /tmp/sf.html
 	fi
 	echo "   - Downloading latest fs html page."
-	wget wget http://sourceforge.net/projects/guacamole/files/current/binary -O /tmp/sf.html
+	wget http://sourceforge.net/projects/guacamole/files/current/binary -O /tmp/sf.html
 
 	if [ -e "/tmp/sf.html" ]
 	then
 		echo "   - Parsing sf.html to build URL"
-		WAR=$(cat /tmp/foo.html |grep guacamole | grep "war/down" | sed 's/.*\(guacamole-0\..*\.war\)\/.*/\1/' | tr '\n' ' ' | awk '{print $1}')
+		WAR=$(cat /tmp/sf.html |grep guacamole | grep "war/down" | sed 's/.*\(guacamole-0\..*\.war\)\/.*/\1/' | tr '\n' ' ' | awk '{print $1}')
 		URL="http://sourceforge.net/projects/guacamole/files/current/binary/$WAR"
 		echo "   - Downloading: $URL"
 		wget -c $URL -O /var/lib/guacamole/$WAR

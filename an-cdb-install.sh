@@ -7,6 +7,7 @@
 PASSWORD=""
 HOSTNAME=$(hostname)
 CUSTOMER=""
+VERSION="1.0.0"
 
 clear;
 echo ""
@@ -180,10 +181,6 @@ if [ ! -e "/etc/an" ]
 then
 	mkdir /etc/an
 fi
-if [ ! -e "/var/www/home/ricci_pw.txt" ]
-then
-	echo "xx-cluster-YY = \"your password\"" > /var/www/home/ricci_pw.txt
-fi
 if [ ! -e "/var/log/an-cdb.log" ]
 then
 	touch /var/log/an-cdb.log
@@ -199,13 +196,16 @@ then
 	rm -f /var/www/home/htpasswd
 fi
 su apache -c "htpasswd -cdb /var/www/home/htpasswd admin $PASSWORD"
-if [ ! -e "/var/www/home/an-cdb" ]
+if [ ! -e "/var/www/tools" ]
 then
-	su apache -c "cd ~ && git clone https://github.com/digimer/an-cdb.git"
-	rsync -av /var/www/home/an-cdb/html /var/www/
-	rsync -av /var/www/home/an-cdb/cgi-bin /var/www/
-	rsync -av /var/www/home/an-cdb/tools /var/www/
-	rsync -av /var/www/home/an-cdb/an.conf /etc/an/
+	cd /tmp/
+	wget -c https://github.com/digimer/an-cdb/archive/v${VERSION}.tar.gz
+	tar -xvzf v${VERSION}.tar.gz
+	rsync -av ./an-cdb-${VERSION}/html /var/www/
+	rsync -av ./an-cdb-${VERSION}/cgi-bin /var/www/
+	rsync -av ./an-cdb-${VERSION}/tools /var/www/
+	rsync -av ./an-cdb-${VERSION}/an.conf /etc/an/
+	rsync -av ./an-cdb-${VERSION}/guacamole-install.sh /var/www/tools/
 fi
 
 # Install Guacamole
@@ -217,9 +217,7 @@ else
 	/var/www/tools/guacamole-install.sh
 fi
 
-chown apache:apache /var/www/home/ricci_pw.txt
 chown -R apache:apache /var/www/*
-chmod 640 /var/www/home/ricci_pw.txt
 chown apache:apache /var/log/an-cdb.log
 chown apache:apache /var/log/an-*
 chown root:root /var/www/tools/check_dvd
