@@ -37,7 +37,7 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-
+my $VERSTION  = "1.0.0";
 
 # This asks the user which cluster they want to work with.
 sub ask_which_cluster
@@ -256,8 +256,9 @@ sub footer
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
-			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche!</a> 1997 - 2014<br />
+			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche! Inc.</a> 1997 - 2014<br />
 			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
+			Release version 1.0.0<br />
 			</span>
 		</td>
 	</tr>
