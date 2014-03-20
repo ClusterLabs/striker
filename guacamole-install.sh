@@ -267,43 +267,4 @@ echo " - Both 'guacd' and 'tomcat6' are now enabled on boot."
 /etc/init.d/tomcat6 restart
 /etc/init.d/guacd restart
 echo " - Daemons (re)started. Safe to ignore 'stop' errors above."
-echo "Install finished!"
-
-# Please now create: [/etc/guacamole/user-mapping.xml] defined for your servers.
-# echo '
-# If you are not using AN!CDB, then please modify the server configuration file:
-# [/etc/guacamole/noauth-config.xml] and add your servers manually.
-# 
-# Sample configuration:
-# ====
-# <configs>
-# 	<!-- Server: vm01-foo, listening on port: 5900 -->
-# 	<!--Host: an-c05n01 -->
-# 	<config name="r1server1-n01" protocol="vnc">
-# 		<param name="hostname" value="an-c05n01" />
-# 		<param name="port" value="5900" />
-# 	</config>
-# 	<!--Host: an-c05n02 -->
-# 	<config name="r1server1-n02" protocol="vnc">
-# 		<param name="hostname" value="an-c05n02" />
-# 		<param name="port" value="5900" />
-# 	</config>
-# 	
-# 	<!-- Server: vm02-bar, listening on port: 5901 -->
-# 	<!--Host: an-c05n01 -->
-# 	<config name="r2server1-n01" protocol="vnc">
-# 		<param name="hostname" value="an-c05n01" />
-# 		<param name="port" value="5901" />
-# 	</config>
-# 	<!--Host: an-c05n02 -->
-# 	<config name="r2server1-n02" protocol="vnc">
-# 		<param name="hostname" value="an-c05n02" />
-# 		<param name="port" value="5901" />
-# 	</config>
-# </configs>
-# ====
-# 
-# Then (re)start tomcat6 and guacd.
-# /etc/init.d/tomcat6 restart
-# /etc/init.d/guacd restart
-# '
+echo "Guacamole install finished!"

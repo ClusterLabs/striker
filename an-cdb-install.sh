@@ -48,11 +48,13 @@ else
 	exit;
 fi
 
-yum -y groupinstall basic-desktop development x11 fonts
-yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
-               syslinux openssl-devel httpd virt-manager screen ccs vim \
-               mlocate wget firefox man qemu-kvm libvirt gedit perl-Test-Simple
 yum -y update
+yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
+               syslinux openssl-devel httpd screen ccs vim mlocate wget man \
+               qemu-kvm libvirt perl-Test-Simple
+# Stuff for a GUI
+yum -y groupinstall basic-desktop development x11 fonts
+yum -y install virt-manager firefox gedit 
 
 export PERL_MM_USE_DEFAULT=1
 perl -MCPAN -e 'install("YAML")'
@@ -204,6 +206,15 @@ then
 	rsync -av /var/www/home/an-cdb/cgi-bin /var/www/
 	rsync -av /var/www/home/an-cdb/tools /var/www/
 	rsync -av /var/www/home/an-cdb/an.conf /etc/an/
+fi
+
+# Install Guacamole
+if [ -e "/etc/guacamole/noauth-config.xml" ]
+then
+	echo "Guacamole already installed."
+else
+	echo "Calling Guacamole installed."
+	/var/www/tools/guacamole-install.sh
 fi
 
 chown apache:apache /var/www/home/ricci_pw.txt

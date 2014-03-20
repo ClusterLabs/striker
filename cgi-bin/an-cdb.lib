@@ -3673,7 +3673,7 @@ sub manage_vm
 	else
 	{
 		# Not installed.
-		$message     = "This version of AN!CDB does not have in-browser remote desktop support yet. <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">Please upgrade</a> to enable this feature.";
+		$message     = "This version of AN!CDB does not have in-browser remote desktop support yet.<br /><a href=\"https://alteeve.ca/w/Support\" target=\"_new\">Please upgrade</a> to enable this feature.";
 		$remote_icon = "<img src=\"/img/icon_server-desktop_oops.png\">";
 	}
 	
@@ -3818,11 +3818,29 @@ sub get_guacamole_link
 	my ($conf, $node) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
 	
-	my ($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
+	my $guacamole_url;
+	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}]\n");
+	if ($ENV{HTTP_REFERER})
+	{
+		($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+	}
+	elsif ($ENV{HTTP_HOST})
+	{
+		if ($ENV{SERVER_PORT} eq "443")
+		{
+			($guacamole_url) = "https://".$ENV{HTTP_HOST};
+		}
+		else
+		{
+			($guacamole_url) = "http://".$ENV{HTTP_HOST};
+		}
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	$guacamole_url .= ":8080/guacamole/client.xhtml";
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	$guacamole_url =~ s/:\d+(:\d+)/$1/;
 	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
 
 	return ($guacamole_url);
 }
