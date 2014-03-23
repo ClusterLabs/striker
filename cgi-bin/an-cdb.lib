@@ -5015,7 +5015,7 @@ sub provision_vm
 		# when the cluster was scanned last.
 		$conf->{vm}{$vm}{current_host} = $node;
 		sleep 3;
-		my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
+		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm);
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		update_guacamole_config($conf, $say_vm, $node, $port);
 		my ($guacamole_url) = get_guacamole_link($conf, $node);

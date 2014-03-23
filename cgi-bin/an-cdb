@@ -41,9 +41,10 @@
 
 use strict;
 use warnings;
+
+my $THIS_FILE = "an-cdb";
 require "./an-cluster.lib";
 require "./an-cdb.lib";
-my $THIS_FILE = "an-cdb";
 
 my $conf={
 	nodes			=>	"",
@@ -57,6 +58,7 @@ my $conf={
 		ccs			=>	"/usr/sbin/ccs",
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
+		email_password_file	=>	"/var/www/tools/email_pw.txt",
 		fence_ipmilan		=>	"/sbin/fence_ipmilan",
 		gethostip		=>	"/bin/gethostip",
 		'grep'			=>	"/bin/grep",
@@ -146,6 +148,8 @@ my $conf={
 		],
 	},
 };
+	
+print "Content-type: text/html; charset=utf-8\n";
 
 find_executables($conf);
 read_conf($conf);
@@ -174,6 +178,7 @@ get_cgi_vars($conf, [
 	"boot_device",
 	"change",
 	"cluster",
+	"config",
 	"confirm",
 	"cpu_cores",
 	"device",
@@ -182,9 +187,13 @@ get_cgi_vars($conf, [
 	"do",
 	"driver_iso",
 	"host",
+	"ids",
 	"insert",
 	"install_iso",
 	"logical_disk",
+	"logo",
+	"mail_data__to",
+	"mail_data__sending_domain",
 	"make_disk_good",
 	"max_cores",
 	"max_ram",
@@ -195,7 +204,16 @@ get_cgi_vars($conf, [
 	"os_variant",
 	"ram",
 	"ram_suffix",
+	"reload",
 	"row",
+	"save",
+	"smtp__server",
+	"smtp__port",
+	"smtp__timeout",
+	"smtp__username",
+	"smtp__password",
+	"smtp__helo_domain",
+	"save",
 	"storage",
 	"target",
 	"task",
@@ -204,6 +222,28 @@ get_cgi_vars($conf, [
 	"vm_ram",
 ]);
 
+# Pick up variables when saving the dashboard configuration.
+if ($conf->{cgi}{ids})
+{
+	my @more_vars;
+	foreach my $this_id (split/,/, $conf->{cgi}{ids})
+	{
+		next if not $this_id;
+		push @more_vars, "cluster__${this_id}__name";
+		push @more_vars, "cluster__${this_id}__description";
+		push @more_vars, "cluster__${this_id}__company";
+		push @more_vars, "cluster__${this_id}__ricci_pw";
+		push @more_vars, "cluster__${this_id}__url";
+		push @more_vars, "cluster__${this_id}__nodes_1_name";
+		push @more_vars, "cluster__${this_id}__nodes_1_ip";
+		push @more_vars, "cluster__${this_id}__nodes_1_port";
+		push @more_vars, "cluster__${this_id}__nodes_2_name";
+		push @more_vars, "cluster__${this_id}__nodes_2_ip";
+		push @more_vars, "cluster__${this_id}__nodes_2_port";
+	}
+	get_cgi_vars($conf, \@more_vars);
+}
+# Pick up the list of volume groups.
 if ($conf->{cgi}{vg_list})
 {
 	my @more_vars;
@@ -215,6 +255,7 @@ if ($conf->{cgi}{vg_list})
 	}
 	get_cgi_vars($conf, \@more_vars);
 }
+# Pick up the list of optical devices.
 if ($conf->{cgi}{device_keys})
 {
 	my @more_vars;
@@ -231,7 +272,22 @@ if ($conf->{cgi}{device_keys})
 header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
 
 # Do I have a cluster name?
-if ($conf->{cgi}{cluster})
+if ($conf->{cgi}{logo})
+{
+	if ($conf->{cgi}{config})
+	{
+		configure_dashboard($conf);
+	}
+	else
+	{
+		ask_which_cluster($conf);
+	}
+}
+elsif ($conf->{cgi}{config})
+{
+	configure_dashboard($conf);
+}
+elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
 	
@@ -263,7 +319,6 @@ if ($conf->{cgi}{cluster})
 	}
 	else
 	{
-		#read_ricci_pw($conf);
 		if ($conf->{cgi}{task})
 		{
 			$conf->{'system'}{show_refresh} = 0;

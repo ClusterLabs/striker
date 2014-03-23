@@ -37,7 +37,1164 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-my $VERSTION  = "1.0.0";
+our $VERSION  = "1.0.2";
+
+# This reads in /etc/hosts and later will try to match host names to IPs
+sub read_hosts
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
+	
+	$conf->{raw}{hosts} = [];
+	my $fh = IO::Handle->new();
+	my $sc = "/etc/hosts";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		push @{$conf->{raw}{hosts}}, $line;
+		$line =~ s/#.*$//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		
+		my ($this_ip, $these_hosts);
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			$this_ip     = $1;
+			$these_hosts = $2;
+			foreach my $this_host (split/ /, $these_hosts)
+			{
+				$conf->{hosts}{$this_host}{ip} = $this_ip;
+				if (not exists $conf->{hosts}{by_ip}{$this_ip})
+				{
+					$conf->{hosts}{by_ip}{$this_ip} = "";
+				}
+				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host,";
+				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
+			}
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This reads /etc/ssh/ssh_config and later will try to match host names to
+# port forwards.
+sub read_ssh_config
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
+	
+	$conf->{raw}{ssh_config} = [];
+	my $this_host;
+	my $fh = IO::Handle->new();
+	my $sc = "/etc/ssh/ssh_config";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		push @{$conf->{raw}{ssh_config}}, $line;
+		$line =~ s/#.*$//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		
+		if ($line =~ /^host (.*)/i)
+		{
+			$this_host = $1;
+			next;
+		}
+		next if not $this_host;
+		if ($line =~ /port (\d+)/i)
+		{
+			my $port = $1;
+			$conf->{hosts}{$this_host}{port} = $port;
+			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> port: [$conf->{hosts}{$this_host}{port}]\n");
+		}
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This allows the user to configure their dashboard.
+sub configure_dashboard
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	
+	read_hosts($conf);
+	read_ssh_config($conf);
+	
+	if ($conf->{cgi}{save})
+	{
+		my $save = 1;
+		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"1\">
+			<b>Saving Changes...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Validating
+		</td>
+		<td style=\"text-align: left;\">
+			Making sure things look ok.
+		</td>
+	</tr>
+";
+		# Make sure email addresses are.
+		if (($conf->{cgi}{smtp__username}) && ($conf->{cgi}{smtp__username} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
+		{
+			$save = 0;
+			print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server User
+		</td>
+		<td style=\"text-align: left;\">
+			The email address: [$conf->{cgi}{smtp__username}] does not appear to be valid.
+		</td>
+	</tr>
+";
+		}
+		if ($conf->{cgi}{mail_data__to})
+		{
+			foreach my $email (split /,/, $conf->{cgi}{mail_data__to})
+			{
+				next if not $email;
+				if ($email !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/)
+				{
+					$save = 0;
+					print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Alert Recipient
+		</td>
+		<td style=\"text-align: left;\">
+			The email address: [$email] does not appear to be valid.
+		</td>
+	</tr>
+";
+				}
+			}
+		}
+		
+		# Make sure values that should be numerical are.
+		
+		if ($conf->{cgi}{smtp__port})
+		{
+			$conf->{cgi}{smtp__port} =~ s/,//;
+			if (($conf->{cgi}{smtp__port} =~ /\D/) || ($conf->{cgi}{smtp__port} < 1) || ($conf->{cgi}{smtp__port} > 65535))
+			{
+				$save = 0;
+				print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server Port
+		</td>
+		<td style=\"text-align: left;\">
+			The mail server port needs to be a number between '1' and '65535'.
+		</td>
+	</tr>
+";
+			}
+		}
+		elsif ($conf->{cgi}{smtp__server})
+		{
+			$save = 0;
+			print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server Port
+		</td>
+		<td style=\"text-align: left;\">
+			You need to specify what TCP your mail server is listening on.<br />
+			Usually this is either '25' or '587'.
+		</td>
+	</tr>
+";
+		}
+		if ($conf->{cgi}{smtp__timeout})
+		{
+		}
+		else
+		{
+			$conf->{cgi}{smtp__port} = 60;
+		}
+		
+		# Now validate Anvil! entries.
+		foreach my $this_id (split/,/, $conf->{cgi}{ids})
+		{
+			next if not $this_id;
+			my $name_key         = "cluster__${this_id}__name";
+			my $description_key  = "cluster__${this_id}__description";
+			my $company_key      = "cluster__${this_id}__company";
+			my $ricci_pw_key     = "cluster__${this_id}__ricci_pw";
+			my $url_key          = "cluster__${this_id}__url";
+			my $nodes_1_name_key = "cluster__${this_id}__nodes_1_name";
+			my $nodes_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
+			my $nodes_1_port_key = "cluster__${this_id}__nodes_1_port";
+			my $nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
+			my $nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
+			my $nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
+			
+			my $this_name         =  $conf->{cgi}{$name_key};
+			my $this_description  =  $conf->{cgi}{$description_key};
+			my $this_company      =  $conf->{cgi}{$company_key};
+			my $this_ricci_pw     =  $conf->{cgi}{$ricci_pw_key};
+			my $this_url          =  $conf->{cgi}{$url_key};
+			my $this_nodes_1_name =  $conf->{cgi}{$nodes_1_name_key};
+			my $this_nodes_1_ip   =  $conf->{cgi}{$nodes_1_ip_key};
+			my $this_nodes_1_port =  $conf->{cgi}{$nodes_1_port_key};
+			   $this_nodes_1_port =~ s/,//;
+			my $this_nodes_2_name =  $conf->{cgi}{$nodes_2_name_key};
+			my $this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
+			my $this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
+			   $this_nodes_2_port =~ s/,//;
+			
+			# If everything is empty, that's fine.
+			if ((not $this_name) && 
+			    (not $this_description) && 
+			    (not $this_company) && 
+			    (not $this_ricci_pw) && 
+			    (not $this_url) && 
+			    (not $this_nodes_1_name) && 
+			    (not $this_nodes_1_ip) && 
+			    (not $this_nodes_1_port) && 
+			    (not $this_nodes_2_name) && 
+			    (not $this_nodes_2_ip) && 
+			    (not $this_nodes_2_port))
+			{
+				next if $this_id eq "new";
+				# Using the values found in the existing config
+				# as these values do not exist in the CGI 
+				# variables.
+				record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$conf->{cluster}{$this_id}{name}], company: [$conf->{cluster}{$this_id}{company} ($conf->{cluster}{$this_id}{description})]\n");
+			}
+			else
+			{
+				# Something is defined, make sure it's sane.
+				if ((not $this_name) || (not $this_nodes_1_name) || (not $this_nodes_2_name))
+				{
+					$save = 0;
+					print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Anvil! Data Incomplete
+		</td>
+		<td style=\"text-align: left;\">
+			The <i>Anvil!</i> with ID: [<span class=\"highlight_note\" class=\"fixed_width\">$this_id</span>] is missing some data.<br />
+			At minimum, the '<span class=\"highlight_ready\">Anvil! Name</span>', '<span class=\"highlight_ready\">Node 1 Name</span> and '<span class=\"highlight_ready\">Node 2 Name</span>' must be specified.
+		</td>
+	</tr>
+";
+				}
+				else
+				{
+					# The minimum information is present,
+					# now make sure the set values are
+					# sane.
+					# IPs sane?
+					if (($this_nodes_1_ip) && ($this_nodes_1_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Node 1 IP Address
+		</td>
+		<td style=\"text-align: left;\">
+			The IP address assigned to <i>Anvil!</i>: [$this_name]'s node named: [$this_nodes_1_name] appears to be invalid.<br />
+		</td>
+	</tr>
+";
+					}
+					if (($this_nodes_2_ip) && ($this_nodes_2_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Node 2 IP Address
+		</td>
+		<td style=\"text-align: left;\">
+			The IP address assigned to <i>Anvil!</i>: [$this_name]'s node named: [$this_nodes_1_name] appears to be invalid.<br />
+		</td>
+	</tr>
+";
+					}
+					# Ports sane?
+					if (($this_nodes_1_port =~ /\D/) || ($this_nodes_1_port < 1) || ($this_nodes_1_port > 65535))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Node 1 TCP Port
+		</td>
+		<td style=\"text-align: left;\">
+			The TCP port assigned to <i>Anvil!</i>: [$this_name]'s node named: [$this_nodes_1_name] appears to be invalid.<br />
+			A TCP port needs to be a number between '1' and '65535'.
+		</td>
+	</tr>
+";
+					}
+					if (($this_nodes_2_port =~ /\D/) || ($this_nodes_2_port < 2) || ($this_nodes_2_port > 65535))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Node 2 TCP Port
+		</td>
+		<td style=\"text-align: left;\">
+			The TCP port assigned to <i>Anvil!</i>: [$this_name]'s node named: [$this_nodes_2_name] appears to be invalid.<br />
+			A TCP port needs to be a number between '2' and '65535'.
+		</td>
+	</tr>
+";
+					}
+					# If there is an IP or Port, but no 
+					# node name, well that's just not good.
+					if ((not $this_nodes_1_name) && (($this_nodes_1_ip) || ($this_nodes_1_port)))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Missing Node Name
+		</td>
+		<td style=\"text-align: left;\">
+			Node 1 in <i>Anvil!</i>: [$this_name] appears to be missing.
+		</td>
+	</tr>
+";
+					}
+					if ((not $this_nodes_2_name) && (($this_nodes_2_ip) || ($this_nodes_2_port)))
+					{
+						$save = 0;
+						print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Missing Node Name
+		</td>
+		<td style=\"text-align: left;\">
+			Node 2 in <i>Anvil!</i>: [$this_name] appears to be missing.
+		</td>
+	</tr>
+";
+					}
+				}
+			}
+		}
+		
+		if ($save)
+		{
+			print "
+	<tr>
+		<td class=\"highlight_good\">
+			Sanity Checks Passed!
+		</td>
+		<td style=\"text-align: left;\">
+			Everything seems sensible, ready to save.
+		</td>
+	</tr>
+";
+		}
+		else
+		{
+			print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Problems Found
+		</td>
+		<td style=\"text-align: left;\">
+			Please fix the issues found above. Once ready, please try again.
+		</td>
+	</tr>
+";
+		}
+		
+		print "
+</table>
+<br />
+";
+	}
+	
+	# If this is the first time the page is loaded, populate the values
+	# with whatever was already in an.conf.
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::reload: [$conf->{cgi}{reload}]\n");
+	if (not $conf->{cgi}{reload})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi}{smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
+		$conf->{cgi}{smtp__server}              = $conf->{smtp}{server}              if not $conf->{cgi}{smtp__server};
+		$conf->{cgi}{smtp__port}                = $conf->{smtp}{port}                if not $conf->{cgi}{smtp__port};
+		$conf->{cgi}{smtp__timeout}             = $conf->{smtp}{timeout}             if not $conf->{cgi}{smtp__timeout};
+		$conf->{cgi}{smtp__username}            = $conf->{smtp}{username}            if not $conf->{cgi}{smtp__username};
+		$conf->{cgi}{smtp__password}            = $conf->{smtp}{password}            if not $conf->{cgi}{smtp__password};
+		$conf->{cgi}{smtp__security}            = $conf->{smtp}{security}            if not $conf->{cgi}{smtp__security};
+		$conf->{cgi}{smtp__encrypt_pass}        = $conf->{smtp}{encrypt_pass}        if not $conf->{cgi}{smtp__encrypt_pass};
+		$conf->{cgi}{smtp__helo_domain}         = $conf->{smtp}{helo_domain}         if not $conf->{cgi}{smtp__helo_domain};
+		$conf->{cgi}{mail_data__to}             = $conf->{mail_data}{to}             if not $conf->{cgi}{mail_data__to};
+		$conf->{cgi}{mail_data__sending_domain} = $conf->{mail_data}{sending_domain} if not $conf->{cgi}{mail_data__sending_domain};
+	}
+	
+	# Build the security select box.
+	my $say_security        =  $conf->{cgi}{smtp__security};
+	my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
+	   $say_security_select .= "<option value=\"None\">None</option>\n";
+	   $say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
+	   $say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
+	   $say_security_select .= "</select>\n";
+	   $say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
+	# Build the encrypt password select box.
+	my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
+	my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
+	   $say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
+	   $say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
+	   $say_encrypt_pass_select .= "</select>\n";
+	   $say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
+	
+	
+	print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"4\">
+			<b>Configure your dashboard.</b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
+	<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
+";
+	# Mail settings.
+	print "
+	<tr>
+		<td class=\"highlight_good\" style=\"white-space: nowrap;\">
+			Mail Settings
+		</td>
+		<td colspan=\"3\" style=\"text-align: left;\">
+			The dashboard does not send email, but your <i>Anvil!</i> nodes will.<br />
+			The <span class=\"code\">$conf->{path}{an_conf}</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Server Address
+		</td>
+		<td>
+			<input type=\"text\" name=\"smtp__server\" value=\"$conf->{cgi}{smtp__server}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			This is the mail server that your node will connect to in order to send email.<br />
+			Your Internet service provider will give you this address, often called an \"<i>SMTP Server</i>\".
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
+	<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
+	<input type=\"hidden\" name=\"mail_data__sending_domain\" value=\"$conf->{cgi}{mail_data__sending_domain}\">
+	<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
+	<input type=\"hidden\" name=\"smtp__helo_domain\" value=\"$conf->{cgi}{smtp__helo_domain}\">
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Server Port
+		</td>
+		<td>
+			<input type=\"text\" name=\"smtp__port\" value=\"$conf->{cgi}{smtp__port}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			When connecting to the mail server address above, a specific \"port\" number must be specified.<br />
+			Your ISP should mention what this port number along with the address.<br />
+			Typically, this is \"25\" for unencrypted connections and \"587\" for encrypted connections.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol#Ports\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Server Timeout
+		</td>
+		<td>
+			<input type=\"text\" name=\"smtp__timeout\" value=\"$conf->{cgi}{smtp__timeout}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			This is how long, in seconds, we will wait for a response from the mail server.<br />
+			If there is no answer after this time, the connection will be considered failed.<br />
+			Generally speaking, 60 seconds is a good number.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Server User
+		</td>
+		<td>
+			<input type=\"text\" name=\"smtp__username\" value=\"$conf->{cgi}{smtp__username}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			Some mail server require a user name and password. Usually, the user name will be you email address.<br />
+			Some ISPs do not require authentication, and in those cases, this can be left blank.<br />
+			Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Server Password
+		</td>
+		<td>
+			<input type=\"password\" name=\"smtp__password\" value=\"$conf->{cgi}{smtp__password}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			If you entered a user name above, please enter it's password here.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Mail Security
+		</td>
+		<td>
+			$say_security_select
+		</td>
+		<td style=\"text-align: left;\">
+			This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />
+			As with the other mail settings, which to use will depends on your Internet service provider.<br />
+			If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"http://en.wikipedia.org/wiki/STARTTLS\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Encrypt Password
+		</td>
+		<td>
+			$say_encrypt_pass_select
+		</td>
+		<td style=\"text-align: left;\">
+			This controls whether your password is sent to the mail server in plain text or encrypted.<br />
+			Most modern mail servers support encrypted passwords, so 'Yes' should work here.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"http://en.wikipedia.org/wiki/Crypt_(C)#MD5-based_scheme\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\">
+			Alert Recipient(s)
+		</td>
+		<td>
+			<input type=\"text\" name=\"mail_data__to\" value=\"$conf->{cgi}{mail_data__to}\" style=\"width: 300px;\" />
+		</td>
+		<td style=\"text-align: left;\">
+			This is the person or list of people who will get alert emails. Please enter just the email address. <br />
+			Separate multiple email addresses with a comma please.<br />
+			Example: '<span class=\"code\">foo\@example.com, bar\@example.com</span>'.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\" style=\"white-space: nowrap;\">
+			Anvil! Systems
+		</td>
+		<td colspan=\"3\" style=\"text-align: left;\">
+			Here you can add, edit or delete <i>Anvil!</i> systems you manage. This section requires a little more technical knowledge. <br />
+			If you have any trouble with this section, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact us</a>.<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Anvil! Name
+		</td>
+		<td colspan=\"2\" style=\"text-align: left;\">
+			This is the name of your <i>Anvil!</i>'s cluster name.<br />
+			This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Description
+		</td>
+		<td colspan=\"2\" style=\"text-align: left;\">
+			This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Owner
+		</td>
+		<td colspan=\"2\" style=\"text-align: left;\">
+			This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
+			This is a purely descriptive field and you can set it to whatever you want.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Anvil! Password
+		</td>
+		<td colspan=\"2\" style=\"text-align: left;\">
+			When your <i>Anvil!</i> was built, a '<span class=\"code\">ricci</span>' password was set.<br />
+			Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info<a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Tracking URL
+		</td>
+		<td colspan=\"2\" style=\"text-align: left;\">
+			If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
+			Node 1 &amp; 2
+		</td>
+		<td colspan=\"3\" style=\"text-align: left;\">
+			This section has three fields per node.<br />
+			<table width=\"100%\" class=\"hidden_table\">
+				<tr>
+					<td class=\"highlight_note\" style=\"border: 0px; text-align: right;\">
+						Node Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						The host name of the node. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info<a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_note\" style=\"border: 0px; text-align: right;\">
+						IP Address:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
+						If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />
+						If you use DNS (or similar) to do name to IP translation, leave this blank.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info<a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_note\" style=\"border: 0px; text-align: right;\">
+						TCP Port:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
+						If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
+						When in doubt, leave this blank.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info<a>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+";
+	my $ids = "";
+	foreach my $this_cluster ((sort {$a cmp $b} keys %{$conf->{clusters}}), "new")
+	{
+		my $this_id          = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
+		my $this_name        = defined $conf->{clusters}{$this_cluster}{name}        ? $conf->{clusters}{$this_cluster}{name}        : "";
+		my $this_company     = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "";
+		   $this_company     = convert_text_to_html($conf, $this_company);
+		my $this_description = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "";
+		   $this_description = convert_text_to_html($conf, $this_description);
+		my $this_url         = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
+		my $this_ricci_pw    = defined $conf->{clusters}{$this_cluster}{ricci_pw}    ? $conf->{clusters}{$this_cluster}{ricci_pw}    : "";
+		my $this_node_1_name = defined $conf->{clusters}{$this_cluster}{nodes}[0]    ? $conf->{clusters}{$this_cluster}{nodes}[0]    : "";
+		my $this_node_1_ip   = defined $conf->{hosts}{$this_node_1_name}{ip}         ? $conf->{hosts}{$this_node_1_name}{ip}         : "";
+		my $this_node_1_port = defined $conf->{hosts}{$this_node_1_name}{port}       ? $conf->{hosts}{$this_node_1_name}{port}       : "";
+		my $this_node_2_name = defined $conf->{clusters}{$this_cluster}{nodes}[1]    ? $conf->{clusters}{$this_cluster}{nodes}[1]    : "";
+		my $this_node_2_ip   = defined $conf->{hosts}{$this_node_2_name}{ip}         ? $conf->{hosts}{$this_node_2_name}{ip}         : "";
+		my $this_node_2_port = defined $conf->{hosts}{$this_node_2_name}{port}       ? $conf->{hosts}{$this_node_2_name}{port}       : "";
+		
+		my $say_this_cluster = $this_cluster;
+		my $clear_icon       = "<img onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\" src=\"/img/icon_clear-fields_16x16.png\">";
+		
+		print "
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>";
+		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
+		if ($ids)
+		{
+			print "
+	<tr>
+		<td colspan=\"4\">
+			<b>Existing <i>Anvil!</i> Systems</b>
+		</td>
+	</tr>
+";
+		}
+		elsif ($this_cluster eq "new")
+		{
+			$say_this_cluster = "";
+			$clear_icon       = "";
+			print "
+	<tr>
+		<td colspan=\"4\">
+			<b>Add a new <i>Anvil!</i> System</b>
+		</td>
+	</tr>
+";
+		}
+		$ids .= "$this_id,";
+		print "
+	<tr>
+		<td colspan=\"4\" style=\"text-align: left;\">
+			<table width=\"100%\" class=\"hidden_table\">
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Anvil! Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Description:
+					</td>
+					<td style=\"border: 0px; text-align: left;\" colspan=\"3\">
+						<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 600px;\"> <span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Owner:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Anvil! Password:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Tracking URL:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 1 Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_node_1_name\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						IP Address:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_node_1_ip\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						TCP Port:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_node_1_port\" style=\"width: 300px;\">
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 2 Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_node_2_name\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						IP Address:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_node_2_ip\" style=\"width: 300px;\">
+					</td>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						TCP Port:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_node_2_port\" style=\"width: 300px;\">
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+";
+	}
+	$ids =~ s/,$//;
+	
+	print "
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			<input type=\"hidden\" name=\"ids\" value=\"$ids\">
+			<input type=\"hidden\" name=\"config\" value=\"true\">
+			<input type=\"submit\" name=\"save\" value=\"Save\" class=\"button\">
+		</td>
+	</tr>
+</table>
+<br />
+";
+	
+	return(1);
+}
+
+# This takes a plain text string and escapes special characters for displaying
+# in HTML.
+sub convert_text_to_html
+{
+	my ($conf, $string) = @_;
+	$string = "" if not defined $string;
+
+	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
+	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
+	$string =~ s/#/&#35;/g;		# Number sign - Must be third! /
+	$string =~ s/\t/&#09;/g;	# Horizontal tab
+	$string =~ s/\n/&#10;/g;	# Line feed
+	$string =~ s/\r/&#13;/g;	# Carriage Return
+	$string =~ s/\s/&#32;/g;	# Space
+	$string =~ s/!/&#33;/g;		# Exclamation mark
+	$string =~ s/"/&#34;/g;		# Quotation mark
+	$string =~ s/\$/&#36;/g;	# Dollar sign
+	$string =~ s/\%/&#37;/g;	# Percent sign
+# 	$string =~ s/'/&#39;/g;		# Apostrophe
+	$string =~ s/'/&rsquo;/g;	# Apostrophe - But in a JS-friendly format.
+	$string =~ s/\(/&#40;/g;	# Left parenthesis
+	$string =~ s/\)/&#41;/g;	# Right parenthesis
+	$string =~ s/\*/&#42;/g;	# Asterisk
+	$string =~ s/\+/&#43;/g;	# Plus sign
+	$string =~ s/,/&#44;/g;		# Comma
+	$string =~ s/-/&#45;/g;		# Hyphen
+	$string =~ s/\./&#46;/g;	# Period (fullstop)
+	$string =~ s/\//&#47;/g;	# Solidus (slash)
+	$string =~ s/:/&#58;/g;		# Colon
+	$string =~ s/</&lt;/g;		# Less than
+	$string =~ s/=/&#61;/g;		# Equals sign
+	$string =~ s/>/&gt;/g;		# Greater than
+	$string =~ s/\?/&#63;/g;	# Question mark
+	$string =~ s/\@/&#64;/g;	# Commercial at
+	$string =~ s/\[/&#91;/g;	# Left square bracket
+	$string =~ s/\\/&#92;/g;	# Reverse solidus (backslash)
+	$string =~ s/\]/&#93;/g;	# Right square bracket
+	$string =~ s/\^/&#94;/g;	# Caret
+	$string =~ s/_/&#95;/g;		# Horizontal bar (underscore)
+	$string =~ s/`/&#96;/g;		# Acute accent# 	if ($string =~/^Qu/ ) { print $log "=2 string: [$string]<br />\n"; }
+	$string =~ s/{/&#123;/g;	# Left curly brace
+	$string =~ s/\|/&#124;/g;	# Vertical bar
+	$string =~ s/}/&#125;/g;	# Right curly brace
+	$string =~ s/~/&#126;/g;	# Tilde
+	$string =~ s/\s/&nbsp;/g;	# Non-breaking Space
+	$string =~ s/¡/&#161;/g;	# Inverted exclamation
+	$string =~ s/¢/&#162;/g;	# Cent sign
+	$string =~ s/£/&#163;/g;	# Pound sterling
+	$string =~ s/¤/&#164;/g;	# General currency sign
+	$string =~ s/¥/&#165;/g;	# Yen sign
+	$string =~ s/¦/&#166;/g;	# Broken vertical bar
+	$string =~ s/§/&#167;/g;	# Section sign
+	$string =~ s/¨/&#168;/g;	# Umlaut (dieresis)
+	$string =~ s/©/&copy;/g;	# Copyright
+	$string =~ s/ª/&#170;/g;	# Feminine ordinal
+	$string =~ s/«/&#171;/g;	# Left angle quote, guillemotleft
+	$string =~ s/¬/&#172;/g;	# Not sign
+	$string =~ s/­/&#173;/g;		# Soft hyphen
+	$string =~ s/®/&#174;/g;	# Registered trademark
+	$string =~ s/¯/&#175;/g;	# Macron accent
+	$string =~ s/°/&#176;/g;	# Degree sign
+	$string =~ s/±/&#177;/g;	# Plus or minus
+	$string =~ s/²/&#178;/g;	# Superscript two
+	$string =~ s/³/&#179;/g;	# Superscript three
+	$string =~ s/´/&#180;/g;	# Acute accent
+	$string =~ s/µ/&#181;/g;	# Micro sign
+	$string =~ s/¶/&#182;/g;	# Paragraph sign
+	$string =~ s/·/&#183;/g;	# Middle dot
+	$string =~ s/¸/&#184;/g;	# Cedilla
+	$string =~ s/¹/&#185;/g;	# Superscript one
+	$string =~ s/º/&#186;/g;	# Masculine ordinal
+	$string =~ s/»/&#187;/g;	# Right angle quote, guillemotright
+	$string =~ s/¼/&frac14;/g;	# Fraction one-fourth
+	$string =~ s/½/&frac12;/g;	# Fraction one-half
+	$string =~ s/¾/&frac34;/g;	# Fraction three-fourths
+	$string =~ s/¿/&#191;/g;	# Inverted question mark
+	$string =~ s/À/&#192;/g;	# Capital A, grave accent
+	$string =~ s/Á/&#193;/g;	# Capital A, acute accent
+	$string =~ s/Â/&#194;/g;	# Capital A, circumflex accent
+	$string =~ s/Ã/&#195;/g;	# Capital A, tilde
+	$string =~ s/Ä/&#196;/g;	# Capital A, dieresis or umlaut mark
+	$string =~ s/Å/&#197;/g;	# Capital A, ring
+	$string =~ s/Æ/&#198;/g;	# Capital AE dipthong (ligature)
+	$string =~ s/Ç/&#199;/g;	# Capital C, cedilla
+	$string =~ s/È/&#200;/g;	# Capital E, grave accent
+	$string =~ s/É/&#201;/g;	# Capital E, acute accent
+	$string =~ s/Ê/&#202;/g;	# Capital E, circumflex accent
+	$string =~ s/Ë/&#203;/g;	# Capital E, dieresis or umlaut mark
+	$string =~ s/Ì/&#204;/g;	# Capital I, grave accent
+	$string =~ s/Í/&#205;/g;	# Capital I, acute accent
+	$string =~ s/Î/&#206;/g;	# Capital I, circumflex accent
+	$string =~ s/Ï/&#207;/g;	# Capital I, dieresis or umlaut mark
+	$string =~ s/Ð/&#208;/g;	# Capital Eth, Icelandic
+	$string =~ s/Ñ/&#209;/g;	# Capital N, tilde
+	$string =~ s/Ò/&#210;/g;	# Capital O, grave accent
+	$string =~ s/Ó/&#211;/g;	# Capital O, acute accent
+	$string =~ s/Ô/&#212;/g;	# Capital O, circumflex accent
+	$string =~ s/Õ/&#213;/g;	# Capital O, tilde
+	$string =~ s/Ö/&#214;/g;	# Capital O, dieresis or umlaut mark
+	$string =~ s/×/&#215;/g;	# Multiply sign
+	$string =~ s/Ø/&#216;/g;	# Capital O, slash
+	$string =~ s/Ù/&#217;/g;	# Capital U, grave accent
+	$string =~ s/Ú/&#218;/g;	# Capital U, acute accent
+	$string =~ s/Û/&#219;/g;	# Capital U, circumflex accent
+	$string =~ s/Ü/&#220;/g;	# Capital U, dieresis or umlaut mark
+	$string =~ s/Ý/&#221;/g;	# Capital Y, acute accent
+	$string =~ s/Þ/&#222;/g;	# Capital THORN, Icelandic
+	$string =~ s/ß/&#223;/g;	# Small sharp s, German (sz ligature)
+	$string =~ s/à/&#224;/g;	# Small a, grave accent
+	$string =~ s/á/&#225;/g;	# Small a, acute accent
+	$string =~ s/â/&#226;/g;	# Small a, circumflex accent
+	$string =~ s/ã/&#227;/g;	# Small a, tilde
+	$string =~ s/ä/&#228;/g;	# Small a, dieresis or umlaut mark
+	$string =~ s/å/&#229;/g;	# Small a, ring
+	$string =~ s/æ/&#230;/g;	# Small ae dipthong (ligature)
+	$string =~ s/ç/&#231;/g;	# Small c, cedilla
+	$string =~ s/è/&#232;/g;	# Small e, grave accent
+	$string =~ s/é/&#233;/g;	# Small e, acute accent
+	$string =~ s/ê/&#234;/g;	# Small e, circumflex accent
+	$string =~ s/ë/&#235;/g;	# Small e, dieresis or umlaut mark
+	$string =~ s/ì/&#236;/g;	# Small i, grave accent
+	$string =~ s/í/&#237;/g;	# Small i, acute accent
+	$string =~ s/î/&#238;/g;	# Small i, circumflex accent
+	$string =~ s/ï/&#239;/g;	# Small i, dieresis or umlaut mark
+	$string =~ s/ð/&#240;/g;	# Small eth, Icelandic
+	$string =~ s/ñ/&#241;/g;	# Small n, tilde
+	$string =~ s/ò/&#242;/g;	# Small o, grave accent
+	$string =~ s/ó/&#243;/g;	# Small o, acute accent
+	$string =~ s/ô/&#244;/g;	# Small o, circumflex accent
+	$string =~ s/õ/&#245;/g;	# Small o, tilde
+	$string =~ s/ö/&#246;/g;	# Small o, dieresis or umlaut mark
+	$string =~ s/÷/&#247;/g;	# Division sign
+	$string =~ s/ø/&#248;/g;	# Small o, slash
+	$string =~ s/ù/&#249;/g;	# Small u, grave accent
+	$string =~ s/ú/&#250;/g;	# Small u, acute accent
+	$string =~ s/û/&#251;/g;	# Small u, circumflex accent
+	$string =~ s/ü/&#252;/g;	# Small u, dieresis or umlaut mark
+	$string =~ s/ý/&#253;/g;	# Small y, acute accent
+	$string =~ s/þ/&#254;/g;	# Small thorn, Icelandic
+	$string =~ s/ÿ/&#255;/g;	# Small y, dieresis or umlaut mark
+
+	# These are a few special ones.
+	$string =~ s/\t/&nbsp; &nbsp; &nbsp; &nbsp;/g;
+	$string =~ s/  /&nbsp; /g;
+
+	# Make sure no control characters were double-encoded
+	$string =~ s/&lt;br \/&gt;/<br>/g;
+	
+	return ($string);
+}
+
+# This takes a string with (possible) HTML escape codes and converts them to
+# plain-text.
+sub convert_html_to_text
+{
+	my ($conf, $string) = @_;
+	$string = "" if not defined $string;
+
+	$string =~ s/&quot;/"/g;
+	$string =~ s/&#09;/\t/g;	# Horizontal tab
+	$string =~ s/&#10;/\n/g;	# Line feed
+	$string =~ s/&#13;/\r/g;	# Carriage Return
+	$string =~ s/&#32;/ /g;		# Space
+	$string =~ s/&#33;/!/g;		# Exclamation mark
+	$string =~ s/&#34;/"/g;		# Quotation mark
+	$string =~ s/&#36;/\$/g;	# Dollar sign
+	$string =~ s/&#37;/\%/g;	# Percent sign
+	$string =~ s/&#38;/&/g;		# (Alt) Ampersand
+	$string =~ s/&#39;/'/g;		# Apostrophe
+	$string =~ s/&#40;/\(/g;	# Left parenthesis
+	$string =~ s/&#41;/\)/g;	# Right parenthesis
+	$string =~ s/&#42;/\*/g;	# Asterisk
+	$string =~ s/&#43;/\+/g;	# Plus sign
+	$string =~ s/&#44;/,/g;		# Comma
+	$string =~ s/&#45;/-/g;		# Hyphen
+	$string =~ s/&#46;/\./g;	# Period (fullstop)
+	$string =~ s/&#47;/\//g;	# Solidus (slash)
+	$string =~ s/&#58;/:/g;		# Colon
+	$string =~ s/&lt;/</g;		# Less than
+	$string =~ s/&#60;/</g;		# (Alt) Less than
+	$string =~ s/&#61;/=/g;		# Equals sign
+	$string =~ s/&gt;/>/g;		# Greater than
+	$string =~ s/&#62;/>/g;		# (Alt) Greater than
+	$string =~ s/&#63;/\?/g;	# Question mark
+	$string =~ s/&#64;/\@/g;	# Commercial at
+	$string =~ s/&#91;/\[/g;	# Left square bracket
+	$string =~ s/&#92;/\\/g;	# Reverse solidus (backslash)
+	$string =~ s/&#93;/\]/g;	# Right square bracket
+	$string =~ s/&#94;/\^/g;	# Caret
+	$string =~ s/&#95;/_/g;		# Horizontal bar (underscore)
+	$string =~ s/&#96;/`/g;		# Acute accent
+	$string =~ s/&#123;/{/g;	# Left curly brace
+	$string =~ s/&#124;/\|/g;	# Vertical bar
+	$string =~ s/&#125;/}/g;	# Right curly brace
+	$string =~ s/&#126;/~/g;	# Tilde
+	$string =~ s/&nbsp;/ /g;	# Non-breaking Space
+	$string =~ s/&#160;/ /g;	# (Alt) Non-breaking Space
+	$string =~ s/&#161;/¡/g;	# Inverted exclamation
+	$string =~ s/&#162;/¢/g;	# Cent sign
+	$string =~ s/&#163;/£/g;	# Pound sterling
+	$string =~ s/&#164;/¤/g;	# General currency sign
+	$string =~ s/&#165;/¥/g;	# Yen sign
+	$string =~ s/&#166;/¦/g;	# Broken vertical bar
+	$string =~ s/&#167;/§/g;	# Section sign
+	$string =~ s/&#168;/¨/g;	# Umlaut (dieresis)
+	$string =~ s/&copy;/©/g;	# Copyright
+	$string =~ s/&#169;/©/g;	# (Alt) Copyright
+	$string =~ s/&#170;/ª/g;	# Feminine ordinal
+	$string =~ s/&#171;/«/g;	# Left angle quote, guillemotleft
+	$string =~ s/&#172;/¬/g;	# Not sign
+	$string =~ s/&#173;/­/g;		# Soft hyphen
+	$string =~ s/&#174;/®/g;	# Registered trademark
+	$string =~ s/&#175;/¯/g;	# Macron accent
+	$string =~ s/&#176;/°/g;	# Degree sign
+	$string =~ s/&#177;/±/g;	# Plus or minus
+	$string =~ s/&#178;/²/g;	# Superscript two
+	$string =~ s/&#179;/³/g;	# Superscript three
+	$string =~ s/&#180;/´/g;	# Acute accent
+	$string =~ s/&#181;/µ/g;	# Micro sign
+	$string =~ s/&#182;/¶/g;	# Paragraph sign
+	$string =~ s/&#183;/·/g;	# Middle dot
+	$string =~ s/&#184;/¸/g;	# Cedilla
+	$string =~ s/&#185;/¹/g;	# Superscript one
+	$string =~ s/&#186;/º/g;	# Masculine ordinal
+	$string =~ s/&#187;/»/g;	# Right angle quote, guillemotright
+	$string =~ s/&frac14;/¼/g;	# Fraction one-fourth
+	$string =~ s/&#188;/¼/g;	# (Alt) Fraction one-fourth
+	$string =~ s/&frac12;/½/g;	# Fraction one-half
+	$string =~ s/&#189;/½/g;	# (Alt) Fraction one-half
+	$string =~ s/&frac34;/¾/g;	# Fraction three-fourths
+	$string =~ s/&#190;/¾/g;	# (Alt) Fraction three-fourths
+	$string =~ s/&#191;/¿/g;	# Inverted question mark
+	$string =~ s/&#192;/À/g;	# Capital A, grave accent
+	$string =~ s/&#193;/Á/g;	# Capital A, acute accent
+	$string =~ s/&#194;/Â/g;	# Capital A, circumflex accent
+	$string =~ s/&#195;/Ã/g;	# Capital A, tilde
+	$string =~ s/&#196;/Ä/g;	# Capital A, dieresis or umlaut mark
+	$string =~ s/&#197;/Å/g;	# Capital A, ring
+	$string =~ s/&#198;/Æ/g;	# Capital AE dipthong (ligature)
+	$string =~ s/&#199;/Ç/g;	# Capital C, cedilla
+	$string =~ s/&#200;/È/g;	# Capital E, grave accent
+	$string =~ s/&#201;/É/g;	# Capital E, acute accent
+	$string =~ s/&#202;/Ê/g;	# Capital E, circumflex accent
+	$string =~ s/&#203;/Ë/g;	# Capital E, dieresis or umlaut mark
+	$string =~ s/&#204;/Ì/g;	# Capital I, grave accent
+	$string =~ s/&#205;/Í/g;	# Capital I, acute accent
+	$string =~ s/&#206;/Î/g;	# Capital I, circumflex accent
+	$string =~ s/&#207;/Ï/g;	# Capital I, dieresis or umlaut mark
+	$string =~ s/&#208;/Ð/g;	# Capital Eth, Icelandic
+	$string =~ s/&#209;/Ñ/g;	# Capital N, tilde
+	$string =~ s/&#210;/Ò/g;	# Capital O, grave accent
+	$string =~ s/&#211;/Ó/g;	# Capital O, acute accent
+	$string =~ s/&#212;/Ô/g;	# Capital O, circumflex accent
+	$string =~ s/&#213;/Õ/g;	# Capital O, tilde
+	$string =~ s/&#214;/Ö/g;	# Capital O, dieresis or umlaut mark
+	$string =~ s/&#215;/×/g;	# Multiply sign
+	$string =~ s/&#216;/Ø/g;	# Capital O, slash
+	$string =~ s/&#217;/Ù/g;	# Capital U, grave accent
+	$string =~ s/&#218;/Ú/g;	# Capital U, acute accent
+	$string =~ s/&#219;/Û/g;	# Capital U, circumflex accent
+	$string =~ s/&#220;/Ü/g;	# Capital U, dieresis or umlaut mark
+	$string =~ s/&#221;/Ý/g;	# Capital Y, acute accent
+	$string =~ s/&#222;/Þ/g;	# Capital THORN, Icelandic
+	$string =~ s/&#223;/ß/g;	# Small sharp s, German (sz ligature)
+	$string =~ s/&#224;/à/g;	# Small a, grave accent
+	$string =~ s/&#225;/á/g;	# Small a, acute accent
+	$string =~ s/&#226;/â/g;	# Small a, circumflex accent
+	$string =~ s/&#227;/ã/g;	# Small a, tilde
+	$string =~ s/&#228;/ä/g;	# Small a, dieresis or umlaut mark
+	$string =~ s/&#229;/å/g;	# Small a, ring
+	$string =~ s/&#230;/æ/g;	# Small ae dipthong (ligature)
+	$string =~ s/&#231;/ç/g;	# Small c, cedilla
+	$string =~ s/&#232;/è/g;	# Small e, grave accent
+	$string =~ s/&#233;/é/g;	# Small e, acute accent
+	$string =~ s/&#234;/ê/g;	# Small e, circumflex accent
+	$string =~ s/&#235;/ë/g;	# Small e, dieresis or umlaut mark
+	$string =~ s/&#236;/ì/g;	# Small i, grave accent
+	$string =~ s/&#237;/í/g;	# Small i, acute accent
+	$string =~ s/&#238;/î/g;	# Small i, circumflex accent
+	$string =~ s/&#239;/ï/g;	# Small i, dieresis or umlaut mark
+	$string =~ s/&#240;/ð/g;	# Small eth, Icelandic
+	$string =~ s/&#241;/ñ/g;	# Small n, tilde
+	$string =~ s/&#242;/ò/g;	# Small o, grave accent
+	$string =~ s/&#243;/ó/g;	# Small o, acute accent
+	$string =~ s/&#244;/ô/g;	# Small o, circumflex accent
+	$string =~ s/&#245;/õ/g;	# Small o, tilde
+	$string =~ s/&#246;/ö/g;	# Small o, dieresis or umlaut mark
+	$string =~ s/&#247;/÷/g;	# Division sign
+	$string =~ s/&#248;/ø/g;	# Small o, slash
+	$string =~ s/&#249;/ù/g;	# Small u, grave accent
+	$string =~ s/&#250;/ú/g;	# Small u, acute accent
+	$string =~ s/&#251;/û/g;	# Small u, circumflex accent
+	$string =~ s/&#252;/ü/g;	# Small u, dieresis or umlaut mark
+	$string =~ s/&#253;/ý/g;	# Small y, acute accent
+	$string =~ s/&#254;/þ/g;	# Small thorn, Icelandic
+	$string =~ s/&#255;/ÿ/g;	# Small y, dieresis or umlaut mark
+	$string =~ s/&#35;/#/g;		# Number sign - Must be third to last! \
+	$string =~ s/&amp;/&/g;		# Ampersand - Must be second to last!   |- These are used in other escape codes.
+	$string =~ s/&#59;/;/g;		# Semi-colon - Must be last!            /
+	
+	return ($string);
+}
 
 # This asks the user which cluster they want to work with.
 sub ask_which_cluster
@@ -53,15 +1210,36 @@ sub ask_which_cluster
 	</tr>
 	";
 	
+	my $anvil_count = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
-		next if not $cluster;
-		my $say_url = "&nbsp;";
-		if ($conf->{clusters}{$cluster}{url})
-		{
-			$say_url = "<a href=\"$conf->{clusters}{$cluster}{url}\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
-		}
+		$anvil_count++;
+	}
+
+	if (not $anvil_count)
+	{
 		print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Woops!
+		</td>
+		<td colspan=\"3\">
+			No <i>Anvil!</i> yet configured in <span class=\"code\">$conf->{path}{an_conf}</span> yet.
+		</td>
+	</tr>
+";
+	}
+	else
+	{
+		foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
+		{
+			next if not $cluster;
+			my $say_url = "&nbsp;";
+			if ($conf->{clusters}{$cluster}{url})
+			{
+				$say_url = "<a href=\"$conf->{clusters}{$cluster}{url}\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
+			}
+			print "
 	<tr>
 		<td>
 			<a href=\"?cluster=$cluster\">$cluster</a>
@@ -77,8 +1255,22 @@ sub ask_which_cluster
 		</td>
 	</tr>
 ";
+		}
 	}
 	print "
+	<tr>
+		<td>
+			<a href=\"?config=true\">Manage</a>
+		</td>
+		<td colspan=\"3\">
+			Configure the <i>Anvil!</i> systems managed by this dashboard.
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
 </table>
 <br />
 ";
@@ -91,16 +1283,17 @@ sub convert_cluster_config
 {
 	my ($conf) = @_;
 	
-	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
+	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
-		my $name = $conf->{cluster}{$cluster}{name};
-		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$cluster}{nodes}];
-		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$cluster}{company};
-		$conf->{clusters}{$name}{description} = $conf->{cluster}{$cluster}{description};
-		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$cluster}{url};
-		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$cluster}{ricci_pw};
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$cluster], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
+		my $name = $conf->{cluster}{$id}{name};
+		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$id}{nodes}];
+		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$id}{company};
+		$conf->{clusters}{$name}{description} = $conf->{cluster}{$id}{description};
+		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$id}{url};
+		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$id}{ricci_pw};
+		$conf->{clusters}{$name}{id}          = $id;
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -172,6 +1365,7 @@ sub header
 	<title>$short_name - Alteeve's Niche! $program_name</title>
 	<link rel=\"stylesheet\" href=\"/an-cdb.css\" media=\"screen\" />
 	<script type=\"text/javascript\" src=\"/an-cdb.js\"></script>
+	<script type=\"text/javascript\" src=\"/jquery-latest.js\"></script>
 </head>
 <body>
 <br />
@@ -190,7 +1384,7 @@ sub header
 			<table align=\"center\">
 				<tr>
 					<td>
-						<a href=\"/\"><img src=\"/img/$logo\" alt=\"$short_name - $program_name\"></a>
+						<a href=\"/cgi-bin/an-cdb?logo=true\"><img src=\"/img/$logo\" alt=\"$short_name - $program_name\"></a>
 					</td>
 				</tr>
 			</table>
@@ -258,7 +1452,7 @@ sub footer
 			<span class=\"legal\">
 			&copy; <a href=\"https://alteeve.com\" target=\"_new\">Alteeve's Niche! Inc.</a> 1997 - 2014<br />
 			This program is released under the <a href=\"http://www.gnu.org/licenses/gpl-2.0.html\" target=\"_new\">GNU GPL v2</a><br />
-			Release version 1.0.0<br />
+			Release version $VERSION<br />
 			</span>
 		</td>
 	</tr>
@@ -634,7 +1828,7 @@ sub record
 	{
 		$fh = IO::Handle->new();
 		$conf->{handles}{'log'} = $fh;
-		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
 		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
 	}
 	print $fh $message;

@@ -7,7 +7,7 @@
 PASSWORD=""
 HOSTNAME=$(hostname)
 CUSTOMER=""
-VERSION="1.0.1"
+VERSION="1.0.2"
 
 clear;
 echo ""
@@ -52,16 +52,57 @@ fi
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               qemu-kvm libvirt perl-Test-Simple
+               qemu-kvm libvirt perl-Test-Simple policycoreutils-python
 # Stuff for a GUI
 yum -y groupinstall basic-desktop development x11 fonts
 yum -y install virt-manager firefox gedit 
 
 export PERL_MM_USE_DEFAULT=1
 perl -MCPAN -e 'install("YAML")'
+if [ ! -e "/usr/local/share/perl5/YAML.pm" ]
+then
+	echo "The perl module 'YAML' didn't install, trying again."
+	perl -MCPAN -e 'install("YAML")'
+	if [ ! -e "/usr/local/share/perl5/YAML.pm" ]
+	then
+		echo "The perl module 'YAML' failed to install."
+		echo "Do you have an Internet connection? Unable to proceed."
+		exit;
+	fi
+fi	
 perl -MCPAN -e 'install Moose::Role'
+if [ ! -e "/usr/local/lib64/perl5/Moose/Role.pm" ]
+then
+	echo "The perl module 'Moose::Role' didn't install, trying again."
+	perl -MCPAN -e 'install Moose::Role'
+	if [ ! -e "/usr/local/lib64/perl5/Moose/Role.pm" ]
+	then
+		echo "The perl module 'Moose::Role' failed to install.Unable to proceed."
+		exit;
+	fi
+fi	
 perl -MCPAN -e 'install Throwable::Error'
+if [ ! -e "/usr/local/share/perl5/Throwable/Error.pm" ]
+then
+	echo "The perl module 'Throwable::Error' didn't install, trying again."
+	perl -MCPAN -e 'install Throwable::Error'
+	if [ ! -e "/usr/local/share/perl5/Throwable/Error.pm" ]
+	then
+		echo "The perl module 'Throwable::Error' failed to install.Unable to proceed."
+		exit;
+	fi
+fi	
 perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
+if [ ! -e "/usr/local/share/perl5/Email/Sender/Transport/SMTP/TLS.pm" ]
+then
+	echo "The perl module 'Email::Sender::Transport::SMTP::TLS' didn't install, trying again."
+	perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
+	if [ ! -e "/usr/local/share/perl5/Email/Sender/Transport/SMTP/TLS.pm" ]
+	then
+		echo "The perl module 'Email::Sender::Transport::SMTP::TLS' failed to install.Unable to proceed."
+		exit;
+	fi
+fi	
 
 cat /dev/null > /etc/libvirt/qemu/networks/default.xml
 
@@ -71,10 +112,10 @@ then
 fi
 chown apache:apache /var/www/home/
 
-if [ ! -e "/etc/selinux/config.anvil" ]
-then
-	sed -i.anvil 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
-fi
+# if [ ! -e "/etc/selinux/config.anvil" ]
+# then
+# 	sed -i.anvil 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+# fi
 if [ ! -e "/etc/inittab.anvil" ]
 then
 	sed -i.anvil 's/id:3:initdefault/id:5:initdefault/' /etc/inittab
@@ -105,19 +146,20 @@ then
 	# This prevents long delays logging in when the net is down.
 	sed -i.anvil 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/'   /etc/ssh/sshd_config
 	sed -i       's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
-	sed -i       's/#UseDNS yes/UseDNS yes/'                             /etc/ssh/sshd_config
+	sed -i       's/#UseDNS yes/UseDNS no/'                              /etc/ssh/sshd_config
 	/etc/init.d/sshd restart
 fi
 
 
 hostname $HOSTNAME
 
-chkconfig iptables off
+#chkconfig iptables off
 chkconfig ip6tables off
 chkconfig firstboot off
+chkconfig iptables on
 chkconfig httpd on
 
-setenforce 0
+#setenforce 0
 /etc/init.d/iptables stop
 /etc/init.d/ip6tables stop
 /etc/init.d/httpd start

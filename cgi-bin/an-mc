@@ -12,9 +12,9 @@
 use strict;
 use warnings;
 
+my $THIS_FILE = "an-mc";
 require "./an-cluster.lib";
 require "./an-mc.lib";
-my $THIS_FILE = "an-mc";
 
 # Remember to keep 'create_image_and_upload.pl' updated.
 my $conf={
