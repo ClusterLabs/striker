@@ -58,17 +58,21 @@ my $conf={
 		ccs			=>	"/usr/sbin/ccs",
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
+		cp			=>	"/bin/cp",
 		email_password_file	=>	"/var/www/tools/email_pw.txt",
 		fence_ipmilan		=>	"/sbin/fence_ipmilan",
 		gethostip		=>	"/bin/gethostip",
 		'grep'			=>	"/bin/grep",
 		guacamole_config	=>	"/etc/guacamole/noauth-config.xml",
+		home			=>	"/var/www/home/",
+		hosts			=>	"/etc/hosts",
 		ifconfig		=>	"/sbin/ifconfig",
 		'log'			=>	"/var/log/an-cdb.log",
 		lvdisplay		=>	"/sbin/lvdisplay",
 		ping			=>	"/usr/bin/ping",
 		restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 		ssh			=>	"/usr/bin/ssh",
+		ssh_config		=>	"/etc/ssh/ssh_config",
 		virsh			=>	"/usr/bin/virsh",
 	},
 	handles			=>	{
@@ -204,7 +208,6 @@ get_cgi_vars($conf, [
 	"os_variant",
 	"ram",
 	"ram_suffix",
-	"reload",
 	"row",
 	"save",
 	"smtp__server",
@@ -213,6 +216,8 @@ get_cgi_vars($conf, [
 	"smtp__username",
 	"smtp__password",
 	"smtp__helo_domain",
+	"smtp__encrypt_pass",
+	"smtp__security",
 	"save",
 	"storage",
 	"target",
@@ -221,6 +226,12 @@ get_cgi_vars($conf, [
 	"vm",
 	"vm_ram",
 ]);
+
+# If the user is configuring the system, make sure no given Anvil! is selected.
+if ($conf->{cgi}{config})
+{
+	$conf->{cgi}{cluster} = "";
+}
 
 # Pick up variables when saving the dashboard configuration.
 if ($conf->{cgi}{ids})

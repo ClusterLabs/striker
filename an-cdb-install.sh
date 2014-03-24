@@ -112,10 +112,11 @@ then
 fi
 chown apache:apache /var/www/home/
 
-# if [ ! -e "/etc/selinux/config.anvil" ]
-# then
-# 	sed -i.anvil 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
-# fi
+### TODO: Remove this and get selinux working ASAP.
+if [ ! -e "/etc/selinux/config.anvil" ]
+then
+	sed -i.anvil 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+fi
 if [ ! -e "/etc/inittab.anvil" ]
 then
 	sed -i.anvil 's/id:3:initdefault/id:5:initdefault/' /etc/inittab
@@ -153,14 +154,15 @@ fi
 
 hostname $HOSTNAME
 
-#chkconfig iptables off
+### TODO: Enable iptables support ASAP
+chkconfig iptables off
 chkconfig ip6tables off
 chkconfig firstboot off
 chkconfig iptables on
 chkconfig httpd on
 
-#setenforce 0
-/etc/init.d/iptables stop
+setenforce 0
+#/etc/init.d/iptables stop
 /etc/init.d/ip6tables stop
 /etc/init.d/httpd start
 
@@ -262,11 +264,19 @@ fi
 chown -R apache:apache /var/www/*
 chown apache:apache /var/log/an-cdb.log
 chown apache:apache /var/log/an-*
+chown root:apache -R /etc
+chown root:apache -R /etc/an
+chown root:apache -R /etc/ssh/ssh_config
+chown root:apache -R /etc/hosts
 chown root:root /var/www/tools/check_dvd
 chown root:root /var/www/tools/do_dd
 chmod 6755 /var/www/tools/check_dvd
 chmod 6755 /var/www/tools/do_dd
 chmod 6755 /var/www/tools/restart_tomcat6
+chmod 770 /etc/an
+chmod 660 /etc/an/*
+chmod 664 /etc/ssh/ssh_config
+chmod 664 /etc/hosts
 
 # I always run this because a missing key bit have been added.
 echo "# Keys for the $HOSTNAME dashboard" > /home/alteeve/Desktop/public_keys.txt
