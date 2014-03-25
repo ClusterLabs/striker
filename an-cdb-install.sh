@@ -7,7 +7,7 @@
 PASSWORD=""
 HOSTNAME=$(hostname)
 CUSTOMER=""
-VERSION="1.0.2"
+VERSION="1.0.3"
 
 clear;
 echo ""
@@ -52,7 +52,8 @@ fi
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               qemu-kvm libvirt perl-Test-Simple policycoreutils-python
+               qemu-kvm libvirt perl-Test-Simple policycoreutils-python \
+               perl-Net-SSH-Perl
 # Stuff for a GUI
 yum -y groupinstall basic-desktop development x11 fonts
 yum -y install virt-manager firefox gedit 
@@ -239,7 +240,7 @@ if [ -e /var/www/home/htpasswd ]
 then
 	rm -f /var/www/home/htpasswd
 fi
-su apache -c "htpasswd -cdb /var/www/home/htpasswd admin $PASSWORD"
+su apache -c "htpasswd -cdb /var/www/home/htpasswd admin '$PASSWORD'"
 if [ ! -e "/var/www/tools" ]
 then
 	cd /tmp/

@@ -107,6 +107,7 @@ my $conf = {
 				"perl-CPAN", 
 				"perl-Net-SSLeay", 
 				"perl-YAML-Tiny", 
+				"policycoreutils-python", 
 				"python-virtinst",
 				"qemu-kvm",
 				"qemu-kvm-tools",
@@ -688,9 +689,9 @@ sub disable_selinux
 {
 	my ($conf) = @_;
 	
-	if ($conf->{'system'}{disable_selinux})
+	if (not $conf->{'system'}{disable_selinux})
 	{
-		record($conf, "SELinux _note_disabled.\n");
+		record($conf, "SELinux _not_ disabled.\n");
 		return;
 	}
 	

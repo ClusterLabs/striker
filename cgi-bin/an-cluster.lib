@@ -37,7 +37,7 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.0.2";
+our $VERSION  = "1.0.3";
 
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
@@ -1043,7 +1043,7 @@ sub configure_dashboard
 			Your Internet service provider will give you this address, often called an \"<i>SMTP Server</i>\".
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol\" target=\"_new\">More Info<a>
+			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
@@ -1064,7 +1064,7 @@ sub configure_dashboard
 			Typically, this is \"25\" for unencrypted connections and \"587\" for encrypted connections.<br />
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol#Ports\" target=\"_new\">More Info<a>
+			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol#Ports\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<tr>
@@ -1126,7 +1126,7 @@ sub configure_dashboard
 			If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/STARTTLS\" target=\"_new\">More Info<a>
+			<a href=\"http://en.wikipedia.org/wiki/STARTTLS\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<tr>
@@ -1141,7 +1141,7 @@ sub configure_dashboard
 			Most modern mail servers support encrypted passwords, so 'Yes' should work here.<br />
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Crypt_(C)#MD5-based_scheme\" target=\"_new\">More Info<a>
+			<a href=\"http://en.wikipedia.org/wiki/Crypt_(C)#MD5-based_scheme\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<tr>
@@ -1183,7 +1183,7 @@ sub configure_dashboard
 			This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info<a>
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<tr>
@@ -1206,7 +1206,7 @@ sub configure_dashboard
 			This is a purely descriptive field and you can set it to whatever you want.<br />
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info<a>
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
 		</td>
 	</tr>
 	<tr>
@@ -1214,11 +1214,15 @@ sub configure_dashboard
 			Anvil! Password
 		</td>
 		<td colspan=\"2\" style=\"text-align: left;\">
-			When your <i>Anvil!</i> was built, a '<span class=\"code\">ricci</span>' password was set.<br />
+			When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
 			Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
+			If a password is needed to log into each node's '<span class=\"highlight_note\">root</span>' user, this password will be used.<br />
+			If this doesn't work, you will need to manually add this dashboard's '<span class=\"highlight_note\">apache</span>' user's public key to each node.
 		</td>
 		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info<a>
+			More Info:<br />
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">'ricci' user</a>,<br />
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_SSH\" target=\"_new\">SSH public keys</a><br />
 		</td>
 	</tr>
 	<tr>
@@ -1247,7 +1251,7 @@ sub configure_dashboard
 						The host name of the node. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
 					</td>
 					<td style=\"white-space: nowrap;\">
-						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info<a>
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info</a>
 					</td>
 				</tr>
 				<tr>
@@ -1260,7 +1264,7 @@ sub configure_dashboard
 						If you use DNS (or similar) to do name to IP translation, leave this blank.
 					</td>
 					<td style=\"white-space: nowrap;\">
-						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info<a>
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info</a>
 					</td>
 				</tr>
 				<tr>
@@ -1273,7 +1277,7 @@ sub configure_dashboard
 						When in doubt, leave this blank.<br />
 					</td>
 					<td style=\"white-space: nowrap;\">
-						<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info<a>
+						<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info</a>
 					</td>
 				</tr>
 			</table>
@@ -2249,9 +2253,10 @@ sub read_files_on_shared
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			next if $fail;
 			
+			### TODO: Move these checks into a function. They duplicate gather_node_details().
 			# This catches connectivity problems.
 			if ($line =~ /No route to host/i)
 			{
@@ -2502,16 +2507,49 @@ sub check_node_status
 		# the node section to enable power up.
 		if (not $conf->{'system'}{show_nodes})
 		{
-			print "
+			if ($conf->{clusters}{$cluster}{cache_exists})
+			{
+				print "
 <table align=\"center\">
 	<tr>
+		<td class=\"highlight_note\">
+			No access
+		</td>
 		<td>
-			I could not reach either node in this cluster.
+			I could not reach either node in this <i>Anvil!</i>.<br />
+			There may be useful information in the message above.
+			<!--
+			<br />
+			A cache file exists for this cluster, so I should be able to talk to the out-of-band management controller.<br />
+			Perhaps the login credentials have changed or the network connection is down?
+			-->
 		</td>
 	</tr>
 </table>
 <br />
 ";
+			}
+			else
+			{
+				print "
+<table align=\"center\">
+	<tr>
+		<td class=\"highlight_note\">
+			No access
+		</td>
+		<td>
+			I could not reach either node in this <i>Anvil!</i>.<br />
+			There may be useful information in the message above.<br />
+			There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />
+			In either case, please manually power on the nodes when you are ready to use them.<br />
+			If they are on and you are seeing this message, then there might be a network problem.<br />
+			Is this machine on the <i>Anvil!</i>'s <a href=\"https://alteeve.ca/w/BCN\" target=\"_new\">Back-Channel Network</a>?
+		</td>
+	</tr>
+</table>
+<br />
+";
+			}
 		}
 	}
 	else
@@ -3036,7 +3074,7 @@ sub ping_node
 sub gather_node_details
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
 	
 	# This will flip true if I see 'start dmidecode' (the first line to
 	# return from the client).
@@ -3131,7 +3169,7 @@ sub gather_node_details
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], read_next: [$read_next], line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], read_next: [$read_next], line: [$line]\n");
 		
 		# If I was asked to read the next line, I am dead but I need
 		# details.
@@ -3156,8 +3194,10 @@ sub gather_node_details
 		}
 		
 		# This catches connectivity problems.
+		#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
 		if ($line =~ /No route to host/i)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; No route to host.\n");
 			my $local_access = on_same_network($conf, $node);
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
 			if ($local_access)
@@ -3170,15 +3210,35 @@ sub gather_node_details
 			}
 			last;
 		}
-		elsif ($line =~ /host key verification failed/i)
+		elsif ($line =~ /Host key verification failed/i)
 		{
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Verification Failed!</span>";
-			$conf->{node}{$node}{info}{note}    = "SSH host key validation failed.<br />Have you saved <span class=\"fixed_width\">${node}</span>'s fingerprint in <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
+			record($conf, "$THIS_FILE ".__LINE__."; host key verification failed.\n");
+			my ($added) = try_to_add_ssh_fingerprint($conf, $node);
+			record($conf, "$THIS_FILE ".__LINE__."; added: [$added]\n");
+			if ($added)
+			{
+				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_note\">Key added!</span>";
+				$conf->{node}{$node}{info}{note}    =  "It appears that this is the first time talking to <span class=\"fixed_width\">${node}</span>.<br />";
+				$conf->{node}{$node}{info}{note}    .= "This node's key has been added to the system. Please reload this page once more.<br />";
+				$conf->{node}{$node}{info}{note}    .= "If you have already setup this machine's public SSH key, the next login will work.<br />";
+				$conf->{node}{$node}{info}{note}    .= "If not, I will try to add my key to the node on the next load.<br />";
+				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+				last;
+			}
+			else
+			{
+				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_bad\">Verification Failed!</span>";
+				$conf->{node}{$node}{info}{note}    =  "SSH host key verification failed for <span class=\"fixed_width\">${node}</span><br />";
+				$conf->{node}{$node}{info}{note}    .= "I tried to add it, but either it failed to add or it already exists.<br />";
+				$conf->{node}{$node}{info}{note}    .= "If you need help, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact us</a>.";
+				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+				#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::state: [$conf->{node}{$node}{info}{'state'}], node::${node}::info::note: [$conf->{node}{$node}{info}{note}]\n");
+				last;
+			}
 		}
 		elsif ($line =~ /could not resolve hostname/i)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; could not resolve host name.\n");
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
 			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
@@ -3186,13 +3246,28 @@ sub gather_node_details
 		}
 		elsif ($line =~ /permission denied/i)
 		{
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
+			record($conf, "$THIS_FILE ".__LINE__."; permission denied.\n");
+			my ($success) = add_rsa_key_to_node($conf, $node);
+			if ($success)
+			{
+				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_note\">Key added!</span>";
+				$conf->{node}{$node}{info}{note}    =  "The <span class=\"fixed_width\">${node}</span> didn't know who I am, but I was able to add my <a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_SSH\" target=\"_new\">SSH public key</a> to it.<br />";
+				$conf->{node}{$node}{info}{note}    .= "I am sorry, but please try to reload this page one more time.<br />";
+				$conf->{node}{$node}{info}{note}    .= "You should be able to connect next time.<br />";
+				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+				last;
+			}
+			else
+			{
+				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
+				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
+				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
+				last;
+			}
 		}
 		elsif ($line =~ /connection refused/i)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; connection refused.\n");
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
@@ -3200,6 +3275,7 @@ sub gather_node_details
 		}
 		elsif ($line =~ /Connection timed out/i)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; connection timed out.\n");
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
@@ -3207,6 +3283,7 @@ sub gather_node_details
 		}
 		elsif ($line =~ /Network is unreachable/i)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; network is unreachable.\n");
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
 			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
@@ -3214,6 +3291,7 @@ sub gather_node_details
 		}
 		elsif ($line =~ /\@\@\@\@/)
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; \@'s. \@'s everywhere!.\n");
 			# When the host-key fails to match, a box made
 			# of '@@@@' is displayed, and is the entire 
 			# first line.
@@ -3339,9 +3417,12 @@ sub gather_node_details
 				$conf->{node}{$node}{enable_poweroff} = 0;
 			}
 			$conf->{node}{$node}{enable_fence}    = 1;
-			if ((not $conf->{node}{$node}{info}{'state'}) or (not $conf->{node}{$node}{info}{note}))
+			if (not $conf->{node}{$node}{info}{'state'})
 			{
 				$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			}
+			if (not $conf->{node}{$node}{info}{note})
+			{
 				$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.";
 			}
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
@@ -3352,8 +3433,14 @@ sub gather_node_details
 			$conf->{'system'}{show_nodes}         = 0;
 			$conf->{node}{$node}{enable_poweron}  = 0;
 			$conf->{node}{$node}{enable_poweroff} = 0;
-			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />";
+			if (not $conf->{node}{$node}{info}{'state'})
+			{
+				$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			}
+			if (not $conf->{node}{$node}{info}{note})
+			{
+				$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />";
+			}
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		elsif ($conf->{node}{$node}{is_on} == 3)
@@ -3362,8 +3449,14 @@ sub gather_node_details
 			$conf->{'system'}{show_nodes}         = 0;
 			$conf->{node}{$node}{enable_poweron}  = 0;
 			$conf->{node}{$node}{enable_poweroff} = 0;
-			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />";
+			if (not $conf->{node}{$node}{info}{'state'})
+			{
+				$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">Inaccesible</span>";
+			}
+			if (not $conf->{node}{$node}{info}{note})
+			{
+				$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />";
+			}
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		else
@@ -3372,8 +3465,14 @@ sub gather_node_details
 			$conf->{node}{$node}{enable_poweron}  = 0;
 			$conf->{node}{$node}{enable_poweroff} = 0;
 			$conf->{node}{$node}{enable_fence}    = 0;
-			$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
-			$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />";
+			if (not $conf->{node}{$node}{info}{'state'})
+			{
+				$conf->{node}{$node}{info}{'state'}   = "<span class=\"highlight_warning\">No Access</span>";
+			}
+			if (not $conf->{node}{$node}{info}{note})
+			{
+				$conf->{node}{$node}{info}{note}      = "I was unable to talk to: <span class=\"fixed_width\">$node</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />";
+			}
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		
@@ -3398,6 +3497,345 @@ sub gather_node_details
 	}
 	
 	return (0);
+}
+
+# This reads in the rsa public key for the dashboard user.
+sub get_rsa_public_key
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_rsa_public_key()\n");
+	
+	my $rsa_public_key  = "";
+	my $rsa_public_file = "$conf->{path}{'an-cdb_files'}/.ssh/id_rsa.pub";
+	if (not -e $rsa_public_file)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; rsa_public_file: [$rsa_public_file] doesn't exist, trying to create it now.\n");
+		
+		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'an-cdb_files'}/.ssh/id_rsa";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		$fh->close();
+		
+		if (not -e $rsa_public_file)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Failed to create a new SSH key.\n");
+		}
+	}
+	
+	my $sc = $rsa_public_file;
+	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]. Error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		next if $line =~ /^#/;
+		$rsa_public_key = $line;
+		#record($conf, "$THIS_FILE ".__LINE__."; rsa_public_key: [$rsa_public_key]\n");
+		last;
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; rsa_public_key: [$rsa_public_key]\n");
+	return($rsa_public_key);
+}
+
+# This gets this machine's hostname.
+sub get_hostname
+{
+	my ($conf) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
+
+	my $hostname;
+	my $sc = "$conf->{path}{hostname}";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		$hostname = $_;
+		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	}
+	$fh->close();
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	return($hostname);
+}
+
+# This tries to log into the node as 'root' using the 'ricci' password (in
+# hopes they're the same, didn't want to barage the user with 1000 questions...)
+sub add_rsa_key_to_node
+{
+	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; add_rsa_key_to_node(); node: [$node]\n");
+	
+	my $success = 0;
+	my ($rsa_public_key) = get_rsa_public_key($conf);
+	
+	use Net::SSH::Perl;
+	my $cluster  = $conf->{cgi}{cluster};
+	my $password = $conf->{clusters}{$cluster}{ricci_pw};
+	my $user     = "root";
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], user: [$user], password: [$password]\n");
+	if ($password)
+	{
+		my ($date)     =  get_date($conf, time);
+		my ($hostname) =  get_hostname($conf);
+		my $say_date   =  $date;
+		   $date       =~ s/ /_/;
+		   $say_date   =~ s/ /, /;
+		
+		### TODO: Verify that the 'grep' logic works.
+		# This aborts if the host name is already in authorized_keys.
+		my $sc = "grep -q $hostname /root/.ssh/authorized_keys || cp /root/.ssh/authorized_keys /root/authorized_keys.$date && echo \"# Added by $hostname on $say_date\" >> /root/.ssh/authorized_keys && echo $rsa_public_key >> /root/.ssh/authorized_keys";
+		if (not $rsa_public_key)
+		{
+			$sc = "echo 1";
+		}
+		my $ssh = Net::SSH::Perl->new($node);
+		
+		record($conf, "$THIS_FILE ".__LINE__."; Attempting ssh: [$user\@$node] and call: [$sc].\n");
+		$ssh->login($user, $password);
+		my ($stdout, $stderr, $exit) = $ssh->cmd($sc);
+		$stdout = "" if not defined $stdout;
+		$stderr = "" if not defined $stderr;
+		$exit   = 99 if not defined $exit;
+		
+		$stdout =~ s/\n$//;
+		$stderr =~ s/\n$//;
+		record($conf, "$THIS_FILE ".__LINE__."; Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]\n");
+		
+		if ($stderr =~ /Timeout waiting for prompt/i)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Timed out waiting for prompt.\n");
+		}
+		elsif ($exit eq "0")
+		{
+			# If the user just added this cluster, then a lot of
+			# /etc/hosts entries will be missing. The only one I am
+			# interested in though is this cluster's node's IPMI
+			# entries. So to test the just-added key, I will use
+			# passwordless-SSH to try and read the node's 
+			# /etc/hosts file.
+			my $node1_name =  $conf->{clusters}{$cluster}{nodes}[0];
+			   $node1_name =~ s/\..*$//;
+			my $node2_name =  $conf->{clusters}{$cluster}{nodes}[1];
+			   $node2_name =~ s/\..*$//;
+			my $node1_ipmi_hostname   = "$node1_name.ipmi";
+			my $node1_ipmi_ip_address = "";
+			my $node2_ipmi_hostname   = "$node2_name.ipmi";
+			my $node2_ipmi_ip_address = "";
+			record($conf, "$THIS_FILE ".__LINE__."; node1_name: [$node1_name], node1_ipmi_hostname: [$node1_ipmi_hostname], node1_ipmi_ip_address: [$node1_ipmi_ip_address]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; node2_name: [$node2_name], node2_ipmi_hostname: [$node2_ipmi_hostname], node2_ipmi_ip_address: [$node2_ipmi_ip_address]\n");
+			
+			my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"cat /etc/hosts\"";
+			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				
+				if (($line =~ /localhost/) && (not $success))
+				{
+					$success = 1;
+					record($conf, "$THIS_FILE ".__LINE__."; success: [$success]\n");
+				}
+				
+				if ($line =~ /$node1_ipmi_hostname/)
+				{
+					($node1_ipmi_ip_address) = ($line =~ /^(\d+.\d+.\d+.\d+)\s/);
+					#record($conf, "$THIS_FILE ".__LINE__."; node1_ipmi_ip_address: [$node1_ipmi_ip_address]\n");
+				}
+				if ($line =~ /$node2_ipmi_hostname/)
+				{
+					($node2_ipmi_ip_address) = ($line =~ /^(\d+.\d+.\d+.\d+)\s/);
+					#record($conf, "$THIS_FILE ".__LINE__."; node2_ipmi_ip_address: [$node2_ipmi_ip_address]\n");
+				}
+			}
+			$fh->close();
+			
+			#record($conf, "$THIS_FILE ".__LINE__."; node1_ipmi_ip_address: [$node1_ipmi_ip_address], node2_ipmi_ip_address: [$node2_ipmi_ip_address]\n");
+			if (($node1_ipmi_ip_address) || ($node2_ipmi_ip_address))
+			{
+				# Check my /etc/hosts and add these if needed.
+				my $add_node_1 = 1;
+				my $add_node_2 = 1;
+				my $sc         = "/etc/hosts";
+				#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]. Error was: $!\n";
+				while(<$fh>)
+				{
+					chomp;
+					my $line = $_;
+					#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /$node1_ipmi_hostname/)
+					{
+						$add_node_1 = 0;
+						#record($conf, "$THIS_FILE ".__LINE__."; add_node_1: [$add_node_1]\n");
+					}
+					if ($line =~ /$node2_ipmi_hostname/)
+					{
+						$add_node_2 = 0;
+						#record($conf, "$THIS_FILE ".__LINE__."; add_node_2: [$add_node_2]\n");
+					}
+				}
+				$fh->close();
+				
+				#record($conf, "$THIS_FILE ".__LINE__."; add_node_1: [$add_node_1], add_node_2: [$add_node_2]\n");
+				if (($add_node_1) || ($add_node_2))
+				{
+					my $fh         = IO::Handle->new();
+					open ($fh, ">> /etc/hosts") or error($conf, "Failed to append: [<span class=\"fixed_width\">/etc/hosts</span>] as UID: [<span class=\"fixed_width\">$<</span>].<br />The error was: <span class=\"fixed_width\">$!</span>\n");
+					
+					if ($add_node_1)
+					{
+						print $fh "$node1_ipmi_ip_address\t$node1_ipmi_hostname\n";
+					}
+					if ($add_node_2)
+					{
+						print $fh "$node2_ipmi_ip_address\t$node2_ipmi_hostname\n";
+					}
+					$fh->close();
+				}
+			}
+		}
+	}
+	else
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; No 'ricci_pw' set for the cluster: [$cluster]\n");
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; success: [$success]\n");
+	return ($success);
+}
+
+# This tries to add the named nodes to the apache ~/.ssh/known_hosts file.
+sub try_to_add_ssh_fingerprint
+{
+	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; try_to_add_ssh_fingerprint(); node: [$node]\n");
+	
+	my $known_hosts = "$conf->{path}{'an-cdb_files'}/.ssh/known_hosts";
+	my $added  = 0;
+	my $exists = check_known_hosts_for_node($conf, $node);
+	if ($exists)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node] is already in: [$known_hosts]");
+	}
+	my $sc = "$conf->{path}{'ssh-keyscan'} $node >> $known_hosts";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	$fh->close();
+	if (not $exists)
+	{
+		$added = check_known_hosts_for_node($conf, $node);
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; added: [$added]\n");
+	return($added);
+}
+
+# This looks in ~/.ssh/known_hosts for an entry matching the specified node.
+sub check_known_hosts_for_node
+{
+	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; check_known_hosts_for_node(); node: [$node]\n");
+	my $found = 0;
+	
+	my $known_hosts = "$conf->{path}{'an-cdb_files'}/.ssh/known_hosts";
+	if (not -e $known_hosts)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; known_hosts: [$known_hosts] doesn't exist.\n");
+	}
+	else
+	{
+		my $sc = $known_hosts;
+		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]. Error was: $!\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			
+			my $this_host = "";
+			my $key       = "";
+			if ($line =~ /^(.*?) (ssh-rsa .*)$/)
+			{
+				$this_host = $1;
+				$key       = $2;
+				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], key: [$key]\n");
+				my $this_ip   = "";
+				my $this_port = "";
+				# There are a few ways host names are recorded...
+				if ($this_host =~ /\[(\d+\.\d+\.\d+\.\d+)]:(\d+)/)
+				{
+					$this_host = $1;
+					$this_port = $2;
+					$this_ip   = $this_host;
+					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
+				}
+				elsif ($this_host =~ /\[(.*?)]:(\d+),\[(\d+\.\d+\.\d+\.\d+)\]:(\d+)/)
+				{
+					$this_host = $1;
+					$this_port = $2;
+					$this_ip   = $3;
+					my $alt_port  = $4;
+					if ($this_port ne $alt_port)
+					{
+						$this_port .= ",$alt_port";
+					}
+					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
+				}
+				elsif ($this_host =~ /(.*?),(\d+\.\d+\.\d+\.\d+)/)
+				{
+					$this_host = $1;
+					$this_port = $2;
+					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_port: [$this_port]\n");
+				}
+				elsif ($this_host =~ /^(\d+\.\d+\.\d+\.\d+)/)
+				{
+					# Raw IP
+					$this_host = $1;
+					$this_ip   = $this_host;
+					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip]\n");
+				}
+			}
+			record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], node: [$node]\n");
+			if ($this_host eq $node)
+			{
+				$found = 1;
+				last;
+			}
+		}
+		$fh->close();
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; found: [$found]\n");
+	return($found);
 }
 
 # This parse bond data
@@ -4733,7 +5171,7 @@ sub on_same_network
 	my $target_ip;
 	
 	my $sc = "$conf->{path}{gethostip} -d $target_host";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 	while(<$fh>)
@@ -4752,7 +5190,7 @@ sub on_same_network
 		elsif ($line =~ /Unknown host/i)
 		{
 			#Failed to resolve
-			error($conf, "I was trying to resolve the host name: [$target_host] but was unable to do so. Is this a valid host name? If so, do you have an entry in DNS or in your /etc/hosts file?\n");
+			error($conf, "I was trying to resolve the host name: [<span class=\"fixed_width\">$target_host</span>] but was unable to do so. Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class=\"fixed_width\">/etc/hosts</span>] file?\n");
 		}
 		elsif ($line =~ /Usage: gethostip/i)
 		{
@@ -4882,7 +5320,7 @@ sub write_node_cache
 		# in the future when both nodes are offline.
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		my $fh         = IO::Handle->new();
-		#record($conf, "$THIS_FILE ".__LINE__."; writting: [$cache_file]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
 		open ($fh, "> $cache_file") or error($conf, "Failed to write: [<span class=\"fixed_width\">$cache_file</span>] as UID: [<span class=\"fixed_width\">$<</span>].<br />The error was: <span class=\"fixed_width\">$!</span>\n");
 		
 		print $fh "host_name = $conf->{node}{$node}{info}{host_name}\n";
@@ -4954,10 +5392,12 @@ sub read_node_cache
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 		}
 		$fh->close();
+		$conf->{clusters}{$cluster}{cache_exists} = 1;
 	}
 	else
 	{
-		$conf->{node}{$node}{info}{host_name} = $node;
+		$conf->{clusters}{$cluster}{cache_exists} = 0;
+		$conf->{node}{$node}{info}{host_name}     = $node;
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	
