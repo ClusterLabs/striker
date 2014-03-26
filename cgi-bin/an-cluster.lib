@@ -2035,15 +2035,58 @@ sub find_executables
 	return (0);
 }
 
+# This sorts out the URL for the guacamole link
+sub get_guacamole_link
+{
+	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
+	
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
+	my $guacamole_url;
+	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}]\n");
+	if ($ENV{HTTP_REFERER})
+	{
+		($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+	}
+	elsif ($ENV{HTTP_HOST})
+	{
+		if ($ENV{SERVER_PORT} eq "443")
+		{
+			($guacamole_url) = "https://".$ENV{HTTP_HOST};
+		}
+		else
+		{
+			($guacamole_url) = "http://".$ENV{HTTP_HOST};
+		}
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	
+	$guacamole_url .= ":8080/guacamole/client.xhtml";
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+
+	$guacamole_url =~ s/:\d+(:\d+)/$1/;
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+
+	# No node specified, so return a link to the guacamole main page.
+	if (not $node)
+	{
+		$guacamole_url =~ s/\/client.xhtml.*$//;
+		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	}
+	
+	return ($guacamole_url);
+}
+
 sub footer
 {
 	my ($conf) = @_;
 	
 	return(0) if $conf->{'system'}{footer_printed}; 
+	my ($guacamole_url) = get_guacamole_link($conf, "");
 	$conf->{'system'}{footer_printed} = 1;
 	
 	print "
-<table align=\"center\" class=\"hidden_table\">
+<table align=\"center\" class=\"hidden_table\" width=\"100%\">
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
@@ -2054,6 +2097,7 @@ sub footer
 		</td>
 	</tr>
 </table>
+<p style=\"position:fixed; right:10; bottom:0\"><a href=\"$guacamole_url\" target=\"_new\" class=\"subtle_link\">&#191;</a></p>
 </body>
 <img src=\"/img/t.png\" onload=\"show_on_load();\" border=\"0\" />
 <img src=\"/img/t.png\" onload=\"hide_on_load();\" border=\"0\" />
@@ -2264,11 +2308,14 @@ sub read_files_on_shared
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
 				if ($local_access)
 				{
-					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
+					$conf->{node}{$node}{info}{note} =  "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
+					$conf->{node}{$node}{info}{note} .= "It is on an accessible subnet, so the node is likely off or there is a network problem.<br />";
+					$conf->{node}{$node}{info}{note} .= "If you just powered on the node, please be patient, it might still be booting.";
 				}
 				else
 				{
-					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
+					$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
+					$conf->{node}{$node}{info}{note} = "The server running AN!CDB is not currently on the same subnet as the node.";
 				}
 				$fail = 1;
 				next;
@@ -2296,8 +2343,10 @@ sub read_files_on_shared
 			}
 			elsif ($line =~ /connection refused/i)
 			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
+				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_bad\">Connection Refused!</span>";
+				$conf->{node}{$node}{info}{note}    =  "I could not log into: <span class=\"fixed_width\">$node</span>.<br />";
+				$conf->{node}{$node}{info}{note}    .= "If you just powered the node on or off, it may not be allowing connections.<br />";
+				$conf->{node}{$node}{info}{note}    .= "Please try again shortly.";
 				$fail = 1;
 				next;
 			}
@@ -3202,11 +3251,14 @@ sub gather_node_details
 			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
 			if ($local_access)
 			{
-				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. It is on an accessible subnet, so the node is likely off or there is a network problem.";
+				$conf->{node}{$node}{info}{note} =  "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
+				$conf->{node}{$node}{info}{note} .= "It is on an accessible subnet, so the node is likely off or there is a network problem.<br />";
+				$conf->{node}{$node}{info}{note} .= "If you just powered on the node, please be patient, it might still be booting.";
 			}
 			else
 			{
-				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>. The server running AN!CDB is not currently on the same subnet as the node.";
+				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
+				$conf->{node}{$node}{info}{note} = "The server running AN!CDB is not currently on the same subnet as the node.";
 			}
 			last;
 		}

@@ -182,6 +182,13 @@ td {
 	text-align: left;
 }
 
+.subtle_link {
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 11px;
+	color: #8D8DAD;
+	text-align: left;
+}
+
 .subtle_text_fixed_width {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;

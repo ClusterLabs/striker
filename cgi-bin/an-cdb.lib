@@ -347,13 +347,16 @@ sub process_task
 # This restarts tomcat on the local machine.
 sub restart_tomcat
 {
-	my ($conf) = @_;
+	my ($conf, $quiet) = @_;
+	$quiet = 0 if not defined $quiet;
 	
-	print "
+	if (not $quiet)
+	{
+		print "
 <table align=\"center\">
 	<tr>
 		<td class=\"highlight_ready\" colspan=\"2\">
-			Restarting the remote desktop client on this dashboard.
+			Restarting the remote desktop server on this dashboard.
 		</td>
 	</tr>
 	<tr>
@@ -362,11 +365,10 @@ sub restart_tomcat
 		</td>
 		<td>
 			<br />
-			Restarting <span class=\"code\">tomcat</span> server:</br>
+			Restarting the remote desktop server:</br>
 			<br />
 ";
-
-
+	}
 	my $sc = "$conf->{path}{restart_tomcat} restart";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
@@ -375,11 +377,21 @@ sub restart_tomcat
 	while(<$fh>)
 	{
 		chomp;
-		print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$_</span></span><br />\n";
+		my $line = $_;
+		if ($quiet)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		else
+		{
+			print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$line</span></span><br />\n";
+		}
 	}
 	$fh->close();
 	
-	print "
+	if (not $quiet)
+	{
+		print "
 			<br />
 		</td>
 	</tr>
@@ -402,6 +414,7 @@ sub restart_tomcat
 </table>
 <br />
 ";
+	}
 	
 	return(0);
 }
@@ -3812,39 +3825,6 @@ sub manage_vm
 	return (0);
 }
 
-# This sorts out the URL for the guacamole link
-sub get_guacamole_link
-{
-	my ($conf, $node) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
-	
-	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
-	my $guacamole_url;
-	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}]\n");
-	if ($ENV{HTTP_REFERER})
-	{
-		($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
-	}
-	elsif ($ENV{HTTP_HOST})
-	{
-		if ($ENV{SERVER_PORT} eq "443")
-		{
-			($guacamole_url) = "https://".$ENV{HTTP_HOST};
-		}
-		else
-		{
-			($guacamole_url) = "http://".$ENV{HTTP_HOST};
-		}
-	}
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	$guacamole_url .= ":8080/guacamole/client.xhtml";
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	$guacamole_url =~ s/:\d+(:\d+)/$1/;
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-
-	return ($guacamole_url);
-}
-
 # This modifies the VM's XML definition file to tell it to use VNC instead of
 # spice or another protocol.
 sub switch_vm_xml_to_vnc
@@ -4078,9 +4058,17 @@ sub update_guacamole_config
 sub get_current_vm_vnc_info
 {
 	my ($conf, $vm) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
-	my ($say_vm) = ($vm =~ /^vm:(.*)/);
-	#record($conf, "$THIS_FILE ".__LINE__."; say_vm: [$say_vm]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
+	my $say_vm = $vm;
+	if ($vm =~ /^vm:/)
+	{
+		($say_vm) = ($vm =~ /^vm:(.*)/);
+	}
+	else
+	{
+		$vm = "vm:$vm";
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; say_vm: [$say_vm]\n");
 	
 	my $node    = "";
 	my $port    = "";
@@ -4088,11 +4076,11 @@ sub get_current_vm_vnc_info
 	my $listen  = "";
 	my $xml_ref = "";
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_node: [$conf->{vm}{$vm}{current_node}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
 	if ($conf->{vm}{$vm}{current_host})
 	{
 		$node = $conf->{vm}{$vm}{current_host};
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
+		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
 		
 		# Read the current VM config from virsh.
 		read_live_xml($conf, $vm, $say_vm, $node);
@@ -4101,7 +4089,7 @@ sub get_current_vm_vnc_info
 	else
 	{
 		# The VM isn't running.
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
+		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
 		$xml_ref = $conf->{vm}{$vm}{xml};
 	}
 	
@@ -4112,12 +4100,12 @@ sub get_current_vm_vnc_info
 			($port)   = ($line =~ / port='(\d+)'/);
 			($type)   = ($line =~ / type='(.*?)'/);
 			($listen) = ($line =~ / listen='(.*?)'/);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
+			record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
 			last;
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 	return($node, $type, $listen, $port);
 }
 
@@ -5018,6 +5006,10 @@ sub provision_vm
 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm);
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		update_guacamole_config($conf, $say_vm, $node, $port);
+		
+		### FIXME: This is a dirty nasty hack. Fix this by managing
+		###        guacamole's cookies better.
+		restart_tomcat($conf, "1");
 		my ($guacamole_url) = get_guacamole_link($conf, $node);
 		if ($node =~ /n01/)
 		{
@@ -6138,6 +6130,9 @@ sub start_vm
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $vm                = $conf->{cgi}{vm};
+	my $say_vm            = ($vm =~ /vm:(.*)/)[0];
+	my $remote_message    = "";
+	my $remote_icon       = "";
 	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# Make sure the node is still ready to take this VM.
@@ -6150,20 +6145,21 @@ sub start_vm
 		print "
 <table align=\"center\">
 	<tr>
-		<td>
+		<td colspan=\"2\">
 			<span class=\"highlight_ready\"><b>Booting $vm on $node_cluster_name now...</b></span>
 		</td>
 	</tr>
 	<tr>
-		<td>
+		<td colspan=\"2\">
 			System call output below:
 		</td>
 	</tr>
 	<tr>
-		<td>
+		<td colspan=\"2\">
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
+		my $show_remote_desktop_link = 0;
 		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
@@ -6176,7 +6172,31 @@ sub start_vm
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line =~ /Fail/i)
+			if ($line =~ /Success/i)
+			{
+				# Set the host manually as the server wasn't
+				# running when the cluster was last scanned.
+				my $vm_key = "vm:$vm";
+				$conf->{vm}{$vm_key}{current_host} = $node;
+				$show_remote_desktop_link      = 1;
+				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], vm_key: [$vm_key], node: [$node], vm::${vm_key}::current_host: [$conf->{vm}{$vm_key}{current_host}]\n");
+			}
+			elsif ($line =~ /Service is already running/i)
+			{
+				$show_remote_desktop_link = 2;
+				$line = "";
+				print "
+				<tr>
+					<td style=\"border: 1px solid white;\" class=\"highlight_note\" align=\"center\">
+						Note!
+					</td>
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
+						The server is already running.<br />
+					</td>
+				</tr>
+";
+			}
+			elsif ($line =~ /Fail/i)
 			{
 				# The VM failed to start. Call a stop against it.
 				print "
@@ -6299,14 +6319,120 @@ sub start_vm
 ";
 		}
 		$fh->close();
+		
+		if ($show_remote_desktop_link)
+		{
+			# Show the link to the server's desktop.
+			# If guac is installed, of course...
+			if (-e $conf->{path}{guacamole_config})
+			{
+				# Installed.
+				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
+				# Give time for the server to actually come up.
+				if ($show_remote_desktop_link == 1)
+				{
+					sleep 3;
+				}
+				my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+				if ($type ne "vnc")
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
+					# Check the recorded XML file and is necesary, update
+					# it. In any case, disable VNC and tell the user they
+					# will need to power off and restart the server before
+					# this will work.
+					$remote_message = "The server is currently not using VNC. The server's configuration will be updated now. Please power off and then start the server (don't reboot) and then try again.";
+					$remote_icon    = "<img src=\"/img/icon_server-desktop_oops.png\">";
+					
+					# See if I need to update the XML definition file.
+					if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
+					{
+						# Rewrite the XML definition. The 'graphics' section should look like:
+						#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
+						#       <listen type='address' address='0.0.0.0'/>
+						#     </graphics>
+						record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
+						archive_file($conf, $node, $conf->{vm}{$vm}{definition_file});
+						switch_vm_xml_to_vnc($conf, $node, $vm);
+					}
+				}
+				else
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
+					update_guacamole_config($conf, $say_vm, $node, $port);
+				}
+				if (not $remote_message)
+				{
+					my ($guacamole_url) = get_guacamole_link($conf, $node);
+					$remote_message     = "Connect directly to this server's desktop.";
+					if (not $node)
+					{
+						$remote_message = "The server is turned off.";
+						$remote_icon    = "<img src=\"/img/icon_server-desktop_offline.png\">";
+					}
+					elsif ($node =~ /n01/)
+					{
+						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"/img/icon_server-desktop_n01.png\"></a>";
+					}
+					elsif ($node =~ /n02/)
+					{
+						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"/img/icon_server-desktop_n02.png\"></a>";
+					}
+					else
+					{
+						$remote_message = "I think this server is running, but I don't know where. You can try connecting to it anyway.";
+						$remote_icon    = "<img src=\"/img/icon_server-desktop_oops.png\">";
+					}
+				}
+			}
+			else
+			{
+				# Not installed.
+				$remote_message = "This version of AN!CDB does not have in-browser remote desktop support yet.<br /><a href=\"https://alteeve.ca/w/Support\" target=\"_new\">Please upgrade</a> to enable this feature.";
+				$remote_icon    = "<img src=\"/img/icon_server-desktop_oops.png\">";
+			}
+		}
+		
 		print "
 			</table>
 			<br />
 		</td>
 	</tr>
+";
+	if ($show_remote_desktop_link)
+	{
+		print "
 	<tr>
+		<td class=\"highlight_good_bold\">
+			Desktop:
+		</td>
+		<td style=\"text-align: center;\">
+			<span class=\"subtle_text_wrap\">Please Note: If the server is migrated to the other node,<br />you will have to refresh this page and then reconnect.</span><br />
+			<br />
+			$remote_icon<br />
+			<br />
+			$remote_message<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good_bold\">
+			Trouble?
+		</td>
+		<td style=\"text-align: center;\">
+			If you're having trouble connecting to the server's desktop, <a href=\"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat\" target=\"_new\">click here</a>.<br />
+			This will restart the remote desktop client on this dashboard.<br />
+		</td>
 		<td>
-			<!-- <a href=\"?cluster=$conf->{cgi}{cluster}\">Back</a> -->
+			&nbsp;
+		</td>
+	</tr>
+";
+	}
+	print "
+	<tr>
+		<td colspan=\"2\">
 			&nbsp;
 		</td>
 	</tr>

@@ -269,6 +269,7 @@ chown root:apache -R /etc
 chown root:apache -R /etc/an
 chown root:apache -R /etc/ssh/ssh_config
 chown root:apache -R /etc/hosts
+chown root:root /var/www/tools/restart_tomcat6
 chown root:root /var/www/tools/check_dvd
 chown root:root /var/www/tools/do_dd
 chmod 6755 /var/www/tools/check_dvd
