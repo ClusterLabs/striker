@@ -54,7 +54,8 @@ yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
                qemu-kvm libvirt perl-Test-Simple policycoreutils-python \
                perl-Net-SSH-Perl
-# Stuff for a GUI
+
+               # Stuff for a GUI
 yum -y groupinstall basic-desktop development x11 fonts
 yum -y install virt-manager firefox gedit 
 

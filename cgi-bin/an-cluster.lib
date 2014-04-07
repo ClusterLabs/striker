@@ -26,6 +26,7 @@
 use strict;
 use warnings;
 use IO::Handle;
+use Net::SSH2;
 
 # Email stuff
 use Email::Sender::Simple qw(sendmail);
@@ -555,7 +556,7 @@ sub write_new_an_conf
 sub read_hosts
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
 	my $fh = IO::Handle->new();
@@ -600,7 +601,7 @@ sub read_hosts
 sub read_ssh_config
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
@@ -1862,24 +1863,43 @@ sub ask_which_cluster
 sub convert_cluster_config
 {
 	my ($conf) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
 		my $name = $conf->{cluster}{$id}{name};
+		#record($conf, "$THIS_FILE ".__LINE__."; name: [$name], cluster::${id}::nodes: [$conf->{cluster}{$id}{nodes}]\n");
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$id}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$id}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$id}{description};
 		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$id}{url};
 		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$id}{ricci_pw};
+		$conf->{clusters}{$name}{root_pw}     = $conf->{cluster}{$id}{root_pw} ? $conf->{cluster}{$id}{root_pw} : $conf->{cluster}{$id}{ricci_pw};
 		$conf->{clusters}{$name}{id}          = $id;
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
 			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/^\s+//;
 			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/\s+$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]]\n");
+			my $node = @{$conf->{clusters}{$name}{nodes}}[$i];
+			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [$node]\n");
+			if ($node =~ /^(.*?):(\d+)$/)
+			{
+				   $node = $1;
+				my $port = $2;
+				#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [$node], port: [$port]\n");
+				@{$conf->{clusters}{$name}{nodes}}[$i] = $node;
+				$conf->{node}{$node}{port}             = $port;
+				#record($conf, "$THIS_FILE ".__LINE__."; $i - clusters::${name}::nodes[$i]: [@{$conf->{clusters}{$name}{nodes}}[$i]], port: [$conf->{node}{$name}{port}]\n");
+			}
+			else
+			{
+				$conf->{node}{$node}{port} = $conf->{hosts}{$node}{port} ? $conf->{hosts}{$node}{port} : 22;
+				#record($conf, "$THIS_FILE ".__LINE__."; $i - node::${node}::port: [$conf->{node}{$node}{port}], hosts::${node}::port: [$conf->{hosts}{$node}{port}]\n");
+			}
+			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]], port: [$conf->{node}{$node}{port}]\n");
 		}
 	}
 	
@@ -2039,7 +2059,7 @@ sub find_executables
 sub get_guacamole_link
 {
 	my ($conf, $node) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
 	
 	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
 	my $guacamole_url;
@@ -2059,19 +2079,19 @@ sub get_guacamole_link
 			($guacamole_url) = "http://".$ENV{HTTP_HOST};
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
 	$guacamole_url .= ":8080/guacamole/client.xhtml";
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 
 	$guacamole_url =~ s/:\d+(:\d+)/$1/;
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 
 	# No node specified, so return a link to the guacamole main page.
 	if (not $node)
 	{
 		$guacamole_url =~ s/\/client.xhtml.*$//;
-		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	
 	return ($guacamole_url);
@@ -2535,6 +2555,10 @@ sub check_nodes
 sub check_node_status
 {
 	my ($conf) = @_;
+	
+	# Turn off buffering so that the pinwheel will display while waiting
+	# for the SSH call(s) to complete.
+	$| = 1;
 	
 	my $cluster = $conf->{cgi}{cluster};
 	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
@@ -3119,326 +3143,234 @@ sub ping_node
 	return ($node);
 }
 
-# This does the actual call out to get the data and parse the returned data.
+# This does the actual calls out to get the data and parse the returned data.
 sub gather_node_details
 {
 	my ($conf, $node) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
 	
-	# This will flip true if I see 'start dmidecode' (the first line to
-	# return from the client).
+	# This will flip true if I see dmidecode data, the first command I call
+	# on the node.
 	$conf->{node}{$node}{connected}      = 0;
 	$conf->{node}{$node}{info}{'state'}  = "<span class=\"highlight_unavailable\">Unknown</span>";
 	$conf->{node}{$node}{info}{note}     = "";
 	$conf->{node}{$node}{up}             = 0;
 	$conf->{node}{$node}{enable_poweron} = 0;
 	
-	# Check to see if I can ping the nodes as they're named.
-	#($node) = ping_node($conf, $node);
-	
-	# I echo 'start purpose:' before each call so that I know for
-	# sure when I am switching between shell calls.
-	my $sc =  "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"";
-	   $sc .= "echo \\\"start dmidecode:\\\"; dmidecode -t 4,16,17; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start meminfo:\\\"; cat /proc/meminfo; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start drbd-status:\\\"; drbdadm status; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start drbd-res-file:\\\"; cat /etc/drbd.d/r?.res; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start clustat:\\\"; clustat; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start cluster.conf:\\\"; cat /etc/cluster/cluster.conf; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start daemons:\\\"; ";
-	   $sc .= "/etc/init.d/rgmanager status; echo an-sve:rgmanager:\\\$?; ";
-	   $sc .= "/etc/init.d/cman status; echo an-sve:cman:\\\$?; ";
-	   $sc .= "/etc/init.d/drbd status; echo an-sve:drbd:\\\$?; ";
-	   $sc .= "/etc/init.d/clvmd status; echo an-sve:clvmd:\\\$?; ";
-	   $sc .= "/etc/init.d/gfs2 status; echo an-sve:gfs2:\\\$?; ";
-	   $sc .= "/etc/init.d/libvirtd status; echo an-sve:libvirtd:\\\$?; ";
-	   $sc .= "echo \\\"lvm-scan start:\\\"; pvscan; vgscan; lvscan; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"lvm-data start:\\\"; ";
-	   $sc .= "pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ";
-	   $sc .= "vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; ";
-	   $sc .= "lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ";
-	   $sc .= "echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start gfs2:\\\"; cat /etc/fstab | grep gfs2 && df -hP; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start virsh:\\\"; virsh list --all; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start vm defs:\\\"; cat /shared/definitions/*; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start bond0:\\\"; cat /proc/net/bonding/bond0; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start bond1:\\\"; cat /proc/net/bonding/bond1; echo \\\"#!end!#\\\"; ";
-	   $sc .= "echo \\\"start bond2:\\\"; cat /proc/net/bonding/bond2; echo \\\"#!end!#\\\"; ";
-	   $sc .= "\"";
-	   #$sc = "./data_${node}.txt";
-	# These keep track of where I am.
-	my $in_dmidecode     = 0;
-	my $in_meminfo       = 0;
-	my $in_drbd_status   = 0;
-	my $in_drbd_res_file = 0;
-	my $in_clustat       = 0;
-	my $in_cluster_conf  = 0;
-	my $in_daemons       = 0;
-	my $in_lvm_scan      = 0;
-	my $in_lvm_data      = 0;
-	my $in_gfs2          = 0;
-	my $in_virsh         = 0;
-	my $in_vm_defs       = 0;
-	my $in_bond          = 0;
-	
-	# This is used to track the bond I am reading.
-	my $bond = "";
-	
-	# These store the data read.
-	my @dmidecode;
-	my @meminfo;
-	my @drbd_status;
-	my @drbd_res_file;
-	my @clustat;
-	my @cluster_conf;
-	my @daemons;
-	my @lvm_scan;
-	my @lvm_data;
-	my @gfs2;
-	my @virsh;
-	my @vm_defs;
-	my @bond;
-	
-	# If I run into a long string of @, I need to read the next line to see
-	# what ssh is complaining about.
-	my $read_next = 0;
-	
-	### NOTE: This is over 1 KiB long and causes some IDEs, like 'kate', to
-	### flip the file into read-only mode. Enable only when needed.
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	#open ($fh, "<$sc") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $cluster                     = $conf->{cgi}{cluster};
+	$conf->{node}{$node}{connected} = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root], password: [$conf->{clusters}{$cluster}{root_pw}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root]\n");
+	my ($error, $ssh_fh, $channel, $dmidecode) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{clusters}{$cluster}{root_pw},
+		ssh_fh		=>	"",
+		channel		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"dmidecode -t 4,16,17",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], dmidecode: [$dmidecode (".@{$dmidecode}." lines)]\n");
+
+	if ($error)
 	{
-		#$raw .= $_;
-		chomp;
-		my $line = $_;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], read_next: [$read_next], line: [$line]\n");
-		
-		# If I was asked to read the next line, I am dead but I need
-		# details.
-		if ($read_next)
-		{
-			if ($line =~ /UNPROTECTED PRIVATE KEY FILE/)
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />It appears that there is a file permission issue in the dashboard.<br />The server's <span class=\"fixed_width\">$conf->{'system'}{username}</span> user's <span class=\"fixed_width\">~/.ssh/id_rsa</span> file is bad.<br />Please set the permissions to <span class=\"fixed_width\">600</span> (only readable by <span class=\"fixed_width\">$conf->{'system'}{username}</span>).<br />Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a> if you would like assistance with this issue.";
-				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-				record($conf, "$THIS_FILE ".__LINE__."; Note: [$conf->{node}{$node}{info}{note}]\n");
-				last;
-			}
-			else
-			{
-				record($conf, "$THIS_FILE ".__LINE__."; Other issue.\n");
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">No Access!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. It appears that the node has changed!<br />If this node failed and was replaced, be sure to remove the old key from <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/known_hosts</span> file.<br />If the node has not been replaced, then someone might be trying to trick you into logging into it.";
-				record($conf, "$THIS_FILE ".__LINE__."; Note: [$conf->{node}{$node}{info}{note}]\n");
-				last;
-			}
-		}
-		
-		# This catches connectivity problems.
-		#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
-		if ($line =~ /No route to host/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; No route to host.\n");
-			my $local_access = on_same_network($conf, $node);
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
-			if ($local_access)
-			{
-				$conf->{node}{$node}{info}{note} =  "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
-				$conf->{node}{$node}{info}{note} .= "It is on an accessible subnet, so the node is likely off or there is a network problem.<br />";
-				$conf->{node}{$node}{info}{note} .= "If you just powered on the node, please be patient, it might still be booting.";
-			}
-			else
-			{
-				$conf->{node}{$node}{info}{note} = "Unable to connect to <span class=\"fixed_width\">$node</span>.<br />";
-				$conf->{node}{$node}{info}{note} = "The server running AN!CDB is not currently on the same subnet as the node.";
-			}
-			last;
-		}
-		elsif ($line =~ /Host key verification failed/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; host key verification failed.\n");
-			my ($added) = try_to_add_ssh_fingerprint($conf, $node);
-			record($conf, "$THIS_FILE ".__LINE__."; added: [$added]\n");
-			if ($added)
-			{
-				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_note\">Key added!</span>";
-				$conf->{node}{$node}{info}{note}    =  "It appears that this is the first time talking to <span class=\"fixed_width\">${node}</span>.<br />";
-				$conf->{node}{$node}{info}{note}    .= "This node's key has been added to the system. Please reload this page once more.<br />";
-				$conf->{node}{$node}{info}{note}    .= "If you have already setup this machine's public SSH key, the next login will work.<br />";
-				$conf->{node}{$node}{info}{note}    .= "If not, I will try to add my key to the node on the next load.<br />";
-				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-				last;
-			}
-			else
-			{
-				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_bad\">Verification Failed!</span>";
-				$conf->{node}{$node}{info}{note}    =  "SSH host key verification failed for <span class=\"fixed_width\">${node}</span><br />";
-				$conf->{node}{$node}{info}{note}    .= "I tried to add it, but either it failed to add or it already exists.<br />";
-				$conf->{node}{$node}{info}{note}    .= "If you need help, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact us</a>.";
-				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-				#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::state: [$conf->{node}{$node}{info}{'state'}], node::${node}::info::note: [$conf->{node}{$node}{info}{note}]\n");
-				last;
-			}
-		}
-		elsif ($line =~ /could not resolve hostname/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; could not resolve host name.\n");
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Bad Hostname!</span>";
-			$conf->{node}{$node}{info}{note}    = "Could not resolve the hostname: <span class=\"fixed_width\">$node</span>. Have you setup your <span class=\"fixed_width\">/etc/hosts</span> file or DNS server properly?";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
-		}
-		elsif ($line =~ /permission denied/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; permission denied.\n");
-			my ($success) = add_rsa_key_to_node($conf, $node);
-			if ($success)
-			{
-				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_note\">Key added!</span>";
-				$conf->{node}{$node}{info}{note}    =  "The <span class=\"fixed_width\">${node}</span> didn't know who I am, but I was able to add my <a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_SSH\" target=\"_new\">SSH public key</a> to it.<br />";
-				$conf->{node}{$node}{info}{note}    .= "I am sorry, but please try to reload this page one more time.<br />";
-				$conf->{node}{$node}{info}{note}    .= "You should be able to connect next time.<br />";
-				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-				last;
-			}
-			else
-			{
-				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Permission Denied!</span>";
-				$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>. Have you added <span class=\"fixed_width\">$conf->{'system'}{username}</span>'s <span class=\"fixed_width\">~/.ssh/id_rsa.pub</span> public key to <span class=\"fixed_width\">$node</span>'s <span class=\"fixed_width\">/root/.ssh/authorized_keys</span> file? If so, check <span class=\"fixed_width\">/var/log/secure</span> on <span class=\"fixed_width\">$node</span> for errors.";
-				set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-				last;
-			}
-		}
-		elsif ($line =~ /connection refused/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; connection refused.\n");
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Refused!</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />Either it is refusing incoming connections or this machine does not have access to the node's subnet.";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
-		}
-		elsif ($line =~ /Connection timed out/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; connection timed out.\n");
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Timed Out</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The connection timed out.";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
-		}
-		elsif ($line =~ /Network is unreachable/i)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; network is unreachable.\n");
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Network Unreachable</span>";
-			$conf->{node}{$node}{info}{note}    = "I could not log into: <span class=\"fixed_width\">$node</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?";
-			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-			last;
-		}
-		elsif ($line =~ /\@\@\@\@/)
-		{
-			record($conf, "$THIS_FILE ".__LINE__."; \@'s. \@'s everywhere!.\n");
-			# When the host-key fails to match, a box made
-			# of '@@@@' is displayed, and is the entire 
-			# first line.
-			$read_next = 1;
-			next;
-		}
-		
-		# Catch the end of sections
-		if ($line =~ /#!end!#/)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; end\n");
-			$in_dmidecode    = 0;
-			$in_meminfo      = 0;
-			$in_drbd_status  = 0;
-			$in_clustat      = 0;
-			$in_cluster_conf = 0;
-			$in_daemons      = 0;
-			$in_lvm_scan     = 0;
-			$in_lvm_data     = 0;
-			$in_gfs2         = 0;
-			$in_virsh        = 0;
-			$in_vm_defs      = 0;
-			$in_bond         = 0;
-			$bond            = "";
-		}
-		#if ($line =~ /^start (.*?):/) { record($conf, "$THIS_FILE ".__LINE__."; start: [$line]\n"); }
-		
-		# Figure out where I am.
-		if ($line =~ /^start dmidecode:/)
-		{
-			$conf->{node}{$node}{connected}     = 1;
-			$in_dmidecode                       = 1;
-			$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_good\">Up!</span>";
-			next;
-		}
-		if ($line =~ /^start meminfo:/)       { $in_meminfo       = 1; next; }
-		if ($line =~ /^start drbd-status:/)   { $in_drbd_status   = 1; next; }
-		if ($line =~ /^start drbd-res-file:/) { $in_drbd_res_file = 1; next; }
-		if ($line =~ /^start clustat:/)       { $in_clustat       = 1; next; }
-		if ($line =~ /^start cluster.conf:/)  { $in_cluster_conf  = 1; next; }
-		if ($line =~ /^start daemons:/)       { $in_daemons       = 1; next; }
-		if ($line =~ /^lvm-scan start:/)      { $in_lvm_scan      = 1; next; }
-		if ($line =~ /^lvm-data start:/)      { $in_lvm_data      = 1; next; }
-		if ($line =~ /^start gfs2:/)          { $in_gfs2          = 1; next; }
-		if ($line =~ /^start virsh:/)         { $in_virsh         = 1; next; }
-		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
-		if ($line =~ /^start vm defs:/)       { $in_vm_defs       = 1; next; }
-		if ($line =~ /^start bond(\d+):/)
-		{
-			$bond       = $1;
-			$in_vm_defs = 1;
-			next;
-		}
-		
-		# If I am in a section, push the lines into the
-		# appropriate array.
-		if ($in_dmidecode)     { push @dmidecode,     $line; }
-		if ($in_meminfo)       { push @meminfo,       $line; }
-		if ($in_drbd_status)   { push @drbd_status,   $line; }
-		if ($in_drbd_res_file) { push @drbd_res_file, $line; }
-		if ($in_clustat)       { push @clustat,       $line; }
-		if ($in_cluster_conf)  { push @cluster_conf,  $line; }
-		if ($in_daemons)       { push @daemons,       $line; }
-		if ($in_lvm_scan)      { push @lvm_scan,      $line; }
-		if ($in_lvm_data)      { push @lvm_data,      $line; }
-		if ($in_gfs2)          { push @gfs2,          $line; }
-		if ($in_virsh)         { push @virsh,         $line; }
-		if ($in_vm_defs)       { push @vm_defs,       $line; }
-		if ($in_bond)
-		{
-			push @bond, "$bond:$line";
-		}
+		$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">Connection Problem</span>";
+		$conf->{node}{$node}{info}{note}    = $error;
+		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 	}
-	$fh->close();
-	#record($conf, "$THIS_FILE ".__LINE__."; raw $node:\n===========================\n$raw\n===========================\n");
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], connected: [$conf->{node}{$node}{connected}], state: [$conf->{node}{$node}{info}{'state'}], note: [$conf->{node}{$node}{info}{note}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; \@{$dmidecode}: [".@{$dmidecode}."]\n");
+	if ((ref($dmidecode)) && (@{$dmidecode} > 0))
+	{
+		$conf->{node}{$node}{connected} = 1;
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh], channel: [$channel]\n");
 	if ($conf->{node}{$node}{connected})
 	{
+		# Record that this node is up.
 		$conf->{'system'}{show_nodes} = 1;
 		$conf->{node}{$node}{up}      = 1;
 		push @{$conf->{up_nodes}}, $node;
-		parse_dmidecode    ($conf, $node, \@dmidecode);
-		parse_meminfo      ($conf, $node, \@meminfo);
-		parse_drbd_status  ($conf, $node, \@drbd_status);
-		parse_drbd_res_file($conf, $node, \@drbd_res_file);
-		parse_clustat      ($conf, $node, \@clustat);
-		parse_cluster_conf ($conf, $node, \@cluster_conf);
-		parse_daemons      ($conf, $node, \@daemons);
-		parse_lvm_scan     ($conf, $node, \@lvm_scan);
-		parse_lvm_data     ($conf, $node, \@lvm_data);
-		parse_gfs2         ($conf, $node, \@gfs2);
-		parse_virsh        ($conf, $node, \@virsh);
-		parse_vm_defs      ($conf, $node, \@vm_defs);
-		parse_bonds        ($conf, $node, \@bond);
+		
+		### Get the rest of the shell calls done before starting to
+		### parse.
+		# Get meminfo
+		my ($error, $ssh_fh, $channel, $meminfo) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"cat /proc/meminfo",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], meminfo: [$meminfo (".@{$meminfo}." lines)]\n");
+		
+		# Get drbd info
+		($error, $ssh_fh, $channel, my $drbd_status) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"drbdadm status",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], drbd_status: [$drbd_status (".@{$drbd_status}." lines)]\n");
+		($error, $ssh_fh, $channel, my $drbd_res_file) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"cat /etc/drbd.d/r?.res",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], drbd_res_file: [$drbd_res_file (".@{$drbd_res_file}." lines)]\n");
+		
+		# clustat info
+		($error, $ssh_fh, $channel, my $clustat) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"clustat",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], clustat: [$clustat (".@{$clustat}." lines)]\n");
+		
+		# Read cluster.conf
+		($error, $ssh_fh, $channel, my $cluster_conf) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"cat /etc/cluster/cluster.conf",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], cluster_conf: [$cluster_conf (".@{$cluster_conf}." lines)]\n");
+		
+		### TODO: Break these up into individual calls to be cleaner.
+		# Read the daemon states
+		($error, $ssh_fh, $channel, my $daemons) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"
+				/etc/init.d/rgmanager status; echo an-cdb:rgmanager:\\\$?; 
+				/etc/init.d/cman status; echo an-cdb:cman:\\\$?; 
+				/etc/init.d/drbd status; echo an-cdb:drbd:\\\$?; 
+				/etc/init.d/clvmd status; echo an-cdb:clvmd:\\\$?; 
+				/etc/init.d/gfs2 status; echo an-cdb:gfs2:\\\$?; 
+				/etc/init.d/libvirtd status; echo an-cdb:libvirtd:\\\$?;",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], daemons: [$daemons (".@{$daemons}." lines)]\n");
+		
+		# LVM data
+		($error, $ssh_fh, $channel, my $lvm_scan) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"pvscan; vgscan; lvscan",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], lvm_scan: [$lvm_scan (".@{$lvm_scan}." lines)]\n");
+		($error, $ssh_fh, $channel, my $lvm_data) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"
+				pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
+				vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
+				lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], lvm_data: [$lvm_data (".@{$lvm_data}." lines)]\n");
+		
+		# GFS2 data
+		($error, $ssh_fh, $channel, my $gfs2) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"cat /etc/fstab | grep gfs2 && df -hP",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], gfs2: [$gfs2 (".@{$gfs2}." lines)]\n");
+		
+		# virsh data
+		($error, $ssh_fh, $channel, my $virsh) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"virsh list --all",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], virsh: [$virsh (".@{$virsh}." lines)]\n");
+		
+		# VM definitions
+		($error, $ssh_fh, $channel, my $vm_defs) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	0,
+			shell_call	=>	"cat /shared/definitions/*",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
+		
+		### Last call, close the door on our way out.
+		# Bond data
+		($error, $ssh_fh, $channel, my $bond) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{clusters}{$cluster}{root_pw},
+			ssh_fh		=>	$ssh_fh,
+			channel		=>	$channel,
+			'close'		=>	1,
+			shell_call	=>	"for i in ls /proc/net/bonding/bond*; do echo \"start: \$i\"; cat \$i; done",
+		});
+		
+		parse_dmidecode    ($conf, $node, $dmidecode);
+		parse_meminfo      ($conf, $node, $meminfo);
+		parse_drbd_status  ($conf, $node, $drbd_status);
+		parse_drbd_res_file($conf, $node, $drbd_res_file);
+		parse_clustat      ($conf, $node, $clustat);
+		parse_cluster_conf ($conf, $node, $cluster_conf);
+		parse_daemons      ($conf, $node, $daemons);
+		parse_lvm_scan     ($conf, $node, $lvm_scan);
+		parse_lvm_data     ($conf, $node, $lvm_data);
+		parse_gfs2         ($conf, $node, $gfs2);
+		parse_virsh        ($conf, $node, $virsh);
+		parse_vm_defs      ($conf, $node, $vm_defs);
+		parse_bonds        ($conf, $node, $bond);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -3625,6 +3557,100 @@ sub get_hostname
 	return($hostname);
 }
 
+# This calls the target machine and runs a command.
+sub remote_call
+{
+	my ($conf, $parameters) = @_;
+	
+	my $cluster    = $conf->{cgi}{cluster};
+	my $node       = $parameters->{node};
+	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
+	my $user       = $parameters->{user}             ? $parameters->{user}     : "root";
+	my $password   = $parameters->{password}         ? $parameters->{password} : $conf->{clusters}{$cluster}{root_pw};
+	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
+	my $channel    = $parameters->{channel}          ? $parameters->{channel}  : "";
+	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
+	my $shell_call = $parameters->{shell_call};
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$port], user: [$user], password: [$password], shell_call: [$shell_call]\n");
+	
+	my $state;
+	my $error;
+	my $output = [];
+	record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
+	if ($ssh_fh !~ /^Net::SSH2/)
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
+		$ssh_fh = Net::SSH2->new();
+		if (not $ssh_fh->connect($node, $port, Timeout => 10))
+		{
+			if ($@ =~ /Bad hostname/)
+			{
+				$error = "Host name: [$node] does not resolve to an IP address.";
+				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+			elsif ($@ =~ /Connection refused/)
+			{
+				$error = "Connection to: [$node] on port: [$port] as the user: [$user] was refused.";
+				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+			elsif ($@ =~ /No route to host/)
+			{
+				$error = "No route to: [$node]. Is the machine powered up and does it resolve to the proper IP address?";
+				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+			else
+			{
+				$error = "Unknown error while connecting to: [$node]: [$@]";
+				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+		if (not $error)
+		{
+			if (not $ssh_fh->auth_password($user, $password)) 
+			{
+				$error = "Unable to log in. Please check the password for this cluster.";
+				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+			#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+		}
+	}
+	
+	# Open a channel, if needed.
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel]\n");
+		if ($channel !~ /^Net::SSH2::Channel/)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH channel to: [$node] on port: [$port] as user: [$user].\n");
+			$channel = $ssh_fh->channel();
+			$channel->shell();
+			#record($conf, "$THIS_FILE ".__LINE__."; Channel: [$channel] opened to: [$node].\n");
+		}
+		
+		record($conf, "$THIS_FILE ".__LINE__."; Channel: [$channel], shell_call: [$shell_call].\n");
+		print $channel "$shell_call\n";
+		while (<$channel>)
+		{
+			chomp;
+			push @{$output}, $_;
+			#record($conf, "$THIS_FILE ".__LINE__."; Line: [$_]\n");
+		}
+		
+		#record($conf, "$THIS_FILE ".__LINE__."; close: [$close].\n");
+		if ($close)
+		{
+			$channel->close();
+			$ssh_fh->disconnect();
+			record($conf, "$THIS_FILE ".__LINE__."; closed ssh channel and connection.\n");
+		}
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], channel: [$channel], output: [$output].\n");
+	return($error, $ssh_fh, $channel, $output);
+}
+
 # This tries to log into the node as 'root' using the 'ricci' password (in
 # hopes they're the same, didn't want to barage the user with 1000 questions...)
 sub add_rsa_key_to_node
@@ -3635,7 +3661,6 @@ sub add_rsa_key_to_node
 	my $success = 0;
 	my ($rsa_public_key) = get_rsa_public_key($conf);
 	
-	use Net::SSH::Perl;
 	my $cluster  = $conf->{cgi}{cluster};
 	my $password = $conf->{clusters}{$cluster}{ricci_pw};
 	my $user     = "root";
@@ -3655,8 +3680,8 @@ sub add_rsa_key_to_node
 		{
 			$sc = "echo 1";
 		}
-		my $ssh = Net::SSH::Perl->new($node);
 		
+		my $ssh = Net::SSH::Perl->new($node);
 		record($conf, "$THIS_FILE ".__LINE__."; Attempting ssh: [$user\@$node] and call: [$sc].\n");
 		$ssh->login($user, $password);
 		my ($stdout, $stderr, $exit) = $ssh->cmd($sc);
@@ -3789,7 +3814,10 @@ sub try_to_add_ssh_fingerprint
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node] is already in: [$known_hosts]");
 	}
-	my $sc = "$conf->{path}{'ssh-keyscan'} $node >> $known_hosts";
+	
+	# Call first once to make sure we get an actual key.
+	my $key = "";
+	my $sc  = "$conf->{path}{'ssh-keyscan'} $node";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
@@ -3800,6 +3828,9 @@ sub try_to_add_ssh_fingerprint
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
 	$fh->close();
+	
+	die "testing\n";
+	
 	if (not $exists)
 	{
 		$added = check_known_hosts_for_node($conf, $node);
@@ -3831,7 +3862,7 @@ sub check_known_hosts_for_node
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			
 			my $this_host = "";
 			my $key       = "";
@@ -3839,7 +3870,7 @@ sub check_known_hosts_for_node
 			{
 				$this_host = $1;
 				$key       = $2;
-				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], key: [$key]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], key: [$key]\n");
 				my $this_ip   = "";
 				my $this_port = "";
 				# There are a few ways host names are recorded...
@@ -3848,7 +3879,7 @@ sub check_known_hosts_for_node
 					$this_host = $1;
 					$this_port = $2;
 					$this_ip   = $this_host;
-					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
 				}
 				elsif ($this_host =~ /\[(.*?)]:(\d+),\[(\d+\.\d+\.\d+\.\d+)\]:(\d+)/)
 				{
@@ -3860,23 +3891,23 @@ sub check_known_hosts_for_node
 					{
 						$this_port .= ",$alt_port";
 					}
-					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip], this_port: [$this_port]\n");
 				}
 				elsif ($this_host =~ /(.*?),(\d+\.\d+\.\d+\.\d+)/)
 				{
 					$this_host = $1;
 					$this_port = $2;
-					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_port: [$this_port]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_port: [$this_port]\n");
 				}
 				elsif ($this_host =~ /^(\d+\.\d+\.\d+\.\d+)/)
 				{
 					# Raw IP
 					$this_host = $1;
 					$this_ip   = $this_host;
-					record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], this_ip: [$this_ip]\n");
 				}
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], node: [$node]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], node: [$node]\n");
 			if ($this_host eq $node)
 			{
 				$found = 1;
@@ -3890,11 +3921,23 @@ sub check_known_hosts_for_node
 	return($found);
 }
 
+### TODO: Finish this and add it to the node management
 # This parse bond data
 sub parse_bonds
 {
 	my ($conf, $node, $array) = @_;
 	
+	my $this_bond;
+	foreach my $line (@{$array})
+	{
+		# Find the start of a domain.
+		if ($line =~ /start: \/proc\/net\/bonding\/bond(\d+)/)
+		{
+			$this_bond = $1;
+		}
+		next if not $this_bond;
+		#record($conf, "$THIS_FILE ".__LINE__."; this_bond: [$this_bond], line: [$line]\n");
+	}
 	
 	return (0);
 }
@@ -3949,7 +3992,7 @@ sub parse_dmidecode
 {
 	my ($conf, $node, $array) = @_;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
 	#foreach my $line (@{$array}) { record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Some variables I will need.
@@ -4774,7 +4817,7 @@ sub parse_daemons
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		next if $line !~ /^an-sve:/;
+		next if $line !~ /^an-cdb:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		$exit_code = "" if not defined $exit_code;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit_code: [$exit_code]\n");

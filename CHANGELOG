@@ -1,0 +1,15 @@
+Change log;
+
+v1.0.4 - 
+- Major: Passwordless SSH is no longer required. Switched to using the 
+  Net::SSH2 perl module.
+- Added port support in an.conf (node1:port, node2:port) in addition to
+  /etc/ssh/ssh_config
+- Added new variable for 'cluster::X::root_pw' if the root password is
+  different from the ricci password. When not defined, the ricci password will
+  be used.
+
+
+v1.0.3 - 2014-03-26
+- No prior change list. If you're curious, please see the git change history 
+  at https://github.com/digimer/an-cdb

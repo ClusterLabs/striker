@@ -159,6 +159,8 @@ my $conf={
 print "Content-type: text/html; charset=utf-8\n";
 
 find_executables($conf);
+read_hosts($conf);
+read_ssh_config($conf);
 read_conf($conf);
 
 # I need to convert the global configuration of the clusters to the format I use here.
