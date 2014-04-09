@@ -372,7 +372,6 @@ sub restart_tomcat
 	my $sc = "$conf->{path}{restart_tomcat} restart";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	my $raw;
 	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
@@ -432,15 +431,18 @@ sub lsi_control_unmake_disk_as_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -451,7 +453,6 @@ sub lsi_control_unmake_disk_as_hot_spare
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message = "Success";
 	my $title_class   = "highlight_good";
@@ -501,15 +502,18 @@ sub lsi_control_make_disk_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -520,7 +524,6 @@ sub lsi_control_make_disk_hot_spare
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message = "Success";
 	my $title_class   = "highlight_good";
@@ -569,15 +572,18 @@ sub lsi_control_mark_disk_missing
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -592,7 +598,6 @@ sub lsi_control_mark_disk_missing
 			$success = 2;
 		}
 	}
-	$fh->close();
 	
 	my $title_message = "Success";
 	my $title_class   = "highlight_good";
@@ -653,15 +658,18 @@ sub lsi_control_spin_disk_up
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# This spins the drive back up.
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -672,7 +680,6 @@ sub lsi_control_spin_disk_up
 			$success = 1;
 		}
 	}
-	$fh->close();
 
 	my $title_message = "Success";
 	my $title_class   = "highlight_good";
@@ -721,15 +728,18 @@ sub lsi_control_spin_disk_down
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -744,7 +754,6 @@ sub lsi_control_spin_disk_down
 			$success = 2;
 		}
 	}
-	$fh->close();
 
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -813,15 +822,18 @@ sub lsi_control_get_rebuild_progress
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -832,7 +844,6 @@ sub lsi_control_get_rebuild_progress
 			$time_to_complete = $2;
 		}
 	}
-	$fh->close();
 	
 	return($rebuild_percent, $time_to_complete);
 }
@@ -926,15 +937,18 @@ sub lsi_control_put_disk_offline
 		return (0);
 	}
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -945,7 +959,6 @@ sub lsi_control_put_disk_offline
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -999,15 +1012,18 @@ sub lsi_control_put_disk_online
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1018,7 +1034,6 @@ sub lsi_control_put_disk_online
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -1067,15 +1082,18 @@ sub lsi_control_add_disk_to_array
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1086,7 +1104,6 @@ sub lsi_control_add_disk_to_array
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -1139,15 +1156,18 @@ sub lsi_control_get_missing_disks
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -1160,7 +1180,6 @@ sub lsi_control_get_missing_disks
 			$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} = $minimum_size;
 		}
 	}
-	$fh->close();
 	
 	return(0);
 }
@@ -1177,15 +1196,18 @@ sub lsi_control_make_disk_good
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1196,7 +1218,6 @@ sub lsi_control_make_disk_good
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -1250,15 +1271,18 @@ sub lsi_control_disk_id_led
 		$say_action = "stopped";
 	}
 	
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1269,7 +1293,6 @@ sub lsi_control_disk_id_led
 			$success = 1;
 		}
 	}
-	$fh->close();
 	
 	my $title_message =  "Success";
 	my $title_class   =  "highlight_good";
@@ -1947,14 +1970,18 @@ sub get_storage_data
 	$conf->{storage}{is}{lsi}   = "";
 	$conf->{storage}{is}{hp}    = "";
 	$conf->{storage}{is}{mdadm} = "";
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"whereis MegaCli64 hpacucli mdadm\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -2025,19 +2052,22 @@ sub get_storage_data_lsi
 	# Now call.
 	my $in_section     = 0;
 	my $megacli64_path = $conf->{storage}{is}{lsi};
-	my $sc  = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \" ";
-	   $sc .= "echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; ";
-	   $sc .= "echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
-	   $sc .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
-	   $sc .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
-	   $sc .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \\\"PD Locate\\\" /root/MegaSAS.log;\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; 
+			echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; 
+			echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; 
+			echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; 
+			echo '==] Start pd_id_led_state'; $conf->{path}{grep} \\\"PD Locate\\\" /root/MegaSAS.log;",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -2667,16 +2697,20 @@ sub change_vm
 			# Rewrite the XML file.
 			print "<br />Setting the RAM to [<span class=\"fixed_width\">$conf->{cgi}{ram} $conf->{cgi}{ram_suffix}</span>], the number of CPUs to: [<span class=\"fixed_width\">$requested_cpus</span>] and the boot device to [<span class=\"fixed_width\">$say_requested_boot_device</span>].<br /><br />\n";
 			my $new_definition = "";
-			my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-			my $fh             = IO::Handle->new();
 			my $in_os          = 0;
-			my $raw;
 			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			my ($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	"cat $definition_file",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
 				if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
 				{
@@ -2759,22 +2793,25 @@ sub change_vm
 					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
 				}
 			}
-			$fh->close();
 			$new_definition =~ s/(\S)\s+$/$1\n/;
 			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
 			#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 			
 			# Write the new definition file.
-			$fh = IO::Handle->new();
-			$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	$ssh_fh,
+				'close'		=>	1,
+				shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				print "\t\t\t<span class=\"code\">$_</span><br />\n";
+				print "\t\t\t<span class=\"code\">$line</span><br />\n";
 			}
-			$fh->close();
 			
 			# Wipe and re-read the definition file's XML and reset
 			# the amount of RAM and the number of CPUs allocated
@@ -2884,14 +2921,18 @@ sub vm_insert_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\\\$?\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		my $raw;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\$?",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -2906,7 +2947,6 @@ sub vm_insert_media
 				print "<span class=\"code\">$line</span><br />\n";
 			}
 		}
-		$fh->close();
 		if ($virsh_exit_code eq "1")
 		{
 			print "
@@ -2973,15 +3013,18 @@ sub vm_insert_media
 		print "The machine is shut off.<br />\n";
 		print "Updating <span class=\"fixed_width\">$say_vm</span>'s definition file directly.<br />\n";
 		my $new_definition = "";
-		my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		my $raw;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"cat $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /dev='(.*?)'/)
 			{
@@ -2994,22 +3037,25 @@ sub vm_insert_media
 			}
 			$new_definition .= "$line\n";
 		}
-		$fh->close();
 		$new_definition =~ s/(\S)\s+$/$1\n/;
 		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
 		# Write the new definition file.
 		#print "\t\t\tSaving the new configuration...<br />\n";
-		$fh = IO::Handle->new();
-		$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	1,
+			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			print "\t\t\t<span class=\"code\">$_</span><br />\n";
+			print "\t\t\t<span class=\"code\">$line</span><br />\n";
 		}
-		$fh->close();
 		print "
 			Done!
 			<br />
@@ -3063,14 +3109,18 @@ sub vm_eject_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my $sc   = "$conf->{path}{ssh} root\@$node \"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\\\$?\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		my $raw;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -3085,7 +3135,6 @@ sub vm_eject_media
 				print "<span class=\"code\">$line</span><br />\n";
 			}
 		}
-		$fh->close();
 		if ($virsh_exit_code eq "1")
 		{
 			print "
@@ -3157,16 +3206,19 @@ sub vm_eject_media
 		my $this_media     = "";
 		my $this_device    = "";
 		my $new_definition = "";
-		my $sc             = "$conf->{path}{ssh} root\@$node \"cat $definition_file\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		my $raw;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"cat $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			$new_definition .= $_;
-			chomp;
-			my $line = $_;
+			$new_definition .= "$line\n";
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
 			{
@@ -3204,22 +3256,25 @@ sub vm_eject_media
 				}
 			}
 		}
-		$fh->close();
 		$new_definition =~ s/(\S)\s+$/$1\n/;
 		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
 		# Write the new definition file.
 		print "\t\t\tSaving the new configuration...<br />\n";
-		$fh = IO::Handle->new();
-		$sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	1,
+			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			print "\t\t\t<span class=\"code\">$_</span><br />\n";
+			print "\t\t\t<span class=\"code\">$line</span><br />\n";
 		}
-		$fh->close();
 		print "
 			Done!
 			<br />
@@ -3451,14 +3506,18 @@ sub manage_vm
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
-	my $sc = "$conf->{path}{ssh} -o ConnectTimeout=10 root\@$node \"df -P && ls -l /shared/files/\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	my $raw;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"df -P && ls -l /shared/files/",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -3505,7 +3564,6 @@ sub manage_vm
 			#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
 		}
 	}
-	$fh->close();
 
 	# Find which ISOs are mounted currently.
 	my $this_device = "";
@@ -3867,17 +3925,20 @@ sub switch_vm_xml_to_vnc
 	record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition\n===\n");
 	
 	# Write the new definition file.
-	my $fh = IO::Handle->new();
-	my $sc = "echo \"$new_definition\" | $conf->{path}{ssh} root\@$node \"cat > $definition_file && chmod 644 $definition_file\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
-	$fh->close();
 	
 	return(0);
 }
@@ -4116,20 +4177,24 @@ sub read_live_xml
 	
 	$conf->{vm}{$vm}{live_xml} = [];
 	my $fh = IO::Handle->new();
-	my $sc = "ssh root\@$node \"virsh dumpxml $say_vm\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"virsh dumpxml $say_vm",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		push @{$conf->{vm}{$vm}{live_xml}}, $line;
 	}
-	$fh->close();
 	
 	return(0);
 }
@@ -4191,14 +4256,18 @@ sub update_vm_definition
 	record($conf, "$THIS_FILE ".__LINE__."; in update_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$definition_file]\n");
 	
 	my $virsh_exit_code;
-	my $sc = "$conf->{path}{ssh} root\@$node \"virsh dumpxml $say_vm > $definition_file; echo virsh:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
@@ -4212,7 +4281,6 @@ sub update_vm_definition
 			#print "<span class=\"code\">$line</span><br />\n";
 		}
 	}
-	$fh->close();
 	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
@@ -4357,14 +4425,18 @@ sub add_vm_to_cluster
 		print "It is not running at the moment, I will now boot the VM.<br />\n";
 		record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
 		my $virsh_exit_code;
-		my $sc = "$conf->{path}{ssh} root\@$node \"virsh start $vm; echo virsh:\\\$?\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"virsh start $vm; echo virsh:\$?",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			next if not $line;
@@ -4374,7 +4446,6 @@ sub add_vm_to_cluster
 				$virsh_exit_code = $1;
 			}
 		}
-		$fh->close();
 		record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 		if ($virsh_exit_code eq "0")
 		{
@@ -4388,14 +4459,18 @@ sub add_vm_to_cluster
 			print "It didn't start on the first try. Trying again with the definition file.<br />\n";
 			record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
 			my $virsh_exit_code;
-			my $sc = "$conf->{path}{ssh} root\@$node \"virsh create /shared/definitions/${vm}.xml; echo virsh:\\\$?\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	$ssh_fh,
+				'close'		=>	1,
+				shell_call	=>	"virsh create /shared/definitions/${vm}.xml; echo virsh:\$?",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				next if not $line;
@@ -4405,7 +4480,6 @@ sub add_vm_to_cluster
 					$virsh_exit_code = $1;
 				}
 			}
-			$fh->close();
 			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 			if ($virsh_exit_code eq "0")
 			{
@@ -4487,14 +4561,18 @@ sub add_vm_to_cluster
 		return (1);
 	}
 	my $virsh_exit_code;
-	my $sc = "$conf->{path}{ssh} root\@$node \"virsh dumpxml $vm > $definition; echo virsh:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"virsh dumpxml $vm > $definition; echo virsh:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
@@ -4504,7 +4582,6 @@ sub add_vm_to_cluster
 			$virsh_exit_code = $1;
 		}
 	}
-	$fh->close();
 	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
@@ -4549,14 +4626,18 @@ sub add_vm_to_cluster
 	";
 
 	undef $virsh_exit_code;
-	$sc = "$conf->{path}{ssh} root\@$node \"virsh undefine $vm; echo virsh:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	$fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	$ssh_fh,
+		'close'		=>	0,
+		shell_call	=>	"virsh undefine $vm; echo virsh:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
@@ -4566,7 +4647,6 @@ sub add_vm_to_cluster
 			$virsh_exit_code = $1;
 		}
 	}
-	$fh->close();
 	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
@@ -4608,23 +4688,26 @@ sub add_vm_to_cluster
 ";
 	
 	my $ccs_exit_code;
-	$sc =  "$conf->{path}{ssh} root\@$node 'ccs ";
-	$sc .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
-	$sc .= "domain=\"$failover_domain\" ";
-	$sc .= "path=\"/shared/definitions/\" ";
-	$sc .= "autostart=\"0\" ";
-	$sc .= "exclusive=\"0\" ";
-	$sc .= "recovery=\"restart\" ";
-	$sc .= "max_restarts=\"2\" ";
-	$sc .= "restart_expire_time=\"600\"";
-	$sc .= "; echo ccs:\$?'";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	$fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	$ssh_fh,
+		'close'		=>	0,
+		shell_call	=>	"ccs 
+			-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm 
+			domain=\"$failover_domain\" 
+			path=\"/shared/definitions/\" 
+			autostart=\"0\" 
+			exclusive=\"0\" 
+			recovery=\"restart\" 
+			max_restarts=\"2\" 
+			restart_expire_time=\"600\"; echo ccs:\$?"
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		next if not $line;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /ccs:(\d+)/)
@@ -4696,14 +4779,18 @@ sub add_vm_to_cluster
 	# Tell the cluster to start the VM. I don't bother to check for 
 	# readiness because I confirmed it was running on this node earlier.
 	my $clusvcadm_exit_code;
-	$sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm; echo clusvcadm:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	$fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	$ssh_fh,
+		'close'		=>	1,
+		shell_call	=>	"clusvcadm -e vm:$vm; echo clusvcadm:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		next if not $line;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /clusvcadm:(\d+)/)
@@ -4778,14 +4865,18 @@ sub find_vm_host
 	my ($conf, $node, $peer, $vm) = @_;
 	my $host = "none";
 	
-	my $sc = "$conf->{path}{ssh} root\@$node \"virsh list --all\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"virsh list --all",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
@@ -4800,14 +4891,18 @@ sub find_vm_host
 				record($conf, "$THIS_FILE ".__LINE__."; The VM appears to be off. Checking the peer to see if it is running there.\n");
 				my $on_peer = 0;
 				my $found   = 0;
-				my $sc = "$conf->{path}{ssh} root\@$peer \"virsh list --all\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				my ($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$peer,
+					port		=>	$conf->{node}{$peer}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	"virsh list --all",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					next if not $line;
@@ -4833,7 +4928,6 @@ sub find_vm_host
 						}
 					}
 				}
-				$fh->close();
 				if (($found) && (not $on_peer))
 				{
 					#print "I did not find it on the peer node.<br />\n";
@@ -4847,7 +4941,6 @@ sub find_vm_host
 			}
 		}
 	}
-	
 	
 	return ($host);
 }
@@ -4957,14 +5050,20 @@ sub provision_vm
 	###       good node.
 	
 	# Push the provision script into a file.
-	my $error  = "";
 	my $script = "/shared/provision/$conf->{new_vm}{name}.sh";
 	print "\t\t\tWriting provision script to <span class=\"code\">$script</span><br />\n";
-	my $fh = IO::Handle->new();
-	my $sc = "echo \"$provision\" | $conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"cat > $script && chmod 755 $script\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $node = $conf->{new_vm}{host_node};
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"echo \"$provision\" > $script && chmod 755 $script",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
 		### I now detach this so I won't be here log enough to see the
 		### install complete.
@@ -4972,23 +5071,25 @@ sub provision_vm
 		#my $line = $_;
 		#print "\t\t\t<span class=\"code\">$line</span><br />\n";
 	}
-	$fh->close();
 	print "
 			Done.<br />
 			Starting the installation of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n
 ";
-	$fh = IO::Handle->new();
-	$sc = "$conf->{path}{ssh} root\@$conf->{new_vm}{host_node} \"$script\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	$ssh_fh,
+		'close'		=>	1,
+		shell_call	=>	"",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
 		print "\t\t\t<span class=\"fixed_width\"><span class=\"code\">$_</span></span><br />\n";
 	}
-	$fh->close();
 	print "\t\t\tDone.<br />\n";
 	
 	if (-e $conf->{path}{guacamole_config})
@@ -6160,14 +6261,18 @@ sub start_vm
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $show_remote_desktop_link = 0;
-		my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -6209,14 +6314,18 @@ sub start_vm
 					</td>
 				</tr>
 ";
-				my $sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -d vm:$vm\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	$ssh_fh,
+					'close'		=>	0,
+					shell_call	=>	"clusvcadm -d vm:$vm",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -6240,7 +6349,6 @@ sub start_vm
 				</tr>
 ";
 				}
-				$fh->close();
 				print "
 				<tr>
 					<td style=\"border: 1px solid white;\" class=\"highlight_ready_bold\" align=\"center\">
@@ -6251,14 +6359,18 @@ sub start_vm
 					</td>
 				</tr>
 ";
-				$sc = "$conf->{path}{ssh} root\@$node \"clusvcadm -e vm:$vm -m $node_cluster_name\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				$fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	$ssh_fh,
+					'close'		=>	1,
+					shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -6297,7 +6409,6 @@ sub start_vm
 				</tr>
 ";
 				}
-				$fh->close();
 			}
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
@@ -6318,7 +6429,6 @@ sub start_vm
 				</tr>
 ";
 		}
-		$fh->close();
 		
 		if ($show_remote_desktop_link)
 		{
@@ -6530,14 +6640,18 @@ sub migrate_vm
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -M vm:$vm -m $target\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"$conf->{path}{clusvcadm} -M vm:$vm -m $target",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -6561,7 +6675,6 @@ sub migrate_vm
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -6639,14 +6752,18 @@ sub stop_vm
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $say_node = node_name_to_long_host_name($conf, $node);
-		my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -d vm:$vm\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"$conf->{path}{clusvcadm} -d vm:$vm",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -6671,7 +6788,6 @@ sub stop_vm
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -6735,14 +6851,18 @@ sub join_cluster
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -6766,7 +6886,6 @@ sub join_cluster
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -6885,14 +7004,18 @@ sub dual_join
 				# This is the child thread, so do the call.
 				# Note that, without the 'die', we could end
 				# up here if the fork() failed.
-				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start && /etc/init.d/rgmanager start\"";
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				my ($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -6920,7 +7043,6 @@ sub dual_join
 				</tr>
 ";
 				}
-				$fh->close();
 				
 				# Kill the child process.
 				exit;
@@ -7050,14 +7172,18 @@ sub force_off_vm
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"virsh destroy $vm\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"virsh destroy $vm",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -7081,7 +7207,6 @@ sub force_off_vm
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -7184,14 +7309,18 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my $sc = "$conf->{path}{ssh} root\@$host \"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\\\$?\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			next if not $line;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /ccs:(\d+)/)
@@ -7233,14 +7362,18 @@ sub delete_vm
 ";
 			   $proceed = 0;
 			my $virsh_exit_code;
-			my $sc = "$conf->{path}{ssh} root\@$host \"virsh destroy $say_vm; echo virsh:\\\$?\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	$ssh_fh,
+				'close'		=>	0,
+				shell_call	=>	"virsh destroy $say_vm; echo virsh:\$?",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				next if not $line;
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line =~ /virsh:(\d+)/)
@@ -7253,7 +7386,6 @@ sub delete_vm
 					print "<span class=\"fixed_width\">$line</span><br />\n";
 				}
 			}
-			$fh->close();
 			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 			if ($virsh_exit_code eq "0")
 			{
@@ -7287,14 +7419,18 @@ sub delete_vm
 			{
 				print "Deleting <span class=\"fixed_width\">$lv</span>...<br />\n";
 				my $lvremove_exit_code;
-				my $sc = "$conf->{path}{ssh} root\@$host \"lvremove -f $lv; echo lvremove:\\\$?\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	$ssh_fh,
+					'close'		=>	1,
+					shell_call	=>	"lvremove -f $lv; echo lvremove:\$?",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					next if not $line;
 					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					if ($line =~ /lvremove:(\d+)/)
@@ -7379,14 +7515,18 @@ sub remove_vm_definition
 	# 'rm' seems to return '0' no matter what. So I use the 'ls' to ensure
 	# the file is gone. 'ls' will return '2' on file not found.
 	my $ls_exit_code;
-	my $sc = "$conf->{path}{ssh} root\@$node \"rm -f $file; ls $file; echo ls:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"rm -f $file; ls $file; echo ls:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		next if not $line;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /ls:(\d+)/)
@@ -7400,7 +7540,6 @@ sub remove_vm_definition
 			#print "<span class=\"fixed_width\">$line</span><br />\n";
 		}
 	}
-	$fh->close();
 	record($conf, "$THIS_FILE ".__LINE__."; ls exit code: [$ls_exit_code]\n");
 	if ($ls_exit_code eq "2")
 	{
@@ -7431,14 +7570,18 @@ sub archive_file
 	   $dest =~ s/ /_/;
 
 	my $cp_exit_code;
-	my $sc = "$conf->{path}{ssh} root\@$node \"cp $file $dest; echo cp:\\\$?\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"cp $file $dest; echo cp:\$?",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		next if not $line;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /cp:(\d+)/)
@@ -7451,7 +7594,6 @@ sub archive_file
 			print "<span class=\"fixed_width\">$line</span><br />\n";
 		}
 	}
-	$fh->close();
 	#record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
 	if ($cp_exit_code eq "0")
 	{
@@ -7535,14 +7677,18 @@ sub poweroff_node
 			<br />
 			<table class=\"hidden_table\" width=\"100%\">
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"poweroff && echo \"Power down initiated. Please return to the main page now.\"\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"poweroff && echo \"Power down initiated. Please return to the main page now.\"",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -7566,7 +7712,6 @@ sub poweroff_node
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -7840,18 +7985,21 @@ sub poweron_node
 				error($conf, "I was asked to power on: [$node] via it's peer: [$peer], but the power command is empty.<br />\nThis is likely a program error.\n");
 			}
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
-			my $sc = "$conf->{path}{ssh} root\@$peer \"$conf->{node}{$node}{info}{power_check_command} -o on\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			my ($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$peer,
+				port		=>	$conf->{node}{$peer}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	1,
+				shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o on",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 				print "$line<br />\n";
 			}
-			$fh->close();
 			print "
 			<br />
 		</td>
@@ -8049,18 +8197,20 @@ sub fence_node
 			<br />
 ";
 			my ($method_num, $method_name, $command) = ($line =~ /(\d+):(.*?): (.*?;)\./);
-			my $off_command =  $command;
-			my $on_command  =  $command;
+			my $off_command = $command;
+			my $on_command  = $command;
+			my $off_success = 1;
+			my $on_success  = 1;
 			
 			# If the peer is up, set the command to run through it.
 			if ($conf->{node}{$peer}{up})
 			{
 				# When called remotely, I need to double-escape
 				# the $? to protect it inside the "".
-				$off_command =~ s/#!action!#;/off; echo fence:\\\$?;/g;
-				$on_command  =~ s/#!action!#;/on;  echo fence:\\\$?;/g;
-				$off_command = "$conf->{path}{ssh} root\@$peer \"$off_command\"";
-				$on_command  = "$conf->{path}{ssh} root\@$peer \"$on_command\"";
+				$off_command =~ s/#!action!#;/off; echo fence:\$?;/g;
+				$on_command  =~ s/#!action!#;/on;  echo fence:\$?;/g;
+				$off_command = "ssh:$peer,$off_command";
+				$on_command  = "ssh:$peer,$on_command";
 			}
 			else
 			{
@@ -8069,18 +8219,40 @@ sub fence_node
 				$off_command =~ s/#!action!#;/off; echo fence:\$?;/g;
 				$on_command  =~ s/#!action!#;/on;  echo fence:\$?;/g;
 			}
-			my $off_success = 1;
-			my $on_success  = 1;
 			
 			# Make the off attempt.
+			my $output = [];
+			my $ssh_fh;
 			my $sc = "$off_command";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			if ($sc =~ /ssh:(.*?),(.*)$/)
 			{
-				chomp;
-				my $line = $_;
+				my $node    = $1;
+				my $command = $2;
+				(my $error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	"$command",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			}
+			else
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					push @{$output}, $_;
+				}
+				$fh->close()
+			}
+			foreach my $line (@{$output})
+			{
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 				# This is how I get the fence call's exit code.
 				if ($line =~ /fence:(\d+)/)
@@ -8097,7 +8269,6 @@ sub fence_node
 					print "$line<br />\n";
 				}
 			}
-			$fh->close();
 			print "
 			<br />
 		</td>
@@ -8137,13 +8308,35 @@ sub fence_node
 			<br />
 ";
 			$sc = "$on_command";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			$fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			if ($sc =~ /ssh:(.*?),(.*)$/)
 			{
-				chomp;
-				my $line = $_;
+				my $node    = $1;
+				my $command = $2;
+				(my $error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	$ssh_fh,
+					'close'		=>	1,
+					shell_call	=>	"$command",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			}
+			else
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				my $fh = IO::Handle->new();
+				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				while(<$fh>)
+				{
+					chomp;
+					push @{$output}, $_;
+				}
+				$fh->close()
+			}
+			foreach my $line (@{$output})
+			{
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 				# This is how I get the fence call's exit code.
 				if ($line =~ /fence:(\d+)/)
@@ -8160,7 +8353,6 @@ sub fence_node
 					print "$line<br />\n";
 				}
 			}
-			$fh->close();
 			print "
 			<br />
 		</td>
@@ -8274,14 +8466,18 @@ sub withdraw_node
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 		my $rgmanager_stop = 1;
-		my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager stop\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"/etc/init.d/rgmanager stop",
+		});
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -8309,7 +8505,6 @@ sub withdraw_node
 				</tr>
 ";
 		}
-		$fh->close();
 		print "
 			</table>
 			<br />
@@ -8333,14 +8528,18 @@ sub withdraw_node
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 			my $cman_stop = 1;
-			my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman stop\"";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-			while(<$fh>)
+			($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	$ssh_fh,
+				'close'		=>	0,
+				shell_call	=>	"/etc/init.d/cman stop",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
@@ -8368,7 +8567,6 @@ sub withdraw_node
 				</tr>
 ";
 			}
-			$fh->close();
 			print "
 			</table>
 			<br />
@@ -8407,14 +8605,18 @@ sub withdraw_node
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 				my $cman_start = 1;
-				my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/cman start\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	$ssh_fh,
+					'close'		=>	1,
+					shell_call	=>	"/etc/init.d/cman start",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -8442,7 +8644,6 @@ sub withdraw_node
 				</tr>
 ";
 				}
-				$fh->close();
 				print "
 			</table>
 			<br />
@@ -8560,14 +8761,18 @@ sub recover_rgmanager
 			<br />
 ";
 	my $rgmanager_start = 1;
-	my $sc = "$conf->{path}{ssh} root\@$node \"/etc/init.d/rgmanager start\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	"/etc/init.d/rgmanager start",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -8578,7 +8783,6 @@ sub recover_rgmanager
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		print "$line<br />\n";
 	}
-	$fh->close();
 	print "
 			<br />
 		</td>
@@ -8633,14 +8837,18 @@ sub recover_rgmanager
 				# whatever is holding open the storage. This is
 				# fine, as the goal is to enable, not stop.
 				my $storage_stop = 1;
-				my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -d $storage_service\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				my ($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	"$conf->{path}{clusvcadm} -d $storage_service",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -8668,7 +8876,6 @@ sub recover_rgmanager
 				</tr>
 ";
 				}
-				$fh->close();
 				print "
 			</table>
 			<br />
@@ -8694,14 +8901,18 @@ sub recover_rgmanager
 			<table class=\"hidden_table\" width=\"100%\">
 ";
 				my $storage_start = 1;
-				my $sc = "$conf->{path}{ssh} root\@$node \"$conf->{path}{clusvcadm} -e $storage_service\"";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
-				while(<$fh>)
+				($error, $ssh_fh, $output) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	"$conf->{path}{clusvcadm} -e $storage_service",
+				});
+				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$output})
 				{
-					chomp;
-					my $line = $_;
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
@@ -8729,7 +8940,6 @@ sub recover_rgmanager
 				</tr>
 ";
 				}
-				$fh->close();
 				print "
 			</table>
 			<br />
@@ -9548,14 +9758,18 @@ sub read_vm_definition
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
 		$conf->{vm}{$vm}{xml}     = [];
-		my $fh = IO::Handle->new();
-		my $sc = "ssh root\@$node \"cat $conf->{vm}{$vm}{definition_file}\"";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"cat $conf->{vm}{$vm}{definition_file}",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			push @{$conf->{vm}{$vm}{raw_xml}}, $line;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
@@ -9563,7 +9777,6 @@ sub read_vm_definition
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			push @{$conf->{vm}{$vm}{xml}}, $line;
 		}
-		$fh->close();
 	}
 	
 	my $in_disk      = 0;
@@ -9870,25 +10083,28 @@ sub check_vms
 		{
 			# This is a bit expensive, but read the VM's running
 			# definition.
-			my $host   = $conf->{vm}{$vm}{current_host};
+			my $node   = $conf->{vm}{$vm}{current_host};
 			my $say_vm = $vm;
 			$say_vm =~ s/^vm://;
 			#record($conf, "$THIS_FILE ".__LINE__."; Reading the XML for the VM: [$vm] which is currently running on: [$conf->{vm}{$vm}{current_host}]\n");
-			my $fh = IO::Handle->new();
-			my $sc = "ssh root\@$host \"virsh dumpxml $say_vm\"";
-			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			my ($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	1,
+				shell_call	=>	"virsh dumpxml $say_vm",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
 			{
-				chomp;
-				my $line = $_;
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
 				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				push @{$conf->{vm}{$vm}{xml}}, $line;
 			}
-			$fh->close();
 		}
 		else
 		{
@@ -10622,8 +10838,10 @@ sub display_node_controls
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	record($conf, "$THIS_FILE ".__LINE__."; node1_long: [$node1_long], node2_long: [$node2_long]\n");
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;

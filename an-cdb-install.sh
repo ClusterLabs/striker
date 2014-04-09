@@ -2,12 +2,15 @@
 # 
 # TODO: Make sure this in an EL6 release.
 # TODO: Make this less stupid.
+# TODO: Sign our repo and RPMs.
+# TODO: Remove the 'apache' user SSH stuff once the new SSH system is better
+#       tested.
 
 # Change the following variables to suit your setup.
 PASSWORD=""
 HOSTNAME=$(hostname)
 CUSTOMER=""
-VERSION="1.0.3"
+VERSION="1.0.4"
 
 clear;
 echo ""
@@ -49,11 +52,37 @@ else
 	exit;
 fi
 
+echo "Adding AN!Repo."
+if [ -e "/etc/yum.repo.d/an.conf" ]
+then
+	echo " - Already exists"
+else
+	cat > /etc/yum.repo.d/an.conf << EOF
+[an-repo]
+name=AN! Repo for the Anvil! high-availability platform and AN!CDB dashboard server
+baseurl=https://alteeve.ca/repo/el6/
+enabled=1
+gpgcheck=0
+protect=1
+EOF
+	if [ -e "/etc/yum.repo.d/an.conf" ]
+	then
+		echo " - Added."
+	else
+		echo " - Failed to write: [/etc/yum.repo.d/an.conf]."
+		exit
+	fi
+fi
+
+yum clean all
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
                qemu-kvm libvirt perl-Test-Simple policycoreutils-python \
-               perl-Net-SSH-Perl
+               perl-Net-SSH-Perl 
+
+# Stuff from our repo
+yum -y install perl-Net-SSH2
 
                # Stuff for a GUI
 yum -y groupinstall basic-desktop development x11 fonts

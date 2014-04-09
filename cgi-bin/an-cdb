@@ -46,6 +46,11 @@ my $THIS_FILE = "an-cdb";
 require "./an-cluster.lib";
 require "./an-cdb.lib";
 
+# Turn off buffering so that the pinwheel will display while waiting
+# for the SSH call(s) to complete.
+$| = 1;
+
+# Setup (sane) defaults
 my $conf={
 	nodes			=>	"",
 	check_using_node	=>	"",
@@ -90,6 +95,7 @@ my $conf={
 		show_nodes		=>	0,
 		footer_printed		=>	0,
 		show_refresh		=>	1,
+		root_password		=>	"",
 		ignore_missing_vm	=>	0,
 		#unusable_ram		=>	2147483648,	# 2 GiB
 		unusable_ram		=>	3048259584,	# ~4 GiB, rounds to leave a clean number of GB on systems with mirrored memory.
@@ -155,8 +161,6 @@ my $conf={
 		],
 	},
 };
-	
-print "Content-type: text/html; charset=utf-8\n";
 
 find_executables($conf);
 read_hosts($conf);
@@ -247,9 +251,10 @@ if ($conf->{cgi}{ids})
 		next if not $this_id;
 		push @more_vars, "cluster__${this_id}__name";
 		push @more_vars, "cluster__${this_id}__description";
+		push @more_vars, "cluster__${this_id}__url";
 		push @more_vars, "cluster__${this_id}__company";
 		push @more_vars, "cluster__${this_id}__ricci_pw";
-		push @more_vars, "cluster__${this_id}__url";
+		push @more_vars, "cluster__${this_id}__root_pw";
 		push @more_vars, "cluster__${this_id}__nodes_1_name";
 		push @more_vars, "cluster__${this_id}__nodes_1_ip";
 		push @more_vars, "cluster__${this_id}__nodes_1_port";
@@ -306,6 +311,8 @@ elsif ($conf->{cgi}{config})
 elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
+	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
