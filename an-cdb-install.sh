@@ -57,14 +57,7 @@ if [ -e "/etc/yum.repo.d/an.conf" ]
 then
 	echo " - Already exists"
 else
-	cat > /etc/yum.repo.d/an.conf << EOF
-[an-repo]
-name=AN! Repo for the Anvil! high-availability platform and AN!CDB dashboard server
-baseurl=https://alteeve.ca/repo/el6/
-enabled=1
-gpgcheck=0
-protect=1
-EOF
+	curl https://alteeve.ca/repo/el6/an.repo > /etc/yum.repos.d/an.repo
 	if [ -e "/etc/yum.repo.d/an.conf" ]
 	then
 		echo " - Added."

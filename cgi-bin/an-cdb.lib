@@ -4999,7 +4999,7 @@ sub provision_vm
 		else
 		{
 			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
-			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}MB -n $conf->{new_vm}{name}_$i $vg\n";
+			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
 		}
 		$i++;
 	}
@@ -5319,9 +5319,13 @@ sub verify_vm_config
 			}
 			else
 			{
-				# Make to lvcreate command a MiB value.
+				# Make to lvcreate command a GiB value.
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::${vg_key}: [$conf->{cgi}{$vg_key}], cgi::${vg_suffix_key}: [$conf->{cgi}{$vg_suffix_key}]\n");
 				my $lv_size = hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
-				$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
+				record($conf, "$THIS_FILE ".__LINE__."; > lv_size: [$lv_size]\n");
+				#$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
+				$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 30)));
+				record($conf, "$THIS_FILE ".__LINE__."; < lv_size: [$lv_size]\n");
 				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
 			}
 		}

@@ -4,18 +4,24 @@ v1.0.4 - <in-progress>
 - Major: Passwordless SSH is no longer required. Switched to using the 
   Net::SSH2 perl module.
 - New AN! Repo created. Please run:
-  wget -c https://alteeve.ca/repo/el6/an.repo -O /etc/yum.repo.d/an.repo
+  ----
+  curl https://alteeve.ca/repo/el6/an.repo > /etc/yum.repos.d/an.repo
   yum clean all; yum install perl-Net-SSH2
+  ----
 - AN!CDB now updated /etc/ssh/ssh_config and /etc/hosts. Please be sure that
   apache can edit these if you want to use the new WebUI configuration tool.
   Please run:
+  ----
   chown root:apache /etc/ssh/ssh_config /etc/hosts
   chmod g+w /etc/ssh/ssh_config /etc/hosts
+  ----
 - Added port support in an.conf (node1:port, node2:port) in addition to
   /etc/ssh/ssh_config
 - Added new variable for 'cluster::X::root_pw' if the root password is
   different from the ricci password. When not defined, the ricci password will
   be used.
+- Log data is flushed to disk before exiting record().
+- Changed the 'lvcreate' calls to use Gibibytes instead of Megabytes.
 
 
 v1.0.3 - 2014-03-26

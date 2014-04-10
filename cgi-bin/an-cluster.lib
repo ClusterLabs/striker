@@ -2532,6 +2532,7 @@ sub record
 		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
 	}
 	print $fh $message;
+	$fh->flush;
 	
 	return (0);
 }
@@ -3358,8 +3359,26 @@ sub gather_node_details
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
 			shell_call	=>	"cat /shared/definitions/*",
+			#shell_call	=>	"for f in \$(ls /shared/definitions/); do cat /shared/definitions/\$f; done",
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
+		
+		# Host name, in case the cluster isn't configured yet.
+		($error, $ssh_fh, my $hostname) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	1,
+			shell_call	=>	"hostname",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hostname->[0]: [$hostname->[0]]\n");
+		if ($hostname->[0])
+		{
+			$conf->{node}{$node}{info}{host_name} = $hostname->[0]; 
+			record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}]\n");
+		}
 		
 		### Last call, close the door on our way out.
 		# Bond data
@@ -3370,8 +3389,9 @@ sub gather_node_details
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"for i in ls /proc/net/bonding/bond*; do echo \"start: \$i\"; cat \$i; done",
+			shell_call	=>	"for i in \$(ls /proc/net/bonding/bond*); do echo \"start: \$i\"; cat \$i; done",
 		});
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
 		
 		parse_dmidecode    ($conf, $node, $dmidecode);
 		parse_meminfo      ($conf, $node, $meminfo);
@@ -3593,15 +3613,11 @@ sub remote_call
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	
-	### TODO: Until I can get Net::SSH2::Channel's 'poll()' function
-	###       working, we need to ensure that Net/SSH2/Channel.pm's GETC
-	###       function uses: $self->session->poll(600000, \@poll)
-	###  Fix: sed -i.anvil.$(date +%Y-%m-%d_%H:%M:%S) 's/poll(250,/poll(600000,/' /usr/lib64/perl5/vendor_perl/Net/SSH2/Channel.pm
-	###       Check for path and value, of course.
-	
 	my $state;
 	my $error;
-	my $output = [];
+	# These will be merged into a single 'output' array before returning.
+	my $stdout_output = [];
+	my $stderr_output = [];
 	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
@@ -3609,25 +3625,26 @@ sub remote_call
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($node, $port, Timeout => 10))
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$@]\n");
 			if ($@ =~ /Bad hostname/)
 			{
-				$error = "Host name: [$node] does not resolve to an IP address.";
-				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$error = "Host name: [<span class=\"highlight_detail\">$node</span>] does not resolve to an IP address.";
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			elsif ($@ =~ /Connection refused/)
 			{
-				$error = "Connection to: [$node] on port: [$port] as the user: [$user] was refused.";
-				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$error = "Connection to: [<span class=\"highlight_detail\">$node</span>] on port: [<span class=\"highlight_detail\">$port</span>] as the user: [<span class=\"highlight_detail\">$user</span>] was refused.";
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			elsif ($@ =~ /No route to host/)
 			{
-				$error = "No route to: [$node]. Is the machine powered up and does it resolve to the proper IP address?";
-				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$error = "No route to: [<span class=\"highlight_detail\">$node</span>].<br />Is the machine powered up and does it resolve to the proper IP address?<br />Is this dashboard server on the same network?";
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			else
 			{
-				$error = "Unknown error while connecting to: [$node]: [$@]";
-				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$error = "Unknown error while connecting to: [<span class=\"highlight_detail\">$node</span>]: [<span class=\"highlight_detail\">$@</span>]";
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
@@ -3636,36 +3653,95 @@ sub remote_call
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
 				$error = "Unable to log in. Please check the password for this cluster.";
-				#record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
 		}
 	}
 	
+	### Special thanks to Rafael Kitover (rkitover@gmail.com), maintainer
+	### of Net::SSH2, for helping me sort out the polling and data
+	### collection in this section.
 	# Open a channel and make the call.
 	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
-		# We need to open a channel every time for 'exec' calls.
+		# We need to open a channel every time for 'exec' calls. We
+		# want to keep blocking off, but we need to enable it for the
+		# channel() call.
+		$ssh_fh->blocking(1);
 		my $channel = $ssh_fh->channel();
-		$channel->exec("$shell_call");
-		while (<$channel>)
-		{
-			chomp;
-			push @{$output}, $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; Line: [$_]\n");
-		}
-		$channel->close();
+		$ssh_fh->blocking(0);
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; close: [$close].\n");
-		if ($close)
+		# Make the shell call
+		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		$channel->exec("$shell_call");
+		
+		# This keeps the connection open when the remote side is slow
+		# to return data, like in '/etc/init.d/rgmanager stop'.
+		my @poll = {
+			handle => $channel,
+			events => [qw/in err/],
+		};
+		
+		# We'll store the STDOUT and STDERR data here.
+		my $stdout = "";
+		my $stderr = "";
+		
+		# Not collect the data.
+		while(1)
 		{
-			$ssh_fh->disconnect();
-			#record($conf, "$THIS_FILE ".__LINE__."; closed ssh connection.\n");
+			$ssh_fh->poll(250, \@poll);
+			
+			# Read in anything from STDOUT
+			while($channel->read(my $chunk, 80))
+			{
+				$stdout .= $chunk;
+			}
+			while ($stdout =~ s/^(.*)\n//)
+			{
+				my $line = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+				push @{$stdout_output}, $line;
+			}
+			
+			# Read in anything from STDERR
+			while($channel->read(my $chunk, 80, 1))
+			{
+				$stderr .= $chunk;
+			}
+			while ($stderr =~ s/^(.*)\n//)
+			{
+				my $line = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+				push @{$stderr_output}, $line;
+			}
+			
+			# Exit when we get the end-of-file.
+			last if $channel->eof;
+		}
+		if ($stdout)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+			push @{$stdout_output}, $stdout;
+		}
+		if ($stderr)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+			push @{$stderr_output}, $stderr;
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output].\n");
+	# Merge the STDOUT and STDERR
+	my $output = [];
+	
+	foreach my $line (@{$stderr_output}, @{$stdout_output})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; Merge; line: [$line]\n");
+		push @{$output}, $line;
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	return($error, $ssh_fh, $output);
 }
 
@@ -5058,7 +5134,7 @@ sub on_same_network
 	}
 	$fh->close();
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
 	{
 		# Find out my own IP(s) and subnet(s).
@@ -5158,7 +5234,7 @@ sub on_same_network
 		$fh->close();
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
 	return($local_access);
 }
 
