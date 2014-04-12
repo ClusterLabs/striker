@@ -22,6 +22,9 @@ v1.0.4 - <in-progress>
   be used.
 - Log data is flushed to disk before exiting record().
 - Changed the 'lvcreate' calls to use Gibibytes instead of Megabytes.
+- Switch an-cm to use the common an-cdb.log file.
+- Bumped up the apache Timeout to a rather high number to prevent sessions
+  closing during large uploads.
 
 
 v1.0.3 - 2014-03-26

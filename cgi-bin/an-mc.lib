@@ -109,14 +109,18 @@ sub download_url
 ";
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
-	my $sc = "$conf->{path}{ssh} root\@$node \"wget -c $url -O /shared/files/$file\"";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh  = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"wget -c $url -O /shared/files/$file",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		chomp;
-		my $line = $_;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/“/"/g;
@@ -199,7 +203,6 @@ sub download_url
 			print "<span class=\"fixed_width\">$line</span><br />\n";
 		}
 	}
-	$fh->close;
 	print "
 		</td>
 	</tr>
@@ -295,12 +298,14 @@ sub save_file_to_disk
 			This could take a while.<br />
 			<br />
 ";
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
+	record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	my $in_fh    = $conf->{cgi_fh}{file};
 	my $out_file = $conf->{path}{media}.$conf->{cgi}{file};
 	my $sc = "$out_file";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc] with cgi fh: [$in_fh].\n");
 	my $fh = IO::Handle->new();
-	open ($fh, ">$sc") or die "Failed to call: [$sc], error was: $!\n";
+	open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	binmode $fh;
 	while(<$in_fh>)
 	{
@@ -487,7 +492,7 @@ sub image_and_upload
 			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				print $_;
@@ -537,7 +542,7 @@ sub upload_to_shared
 	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
 	{
 		print $_;
@@ -689,17 +694,20 @@ sub delete_file
 			Any output from the shell will be below (none expected):<br />
 			<br />
 ";
-		my $sc = "$conf->{path}{ssh} root\@$node \"rm -f /shared/files/$name\"";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh  = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"rm -f /shared/files/$name",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
 		{
-			chomp;
-			my $line = $_;
 			print "<span class=\"fixed_width\">$line</span><br />\n";
 		}
-		$fh->close;
 		print "
 		</td>
 	</tr>
@@ -757,7 +765,7 @@ sub check_local_dvd
 	my $sc  = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh  = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -806,7 +814,9 @@ sub check_local_dvd
 sub check_status
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; check_status()\n");
 	
+	record($conf, "$THIS_FILE ".__LINE__."; path::status: [$conf->{path}{status}]\n");
 	if (not -e $conf->{path}{status})
 	{
 		print "
@@ -874,14 +884,14 @@ sub read_shared
 </div>
 	";
 	
-	my $cluster      = $conf->{cgi}{cluster};
-	my $connected    = 0;
+	my $cluster   = $conf->{cgi}{cluster};
+	my $connected = 0;
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], connecter: [$connected]\n");
 	
 	# This returns the name of the node used to read /shared/files/. If no
 	# node was available, it returns an empty string.
 	my ($node) = read_files_on_shared($conf);
-	
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 	
 	print "
 <table class=\"hidden_table\" align=\"center\" border=\"0\">
@@ -910,7 +920,7 @@ sub read_shared
 			<span class=\"table_header\">Total Space</span>
 		</td>
 		<td>
-			<span class=\"table_header\">Used Space</span>
+			<span class=\"table_header\">Used Space</span><span class=\"subtle_text\">*</span>
 		</td>
 		<td>
 			<span class=\"table_header\">Free Space</span>
@@ -925,6 +935,13 @@ sub read_shared
 		</td>
 		<td>
 			<span class=\"fixed_width\">$say_free_space</span>
+		</td>
+	</tr>
+</table>
+<table width=\"100%\" class=\"hidden_table\">
+	<tr>
+		<td colspan=\"\" class=\"subtle_text\">
+			* By default, <span class=\"subtle_text_fixed_width\">~256 MiB</span> is set aside for the file system journals.
 		</td>
 	</tr>
 </table>
@@ -971,6 +988,20 @@ sub read_shared
 		# Read from the DVD drive(s), if found.
 		print "
 	<tr>
+</table>
+<br />
+<table width=\"100%\">
+	<tr>
+		<td class=\"highlight_ready_bold\">
+			Please Note:
+		</td>
+		<td>
+			Once a file transfer starts, it will continue even if you close the page<br />
+			or the connection times out. If you wish to end the transfer, at this time,<br />
+			you will need to restart the web server or reboot the dashboard server.<br />
+			<span class=\"subtle_text\">(Patches welcomed) :)</span>
+		</td>
+	</tr>
 </table>
 <br />
 <table width=\"100%\">
@@ -1079,13 +1110,13 @@ sub read_shared
 
 		# Show the option to upload from the user's local machine.
 		print "
+<form method=\"post\" enctype=\"multipart/form-data\">
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"3\" class=\"highlight_ready_bold\">
 			Upload a file from your computer.
 		</td>
 	</tr>
-	<form method=\"post\" enctype=\"multipart/form-data\">
 	<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
 	<input type=\"hidden\" name=\"task\" value=\"upload_file\">
 	<tr>
@@ -1131,11 +1162,7 @@ sub read_shared
 <br />
 ";
 	}
-	print "
-		</td>
-	</tr>
-</table>
-";
+
 	return($connected);
 }
 

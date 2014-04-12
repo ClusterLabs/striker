@@ -372,7 +372,7 @@ sub restart_tomcat
 	my $sc = "$conf->{path}{restart_tomcat} restart";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -2546,7 +2546,7 @@ sub get_storage_data_lsi
 		}
 		else
 		{
-			die "unknown section!, line: [$line]\n";
+			die "$THIS_FILE ".__LINE__."; unknown section!, line: [$line]\n";
 		}
 	}
 	
@@ -3955,7 +3955,7 @@ sub update_guacamole_config
 	my $sc = $conf->{path}{guacamole_config};
 	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -4088,7 +4088,7 @@ sub update_guacamole_config
 		my $fh = IO::Handle->new();
 		my $sc = "cp $conf->{path}{guacamole_config} $backup_file";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 		while(<$fh>)
 		{
 			chomp;
@@ -4101,7 +4101,7 @@ sub update_guacamole_config
 		$fh = IO::Handle->new();
 		$sc = "$conf->{path}{guacamole_config}";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, ">$sc") or die "Failed to write: [$sc], error was: $!\n";
+		open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
 		print $fh $new_config;
 		$fh->close();
 	}
@@ -6996,7 +6996,7 @@ sub dual_join
 		my $node_count = @{$conf->{clusters}{$cluster}{nodes}};
 		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 		{
-			defined(my $pid = fork) or die "Can't fork(), error was: $!\n";
+			defined(my $pid = fork) or die "$THIS_FILE ".__LINE__."; Can't fork(), error was: $!\n";
 			if ($pid)
 			{
 				# Parent thread.
@@ -7842,7 +7842,7 @@ sub dual_boot
 ";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 			while(<$fh>)
 			{
 				chomp;
@@ -8024,7 +8024,7 @@ sub poweron_node
 					my $sc = "$conf->{node}{$node}{info}{power_check_command} -o on";
 					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 					my $fh = IO::Handle->new();
-					open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+					open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 					while(<$fh>)
 					{
 						chomp;
@@ -8247,7 +8247,7 @@ sub fence_node
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
 				{
 					chomp;
@@ -8331,7 +8331,7 @@ sub fence_node
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
 				{
 					chomp;

@@ -162,7 +162,7 @@ then
 	sed -i.anvil 's/Cluster Dashboard - .*/Cluster Dashboard - $CUSTOMER/' /etc/httpd/conf/httpd.conf
 else
 	cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.anvil
-	sed -i 's/Timeout 60/Timeout 6000/' /etc/httpd/conf/httpd.conf
+	sed -i 's/Timeout 60/Timeout 60000/' /etc/httpd/conf/httpd.conf
 	sed -i "/Directory \"\/var\/www\/cgi-bin\"/ a\    # Password login\n    AuthType Basic\n    AuthName \"AN!Cluster Dashboard - $CUSTOMER\"\n    AuthUserFile /var/www/home/htpasswd\n    Require user admin" /etc/httpd/conf/httpd.conf
 fi
 

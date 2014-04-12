@@ -569,7 +569,7 @@ sub read_hosts
 	$conf->{raw}{hosts} = [];
 	my $fh = IO::Handle->new();
 	my $sc = "$conf->{path}{hosts}";
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
@@ -615,7 +615,7 @@ sub read_ssh_config
 	my $this_host;
 	my $fh = IO::Handle->new();
 	my $sc = "/etc/ssh/ssh_config";
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
@@ -654,7 +654,7 @@ sub copy_file
 	my $sc     = "$conf->{path}{cp} -f $source $destination";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -1827,11 +1827,12 @@ sub ask_which_cluster
 	{
 		print "
 	<tr>
-		<td class=\"highlight_warning\">
-			Woops!
+		<td class=\"highlight_good\">
+			New!
 		</td>
 		<td colspan=\"3\">
-			No <i>Anvil!</i> yet configured in <span class=\"code\">$conf->{path}{an_conf}</span> yet.
+			No <i>Anvil!</i> yet configured yet. <br />
+			Click <span class=\"highlight_ready\">Manage</span> below to add your first one!
 		</td>
 	</tr>
 ";
@@ -2228,7 +2229,7 @@ sub read_conf
 	$conf->{raw}{an_conf} = [];
 	my $fh = IO::Handle->new();
 	my $sc = "$conf->{path}{an_conf}";
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
@@ -2320,15 +2321,15 @@ sub build_select
 sub read_files_on_shared
 {
 	my ($conf) = @_;
-	
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster].\n");
+	record($conf, "$THIS_FILE ".__LINE__."; read_files_on_shared()\n");
+
 	my $connected = "";
 	my $cluster   = $conf->{cgi}{cluster};
 	delete $conf->{files} if exists $conf->{files};
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		next if $connected;
-		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
+		record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
 		my $fail = 0;
 		my ($error, $ssh_fh, $output) = remote_call($conf, {
 			node		=>	$node,
@@ -2339,7 +2340,8 @@ sub read_files_on_shared
 			'close'		=>	0,
 			shell_call	=>	"df -P && ls -l /shared/files/",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		
 		my $raw = "";
 		foreach my $line (@{$output})
 		{
@@ -2347,7 +2349,7 @@ sub read_files_on_shared
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			next if $fail;
 			
 			### TODO: Move these checks into a function. They duplicate gather_node_details().
@@ -3111,7 +3113,7 @@ sub ping_node
 	my $fh = IO::Handle->new;
 	my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -3138,7 +3140,7 @@ sub ping_node
 		}
 		my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 		while(<$fh>)
 		{
 			chomp;
@@ -3537,7 +3539,7 @@ sub get_rsa_public_key
 		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'an-cdb_files'}/.ssh/id_rsa";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 		while(<$fh>)
 		{
 			chomp;
@@ -3583,7 +3585,7 @@ sub get_hostname
 	my $sc = "$conf->{path}{hostname}";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -3662,6 +3664,7 @@ sub remote_call
 	### Special thanks to Rafael Kitover (rkitover@gmail.com), maintainer
 	### of Net::SSH2, for helping me sort out the polling and data
 	### collection in this section.
+	#
 	# Open a channel and make the call.
 	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
@@ -3741,6 +3744,7 @@ sub remote_call
 		push @{$output}, $line;
 	}
 	
+	$error = "" if not defined $error;
 	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	return($error, $ssh_fh, $output);
 }
@@ -3857,7 +3861,7 @@ sub parse_dmidecode
 	{
 		if ($line =~ /dmidecode: command not found/)
 		{
-			die "Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
+			die "$THIS_FILE ".__LINE__."; Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
 		}
 		
 		# Find out what I am looking at.
@@ -4715,6 +4719,8 @@ sub parse_lvm_scan
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_scan() for node: [$node]\n");
 	foreach my $line (@{$array})
 	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
 		{
@@ -4774,7 +4780,9 @@ sub parse_lvm_data
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_data() for node: [$node]\n");
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line], in_pvs: [$in_pvs], in_vgs: [$in_vgs], in_lvs: [$in_lvs]\n");
 		if ($line =~ /^PV/)
 		{
 			$in_pvs = 1;
@@ -5042,7 +5050,7 @@ sub check_if_on
 				my $sc = "$conf->{node}{$node}{info}{power_check_command} -o status";
 				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
 				{
 					chomp;
@@ -5107,7 +5115,7 @@ sub on_same_network
 	my $sc = "$conf->{path}{gethostip} -d $target_host";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
 	{
 		chomp;
@@ -5124,7 +5132,7 @@ sub on_same_network
 		elsif ($line =~ /Unknown host/i)
 		{
 			#Failed to resolve
-			error($conf, "I was trying to resolve the host name: [<span class=\"fixed_width\">$target_host</span>] but was unable to do so. Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class=\"fixed_width\">/etc/hosts</span>] file?\n");
+			error($conf, "I was trying to resolve the host name: [<span class=\"fixed_width\">$target_host</span>] but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class=\"fixed_width\">/etc/hosts</span>] file?\n");
 		}
 		elsif ($line =~ /Usage: gethostip/i)
 		{
@@ -5145,7 +5153,7 @@ sub on_same_network
 		my $sc           = "$conf->{path}{ifconfig}";
 		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc]\n";
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 		while(<$fh>)
 		{
 			chomp;
@@ -5307,7 +5315,7 @@ sub read_node_cache
 		my $sc = $cache_file;
 		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
 		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
 		while(<$fh>)
 		{
 			chomp;

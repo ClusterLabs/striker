@@ -6,8 +6,8 @@
 # pushing it to a cluster's /shared/files/ directory. It also allows for 
 # connecting and disconnecting these ISOs to and from VMs.
 # 
-# ToDo: Allow the user to upload a file from their computer and enable a direct
-#       download of an ISO from a URL.
+# TODO: Merge this into the main program.
+#       
 
 use strict;
 use warnings;
@@ -16,14 +16,19 @@ my $THIS_FILE = "an-mc";
 require "./an-cluster.lib";
 require "./an-mc.lib";
 
+# Turn off buffering so that the pinwheel will display while waiting
+# for the SSH call(s) to complete.
+$| = 1;
+
 # Remember to keep 'create_image_and_upload.pl' updated.
 my $conf={
 	path			=>	{
 		an_conf			=>	"/etc/an/an.conf",
 		check_dvd		=>	"/var/www/tools/check_dvd",
 		do_dd			=>	"/var/www/tools/do_dd",
-		'log'			=>	"/var/log/an-mc.log",
-		ssh			=>	"/usr/bin/ssh",
+		hostname		=>	"/bin/hostname",
+		hosts			=>	"/etc/hosts",
+		'log'			=>	"/var/log/an-cdb.log",
 		media			=>	"/var/www/home/media/",
 		rsync			=>	"/usr/bin/rsync",
 		screen			=>	"/usr/bin/screen",
@@ -35,12 +40,32 @@ my $conf={
 		rsync			=>	"-av --partial",
 	},
 	'system'		=>	{
-		dd_block_size		=>	"4M",
+		dd_block_size		=>	"1M",
 	},
 };
 
+find_executables($conf);
+read_hosts($conf);
+read_ssh_config($conf);
 read_conf($conf);
+
+# I need to convert the global configuration of the clusters to the format I use here.
 convert_cluster_config($conf);
+
+# If there is only one cluster defined, use it. Note that I need a special
+# exception in get_cgi_vars() for this to work properly.
+if (not $conf->{cgi}{cluster})
+{
+	my @cluster_name;
+	foreach my $cluster (keys %{$conf->{clusters}})
+	{
+		push @cluster_name, $cluster;
+	}
+	if (@cluster_name == 1)
+	{
+		$conf->{cgi}{cluster} = $cluster_name[0];
+	}
+}
 
 get_cgi_vars($conf, [
 	"cluster",
@@ -52,16 +77,16 @@ get_cgi_vars($conf, [
 	"url",
 ]);
 
-# Make STDOUT hot.
-$| = 1;
-
 header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
 
 # Do I have a cluster name?
+#record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
 if ($conf->{cgi}{cluster})
 {
-	my $cluster = $conf->{cgi}{cluster};
-	$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
+	my $cluster                      = $conf->{cgi}{cluster};
+	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
+	$conf->{nodes}                   = $conf->{clusters}{$cluster}{nodes};
+	#record($conf, "$THIS_FILE ".__LINE__."; nodes: [$conf->{nodes}], task: [$conf->{cgi}{task}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	if ($conf->{cgi}{task})
 	{
 		$conf->{'system'}{show_refresh} = 0;
