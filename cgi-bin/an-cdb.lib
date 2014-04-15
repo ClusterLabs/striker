@@ -8016,7 +8016,7 @@ sub poweron_node
 			{
 				my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target host: [$target_host], power check command: [$conf->{node}{$node}{info}{power_check_command}].\n");
-				my $local_access = on_same_network($conf, $target_host);
+				my ($local_access, $target_ip) = on_same_network($conf, $target_host, $node);
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local access: [$local_access].\n");
 				if ($local_access)
 				{
@@ -8160,7 +8160,8 @@ sub fence_node
 			# address.
 			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
 			{
-				if (not on_same_network($conf, $address))
+				my ($local_access, $target_ip) = on_same_network($conf, $address, $node);
+				if (not $local_access)
 				{
 					$proceed = 0;
 					push @abort_reason, "Trying to fence $node, but it's peer, $peer, is also offline and the fence device at $address is not accessible from this machine.<br />Unable to proceed with fence action.\n";

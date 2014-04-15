@@ -25,6 +25,9 @@ v1.0.4 - <in-progress>
 - Switch an-cm to use the common an-cdb.log file.
 - Bumped up the apache Timeout to a rather high number to prevent sessions
   closing during large uploads.
+- Now cache /etc/hosts from each node and updated 'on_same_network()' to use
+  the cached hosts data when local resolution fails. This allows things like
+  powering on a node to work without editing the dashboard's local hosts file.
 
 
 v1.0.3 - 2014-03-26

@@ -43,7 +43,7 @@ our $VERSION  = "1.0.4";
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
 {
-	my ($conf) = @_;
+	my ($conf, $sections) = @_;
 	
 	my $save       = 1;
 	my $delete_ids = "";
@@ -158,7 +158,8 @@ sub sanity_check_an_conf
 	{
 		$conf->{cgi}{smtp__port} = 60;
 	}
-	
+
+=pod
 	# Now validate Anvil! entries.
 	foreach my $this_id (split/,/, $conf->{cgi}{ids})
 	{
@@ -377,6 +378,7 @@ sub sanity_check_an_conf
 			}
 		}
 	}
+=cut
 	return ($save, $delete_ids);
 }
 
@@ -924,27 +926,29 @@ sub configure_dashboard
 	
 	if ($conf->{cgi}{save})
 	{
-		my ($save, $delete_ids) = sanity_check_an_conf($conf);
-		if ($save)
+		if ($conf->{cgi}{section} eq "global")
 		{
-			# Get the current date and time.
-			my ($say_date) =  get_date($conf, time);
-			my $date       =  $say_date;
-			$date          =~ s/ /_/;
-			$say_date      =~ s/ /, /;
-			
-			# Write out the new config file.
-			copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/an.conf.$date");
-			write_new_an_conf($conf, $say_date, $delete_ids);
-			
-			# Write out the 'hosts' file, if needed.
-			copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/hosts.$date");
-			write_new_hosts($conf, $say_date, $delete_ids);
-			
-			# Write out the 'ssh_config' file, if needed.
-			copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/ssh_config.$date");
-			write_new_ssh_config($conf, $say_date, $delete_ids);
-			print "
+			my ($save, $delete_ids) = sanity_check_an_conf($conf, $conf->{cgi}{section});
+			if ($save)
+			{
+				# Get the current date and time.
+				my ($say_date) =  get_date($conf, time);
+				my $date       =  $say_date;
+				$date          =~ s/ /_/;
+				$say_date      =~ s/ /, /;
+				
+				# Write out the new config file.
+				copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/an.conf.$date");
+				write_new_an_conf($conf, $say_date, $delete_ids);
+				
+				# Write out the 'hosts' file, if needed.
+				copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/hosts.$date");
+				write_new_hosts($conf, $say_date, $delete_ids);
+				
+				# Write out the 'ssh_config' file, if needed.
+				copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/ssh_config.$date");
+				write_new_ssh_config($conf, $say_date, $delete_ids);
+				print "
 	<tr>
 		<td class=\"highlight_good\">
 			Done!
@@ -956,12 +960,12 @@ sub configure_dashboard
 </table>
 <br />
 ";
-			footer($conf);
-			exit(0);
-		}
-		else
-		{
-			print "
+				footer($conf);
+				exit(0);
+			}
+			else
+			{
+				print "
 	<tr>
 		<td class=\"highlight_warning\">
 			Problems Found
@@ -971,209 +975,608 @@ sub configure_dashboard
 		</td>
 	</tr>
 ";
+			}
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
+			
+			print "
+</table>
+<br />
+";
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
+	}
+	
+	if ($conf->{cgi}{anvil})
+	{
+		### Show a new cluster.
+		my $this_cluster          = $conf->{cgi}{anvil};
+		my $this_id               = defined $conf->{clusters}{$this_cluster}{id}               ? $conf->{clusters}{$this_cluster}{id}               : "new";
+		my $this_name             = defined $conf->{clusters}{$this_cluster}{name}             ? $conf->{clusters}{$this_cluster}{name}             : "";
+		my $this_company          = defined $conf->{clusters}{$this_cluster}{company}          ? $conf->{clusters}{$this_cluster}{company}          : "";
+		   $this_company          = convert_text_to_html($conf, $this_company);
+		my $this_description      = defined $conf->{clusters}{$this_cluster}{description}      ? $conf->{clusters}{$this_cluster}{description}      : "";
+		   $this_description      = convert_text_to_html($conf, $this_description);
+		my $this_url              = defined $conf->{clusters}{$this_cluster}{url}              ? $conf->{clusters}{$this_cluster}{url}              : "";
+		my $this_ricci_pw         = defined $conf->{clusters}{$this_cluster}{ricci_pw}         ? $conf->{clusters}{$this_cluster}{ricci_pw}         : "";
+		my $this_root_pw          = defined $conf->{clusters}{$this_cluster}{root_pw}          ? $conf->{clusters}{$this_cluster}{root_pw}          : "";
+		my $this_nodes_1_name     = defined $conf->{clusters}{$this_cluster}{nodes}[0]         ? $conf->{clusters}{$this_cluster}{nodes}[0]         : "";
+		my $this_nodes_1_ip       = defined $conf->{hosts}{$this_nodes_1_name}{ip}             ? $conf->{hosts}{$this_nodes_1_name}{ip}             : "";
+		my $this_nodes_1_port     = defined $conf->{hosts}{$this_nodes_1_name}{port}           ? $conf->{hosts}{$this_nodes_1_name}{port}           : "";
+		my $this_nodes_2_name     = defined $conf->{clusters}{$this_cluster}{nodes}[1]         ? $conf->{clusters}{$this_cluster}{nodes}[1]         : "";
+		my $this_nodes_2_ip       = defined $conf->{hosts}{$this_nodes_2_name}{ip}             ? $conf->{hosts}{$this_nodes_2_name}{ip}             : "";
+		my $this_nodes_2_port     = defined $conf->{hosts}{$this_nodes_2_name}{port}           ? $conf->{hosts}{$this_nodes_2_name}{port}           : "";
+		my $this_node_1_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_1_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_1_ipmi_name} : "";
+		my $this_node_1_ipmi_ip   = defined $conf->{hosts}{$this_node_1_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_1_ipmi_name}{ip}         : "";
+		my $this_node_2_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_2_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_2_ipmi_name} : "";
+		my $this_node_2_ipmi_ip   = defined $conf->{hosts}{$this_node_2_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_2_ipmi_name}{ip}         : "";
+		
+		# If the page reloaded, use the passed-in CGI values.
+		if ($conf->{cgi}{save})
+		{
+			my $name_key              = "cluster__${this_id}__name";
+			my $description_key       = "cluster__${this_id}__description";
+			my $url_key               = "cluster__${this_id}__url";
+			my $company_key           = "cluster__${this_id}__company";
+			my $ricci_pw_key          = "cluster__${this_id}__ricci_pw";
+			my $root_pw_key           = "cluster__${this_id}__root_pw";
+			my $nodes_1_name_key      = "cluster__${this_id}__nodes_1_name";
+			my $nodes_1_ip_key        = "cluster__${this_id}__nodes_1_ip";
+			my $nodes_1_port_key      = "cluster__${this_id}__nodes_1_port";
+			my $nodes_2_name_key      = "cluster__${this_id}__nodes_2_name";
+			my $nodes_2_ip_key        = "cluster__${this_id}__nodes_2_ip";
+			my $nodes_2_port_key      = "cluster__${this_id}__nodes_2_port";
+			my $nodes_1_ipmi_name_key = "cluster__${this_id}__nodes_1_ipmi_name",
+			my $nodes_1_ipmi_ip_key   = "cluster__${this_id}__nodes_1_ipmi_ip",
+			my $nodes_2_ipmi_name_key = "cluster__${this_id}__nodes_2_ipmi_name",
+			my $nodes_2_ipmi_ip_key   = "cluster__${this_id}__nodes_2_ipmi_ip",
+			
+			$this_name             =  $conf->{cgi}{$name_key};
+			$this_description      =  $conf->{cgi}{$description_key};
+			$this_description      =  convert_text_to_html($conf, $this_description);
+			$this_url              =  $conf->{cgi}{$url_key};
+			$this_company          =  $conf->{cgi}{$company_key};
+			$this_company          =  convert_text_to_html($conf, $this_company);
+			$this_ricci_pw         =  $conf->{cgi}{$ricci_pw_key};
+			$this_root_pw          =  $conf->{cgi}{$root_pw_key};
+			$this_nodes_1_name     =  $conf->{cgi}{$nodes_1_name_key};
+			$this_nodes_1_ip       =  $conf->{cgi}{$nodes_1_ip_key};
+			$this_nodes_1_port     =  $conf->{cgi}{$nodes_1_port_key};
+			$this_nodes_1_port     =~ s/,//;
+			$this_nodes_2_name     =  $conf->{cgi}{$nodes_2_name_key};
+			$this_nodes_2_ip       =  $conf->{cgi}{$nodes_2_ip_key};
+			$this_nodes_2_port     =  $conf->{cgi}{$nodes_2_port_key};
+			$this_nodes_2_port     =~ s/,//;
+			$this_node_1_ipmi_name =  $conf->{cgi}{$nodes_1_ipmi_name_key};
+			$this_node_1_ipmi_ip   =  $conf->{cgi}{$nodes_2_ipmi_ip_key};
+			$this_node_2_ipmi_name =  $conf->{cgi}{$nodes_2_ipmi_name_key};
+			$this_node_2_ipmi_ip   =  $conf->{cgi}{$nodes_2_ipmi_ip_key};
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id], \n");
+		
+		my $say_this_cluster = $this_cluster;
+		my $clear_icon       = "<img onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\" src=\"/img/icon_clear-fields_16x16.png\">";
 		
 		print "
+<table align=\"center\">
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
+";
+		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
+		if ($this_cluster ne "new")
+		{
+			print "
+	<tr>
+		<td colspan=\"4\">
+			<b>Existing <i>Anvil!</i> System</b>
+		</td>
+	</tr>
+";
+		}
+		else
+		{
+			$say_this_cluster = "";
+			$clear_icon       = "";
+			print "
+	<tr>
+		<td colspan=\"4\">
+			<b>Add a new <i>Anvil!</i> System</b>
+		</td>
+	</tr>
+";
+		}
+		print "
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			<i>Anvil!</i> Name:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 200px;\">  &nbsp;<span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
+		</td>
+		<td style=\"text-align: left;\">
+			This is the name of your <i>Anvil!</i>'s cluster name.<br />
+			This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Description:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\">
+		</td>
+		<td style=\"text-align: left;\">
+			This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Tracking URL:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
+		</td>
+		<td style=\"text-align: left;\">
+			If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Owner:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
+		</td>
+		<td style=\"text-align: left;\">
+			This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
+			This is a purely descriptive field and you can set it to whatever you want.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			'ricci' Password:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
+		</td>
+		<td style=\"text-align: left;\">
+			When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
+			Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
+		</td>
+		<td style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info</a>,<br />
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			'root' Password:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\">
+		</td>
+		<td style=\"text-align: left;\">
+			On most <i>Anvil!</i> systems, the same password is used for both the '<span class=\"highlight_note\">ricci</span>' and '<span class=\"highlight_note\">root</span>' users.<br />
+			If this is the case for you, you can leave this blank.<br />
+			If you set a different '<span class=\"highlight_note\">root</span>' password though, please enter that password here.<br />
+			Please note that both nodes must have the same root password.
+		</td>
+		<td style=\"white-space: nowrap;\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 1 Name:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\">
+		</td>
+		<td rowspan=\"2\" style=\"text-align: left;\">
+			The host names of the nodes. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
+		</td>
+		<td rowspan=\"2\" style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info</a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 2 Name:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\">
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 1 IP Address:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\">
+		</td>
+		<td rowspan=\"2\" style=\"text-align: left;\">
+			Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
+			If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />
+			If you use DNS (or similar) to do name to IP translation, leave this blank.
+		</td>
+		<td rowspan=\"2\" style=\"white-space: nowrap;\">
+			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info</a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 2 IP Address:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\">
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 1 TCP Port:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\">
+		</td>
+		<td rowspan=\"2\" style=\"text-align: left;\">
+			This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
+			If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
+			When in doubt, leave this blank.<br />
+		</td>
+		<td rowspan=\"2\" style=\"white-space: nowrap;\">
+			<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info</a>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+			Node 2 TCP Port:
+		</td>
+		<td style=\"border: 0px; text-align: left;\">
+			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\">
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			<b>Global Overrides</b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"4\">
+			<input type=\"hidden\" name=\"config\" value=\"true\">
+			<input type=\"hidden\" name=\"section\" value=\"anvil\">
+			<input type=\"submit\" name=\"save\" value=\"Save\" class=\"button\">
+		</td>
+	</tr>
+</table>
+<br />
+";
+	}
+	else
+	{
+		### Global settings.
+		# If this is the first time the page is loaded, populate the values
+		# with whatever was already in an.conf.
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}]\n");
+		if (not $conf->{cgi}{save})
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
+			$conf->{cgi}{smtp__server}              = $conf->{smtp}{server}              if not $conf->{cgi}{smtp__server};
+			$conf->{cgi}{smtp__port}                = $conf->{smtp}{port}                if not $conf->{cgi}{smtp__port};
+			$conf->{cgi}{smtp__timeout}             = $conf->{smtp}{timeout}             if not $conf->{cgi}{smtp__timeout};
+			$conf->{cgi}{smtp__username}            = $conf->{smtp}{username}            if not $conf->{cgi}{smtp__username};
+			$conf->{cgi}{smtp__password}            = $conf->{smtp}{password}            if not $conf->{cgi}{smtp__password};
+			$conf->{cgi}{smtp__security}            = $conf->{smtp}{security}            if not $conf->{cgi}{smtp__security};
+			$conf->{cgi}{smtp__encrypt_pass}        = $conf->{smtp}{encrypt_pass}        if not $conf->{cgi}{smtp__encrypt_pass};
+			$conf->{cgi}{smtp__helo_domain}         = $conf->{smtp}{helo_domain}         if not $conf->{cgi}{smtp__helo_domain};
+			$conf->{cgi}{mail_data__to}             = $conf->{mail_data}{to}             if not $conf->{cgi}{mail_data__to};
+			$conf->{cgi}{mail_data__sending_domain} = $conf->{mail_data}{sending_domain} if not $conf->{cgi}{mail_data__sending_domain};
+		}
+		
+		# Build the security select box.
+		my $say_security        =  $conf->{cgi}{smtp__security};
+		my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
+		$say_security_select .= "<option value=\"None\">None</option>\n";
+		$say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
+		$say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
+		$say_security_select .= "</select>\n";
+		$say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
+		# Build the encrypt password select box.
+		my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
+		my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
+		$say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
+		$say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
+		$say_encrypt_pass_select .= "</select>\n";
+		$say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
+		
+		
+		print "
+<table align=\"center\" class=\"hidden_table\" border=\"0\">
+	<tr>
+		<td class=\"td_hidden\">
+			<table align=\"center\" width=\"100%\">
+				<tr>
+					<td colspan=\"4\">
+						<b>Global Settings.</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						The values you set here will be the default for all your <i>Anvil!</i> systems. You will be able to override any of these settings per-<i>Anvil!</i> below.
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+				<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
+				<tr>
+					<td class=\"highlight_good\" style=\"white-space: nowrap;\">
+						Mail Settings
+					</td>
+					<td colspan=\"3\" style=\"text-align: left;\">
+						The dashboard does not send email, but your <i>Anvil!</i> nodes will.<br />
+						The <span class=\"code\">$conf->{path}{an_conf}</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Server Address
+					</td>
+					<td>
+						<input type=\"text\" name=\"smtp__server\" value=\"$conf->{cgi}{smtp__server}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						This is the mail server that your node will connect to in order to send email.<br />
+						Your Internet service provider will give you this address, often called an \"<i>SMTP Server</i>\".
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
+				<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
+				<input type=\"hidden\" name=\"mail_data__sending_domain\" value=\"$conf->{cgi}{mail_data__sending_domain}\">
+				<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
+				<input type=\"hidden\" name=\"smtp__helo_domain\" value=\"$conf->{cgi}{smtp__helo_domain}\">
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Server Port
+					</td>
+					<td>
+						<input type=\"text\" name=\"smtp__port\" value=\"$conf->{cgi}{smtp__port}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						When connecting to the mail server address above, a specific \"port\" number must be specified.<br />
+						Your ISP should mention what this port number along with the address.<br />
+						Typically, this is \"25\" for unencrypted connections and \"587\" for encrypted connections.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol#Ports\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Server Timeout
+					</td>
+					<td>
+						<input type=\"text\" name=\"smtp__timeout\" value=\"$conf->{cgi}{smtp__timeout}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						This is how long, in seconds, we will wait for a response from the mail server.<br />
+						If there is no answer after this time, the connection will be considered failed.<br />
+						Generally speaking, 60 seconds is a good number.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Server User
+					</td>
+					<td>
+						<input type=\"text\" name=\"smtp__username\" value=\"$conf->{cgi}{smtp__username}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						Some mail server require a user name and password. Usually, the user name will be you email address.<br />
+						Some ISPs do not require authentication, and in those cases, this can be left blank.<br />
+						Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Server Password
+					</td>
+					<td>
+						<input type=\"password\" name=\"smtp__password\" value=\"$conf->{cgi}{smtp__password}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						If you entered a user name above, please enter it's password here.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Mail Security
+					</td>
+					<td>
+						$say_security_select
+					</td>
+					<td style=\"text-align: left;\">
+						This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />
+						As with the other mail settings, which to use will depends on your Internet service provider.<br />
+						If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/STARTTLS\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Encrypt Password
+					</td>
+					<td>
+						$say_encrypt_pass_select
+					</td>
+					<td style=\"text-align: left;\">
+						This controls whether your password is sent to the mail server in plain text or encrypted.<br />
+						Most modern mail servers support encrypted passwords, so 'Yes' should work here.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/Crypt_(C)#MD5-based_scheme\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\">
+						Alert Recipient(s)
+					</td>
+					<td>
+						<input type=\"text\" name=\"mail_data__to\" value=\"$conf->{cgi}{mail_data__to}\" style=\"width: 300px;\" />
+					</td>
+					<td style=\"text-align: left;\">
+						This is the person or list of people who will get alert emails. Please enter just the email address. <br />
+						Separate multiple email addresses with a comma please.<br />
+						Example: '<span class=\"code\">foo\@example.com, bar\@example.com</span>'.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						<input type=\"hidden\" name=\"config\" value=\"true\">
+						<input type=\"hidden\" name=\"section\" value=\"global\">
+						<input type=\"submit\" name=\"save\" value=\"Save\" class=\"button\">
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"td_hidden\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"td_hidden\">
+			<table align=\"center\" width=\"100%\">
+				<tr>
+					<td colspan=\"4\">
+						<b><i>Anvil!</i> Systems</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						Select an <i>Anvil!</i> to modify or delete.
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"table_header\" width=\"15%\">
+						<i>Anvil!</i> Name
+					</td>
+					<td class=\"table_header\" width=\"20%\">
+						Company
+					</td>
+					<td class=\"table_header\" width=\"60%\">
+						Description
+					</td>
+					<td class=\"table_header\" width=\"5%\">
+						URL
+					</td>
+				</tr>
+";
+		my $ids = "";
+		foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], clusters:${this_cluster}::name: [$conf->{clusters}{$this_cluster}{name}]\n");
+			my $this_id           = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
+			my $this_company      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "--";
+			$this_company      = convert_text_to_html($conf, $this_company);
+			my $this_description  = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "--";
+			$this_description  = convert_text_to_html($conf, $this_description);
+			my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
+			if ($this_url)
+			{
+				$this_url = "<a href=\"$this_url\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
+			}
+			
+			print "
+					<tr>
+						<td>
+							<a href=\"?config=true&anvil=$this_cluster\">$this_cluster</a>
+						</td>
+						<td class=\"highlight_ready\">
+							$this_company
+						</td>
+						<td style=\"text-align: left;\">
+							$this_description
+						</td>
+						<td>
+							$this_url
+						</td>
+					</tr>
+";
+		}
+
+		print "
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+";
+
+		print "
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
 </table>
 <br />
 ";
 	}
 	
-	# If this is the first time the page is loaded, populate the values
-	# with whatever was already in an.conf.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}]\n");
-	if (not $conf->{cgi}{save})
-	{
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
-		$conf->{cgi}{smtp__server}              = $conf->{smtp}{server}              if not $conf->{cgi}{smtp__server};
-		$conf->{cgi}{smtp__port}                = $conf->{smtp}{port}                if not $conf->{cgi}{smtp__port};
-		$conf->{cgi}{smtp__timeout}             = $conf->{smtp}{timeout}             if not $conf->{cgi}{smtp__timeout};
-		$conf->{cgi}{smtp__username}            = $conf->{smtp}{username}            if not $conf->{cgi}{smtp__username};
-		$conf->{cgi}{smtp__password}            = $conf->{smtp}{password}            if not $conf->{cgi}{smtp__password};
-		$conf->{cgi}{smtp__security}            = $conf->{smtp}{security}            if not $conf->{cgi}{smtp__security};
-		$conf->{cgi}{smtp__encrypt_pass}        = $conf->{smtp}{encrypt_pass}        if not $conf->{cgi}{smtp__encrypt_pass};
-		$conf->{cgi}{smtp__helo_domain}         = $conf->{smtp}{helo_domain}         if not $conf->{cgi}{smtp__helo_domain};
-		$conf->{cgi}{mail_data__to}             = $conf->{mail_data}{to}             if not $conf->{cgi}{mail_data__to};
-		$conf->{cgi}{mail_data__sending_domain} = $conf->{mail_data}{sending_domain} if not $conf->{cgi}{mail_data__sending_domain};
-	}
-	
-	# Build the security select box.
-	my $say_security        =  $conf->{cgi}{smtp__security};
-	my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
-	   $say_security_select .= "<option value=\"None\">None</option>\n";
-	   $say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
-	   $say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
-	   $say_security_select .= "</select>\n";
-	   $say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
-	# Build the encrypt password select box.
-	my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
-	my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
-	   $say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
-	   $say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
-	   $say_encrypt_pass_select .= "</select>\n";
-	   $say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
-	
-	
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"4\">
-			<b>Configure your dashboard.</b>
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>
-	<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
-";
-	# Mail settings.
-	print "
-	<tr>
-		<td class=\"highlight_good\" style=\"white-space: nowrap;\">
-			Mail Settings
-		</td>
-		<td colspan=\"3\" style=\"text-align: left;\">
-			The dashboard does not send email, but your <i>Anvil!</i> nodes will.<br />
-			The <span class=\"code\">$conf->{path}{an_conf}</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Server Address
-		</td>
-		<td>
-			<input type=\"text\" name=\"smtp__server\" value=\"$conf->{cgi}{smtp__server}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			This is the mail server that your node will connect to in order to send email.<br />
-			Your Internet service provider will give you this address, often called an \"<i>SMTP Server</i>\".
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
-	<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
-	<input type=\"hidden\" name=\"mail_data__sending_domain\" value=\"$conf->{cgi}{mail_data__sending_domain}\">
-	<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
-	<input type=\"hidden\" name=\"smtp__helo_domain\" value=\"$conf->{cgi}{smtp__helo_domain}\">
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Server Port
-		</td>
-		<td>
-			<input type=\"text\" name=\"smtp__port\" value=\"$conf->{cgi}{smtp__port}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			When connecting to the mail server address above, a specific \"port\" number must be specified.<br />
-			Your ISP should mention what this port number along with the address.<br />
-			Typically, this is \"25\" for unencrypted connections and \"587\" for encrypted connections.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol#Ports\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Server Timeout
-		</td>
-		<td>
-			<input type=\"text\" name=\"smtp__timeout\" value=\"$conf->{cgi}{smtp__timeout}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			This is how long, in seconds, we will wait for a response from the mail server.<br />
-			If there is no answer after this time, the connection will be considered failed.<br />
-			Generally speaking, 60 seconds is a good number.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Server User
-		</td>
-		<td>
-			<input type=\"text\" name=\"smtp__username\" value=\"$conf->{cgi}{smtp__username}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			Some mail server require a user name and password. Usually, the user name will be you email address.<br />
-			Some ISPs do not require authentication, and in those cases, this can be left blank.<br />
-			Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Server Password
-		</td>
-		<td>
-			<input type=\"password\" name=\"smtp__password\" value=\"$conf->{cgi}{smtp__password}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			If you entered a user name above, please enter it's password here.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Mail Security
-		</td>
-		<td>
-			$say_security_select
-		</td>
-		<td style=\"text-align: left;\">
-			This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />
-			As with the other mail settings, which to use will depends on your Internet service provider.<br />
-			If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/STARTTLS\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Encrypt Password
-		</td>
-		<td>
-			$say_encrypt_pass_select
-		</td>
-		<td style=\"text-align: left;\">
-			This controls whether your password is sent to the mail server in plain text or encrypted.<br />
-			Most modern mail servers support encrypted passwords, so 'Yes' should work here.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Crypt_(C)#MD5-based_scheme\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\">
-			Alert Recipient(s)
-		</td>
-		<td>
-			<input type=\"text\" name=\"mail_data__to\" value=\"$conf->{cgi}{mail_data__to}\" style=\"width: 300px;\" />
-		</td>
-		<td style=\"text-align: left;\">
-			This is the person or list of people who will get alert emails. Please enter just the email address. <br />
-			Separate multiple email addresses with a comma please.<br />
-			Example: '<span class=\"code\">foo\@example.com, bar\@example.com</span>'.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>
+	return(0);
+}
+
+=pod
 	<tr>
 		<td class=\"highlight_good\" style=\"white-space: nowrap;\">
 			Anvil! Systems
@@ -1499,6 +1902,7 @@ sub configure_dashboard
 	
 	return(1);
 }
+=cut
 
 # This takes a plain text string and escapes special characters for displaying
 # in HTML.
@@ -2356,7 +2760,7 @@ sub read_files_on_shared
 			# This catches connectivity problems.
 			if ($line =~ /No route to host/i)
 			{
-				my $local_access = on_same_network($conf, $node);
+				my ($local_access, $target_ip)      = on_same_network($conf, $node, $node);
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning\">No Access</span>";
 				if ($local_access)
 				{
@@ -2802,6 +3206,14 @@ sub post_node_calculations
 		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
 	}
+	
+	# If the host name was set, then I can trust that I had good data.
+	if ($conf->{node}{$node}{info}{host_name})
+	{
+		# Find out if the nodes are powered up or not.
+		write_node_cache($conf, $node);
+	}
+
 	
 	return (0);
 }
@@ -3382,6 +3794,18 @@ sub gather_node_details
 			record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}]\n");
 		}
 		
+		# Read the node's host file.
+		($error, $ssh_fh, my $hosts) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	1,
+			shell_call	=>	"cat /etc/hosts",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hosts: [$hosts]\n");
+		
 		### Last call, close the door on our way out.
 		# Bond data
 		($error, $ssh_fh, my $bond) = remote_call($conf, {
@@ -3408,6 +3832,7 @@ sub gather_node_details
 		parse_virsh        ($conf, $node, $virsh);
 		parse_vm_defs      ($conf, $node, $vm_defs);
 		parse_bonds        ($conf, $node, $bond);
+		parse_hosts        ($conf, $node, $hosts);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -3615,6 +4040,12 @@ sub remote_call
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	
+	### TODO: Make this a better looking error.
+	if (not $node)
+	{
+		die "$THIS_FILE ".__LINE__."; remote_call(); I was asked to call: [$shell_call] but no node was defined. This is probably a program error, sorry about the inconvenience. Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a> and we will try to help you.\n";
+	}
+	
 	my $state;
 	my $error;
 	# These will be merged into a single 'output' array before returning.
@@ -3640,7 +4071,7 @@ sub remote_call
 			}
 			elsif ($@ =~ /No route to host/)
 			{
-				$error = "No route to: [<span class=\"highlight_detail\">$node</span>].<br />Is the machine powered up and does it resolve to the proper IP address?<br />Is this dashboard server on the same network?";
+				$error = "No route to: [<span class=\"highlight_detail\">$node</span>].<br />Is the machine booting up still?<br />Is this dashboard server on the same network?";
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			else
@@ -3747,6 +4178,46 @@ sub remote_call
 	$error = "" if not defined $error;
 	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	return($error, $ssh_fh, $output);
+}
+
+# This parses the node's /etc/hosts file so that it can pull out the IPs for
+# anything matching the node's short name and record it in the local cache.
+sub parse_hosts
+{
+	my ($conf, $node, $array) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; parse_hosts(); node: [$node], array: [$array (".@{$array}." lines)]\n");
+	
+	foreach my $line (@{$array})
+	{
+		# This code is copy-pasted from read_hosts(), save for the hash is records to.
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/#.*$//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		next if $line =~ /^127.0.0.1\s/;
+		next if $line =~ /^::1\s/;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		
+		my ($this_ip, $these_hosts);
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			$this_ip     = $1;
+			$these_hosts = $2;
+			foreach my $this_host (split/ /, $these_hosts)
+			{
+				next if not $this_host;
+				$conf->{node}{$node}{hosts}{$this_host}{ip} = $this_ip;
+				if (not exists $conf->{node}{$node}{hosts}{by_ip}{$this_ip})
+				{
+					$conf->{node}{$node}{hosts}{by_ip}{$this_ip} = "";
+				}
+				$conf->{node}{$node}{hosts}{by_ip}{$this_ip} .= "$this_host,";
+				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{node}{$node}{hosts}{$this_host}{ip}] ($conf->{node}{$node}{hosts}{by_ip}{$this_ip})\n");
+			}
+		}
+	}
+	
+	return(0);
 }
 
 ### TODO: Finish this and add it to the node management
@@ -4626,13 +5097,6 @@ sub parse_cluster_conf
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence command: [$conf->{node}{$node}{info}{fence_methods}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer], fence command: [$conf->{node}{$peer}{info}{fence_methods}]\n");
 	
-	# If the host name was set, then I can trust that I had good data.
-	if ($conf->{node}{$node}{info}{host_name})
-	{
-		# Find out if the nodes are powered up or not.
-		write_node_cache($conf, $node);
-	}
-	
 	return(0);
 }
 
@@ -4989,7 +5453,7 @@ sub check_if_on
 		$peer = @{$conf->{up_nodes}}[0];
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	if ($peer)
 	{
 		# Check the power state using the peer node.
@@ -5040,15 +5504,15 @@ sub check_if_on
 		{
 			# Get the address from the command and see if it's in
 			# one of my subnet.
-			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $local_access = on_same_network($conf, $target_host);
+			my ($target_host)              = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			my ($local_access, $target_ip) = on_same_network($conf, $target_host, $node);
 			
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local_access: [$local_access]\n");
 			if ($local_access)
 			{
 				# I can reach it directly
 				my $sc = "$conf->{node}{$node}{info}{power_check_command} -o status";
-				#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
 				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
@@ -5106,14 +5570,14 @@ sub check_if_on
 # running this program.
 sub on_same_network
 {
-	my ($conf, $target_host) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in on_same_network(); target host: [$target_host]\n");
+	my ($conf, $target_host, $node) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in on_same_network(); target host: [$target_host], node: [$node]\n");
 	
 	my $local_access = 0;
 	my $target_ip;
 	
 	my $sc = "$conf->{path}{gethostip} -d $target_host";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
@@ -5131,8 +5595,25 @@ sub on_same_network
 		}
 		elsif ($line =~ /Unknown host/i)
 		{
-			#Failed to resolve
-			error($conf, "I was trying to resolve the host name: [<span class=\"fixed_width\">$target_host</span>] but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class=\"fixed_width\">/etc/hosts</span>] file?\n");
+			# Failed to resolve directly, see if the target host
+			# was read from the cache file.
+			read_node_cache($conf, $node);
+			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::hosts::${target_host}::ip: [$conf->{node}{$node}{hosts}{$target_host}{ip}]\n");
+			if ((defined $conf->{node}{$node}{hosts}{$target_host}{ip}) && ($conf->{node}{$node}{hosts}{$target_host}{ip} =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/))
+			{
+				$target_ip = $conf->{node}{$node}{hosts}{$target_host}{ip};
+				#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip], node::${node}::hosts::${target_host}::ip: [$conf->{node}{$node}{hosts}{$target_host}{ip}]\n");
+				
+				# Convert the power check command's address to
+				# use the raw IP.
+				record($conf, "$THIS_FILE ".__LINE__."; > node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+				$conf->{node}{$node}{info}{power_check_command} =~ s/-a (.*?) /-a $target_ip /;
+				record($conf, "$THIS_FILE ".__LINE__."; < node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+			}
+			else
+			{
+				error($conf, "$THIS_FILE ".__LINE__."; I was trying to resolve the host name: [<span class=\"fixed_width\">$target_host</span>] but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class=\"fixed_width\">/etc/hosts</span>] file?\n");
+			}
 		}
 		elsif ($line =~ /Usage: gethostip/i)
 		{
@@ -5142,7 +5623,7 @@ sub on_same_network
 	}
 	$fh->close();
 	
-	record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
 	{
 		# Find out my own IP(s) and subnet(s).
@@ -5242,43 +5723,59 @@ sub on_same_network
 		$fh->close();
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
-	return($local_access);
+	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
+	return($local_access, $target_ip);
 }
 
 # This records this scan's data to the cache file.
 sub write_node_cache
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
+	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
+	record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		push @lines, "host_name = $conf->{node}{$node}{info}{host_name}\n";
+		push @lines, "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
+		push @lines, "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
+	}
+	
+	my $print_header = 0;
+	foreach my $this_host (sort {$a cmp $b} keys %{$conf->{node}{$node}{hosts}})
+	{
+		next if not $this_host;
+		next if not $conf->{node}{$node}{hosts}{$this_host}{ip};
+		if (not $print_header)
+		{
+			push @lines, "#! start hosts !#\n";
+			$print_header = 1;
+		}
+		push @lines, "$conf->{node}{$node}{hosts}{$this_host}{ip}\t$this_host\n";
+	}
+	if ($print_header)
+	{
+		push @lines, "#! end hosts !#\n";
+	}
+	
+	if (@lines > 0)
+	{
 		my $fh         = IO::Handle->new();
-		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
 		open ($fh, "> $cache_file") or error($conf, "Failed to write: [<span class=\"fixed_width\">$cache_file</span>] as UID: [<span class=\"fixed_width\">$<</span>].<br />The error was: <span class=\"fixed_width\">$!</span>\n");
-		
-		print $fh "host_name = $conf->{node}{$node}{info}{host_name}\n";
-		print $fh "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
-		print $fh "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
-		
+		foreach my $line (@lines)
+		{
+			print $fh $line;
+		}
 		$fh->close();
-	}
-	elsif (not -e $cache_file)
-	{
-		# I've probably never seen the cache file before, so don't
-		# error out.
-	}
-	else
-	{
-		#error($conf, "I was asked to write the cache file for: [$node], but I didn't have all the cache data.<br />\nI was passed; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}].<br />\nThis is likely a program error.\n");
 	}
 	
 	return(0);
@@ -5312,8 +5809,9 @@ sub read_node_cache
 	if (-e $cache_file)
 	{
 		# It exists! Read it.
-		my $sc = $cache_file;
-		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+		my $in_hosts = 0;
+		my $sc       = $cache_file;
+		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
 		while(<$fh>)
@@ -5321,17 +5819,38 @@ sub read_node_cache
 			chomp;
 			my $line = $_;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			next if $line !~ /=/;
-			my ($var, $val) = (split/=/, $line, 2);
-			$var =~ s/^\s+//;
-			$var =~ s/\s+$//;
-			$val =~ s/^\s+//;
-			$val =~ s/\s+$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; var: [$var], val: [$val]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; in_hosts: [$in_hosts], line: [$line]\n");
 			
-			$conf->{node}{$node}{info}{$var} = $val;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
+			if ($line eq "#! start hosts !#")
+			{
+				$in_hosts = 1;
+				next;
+			}
+			if ($line eq "#! end hosts !#")
+			{
+				$in_hosts = 1;
+				next;
+			}
+			if (($in_hosts) && ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/))
+			{
+				my $this_ip   = $1;
+				my $this_host = $2;
+				$conf->{node}{$node}{hosts}{$this_host}{ip} = $this_ip;
+				#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::hosts::${this_host}::ip: [$conf->{node}{$node}{hosts}{$this_host}{ip}]\n");
+			}
+			else
+			{
+				next if $line !~ /=/;
+				my ($var, $val) = (split/=/, $line, 2);
+				$var =~ s/^\s+//;
+				$var =~ s/\s+$//;
+				$val =~ s/^\s+//;
+				$val =~ s/\s+$//;
+				
+				#record($conf, "$THIS_FILE ".__LINE__."; var: [$var], val: [$val]\n");
+				$conf->{node}{$node}{info}{$var} = $val;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
+			}
 		}
 		$fh->close();
 		$conf->{clusters}{$cluster}{cache_exists} = 1;

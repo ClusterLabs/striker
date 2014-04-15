@@ -37,7 +37,11 @@
 #   insert it into the cluster.
 # - Make "Node -> Offline" be a "Warning!"
 # - Make "Bond -> Down" be a warning
-
+# - Enable an administrative LOCK OUT switch to prevent reboots during things
+#   like firmware updates.
+#   
+# - Pass a timestamp with all CGI commands for five minutes in the future and
+#   abort any actions that are older than that.
 
 use strict;
 use warnings;
@@ -185,6 +189,7 @@ if (not $conf->{cgi}{cluster})
 # Get the CGI variables I might be passed.
 get_cgi_vars($conf, [
 	"adapter",
+	"anvil",
 	"boot_device",
 	"change",
 	"cluster",
@@ -216,6 +221,7 @@ get_cgi_vars($conf, [
 	"ram_suffix",
 	"row",
 	"save",
+	"section",
 	"smtp__server",
 	"smtp__port",
 	"smtp__timeout",
@@ -239,28 +245,30 @@ if ($conf->{cgi}{config})
 	$conf->{cgi}{cluster} = "";
 }
 
-# Pick up variables when saving the dashboard configuration.
-if ($conf->{cgi}{ids})
+# If 'anvil' was passed, get it's ID and then check for CGI variables.
+if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil}))
 {
-	my @more_vars;
-	foreach my $this_id (split/,/, $conf->{cgi}{ids})
+	my $this_cluster = $conf->{cgi}{anvil};
+	if ($conf->{clusters}{$this_cluster}{id})
 	{
-		next if not $this_id;
-		push @more_vars, "cluster__${this_id}__name";
-		push @more_vars, "cluster__${this_id}__description";
-		push @more_vars, "cluster__${this_id}__url";
-		push @more_vars, "cluster__${this_id}__company";
-		push @more_vars, "cluster__${this_id}__ricci_pw";
-		push @more_vars, "cluster__${this_id}__root_pw";
-		push @more_vars, "cluster__${this_id}__nodes_1_name";
-		push @more_vars, "cluster__${this_id}__nodes_1_ip";
-		push @more_vars, "cluster__${this_id}__nodes_1_port";
-		push @more_vars, "cluster__${this_id}__nodes_2_name";
-		push @more_vars, "cluster__${this_id}__nodes_2_ip";
-		push @more_vars, "cluster__${this_id}__nodes_2_port";
+		my $this_id = $conf->{clusters}{$this_cluster}{id};
+		get_cgi_vars($conf, [
+			"cluster__${this_id}__name",
+			"cluster__${this_id}__description",
+			"cluster__${this_id}__url",
+			"cluster__${this_id}__company",
+			"cluster__${this_id}__ricci_pw",
+			"cluster__${this_id}__root_pw",
+			"cluster__${this_id}__nodes_1_name",
+			"cluster__${this_id}__nodes_1_ip",
+			"cluster__${this_id}__nodes_1_port",
+			"cluster__${this_id}__nodes_2_name",
+			"cluster__${this_id}__nodes_2_ip",
+			"cluster__${this_id}__nodes_2_port",
+		]);
 	}
-	get_cgi_vars($conf, \@more_vars);
 }
+
 # Pick up the list of volume groups.
 if ($conf->{cgi}{vg_list})
 {
