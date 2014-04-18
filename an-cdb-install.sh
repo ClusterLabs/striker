@@ -7,9 +7,9 @@
 #       tested.
 
 # Change the following variables to suit your setup.
-PASSWORD=""
+PASSWORD="secret"
 HOSTNAME=$(hostname)
-CUSTOMER=""
+CUSTOMER="Alteeve's Niche!"
 VERSION="1.0.3"
 
 clear;
@@ -27,8 +27,6 @@ if [ "$NEWHOSTNAME" != "" ]; then
 fi
 echo ""
 echo "NOTE: The password you enter will be echoed back to you."
-# echo "What password do you want for the local 'alteeve' user and for the dashboard's"
-# echo "'admin' user? "
 echo "What password do you want for the dashboard's 'admin' user? "
 echo -n "[] "
 read PASSWORD
@@ -72,14 +70,13 @@ yum clean all
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               qemu-kvm libvirt perl-Test-Simple policycoreutils-python
+               perl-Test-Simple policycoreutils-python
 
 # Stuff from our repo
 yum -y install perl-Net-SSH2
 
 # Stuff for a GUI
-yum -y groupinstall basic-desktop development x11 fonts
-#yum -y install virt-manager firefox gedit 
+yum -y groupinstall development
 
 export PERL_MM_USE_DEFAULT=1
 perl -MCPAN -e 'install("YAML")'
@@ -141,11 +138,6 @@ if [ ! -e "/etc/selinux/config.anvil" ]
 then
 	sed -i.anvil 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
 fi
-# if [ ! -e "/etc/inittab.anvil" ]
-# then
-# 	sed -i.anvil 's/id:3:initdefault/id:5:initdefault/' /etc/inittab
-# fi
-# If there is already a backup, keep it as it will be the original version.
 if [ -e "/etc/sysconfig/network.anvil" ]
 then
 	sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/" /etc/sysconfig/network
@@ -189,44 +181,6 @@ setenforce 0
 #/etc/init.d/iptables stop
 /etc/init.d/ip6tables stop
 /etc/init.d/httpd start
-
-### TODO: This fails if the user was created by kickstart, so break out the 
-###       individual components.
-# I always reset the password in case the user re-ran this script
-# if [ ! -e "/home/alteeve" ]
-# then
-# 	useradd alteeve
-# 	su alteeve -c "mkdir /home/alteeve/Desktop"
-# 
-# 	#cd /root/
-# 	#wget -c https://alteeve.ca/files/alteeve.an-cdb.home.tar.bz2
-# 	#tar -xvjf /root/alteeve.an-cdb.home.tar.bz2
-# 	#rsync -av --delete /root/alteeve /home/
-# 	#chown -R alteeve:alteeve /root/alteeve
-# 	su alteeve -c "cp /usr/share/applications/mozilla-firefox.desktop /home/alteeve/Desktop/"
-# 	su alteeve -c "cp /usr/share/applications/virt-manager.desktop /home/alteeve/Desktop/"
-# 	su alteeve -c "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa"
-# 	chmod +x /home/alteeve/Desktop/mozilla-firefox.desktop
-# 	chmod +x /home/alteeve/Desktop/virt-manager.desktop
-# 	
-# 	# This disables virt-manager's autoconnect to localhost.
-# 	VMFILE="/home/alteeve/.gconf/apps/virt-manager/connections/%gconf.xml"
-# 	mkdir -p /home/alteeve/.gconf/apps/virt-manager/connections
-# 	touch $VMFILE
-# 	echo '<?xml version="1.0"?>' > $VMFILE
-# 	echo '<gconf>' >> $VMFILE
-# 	echo '	<entry name="autoconnect" mtime="1375139570" type="list" ltype="string">' >> $VMFILE
-# 	echo '	</entry>' >> $VMFILE
-# 	echo '	<entry name="uris" mtime="1375139415" type="list" ltype="string">' >> $VMFILE
-# 	echo '		<li type="string">' >> $VMFILE
-# 	echo '			<stringvalue>qemu:///system</stringvalue>' >> $VMFILE
-# 	echo '		</li>' >> $VMFILE
-# 	echo '	</entry>' >> $VMFILE
-# 	echo '</gconf>' >> $VMFILE
-# 	chown -R alteeve:alteeve /home/alteeve/.gconf
-# 	chmod go-rwx -R /home/alteeve/.gconf
-# fi
-# echo $PASSWORD | passwd --stdin alteeve
 
 if [ ! -e "/root/.ssh/id_rsa" ]
 then
@@ -285,6 +239,11 @@ else
 	/var/www/tools/guacamole-install.sh
 fi
 
+# Configure iptables.
+iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT
+iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT
+/etc/init.d/iptables save
+
 chown -R apache:apache /var/www/*
 chown apache:apache /var/log/an-cdb.log
 chown apache:apache /var/log/an-*
@@ -303,31 +262,11 @@ chmod 660 /etc/an/*
 chmod 664 /etc/ssh/ssh_config
 chmod 664 /etc/hosts
 
-# I always run this because a missing key bit have been added.
-# echo "# Keys for the $HOSTNAME dashboard" > /home/alteeve/Desktop/public_keys.txt
-# cat /root/.ssh/id_rsa.pub /home/alteeve/.ssh/id_rsa.pub /var/www/home/.ssh/id_rsa.pub >> /home/alteeve/Desktop/public_keys.txt
-# echo "" >> /home/alteeve/Desktop/public_keys.txt
-# chown alteeve:alteeve /home/alteeve/Desktop/public_keys.txt
-
 echo ""
 echo "##############################################################################"
 echo "#                                                                            #"
 echo "#                       Dashboard install is complete.                       #"
 echo "#                                                                            #"
-# echo "# When you reboot and log in, you should see a file called:                  #"
-# echo "# [public_keys.txt] on the desktop. Copy the contents of that file and add   #"
-# echo "# them to: [/root/.ssh/authorized_keys] on each cluster node you wish this   #"
-# echo "# dashboard to access.                                                       #"
-# echo "#                                                                            #"
-# echo "# Once the keys are added, switch to the: [apache] user and use ssh to       #"
-# echo "# connect to each node for the first time. This is needed to add the node's  #"
-# echo "# SSH fingerprint to the apache user's: [~/.ssh/known_hosts] file. You only  #"
-# echo "# need to do this once per node.                                             #"
-# echo "#                                                                            #"
-# echo "# Please reboot to ensure the latest kernel is being used.                   #"
-# echo "#                                                                            #"
-# echo "# Remember to update: [/etc/an/an.conf] and then copy it to each node!       #"
-# echo "#                                                                            #"
 echo "##############################################################################"
 echo ""
 

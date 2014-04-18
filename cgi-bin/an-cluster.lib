@@ -915,19 +915,11 @@ sub write_new_hosts
 	return(0);
 }
 
-# This allows the user to configure their dashboard.
-sub configure_dashboard
+# Verify and then save the global dashboard configuration.
+sub save_global_dashboard_configure
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
-	read_hosts($conf);
-	read_ssh_config($conf);
-	
-	if ($conf->{cgi}{save})
-	{
-		if ($conf->{cgi}{section} eq "global")
-		{
 			my ($save, $delete_ids) = sanity_check_an_conf($conf, $conf->{cgi}{section});
 			if ($save)
 			{
@@ -982,338 +974,405 @@ sub configure_dashboard
 </table>
 <br />
 ";
-		}
-	}
+
+	return(0);
+}
+
+# This uses the data from the config files to pre-fill configuration form data.
+sub load_configuration_defaults
+{
+	my ($conf) = @_;
 	
+	# In all cases, load the global values.
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
+	$conf->{cgi}{smtp__server}              = defined $conf->{smtp}{server}              ? $conf->{smtp}{server}              : "";
+	$conf->{cgi}{smtp__port}                = defined $conf->{smtp}{port}                ? $conf->{smtp}{port}                : "";
+	$conf->{cgi}{smtp__timeout}             = defined $conf->{smtp}{timeout}             ? $conf->{smtp}{timeout}             : "";
+	$conf->{cgi}{smtp__username}            = defined $conf->{smtp}{username}            ? $conf->{smtp}{username}            : "";
+	$conf->{cgi}{smtp__password}            = defined $conf->{smtp}{password}            ? $conf->{smtp}{password}            : "";
+	$conf->{cgi}{smtp__security}            = defined $conf->{smtp}{security}            ? $conf->{smtp}{security}            : "";
+	$conf->{cgi}{smtp__encrypt_pass}        = defined $conf->{smtp}{encrypt_pass}        ? $conf->{smtp}{encrypt_pass}        : "";
+	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
+	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
+	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+	
+	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
 	{
-		### Show a new cluster.
-		my $this_cluster          = $conf->{cgi}{anvil};
-		my $this_id               = defined $conf->{clusters}{$this_cluster}{id}               ? $conf->{clusters}{$this_cluster}{id}               : "new";
-		my $this_name             = defined $conf->{clusters}{$this_cluster}{name}             ? $conf->{clusters}{$this_cluster}{name}             : "";
-		my $this_company          = defined $conf->{clusters}{$this_cluster}{company}          ? $conf->{clusters}{$this_cluster}{company}          : "";
-		   $this_company          = convert_text_to_html($conf, $this_company);
-		my $this_description      = defined $conf->{clusters}{$this_cluster}{description}      ? $conf->{clusters}{$this_cluster}{description}      : "";
-		   $this_description      = convert_text_to_html($conf, $this_description);
-		my $this_url              = defined $conf->{clusters}{$this_cluster}{url}              ? $conf->{clusters}{$this_cluster}{url}              : "";
-		my $this_ricci_pw         = defined $conf->{clusters}{$this_cluster}{ricci_pw}         ? $conf->{clusters}{$this_cluster}{ricci_pw}         : "";
-		my $this_root_pw          = defined $conf->{clusters}{$this_cluster}{root_pw}          ? $conf->{clusters}{$this_cluster}{root_pw}          : "";
-		my $this_nodes_1_name     = defined $conf->{clusters}{$this_cluster}{nodes}[0]         ? $conf->{clusters}{$this_cluster}{nodes}[0]         : "";
-		my $this_nodes_1_ip       = defined $conf->{hosts}{$this_nodes_1_name}{ip}             ? $conf->{hosts}{$this_nodes_1_name}{ip}             : "";
-		my $this_nodes_1_port     = defined $conf->{hosts}{$this_nodes_1_name}{port}           ? $conf->{hosts}{$this_nodes_1_name}{port}           : "";
-		my $this_nodes_2_name     = defined $conf->{clusters}{$this_cluster}{nodes}[1]         ? $conf->{clusters}{$this_cluster}{nodes}[1]         : "";
-		my $this_nodes_2_ip       = defined $conf->{hosts}{$this_nodes_2_name}{ip}             ? $conf->{hosts}{$this_nodes_2_name}{ip}             : "";
-		my $this_nodes_2_port     = defined $conf->{hosts}{$this_nodes_2_name}{port}           ? $conf->{hosts}{$this_nodes_2_name}{port}           : "";
-		my $this_node_1_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_1_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_1_ipmi_name} : "";
-		my $this_node_1_ipmi_ip   = defined $conf->{hosts}{$this_node_1_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_1_ipmi_name}{ip}         : "";
-		my $this_node_2_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_2_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_2_ipmi_name} : "";
-		my $this_node_2_ipmi_ip   = defined $conf->{hosts}{$this_node_2_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_2_ipmi_name}{ip}         : "";
+		# Details on the Anvil!.
+		my $this_cluster     = $conf->{cgi}{anvil};
+		my $this_id          = defined $conf->{clusters}{$this_cluster}{id} ? $conf->{clusters}{$this_cluster}{id} : "new";
+		my $name_key         = "cluster__${this_id}__name";
+		my $company_key      = "cluster__${this_id}__company";
+		my $description_key  = "cluster__${this_id}__description";
+		my $url_key          = "cluster__${this_id}__url";
+		my $ricci_pw_key     = "cluster__${this_id}__ricci_pw";
+		my $root_pw_key      = "cluster__${this_id}__root_pw";
+		my $nodes_1_name_key = "cluster__${this_id}__nodes_1_name";
+		my $nodes_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
+		my $nodes_1_port_key = "cluster__${this_id}__nodes_1_port";
+		my $nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
+		my $nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
+		my $nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
 		
-		# If the page reloaded, use the passed-in CGI values.
-		if ($conf->{cgi}{save})
-		{
-			my $name_key              = "cluster__${this_id}__name";
-			my $description_key       = "cluster__${this_id}__description";
-			my $url_key               = "cluster__${this_id}__url";
-			my $company_key           = "cluster__${this_id}__company";
-			my $ricci_pw_key          = "cluster__${this_id}__ricci_pw";
-			my $root_pw_key           = "cluster__${this_id}__root_pw";
-			my $nodes_1_name_key      = "cluster__${this_id}__nodes_1_name";
-			my $nodes_1_ip_key        = "cluster__${this_id}__nodes_1_ip";
-			my $nodes_1_port_key      = "cluster__${this_id}__nodes_1_port";
-			my $nodes_2_name_key      = "cluster__${this_id}__nodes_2_name";
-			my $nodes_2_ip_key        = "cluster__${this_id}__nodes_2_ip";
-			my $nodes_2_port_key      = "cluster__${this_id}__nodes_2_port";
-			my $nodes_1_ipmi_name_key = "cluster__${this_id}__nodes_1_ipmi_name",
-			my $nodes_1_ipmi_ip_key   = "cluster__${this_id}__nodes_1_ipmi_ip",
-			my $nodes_2_ipmi_name_key = "cluster__${this_id}__nodes_2_ipmi_name",
-			my $nodes_2_ipmi_ip_key   = "cluster__${this_id}__nodes_2_ipmi_ip",
-			
-			$this_name             =  $conf->{cgi}{$name_key};
-			$this_description      =  $conf->{cgi}{$description_key};
-			$this_description      =  convert_text_to_html($conf, $this_description);
-			$this_url              =  $conf->{cgi}{$url_key};
-			$this_company          =  $conf->{cgi}{$company_key};
-			$this_company          =  convert_text_to_html($conf, $this_company);
-			$this_ricci_pw         =  $conf->{cgi}{$ricci_pw_key};
-			$this_root_pw          =  $conf->{cgi}{$root_pw_key};
-			$this_nodes_1_name     =  $conf->{cgi}{$nodes_1_name_key};
-			$this_nodes_1_ip       =  $conf->{cgi}{$nodes_1_ip_key};
-			$this_nodes_1_port     =  $conf->{cgi}{$nodes_1_port_key};
-			$this_nodes_1_port     =~ s/,//;
-			$this_nodes_2_name     =  $conf->{cgi}{$nodes_2_name_key};
-			$this_nodes_2_ip       =  $conf->{cgi}{$nodes_2_ip_key};
-			$this_nodes_2_port     =  $conf->{cgi}{$nodes_2_port_key};
-			$this_nodes_2_port     =~ s/,//;
-			$this_node_1_ipmi_name =  $conf->{cgi}{$nodes_1_ipmi_name_key};
-			$this_node_1_ipmi_ip   =  $conf->{cgi}{$nodes_2_ipmi_ip_key};
-			$this_node_2_ipmi_name =  $conf->{cgi}{$nodes_2_ipmi_name_key};
-			$this_node_2_ipmi_ip   =  $conf->{cgi}{$nodes_2_ipmi_ip_key};
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id], \n");
+		$conf->{cgi}{$name_key}         = defined $conf->{clusters}{$this_cluster}{name}        ? $conf->{clusters}{$this_cluster}{name}        : "";
+		$conf->{cgi}{$company_key}      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "";
+		$conf->{cgi}{$company_key}      = convert_text_to_html($conf, $conf->{cgi}{$company_key});
+		$conf->{cgi}{$description_key}  = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "";
+		$conf->{cgi}{$description_key}  = convert_text_to_html($conf, $conf->{cgi}{$description_key});
+		$conf->{cgi}{$url_key}          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
+		$conf->{cgi}{$ricci_pw_key}     = defined $conf->{clusters}{$this_cluster}{ricci_pw}    ? $conf->{clusters}{$this_cluster}{ricci_pw}    : "";
+		$conf->{cgi}{$root_pw_key}      = defined $conf->{clusters}{$this_cluster}{root_pw}     ? $conf->{clusters}{$this_cluster}{root_pw}     : "";
+		$conf->{cgi}{$nodes_1_name_key} = defined $conf->{clusters}{$this_cluster}{nodes}[0]    ? $conf->{clusters}{$this_cluster}{nodes}[0]    : "";
+		my $this_nodes_1_name           = $conf->{cgi}{$nodes_1_name_key};
+		$conf->{cgi}{$nodes_1_ip_key}   = defined $conf->{hosts}{$this_nodes_1_name}{ip}        ? $conf->{hosts}{$this_nodes_1_name}{ip}        : "";
+		$conf->{cgi}{$nodes_1_port_key} = defined $conf->{hosts}{$this_nodes_1_name}{port}      ? $conf->{hosts}{$this_nodes_1_name}{port}      : "";
+		$conf->{cgi}{$nodes_2_name_key} = defined $conf->{clusters}{$this_cluster}{nodes}[0]    ? $conf->{clusters}{$this_cluster}{nodes}[0]    : "";
+		my $this_nodes_2_name           = $conf->{cgi}{$nodes_2_name_key};
+		$conf->{cgi}{$nodes_2_ip_key}   = defined $conf->{hosts}{$this_nodes_2_name}{ip}        ? $conf->{hosts}{$this_nodes_2_name}{ip}        : "";
+		$conf->{cgi}{$nodes_2_port_key} = defined $conf->{hosts}{$this_nodes_2_name}{port}      ? $conf->{hosts}{$this_nodes_2_name}{port}      : "";
 		
-		my $say_this_cluster = $this_cluster;
-		my $clear_icon       = "<img onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\" src=\"/img/icon_clear-fields_16x16.png\">";
+		# Now set/load global overrides.
+		### an empty value is valid. To use global, these need to be
+		### set to '#!inherit!# to have them be deleted 
+		my $smtp__server_key              = "cluster__${this_id}__smtp__server";
+		my $smtp__port_key                = "cluster__${this_id}__smtp__port";
+		my $smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
+		my $smtp__username_key            = "cluster__${this_id}__smtp__username";
+		my $smtp__password_key            = "cluster__${this_id}__smtp__password";
+		my $smtp__security_key            = "cluster__${this_id}__smtp__security";
+		my $smtp__encrypt_pass_key        = "cluster__${this_id}__smtp__encrypt_pass";
+		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
+		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
+		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
 		
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>
-";
-		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
-		if ($this_cluster ne "new")
-		{
-			print "
-	<tr>
-		<td colspan=\"4\">
-			<b>Existing <i>Anvil!</i> System</b>
-		</td>
-	</tr>
-";
-		}
-		else
-		{
-			$say_this_cluster = "";
-			$clear_icon       = "";
-			print "
-	<tr>
-		<td colspan=\"4\">
-			<b>Add a new <i>Anvil!</i> System</b>
-		</td>
-	</tr>
-";
-		}
-		print "
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			<i>Anvil!</i> Name:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 200px;\">  &nbsp;<span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
-		</td>
-		<td style=\"text-align: left;\">
-			This is the name of your <i>Anvil!</i>'s cluster name.<br />
-			This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Description:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\">
-		</td>
-		<td style=\"text-align: left;\">
-			This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Tracking URL:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
-		</td>
-		<td style=\"text-align: left;\">
-			If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Owner:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
-		</td>
-		<td style=\"text-align: left;\">
-			This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
-			This is a purely descriptive field and you can set it to whatever you want.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			'ricci' Password:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
-		</td>
-		<td style=\"text-align: left;\">
-			When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
-			Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info</a>,<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			'root' Password:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\">
-		</td>
-		<td style=\"text-align: left;\">
-			On most <i>Anvil!</i> systems, the same password is used for both the '<span class=\"highlight_note\">ricci</span>' and '<span class=\"highlight_note\">root</span>' users.<br />
-			If this is the case for you, you can leave this blank.<br />
-			If you set a different '<span class=\"highlight_note\">root</span>' password though, please enter that password here.<br />
-			Please note that both nodes must have the same root password.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 1 Name:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\">
-		</td>
-		<td rowspan=\"2\" style=\"text-align: left;\">
-			The host names of the nodes. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
-		</td>
-		<td rowspan=\"2\" style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 2 Name:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\">
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 1 IP Address:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\">
-		</td>
-		<td rowspan=\"2\" style=\"text-align: left;\">
-			Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
-			If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />
-			If you use DNS (or similar) to do name to IP translation, leave this blank.
-		</td>
-		<td rowspan=\"2\" style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 2 IP Address:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\">
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 1 TCP Port:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\">
-		</td>
-		<td rowspan=\"2\" style=\"text-align: left;\">
-			This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
-			If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
-			When in doubt, leave this blank.<br />
-		</td>
-		<td rowspan=\"2\" style=\"white-space: nowrap;\">
-			<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-			Node 2 TCP Port:
-		</td>
-		<td style=\"border: 0px; text-align: left;\">
-			<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\">
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			<b>Global Overrides</b>
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			<input type=\"hidden\" name=\"config\" value=\"true\">
-			<input type=\"hidden\" name=\"section\" value=\"anvil\">
-			<input type=\"submit\" name=\"save\" value=\"Save\" class=\"button\">
-		</td>
-	</tr>
-</table>
-<br />
-";
+		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
+		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
+		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
+		$conf->{cgi}{$smtp__username_key}            = defined $conf->{cluster}{$this_id}{smtp}{username}            ? $conf->{cluster}{$this_id}{smtp}{username}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__password_key}            = defined $conf->{cluster}{$this_id}{smtp}{password}            ? $conf->{cluster}{$this_id}{smtp}{password}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__security_key}            = defined $conf->{cluster}{$this_id}{smtp}{security}            ? $conf->{cluster}{$this_id}{smtp}{security}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__encrypt_pass_key}        = defined $conf->{cluster}{$this_id}{smtp}{encrypt_pass}        ? $conf->{cluster}{$this_id}{smtp}{encrypt_pass}        : "#!inherit!#";
+		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
+		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
+		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
 	}
-	else
+	
+	return(0);
+}
+
+# This prepares and displays the header section of an Anvil! configuration
+# page.
+sub show_anvil_config_header
+{
+	my ($conf) = @_;
+	
+	my $this_cluster          = $conf->{cgi}{anvil};
+	my $say_this_cluster      = $this_cluster;
+	my $this_id               = defined $conf->{clusters}{$this_cluster}{id}               ? $conf->{clusters}{$this_cluster}{id}               : "new";
+	my $clear_icon            = "<img onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\" src=\"/img/icon_clear-fields_16x16.png\">";
+	my $this_name             = defined $conf->{clusters}{$this_cluster}{name}             ? $conf->{clusters}{$this_cluster}{name}             : "";
+	my $this_company          = defined $conf->{clusters}{$this_cluster}{company}          ? $conf->{clusters}{$this_cluster}{company}          : "";
+	   $this_company          = convert_text_to_html($conf, $this_company);
+	my $this_description      = defined $conf->{clusters}{$this_cluster}{description}      ? $conf->{clusters}{$this_cluster}{description}      : "";
+	   $this_description      = convert_text_to_html($conf, $this_description);
+	my $this_url              = defined $conf->{clusters}{$this_cluster}{url}              ? $conf->{clusters}{$this_cluster}{url}              : "";
+	my $this_ricci_pw         = defined $conf->{clusters}{$this_cluster}{ricci_pw}         ? $conf->{clusters}{$this_cluster}{ricci_pw}         : "";
+	my $this_root_pw          = defined $conf->{clusters}{$this_cluster}{root_pw}          ? $conf->{clusters}{$this_cluster}{root_pw}          : "";
+	my $this_nodes_1_name     = defined $conf->{clusters}{$this_cluster}{nodes}[0]         ? $conf->{clusters}{$this_cluster}{nodes}[0]         : "";
+	my $this_nodes_1_ip       = defined $conf->{hosts}{$this_nodes_1_name}{ip}             ? $conf->{hosts}{$this_nodes_1_name}{ip}             : "";
+	my $this_nodes_1_port     = defined $conf->{hosts}{$this_nodes_1_name}{port}           ? $conf->{hosts}{$this_nodes_1_name}{port}           : "";
+	my $this_nodes_2_name     = defined $conf->{clusters}{$this_cluster}{nodes}[1]         ? $conf->{clusters}{$this_cluster}{nodes}[1]         : "";
+	my $this_nodes_2_ip       = defined $conf->{hosts}{$this_nodes_2_name}{ip}             ? $conf->{hosts}{$this_nodes_2_name}{ip}             : "";
+	my $this_nodes_2_port     = defined $conf->{hosts}{$this_nodes_2_name}{port}           ? $conf->{hosts}{$this_nodes_2_name}{port}           : "";
+	my $this_node_1_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_1_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_1_ipmi_name} : "";
+	my $this_node_1_ipmi_ip   = defined $conf->{hosts}{$this_node_1_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_1_ipmi_name}{ip}         : "";
+	my $this_node_2_ipmi_name = defined $conf->{clusters}{$this_cluster}{node_2_ipmi_name} ? $conf->{clusters}{$this_cluster}{node_2_ipmi_name} : "";
+	my $this_node_2_ipmi_ip   = defined $conf->{hosts}{$this_node_2_ipmi_name}{ip}         ? $conf->{hosts}{$this_node_2_ipmi_name}{ip}         : "";
+	
+	# If this is the first time loading the config, pre-populate the values
+	# for the overrides with the data from the config file.
+	if (not $conf->{cgi}{save})
 	{
-		### Global settings.
-		# If this is the first time the page is loaded, populate the values
-		# with whatever was already in an.conf.
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}]\n");
-		if (not $conf->{cgi}{save})
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
-			$conf->{cgi}{smtp__server}              = $conf->{smtp}{server}              if not $conf->{cgi}{smtp__server};
-			$conf->{cgi}{smtp__port}                = $conf->{smtp}{port}                if not $conf->{cgi}{smtp__port};
-			$conf->{cgi}{smtp__timeout}             = $conf->{smtp}{timeout}             if not $conf->{cgi}{smtp__timeout};
-			$conf->{cgi}{smtp__username}            = $conf->{smtp}{username}            if not $conf->{cgi}{smtp__username};
-			$conf->{cgi}{smtp__password}            = $conf->{smtp}{password}            if not $conf->{cgi}{smtp__password};
-			$conf->{cgi}{smtp__security}            = $conf->{smtp}{security}            if not $conf->{cgi}{smtp__security};
-			$conf->{cgi}{smtp__encrypt_pass}        = $conf->{smtp}{encrypt_pass}        if not $conf->{cgi}{smtp__encrypt_pass};
-			$conf->{cgi}{smtp__helo_domain}         = $conf->{smtp}{helo_domain}         if not $conf->{cgi}{smtp__helo_domain};
-			$conf->{cgi}{mail_data__to}             = $conf->{mail_data}{to}             if not $conf->{cgi}{mail_data__to};
-			$conf->{cgi}{mail_data__sending_domain} = $conf->{mail_data}{sending_domain} if not $conf->{cgi}{mail_data__sending_domain};
-		}
-		
-		# Build the security select box.
-		my $say_security        =  $conf->{cgi}{smtp__security};
-		my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
-		$say_security_select .= "<option value=\"None\">None</option>\n";
-		$say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
-		$say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
-		$say_security_select .= "</select>\n";
-		$say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
-		# Build the encrypt password select box.
-		my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
-		my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
-		$say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
-		$say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
-		$say_encrypt_pass_select .= "</select>\n";
-		$say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
-		
-		
+		my $smtp__server_key              = "cluster__${this_id}__smtp__server";
+		my $smtp__port_key                = "cluster__${this_id}__smtp__port";
+		my $smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
+		my $smtp__username_key            = "cluster__${this_id}__smtp__username";
+		my $smtp__password_key            = "cluster__${this_id}__smtp__password";
+		my $smtp__security_key            = "cluster__${this_id}__smtp__security";
+		my $smtp__encrypt_pass_key        = "cluster__${this_id}__smtp__encrypt_pass";
+		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
+		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
+		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
+		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
+		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
+		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
+		$conf->{cgi}{$smtp__username_key}            = defined $conf->{cluster}{$this_id}{smtp}{username}            ? $conf->{cluster}{$this_id}{smtp}{username}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__password_key}            = defined $conf->{cluster}{$this_id}{smtp}{password}            ? $conf->{cluster}{$this_id}{smtp}{password}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__security_key}            = defined $conf->{cluster}{$this_id}{smtp}{security}            ? $conf->{cluster}{$this_id}{smtp}{security}            : "#!inherit!#";
+		$conf->{cgi}{$smtp__encrypt_pass_key}        = defined $conf->{cluster}{$this_id}{smtp}{encrypt_pass}        ? $conf->{cluster}{$this_id}{smtp}{encrypt_pass}        : "#!inherit!#";
+		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
+		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
+		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+	}
+	
+	# Show the right header.
+	if ($this_cluster eq "new")
+	{
+		$say_this_cluster = "";
+		$clear_icon       = "";
 		print "
-<table align=\"center\" class=\"hidden_table\" border=\"0\">
 	<tr>
 		<td class=\"td_hidden\">
 			<table align=\"center\" width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
-						<b>Global Settings.</b>
+						<b>Add a new <i>Anvil!</i> System</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						Configure the nodes for this new <i>Anvil!</i> and, if you wish, override global settings.
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+";
+	}
+	else
+	{
+		print "
+	<tr>
+		<td class=\"td_hidden\">
+			<table align=\"center\" width=\"100%\">
+				<tr>
+					<td colspan=\"4\">
+						<b>Existing <i>Anvil!</i> System</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						Configure the nodes for this <i>Anvil!</i> and, if you wish, override global settings.<br />
+						To remove this <i>Anvil!</i>, click on the 'X' icon beside the name to clear all fields and then save the form.
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+";
+	}
+		
+	# 
+	print "
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						<i>Anvil!</i> Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 200px;\">  &nbsp;<span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
+					</td>
+					<td style=\"text-align: left;\">
+						This is the name of your <i>Anvil!</i>'s cluster name.<br />
+						This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Description:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\">
+					</td>
+					<td style=\"text-align: left;\">
+						This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Tracking URL:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
+					</td>
+					<td style=\"text-align: left;\">
+						If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Owner:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
+					</td>
+					<td style=\"text-align: left;\">
+						This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
+						This is a purely descriptive field and you can set it to whatever you want.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						'ricci' Password:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
+					</td>
+					<td style=\"text-align: left;\">
+						When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
+						Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
+					</td>
+					<td style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info</a>,<br />
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						'root' Password:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\">
+					</td>
+					<td style=\"text-align: left;\">
+						On most <i>Anvil!</i> systems, the same password is used for both the '<span class=\"highlight_note\">ricci</span>' and '<span class=\"highlight_note\">root</span>' users.<br />
+						If this is the case for you, you can leave this blank.<br />
+						If you set a different '<span class=\"highlight_note\">root</span>' password though, please enter that password here.<br />
+						Please note that both nodes must have the same root password.
+					</td>
+					<td style=\"white-space: nowrap;\">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 1 Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\">
+					</td>
+					<td rowspan=\"2\" style=\"text-align: left;\">
+						The host names of the nodes. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
+					</td>
+					<td rowspan=\"2\" style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 2 Name:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\">
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 1 IP Address:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\">
+					</td>
+					<td rowspan=\"2\" style=\"text-align: left;\">
+						Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
+						If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />
+						If you use DNS (or similar) to do name to IP translation, leave this blank.
+					</td>
+					<td rowspan=\"2\" style=\"white-space: nowrap;\">
+						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 2 IP Address:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\">
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 1 TCP Port:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\">
+					</td>
+					<td rowspan=\"2\" style=\"text-align: left;\">
+						This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
+						If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
+						When in doubt, leave this blank.<br />
+					</td>
+					<td rowspan=\"2\" style=\"white-space: nowrap;\">
+						<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info</a>
+					</td>
+				</tr>
+				<tr>
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+						Node 2 TCP Port:
+					</td>
+					<td style=\"border: 0px; text-align: left;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\">
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"td_hidden\">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class=\"td_hidden\">
+			<table align=\"center\" width=\"100%\">
+				<tr>
+					<td colspan=\"4\">
+						<b>Global Overrides</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						The values you set here will be used for this <i>Anvil!</i>, overridding the global values. You can override any or all values.<br />
+						To use the global values, enter \"<span class=\"fixed_width\">#!inherit!#</span>\".
+					</td>
+				</tr>
+				<tr>
+					<td colspan=\"4\">
+						&nbsp;
+					</td>
+				</tr>
+";
+	return(0);
+}
+
+# This shows the header of the global configuration section.
+sub show_global_config_header
+{
+	my ($conf) = @_;
+	
+	print "
+	<tr>
+		<td class=\"td_hidden\">
+			<table align=\"center\" width=\"100%\">
+				<tr>
+					<td colspan=\"4\">
+						<b>Global Settings</b>
 					</td>
 				</tr>
 				<tr>
@@ -1326,6 +1385,100 @@ sub configure_dashboard
 						&nbsp;
 					</td>
 				</tr>
+";
+
+	return(0);
+}
+
+# This shows all the mail settings that are common to both the global and 
+# per-anvil config sections.
+sub show_common_config_section
+{
+	my ($conf) = @_;
+	
+	# We display the global values or the per-Anvil! ones below. Load the
+	# global, the override with the Anvil! if needed.
+	my $smtp__server_key              = "smtp__server";
+	my $smtp__port_key                = "smtp__port";
+	my $smtp__timeout_key             = "smtp__timeout";
+	my $smtp__username_key            = "smtp__username";
+	my $smtp__password_key            = "smtp__password";
+	my $smtp__security_key            = "smtp__security";
+	my $smtp__encrypt_pass_key        = "smtp__encrypt_pass";
+	my $smtp__helo_domain_key         = "smtp__helo_domain";
+	my $mail_data__to_key             = "mail_data__to";
+	my $mail_data__sending_domain_key = "mail_data__sending_domain";
+	record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	if (not $conf->{cgi}{save})
+	{
+		# First time loading the config, so pre-populate the values
+		# with the data from the config file.
+		$conf->{cgi}{smtp__server}              = defined $conf->{smtp}{server}              ? $conf->{smtp}{server}              : ""; 
+		$conf->{cgi}{smtp__port}                = defined $conf->{smtp}{port}                ? $conf->{smtp}{port}                : "";
+		$conf->{cgi}{smtp__timeout}             = defined $conf->{smtp}{timeout}             ? $conf->{smtp}{timeout}             : "";
+		$conf->{cgi}{smtp__username}            = defined $conf->{smtp}{username}            ? $conf->{smtp}{username}            : "";
+		$conf->{cgi}{smtp__password}            = defined $conf->{smtp}{password}            ? $conf->{smtp}{password}            : "";
+		$conf->{cgi}{smtp__security}            = defined $conf->{smtp}{security}            ? $conf->{smtp}{security}            : "";
+		$conf->{cgi}{smtp__encrypt_pass}        = defined $conf->{smtp}{encrypt_pass}        ? $conf->{smtp}{encrypt_pass}        : "";
+		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
+		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
+		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
+	}
+	
+	# Switch to the per-Anvil! values if an Anvil! is defined.
+	my $this_cluster = "";
+	my $this_id      = "";
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
+	if ($conf->{cgi}{anvil})
+	{
+		$this_cluster                  = $conf->{cgi}{anvil};
+		$this_id                       = defined $conf->{clusters}{$this_cluster}{id} ? $conf->{clusters}{$this_cluster}{id} : "new";
+		$smtp__server_key              = "cluster__${this_id}__smtp__server";
+		$smtp__port_key                = "cluster__${this_id}__smtp__port";
+		$smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
+		$smtp__username_key            = "cluster__${this_id}__smtp__username";
+		$smtp__password_key            = "cluster__${this_id}__smtp__password";
+		$smtp__security_key            = "cluster__${this_id}__smtp__security";
+		$smtp__encrypt_pass_key        = "cluster__${this_id}__smtp__encrypt_pass";
+		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
+		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
+		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
+		record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	}
+	
+	my $say_smtp__server              = $conf->{cgi}{$smtp__server_key}; 
+	my $say_smtp__port                = $conf->{cgi}{$smtp__port_key};
+	my $say_smtp__timeout             = $conf->{cgi}{$smtp__timeout_key};
+	my $say_smtp__username            = $conf->{cgi}{$smtp__username_key};
+	my $say_smtp__password            = $conf->{cgi}{$smtp__password_key};
+	my $say_smtp__security            = $conf->{cgi}{$smtp__security_key};
+	my $say_smtp__encrypt_pass        = $conf->{cgi}{$smtp__encrypt_pass_key};
+	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
+	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
+	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
+	record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
+	
+	# Build the security select box.
+	my $say_security        =  $conf->{cgi}{$smtp__security_key};
+	my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
+	   $say_security_select .= "<option value=\"None\">None</option>\n";
+	   $say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
+	   $say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
+	   $say_security_select .= "</select>\n";
+	   $say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
+	record($conf, "$THIS_FILE ".__LINE__."; say_security_select: [$say_security_select]\n");
+	
+	# Build the encrypt password select box.
+	my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
+	my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
+	   $say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
+	   $say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
+	   $say_encrypt_pass_select .= "</select>\n";
+	   $say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
+	record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
+	
+	print "
 				<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
 				<tr>
 					<td class=\"highlight_good\" style=\"white-space: nowrap;\">
@@ -1485,6 +1638,17 @@ sub configure_dashboard
 			&nbsp;
 		</td>
 	</tr>
+";
+	
+	return(0);
+}
+
+# This displays a list of all Anvil!s for the global configuration page.
+sub show_global_anvil_list
+{
+	my ($conf) = @_;
+	
+	print "
 	<tr>
 		<td class=\"td_hidden\">
 			<table align=\"center\" width=\"100%\">
@@ -1518,22 +1682,22 @@ sub configure_dashboard
 					</td>
 				</tr>
 ";
-		my $ids = "";
-		foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
+	my $ids = "";
+	foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], clusters:${this_cluster}::name: [$conf->{clusters}{$this_cluster}{name}]\n");
+		my $this_id           = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
+		my $this_company      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "--";
+		$this_company      = convert_text_to_html($conf, $this_company);
+		my $this_description  = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "--";
+		$this_description  = convert_text_to_html($conf, $this_description);
+		my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
+		if ($this_url)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], clusters:${this_cluster}::name: [$conf->{clusters}{$this_cluster}{name}]\n");
-			my $this_id           = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
-			my $this_company      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "--";
-			$this_company      = convert_text_to_html($conf, $this_company);
-			my $this_description  = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "--";
-			$this_description  = convert_text_to_html($conf, $this_description);
-			my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
-			if ($this_url)
-			{
-				$this_url = "<a href=\"$this_url\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
-			}
-			
-			print "
+			$this_url = "<a href=\"$this_url\" target=\"_new\"><img src=\"/img/anvil-url_16x16.png\"></a>";
+		}
+		
+		print "
 					<tr>
 						<td>
 							<a href=\"?config=true&anvil=$this_cluster\">$this_cluster</a>
@@ -1549,17 +1713,9 @@ sub configure_dashboard
 						</td>
 					</tr>
 ";
-		}
+	}
 
-		print "
-				<tr>
-					<td colspan=\"4\">
-						&nbsp;
-					</td>
-				</tr>
-";
-
-		print "
+	print "
 				<tr>
 					<td colspan=\"4\">
 						&nbsp;
@@ -1568,341 +1724,116 @@ sub configure_dashboard
 			</table>
 		</td>
 	</tr>
+";
+	print "
 </table>
 <br />
 ";
-	}
 	
 	return(0);
 }
 
-=pod
-	<tr>
-		<td class=\"highlight_good\" style=\"white-space: nowrap;\">
-			Anvil! Systems
-		</td>
-		<td colspan=\"3\" style=\"text-align: left;\">
-			Here you can add, edit or delete <i>Anvil!</i> systems you manage. This section requires a little more technical knowledge. <br />
-			If you have any trouble with this section, please don't hesitate to <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact us</a>.<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			Anvil! Name
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			This is the name of your <i>Anvil!</i>'s cluster name.<br />
-			This is set in <span class=\"code\">cluster.conf</span> in the <span class=\"code\"><cluster ...></span> element's <span class=\"code\">name=\"...\"</span> attribute.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			Description
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			Owner
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
-			This is a purely descriptive field and you can set it to whatever you want.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration\" target=\"_new\">More Info</a>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			'ricci' Password
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
-			Your dashboard needs this password in order to add, edit and remove servers from the given <i>Anvil!</i>.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci\" target=\"_new\">More Info</a>,<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			'root' Password
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			On most <i>Anvil!</i> systems, the same password is used for both the '<span class=\"highlight_note\">ricci</span>' and '<span class=\"highlight_note\">root</span>' users.<br />
-			If this is the case for you, you can leave this blank.<br />
-			If you set a different '<span class=\"highlight_note\">root</span>' password though, please enter that password here.<br />
-			Please note that both nodes must have the same root password.
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			Tracking URL
-		</td>
-		<td colspan=\"2\" style=\"text-align: left;\">
-			If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
-		</td>
-		<td style=\"white-space: nowrap;\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_note\" style=\"white-space: nowrap;\">
-			Node 1 &amp; 2
-		</td>
-		<td colspan=\"3\" style=\"text-align: left; border-bottom: 1px solid white;\">
-			This section has three fields per node.<br />
-			<table width=\"100%\" class=\"hidden_table\">
-				<tr>
-					<td class=\"highlight_note\" style=\"text-align: right;\">
-						Node Name:
-					</td>
-					<td style=\"text-align: left;\">
-						The host name of the node. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
-					</td>
-					<td style=\"white-space: nowrap;\">
-						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names\" target=\"_new\">More Info</a>
-					</td>
-				</tr>
-				<tr>
-					<td class=\"highlight_note\" style=\"text-align: right;\">
-						IP Address:
-					</td>
-					<td style=\"text-align: left;\">
-						Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
-						If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />
-						If you use DNS (or similar) to do name to IP translation, leave this blank.
-					</td>
-					<td style=\"white-space: nowrap;\">
-						<a href=\"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets\" target=\"_new\">More Info</a>
-					</td>
-				</tr>
-				<tr>
-					<td class=\"highlight_note\" style=\"text-align: right;\">
-						TCP Port:
-					</td>
-					<td style=\"text-align: left;\">
-						This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
-						If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
-						When in doubt, leave this blank.<br />
-					</td>
-					<td style=\"white-space: nowrap;\">
-						<a href=\"http://en.wikipedia.org/wiki/Port_forwarding\" target=\"_new\">More Info</a>
-					</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
-";
-	my $ids = "";
-	foreach my $this_cluster ((sort {$a cmp $b} keys %{$conf->{clusters}}), "new")
-	{
-		my $this_id           = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
-		my $this_name         = defined $conf->{clusters}{$this_cluster}{name}        ? $conf->{clusters}{$this_cluster}{name}        : "";
-		my $this_company      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "";
-		   $this_company      = convert_text_to_html($conf, $this_company);
-		my $this_description  = defined $conf->{clusters}{$this_cluster}{description} ? $conf->{clusters}{$this_cluster}{description} : "";
-		   $this_description  = convert_text_to_html($conf, $this_description);
-		my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
-		my $this_ricci_pw     = defined $conf->{clusters}{$this_cluster}{ricci_pw}    ? $conf->{clusters}{$this_cluster}{ricci_pw}    : "";
-		my $this_root_pw      = defined $conf->{clusters}{$this_cluster}{root_pw}     ? $conf->{clusters}{$this_cluster}{root_pw}     : "";
-		my $this_nodes_1_name = defined $conf->{clusters}{$this_cluster}{nodes}[0]    ? $conf->{clusters}{$this_cluster}{nodes}[0]    : "";
-		my $this_nodes_1_ip   = defined $conf->{hosts}{$this_nodes_1_name}{ip}        ? $conf->{hosts}{$this_nodes_1_name}{ip}        : "";
-		my $this_nodes_1_port = defined $conf->{hosts}{$this_nodes_1_name}{port}      ? $conf->{hosts}{$this_nodes_1_name}{port}      : "";
-		my $this_nodes_2_name = defined $conf->{clusters}{$this_cluster}{nodes}[1]    ? $conf->{clusters}{$this_cluster}{nodes}[1]    : "";
-		my $this_nodes_2_ip   = defined $conf->{hosts}{$this_nodes_2_name}{ip}        ? $conf->{hosts}{$this_nodes_2_name}{ip}        : "";
-		my $this_nodes_2_port = defined $conf->{hosts}{$this_nodes_2_name}{port}      ? $conf->{hosts}{$this_nodes_2_name}{port}      : "";
-		# If the page reloaded, use the passed-in CGI values.
-		if ($conf->{cgi}{save})
-		{
-			my $name_key         = "cluster__${this_id}__name";
-			my $description_key  = "cluster__${this_id}__description";
-			my $url_key          = "cluster__${this_id}__url";
-			my $company_key      = "cluster__${this_id}__company";
-			my $ricci_pw_key     = "cluster__${this_id}__ricci_pw";
-			my $root_pw_key      = "cluster__${this_id}__root_pw";
-			my $nodes_1_name_key = "cluster__${this_id}__nodes_1_name";
-			my $nodes_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
-			my $nodes_1_port_key = "cluster__${this_id}__nodes_1_port";
-			my $nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
-			my $nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
-			my $nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
-			
-			$this_name         =  $conf->{cgi}{$name_key};
-			$this_description  =  $conf->{cgi}{$description_key};
-			$this_description  = convert_text_to_html($conf, $this_description);
-			$this_url          =  $conf->{cgi}{$url_key};
-			$this_company      =  $conf->{cgi}{$company_key};
-			$this_company      =  convert_text_to_html($conf, $this_company);
-			$this_ricci_pw     =  $conf->{cgi}{$ricci_pw_key};
-			$this_root_pw      =  $conf->{cgi}{$root_pw_key};
-			$this_nodes_1_name =  $conf->{cgi}{$nodes_1_name_key};
-			$this_nodes_1_ip   =  $conf->{cgi}{$nodes_1_ip_key};
-			$this_nodes_1_port =  $conf->{cgi}{$nodes_1_port_key};
-			$this_nodes_1_port =~ s/,//;
-			$this_nodes_2_name =  $conf->{cgi}{$nodes_2_name_key};
-			$this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
-			$this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
-			$this_nodes_2_port =~ s/,//;
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id], \n");
-		
-		my $say_this_cluster = $this_cluster;
-		my $clear_icon       = "<img onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\" src=\"/img/icon_clear-fields_16x16.png\">";
-		
-		print "
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>";
-		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
-		if ((not $ids) && ($this_cluster ne "new"))
-		{
-			print "
-	<tr>
-		<td colspan=\"4\">
-			<b>Existing <i>Anvil!</i> Systems</b>
-		</td>
-	</tr>
-";
-		}
-		if ($this_cluster eq "new")
-		{
-			$say_this_cluster = "";
-			$clear_icon       = "";
-			print "
-	<tr>
-		<td colspan=\"4\">
-			<b>Add a new <i>Anvil!</i> System</b>
-		</td>
-	</tr>
-";
-		}
-		$ids .= "$this_id,";
-		print "
-	<tr>
-		<td colspan=\"4\" style=\"text-align: left;\">
-			<table width=\"100%\" class=\"hidden_table\">
-				<tr>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Anvil! Name:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 300px;\"> &nbsp; &nbsp; $clear_icon
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Description:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\"> <span class=\"subtle_text_fixed_width\">(id: $this_id)</span>
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Tracking URL:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
-					</td>
-				</tr>
-				<tr>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Owner:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						'ricci' Password:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						'root' Password:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\">
-					</td>
-				</tr>
-				<tr>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Node 1 Name:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						IP Address:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						TCP Port:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\">
-					</td>
-				</tr>
-				<tr>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						Node 2 Name:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						IP Address:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\">
-					</td>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
-						TCP Port:
-					</td>
-					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\">
-					</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
-";
-	}
-	$ids =~ s/,$//;
+# This allows the user to configure their dashboard.
+sub configure_dashboard
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
+	read_hosts($conf);
+	read_ssh_config($conf);
+	
+	if ($conf->{cgi}{save})
+	{
+		if ($conf->{cgi}{section} eq "global")
+		{
+			save_global_dashboard_configure($conf);
+		}
+		elsif ($conf->{cgi}{section} eq "anvil")
+		{
+			
+		}
+	}
+	
+	# If this is the first time the page is loaded, populate the values
+	# with whatever was already in an.conf.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}]\n");
+	if ($conf->{cgi}{save})
+	{
+		my $this_cluster          = $conf->{cgi}{anvil};
+		my $this_id               = defined $conf->{clusters}{$this_cluster}{id} ? $conf->{clusters}{$this_cluster}{id} : "new";
+		my $name_key              = "cluster__${this_id}__name";
+		my $description_key       = "cluster__${this_id}__description";
+		my $url_key               = "cluster__${this_id}__url";
+		my $company_key           = "cluster__${this_id}__company";
+		my $ricci_pw_key          = "cluster__${this_id}__ricci_pw";
+		my $root_pw_key           = "cluster__${this_id}__root_pw";
+		my $nodes_1_name_key      = "cluster__${this_id}__nodes_1_name";
+		my $nodes_1_ip_key        = "cluster__${this_id}__nodes_1_ip";
+		my $nodes_1_port_key      = "cluster__${this_id}__nodes_1_port";
+		my $nodes_2_name_key      = "cluster__${this_id}__nodes_2_name";
+		my $nodes_2_ip_key        = "cluster__${this_id}__nodes_2_ip";
+		my $nodes_2_port_key      = "cluster__${this_id}__nodes_2_port";
+		
+# 		$this_name             =  $conf->{cgi}{$name_key};
+# 		$this_description      =  $conf->{cgi}{$description_key};
+# 		$this_description      =  convert_text_to_html($conf, $this_description);
+# 		$this_url              =  $conf->{cgi}{$url_key};
+# 		$this_company          =  $conf->{cgi}{$company_key};
+# 		$this_company          =  convert_text_to_html($conf, $this_company);
+# 		$this_ricci_pw         =  $conf->{cgi}{$ricci_pw_key};
+# 		$this_root_pw          =  $conf->{cgi}{$root_pw_key};
+# 		$this_nodes_1_name     =  $conf->{cgi}{$nodes_1_name_key};
+# 		$this_nodes_1_ip       =  $conf->{cgi}{$nodes_1_ip_key};
+# 		$this_nodes_1_port     =  $conf->{cgi}{$nodes_1_port_key};
+# 		$this_nodes_1_port     =~ s/,//;
+# 		$this_nodes_2_name     =  $conf->{cgi}{$nodes_2_name_key};
+# 		$this_nodes_2_ip       =  $conf->{cgi}{$nodes_2_ip_key};
+# 		$this_nodes_2_port     =  $conf->{cgi}{$nodes_2_port_key};
+# 		$this_nodes_2_port     =~ s/,//;
+		
+	}
+	
+	### Header section
+	### If showing the main page, it's global settings and then the list of Anvil!s.
+	### If showing an Anvil!, it's the Anvil!'s details and then the overrides.
+
 	print "
-	<tr>
-		<td colspan=\"4\">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"4\">
-			<input type=\"hidden\" name=\"ids\" value=\"$ids\">
-			<input type=\"hidden\" name=\"config\" value=\"true\">
-			<input type=\"submit\" name=\"save\" value=\"Save\" class=\"button\">
-		</td>
-	</tr>
+<table align=\"center\" class=\"hidden_table\" style=\"margin-left: 10px; margin-right: 10px;\">
+";
+	
+	# If showing an Anvil!, display it's details first.
+	if ($conf->{cgi}{anvil})
+	{
+		# Show Anvil! header and node settings.
+		show_anvil_config_header($conf);
+	}
+	else
+	{
+		# Show the global header only. We'll show the settings in a minute.
+		show_global_config_header($conf);
+	}
+	
+	# Show the common options (whether global or anvil-specific will have been sorted out above.
+	show_common_config_section($conf);
+	
+	my $say_section = "global";
+	if ($conf->{cgi}{anvil})
+	{
+		$say_section = "anvil";
+	}
+	else
+	{
+		# Show the list of Anvil!s if this is the global section.
+		show_global_anvil_list($conf);
+	}
+	# Close out the form.
+	print "
 </table>
 <br />
 ";
-	
-	return(1);
+
+	return(0);
 }
-=cut
 
 # This takes a plain text string and escapes special characters for displaying
 # in HTML.
@@ -2389,13 +2320,17 @@ sub header
 	{
 		if ($conf->{cgi}{save})
 		{
-			$say_refresh = "<a href=\"?config=true\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+			$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 			$say_back    = "<a href=\"?config=true\"><img src=\"/img/back.png\" alt=\"back\"></a>";
 		}
 		else
 		{
-			$say_refresh = "<a href=\"?config=true\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
+			$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"/img/refresh.png\" alt=\"refresh\"></a>";
 			$say_back    = "<a href=\"?logo=true\"><img src=\"/img/back.png\" alt=\"back\"></a>";
+			if ($conf->{cgi}{anvil})
+			{
+				$say_back = "<a href=\"?config=true\"><img src=\"/img/back.png\" alt=\"back\"></a>";
+			}
 		}
 	}
 	elsif ($conf->{cgi}{logo})

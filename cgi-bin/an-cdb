@@ -265,6 +265,16 @@ if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil}))
 			"cluster__${this_id}__nodes_2_name",
 			"cluster__${this_id}__nodes_2_ip",
 			"cluster__${this_id}__nodes_2_port",
+			"cluster__${this_id}__smtp__server",
+			"cluster__${this_id}__smtp__port",
+			"cluster__${this_id}__smtp__timeout",
+			"cluster__${this_id}__smtp__username",
+			"cluster__${this_id}__smtp__password",
+			"cluster__${this_id}__smtp__security",
+			"cluster__${this_id}__smtp__encrypt_pass",
+			"cluster__${this_id}__smtp__helo_domain",
+			"cluster__${this_id}__mail_data__to",
+			"cluster__${this_id}__mail_data__sending_domain",
 		]);
 	}
 }
