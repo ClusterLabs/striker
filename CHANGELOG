@@ -20,6 +20,9 @@ v1.0.4 - <in-progress>
 - Added new variable for 'cluster::X::root_pw' if the root password is
   different from the ricci password. When not defined, the ricci password will
   be used.
+- Changed the WebUI configuration to now uses separate pages for configuring a
+  given Anvil!. Added support for per-anvil! overrides of global email values,
+  though support for this has not yet been added to the alert monitor.
 - Log data is flushed to disk before exiting record().
 - Changed the 'lvcreate' calls to use Gibibytes instead of Megabytes.
 - Switch an-cm to use the common an-cdb.log file.

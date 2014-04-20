@@ -9,12 +9,18 @@ body {
 	padding: 0;
 }
 
+.logo {
+	box-shadow: 0 0 5px #888;
+}
+
 table {
 	font-size: 100%;
 	color: #1f1f4f;
 	background-color: white;
 	border-collapse: collapse;
 	box-shadow: 0 0 5px #888;
+	margin: 0 auto;
+	
 	/*margin-left: 10px; 
 	margin-right: 10px;*/
 }
@@ -34,28 +40,31 @@ td {
 
 .td_hidden {
 	border: 1px solid #d1cfd3;
-	padding-left: 0px;
-	padding-right: 0px;
-	padding-top: 0px;
-	padding-bottom: 0px;
-	margin: 0px;
+/* 	padding-left: 0px; */
+/* 	padding-right: 0px; */
+/* 	padding-top: 0px; */
+/* 	padding-bottom: 0px; */
+/* 	margin: 0 auto; */
+
 /* 	border-spacing: 0px;  */
 /* 	border-color: #ffffff; */
 }
 
 .hidden_table {
-/* 	font-size: 100%; */
-/* 	color: transparent; */
 	background-color: transparent;
 	border-collapse: collapse;
 	box-shadow: none;
-	padding-left: 0px;
+	margin: 0 auto;
+	
+/* 	font-size: 100%; */
+/* 	color: transparent; */
+/*	padding-left: 0px;
 	padding-right: 0px;
 	padding-top: 0px;
-	padding-bottom: 0px;
+	padding-bottom: 0px;*/
 /* 	border-spacing: 0px;  */
 /* 	border: 1px solid #d1cfd3; */
-	border-color: 1px solid red;
+/* 	border-color: 1px solid red; */
 }
 
 .legal {
@@ -303,4 +312,5 @@ img {
 	background:url(images/tt_bottom.gif) top right no-repeat;
 	overflow:hidden;
 }den;
+};
 }

@@ -202,7 +202,7 @@ get_cgi_vars($conf, [
 	"do",
 	"driver_iso",
 	"host",
-	"ids",
+	"anvil_id",
 	"insert",
 	"install_iso",
 	"logical_disk",
@@ -246,37 +246,34 @@ if ($conf->{cgi}{config})
 }
 
 # If 'anvil' was passed, get it's ID and then check for CGI variables.
-if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil}))
+if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
 {
-	my $this_cluster = $conf->{cgi}{anvil};
-	if ($conf->{clusters}{$this_cluster}{id})
-	{
-		my $this_id = $conf->{clusters}{$this_cluster}{id};
-		get_cgi_vars($conf, [
-			"cluster__${this_id}__name",
-			"cluster__${this_id}__description",
-			"cluster__${this_id}__url",
-			"cluster__${this_id}__company",
-			"cluster__${this_id}__ricci_pw",
-			"cluster__${this_id}__root_pw",
-			"cluster__${this_id}__nodes_1_name",
-			"cluster__${this_id}__nodes_1_ip",
-			"cluster__${this_id}__nodes_1_port",
-			"cluster__${this_id}__nodes_2_name",
-			"cluster__${this_id}__nodes_2_ip",
-			"cluster__${this_id}__nodes_2_port",
-			"cluster__${this_id}__smtp__server",
-			"cluster__${this_id}__smtp__port",
-			"cluster__${this_id}__smtp__timeout",
-			"cluster__${this_id}__smtp__username",
-			"cluster__${this_id}__smtp__password",
-			"cluster__${this_id}__smtp__security",
-			"cluster__${this_id}__smtp__encrypt_pass",
-			"cluster__${this_id}__smtp__helo_domain",
-			"cluster__${this_id}__mail_data__to",
-			"cluster__${this_id}__mail_data__sending_domain",
-		]);
-	}
+	my $this_id = $conf->{cgi}{anvil_id};
+	record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+	get_cgi_vars($conf, [
+		"cluster__${this_id}__name",
+		"cluster__${this_id}__description",
+		"cluster__${this_id}__url",
+		"cluster__${this_id}__company",
+		"cluster__${this_id}__ricci_pw",
+		"cluster__${this_id}__root_pw",
+		"cluster__${this_id}__nodes_1_name",
+		"cluster__${this_id}__nodes_1_ip",
+		"cluster__${this_id}__nodes_1_port",
+		"cluster__${this_id}__nodes_2_name",
+		"cluster__${this_id}__nodes_2_ip",
+		"cluster__${this_id}__nodes_2_port",
+		"cluster__${this_id}__smtp__server",
+		"cluster__${this_id}__smtp__port",
+		"cluster__${this_id}__smtp__timeout",
+		"cluster__${this_id}__smtp__username",
+		"cluster__${this_id}__smtp__password",
+		"cluster__${this_id}__smtp__security",
+		"cluster__${this_id}__smtp__encrypt_pass",
+		"cluster__${this_id}__smtp__helo_domain",
+		"cluster__${this_id}__mail_data__to",
+		"cluster__${this_id}__mail_data__sending_domain",
+	]);
 }
 
 # Pick up the list of volume groups.

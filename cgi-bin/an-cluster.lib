@@ -45,155 +45,96 @@ sub sanity_check_an_conf
 {
 	my ($conf, $sections) = @_;
 	
+	# This will flip to '0' if any errors are encountered.
 	my $save       = 1;
-	my $delete_ids = "";
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"2\">
-			<b>Saving Changes...</b>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good\">
-			Validating
-		</td>
-		<td style=\"text-align: left;\">
-			Making sure things look ok.
-		</td>
-	</tr>
-";
-	# Make sure email addresses are.
-	if (($conf->{cgi}{smtp__username}) && ($conf->{cgi}{smtp__username} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
-	{
-		$save = 0;
-		print "
-	<tr>
-		<td class=\"highlight_warning\">
-			Mail Server User
-		</td>
-		<td style=\"text-align: left;\">
-			The email address: [<span class=\"highlight_detail\">$conf->{cgi}{smtp__username}</span>] does not appear to be valid.
-		</td>
-	</tr>
-";
-	}
-	if ($conf->{cgi}{mail_data__to})
-	{
-		foreach my $email (split /,/, $conf->{cgi}{mail_data__to})
-		{
-			next if not $email;
-			if ($email !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/)
-			{
-				$save = 0;
-				print "
-	<tr>
-		<td class=\"highlight_warning\">
-			Alert Recipient
-		</td>
-		<td style=\"text-align: left;\">
-			The email address: [<span class=\"highlight_detail\">$email</span>] does not appear to be valid.
-		</td>
-	</tr>
-";
-			}
-		}
-	}
 	
-	# Make sure values that should be numerical are.
-	if ($conf->{cgi}{smtp__port})
-	{
-		$conf->{cgi}{smtp__port} =~ s/,//;
-		if (($conf->{cgi}{smtp__port} =~ /\D/) || ($conf->{cgi}{smtp__port} < 1) || ($conf->{cgi}{smtp__port} > 65535))
-		{
-			$save = 0;
-			print "
-	<tr>
-		<td class=\"highlight_warning\">
-			Mail Server Port
-		</td>
-		<td style=\"text-align: left;\">
-			The mail server port needs to be a number between '<span class=\"highlight_detail\">1</span>' and '<span class=\"highlight_detail\">65535</span>'.
-		</td>
-	</tr>
-";
-		}
-	}
-	elsif ($conf->{cgi}{smtp__server})
-	{
-		$save = 0;
-		print "
-	<tr>
-		<td class=\"highlight_warning\">
-			Mail Server Port
-		</td>
-		<td style=\"text-align: left;\">
-			You need to specify what TCP your mail server is listening on.<br />
-			Usually this is either '<span class=\"highlight_detail\">25</span>' or '<span class=\"highlight_detail\">587</span>'.
-		</td>
-	</tr>
-";
-	}
-	if ($conf->{cgi}{smtp__timeout})
-	{
-		$conf->{cgi}{smtp__timeout} =~ s/,//g;
-		$conf->{cgi}{smtp__timeout} =~ s/\s//g;
-		if ($conf->{cgi}{smtp__timeout} =~ /\D/)
-		{
-			$save = 0;
-			print "
-	<tr>
-		<td class=\"highlight_warning\">
-			Mail Server Timeout
-		</td>
-		<td style=\"text-align: left;\">
-			The timeout your specified: [<span class=\"highlight_detail\">$conf->{cgi}{smtp__timeout}</span>] appears to have a mistake.<br />
-			It needs to be a number of seconds. The default is '<span class=\"highlight_detail\">60</span>' seconds.
-		</td>
-	</tr>
-";
-		}
-	}
-	else
-	{
-		$conf->{cgi}{smtp__port} = 60;
-	}
+	# Which global values I am sanity checking depends on whether the user
+	# is modifying the global section or an anvil!.
+	my $smtp__server_key              = "smtp__server";
+	my $smtp__port_key                = "smtp__port";
+	my $smtp__timeout_key             = "smtp__timeout";
+	my $smtp__username_key            = "smtp__username";
+	my $smtp__password_key            = "smtp__password";
+	my $smtp__security_key            = "smtp__security";
+	my $smtp__encrypt_pass_key        = "smtp__encrypt_pass";
+	my $smtp__helo_domain_key         = "smtp__helo_domain";
+	my $mail_data__to_key             = "mail_data__to";
+	my $mail_data__sending_domain_key = "mail_data__sending_domain";
 
-=pod
-	# Now validate Anvil! entries.
-	foreach my $this_id (split/,/, $conf->{cgi}{ids})
+	# These will be populated in a moment if an Anvil! is being saved.
+	my $name_key         = "";
+	my $description_key  = "";
+	my $url_key          = "";
+	my $company_key      = "";
+	my $ricci_pw_key     = "";
+	my $root_pw_key      = "";
+	my $nodes_1_name_key = "";
+	my $nodes_1_ip_key   = "";
+	my $nodes_1_port_key = "";
+	my $nodes_2_name_key = "";
+	my $nodes_2_ip_key   = "";
+	my $nodes_2_port_key = "";
+	
+	my $this_nodes_1_ip   = "";
+	my $this_nodes_1_name = "";
+	my $this_nodes_1_port = "";
+	my $this_nodes_2_name = "";
+	my $this_nodes_2_ip   = "";
+	my $this_nodes_2_port = "";
+	
+	# Now see if I have an Anvil!
+	my $this_cluster = "";
+	my $this_id      = "";
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	if ($conf->{cgi}{anvil_id})
 	{
-		next if not $this_id;
-		my $name_key         = "cluster__${this_id}__name";
-		my $description_key  = "cluster__${this_id}__description";
-		my $url_key          = "cluster__${this_id}__url";
-		my $company_key      = "cluster__${this_id}__company";
-		my $ricci_pw_key     = "cluster__${this_id}__ricci_pw";
-		my $root_pw_key      = "cluster__${this_id}__root_pw";
-		my $nodes_1_name_key = "cluster__${this_id}__nodes_1_name";
-		my $nodes_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
-		my $nodes_1_port_key = "cluster__${this_id}__nodes_1_port";
-		my $nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
-		my $nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
-		my $nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
+		# Switch out the global keys to this Anvil!'s keys.
+		$this_id          = $conf->{cgi}{anvil_id};
+		$name_key         = "cluster__${this_id}__name";
+		$description_key  = "cluster__${this_id}__description";
+		$url_key          = "cluster__${this_id}__url";
+		$company_key      = "cluster__${this_id}__company";
+		$ricci_pw_key     = "cluster__${this_id}__ricci_pw";
+		$root_pw_key      = "cluster__${this_id}__root_pw";
+		$nodes_1_name_key = "cluster__${this_id}__nodes_1_name";
+		$nodes_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
+		$nodes_1_port_key = "cluster__${this_id}__nodes_1_port";
+		$nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
+		$nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
+		$nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
 		
 		my $this_name         =  $conf->{cgi}{$name_key};
+		   $this_cluster      =  $this_name;
+		record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster]\n");
 		my $this_description  =  $conf->{cgi}{$description_key};
 		my $this_url          =  $conf->{cgi}{$url_key};
 		my $this_company      =  $conf->{cgi}{$company_key};
 		my $this_ricci_pw     =  $conf->{cgi}{$ricci_pw_key};
 		my $this_root_pw      =  $conf->{cgi}{$root_pw_key};
-		my $this_nodes_1_name =  $conf->{cgi}{$nodes_1_name_key};
-		my $this_nodes_1_ip   =  $conf->{cgi}{$nodes_1_ip_key};
-		my $this_nodes_1_port =  $conf->{cgi}{$nodes_1_port_key};
-			$this_nodes_1_port =~ s/,//;
-		my $this_nodes_2_name =  $conf->{cgi}{$nodes_2_name_key};
-		my $this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
-		my $this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
-			$this_nodes_2_port =~ s/,//;
-			
+		   $this_nodes_1_name =  $conf->{cgi}{$nodes_1_name_key};
+		   $this_nodes_1_ip   =  $conf->{cgi}{$nodes_1_ip_key};
+		   $this_nodes_1_port =  $conf->{cgi}{$nodes_1_port_key};
+		   $this_nodes_1_port =~ s/,//;
+		   $this_nodes_2_name =  $conf->{cgi}{$nodes_2_name_key};
+		   $this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
+		   $this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
+		   $this_nodes_2_port =~ s/,//;
+		
+		$smtp__server_key              = "cluster__${this_id}__smtp__server";
+		$smtp__port_key                = "cluster__${this_id}__smtp__port";
+		$smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
+		$smtp__username_key            = "cluster__${this_id}__smtp__username";
+		$smtp__password_key            = "cluster__${this_id}__smtp__password";
+		$smtp__security_key            = "cluster__${this_id}__smtp__security";
+		$smtp__encrypt_pass_key        = "cluster__${this_id}__smtp__encrypt_pass";
+		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
+		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
+		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
+		
+		# Start the (in)sanity!
 		# Add the passed in port and IP (if exists) into the hashed
 		# created in read_hosts() and read_ssh_config;
+		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_ip: [$this_nodes_1_ip]\n");
 		if (($this_nodes_1_name) && ($this_nodes_1_ip))
 		{
 			$conf->{hosts}{$this_nodes_1_name}{ip} = $this_nodes_1_ip;
@@ -201,8 +142,9 @@ sub sanity_check_an_conf
 			{
 				$conf->{hosts}{by_ip}{$this_nodes_1_ip} = "";
 			}
-			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name,";
+			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
 		}
+		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_ip: [$this_nodes_2_ip]\n");
 		if (($this_nodes_2_name) && ($this_nodes_2_ip))
 		{
 			$conf->{hosts}{$this_nodes_2_name}{ip} = $this_nodes_2_ip;
@@ -210,12 +152,14 @@ sub sanity_check_an_conf
 			{
 				$conf->{hosts}{by_ip}{$this_nodes_2_ip} = "";
 			}
-			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name,";
+			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
 		}
+		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_port: [$this_nodes_1_port]\n");
 		if (($this_nodes_1_name) && ($this_nodes_1_port))
 		{
 			$conf->{hosts}{$this_nodes_1_name}{port} = $this_nodes_1_port;
 		}
+		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_port: [$this_nodes_2_port]\n");
 		if (($this_nodes_2_name) && ($this_nodes_2_port))
 		{
 			$conf->{hosts}{$this_nodes_2_name}{port} = $this_nodes_2_port;
@@ -235,36 +179,56 @@ sub sanity_check_an_conf
 			(not $this_nodes_2_ip) && 
 			(not $this_nodes_2_port))
 		{
-			next if $this_id eq "new";
-			# Using the values found in the existing config
-			# as these values do not exist in the CGI 
-			# variables.
-			$delete_ids .= "$this_id,";
-			my ($nodes_1_name, $nodes_2_name) = ($conf->{cluster}{$this_id}{name} =~ /(.*?),(.*)/);
-			$nodes_1_name =~ s/^\s+//;
-			$nodes_1_name =~ s/\s+$//;
-			$nodes_2_name =~ s/^\s+//;
-			$nodes_2_name =~ s/\s+$//;
-			record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$conf->{cluster}{$this_id}{name}], company: [$conf->{cluster}{$this_id}{company} ($conf->{cluster}{$this_id}{description})], node 1: [$nodes_1_name], node 2: [$nodes_2_name]\n");
-			
-			# Delete this from hosts and ssh_config
-			delete $conf->{hosts}{$nodes_1_name};
-			delete $conf->{hosts}{$nodes_2_name};
-			foreach my $this_ip (keys %{$conf->{hosts}{by_ip}})
+			# If this isn't 'new', delete this Anvil! from the config.
+			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
+			if ($this_id ne "new")
 			{
-				$conf->{hosts}{by_ip}{$this_ip} =~ "$nodes_1_name,";
-				$conf->{hosts}{by_ip}{$this_ip} =~ "$nodes_2_name,";
-				if (not $conf->{hosts}{by_ip}{$this_ip})
+				# Delete entries from the hosts and ssh_config
+				# files for this Anvil!, too.
+				my ($nodes_1_name, $nodes_2_name) = ($conf->{cluster}{$this_id}{name} =~ /(.*?),(.*)/);
+				$nodes_1_name =~ s/^\s+//;
+				$nodes_1_name =~ s/\s+$//;
+				$nodes_2_name =~ s/^\s+//;
+				$nodes_2_name =~ s/\s+$//;
+				record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$conf->{cluster}{$this_id}{name}], company: [$conf->{cluster}{$this_id}{company} ($conf->{cluster}{$this_id}{description})], node 1: [$nodes_1_name], node 2: [$nodes_2_name]\n");
+				
+				# Delete this from hosts and ssh_config
+				delete $conf->{hosts}{$nodes_1_name};
+				delete $conf->{hosts}{$nodes_2_name};
+				foreach my $this_ip (keys %{$conf->{hosts}{by_ip}})
 				{
-					delete $conf->{hosts}{by_ip}{$this_ip};
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/$nodes_1_name //;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/$nodes_2_name //;
+					if (not $conf->{hosts}{by_ip}{$this_ip})
+					{
+						delete $conf->{hosts}{by_ip}{$this_ip};
+					}
 				}
+				
+				# Now delete the Anvil! from memory.
+				delete $conf->{clusters}{$this_id};
 			}
-			delete $conf->{hosts}{$nodes_1_name};
-			delete $conf->{hosts}{$nodes_2_name};
+			else
+			{
+				# Not sure why a user is trying to save an empty Anvil!...
+				$save = 0;
+				print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Anvil! Data Incomplete
+		</td>
+		<td style=\"text-align: left;\">
+			You appear to have tried to save an empty new <i>Anvil!</i>.<br />
+			At minimum, the '<span class=\"highlight_ready\">Anvil! Name</span>', '<span class=\"highlight_ready\">Node 1 Name</span> and '<span class=\"highlight_ready\">Node 2 Name</span>' must be specified.
+		</td>
+	</tr>
+";
+			}
 		}
 		else
 		{
 			# Something is defined, make sure it's sane.
+			record($conf, "$THIS_FILE ".__LINE__."; this_name: [$this_name], this_nodes_1_name: [$this_nodes_1_name], this_nodes_2_name: [$this_nodes_2_name]\n");
 			if ((not $this_name) || (not $this_nodes_1_name) || (not $this_nodes_2_name))
 			{
 				$save = 0;
@@ -286,6 +250,7 @@ sub sanity_check_an_conf
 				# now make sure the set values are
 				# sane.
 				# IPs sane?
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_ip: [$this_nodes_1_ip]\n");
 				if (($this_nodes_1_ip) && ($this_nodes_1_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
@@ -300,6 +265,7 @@ sub sanity_check_an_conf
 	</tr>
 ";
 				}
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_ip: [$this_nodes_2_ip]\n");
 				if (($this_nodes_2_ip) && ($this_nodes_2_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
@@ -315,6 +281,7 @@ sub sanity_check_an_conf
 ";
 				}
 				# Ports sane?
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_port: [$this_nodes_1_port]\n");
 				if (($this_nodes_1_port) && (($this_nodes_1_port =~ /\D/) || ($this_nodes_1_port < 1) || ($this_nodes_1_port > 65535)))
 				{
 					$save = 0;
@@ -330,6 +297,7 @@ sub sanity_check_an_conf
 	</tr>
 ";
 				}
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_port: [$this_nodes_2_port]\n");
 				if (($this_nodes_2_port) && (($this_nodes_2_port =~ /\D/) || ($this_nodes_2_port < 1) || ($this_nodes_2_port > 65535)))
 				{
 					$save = 0;
@@ -347,6 +315,7 @@ sub sanity_check_an_conf
 				}
 				# If there is an IP or Port, but no 
 				# node name, well that's just not good.
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_ip: [$this_nodes_1_ip], this_nodes_1_port: [$this_nodes_1_port]\n");
 				if ((not $this_nodes_1_name) && (($this_nodes_1_ip) || ($this_nodes_1_port)))
 				{
 					$save = 0;
@@ -361,6 +330,7 @@ sub sanity_check_an_conf
 	</tr>
 ";
 				}
+				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_ip: [$this_nodes_2_ip], this_nodes_2_port: [$this_nodes_2_port]\n");
 				if ((not $this_nodes_2_name) && (($this_nodes_2_ip) || ($this_nodes_2_port)))
 				{
 					$save = 0;
@@ -378,19 +348,206 @@ sub sanity_check_an_conf
 			}
 		}
 	}
-=cut
-	return ($save, $delete_ids);
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	
+	# Now Sanity check the global (or Anvil! override) values.
+	print "
+<table>
+	<tr>
+		<td colspan=\"2\">
+			<b>Saving Changes...</b>
+		</td>
+	</tr>
+	<tr>
+		<td class=\"highlight_good\">
+			Validating
+		</td>
+		<td style=\"text-align: left;\">
+			Making sure things look ok.
+		</td>
+	</tr>
+";
+	# Make sure email addresses are.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
+	if (($conf->{cgi}{$smtp__username_key}) && ($conf->{cgi}{$smtp__username_key} ne "#!inherit!#") && ($conf->{cgi}{$smtp__username_key} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
+	{
+		$save = 0;
+		print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server User
+		</td>
+		<td style=\"text-align: left;\">
+			The email address: [<span class=\"highlight_detail\">$conf->{cgi}{$smtp__username_key}</span>] does not appear to be valid.
+		</td>
+	</tr>
+";
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
+	if (($conf->{cgi}{$mail_data__to_key}) && ($conf->{cgi}{$mail_data__to_key} ne "#!inherit!#"))
+	{
+		foreach my $email (split /,/, $conf->{cgi}{$mail_data__to_key})
+		{
+			next if not $email;
+			if ($email !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/)
+			{
+				$save = 0;
+				print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Alert Recipient
+		</td>
+		<td style=\"text-align: left;\">
+			The email address: [<span class=\"highlight_detail\">$email</span>] does not appear to be valid.
+		</td>
+	</tr>
+";
+			}
+		}
+	}
+	
+	# Make sure values that should be numerical are.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
+	if (($conf->{cgi}{$smtp__port_key}) && ($conf->{cgi}{$smtp__port_key} ne "#!inherit!#"))
+	{
+		$conf->{cgi}{$smtp__port_key} =~ s/,//;
+		if (($conf->{cgi}{$smtp__port_key} =~ /\D/) || ($conf->{cgi}{$smtp__port_key} < 1) || ($conf->{cgi}{$smtp__port_key} > 65535))
+		{
+			$save = 0;
+			print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server Port
+		</td>
+		<td style=\"text-align: left;\">
+			The mail server port needs to be a number between '<span class=\"highlight_detail\">1</span>' and '<span class=\"highlight_detail\">65535</span>'.
+		</td>
+	</tr>
+";
+		}
+	}
+	elsif (($conf->{cgi}{$smtp__server_key}) && ($conf->{cgi}{$smtp__server_key} ne "#!inherit!#"))
+	{
+		$save = 0;
+		print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server Port
+		</td>
+		<td style=\"text-align: left;\">
+			You need to specify what TCP your mail server is listening on.<br />
+			Usually this is either '<span class=\"highlight_detail\">25</span>' or '<span class=\"highlight_detail\">587</span>'.
+		</td>
+	</tr>
+";
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}]\n");
+	if (($conf->{cgi}{$smtp__timeout_key}) && ($conf->{cgi}{$smtp__timeout_key} ne "#!inherit!#"))
+	{
+		$conf->{cgi}{$smtp__timeout_key} =~ s/,//g;
+		$conf->{cgi}{$smtp__timeout_key} =~ s/\s//g;
+		if ($conf->{cgi}{$smtp__timeout_key} =~ /\D/)
+		{
+			$save = 0;
+			print "
+	<tr>
+		<td class=\"highlight_warning\">
+			Mail Server Timeout
+		</td>
+		<td style=\"text-align: left;\">
+			The timeout your specified: [<span class=\"highlight_detail\">$conf->{cgi}{$smtp__timeout_key}</span>] appears to have a mistake.<br />
+			It needs to be a number of seconds. The default is '<span class=\"highlight_detail\">60</span>' seconds.
+		</td>
+	</tr>
+";
+		}
+	}
+	elsif ($conf->{cgi}{$smtp__timeout_key} ne "#!inherit!#")
+	{
+		$conf->{cgi}{$smtp__timeout_key} = 60;
+	}
+
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	if (($save) && ($conf->{cgi}{anvil_id}))
+	{
+		# Find a free ID after populating the keys above because
+		# they're going to come in from CGI as '...__new__...'.
+		record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+		if ($this_id eq "new")
+		{
+			# Find the next free ID number.
+			my $free_id = 1;
+			foreach my $existing_id (sort {$a cmp $b} keys %{$conf->{cluster}})
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
+				if ($existing_id eq $free_id)
+				{
+					$free_id++;
+					record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
+					next;
+				}
+				else
+				{
+					# Got a free one.
+					record($conf, "$THIS_FILE ".__LINE__."; free; free_id: [$free_id]\n");
+					last;
+				}
+			}
+			$this_id = $free_id;
+			record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+		}
+		
+		# If I'm still alive, push the passed in keys into $conf->{cluster}...
+		# so that they get written out in the next step.
+		$conf->{cluster}{$this_id}{name}        = $conf->{cgi}{$name_key};
+		$conf->{cluster}{$this_id}{description} = $conf->{cgi}{$description_key};
+		$conf->{cluster}{$this_id}{url}         = $conf->{cgi}{$url_key};
+		$conf->{cluster}{$this_id}{company}     = $conf->{cgi}{$company_key};
+		$conf->{cluster}{$this_id}{ricci_pw}    = $conf->{cgi}{$ricci_pw_key};
+		$conf->{cluster}{$this_id}{root_pw}     = $conf->{cgi}{$root_pw_key};
+		$conf->{cluster}{$this_id}{nodes}       = "$conf->{cgi}{$nodes_1_name_key}, $conf->{cgi}{$nodes_2_name_key}";
+		
+		# Record overrides, if any.
+		$conf->{cluster}{$this_id}{smtp}{server}              = $conf->{cgi}{$smtp__server_key};
+		$conf->{cluster}{$this_id}{smtp}{port}                = $conf->{cgi}{$smtp__port_key};
+		$conf->{cluster}{$this_id}{smtp}{timeout}             = $conf->{cgi}{$smtp__timeout_key};
+		$conf->{cluster}{$this_id}{smtp}{username}            = $conf->{cgi}{$smtp__username_key};
+		$conf->{cluster}{$this_id}{smtp}{password}            = $conf->{cgi}{$smtp__password_key};
+		$conf->{cluster}{$this_id}{smtp}{security}            = $conf->{cgi}{$smtp__security_key};
+		$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = $conf->{cgi}{$smtp__encrypt_pass_key};
+		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = $conf->{cgi}{$smtp__helo_domain_key};
+		$conf->{cluster}{$this_id}{mail_data}{to}             = $conf->{cgi}{$mail_data__to_key};
+		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
+		
+		# Record hosts
+		$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
+		$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
+		$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
+		$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
+	}
+
+	return ($save);
 }
 
 # This writes out the new an.conf file.
 sub write_new_an_conf
 {
-	my ($conf, $say_date, $delete_ids) = @_;
+	my ($conf, $say_date) = @_;
 	
 	my $last_line_was_blank = 0;
 	my $an_conf = IO::Handle->new();
 	open ($an_conf, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
-	print $an_conf "### Last updated: [$say_date]\n";
+	print $an_conf "### Last updated: [$say_date]
+###############################################################################
+#                                                                             #
+# Alteeve's Niche!                                    Dashboard Configuration #
+#                                                                             #
+# This is the global configuration for for AN!CDB dashboard and AN!CM alert   #
+# monitoring system. Once configured on a dashboard, you can copy it as-is to #
+# your nodes.                                                                 #
+#                                                                             #
+###############################################################################
+";
 	
 	print "
 	<tr>
@@ -402,160 +559,154 @@ sub write_new_an_conf
 		</td>
 	</tr>
 ";
-	# Write out the 'an.conf' file.
-	# If the sending domain or helo domain are 
-	# 'example.com', make them the short version of the
-	# sending email, if defined, or else the smtp server.
-	if ($conf->{cgi}{mail_data__sending_domain} eq "example.com")
+
+	# If saving the global values, check for a couple substitutions.
+	if (not $conf->{cgi}{anvil_id})
 	{
-		if ($conf->{cgi}{smtp__username} =~ /.*?\@(.*)/)
+		# If the sending domain or helo domain are 
+		# 'example.com', make them the short version of the
+		# sending email, if defined, or else the smtp server.
+		if ($conf->{cgi}{mail_data__sending_domain} eq "example.com")
 		{
-			$conf->{cgi}{mail_data__sending_domain} = $1;
+			if ($conf->{cgi}{smtp__username} =~ /.*?\@(.*)/)
+			{
+				$conf->{cgi}{mail_data__sending_domain} = $1;
+			}
+			else
+			{
+				$conf->{cgi}{mail_data__sending_domain} =  $conf->{cgi}{smtp__server};
+				$conf->{cgi}{mail_data__sending_domain} =~ s/^.*?\.(.*?\..*?)$/$1/;
+			}
 		}
-		else
+		if ($conf->{cgi}{smtp__helo_domain} eq "example.com")
 		{
-			$conf->{cgi}{mail_data__sending_domain} =  $conf->{cgi}{smtp__server};
-			$conf->{cgi}{mail_data__sending_domain} =~ s/^.*?\.(.*?\..*?)$/$1/;
-		}
-	}
-	if ($conf->{cgi}{smtp__helo_domain} eq "example.com")
-	{
-		if ($conf->{cgi}{smtp__username} =~ /.*?\@(.*)/)
-		{
-			$conf->{cgi}{smtp__helo_domain} = $1;
-		}
-		else
-		{
-			$conf->{cgi}{smtp__helo_domain} =  $conf->{cgi}{smtp__server};
-			$conf->{cgi}{smtp__helo_domain} =~ s/^.*?\.(.*?\..*?)$/$1/;
+			if ($conf->{cgi}{smtp__username} =~ /.*?\@(.*)/)
+			{
+				$conf->{cgi}{smtp__helo_domain} = $1;
+			}
+			else
+			{
+				$conf->{cgi}{smtp__helo_domain} =  $conf->{cgi}{smtp__server};
+				$conf->{cgi}{smtp__helo_domain} =~ s/^.*?\.(.*?\..*?)$/$1/;
+			}
 		}
 	}
 	
-	my $delete_blank_line = 0;
-	foreach my $line (@{$conf->{raw}{an_conf}})
+	# Write out the global values.
+	print $an_conf "
+### Global - These values apply to all Anvil! systems, unless overridden.
+
+# This configures how email is sent from this machine. Please be sure to set
+# the values below to the values given to you by your mail administrator (if
+# that's not you).
+#
+# This is the mail server to connect to when sending email.
+smtp::server				=	$conf->{smtp}{server}
+
+# This is the TCP port used to connect to the mail server.
+smtp::port				=	$conf->{smtp}{port}
+
+# This is the number of seconds to wait for a responce when connection to the
+# mail server on the given port that you set above.
+smtp::timeout				=	$conf->{smtp}{timeout}
+
+# This is the email address/IMAP user to send to the mail server. It is also
+# the address used in the 'From: ' field for emails sent from this machine.
+# NOTE: If you IMAP user name is not an email address, this may not work (it
+# has not been tested). If you have trouble, please let us know:
+# - https://alteeve.ca/w/Support
+smtp::username				=	$conf->{smtp}{username}
+
+# This is the password used for the email account above. This can be the
+# password directly, or a file that contains the password.
+#smtp::password				=	file:./email_pw.txt
+smtp::password				=	$conf->{smtp}{password}
+
+# This is the security level to use when connecting to the peer, if needed.
+smtp::security				=	$conf->{smtp}{security}
+
+# This tells us to use an encrypted connection to the mail server. Set to '0'
+# to send email plain-text (not recommended!).
+smtp::encrypt_pass			=	$conf->{smtp}{encrypt_pass}
+
+# This is the domain given to the mail server when establishing the connection.
+smtp::helo_domain			=	$conf->{smtp}{helo_domain}
+
+# This is a comma-separated list of email recipients. Please use bare email
+# addresses only.
+mail_data::to				=	$conf->{mail_data}{to}
+
+# This sets the 'sending domain' when sending email. It should match
+# smtp::server in most cases.
+mail_data::sending_domain		=	$conf->{mail_data}{sending_domain}
+
+### Per-Anvil! Configurations
+
+# This defines the cluster. If you want to defined multiple clusters for
+# AN!CDB, copy an entry in this section and increment the variable integer. 
+# The order and value do not matter. It's simply a differentiator. If only one
+# entry exists, the Dashboard's Anvil! selection screen will not show and the
+# sole entry will be auto-selected.
+#
+# name:        Must match the name set in the Anvil!'s 'cluster.conf' file. 
+# nodes:       A comma-separated list of nodes. On the AN!CDB server, this must
+#              be resolvable to the target machine (ie: via /etc/hosts +
+#              /etc/ssh/ssh_config)
+# company:     A free-form field used to show the owner of the Anvil!. 
+#              Particularly useful for resellers and companies with divisions.
+# description: Also a free-form field used to describe the purpose of the
+#              particular Anvil!.
+# url:         If defined, a link to the given URL will be shown beside the
+#              Anvil!'s name in the Dashboard's Anvil! selection screen. Useful
+#              for linking to internal documentation or similar.
+# ricci_pw:    This is the password used by the 'ricci' user on the Anvil!'s
+#              nodes. It must be set accurately in order to add or remove
+#              servers. If the 'root_pw' is not set below, this password will
+#              be used.
+# root_pw:     This password is used by the dashboard to log into this Anvil!'s
+#              nodes.
+";
+	
+	# Now print the individual Anvil!s 
+	foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; >> an_conf line: [$line]\n");
-		next if $line =~ /### Last updated/;
-		$line =~ s/^(smtp::server\s*=\s*).*$/$1$conf->{cgi}{smtp__server}/;
-		$line =~ s/^(smtp::port\s*=\s*).*$/$1$conf->{cgi}{smtp__port}/;
-		$line =~ s/^(smtp::timeout\s*=\s*).*$/$1$conf->{cgi}{smtp__timeout}/;
-		$line =~ s/^(smtp::username\s*=\s*).*$/$1$conf->{cgi}{smtp__username}/;
-		$line =~ s/^(smtp::password\s*=\s*).*$/$1$conf->{cgi}{smtp__password}/;
-		$line =~ s/^(smtp::security\s*=\s*).*$/$1$conf->{cgi}{smtp__security}/;
-		$line =~ s/^(smtp::encrypt_pass\s*=\s*).*$/$1$conf->{cgi}{smtp__encrypt_pass}/;
-		$line =~ s/^(smtp::helo_domain\s*=\s*).*$/$1$conf->{cgi}{smtp__helo_domain}/;
-		$line =~ s/^(mail_data::to\s*=\s*).*$/$1$conf->{cgi}{mail_data__to}/;
-		$line =~ s/^(mail_data::sending_domain\s*=\s*).*$/$1$conf->{cgi}{mail_data__sending_domain}/;
+		next if not $this_id;
+		next if not $conf->{cluster}{$this_id}{name};
 		
-		if ($line =~ /^cluster::(.*?)::(.*?)\s*=/)
-		{
-			my $this_id       = $1;
-			my $this_variable = $2;
-			if ($delete_ids =~ /$this_id,/)
-			{
-				# I need to delete a blank line
-				# to keep the config from 
-				# having odd spaces when 
-				# configs are deleted.
-				$delete_blank_line = 1;
-				next;
-			}
-			else
-			{
-				# Handled '::nodes' properly
-				if ($this_variable eq "nodes")
-				{
-					my $variable   = "cluster::${this_id}::nodes";
-					my $node_1_key = "cluster__${this_id}__nodes_1_name";
-					my $node_2_key = "cluster__${this_id}__nodes_2_name";
-					$line =~ s/^($variable\s*=\s*).*$/$1$conf->{cgi}{$node_1_key}, $conf->{cgi}{$node_2_key}/;
-				}
-				else
-				{
-					my $variable = "cluster::${this_id}::${this_variable}";
-					my $key      = "cluster__${this_id}__${this_variable}";
-					$line =~ s/^($variable\s*=\s*).*$/$1$conf->{cgi}{$key}/;
-				}
-			}
-		}
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [$line]\n");
-		if ($line =~ /^\s*$/)
-		{
-			if (not $last_line_was_blank)
-			{
-				print $an_conf "$line\n";
-			}
-			$last_line_was_blank = 1;
-		}
-		else
-		{
-			$last_line_was_blank = 0;
-			print $an_conf "$line\n";
-		}
-	}
-	# If 'new' has a cluster name, add it.
-	if ($conf->{cgi}{cluster__new__name})
-	{
-		# Find the first free ID.
-		my $new_id = 1;
-		foreach my $this_id (sort {$a cmp $b} split/,/, $conf->{cgi}{ids})
-		{
-			if ($this_id == $new_id)
-			{
-				$new_id++;
-			}
-			else
-			{
-				last;
-			}
-		}
-		# I need an updated 'ids' cgi for the 'hosts' and 'ssh_config'
-		# sections.
-		record($conf, "$THIS_FILE ".__LINE__."; >> cgi::ids: [$conf->{cgi}{ids}], new_id: [$new_id]\n");
-		$conf->{cgi}{ids} .= ",$new_id";
-		$conf->{cgi}{ids} =~ s/new//;
-		$conf->{cgi}{ids} =~ s/,,/,/;
-		record($conf, "$THIS_FILE ".__LINE__."; << cgi::ids: [$conf->{cgi}{ids}]\n");
+		# Main Anvil! values, always recorded, even when blank.
+		print $an_conf "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
+		print $an_conf "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
+		print $an_conf "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
+		print $an_conf "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
+		print $an_conf "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
+		print $an_conf "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
+		print $an_conf "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
+		print $an_conf "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
 		
-		my $name_key         = "cluster__${new_id}__name";
-		my $nodes_key        = "cluster__${new_id}__nodes";
-		my $nodes_1_name_key = "cluster__${new_id}__nodes_1_name";
-		my $nodes_2_name_key = "cluster__${new_id}__nodes_2_name";
-		my $company_key      = "cluster__${new_id}__company";
-		my $description_key  = "cluster__${new_id}__description";
-		my $url_key          = "cluster__${new_id}__url";
-		my $ricci_pw_key     = "cluster__${new_id}__ricci_pw";
-		my $root_pw_key      = "cluster__${new_id}__root_pw";
-		$conf->{cgi}{$name_key}        = $conf->{cgi}{cluster__new__name};
-		$conf->{cgi}{$nodes_key}       = "$conf->{cgi}{cluster__new__nodes_1_name}, $conf->{cgi}{cluster__new__nodes_2_name}";
-		$conf->{cgi}{$company_key}     = $conf->{cgi}{cluster__new__company};
-		$conf->{cgi}{$description_key} = $conf->{cgi}{cluster__new__description};
-		$conf->{cgi}{$url_key}         = $conf->{cgi}{cluster__new__url};
-		$conf->{cgi}{$ricci_pw_key}    = $conf->{cgi}{cluster__new__ricci_pw};
-		$conf->{cgi}{$root_pw_key}     = $conf->{cgi}{cluster__new__root_pw};
-		$conf->{cgi}{clusters__new__name}        = "";
-		$conf->{cgi}{clusters__new__nodes}       = "";
-		$conf->{cgi}{clusters__new__company}     = "";
-		$conf->{cgi}{clusters__new__description} = "";
-		$conf->{cgi}{clusters__new__url}         = "";
-		$conf->{cgi}{clusters__new__ricci_pw}    = "";
-		$conf->{cgi}{clusters__new__root_pw}     = "";
+		# Set any undefined values to '#!inherit!#'
+		$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
+		$conf->{cluster}{$this_id}{smtp}{port}                = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{port};
+		$conf->{cluster}{$this_id}{smtp}{timeout}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{timeout};
+		$conf->{cluster}{$this_id}{smtp}{username}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{username};
+		$conf->{cluster}{$this_id}{smtp}{password}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{password};
+		$conf->{cluster}{$this_id}{smtp}{security}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{security};
+		$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{encrypt_pass};
+		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{helo_domain};
+		$conf->{cluster}{$this_id}{mail_data}{to}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{to};
+		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{sending_domain};
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::name\t\t=\t$conf->{cgi}{$name_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::nodes\t\t=\t$conf->{cgi}{$nodes_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::company\t\t=\t$conf->{cgi}{$company_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::description\t\t=\t$conf->{cgi}{$description_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::url\t\t\t=\t$conf->{cgi}{$url_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::ricci_pw\t\t=\t$conf->{cgi}{$ricci_pw_key}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; an_conf line: [cluster::${new_id}::root_pw\t\t=\t$conf->{cgi}{$root_pw_key}]\n");
-		print $an_conf "cluster::${new_id}::name\t\t=\t$conf->{cgi}{$name_key}\n";
-		print $an_conf "cluster::${new_id}::nodes\t\t=\t$conf->{cgi}{$nodes_key}\n";
-		print $an_conf "cluster::${new_id}::company\t\t=\t$conf->{cgi}{$company_key}\n";
-		print $an_conf "cluster::${new_id}::description\t\t=\t$conf->{cgi}{$description_key}\n";
-		print $an_conf "cluster::${new_id}::url\t\t\t=\t$conf->{cgi}{$url_key}\n";
-		print $an_conf "cluster::${new_id}::ricci_pw\t\t=\t$conf->{cgi}{$ricci_pw_key}\n";
-		print $an_conf "cluster::${new_id}::root_pw\t\t=\t$conf->{cgi}{$root_pw_key}\n";
-		print $an_conf "\n";
+		# Record this Anvil!'s overrides (or that it doesn't override,
+		# as the case may be).
+		print $an_conf "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
+		print $an_conf "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
+		print $an_conf "cluster::${this_id}::smtp::timeout\t\t=\t$conf->{cluster}{$this_id}{smtp}{timeout}\n";
+		print $an_conf "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
+		print $an_conf "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
+		print $an_conf "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
+		print $an_conf "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
+		print $an_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
+		print $an_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
+		print $an_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
 	}
 	$an_conf->close();
 	
@@ -596,7 +747,7 @@ sub read_hosts
 				{
 					$conf->{hosts}{by_ip}{$this_ip} = "";
 				}
-				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host,";
+				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host ";
 				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
 			}
 		}
@@ -682,132 +833,35 @@ sub copy_file
 
 sub write_new_ssh_config
 {
-	my ($conf, $say_date, $delete_ids) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date], delete_ids: [$delete_ids]\n");
+	my ($conf, $say_date) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; write_new_ssh_config(); say_date: [$say_date]\n");
 	
 	my $ssh_config = IO::Handle->new();
 	open ($ssh_config, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
 	#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [### Last updated: [$say_date]]\n");
 	print $ssh_config "### Last updated: [$say_date]\n";
 	
-	my $last_time_blank = 0;
-	my $next_port       = "";
+	# Re print the ssh_config, but skip 'Host' sections for now.
 	foreach my $line (@{$conf->{raw}{ssh_config}})
 	{
 		next if $line =~ /### Last updated:/;
 		#record($conf, "$THIS_FILE ".__LINE__."; >> ssh_config line: [$line]\n");
-		if ($line =~ /^Host\s+(.*)$/)
-		{
-			my $this_host = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
-			
-			# See if this host has been deleted.
-			my $delete = 0;
-			foreach my $this_id (split/,/, $delete_ids)
-			{
-				next if not $this_id;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id], cluster::${this_id}::name: [$conf->{cluster}{$this_id}{name}]\n");
-				my ($nodes_1_name, $nodes_2_name) = ($conf->{cluster}{$this_id}{nodes} =~ /(.*?),(.*)/);
-				$nodes_1_name =~ s/^\s+//;
-				$nodes_1_name =~ s/\s+$//;
-				$nodes_2_name =~ s/^\s+//;
-				$nodes_2_name =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], deleted node 1: [$nodes_1_name], node 2: [$nodes_2_name]\n");
-				if (($this_host eq $nodes_1_name) || ($this_host eq $nodes_2_name))
-				{
-					$delete = 1;
-					#record($conf, "$THIS_FILE ".__LINE__."; delete: [$delete]\n");
-				}
-			}
-			
-			#record($conf, "$THIS_FILE ".__LINE__."; delete: [$delete]\n");
-			if ($delete)
-			{
-				$next_port = "delete";
-				#record($conf, "$THIS_FILE ".__LINE__."; next_port: [$next_port]\n");
-				delete $conf->{hosts}{$this_host};
-			}
-			elsif ($conf->{hosts}{$this_host}{port})
-			{
-				$next_port = $conf->{hosts}{$this_host}{port};
-				#record($conf, "$THIS_FILE ".__LINE__."; next_port: [$next_port]\n");
-				
-				print $ssh_config "$line\n";
-				#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [$line]\n");
-				
-				# Delete it so I don't append it later.
-				delete $conf->{hosts}{$this_host};
-			}
-		}
-		elsif ($line =~ /^\s*Port\s/)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; next_port: [$next_port]\n");
-			if ($next_port)
-			{
-				# If this is a deleted one, bail out.
-				if ($next_port eq "delete")
-				{
-					#record($conf, "$THIS_FILE ".__LINE__."; Deleted node.\n");
-					$next_port = "";
-				}
-				else
-				{
-					print $ssh_config "\tPort $next_port\n\n";
-					#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [\tPort $next_port]\n");
-					$next_port = "";
-				}
-			}
-			else
-			{
-				# Not one of ours.
-				if ($line =~ /^\s*$/)
-				{
-					if ($last_time_blank)
-					{
-						next;
-					}
-					else
-					{
-						$last_time_blank = 1;
-					}
-				}
-				else
-				{
-					$last_time_blank = 0;
-				}
-				print $ssh_config "$line\n";
-				#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [$line]\n");
-			}
-		}
-		else
-		{
-			# Normal line
-			if ($line =~ /^\s*$/)
-			{
-				if ($last_time_blank)
-				{
-					next;
-				}
-				else
-				{
-					$last_time_blank = 1;
-				}
-			}
-			else
-			{
-				$last_time_blank = 0;
-			}
-			print $ssh_config "$line\n";
-			#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [$line]\n");
-		}
+		last if ($line =~ /^Host\s+(.*)$/);
+		print $ssh_config "$line\n";
 	}
+	print $ssh_config "\n##############################################################################\n";
+	print $ssh_config "#   Please do not put any variables other than 'Host' sections below here.   #\n";
+	print $ssh_config "# At this time, only 'Host / Port' is supported. Please use ~/.ssh/config if #\n";
+	print $ssh_config "# you need to specify additional options for a given host.                   #\n";
+	print $ssh_config "##############################################################################\n\n";
 	
 	# Now add any new entries.
 	foreach my $this_host (sort {$a cmp $b} keys %{$conf->{hosts}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], port: [$conf->{hosts}{$this_host}{port}]\n");
 		next if not $conf->{hosts}{$this_host}{port};
-		print $ssh_config "Host $this_host\n\tPort $conf->{hosts}{$this_host}{port}\n\n";
+		print $ssh_config "Host $this_host\n";
+		print $ssh_config "\tPort $conf->{hosts}{$this_host}{port}\n\n";
 		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [Host $this_host]\n");
 		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [\tPort $conf->{hosts}{$this_host}{port}]\n");
 	}
@@ -820,15 +874,15 @@ sub write_new_ssh_config
 # or formatting. It will preserve non-node related IPs.
 sub write_new_hosts
 {
-	my ($conf, $say_date, $delete_ids) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date], delete_ids: [$delete_ids]\n");
+	my ($conf, $say_date) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date]\n");
 	
 	# Open the file
-	my $hosts = IO::Handle->new();
-	open ($hosts, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
-	print $hosts "### Last updated: [$say_date]
+	my $hosts_file = IO::Handle->new();
+	open ($hosts_file, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
+	print $hosts_file "### Last updated: [$say_date]
 # The file is maintained by AN!CDB. If you modify this manually, entries will
-# be preserved but formatting will not.
+# be preserved but formatting and comments will not.
 
 127.0.0.1	localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1		localhost localhost.localdomain localhost6 localhost6.localdomain6
@@ -837,110 +891,75 @@ sub write_new_hosts
 	# Cycle through the passed variables and add them to the hashed created
 	# when the hosts file was last read.
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::ids: [$conf->{cgi}{ids}]\n");
-	my $printed_ips = "";
-	foreach my $this_id (split/,/, $conf->{cgi}{ids})
+	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
-		my $node_1_name_key = "cluster__${this_id}__nodes_1_name";
-		my $node_1_ip_key   = "cluster__${this_id}__nodes_1_ip";
-		my $node_2_name_key = "cluster__${this_id}__nodes_2_name";
-		my $node_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
+		# A host can be one or more, separated by spaces.
+		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], hosts::by_ip::$this_ip: [$conf->{hosts}{by_ip}{$this_ip}]\n");
+		my $hosts =  $conf->{hosts}{by_ip}{$this_ip};
+		   $hosts =~ s/\s+$//;
+		   $hosts =~ s/\s+/ /g;
+		next if not $hosts;
+		record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
 		
-		foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
+		# Search for duplicates
+		my $say_hosts =  "";
+		if ($hosts =~ / /)
 		{
-			if (not exists $conf->{new_hosts}{$this_ip})
+			my $last_host = "";
+			foreach my $this_host (sort {$a cmp $b} split/ /, $hosts)
 			{
-				$conf->{new_hosts}{$this_ip} = "";
-			}
- 
-			my $host = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; hosts::by_ip::${this_ip}: [$conf->{hosts}{by_ip}{$this_ip}]\n");
-			foreach my $this_host (sort {$a cmp $b} split/,/, $conf->{hosts}{by_ip}{$this_ip})
-			{
+				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
 				next if not $this_host;
-				next if $conf->{new_hosts}{$this_ip} =~ /$this_host,/;
-				$conf->{new_hosts}{$this_ip} .= "$this_host,";
-				#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip] -> [$conf->{new_hosts}{$this_ip}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
+				next if $this_host eq $last_host;
+				$last_host =  $this_host;
+				$say_hosts .= "$this_host ";
+				record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
 			}
-		}
-	}
-	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{new_hosts}})
-	{
-		next if not $this_ip;
-		my $line = "$this_ip\t";
-		foreach my $this_host (sort {$a cmp $b} split/,/, $conf->{new_hosts}{$this_ip})
-		{
-			# See if this host has been deleted.
-			my $delete = 0;
-			foreach my $this_id (split/,/, $delete_ids)
-			{
-				next if not $this_id;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id], cluster::${this_id}::name: [$conf->{cluster}{$this_id}{name}]\n");
-				my ($nodes_1_name, $nodes_2_name) = ($conf->{cluster}{$this_id}{nodes} =~ /(.*?),(.*)/);
-				$nodes_1_name =~ s/^\s+//;
-				$nodes_1_name =~ s/\s+$//;
-				$nodes_2_name =~ s/^\s+//;
-				$nodes_2_name =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], deleted node 1: [$nodes_1_name], node 2: [$nodes_2_name]\n");
-				if (($this_host eq $nodes_1_name) || ($this_host eq $nodes_2_name))
-				{
-					$delete = 1;
-					#record($conf, "$THIS_FILE ".__LINE__."; delete: [$delete]\n");
-				}
-			}
-			
-			#record($conf, "$THIS_FILE ".__LINE__."; delete: [$delete]\n");
-			if (not $delete)
-			{
-				$line .= "$this_host ";
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			}
-		}
-		# Make sure at least one host survived the delete check.
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+$/)
-		{
-			my $this_ip = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; The IP: [$this_ip] has not host names, skipping.\n");
+			$say_hosts =~ s/\s+$//;
+			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		else
 		{
-			$line =~ s/\s+$//;
-			print $hosts "$line\n";
-			#record($conf, "$THIS_FILE ".__LINE__."; hosts line: [$line]\n");
+			$say_hosts = $hosts;
+			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
+		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], say_hosts: [$say_hosts]\n");
+		print $hosts_file "$this_ip\t$say_hosts\n";
 	}
-	$hosts->close();
+	$hosts_file->close();
 	
 	return(0);
 }
 
 # Verify and then save the global dashboard configuration.
-sub save_global_dashboard_configure
+sub save_dashboard_configure
 {
 	my ($conf) = @_;
 	
-			my ($save, $delete_ids) = sanity_check_an_conf($conf, $conf->{cgi}{section});
-			if ($save)
-			{
-				# Get the current date and time.
-				my ($say_date) =  get_date($conf, time);
-				my $date       =  $say_date;
-				$date          =~ s/ /_/;
-				$say_date      =~ s/ /, /;
-				
-				# Write out the new config file.
-				copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/an.conf.$date");
-				write_new_an_conf($conf, $say_date, $delete_ids);
-				
-				# Write out the 'hosts' file, if needed.
-				copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/hosts.$date");
-				write_new_hosts($conf, $say_date, $delete_ids);
-				
-				# Write out the 'ssh_config' file, if needed.
-				copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/ssh_config.$date");
-				write_new_ssh_config($conf, $say_date, $delete_ids);
-				print "
+	my ($save) = sanity_check_an_conf($conf, $conf->{cgi}{section});
+	if ($save)
+	{
+		#die "$THIS_FILE ".__LINE__."; Testing...\n";
+		# Get the current date and time.
+		my ($say_date) =  get_date($conf, time);
+		my $date       =  $say_date;
+		$date          =~ s/ /_/;
+		$say_date      =~ s/ /, /;
+		
+		# Write out the new config file.
+		copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/an.conf.$date");
+		write_new_an_conf($conf, $say_date);
+		
+		# Write out the 'hosts' file.
+		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/hosts.$date");
+		write_new_hosts($conf, $say_date);
+		
+		# Write out the 'ssh_config' file.
+		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/ssh_config.$date");
+		write_new_ssh_config($conf, $say_date);
+		
+		print "
 	<tr>
 		<td class=\"highlight_good\">
 			Done!
@@ -952,12 +971,12 @@ sub save_global_dashboard_configure
 </table>
 <br />
 ";
-				footer($conf);
-				exit(0);
-			}
-			else
-			{
-				print "
+		footer($conf);
+		exit(0);
+	}
+	else
+	{
+		print "
 	<tr>
 		<td class=\"highlight_warning\">
 			Problems Found
@@ -967,10 +986,10 @@ sub save_global_dashboard_configure
 		</td>
 	</tr>
 ";
-			}
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
-			
-			print "
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
+	
+	print "
 </table>
 <br />
 ";
@@ -1114,7 +1133,7 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
@@ -1125,7 +1144,7 @@ sub show_anvil_config_header
 		print "
 	<tr>
 		<td class=\"td_hidden\">
-			<table align=\"center\" width=\"100%\">
+			<table width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
 						<b>Add a new <i>Anvil!</i> System</b>
@@ -1148,7 +1167,7 @@ sub show_anvil_config_header
 		print "
 	<tr>
 		<td class=\"td_hidden\">
-			<table align=\"center\" width=\"100%\">
+			<table width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
 						<b>Existing <i>Anvil!</i> System</b>
@@ -1175,7 +1194,8 @@ sub show_anvil_config_header
 						<i>Anvil!</i> Name:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 200px;\">  &nbsp;<span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
+						<input type=\"hidden\" name=\"anvil_id\" value=\"$this_id\">
+						<input type=\"text\" name=\"cluster__${this_id}__name\" id=\"cluster__${this_id}__name\" value=\"$say_this_cluster\" style=\"width: 200px;\" tabindex=\"1\">  &nbsp;<span class=\"subtle_text_fixed_width\">(id: $this_id)</span> &nbsp; &nbsp; $clear_icon
 					</td>
 					<td style=\"text-align: left;\">
 						This is the name of your <i>Anvil!</i>'s cluster name.<br />
@@ -1190,7 +1210,7 @@ sub show_anvil_config_header
 						Description:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__description\" id=\"cluster__${this_id}__description\" value=\"$this_description\" style=\"width: 300px;\" tabindex=\"2\">
 					</td>
 					<td style=\"text-align: left;\">
 						This is a free-form text field where you can put in any description you would like for the give <i>Anvil!</i>.<br />
@@ -1204,7 +1224,7 @@ sub show_anvil_config_header
 						Tracking URL:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__url\" id=\"cluster__${this_id}__url\" value=\"$this_url\" style=\"width: 300px;\" tabindex=\"3\">
 					</td>
 					<td style=\"text-align: left;\">
 						If you have an internal tracking or documentation system, and if you track the given <i>Anvil!</i> there, you can enter the URL for it here.<br />
@@ -1218,7 +1238,7 @@ sub show_anvil_config_header
 						Owner:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__company\" id=\"cluster__${this_id}__company\" value=\"$this_company\" style=\"width: 300px;\" tabindex=\"4\">
 					</td>
 					<td style=\"text-align: left;\">
 						This is the name of the company, person or group that owns the specified <i>Anvil!</i>.<br />
@@ -1233,7 +1253,7 @@ sub show_anvil_config_header
 						'ricci' Password:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\">
+						<input type=\"password\" name=\"cluster__${this_id}__ricci_pw\" id=\"cluster__${this_id}__ricci_pw\" value=\"$this_ricci_pw\" style=\"width: 300px;\" tabindex=\"5\">
 					</td>
 					<td style=\"text-align: left;\">
 						When your <i>Anvil!</i> was built, a '<span class=\"highlight_note\">ricci</span>' password was set.<br />
@@ -1248,7 +1268,7 @@ sub show_anvil_config_header
 						'root' Password:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\">
+						<input type=\"password\" name=\"cluster__${this_id}__root_pw\" id=\"cluster__${this_id}__root_pw\" value=\"$this_root_pw\" style=\"width: 300px;\" tabindex=\"6\">
 					</td>
 					<td style=\"text-align: left;\">
 						On most <i>Anvil!</i> systems, the same password is used for both the '<span class=\"highlight_note\">ricci</span>' and '<span class=\"highlight_note\">root</span>' users.<br />
@@ -1265,7 +1285,7 @@ sub show_anvil_config_header
 						Node 1 Name:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_name\" id=\"cluster__${this_id}__nodes_1_name\" value=\"$this_nodes_1_name\" style=\"width: 300px;\" tabindex=\"7\">
 					</td>
 					<td rowspan=\"2\" style=\"text-align: left;\">
 						The host names of the nodes. Generally, this is <span class=\"code\">xx-cYYnZZ</span>.
@@ -1279,15 +1299,15 @@ sub show_anvil_config_header
 						Node 2 Name:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_name\" id=\"cluster__${this_id}__nodes_2_name\" value=\"$this_nodes_2_name\" style=\"width: 300px;\" tabindex=\"8\">
 					</td>
 				</tr>
 				<tr>
-					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right;\">
+					<td class=\"highlight_ready\" style=\"border: 0px; text-align: right; white-space: nowrap;\">
 						Node 1 IP Address:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_ip\" id=\"cluster__${this_id}__nodes_1_ip\" value=\"$this_nodes_1_ip\" style=\"width: 300px;\" tabindex=\"9\">
 					</td>
 					<td rowspan=\"2\" style=\"text-align: left;\">
 						Generally, if this machine is in the same place as the the <i>Anvil!</i>, the name you set here will resolve to the 'Back-Channel Network' of the node.<br />
@@ -1303,7 +1323,7 @@ sub show_anvil_config_header
 						Node 2 IP Address:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_ip\" id=\"cluster__${this_id}__nodes_2_ip\" value=\"$this_nodes_2_ip\" style=\"width: 300px;\" tabindex=\"10\">
 					</td>
 				</tr>
 				<tr>
@@ -1311,10 +1331,10 @@ sub show_anvil_config_header
 						Node 1 TCP Port:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_1_port\" id=\"cluster__${this_id}__nodes_1_port\" value=\"$this_nodes_1_port\" style=\"width: 300px;\" tabindex=\"11\">
 					</td>
 					<td rowspan=\"2\" style=\"text-align: left;\">
-						This is the TCP port used to connect to the node over SSH, usually this is <span class=\"code\">22</span>.<br />
+						This is the TCP port used to connect to the node over SSH. If you do not specify this, port <span class=\"code\">22</span> will be used.<br />
 						If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />
 						When in doubt, leave this blank.<br />
 					</td>
@@ -1327,7 +1347,7 @@ sub show_anvil_config_header
 						Node 2 TCP Port:
 					</td>
 					<td style=\"border: 0px; text-align: left;\">
-						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\">
+						<input type=\"text\" name=\"cluster__${this_id}__nodes_2_port\" id=\"cluster__${this_id}__nodes_2_port\" value=\"$this_nodes_2_port\" style=\"width: 300px;\" tabindex=\"12\">
 					</td>
 				</tr>
 			</table>
@@ -1340,7 +1360,7 @@ sub show_anvil_config_header
 	</tr>
 	<tr>
 		<td class=\"td_hidden\">
-			<table align=\"center\" width=\"100%\">
+			<table width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
 						<b>Global Overrides</b>
@@ -1369,7 +1389,7 @@ sub show_global_config_header
 	print "
 	<tr>
 		<td class=\"td_hidden\">
-			<table align=\"center\" width=\"100%\">
+			<table width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
 						<b>Global Settings</b>
@@ -1408,7 +1428,16 @@ sub show_common_config_section
 	my $smtp__helo_domain_key         = "smtp__helo_domain";
 	my $mail_data__to_key             = "mail_data__to";
 	my $mail_data__sending_domain_key = "mail_data__sending_domain";
-	record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	my $security_select_options       = [
+		"None",
+		"SSL/TLS",
+		"STARTTLS"
+	];
+	my $encrypt_pass_select_options   = [
+		"1#!#Yes",
+		"0#!#No"
+	];
+	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
 	if (not $conf->{cgi}{save})
 	{
 		# First time loading the config, so pre-populate the values
@@ -1423,7 +1452,7 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
 	# Switch to the per-Anvil! values if an Anvil! is defined.
@@ -1444,7 +1473,11 @@ sub show_common_config_section
 		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+		
+		# Add the 'inherit' options.
+		push @{$security_select_options},     "#!inherit!#";
+		push @{$encrypt_pass_select_options}, "#!inherit!#";
 	}
 	
 	my $say_smtp__server              = $conf->{cgi}{$smtp__server_key}; 
@@ -1457,29 +1490,17 @@ sub show_common_config_section
 	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
 	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
 	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
-	record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
 	
-	# Build the security select box.
-	my $say_security        =  $conf->{cgi}{$smtp__security_key};
-	my $say_security_select =  "<select name=\"smtp__security\" style=\"width: 300px;\">\n";
-	   $say_security_select .= "<option value=\"None\">None</option>\n";
-	   $say_security_select .= "<option value=\"SSL/TLS\">SSL/TLS</option>\n";
-	   $say_security_select .= "<option value=\"STARTTLS\">STARTTLS</option>\n";
-	   $say_security_select .= "</select>\n";
-	   $say_security_select =~ s/$say_security\">/$say_security\" selected>/g;
-	record($conf, "$THIS_FILE ".__LINE__."; say_security_select: [$say_security_select]\n");
-	
-	# Build the encrypt password select box.
-	my $say_encrypt_pass        =  $conf->{cgi}{smtp__encrypt_pass};
-	my $say_encrypt_pass_select =  "<select name=\"smtp__encrypt_pass\" style=\"width: 300px;\">\n";
-	   $say_encrypt_pass_select .= "<option value=\"1\">Yes</option>\n";
-	   $say_encrypt_pass_select .= "<option value=\"0\">No</option>\n";
-	   $say_encrypt_pass_select .= "</select>\n";
-	   $say_encrypt_pass_select =~ s/$say_encrypt_pass\">/$say_encrypt_pass\" selected>/g;
-	record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
+	# Build the security and encrypt password select boxes.
+	my $say_security_select     = build_select($conf, "$smtp__security_key",     0, 0, 300, $conf->{cgi}{$smtp__security_key},     $security_select_options);
+	my $say_encrypt_pass_select = build_select($conf, "$smtp__encrypt_pass_key", 0, 0, 300, $conf->{cgi}{$smtp__encrypt_pass_key}, $encrypt_pass_select_options);
+	$say_security_select     =~ s/<select name=/<select tabindex="18" name=/;
+	$say_encrypt_pass_select =~ s/<select name=/<select tabindex="19" name=/;
+	#record($conf, "$THIS_FILE ".__LINE__."; say_security_select: [$say_security_select]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
 	
 	print "
-				<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
 				<tr>
 					<td class=\"highlight_good\" style=\"white-space: nowrap;\">
 						Mail Settings
@@ -1494,7 +1515,7 @@ sub show_common_config_section
 						Mail Server Address
 					</td>
 					<td>
-						<input type=\"text\" name=\"smtp__server\" value=\"$conf->{cgi}{smtp__server}\" style=\"width: 300px;\" />
+						<input type=\"text\" name=\"$smtp__server_key\" value=\"$conf->{cgi}{$smtp__server_key}\" style=\"width: 300px;\" tabindex=\"13\"/>
 					</td>
 					<td style=\"text-align: left;\">
 						This is the mail server that your node will connect to in order to send email.<br />
@@ -1506,15 +1527,15 @@ sub show_common_config_section
 				</tr>
 				<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
 				<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
-				<input type=\"hidden\" name=\"mail_data__sending_domain\" value=\"$conf->{cgi}{mail_data__sending_domain}\">
+				<input type=\"hidden\" name=\"$mail_data__sending_domain_key\" value=\"$conf->{cgi}{$mail_data__sending_domain_key}\">
 				<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
-				<input type=\"hidden\" name=\"smtp__helo_domain\" value=\"$conf->{cgi}{smtp__helo_domain}\">
+				<input type=\"hidden\" name=\"$smtp__helo_domain_key\" value=\"$conf->{cgi}{$smtp__helo_domain_key}\">
 				<tr>
 					<td class=\"highlight_ready\">
 						Mail Server Port
 					</td>
 					<td>
-						<input type=\"text\" name=\"smtp__port\" value=\"$conf->{cgi}{smtp__port}\" style=\"width: 300px;\" />
+						<input type=\"text\" name=\"$smtp__port_key\" value=\"$conf->{cgi}{$smtp__port_key}\" style=\"width: 300px;\" tabindex=\"14\" />
 					</td>
 					<td style=\"text-align: left;\">
 						When connecting to the mail server address above, a specific \"port\" number must be specified.<br />
@@ -1530,7 +1551,7 @@ sub show_common_config_section
 						Mail Server Timeout
 					</td>
 					<td>
-						<input type=\"text\" name=\"smtp__timeout\" value=\"$conf->{cgi}{smtp__timeout}\" style=\"width: 300px;\" />
+						<input type=\"text\" name=\"$smtp__timeout_key\" value=\"$conf->{cgi}{$smtp__timeout_key}\" style=\"width: 300px;\" tabindex=\"15\" />
 					</td>
 					<td style=\"text-align: left;\">
 						This is how long, in seconds, we will wait for a response from the mail server.<br />
@@ -1546,7 +1567,7 @@ sub show_common_config_section
 						Mail Server User
 					</td>
 					<td>
-						<input type=\"text\" name=\"smtp__username\" value=\"$conf->{cgi}{smtp__username}\" style=\"width: 300px;\" />
+						<input type=\"text\" name=\"$smtp__username_key\" value=\"$conf->{cgi}{$smtp__username_key}\" style=\"width: 300px;\" tabindex=\"16\" />
 					</td>
 					<td style=\"text-align: left;\">
 						Some mail server require a user name and password. Usually, the user name will be you email address.<br />
@@ -1562,7 +1583,7 @@ sub show_common_config_section
 						Mail Server Password
 					</td>
 					<td>
-						<input type=\"password\" name=\"smtp__password\" value=\"$conf->{cgi}{smtp__password}\" style=\"width: 300px;\" />
+						<input type=\"password\" name=\"$smtp__password_key\" value=\"$conf->{cgi}{$smtp__password_key}\" style=\"width: 300px;\" tabindex=\"17\" />
 					</td>
 					<td style=\"text-align: left;\">
 						If you entered a user name above, please enter it's password here.<br />
@@ -1607,7 +1628,7 @@ sub show_common_config_section
 						Alert Recipient(s)
 					</td>
 					<td>
-						<input type=\"text\" name=\"mail_data__to\" value=\"$conf->{cgi}{mail_data__to}\" style=\"width: 300px;\" />
+						<input type=\"text\" name=\"$mail_data__to_key\" value=\"$conf->{cgi}{$mail_data__to_key}\" style=\"width: 300px;\" tabindex=\"20\" />
 					</td>
 					<td style=\"text-align: left;\">
 						This is the person or list of people who will get alert emails. Please enter just the email address. <br />
@@ -1651,7 +1672,7 @@ sub show_global_anvil_list
 	print "
 	<tr>
 		<td class=\"td_hidden\">
-			<table align=\"center\" width=\"100%\">
+			<table width=\"100%\">
 				<tr>
 					<td colspan=\"4\">
 						<b><i>Anvil!</i> Systems</b>
@@ -1725,10 +1746,6 @@ sub show_global_anvil_list
 		</td>
 	</tr>
 ";
-	print "
-</table>
-<br />
-";
 	
 	return(0);
 }
@@ -1744,53 +1761,7 @@ sub configure_dashboard
 	
 	if ($conf->{cgi}{save})
 	{
-		if ($conf->{cgi}{section} eq "global")
-		{
-			save_global_dashboard_configure($conf);
-		}
-		elsif ($conf->{cgi}{section} eq "anvil")
-		{
-			
-		}
-	}
-	
-	# If this is the first time the page is loaded, populate the values
-	# with whatever was already in an.conf.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}]\n");
-	if ($conf->{cgi}{save})
-	{
-		my $this_cluster          = $conf->{cgi}{anvil};
-		my $this_id               = defined $conf->{clusters}{$this_cluster}{id} ? $conf->{clusters}{$this_cluster}{id} : "new";
-		my $name_key              = "cluster__${this_id}__name";
-		my $description_key       = "cluster__${this_id}__description";
-		my $url_key               = "cluster__${this_id}__url";
-		my $company_key           = "cluster__${this_id}__company";
-		my $ricci_pw_key          = "cluster__${this_id}__ricci_pw";
-		my $root_pw_key           = "cluster__${this_id}__root_pw";
-		my $nodes_1_name_key      = "cluster__${this_id}__nodes_1_name";
-		my $nodes_1_ip_key        = "cluster__${this_id}__nodes_1_ip";
-		my $nodes_1_port_key      = "cluster__${this_id}__nodes_1_port";
-		my $nodes_2_name_key      = "cluster__${this_id}__nodes_2_name";
-		my $nodes_2_ip_key        = "cluster__${this_id}__nodes_2_ip";
-		my $nodes_2_port_key      = "cluster__${this_id}__nodes_2_port";
-		
-# 		$this_name             =  $conf->{cgi}{$name_key};
-# 		$this_description      =  $conf->{cgi}{$description_key};
-# 		$this_description      =  convert_text_to_html($conf, $this_description);
-# 		$this_url              =  $conf->{cgi}{$url_key};
-# 		$this_company          =  $conf->{cgi}{$company_key};
-# 		$this_company          =  convert_text_to_html($conf, $this_company);
-# 		$this_ricci_pw         =  $conf->{cgi}{$ricci_pw_key};
-# 		$this_root_pw          =  $conf->{cgi}{$root_pw_key};
-# 		$this_nodes_1_name     =  $conf->{cgi}{$nodes_1_name_key};
-# 		$this_nodes_1_ip       =  $conf->{cgi}{$nodes_1_ip_key};
-# 		$this_nodes_1_port     =  $conf->{cgi}{$nodes_1_port_key};
-# 		$this_nodes_1_port     =~ s/,//;
-# 		$this_nodes_2_name     =  $conf->{cgi}{$nodes_2_name_key};
-# 		$this_nodes_2_ip       =  $conf->{cgi}{$nodes_2_ip_key};
-# 		$this_nodes_2_port     =  $conf->{cgi}{$nodes_2_port_key};
-# 		$this_nodes_2_port     =~ s/,//;
-		
+		save_dashboard_configure($conf);
 	}
 	
 	### Header section
@@ -1798,7 +1769,8 @@ sub configure_dashboard
 	### If showing an Anvil!, it's the Anvil!'s details and then the overrides.
 
 	print "
-<table align=\"center\" class=\"hidden_table\" style=\"margin-left: 10px; margin-right: 10px;\">
+<table class=\"hidden_table\">
+	<form action=\"/cgi-bin/an-cdb\" method=\"post\" name=\"config\">
 ";
 	
 	# If showing an Anvil!, display it's details first.
@@ -1828,6 +1800,7 @@ sub configure_dashboard
 	}
 	# Close out the form.
 	print "
+	</form>
 </table>
 <br />
 ";
@@ -2144,7 +2117,7 @@ sub ask_which_cluster
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"4\">
 			<b>Please choose an <i>Anvil!</i></b>
@@ -2275,7 +2248,7 @@ sub error
 	$fatal = 1 if not defined $fatal;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_warning_bold\">
 			Note
@@ -2352,34 +2325,16 @@ sub header
 </head>
 <body>
 <br />
-<table class=\"hidden_table\" align=\"center\">
+<table class=\"hidden_table\">
 	<tr>
-		<td width=\"100px\" class=\"td_hidden\">
-			<table align=\"left\" class=\"hidden_table\">
-				<tr>
-					<td class=\"td_hidden\">
-						$say_back
-					</td>
-				</tr>
-			</table>
+		<td class=\"td_hidden\" style=\"width: 50px;\">
+			$say_back
 		</td>
 		<td class=\"td_hidden\">
-			<table align=\"center\">
-				<tr>
-					<td>
-						<a href=\"/cgi-bin/an-cdb?logo=true\"><img src=\"/img/$logo\" alt=\"$short_name - $program_name\"></a>
-					</td>
-				</tr>
-			</table>
+			<a href=\"/cgi-bin/an-cdb?logo=true\"><img class=\"logo\" src=\"/img/$logo\" alt=\"$short_name - $program_name\"></a>
 		</td>
-		<td width=\"100px\" class=\"td_hidden\">
-			<table align=\"right\" class=\"hidden_table\">
-				<tr>
-					<td class=\"td_hidden\">
-						$say_refresh
-					</td>
-				</tr>
-			</table>
+		<td class=\"td_hidden\" style=\"width: 50px;\">
+			$say_refresh
 		</td>
 	</tr>
 </table>
@@ -2472,7 +2427,7 @@ sub footer
 	$conf->{'system'}{footer_printed} = 1;
 	
 	print "
-<table align=\"center\" class=\"hidden_table\" width=\"100%\">
+<table class=\"hidden_table\" width=\"100%\">
 	<tr>
 		<td class=\"td_hidden\">
 			<span class=\"legal\">
@@ -2818,7 +2773,7 @@ sub read_files_on_shared
 	if (not $connected)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"3\">
 			Unable to connect to the <span class=\"highlight_detail\">${cluster}</span> cluster!
@@ -2870,7 +2825,7 @@ sub record
 		$fh = IO::Handle->new();
 		$conf->{handles}{'log'} = $fh;
 		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".time."\n";
+		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".get_date($conf, time)."\n";
 	}
 	print $fh $message;
 	$fh->flush;
@@ -2900,7 +2855,7 @@ sub check_nodes
 	
 	print "
 <div id=\"hide_when_loaded\">
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<b>Please be patient.</b><br />
@@ -2952,7 +2907,7 @@ sub check_node_status
 			if ($conf->{clusters}{$cluster}{cache_exists})
 			{
 				print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_note\">
 			No access
@@ -2974,7 +2929,7 @@ sub check_node_status
 			else
 			{
 				print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_note\">
 			No access
@@ -3338,7 +3293,7 @@ sub hr_to_bytes
 	{
 		my $line = __LINE__;
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_bad\">
 			Error in <span class=\"code\">hr_to_bytes()</span>
@@ -3393,7 +3348,7 @@ sub hr_to_bytes
 		# of the other sizes, so die.
 		my $line = __LINE__;
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_bad\">
 			Error in <span class=\"code\">hr_to_bytes()</span>
@@ -3866,7 +3821,7 @@ sub gather_node_details
 		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
 			print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			$conf->{node}{$node}{info}{'state'}
@@ -5133,7 +5088,7 @@ sub parse_lvm_scan
 			if (lc($state) eq "inactive")
 			{
 				print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_warning_bold\">
 			Inactive LV!

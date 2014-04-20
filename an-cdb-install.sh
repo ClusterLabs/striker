@@ -70,7 +70,7 @@ yum clean all
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               perl-Test-Simple policycoreutils-python
+               perl-Test-Simple policycoreutils-python mod_ssl
 
 # Stuff from our repo
 yum -y install perl-Net-SSH2
@@ -261,6 +261,21 @@ chmod 770 /etc/an
 chmod 660 /etc/an/*
 chmod 664 /etc/ssh/ssh_config
 chmod 664 /etc/hosts
+
+### TODO: Make SSL default
+# Instructions for adding signed certs:
+# [root@an-cdb conf.d]# diff -U0 ssl.conf.original ssl.conf
+# --- ssl.conf.original	2014-04-18 15:38:15.229000449 -0400
+# +++ ssl.conf	2014-04-18 15:39:30.663000165 -0400
+# @@ -105 +105 @@
+# -SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+# +SSLCertificateFile /etc/pki/CA/wildcard_ssl_alteeve.ca.crt
+# @@ -112 +112 @@
+# -SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+# +SSLCertificateKeyFile /etc/pki/CA/private/wildcard_alteeve.ca.key
+# @@ -127,0 +128 @@
+# +SSLCACertificateFile /etc/pki/CA/RapidSSL_CA_bundle.pem
+
 
 echo ""
 echo "##############################################################################"

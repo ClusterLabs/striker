@@ -243,7 +243,7 @@ sub process_task
 	{
 		print "
 <div id=\"hide_when_loaded\">
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<b>Please be patient.</b><br />
@@ -353,7 +353,7 @@ sub restart_tomcat
 	if (not $quiet)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_ready\" colspan=\"2\">
 			Restarting the remote desktop server on this dashboard.
@@ -466,7 +466,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Unmark Physical Disk as Hot-Spare</span></b>
@@ -537,7 +537,7 @@ sub lsi_control_make_disk_hot_spare
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Mark Physical Disk as Hot-Spare</span></b>
@@ -617,7 +617,7 @@ sub lsi_control_mark_disk_missing
 		$message_body  =  "Unable to mark the disk <span class=\"highlight_detail\">$conf->{cgi}{disk_address}</span> on adapter <span class=\"highlight_detail\">#$conf->{cgi}{adapter}</span> as missing. May not be be required, proceeding with spin-down.";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Mark Physical Disk as Missing</span></b>
@@ -693,7 +693,7 @@ sub lsi_control_spin_disk_up
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Spin Up Physical Disk</span></b>
@@ -777,7 +777,7 @@ sub lsi_control_spin_disk_down
 	}
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Spin Down Physical Disk</span></b>
@@ -874,7 +874,7 @@ sub lsi_control_put_disk_offline
 			$reason = "Please replace the array's failed disk before taking this disk offline.";
 		}
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Unable to Remove Physical Disk</span></b>
@@ -911,7 +911,7 @@ sub lsi_control_put_disk_offline
 			$alert_class = "highlight_detail_bold";
 		}
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Confirmation Required</span></b>
@@ -972,7 +972,7 @@ sub lsi_control_put_disk_offline
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Put Physical Disk Offline</span></b>
@@ -1047,7 +1047,7 @@ sub lsi_control_put_disk_online
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Put Physical Disk Online</span></b>
@@ -1117,7 +1117,7 @@ sub lsi_control_add_disk_to_array
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Add Physical Disk to Logical Disk</span></b>
@@ -1231,7 +1231,7 @@ sub lsi_control_make_disk_good
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Mark Physical Disk as 'Good'</span></b>
@@ -1306,7 +1306,7 @@ sub lsi_control_disk_id_led
 		$message_body  .= "<span class=\"fixed_width\">$return_string</span>\n";
 	}
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b><span class=\"fixed_width\">Disk ID Call</span></b>
@@ -1342,7 +1342,7 @@ sub display_node_health
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	print "
-<table align=\"center\" class=\"hidden_table\">
+<table class=\"hidden_table\">
 	<tr>
 		<td colspan=\"3\">
 			<table width=\"100%\">
@@ -2608,7 +2608,7 @@ sub change_vm
 	#record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b>Updating the <span class=\"fixed_width\">$say_vm</span> server's CPU, RAM and boot devices...</b>
@@ -2903,7 +2903,7 @@ sub vm_insert_media
 	my ($backup)   = archive_file($conf, $node, $definition_file, 1);
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b>Inserting <span class=\"fixed_width\">$insert_media</span> into <span class=\"fixed_width\">$insert_drive</span>...</b>
@@ -3087,7 +3087,7 @@ sub vm_eject_media
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b>Ejecting $conf->{cgi}{device}...</b>
@@ -3341,7 +3341,7 @@ sub manage_vm
 	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code}))
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_warning_bold\">
 			Not Ready
@@ -3750,7 +3750,7 @@ sub manage_vm
 	
 	# Finally, print it all
 	print "
-<table align=\"center\">
+<table>
 	<form method=\"post\">
 	<tr>
 		<td colspan=\"4\">
@@ -4292,7 +4292,7 @@ sub update_vm_definition
 	{
 		$virsh_exit_code = "-" if not defined $virsh_exit_code;
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_warning_bold\">
 			Warning
@@ -4356,7 +4356,7 @@ sub add_vm_to_cluster
 	if (not $conf->{clusters}{$cluster}{ricci_pw})
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_bad_bold\">
 			Failure!
@@ -4401,7 +4401,7 @@ sub add_vm_to_cluster
 	}
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b>Adding the new <span class=\"fixed_width\">$vm</span> server to the cluster's <span class=\"fixed_width\">$failover_domain</span> failover domain.
@@ -4951,7 +4951,7 @@ sub provision_vm
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<b>Creating your new <span class=\"fixed_width\">$conf->{new_vm}{name}</span> server now.</b>
@@ -5411,7 +5411,7 @@ sub verify_vm_config
 		{
 			$proceed = 0;
 			print "
-<table align=\"center\">
+<table>
 ";
 			foreach my $error (@errors)
 			{
@@ -5548,7 +5548,7 @@ sub confirm_provision_vm
 	my $select_os_variant    = build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{'system'}{os_variant});
 	
 	print "
-<table align=\"center\">
+<table>
 	<form method=\"post\">
 	<tr>
 		<td colspan=\"3\">
@@ -5687,7 +5687,7 @@ sub confirm_withdraw_node
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to withdraw <b>$conf->{cgi}{node_cluster_name}</b> from cluster <b>$conf->{cgi}{cluster}</b></span>
@@ -5723,7 +5723,7 @@ sub confirm_join_cluster
 	my ($conf) = @_;
 
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to join <b>$conf->{cgi}{node_cluster_name}</b> to cluster <b>$conf->{cgi}{cluster}</b>.</span>
@@ -5760,7 +5760,7 @@ sub confirm_dual_join
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to join both nodes to the $conf->{cgi}{cluster} cluster.</span>
@@ -5796,7 +5796,7 @@ sub confirm_fence_node
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to forcefully power off cluster node <b>$conf->{cgi}{node_cluster_name}</b>!</span>
@@ -5854,7 +5854,7 @@ sub confirm_poweroff_node
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to power down the physical node <b>$conf->{cgi}{node_cluster_name}</b>!</span>
@@ -5901,7 +5901,7 @@ sub confirm_poweron_node
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to power on the physical node <b>$conf->{cgi}{node_cluster_name}</b>!</span>
@@ -5948,7 +5948,7 @@ sub confirm_dual_boot
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to power on both nodes!</span>
@@ -5982,7 +5982,7 @@ sub confirm_start_vm
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to boot up the virtual machine <b>$conf->{cgi}{vm}</b> on <b>$conf->{cgi}{node_cluster_name}</b></span>
@@ -6017,7 +6017,7 @@ sub confirm_stop_vm
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to shut down the virtual machine <b>$conf->{cgi}{vm}</b>!</span>
@@ -6076,7 +6076,7 @@ sub confirm_force_off_vm
 	my ($conf) = @_;
 	
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to forcefully power off <b>$conf->{cgi}{vm}</b>!</span>
@@ -6134,7 +6134,7 @@ sub confirm_delete_vm
 	my ($conf) = @_;
 
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to <span class=\"highlight_dangerous\"><b>delete</b></span> the <b>$conf->{cgi}{vm} server!</b></span>
@@ -6197,7 +6197,7 @@ sub confirm_migrate_vm
 	my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
 	$migration_time_estimate *= 10; # ~10s / GB
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\">About to migrate the virtual machine <b><span class=\"fixed_width_button\">$conf->{cgi}{vm}</span></b> to <b><span class=\"fixed_width_button\">$conf->{cgi}{target}</span></b>.
@@ -6248,7 +6248,7 @@ sub start_vm
 	if ($ready)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td colspan=\"2\">
 			<span class=\"highlight_ready\"><b>Booting $vm on $node_cluster_name now...</b></span>
@@ -6296,7 +6296,7 @@ sub start_vm
 				$line = "";
 				print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"highlight_note\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"highlight_note\">
 						Note!
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6310,7 +6310,7 @@ sub start_vm
 				# The VM failed to start. Call a stop against it.
 				print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"highlight_warning_bold\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"highlight_warning_bold\">
 						Warning!
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6344,7 +6344,7 @@ sub start_vm
 					}
 					print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$status
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6355,7 +6355,7 @@ sub start_vm
 				}
 				print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"highlight_ready_bold\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"highlight_ready_bold\">
 						Retry
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6385,7 +6385,7 @@ sub start_vm
 						# The VM failed to start. Call a stop against it.
 						print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"highlight_bad_bold\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"highlight_bad_bold\">
 						Error!
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6404,7 +6404,7 @@ sub start_vm
 					}
 					print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$status
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6424,7 +6424,7 @@ sub start_vm
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$status
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6557,7 +6557,7 @@ sub start_vm
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Booting of $vm on $node_cluster_name failed!</span>
@@ -6628,7 +6628,7 @@ sub migrate_vm
 	if ($ready)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_ready\"><b>Migrating $vm to $target now...</b></span>
@@ -6670,7 +6670,7 @@ sub migrate_vm
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6697,7 +6697,7 @@ sub migrate_vm
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Migration of $vm to $target aborted!</span>
@@ -6738,7 +6738,7 @@ sub stop_vm
 	# This, more than 
 	scan_cluster($conf);
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_ready\"><b>Attempting orderly shut down of $vm now...</b></span><br />
@@ -6783,7 +6783,7 @@ sub stop_vm
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6837,7 +6837,7 @@ sub join_cluster
 	if ($proceed)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_good\"><b>Attempting to join $node_cluster_name to $conf->{cgi}{cluster} now...</b></span><br />
@@ -6881,7 +6881,7 @@ sub join_cluster
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -6908,7 +6908,7 @@ sub join_cluster
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Joining of $node_cluster_name to $conf->{cgi}{cluster} aborted!</span>
@@ -6969,7 +6969,7 @@ sub dual_join
 	if ($proceed)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_good\"><b>Attempting to join both nodes to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> cluster now...</b></span><br />
@@ -7038,7 +7038,7 @@ sub dual_join
 					<td style=\"border: 1px solid white;\" align=\"right\">
 						$node
 					</td>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -7112,7 +7112,7 @@ sub dual_join
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Joining of both nodes to the $conf->{cgi}{cluster} cluster aborted!</span>
@@ -7159,7 +7159,7 @@ sub force_off_vm
 	# This, more than 
 	scan_cluster($conf);
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Forcibly shutting down $vm now...</b></span><br />
@@ -7202,7 +7202,7 @@ sub force_off_vm
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -7288,7 +7288,7 @@ sub delete_vm
 	
 	# Get to work!
 	print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td class=\"highlight_ready\">
 			<b>Begining the process of deleting $say_vm now...</b></span><br />
@@ -7662,7 +7662,7 @@ sub poweroff_node
 	{
 		# Stop rgmanager and then check it's status.
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_ready\"><b>Shutting down $node_cluster_name now...</b></span>
@@ -7707,7 +7707,7 @@ sub poweroff_node
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -7734,7 +7734,7 @@ sub poweroff_node
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Withdrawl of $conf->{cgi}{node_cluster_name} aborted!</span>
@@ -7823,7 +7823,7 @@ sub dual_boot
 	if ($proceed)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<b>Powering on both nodes in the cluster now...</b>
@@ -7858,7 +7858,7 @@ sub dual_boot
 				}
 				print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -7886,7 +7886,7 @@ sub dual_boot
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Booting both nodes in the $conf->{cgi}{cluster} cluster aborted!</span>
@@ -7953,7 +7953,7 @@ sub poweron_node
 	{
 		# It is still off.
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_ready\"><b>Powering on $node_cluster_name now...</b></span>
@@ -8053,7 +8053,7 @@ sub poweron_node
 	</tr>
 </table>
 <br />
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Powering on of $node_cluster_name failed!</span>
@@ -8081,7 +8081,7 @@ sub poweron_node
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_bad\"><b>Powering on of $node_cluster_name aborted!</span>
@@ -8174,7 +8174,7 @@ sub fence_node
 	if ($proceed)
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_warning\"><b>Fencing $node_cluster_name now...</b></span>
@@ -8451,7 +8451,7 @@ sub withdraw_node
 	{
 		# Stop rgmanager and then check it's status.
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<span class=\"highlight_ready\"><b>Withdrawing $node_cluster_name from the cluster now...</b></span>
@@ -8501,7 +8501,7 @@ sub withdraw_node
 			}
 			print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -8563,7 +8563,7 @@ sub withdraw_node
 				}
 				print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -8640,7 +8640,7 @@ sub withdraw_node
 					}
 					print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -8716,7 +8716,7 @@ sub withdraw_node
 	else
 	{
 		print "
-<table align=\"center\">
+<table>
 	<tr>
 		<td>
 			<br />
@@ -8872,7 +8872,7 @@ sub recover_rgmanager
 					}
 					print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -8936,7 +8936,7 @@ sub recover_rgmanager
 					}
 					print "
 				<tr>
-					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"center\">
+					<td style=\"border: 1px solid white;\" class=\"fixed_width\">
 						$message
 					</td>
 					<td style=\"border: 1px solid white;\" class=\"fixed_width\" align=\"left\">
@@ -9052,7 +9052,7 @@ sub display_details
 	my ($conf) = @_;
 	
 	print "
-<table class=\"hidden_table\" align=\"center\" border=\"0\">
+<table class=\"hidden_table\" border=\"0\">
 	<tr>
 		<td class=\"td_hidden\">
 ";
