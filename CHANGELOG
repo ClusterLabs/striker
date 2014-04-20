@@ -47,6 +47,10 @@ v1.0.4 - <in-progress>
   number of GiB, 3 currently, the modulous is calculated on the available RAM,
   and then the available RAM is calculated as
   (total ram - modulous - reserved).
+- When a node's DRBD disk state is 'Inconsistent' and the resync percentage was
+  read successfully, the percentage complete is shown.
+- Trying to upload a file without defining a file now throws a proper error
+  message.
 
 
 v1.0.3 - 2014-03-26

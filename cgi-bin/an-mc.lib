@@ -301,18 +301,37 @@ sub save_file_to_disk
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	my $in_fh    = $conf->{cgi_fh}{file};
-	my $out_file = $conf->{path}{media}.$conf->{cgi}{file};
-	my $sc = "$out_file";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc] with cgi fh: [$in_fh].\n");
-	my $fh = IO::Handle->new();
-	open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	binmode $fh;
-	while(<$in_fh>)
+	
+	if (not $in_fh)
 	{
-		print $fh $_;
+		print "
+	</tr>
+	<tr>
+		<td>
+			<br />
+			<span class=\"highlight_warning_bold\">No File Defined!</span><br />
+			<br />
+			It appears you clicked 'Upload' without first selecting a file.<br />
+			Please go back and try again.<br />
+			<br />
+		</td>
+	</tr>
+";
 	}
-	$fh->close;
-	print "
+	else
+	{
+		my $out_file = $conf->{path}{media}.$conf->{cgi}{file};
+		my $sc = "$out_file";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc] with cgi fh: [$in_fh].\n");
+		my $fh = IO::Handle->new();
+		open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+		binmode $fh;
+		while(<$in_fh>)
+		{
+			print $fh $_;
+		}
+		$fh->close;
+		print "
 		</td>
 	</tr>
 	<tr>
@@ -329,9 +348,9 @@ sub save_file_to_disk
 			and if the file is big, this might also take a while to finish.<br />
 			<br />
 			<pre>";
-	upload_to_shared($conf, $node, $out_file);
-	unlink $out_file;
-	print "
+		upload_to_shared($conf, $node, $out_file);
+		unlink $out_file;
+		print "
 			</pre>
 		</td>
 	</tr>
@@ -340,6 +359,9 @@ sub save_file_to_disk
 			Upload to the <i>Anvil!</i> is finished.<br />
 		</td>
 	</tr>
+";
+	}
+	print "
 </table>
 <br />
 ";
@@ -601,7 +623,7 @@ sub confirm_image_and_upload
 	</tr>
 	<form method=\"post\">
 	<tr>
-		<td>
+		<td class=\"highlight_good_bold\">
 			Image Name:
 		</td>
 		<td>

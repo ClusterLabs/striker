@@ -139,6 +139,14 @@ if [ ! -e "/var/www/home/cache" ]
 then
 	mkdir /var/www/home/cache
 fi
+if [ ! -e "/var/www/home/media" ]
+then
+	mkdir /var/www/home/media
+fi
+if [ ! -e "/var/www/home/status" ]
+then
+	mkdir /var/www/home/status
+fi
 chown -R apache:apache /var/www/home
 
 ### TODO: Remove this and get selinux working ASAP.
@@ -199,14 +207,6 @@ then
 	su apache -c "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa"
 fi
 
-if [ ! -e "/var/www/home/media" ]
-then
-	mkdir /var/www/home/media
-fi
-if [ ! -e "/var/www/home/status" ]
-then
-	mkdir /var/www/home/status
-fi
 if [ ! -e "/etc/an" ]
 then
 	mkdir /etc/an
@@ -250,6 +250,7 @@ fi
 # Configure iptables.
 iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT
 iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT
+iptables -I INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT
 /etc/init.d/iptables save
 
 chown -R apache:apache /var/www/*

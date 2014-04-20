@@ -4692,6 +4692,16 @@ sub add_vm_to_cluster
 ";
 	
 	my $ccs_exit_code;
+	my $ccs_call =  "ccs ";
+	   $ccs_call .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
+	   $ccs_call .= "domain=\"$failover_domain\" ";
+	   $ccs_call .= "path=\"/shared/definitions/\" ";
+	   $ccs_call .= "autostart=\"0\" ";
+	   $ccs_call .= "exclusive=\"0\" ";
+	   $ccs_call .= "recovery=\"restart\" ";
+	   $ccs_call .= "max_restarts=\"2\" ";
+	   $ccs_call .= "restart_expire_time=\"600\"; echo ccs:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$ccs_call]\n");
 	($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4699,15 +4709,7 @@ sub add_vm_to_cluster
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	0,
-		shell_call	=>	"ccs 
-			-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm 
-			domain=\"$failover_domain\" 
-			path=\"/shared/definitions/\" 
-			autostart=\"0\" 
-			exclusive=\"0\" 
-			recovery=\"restart\" 
-			max_restarts=\"2\" 
-			restart_expire_time=\"600\"; echo ccs:\$?"
+		shell_call	=>	"$ccs_call"
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4783,6 +4785,7 @@ sub add_vm_to_cluster
 	# Tell the cluster to start the VM. I don't bother to check for 
 	# readiness because I confirmed it was running on this node earlier.
 	my $clusvcadm_exit_code;
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [clusvcadm -e vm:$vm; echo clusvcadm:\$?]\n");
 	($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -5079,6 +5082,7 @@ sub provision_vm
 			Done.<br />
 			Starting the installation of <span class=\"code\">$conf->{new_vm}{name}</span> now.<br />\n
 ";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$script]\n");
 	($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -5086,7 +5090,7 @@ sub provision_vm
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	1,
-		shell_call	=>	"",
+		shell_call	=>	"$script",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -5146,15 +5150,19 @@ sub provision_vm
 			<br />
 		</td>
 	</tr>
-	<tr>
-		<td class=\"highlight_good_bold\">
-			Trouble?
-		</td>
-		<td style=\"text-align: center;\">
-			If you're having trouble connecting to the server's desktop, <a href=\"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat\" target=\"_new\">click here</a>.<br />
-			This will restart the remote desktop client on this dashboard.<br />
-		</tr>
-	</tr>
+";
+		# Disabling this for now as it auto-restarts tomcat for the
+		# time being.
+# 	<tr>
+# 		<td class=\"highlight_good_bold\">
+# 			Trouble?
+# 		</td>
+# 		<td style=\"text-align: center;\">
+# 			If you're having trouble connecting to the server's desktop, <a href=\"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat\" target=\"_new\">click here</a>.<br />
+# 			This will restart the remote desktop client on this dashboard.<br />
+# 		</tr>
+# 	</tr>
+		print "
 	<tr>
 		<td class=\"highlight_good_bold\">
 			After First Reboot
@@ -10015,8 +10023,10 @@ sub check_vms
 		# it. 2 == Running, 1 == Can run, 0 == Can't run.
 		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node1_ready}      = 0;
+		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node1: [$conf->{vm}{$vm}{say_node1}], node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}]\n");
 		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node2_ready}      = 0;
+		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node2: [$conf->{vm}{$vm}{say_node2}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 		
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
@@ -10113,7 +10123,7 @@ sub check_vms
 				'close'		=>	1,
 				shell_call	=>	"virsh dumpxml $say_vm",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
 				$line =~ s/^\s+//;
@@ -10132,6 +10142,7 @@ sub check_vms
 				# first one in the VM's failover domain.
 				$conf->{vm}{$vm}{boot_target} = find_prefered_host($conf, $vm);
 				$conf->{vm}{$vm}{can_start}   = 1;
+				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}], vm::${vm}::can_start: [$conf->{vm}{$vm}{can_start}]\n");
 			}
 			elsif ($conf->{vm}{$vm}{node1_ready})
 			{
@@ -10453,14 +10464,14 @@ sub display_drbd_details
 	{
 		# If the DRBD daemon is stopped, I will use the values from the
 		# resource files.
-		my $say_n1_dev = "--";
-		my $say_n2_dev = "--";
-		my $say_n1_cs  = "--";
-		my $say_n2_cs  = "--";
-		my $say_n1_ro  = "--";
-		my $say_n2_ro  = "--";
-		my $say_n1_ds  = "--";
-		my $say_n2_ds  = "--";
+		my $say_n1_dev  = "--";
+		my $say_n2_dev  = "--";
+		my $say_n1_cs   = "--";
+		my $say_n2_cs   = "--";
+		my $say_n1_ro   = "--";
+		my $say_n2_ro   = "--";
+		my $say_n1_ds   = "--";
+		my $say_n2_ds   = "--";
 		
 		# Check if node 1 is online.
 		if ($conf->{node}{$node1}{up})
@@ -10473,6 +10484,10 @@ sub display_drbd_details
 				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{connection_state};
 				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{role};
 				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{disk_state};
+				if (($conf->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
+				{
+					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node1}{resync_percent}%)</span>";
+				}
 			}
 			else
 			{
@@ -10494,6 +10509,10 @@ sub display_drbd_details
 				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{connection_state};
 				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{role};
 				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{disk_state};
+				if (($conf->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
+				{
+					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node2}{resync_percent}%)</span>";
+				}
 			}
 			else
 			{
@@ -10506,27 +10525,35 @@ sub display_drbd_details
 		}
 		
 		my $class_n1_cs  = "highlight_unavailable";
-		$class_n1_cs     = "highlight_good" if $say_n1_cs eq "Connected";
-		$class_n1_cs     = "highlight_ready"if $say_n1_cs eq "WFConnection";
+		   $class_n1_cs  = "highlight_good"    if $say_n1_cs eq "Connected";
+		   $class_n1_cs  = "highlight_good"    if $say_n1_cs eq "SyncSource";
+		   $class_n1_cs  = "highlight_ready"   if $say_n1_cs eq "WFConnection";
+		   $class_n1_cs  = "highlight_ready"   if $say_n1_cs eq "PausedSyncS";
+		   $class_n1_cs  = "highlight_warning" if $say_n1_cs eq "PausedSyncT";
+		   $class_n1_cs  = "highlight_warning" if $say_n1_cs eq "SyncTarget";
 		my $class_n2_cs  = "highlight_unavailable";
-		$class_n2_cs     = "highlight_good" if $say_n2_cs eq "Connected";
-		$class_n2_cs     = "highlight_ready"if $say_n2_cs eq "WFConnection";
+		   $class_n2_cs  = "highlight_good"    if $say_n2_cs eq "Connected";
+		   $class_n2_cs  = "highlight_good"    if $say_n2_cs eq "SyncSource";
+		   $class_n2_cs  = "highlight_ready"   if $say_n2_cs eq "WFConnection";
+		   $class_n2_cs  = "highlight_ready"   if $say_n2_cs eq "PausedSyncS";
+		   $class_n2_cs  = "highlight_warning" if $say_n2_cs eq "PausedSyncT";
+		   $class_n2_cs  = "highlight_warning" if $say_n2_cs eq "SyncTarget";
 		my $class_n1_ro  = "highlight_unavailable";
-		$class_n1_ro     = "highlight_good"    if $say_n1_ro eq "Primary";
-		$class_n1_ro     = "highlight_warning" if $say_n1_ro eq "Secondary";
+		   $class_n1_ro  = "highlight_good"    if $say_n1_ro eq "Primary";
+		   $class_n1_ro  = "highlight_warning" if $say_n1_ro eq "Secondary";
 		my $class_n2_ro  = "highlight_unavailable";
-		$class_n2_ro     = "highlight_good"    if $say_n2_ro eq "Primary";
-		$class_n2_ro     = "highlight_warning" if $say_n2_ro eq "Secondary";
+		   $class_n2_ro  = "highlight_good"    if $say_n2_ro eq "Primary";
+		   $class_n2_ro  = "highlight_warning" if $say_n2_ro eq "Secondary";
 		my $class_n1_ds  = "highlight_unavailable";
-		$class_n1_ds     = "highlight_good"    if $say_n1_ds eq "UpToDate";
-		$class_n1_ds     = "highlight_warning" if $say_n1_ds eq "Inconsistent";
-		$class_n1_ds     = "highlight_warning" if $say_n1_ds eq "Outdated";
-		$class_n1_ds     = "highlight_bad"     if $say_n1_ds eq "Diskless";
+		   $class_n1_ds  = "highlight_good"    if $say_n1_ds eq "UpToDate";
+		   $class_n1_ds  = "highlight_warning" if $say_n1_ds =~ /Inconsistent/;
+		   $class_n1_ds  = "highlight_warning" if $say_n1_ds eq "Outdated";
+		   $class_n1_ds  = "highlight_bad"     if $say_n1_ds eq "Diskless";
 		my $class_n2_ds  = "highlight_unavailable";
-		$class_n2_ds     = "highlight_good"    if $say_n2_ds eq "UpToDate";
-		$class_n2_ds     = "highlight_warning" if $say_n2_ds eq "Inconsistent";
-		$class_n2_ds     = "highlight_warning" if $say_n2_ds eq "Outdated";
-		$class_n2_ds     = "highlight_bad"     if $say_n2_ds eq "Diskless";
+		   $class_n2_ds  = "highlight_good"    if $say_n2_ds eq "UpToDate";
+		   $class_n2_ds  = "highlight_warning" if $say_n2_ds =~ /Inconsistent/;
+		   $class_n2_ds  = "highlight_warning" if $say_n2_ds eq "Outdated";
+		   $class_n2_ds  = "highlight_bad"     if $say_n2_ds eq "Diskless";
 		print "
 	<tr>
 		<td>
@@ -10855,10 +10882,10 @@ sub display_node_controls
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	record($conf, "$THIS_FILE ".__LINE__."; node1_long: [$node1_long], node2_long: [$node2_long]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node1_long: [$node1_long], node2_long: [$node2_long]\n");
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;

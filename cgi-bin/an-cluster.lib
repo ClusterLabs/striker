@@ -2393,11 +2393,11 @@ sub get_guacamole_link
 	{
 		if ($ENV{SERVER_PORT} eq "443")
 		{
-			($guacamole_url) = "https://".$ENV{HTTP_HOST};
+			$guacamole_url = "https://".$ENV{HTTP_HOST};
 		}
 		else
 		{
-			($guacamole_url) = "http://".$ENV{HTTP_HOST};
+			$guacamole_url = "http://".$ENV{HTTP_HOST};
 		}
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
@@ -2414,6 +2414,9 @@ sub get_guacamole_link
 		$guacamole_url =~ s/\/client.xhtml.*$//;
 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
+	
+	# For now, guacamole can't use SSL (my bad, not theirs)
+	$guacamole_url =~ s/^https:/http:/;
 	
 	return ($guacamole_url);
 }
@@ -3643,6 +3646,7 @@ sub gather_node_details
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], gfs2: [$gfs2 (".@{$gfs2}." lines)]\n");
 		
 		# virsh data
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [virsh list --all]\n");
 		($error, $ssh_fh, my $virsh) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -3681,7 +3685,7 @@ sub gather_node_details
 		if ($hostname->[0])
 		{
 			$conf->{node}{$node}{info}{host_name} = $hostname->[0]; 
-			record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}]\n");
 		}
 		
 		# Read the node's host file.
@@ -3706,7 +3710,7 @@ sub gather_node_details
 			'close'		=>	1,
 			shell_call	=>	"dmesg",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmesg: [$dmesg]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmesg: [$dmesg]\n");
 		
 		### Last call, close the door on our way out.
 		# Bond data
@@ -4418,8 +4422,8 @@ sub parse_dmidecode
 sub parse_meminfo
 {
 	my ($conf, $node, $array) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
 	
-	record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -4444,6 +4448,9 @@ sub parse_drbd_status
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		next if $line !~ /^<resource /;
 		$resources++;
 		
@@ -4454,11 +4461,16 @@ sub parse_drbd_status
 		my $ro    = "--";
 		my $ds    = "--";
 		my $dev   = "--";
+		my $sync  = "";
 		($minor) = ($line =~ /minor="(.*?)"/);
 		($res)   = ($line =~ /name="(.*?)"/);
 		($cs)    = ($line =~ /cs="(.*?)"/);
 		($ro)    = ($line =~ /ro1="(.*?)"/);
 		($ds)    = ($line =~ /ds1="(.*?)"/);
+		if ($line =~ /resynced_percent="(.*?)"/)
+		{
+			$sync = $1;
+		}
 		$dev = "/dev/drbd$minor" if $minor =~ /^\d+$/;
 		
 		# This is the new way of recording.
@@ -4467,6 +4479,8 @@ sub parse_drbd_status
 		$conf->{drbd}{$res}{node}{$node}{role}             = $ro    ? $ro    : "--";
 		$conf->{drbd}{$res}{node}{$node}{disk_state}       = $ds    ? $ds    : "--";
 		$conf->{drbd}{$res}{node}{$node}{device}           = $dev   ? $dev   : "--";
+		$conf->{drbd}{$res}{node}{$node}{resync_percent}   = $sync  ? $sync  : "--";
+		
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], New - res: [$res], minor: [$conf->{drbd}{$res}{node}{$node}{minor}], cs: [$conf->{drbd}{$res}{node}{$node}{connection_state}], ro: [$conf->{drbd}{$res}{node}{$node}{role}], ds: [$conf->{drbd}{$res}{node}{$node}{disk_state}], dev: [$conf->{drbd}{$res}{node}{$node}{device}]\n");
 	}
 	if (not $resources)
@@ -4491,6 +4505,9 @@ sub parse_drbd_res_file
 	my $resources = 0;
 	foreach my $line (@{$array})
 	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		$line =~ s/#.*//;
 		next if not $line;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -4584,6 +4601,9 @@ sub parse_clustat
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
@@ -5043,6 +5063,9 @@ sub parse_daemons
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		next if $line !~ /^an-cdb:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		$exit_code = "" if not defined $exit_code;
@@ -5109,6 +5132,7 @@ sub parse_lvm_scan
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
 		{
@@ -5170,6 +5194,7 @@ sub parse_lvm_data
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line], in_pvs: [$in_pvs], in_vgs: [$in_vgs], in_lvs: [$in_lvs]\n");
 		if ($line =~ /^PV/)
 		{
@@ -5266,18 +5291,23 @@ sub parse_lvm_data
 sub parse_virsh
 {
 	my ($conf, $node, $array) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_virsh(), node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_virsh(), node: [$node], array: [$array (".@{$array}." lines)]\n");
 	
 	foreach my $line (@{$array})
 	{
-		next if $line !~ /^\d/;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		next if $line !~ /^\d/;
 		
 		my ($id, $say_vm, $state) = split/ /, $line, 3;
 		#record($conf, "$THIS_FILE ".__LINE__."; id: [$id], saw vm: [$say_vm], state: [$state]\n");
 		
 		my $vm = "vm:$say_vm";
 		$conf->{vm}{$vm}{node}{$node}{virsh}{'state'} = $state;
+		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::node::${node}::virsh::state: [$conf->{vm}{$vm}{node}{$node}{virsh}{'state'}]\n");
+		
 		if ($state eq "paused")
 		{
 			# This VM is being migrated here, disable withdrawl of
