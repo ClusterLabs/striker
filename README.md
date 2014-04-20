@@ -1,4 +1,4 @@
-AN!CDB v1.0.0
+AN!CDB v1.0.3
 =============
 
   This program is a "Cluster Dashboard" designed for simple management of
@@ -112,7 +112,7 @@ domains to the preferred host for a given VM.
 Screenshots
 -----------
 
-![An cdb cluster stack started](https://alteeve.ca/w/File:An-cdb-cluster-stack-started.png)
+![An cdb cluster stack started](https://alteeve.ca/images/0/09/An-cdb-splash.png)
 ![An cdb cluster stack running](https://alteeve.ca/images/d/d7/An-cdb-cluster-stack-running.png)
 \*All screen shots shown here were taken in late July 2013\*
 
