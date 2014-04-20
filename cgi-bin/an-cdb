@@ -62,6 +62,7 @@ my $conf={
 	online_nodes		=>	[],
 	path			=>	{
 		'an-cdb_files'		=>	"/var/www/home",
+		'an-cdb_cache'		=>	"/var/www/home/cache",
 		an_conf			=>	"/etc/an/an.conf",
 		cat			=>	"/bin/cat",
 		ccs			=>	"/usr/sbin/ccs",
@@ -98,8 +99,10 @@ my $conf={
 		show_refresh		=>	1,
 		root_password		=>	"",
 		ignore_missing_vm	=>	0,
-		#unusable_ram		=>	2147483648,	# 2 GiB
-		unusable_ram		=>	3048259584,	# ~4 GiB, rounds to leave a clean number of GB on systems with mirrored memory.
+		# ~3 GiB, but in practice more because it will round down the
+		# available RAM before subtracting this to leave the user with
+		# an even number of GiB or RAM to allocate to servers.
+		unusable_ram		=>	(3 * (1024 ** 3)),
 		os_variant		=>	[
 			"win7#!#Microsoft Windows 7",
 			"vista#!#Microsoft Windows Vista",

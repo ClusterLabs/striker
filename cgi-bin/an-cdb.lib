@@ -3669,8 +3669,12 @@ sub manage_vm
 	
 	# Something has changed. Make sure the request is sane,
 	my $current_ram   = $conf->{vm}{$vm}{details}{ram};
-	my $available_ram = ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
+
+	my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
+	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	my $max_ram       = $available_ram;
+	record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
 	
 	# If the user sets the RAM to less than 1 GiB, warn them. If the user
 	# sets the RAM to less that 32 MiB, error out.
@@ -5250,9 +5254,11 @@ sub verify_vm_config
 			push @errors, "Bad RAM Size#!#The amount of RAM must only contain digits. It looks like you entered: [<span class=\"code\">$conf->{cgi}{ram}</span>].";
 		}
 		my $requested_ram = hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
-		if ($requested_ram > ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram}))
+		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
+		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
+		if ($requested_ram > $available_ram)
 		{
-			my $say_free_ram  = bytes_to_hr($conf, ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram}));
+			my $say_free_ram  = bytes_to_hr($conf, $available_ram);
 			my $say_requested = bytes_to_hr($conf, $requested_ram);
 			push @errors, "Not Enough RAM#!#The cluster reports a maximum of <span class=\"code\">$say_free_ram</span> free RAM, but it looks like you asked for <span class=\"code\">$say_free_ram</span>.";
 		}
@@ -9259,9 +9265,15 @@ sub display_free_resources
 		}
 	}
 	
-	# Always knock off 2GB of RAM for the host OS.
+	# Always knock off some RAM for the host OS.
+	
 	my $real_total_ram            =  bytes_to_hr($conf, $conf->{resources}{total_ram});
-	$conf->{resources}{total_ram} -= $conf->{'system'}{unusable_ram};
+	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB
+	# of total RAM. So we modulous off the difference, then subtract that
+	# plus the reserved RAM to get an even left-over amount of memory for
+	# the user to allocate to their servers.
+	my $diff                      = $conf->{resources}{total_ram} % (1024 ** 3);
+	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
 	my $free_ram                  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
 	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : bytes_to_hr($conf, $free_ram);

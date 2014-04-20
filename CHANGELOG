@@ -15,6 +15,17 @@ v1.0.4 - <in-progress>
   chown root:apache /etc/ssh/ssh_config /etc/hosts
   chmod g+w /etc/ssh/ssh_config /etc/hosts
   ----
+- Cache and archive files are now stored in dedicated directories. If you are
+  updating, please run:
+  ----
+  mkdir /var/www/home/archive
+  mkdir /var/www/home/cache
+  chown -R apache:apache /var/www/home
+  mv /var/www/home/cache_* /var/www/home/cache/
+  mv /var/www/home/an.conf* /var/www/home/archive/
+  mv /var/www/home/ssh_config* /var/www/home/archive/
+  mv /var/www/home/hosts* /var/www/home/archive/
+  ----
 - Added port support in an.conf (node1:port, node2:port) in addition to
   /etc/ssh/ssh_config
 - Added new variable for 'cluster::X::root_pw' if the root password is
@@ -31,6 +42,11 @@ v1.0.4 - <in-progress>
 - Now cache /etc/hosts from each node and updated 'on_same_network()' to use
   the cached hosts data when local resolution fails. This allows things like
   powering on a node to work without editing the dashboard's local hosts file.
+- Modified how reserved RAM for the host is calculated. To ensure that the user
+  always sees and even number of GiB, the reserved amount is set to an even
+  number of GiB, 3 currently, the modulous is calculated on the available RAM,
+  and then the available RAM is calculated as
+  (total ram - modulous - reserved).
 
 
 v1.0.3 - 2014-03-26

@@ -948,15 +948,15 @@ sub save_dashboard_configure
 		$say_date      =~ s/ /, /;
 		
 		# Write out the new config file.
-		copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/an.conf.$date");
+		copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/archive/an.conf.$date");
 		write_new_an_conf($conf, $say_date);
 		
 		# Write out the 'hosts' file.
-		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/hosts.$date");
+		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/archive/hosts.$date");
 		write_new_hosts($conf, $say_date);
 		
 		# Write out the 'ssh_config' file.
-		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/ssh_config.$date");
+		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/archive/ssh_config.$date");
 		write_new_ssh_config($conf, $say_date);
 		
 		print "
@@ -2884,12 +2884,12 @@ sub check_node_status
 	my ($conf) = @_;
 	
 	my $cluster = $conf->{cgi}{cluster};
-	record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-		record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
 		gather_node_details($conf, $node);
 		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
 	}
@@ -3677,7 +3677,7 @@ sub gather_node_details
 			'close'		=>	1,
 			shell_call	=>	"hostname",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hostname->[0]: [$hostname->[0]]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hostname->[0]: [$hostname->[0]]\n");
 		if ($hostname->[0])
 		{
 			$conf->{node}{$node}{info}{host_name} = $hostname->[0]; 
@@ -3694,7 +3694,19 @@ sub gather_node_details
 			'close'		=>	1,
 			shell_call	=>	"cat /etc/hosts",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hosts: [$hosts]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hosts: [$hosts]\n");
+		
+		# Read the node's dmesg.
+		($error, $ssh_fh, my $dmesg) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	1,
+			shell_call	=>	"dmesg",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmesg: [$dmesg]\n");
 		
 		### Last call, close the door on our way out.
 		# Bond data
@@ -3723,6 +3735,7 @@ sub gather_node_details
 		parse_vm_defs      ($conf, $node, $vm_defs);
 		parse_bonds        ($conf, $node, $bond);
 		parse_hosts        ($conf, $node, $hosts);
+		parse_dmesg        ($conf, $node, $dmesg);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -4075,7 +4088,7 @@ sub remote_call
 sub parse_hosts
 {
 	my ($conf, $node, $array) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; parse_hosts(); node: [$node], array: [$array (".@{$array}." lines)]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; parse_hosts(); node: [$node], array: [$array (".@{$array}." lines)]\n");
 	
 	foreach my $line (@{$array})
 	{
@@ -4109,6 +4122,27 @@ sub parse_hosts
 	
 	return(0);
 }
+
+### TODO: Finish this and get a better view of the system
+# This parses dmesg
+sub parse_dmesg
+{
+	my ($conf, $node, $array) = @_;
+	
+	foreach my $line (@{$array})
+	{
+		# Parse out the real RAM total and reserved RAM total.
+		if ($line =~ /Memory: (.*)/)
+		{
+			my $memory = $1;
+			
+		}
+	}
+	
+	
+	return(0);
+}
+
 
 ### TODO: Finish this and add it to the node management
 # This parse bond data
@@ -4385,7 +4419,7 @@ sub parse_meminfo
 {
 	my ($conf, $node, $array) = @_;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -5005,7 +5039,7 @@ sub parse_daemons
 	#record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Stopped'.\n");
 	set_daemons($conf, $node, "Stopped", "highlight_bad");
 	
-	record($conf, "$THIS_FILE ".__LINE__."; in parse_daemons() for node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_daemons() for node: [$node]\n");
 	foreach my $line (@{$array})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -5621,14 +5655,14 @@ sub on_same_network
 sub write_node_cache
 {
 	my ($conf, $node) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
 	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
-	my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
-	record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	my $cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".an-cdb";
+	#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state
@@ -5659,7 +5693,7 @@ sub write_node_cache
 	if (@lines > 0)
 	{
 		my $fh         = IO::Handle->new();
-		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
 		open ($fh, "> $cache_file") or error($conf, "Failed to write: [<span class=\"fixed_width\">$cache_file</span>] as UID: [<span class=\"fixed_width\">$<</span>].<br />The error was: <span class=\"fixed_width\">$!</span>\n");
 		foreach my $line (@lines)
 		{
@@ -5680,7 +5714,7 @@ sub read_node_cache
 	# Write the command to disk so that I can check the power state
 	# in the future when both nodes are offline.
 	my $cluster    = $conf->{cgi}{cluster};
-	my $cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".an-cdb";
+	my $cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".an-cdb";
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
 	if (not -e $cache_file)
 	{
@@ -5693,7 +5727,7 @@ sub read_node_cache
 		else
 		{
 			# Add the .remote suffix.
-			$cache_file = "$conf->{path}{'an-cdb_files'}/cache_".$cluster."_".$node.".remote.an-cdb";
+			$cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".remote.an-cdb";
 		}
 	}
 	if (-e $cache_file)

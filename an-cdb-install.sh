@@ -131,7 +131,15 @@ if [ ! -e "/var/www/home" ]
 then
 	mkdir /var/www/home
 fi
-chown apache:apache /var/www/home/
+if [ ! -e "/var/www/home/archive" ]
+then
+	mkdir /var/www/home/archive
+fi
+if [ ! -e "/var/www/home/cache" ]
+then
+	mkdir /var/www/home/cache
+fi
+chown -R apache:apache /var/www/home
 
 ### TODO: Remove this and get selinux working ASAP.
 if [ ! -e "/etc/selinux/config.anvil" ]
