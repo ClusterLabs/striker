@@ -526,6 +526,39 @@ sub sanity_check_an_conf
 			$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
 			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
 			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
+			
+			# Search in 'hosts' and 'ssh_config' for previous
+			# entries with these names and delete them if found.
+			foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
+			{
+				my $say_node_1 = $conf->{cgi}{$nodes_1_name_key};
+				my $say_node_2 = $conf->{cgi}{$nodes_2_name_key};
+				if ($this_ip ne $this_nodes_1_ip)
+				{
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_1\s//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_1$//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_1$//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_1\s//;
+				}
+				if ($this_ip ne $this_nodes_2_ip)
+				{
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_2\s//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_2$//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_2$//;
+					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_2\s//;
+				}
+			}
+			foreach my $this_host (sort {$a cmp $b} keys %{$conf->{hosts}})
+			{
+				if ($this_host eq $conf->{cgi}{$nodes_1_name_key})
+				{
+					$conf->{hosts}{$this_host}{port} = $this_nodes_1_port ? $this_nodes_1_port : "";
+				}
+				if ($this_host eq $conf->{cgi}{$nodes_2_name_key})
+				{
+					$conf->{hosts}{$this_host}{port} = $this_nodes_2_port ? $this_nodes_2_port : "";
+				}
+			}
 		}
 		else
 		{
@@ -864,6 +897,7 @@ sub write_new_ssh_config
 		next if $line =~ /### Last updated:/;
 		#record($conf, "$THIS_FILE ".__LINE__."; >> ssh_config line: [$line]\n");
 		last if ($line =~ /^Host\s+(.*)$/);
+		last if ($line =~ /^###############/);
 		print $ssh_config "$line\n";
 	}
 	print $ssh_config "\n##############################################################################\n";
@@ -3996,6 +4030,11 @@ sub remote_call
 			elsif ($@ =~ /No route to host/)
 			{
 				$error = "No route to: [<span class=\"highlight_detail\">$node</span>].<br />Is the machine booting up still?<br />Is this dashboard server on the same network?";
+				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			}
+			elsif ($@ =~ /timeout/)
+			{
+				$error = "Timed out while waiting for a reply from: [<span class=\"highlight_detail\">$node</span>].<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.";
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			else
