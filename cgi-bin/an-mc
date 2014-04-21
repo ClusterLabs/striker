@@ -77,7 +77,7 @@ get_cgi_vars($conf, [
 	"url",
 ]);
 
-header($conf, "AN!MC", "Media Connector", "logo_an-mc_01.png");
+header($conf, "AN!MC", "Media Connector", "logo_anvil-dashboard_01.png");
 
 # Do I have a cluster name?
 #record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");

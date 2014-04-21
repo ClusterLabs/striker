@@ -10,7 +10,7 @@
 PASSWORD="secret"
 HOSTNAME=$(hostname)
 CUSTOMER="Alteeve's Niche!"
-VERSION="1.0.3"
+VERSION="1.1.0"
 
 clear;
 echo ""

@@ -9428,14 +9428,14 @@ sub display_free_resources
 	my $node1   = $conf->{'system'}{cluster}{node1_name};
 	my $node2   = $conf->{'system'}{cluster}{node2_name};
 	my $say_bns = "<span class=\"disabled_button\">Build a New Server</span>";
-	my $say_mc  = "<span class=\"disabled_button\">Media Connector</span>";
+	my $say_mc  = "<span class=\"disabled_button\">Media Library</span>";
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
-		# The cluster is running, so enable the media connector link.
-		$say_mc = "<a href=\"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Media Connector</a>";
+		# The cluster is running, so enable the media library link.
+		$say_mc = "<a href=\"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">Media Library</a>";
 		
 		# Enable the "New Server" button if there is enough free memory
 		# and storage space.

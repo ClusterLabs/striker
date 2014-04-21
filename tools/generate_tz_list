@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+#
+# This reads '/usr/share/zoneinfo/' and uses what it finds to generate a list
+# of time zones to use in a select statement.
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $conf = {
+	tz_dir		=>	"/usr/share/zoneinfo",
+	timezones	=>	[],
+};
+
+scan_dir($conf, $conf->{tz_dir});
+
+foreach my $timezone (sort {$a cmp $b} @{$conf->{timezones}})
+{
+	my $key = lc($timezone);
+	#print __LINE__."; tz: [$timezone]\n";
+#	print "<key name=\"tz_$key\">$timezone</key>\n";
+}
+
+foreach my $timezone (sort {$a cmp $b} @{$conf->{timezones}})
+{
+	my $key = lc($timezone);
+	print "\t\$select .= \"<option value=\\\"$timezone\\\">\".get_string(\$conf, {key => \"tz_$key\"}).\"</option>\\n\";\n";
+}
+
+exit(0);
+
+sub scan_dir
+{
+	my ($conf, $dir) = @_;
+	
+	local(*DIR);
+	opendir(DIR, $dir) or die "Failed to open the directory: [$dir], error: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if $file eq ".";
+		next if $file eq "..";
+		next if $file eq "right";
+		next if $file =~ /Etc\//i;
+		next if $file =~ /posix/;
+		next if $file =~ /\.tab$/;
+		next if $file =~ /\D+\d\D+/;
+		
+		my $full_path = $dir."/".$file;
+		my $file_type = "";
+		my $timezone  = "";
+		if (-l $full_path)
+		{
+			$file_type = "s";
+		}
+		elsif (-d $full_path)
+		{
+			$file_type = "d";
+			scan_dir($conf, $full_path);
+		}
+		elsif (-f $full_path)
+		{
+			$file_type = "f";
+			($timezone) = ($full_path =~ /$conf->{tz_dir}\/(.*)/);
+			push @{$conf->{timezones}}, $timezone;
+			#print __LINE__."; time zone: [$timezone]\n";
+		}
+		#print __LINE__."; full_path: [$file_type]-[$timezone]-[$full_path]\n";
+	}
+	
+	return();
+}

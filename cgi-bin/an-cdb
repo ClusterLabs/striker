@@ -313,7 +313,7 @@ if ($conf->{cgi}{device_keys})
 	get_cgi_vars($conf, \@more_vars);
 }
 
-header($conf, "AN!CDB", "Cluster Dashboard", "logo_an-cdb_02.png");
+header($conf, "AN!CDB", "Cluster Dashboard", "logo_anvil-dashboard_01.png");
 
 # Do I have a cluster name?
 if ($conf->{cgi}{logo})

@@ -38,7 +38,7 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.0.4";
+our $VERSION  = "1.1.0";
 
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
@@ -468,62 +468,79 @@ sub sanity_check_an_conf
 	}
 
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
-	if (($save) && ($conf->{cgi}{anvil_id}))
+	if ($save)
 	{
-		# Find a free ID after populating the keys above because
-		# they're going to come in from CGI as '...__new__...'.
-		record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
-		if ($this_id eq "new")
+		if ($conf->{cgi}{anvil_id})
 		{
-			# Find the next free ID number.
-			my $free_id = 1;
-			foreach my $existing_id (sort {$a cmp $b} keys %{$conf->{cluster}})
-			{
-				record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
-				if ($existing_id eq $free_id)
-				{
-					$free_id++;
-					record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
-					next;
-				}
-				else
-				{
-					# Got a free one.
-					record($conf, "$THIS_FILE ".__LINE__."; free; free_id: [$free_id]\n");
-					last;
-				}
-			}
-			$this_id = $free_id;
+			# Find a free ID after populating the keys above because
+			# they're going to come in from CGI as '...__new__...'.
 			record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+			if ($this_id eq "new")
+			{
+				# Find the next free ID number.
+				my $free_id = 1;
+				foreach my $existing_id (sort {$a cmp $b} keys %{$conf->{cluster}})
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
+					if ($existing_id eq $free_id)
+					{
+						$free_id++;
+						record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
+						next;
+					}
+					else
+					{
+						# Got a free one.
+						record($conf, "$THIS_FILE ".__LINE__."; free; free_id: [$free_id]\n");
+						last;
+					}
+				}
+				$this_id = $free_id;
+				record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+			}
+			
+			# If I'm still alive, push the passed in keys into $conf->{cluster}...
+			# so that they get written out in the next step.
+			$conf->{cluster}{$this_id}{name}        = $conf->{cgi}{$name_key};
+			$conf->{cluster}{$this_id}{description} = $conf->{cgi}{$description_key};
+			$conf->{cluster}{$this_id}{url}         = $conf->{cgi}{$url_key};
+			$conf->{cluster}{$this_id}{company}     = $conf->{cgi}{$company_key};
+			$conf->{cluster}{$this_id}{ricci_pw}    = $conf->{cgi}{$ricci_pw_key};
+			$conf->{cluster}{$this_id}{root_pw}     = $conf->{cgi}{$root_pw_key};
+			$conf->{cluster}{$this_id}{nodes}       = "$conf->{cgi}{$nodes_1_name_key}, $conf->{cgi}{$nodes_2_name_key}";
+			
+			# Record overrides, if any.
+			$conf->{cluster}{$this_id}{smtp}{server}              = $conf->{cgi}{$smtp__server_key};
+			$conf->{cluster}{$this_id}{smtp}{port}                = $conf->{cgi}{$smtp__port_key};
+			$conf->{cluster}{$this_id}{smtp}{timeout}             = $conf->{cgi}{$smtp__timeout_key};
+			$conf->{cluster}{$this_id}{smtp}{username}            = $conf->{cgi}{$smtp__username_key};
+			$conf->{cluster}{$this_id}{smtp}{password}            = $conf->{cgi}{$smtp__password_key};
+			$conf->{cluster}{$this_id}{smtp}{security}            = $conf->{cgi}{$smtp__security_key};
+			$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = $conf->{cgi}{$smtp__encrypt_pass_key};
+			$conf->{cluster}{$this_id}{smtp}{helo_domain}         = $conf->{cgi}{$smtp__helo_domain_key};
+			$conf->{cluster}{$this_id}{mail_data}{to}             = $conf->{cgi}{$mail_data__to_key};
+			$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
+			
+			# Record hosts
+			$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
+			$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
+			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
+			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
 		}
-		
-		# If I'm still alive, push the passed in keys into $conf->{cluster}...
-		# so that they get written out in the next step.
-		$conf->{cluster}{$this_id}{name}        = $conf->{cgi}{$name_key};
-		$conf->{cluster}{$this_id}{description} = $conf->{cgi}{$description_key};
-		$conf->{cluster}{$this_id}{url}         = $conf->{cgi}{$url_key};
-		$conf->{cluster}{$this_id}{company}     = $conf->{cgi}{$company_key};
-		$conf->{cluster}{$this_id}{ricci_pw}    = $conf->{cgi}{$ricci_pw_key};
-		$conf->{cluster}{$this_id}{root_pw}     = $conf->{cgi}{$root_pw_key};
-		$conf->{cluster}{$this_id}{nodes}       = "$conf->{cgi}{$nodes_1_name_key}, $conf->{cgi}{$nodes_2_name_key}";
-		
-		# Record overrides, if any.
-		$conf->{cluster}{$this_id}{smtp}{server}              = $conf->{cgi}{$smtp__server_key};
-		$conf->{cluster}{$this_id}{smtp}{port}                = $conf->{cgi}{$smtp__port_key};
-		$conf->{cluster}{$this_id}{smtp}{timeout}             = $conf->{cgi}{$smtp__timeout_key};
-		$conf->{cluster}{$this_id}{smtp}{username}            = $conf->{cgi}{$smtp__username_key};
-		$conf->{cluster}{$this_id}{smtp}{password}            = $conf->{cgi}{$smtp__password_key};
-		$conf->{cluster}{$this_id}{smtp}{security}            = $conf->{cgi}{$smtp__security_key};
-		$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = $conf->{cgi}{$smtp__encrypt_pass_key};
-		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = $conf->{cgi}{$smtp__helo_domain_key};
-		$conf->{cluster}{$this_id}{mail_data}{to}             = $conf->{cgi}{$mail_data__to_key};
-		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
-		
-		# Record hosts
-		$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
-		$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
-		$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
-		$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
+		else
+		{
+			# Modifying global, copy CGI to main variables.
+			$conf->{smtp}{server}              = $conf->{cgi}{smtp__server};
+			$conf->{smtp}{port}                = $conf->{cgi}{smtp__port};
+			$conf->{smtp}{timeout}             = $conf->{cgi}{smtp__timeout};
+			$conf->{smtp}{username}            = $conf->{cgi}{smtp__username};
+			$conf->{smtp}{password}            = $conf->{cgi}{smtp__password};
+			$conf->{smtp}{security}            = $conf->{cgi}{smtp__security};
+			$conf->{smtp}{encrypt_pass}        = $conf->{cgi}{smtp__encrypt_pass};
+			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
+			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
+			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
+		}
 	}
 
 	return ($save);
@@ -912,8 +929,8 @@ sub write_new_hosts
 				next if not $this_host;
 				record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
 				next if $this_host eq $last_host;
-				$last_host =  $this_host;
-				$say_hosts .= "$this_host ";
+				$last_host = $this_host;
+				$say_hosts .= " $this_host";
 				record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
 			}
 			$say_hosts =~ s/\s+$//;
