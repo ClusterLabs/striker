@@ -7364,8 +7364,8 @@ sub delete_vm
 		my $ccs_exit_code;
 		   $proceed = 0;
 		my ($error, $ssh_fh, $output) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
+			node		=>	$host,
+			port		=>	$conf->{node}{$host}{port},
 			user		=>	"root",
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	"",
@@ -7416,9 +7416,10 @@ sub delete_vm
 ";
 			   $proceed = 0;
 			my $virsh_exit_code;
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			($error, $ssh_fh, $output) = remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
+				node		=>	$host,
+				port		=>	$conf->{node}{$host}{port},
 				user		=>	"root",
 				password	=>	$conf->{'system'}{root_password},
 				ssh_fh		=>	$ssh_fh,
@@ -7449,7 +7450,7 @@ sub delete_vm
 			else
 			{
 				print "</br ><span class=\"highlight_bad\"><b>Error</b></span>! It would appear that something went wrong!<br />\n";
-				print "The call to destroy the VM should have exited with exit code <span class=\"fixed_width\">0</span>, but <span class=\"fixed_width\">$virsh_exit_code</span> was received.<br />\n";
+				print "The call to destroy the VM should have exited with exit code '<span class=\"fixed_width\">0</span>', but '<span class=\"fixed_width\">$virsh_exit_code</span>' was received instead.<br />\n";
 				print "Please <a href=\"https://alteeve.ca/w/Support\" target=\"_new\">contact support</a>.<br /><br />\n";
 			}
 			print "
@@ -7474,8 +7475,8 @@ sub delete_vm
 				print "Deleting <span class=\"fixed_width\">$lv</span>...<br />\n";
 				my $lvremove_exit_code;
 				($error, $ssh_fh, $output) = remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
+					node		=>	$host,
+					port		=>	$conf->{node}{$host}{port},
 					user		=>	"root",
 					password	=>	$conf->{'system'}{root_password},
 					ssh_fh		=>	$ssh_fh,
