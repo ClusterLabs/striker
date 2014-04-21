@@ -259,72 +259,100 @@ sub process_task
 </div>
 	";
 		get_storage_data($conf, $conf->{cgi}{node});
-		
-		my $display_details = 1;
-		if ($conf->{cgi}{'do'})
+		if ((not $conf->{storage}{is}{lsi}) && 
+		    (not $conf->{storage}{is}{hp})  &&
+		    (not $conf->{storage}{is}{mdadm}))
 		{
-			if ($conf->{cgi}{'do'} eq "start_id_disk")
-			{
-				lsi_control_disk_id_led($conf, "start");
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "stop_id_disk")
-			{
-				lsi_control_disk_id_led($conf, "stop");
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "make_disk_good")
-			{
-				lsi_control_make_disk_good($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "add_disk_to_array")
-			{
-				lsi_control_add_disk_to_array($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "put_disk_online")
-			{
-				lsi_control_put_disk_online($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "put_disk_offline")
-			{
-				lsi_control_put_disk_offline($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "mark_disk_missing")
-			{
-				lsi_control_mark_disk_missing($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "spin_disk_down")
-			{
-				lsi_control_spin_disk_down($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "spin_disk_up")
-			{
-				lsi_control_spin_disk_up($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "make_disk_hot_spare")
-			{
-				lsi_control_make_disk_hot_spare($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			elsif ($conf->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
-			{
-				lsi_control_unmake_disk_as_hot_spare($conf);
-				get_storage_data($conf, $conf->{cgi}{node});
-			}
-			### Prepare Unconfigured drives for removal
-			# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
-
+			my $cluster           = $conf->{cgi}{cluster};
+			my $node              = $conf->{cgi}{node};
+			my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	print "
+<table>
+	<tr>
+		<td colspan=\"3\">
+			<b><span class=\"fixed_width\">No Storage Managers Found on $node_cluster_name</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=\"3\">
+			<br />
+			I am sorry, but I did not find any storage management tools on <span class=\"highlight_detail\">$node</span>.<br />
+			Please install <span class=\"fixed_width\">MegaCli64</span> or another supported storage manager and try again.<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+";
 		}
-		if ($display_details)
+		else
 		{
-			display_node_health($conf);
+			my $display_details = 1;
+			if ($conf->{cgi}{'do'})
+			{
+				if ($conf->{cgi}{'do'} eq "start_id_disk")
+				{
+					lsi_control_disk_id_led($conf, "start");
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "stop_id_disk")
+				{
+					lsi_control_disk_id_led($conf, "stop");
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "make_disk_good")
+				{
+					lsi_control_make_disk_good($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "add_disk_to_array")
+				{
+					lsi_control_add_disk_to_array($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "put_disk_online")
+				{
+					lsi_control_put_disk_online($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "put_disk_offline")
+				{
+					lsi_control_put_disk_offline($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "mark_disk_missing")
+				{
+					lsi_control_mark_disk_missing($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "spin_disk_down")
+				{
+					lsi_control_spin_disk_down($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "spin_disk_up")
+				{
+					lsi_control_spin_disk_up($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "make_disk_hot_spare")
+				{
+					lsi_control_make_disk_hot_spare($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				elsif ($conf->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
+				{
+					lsi_control_unmake_disk_as_hot_spare($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
+				### Prepare Unconfigured drives for removal
+				# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
+
+			}
+			if ($display_details)
+			{
+				display_node_health($conf);
+			}
 		}
 	}
 	elsif ($conf->{cgi}{task} eq "restart_tomcat")
@@ -1344,7 +1372,7 @@ sub display_node_health
 	print "
 <table class=\"hidden_table\">
 	<tr>
-		<td colspan=\"3\">
+		<td colspan=\"3\" class=\"td_hidden\">
 			<table width=\"100%\">
 				<tr>
 					<td colspan=\"3\">
@@ -1977,15 +2005,16 @@ sub get_storage_data
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
+		#shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
+		shell_call	=>	"whereis MegaCli64 hpacucli",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#print "line: [$line]\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^(.*?):\s(.*)/)
 		{
 			my $program = $1;
@@ -1994,14 +2023,19 @@ sub get_storage_data
 			if ($program eq "MegaCli64")
 			{
 				$conf->{storage}{is}{lsi} = $path;
+				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::lsi: [$conf->{storage}{is}{lsi}]\n");
 			}
 			elsif ($program eq "hpacucli")
 			{
 				$conf->{storage}{is}{hp} = $path;
+				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::hp: [$conf->{storage}{is}{hp}]\n");
 			}
 			elsif ($program eq "mdadm")
 			{
+				### TODO: This is always installed... 
+				### Check if any arrays are configured and drop this if none.
 				$conf->{storage}{is}{mdadm} = $path;
+				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::mdadm: [$conf->{storage}{is}{mdadm}]\n");
 			}
 		}
 	}
@@ -2050,8 +2084,14 @@ sub get_storage_data_lsi
 	my $initial_led_state_set = 0;
 	
 	# Now call.
-	my $in_section     = 0;
-	my $megacli64_path = $conf->{storage}{is}{lsi};
+	my $in_section     =  0;
+	my $megacli64_path =  $conf->{storage}{is}{lsi};
+	my $shell_call     =  "echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; ";
+	   $shell_call     .= "echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
+	   $shell_call     .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
+	   $shell_call     .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
+	   $shell_call     .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \"PD Locate\" /root/MegaSAS.log;";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -2059,11 +2099,7 @@ sub get_storage_data_lsi
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; 
-			echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; 
-			echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; 
-			echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; 
-			echo '==] Start pd_id_led_state'; $conf->{path}{grep} \\\"PD Locate\\\" /root/MegaSAS.log;",
+		shell_call	=>	"$shell_call",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -2071,7 +2107,7 @@ sub get_storage_data_lsi
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#print "line: [$line]\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if not $line;
 		if ($line =~ /==] Start (.*)/)
 		{
