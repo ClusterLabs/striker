@@ -374,6 +374,7 @@ sub restart_tomcat
 		}
 		else
 		{
+			$line = parse_text_line($conf, $line);
 			print template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
@@ -1442,7 +1443,7 @@ sub display_node_health
 						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
 						{
-							$disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/hard-drive-with-led_128x128.png";
+							$disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive-with-led_128x128.png";
 							$id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
 							$say_identify = get_string($conf, {key => "button_0015"});
 						}
@@ -3080,7 +3081,7 @@ sub manage_vm
 			# will need to power off and restart the server before
 			# this will work.
 			$message     = "#!string!message_0076!#";
-			$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+			$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 			
 			# See if I need to update the XML definition file.
 			if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
@@ -3106,20 +3107,20 @@ sub manage_vm
 			if (not $node)
 			{
 				$message     = "#!string!message_0078!#";	# Server is off
-				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_offline.png\">";
+				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png\">";
 			}
 			elsif ($node =~ /n01/)
 			{
-				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n01.png\"></a>";
+				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
 			}
 			elsif ($node =~ /n02/)
 			{
-				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n02.png\"></a>";
+				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
 			}
 			else
 			{
 				$message     = "#!string!message_0079!#";	# Think the server is running, but unknown where.
-				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 			}
 		}
 	}
@@ -3127,7 +3128,7 @@ sub manage_vm
 	{
 		# Not installed.
 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
-		$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+		$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 	}
 	
 	# Finally, print it all
@@ -4274,11 +4275,11 @@ sub provision_vm
 		my ($guacamole_url) = get_guacamole_link($conf, $node);
 		if ($node =~ /n01/)
 		{
-			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n01.png\"></a>";
+			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
 		}
 		elsif ($node =~ /n02/)
 		{
-			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n02.png\"></a>";
+			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
 		}
 		else
 		{
@@ -5177,7 +5178,7 @@ sub start_vm
 					# will need to power off and restart the server before
 					# this will work.
 					$remote_message = get_string($conf, {key => "message_0076"});
-					$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+					$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 					
 					# See if I need to update the XML definition file.
 					if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
@@ -5203,20 +5204,20 @@ sub start_vm
 					if (not $node)
 					{
 						$remote_message = get_string($conf, {key => "message_0078"});
-						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_offline.png\">";
+						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png\">";
 					}
 					elsif ($node =~ /n01/)
 					{
-						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n01.png\"></a>";
+						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
 					}
 					elsif ($node =~ /n02/)
 					{
-						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_n02.png\"></a>";
+						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
 					}
 					else
 					{
 						$remote_message = get_string($conf, {key => "message_0079"});
-						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 					}
 				}
 			}
@@ -5224,7 +5225,7 @@ sub start_vm
 			{
 				# Not installed.
 				$remote_message = "#!string!message_0080!#";
-				$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/icon_server-desktop_oops.png\">";
+				$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
 			}
 		}
 		
@@ -5266,10 +5267,11 @@ sub start_vm
 sub parse_text_line
 {
 	my ($conf, $line) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
 	
 	# 'Da good ^_^
 	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
-	$line =~ s/\[ (ok) \]/[ <span class="highlight_good">$1<\/span> ]/ig;
+	$line =~ s/\[\s+(ok)\s+\]/[ <span class="highlight_good">$1<\/span> ]/ig;
 	
 	# Informational.
 	$line =~ s/(done)/<span class="highlight_ready">$1<\/span>/ig;
@@ -5281,8 +5283,9 @@ sub parse_text_line
 	
 	# 'Da bad. ;_;
 	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
-	$line =~ s/\[ (failed) \]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	$line =~ s/\[\s+(failed)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
 	
+	record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	return($line);
 }
 
@@ -7494,9 +7497,9 @@ sub display_vm_details
 				$say_host  =  $conf->{vm}{$vm}{host};
 				$say_host  =~ s/\..*//;
 				$say_net_host = template($conf, "server.html", "display-server-details-network-entry", {
-					say_host	=>	$say_host,
-					bridge		=>	$bridge[0],
-					device		=>	$device[0],
+					host	=>	$say_host,
+					bridge	=>	$bridge[0],
+					device	=>	$device[0],
 				});
 			}
 		}

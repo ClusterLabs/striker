@@ -70,7 +70,7 @@ yum clean all
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               perl-Test-Simple policycoreutils-python mod_ssl
+               perl-Test-Simple policycoreutils-python mod_ssl perl-TermReadKey
 
 # Stuff from our repo
 yum -y install perl-Net-SSH2

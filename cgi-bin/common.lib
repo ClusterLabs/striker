@@ -279,7 +279,7 @@ sub get_string
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
 	my $variables = $vars->{variables} ? $vars->{variables} : "";
-	#print __LINE__."; 1. key: [$key], language: [$language], variables: [$variables]\n";
+	#record($conf, "$THIS_FILE ".__LINE__."; key: [$key], language: [$language], variables: [$variables]\n");
 	
 	if (not $key)
 	{
@@ -314,6 +314,7 @@ sub get_string
 	
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
+	#record($conf, "$THIS_FILE ".__LINE__."; 1. string: [$string]\n");
 	#print __LINE__."; 3. string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
@@ -324,9 +325,9 @@ sub get_string
 	#print __LINE__."; 4. string: [$string]\n";
 	
 	# Process all the #!...!# escape variables.
-	#print __LINE__."; 5. string: [$string], variables: [$variables]\n";
+	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	($string) = process_string($conf, $string, $variables);
-	#print __LINE__."; 6. string: [$string]\n";
+	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 	
 	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
 	return($string);
@@ -355,11 +356,13 @@ sub hard_die
 	$exit_code = 999  if not defined $exit_code;
 	$message   = "?"  if not defined $message;
 	
-	print "<div name=\"hard_die\">\n";
-	print "Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />\n";
-	print "$message<br />\n";
-	print "Exiting.<br />\n";
-	print "</div>\n";
+	print "
+	<div name=\"hard_die\">
+	Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />
+	$message<br />
+	Exiting.<br />
+	</div>
+	";
 	
 	exit ($exit_code);
 }
@@ -420,7 +423,6 @@ sub initialize_conf
 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 			ssh_config		=>	"/etc/ssh/ssh_config",
 			virsh			=>	"/usr/bin/virsh",
-			
 			screen			=>	"/usr/bin/screen",
 			shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
 			status			=>	"/var/www/home/status/",
@@ -428,14 +430,12 @@ sub initialize_conf
 			check_dvd		=>	"/var/www/tools/check_dvd",
 			do_dd			=>	"/var/www/tools/do_dd",
 			rsync			=>	"/usr/bin/rsync",
-		#######################################################################
-		# New common.lib stuff.
-			skins				=>	"../html/skins/",
-			tput				=>	"/usr/bin/tput",
-			words_common			=>	"./common.xml",
-			words_file			=>	"./strings.xml",
-			log_file			=>	"/var/log/an-cdb.log",
-			config_file			=>	"/etc/an/an.conf",
+			skins			=>	"../html/skins/",
+			tput			=>	"/usr/bin/tput",
+			words_common		=>	"./common.xml",
+			words_file		=>	"./strings.xml",
+			log_file		=>	"/var/log/an-cdb.log",
+			config_file		=>	"/etc/an/an.conf",
 		},
 		args			=>	{
 			check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
@@ -446,7 +446,7 @@ sub initialize_conf
 			language		=>	"en_CA",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.2.0 alpha-1",
+			version			=>	"1.2.0 beta-2",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
@@ -469,7 +469,6 @@ sub initialize_conf
 		},
 		'system'		=>	{
 			dd_block_size		=>	"1M",
-		#######################################################################
 			debug			=>	1,
 			username		=>	getpwuid( $< ),
 			config_read		=>	0,
@@ -671,7 +670,7 @@ sub to_log
 			}});
 			print $fh "-=] $say_log_header\n";
 		}
-		print $fh "$THIS_FILE $line; $message";
+		print $fh "$file $line; $message";
 	}
 	
 	return(0);
@@ -760,21 +759,18 @@ sub template
 sub process_string
 {
 	my ($conf, $string, $variables) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	#print __LINE__."; i. string: [$string], variables: [$variables]\n";
 	
 	# Insert variables into #!variable!x!# 
 	my $i = 0;
 	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
-	#print __LINE__."; >> string: [$string]\n";
-	#print __LINE__."; [$i], 1.\n";
 	($string) = insert_variables_into_string($conf, $string, $variables);
 	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
-	#print __LINE__."; ii. string: [$string]\n";
 	
 	while ($string =~ /#!(.+?)!#/s)
 	{
 		# Insert strings that are referenced in this string.
-		#print __LINE__."; [$i], 2.\n";
 		#record($conf, "$THIS_FILE ".__LINE__."; [$i], 2.\n");
 		($string) = process_string_insert_strings($conf, $string, $variables);
 		
@@ -784,7 +780,7 @@ sub process_string
 		($string) = process_string_protect_escape_variables($conf, $string, "string");
 
 		# Inject any 'conf' values.
-		#print __LINE__."; [$i], 4.\n";
+		#record($conf, "$THIS_FILE ".__LINE__."; [$i], 4.\n");
 		($string) = process_string_conf_escape_variables($conf, $string);
 		
 		# Die if I've looped too many times.

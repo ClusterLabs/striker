@@ -143,7 +143,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 # root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
 #              nodes.
 		</key>
-		<key name="text_0003">### Last updated: [#!variable!date!#]</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
+ 		<!-- TODO: text_0003 with '[#!variable!date!#' breaks an-cluster.lib... Fix it. -->
+		<key name="text_0003">### Last updated: #!variable!date!#</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
 		<key name="text_0004">
 ##############################################################################
 #   Please do not put any variables other than 'Host' sections below here.   #
@@ -182,7 +183,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter it's password here.]]></key>
 		<key name="explain_0016"><![CDATA[This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />As with the other mail settings, which to use will depends on your Internet service provider.<br />If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.]]></key>
 		<key name="explain_0017"><![CDATA[This controls whether your password is sent to the mail server in plain text or encrypted.<br />Most modern mail servers support encrypted passwords, so 'Yes' should work here.]]></key>
-		<key name="explain_0018"><![CDATA[This is the person or list of people who will get alert emails. Please enter just the email address. <br />Separate multiple email addresses with a comma please.<br />Example: '<span class="code">foo\@example.com, bar\@example.com</span>'.]]></key>
+		<key name="explain_0018"><![CDATA[This is the person or list of people who will get alert emails. Please enter just the email address. <br />Separate multiple email addresses with a comma please.<br />Example: '<span class="code">foo@example.com, bar@example.com</span>'.]]></key>
 		<key name="explain_0019">Any existing open connections to servers may need to be reopened.</key>
 		<key name="explain_0020">The physical disks below are not currently a member of any logical disk.</key>
 		<key name="explain_0021">The server is shut off.</key>
@@ -517,7 +518,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0124">Precautions</key>
 		<key name="row_0125">Retry</key>
 		<key name="row_0126">CRITICAL ERROR!</key>
-		<key name="row_0127"></key>
+		<key name="row_0127">Output</key>
 		<key name="row_0128"></key>
 		<key name="row_0129"></key>
 		<key name="row_0130"></key>
@@ -669,9 +670,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0144"><![CDATA[If you are unsure what a certain question means, please don't hesitate to <a href="#!string!brand_0012!#" target="_new">ask questions</a>.]]></key>
 		<key name="message_0145"><![CDATA[<span class="fixed_width"><b>#!variable!node_anvil_name!#</b></span> will leave the #!string!brand_0003!#.]]></key>
 		<key name="message_0146">Once withdrawn, it will no longer be able to run or recover any servers until it rejoins the #!string!brand_0003!#.</key>
-		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!replace!node_anvil_name!#</span> to the #!string!brand_0003!#.]]></key>
+		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!variable!node_anvil_name!#</span> to the #!string!brand_0003!#.]]></key>
 		<key name="message_0148">This is usually a safe action.</key>
-		<key name="message_0149">Please note: If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).</key>
+		<key name="message_0149">If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).</key>
 		<key name="message_0150"><![CDATA[This will attempt to join both nodes of the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0151"><![CDATA[The #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span> is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
 		<key name="message_0152">This will effectively press and hold your node's power button until the system is forced to power down.</key>
@@ -711,7 +712,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0186">Please go back to the status page for more details.</key>
 		<key name="message_0187"><![CDATA[It appears that node <span class="fixed_width">#!variable!target!#</span> is no longer ready to run <span class="fixed_width">#!variable!server!#</span>.]]></key>
 		<key name="message_0188">This can take a while, please be patient!</key>
-		<key name="message_0189">This process will complete before the storage services start. Please give a minute or two for storage to come online.</key>
+		<key name="message_0189"><![CDATA[This process will complete before the storage services start.<br />Please give a minute or two for storage to come online.]]></key>
 		<key name="message_0190"><![CDATA[It appears that <span class="fixed_width">#!variable!node!#</span> has already joined the #!string!brand_0003!#.]]></key>
 		<key name="message_0191">Output from both nodes will be mixed together and may cause unusual formatting. This is not a problem.</key>
 		<key name="message_0192">All children should be gone now but it seems the program went into an infinit loop.</key>

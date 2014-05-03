@@ -920,8 +920,8 @@
 		<td>
 			<br />
 			#!replace!message!#<br />
-			#!string!message_0148!#<br />
 			#!string!message_0149!#<br />
+			#!string!message_0148!#<br />
 			<br />
 		</td>
 	</tr>
@@ -1110,8 +1110,8 @@
 		</td>
 	</tr>
 	<tr>
-		<td>
-			<span class="highlight_good"><b>#!string!row_0032!#/b></span>
+		<td class="highlight_good_bold">
+			#!string!row_0032!#
 		</td>
 		<td>
 			<br />
@@ -1344,11 +1344,11 @@
 
 <!-- start start-server-shell-output -->
 				<tr>
-					<td style="border: 1px solid white;" class="fixed_width">
-						#!replace!status!#
-					</td>
 					<td style="border: 1px solid white;" class="fixed_width" align="left">
 						#!replace!message!#
+					</td>
+					<td style="border: 1px solid white;" class="fixed_width">
+						#!replace!status!#
 					</td>
 				</tr>
 <!-- end start-server-shell-output -->
@@ -1403,9 +1403,6 @@
 		</td>
 		<td style="text-align: center;">
 			#!replace!restart_tomcat!#<br />
-		</td>
-		<td>
-			&nbsp;
 		</td>
 	</tr>
 <!-- end start-server-show-guacamole-link -->
@@ -1538,10 +1535,16 @@
 <!-- start join-anvil-header -->
 <table>
 	<tr>
+		<td class="highlight_good_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
 		<td>
-			<span class="highlight_good_bold">#!replace!title!#</span><br />
-			#!string!message_0188!#<br />
+			<br />
 			#!string!message_0189!#<br />
+			#!string!message_0188!#<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -2612,7 +2615,7 @@
 <!-- end display-server-details-header -->
 
 <!-- start display-server-details-network-entry -->
-<span class="highlight_detail">$say_host</span> -> <span class="highlight_detail">$bridge[0]</span> -> <span class="highlight_detail">$device[0]</span> -> 
+<span class="highlight_detail">#!replace!host!#</span> -> <span class="highlight_detail">#!replace!bridge!#</span> -> <span class="highlight_detail">#!replace!device!#</span> -> 
 <!-- end display-server-details-network-entry -->
 
 <!-- start display-server-details-resources -->
