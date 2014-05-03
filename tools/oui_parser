@@ -1,0 +1,119 @@
+#!/usr/bin/perl
+#
+# This downloads and parses the official OUI list;
+#   http://standards.ieee.org/develop/regauth/oui/oui.txt
+# It spits out XML formatted for use in "strings".
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $conf = {
+	url		=>	{
+		oui_list	=>	"http://standards.ieee.org/develop/regauth/oui/oui.txt",
+	},
+	path		=>	{
+		temp		=>	"/tmp/oui.txt",
+		wget		=>	"/usr/bin/wget",
+	},
+};
+
+download_oui($conf);
+parse_oui($conf);
+
+foreach my $oui (sort {$a cmp $b} keys %{$conf->{oui}})
+{
+	my $say_oui    =  $oui;
+	   $say_oui    =~ s/(\w\w)(\w\w)(\w\w)/$1:$2:$3/;
+	my $say_vendor =  $conf->{oui}{$oui}{vendor};
+	   $say_vendor =~ s/&/&amp;/g;
+	#print "OUI: [$say_oui], Vendor: [$conf->{oui}{$oui}{vendor}], address: [$conf->{oui}{$oui}{address}]\n";
+	print "\t\t<key name=\"oui_".lc($oui)."\">$say_vendor</key>\n";
+}
+
+# These are manually added.
+print "\t\t<!-- These are not found in the official OUI list -->\n";
+print "\t\t<key name=\"oui_525400\">Red Hat KVM virtual NIC</key>\n";
+
+exit(0);
+
+# Parse the downloaded OUI file.
+sub parse_oui
+{
+	my ($conf) = @_;
+
+	my $oui     = "";
+	my $vendor  = "";
+	my $address = "";
+	my $sc      = "$conf->{path}{temp}";
+	my $fh      = IO::Handle->new();
+	open ($fh, "<$sc") or die "Failed to read [$sc], error: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#print "file: [$line]\n";
+		if (not $line)
+		{
+			$address =~ s/, $//;
+			$conf->{oui}{$oui}{vendor}  = $vendor;
+			$conf->{oui}{$oui}{address} = $address;
+			$oui     = "";
+			$vendor  = "";
+			$address = "";
+			next;
+		}
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		if ($line =~ /^(\w\w-\w\w-\w\w)\s+\(hex\)\s+(.*)/)
+		{
+			$oui    =  $1;
+			$vendor =  $2;
+			$oui    =~ s/-//g;
+			next;
+		}
+		next if not $oui;
+		if ($line =~ /^(\w\w\w\w\w\w)\s+\(base 16\)\s+(.*)/)
+		{
+			my $oui2    = $1;
+			my $vendor2 = $2;
+			   $oui     = $oui2    if not $oui;
+			   $vendor  = $vendor2 if not $vendor;
+			next;
+		}
+		else
+		{
+			$address .= "$line, ";
+		}
+	}
+	$fh->close();
+
+	return(0);
+}
+
+# Download the OUI list.
+sub download_oui
+{
+	my ($conf) = @_;
+
+	if (-e $conf->{path}{temp})
+	{
+		print "Removing old OUI file: [$conf->{path}{temp}]... ";
+		unlink $conf->{path}{temp} or die "Failed!\nFailed to remove: [$conf->{path}{temp}], error; $!\n";
+		print "Done.\n";
+	}
+	print "Downloading: [$conf->{url}{oui_list}] to: [$conf->{path}{temp}]\n";
+	my $sc = "$conf->{path}{wget} $conf->{url}{oui_list} -O $conf->{path}{temp}";
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		print "ouput: $line\n";
+	}
+	$fh->close();
+
+	return(0);
+}
+

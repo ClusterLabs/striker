@@ -1,0 +1,109 @@
+<!-- These are templates for the main page; the stuff shown just after an Anvil! is selected. -->
+
+<!-- start no-anvil-found -->
+<table align="center">
+	<tr>
+		<td colspan="3">
+			<b>#!string!title_0001!#</b>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_bad">
+			#!string!row_0003!#
+		</td>
+		<td>
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end no-anvil-found -->
+
+<!-- start connection-error-table-header -->
+<table>
+	<tr>
+		<td colspan="3">
+			Unable to connect to the <span class="highlight_detail">#!replace!anvil!#</span> cluster!
+		</td>
+	</tr>
+<!-- end connection-error-table-header -->
+
+<!-- start connection-error-node-entry -->
+	<tr>
+		<td>
+			<span class="fixed_width">#!replace!node!#</span>
+		</td>
+		<td>
+			<span class="fixed_width">#!replace!state!#</span>
+		</td>
+		<td>
+			#!replace!note!#
+		</td>
+	</tr>
+<!-- end connection-error-node-entry -->
+
+<!-- start connection-error-try-again -->
+	<tr>
+		<td colspan="3">
+			<div class="align_right"><a href="#!replace!cgi_string!#"><b>Try Again</b></a></div>
+		</td>
+	</tr>
+<!-- end connection-error-try-again -->
+
+<!-- start close-table -->
+</table>
+<br />
+<!-- end close-table -->
+
+<!-- start no-access-message -->
+<table>
+	<tr>
+		<td class="highlight_note">
+			#!string!row_0033!#
+		</td>
+		<td>
+			#!replace!message!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end no-access-message -->
+
+<!-- start node-state-table -->
+<table>
+	<tr>
+		<td>
+			#!replace!state!#
+		</td>
+		<td>
+			#!replace!note!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end node-state-table -->
+
+<!-- start lv-inactive-error -->
+<table>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0043!#
+		</td>
+		<td>
+			#!string!message_0045!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end lv-inactive-error -->
+
+<!-- start migrate-server-footer -->
+<!-- end migrate-server-footer -->
+
+<!-- start  -->
+<!-- end  -->
+
+<!-- start  -->
+<!-- end  -->

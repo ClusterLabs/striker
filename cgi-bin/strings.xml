@@ -1,0 +1,875 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<string>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the Striker.</key>
+		
+		<!-- Buttons and icon's alt text. -->
+		<key name="button_0001">Back</key>
+		<key name="button_0002">Refresh</key>
+		<key name="button_0003">More Info</key>
+		<key name="button_0004">Confirm</key>
+		<key name="button_0005">Cancel</key>
+		<key name="button_0006">Remove from Logical Disk</key>
+		<key name="button_0007">Spin Down Disk</key>
+		<key name="button_0008">Make Good</key>
+		<key name="button_0009">Put Online</key>
+		<key name="button_0010">Add to Logical Disk ##!variable!logical_disk!#</key>
+		<key name="button_0011">Make Hot-Spare</key>
+		<key name="button_0012">Spin Up Drive</key>
+		<key name="button_0013">Unmark as Hot-Spare</key>
+		<key name="button_0014">Turn On</key>
+		<key name="button_0015">Turn Off</key>
+		<key name="button_0016">Back to Configuration</key>
+		<key name="button_0017">Eject</key>
+		<key name="button_0018">Insert</key>
+		<key name="button_0019">Change</key>
+		<key name="button_0020">click here</key>
+		<key name="button_0021">Add a New Disc</key>
+		<key name="button_0022">Build a New Server</key>
+		<key name="button_0023">Media Library</key>
+		<key name="button_0024">Migrate</key>
+		<key name="button_0025"><![CDATA[Migrate to <span class=\"fixed_width_button\">#!variable!migration_target!#</span>]]></key>
+		<key name="button_0026">Shut Down</key>
+		<key name="button_0027">Force Off</key>
+		<key name="button_0028">Graceful Shut Down</key>
+		<key name="button_0029">Boot Up</key>
+		<key name="button_0030">Delete</key>
+		<key name="button_0031">Join #!string!brand_0003!#</key>
+		<key name="button_0032">Withdraw</key>
+		<key name="button_0033">Power Off</key>
+		<key name="button_0034">Power On</key>
+		<key name="button_0035">Power On Both</key>
+		<key name="button_0036">Start #!string!brand_0003!#</key>
+		<key name="button_0037"></key>
+		
+		<!-- Branding strings - Most likely to be changed by a reseller. -->
+		<key name="brand_0001">Alteeve's Niche!</key>
+		<key name="brand_0002">Striker</key>
+		<key name="brand_0003"><![CDATA[<i>Anvil!</i>]]></key> <!-- If this gets changed, make sure 'an <new name>' still works, otherwise search for this get and replace 'an' with 'a'. -->
+		<key name="brand_0004">Anvil!</key>                   <!-- This version is used in plain-text files -->
+		<key name="brand_0005">Back-Channel Network</key>
+		<key name="brand_0006">BCN</key>
+		<key name="brand_0007">Storage Network</key>
+		<key name="brand_0008">SN</key>
+		<key name="brand_0009">Internet-Facing Network</key>
+		<key name="brand_0010">IFN</key>
+		<key name="brand_0011"><![CDATA[Please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
+		<key name="brand_0012">https://alteeve.ca/w/Support</key> <!-- Support URL -->
+		
+		<!-- Text messages used in config files and such. -->
+		<key name="text_0001">
+###############################################################################
+#                                                                             #
+# Alteeve's Niche!                                      #!string!brand_0002!# Configuration #
+#                                                                             #
+# This is the global configuration for the #!string!brand_0002!# dashboard and alert        #
+# monitoring system. Once configured on a dashboard, you can copy it as-is to #
+# your nodes.                                                                 #
+#                                                                             #
+###############################################################################
+		</key>
+		<key name="text_0002">
+### Global - These values apply to all #!string!brand_0004!# systems, unless overridden.
+
+# This configures how email is sent from this machine. Please be sure to set
+# the values below to the values given to you by your mail administrator (if
+# that's not you).
+#
+# This is the mail server to connect to when sending email.
+smtp::server				=	#!variable!smtp__server!#
+
+# This is the TCP port used to connect to the mail server.
+smtp::port				=	#!variable!smtp__port!#
+
+# This is the number of seconds to wait for a responce when connection to the
+# mail server on the given port that you set above.
+smtp::timeout				=	#!variable!smtp__timeout!#
+
+# This is the email address/IMAP user to send to the mail server. It is also
+# the address used in the 'From: ' field for emails sent from this machine.
+# NOTE: If you IMAP user name is not an email address, this may not work (it
+# has not been tested). If you have trouble, please let us know:
+# - https://alteeve.ca/w/Support
+smtp::username				=	#!variable!smtp__username!#
+
+# This is the password used for the email account above. This can be the
+# password directly, or a file that contains the password.
+#smtp::password				=	file:./email_pw.txt
+smtp::password				=	#!variable!smtp__password!#
+
+# This is the security level to use when connecting to the peer, if needed.
+smtp::security				=	#!variable!smtp__security!#
+
+# This tells us to use an encrypted connection to the mail server. Set to '0'
+# to send email plain-text (not recommended!).
+smtp::encrypt_pass			=	#!variable!smtp__encrypt_pass!#
+
+# This is the domain given to the mail server when establishing the connection.
+smtp::helo_domain			=	#!variable!smtp__helo_domain!#
+
+# This is a comma-separated list of email recipients. Please use bare email
+# addresses only.
+mail_data::to				=	#!variable!mail_data__to!#
+
+# This sets the 'sending domain' when sending email. It should match
+# smtp::server in most cases.
+mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
+
+### Per-#!string!brand_0004!# Configurations
+
+# This defines each #!string!brand_0004!#. If you want to defined multiple #!string!brand_0004!#s in #!string!brand_0002!#,
+# copy an entry in this section and increment the variable integer. The order
+# and value do not matter. It's simply a differentiator. If only one entry
+# exists, #!string!brand_0002!#'s #!string!brand_0004!# selection screen will not show and the sole entry
+# will be auto-selected.
+#
+# name:        Must match the name set in the #!string!brand_0004!#'s 'cluster.conf' file. 
+# nodes:       A comma-separated list of nodes. On the #!string!brand_0002!# server, this must
+#              be resolvable to the target machine (ie: via /etc/hosts +
+#              /etc/ssh/ssh_config)
+# company:     A free-form field used to show the owner of the #!string!brand_0004!#. 
+#              Particularly useful for resellers and companies with divisions.
+# description: Also a free-form field used to describe the purpose of the
+#              particular #!string!brand_0004!#.
+# url:         If defined, a link to the given URL will be shown beside the
+#              #!string!brand_0004!#'s name in the Dashboard's #!string!brand_0004!# selection screen. Useful
+#              for linking to internal documentation or similar.
+# ricci_pw:    This is the password used by the 'ricci' user on the #!string!brand_0004!#'s
+#              nodes. It must be set accurately in order to add or remove
+#              servers. If the 'root_pw' is not set below, this password will
+#              be used.
+# root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
+#              nodes.
+		</key>
+		<key name="text_0003">### Last updated: [#!variable!date!#]</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
+		<key name="text_0004">
+##############################################################################
+#   Please do not put any variables other than 'Host' sections below here.   #
+# At this time, only 'Host / Port' is supported. Please use ~/.ssh/config if #
+# you need to specify additional options for a given host.                   #
+##############################################################################
+		</key> <!-- The '###############' of the first line is used to detect when to stop straight-copying the old 'ssh_config' file contents, so please keep that when translating. -->
+		<key name="text_0005">
+# The file is maintained by #!string!brand_0002!#. If you modify this manually, entries will
+# be preserved but formatting and comments will not.
+
+127.0.0.1	localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1		localhost localhost.localdomain localhost6 localhost6.localdomain6
+		</key>
+		<key name="text_0006">Do not edit this file! Changes will be lost when #!string!brand_0002!# re-writes it.</key>
+		<key name="text_0007">Last updated: [#!variable!date!#].</key>
+		<key name="text_0008"></key>
+		<key name="text_0009"></key>
+		<key name="text_0010"></key>
+		
+		<!-- These are strings used to explain things to the user. Generally they follow form fields. -->
+		<key name="explain_0001"><![CDATA[This is the name of your #!string!brand_0003!#'s cluster name.<br />This is set in <span class="code">cluster.conf</span> in the <span class="code"><cluster ...></span> element's <span class="code">name="..."</span> attribute.]]></key>
+		<key name="explain_0002">This is a free-form text field where you can put in any description you would like for the give #!string!brand_0003!#.</key>
+		<key name="explain_0003">If you have an internal tracking or documentation system, and if you track the given #!string!brand_0003!# there, you can enter the URL for it here.</key>
+		<key name="explain_0004"><![CDATA[This is the name of the company, person or group that owns the specified #!string!brand_0003!#.<br />This is a purely descriptive field and you can set it to whatever you want.]]></key>
+		<key name="explain_0005"><![CDATA[When your #!string!brand_0003!# was built, a '<span class="highlight_note">ricci</span>' password was set.<br />Your dashboard needs this password in order to add, edit and remove servers from the given #!string!brand_0003!#.]]></key>
+		<key name="explain_0006"><![CDATA[On most #!string!brand_0003!# systems, the same password is used for both the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users.<br />If this is the case for you, you can leave this blank.<br />If you set a different '<span class="highlight_note">root</span>' password though, please enter that password here.<br />Please note that both nodes must have the same root password.]]></key>
+		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="code">xx-cYYnZZ</span>.]]></key>
+		<key name="explain_0008"><![CDATA[Generally, if this machine is in the same place as the the #!string!brand_0003!#, the name you set here will resolve to the '#!string!brand_0005!#' of the node.<br />If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />If you use DNS (or similar) to do name to IP translation, leave this blank.]]></key>
+		<key name="explain_0009"><![CDATA[This is the TCP port used to connect to the node over SSH. If you do not specify this, port <span class="code">22</span> will be used.<br />If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />When in doubt, leave this blank.]]></key>
+		<key name="explain_0010"><![CDATA[The dashboard does not send email, but your #!string!brand_0003!# nodes will.<br />The <span class="code">#!conf!path::an_conf!#</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.]]></key>
+		<key name="explain_0011"><![CDATA[This is the mail server that your node will connect to in order to send email.<br />Your Internet service provider will give you this address, often called an "<i>SMTP Server</i>".]]></key>
+		<key name="explain_0012"><![CDATA[When connecting to the mail server address above, a specific "port" number must be specified.<br />Your ISP should mention what this port number along with the address.<br />Typically, this is "25" for unencrypted connections and "587" for encrypted connections.]]></key>
+		<key name="explain_0013"><![CDATA[This is how long, in seconds, we will wait for a response from the mail server.<br />If there is no answer after this time, the connection will be considered failed.<br />Generally speaking, 60 seconds is a good number.]]></key>
+		<key name="explain_0014"><![CDATA[Some mail server require a user name and password. Usually, the user name will be you email address.<br /> Some ISPs do not require authentication, and in those cases, this can be left blank.<br /> Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.]]></key>
+		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter it's password here.]]></key>
+		<key name="explain_0016"><![CDATA[This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />As with the other mail settings, which to use will depends on your Internet service provider.<br />If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.]]></key>
+		<key name="explain_0017"><![CDATA[This controls whether your password is sent to the mail server in plain text or encrypted.<br />Most modern mail servers support encrypted passwords, so 'Yes' should work here.]]></key>
+		<key name="explain_0018"><![CDATA[This is the person or list of people who will get alert emails. Please enter just the email address. <br />Separate multiple email addresses with a comma please.<br />Example: '<span class="code">foo\@example.com, bar\@example.com</span>'.]]></key>
+		<key name="explain_0019">Any existing open connections to servers may need to be reopened.</key>
+		<key name="explain_0020">The physical disks below are not currently a member of any logical disk.</key>
+		<key name="explain_0021">The server is shut off.</key>
+		<key name="explain_0022">I am sorry, but without this information, I can not continue.</key>
+		<key name="explain_0023"><![CDATA[If you add the server to the #!string!brand_0003!# too early, it will be set to boot off of the #!string!device_0002!# by default, requiring you to update the boot device manually.<br />If you wait until after the server has rebooted for the first time, then the server will boot off of the #!string!device_0001!# by default.]]></key>
+		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It's good to keep this short.]]></key>
+		<key name="explain_0025"><![CDATA[This fine-tunes the cluster for your operating system.<br />If your OS is not listed, choose the one that is the closest match.]]></key>
+		<key name="explain_0026"><![CDATA[This will open a new window where you can upload new disc images.<br />Once finished, please reload this page to see them.]]></key>
+		<key name="explain_0027">You server will boot and install of this disc.</key>
+		<key name="explain_0028">This is optional.</key>
+		<key name="explain_0029"><![CDATA[If you need a drivers to install your server,<br />please select the appropriate disc here.]]></key>
+		<key name="explain_0030">Most servers work well between 2 and 8 GiB.</key>
+		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
+		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
+		<key name="explain_0033">Please use only one node's storage pool.</key>
+		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.]]></key>
+		<key name="explain_0035">This is likely a bug in the program.</key>
+		<key name="explain_0036"><![CDATA[]]></key>
+		<key name="explain_0037"><![CDATA[]]></key>
+		<key name="explain_0038"><![CDATA[]]></key>
+		<key name="explain_0039"><![CDATA[]]></key>
+		<key name="explain_0040"><![CDATA[]]></key>
+		
+		<!-- These are strings used to describe devices -->
+		<key name="device_0001">Hard Drive</key>
+		<key name="device_0002">Optical Drive</key>
+		<key name="device_0003">Optical Drive ##!variable!drive!#</key>
+		<key name="device_0004">Virtual Machine Manager</key> <!-- ok, so this isn't a 'device' per-se, whatev'... -->
+		<key name="device_0005"></key>
+		<key name="device_0006"></key>
+		<key name="device_0007"></key>
+		<key name="device_0008"></key>
+		<key name="device_0009"></key>
+		<key name="device_0010"></key>
+		
+		<!-- Symbols, digits, etc. -->
+		<key name="symbol_0001">1</key>
+		<key name="symbol_0002">2</key>
+		<key name="symbol_0003">3</key>
+		<key name="symbol_0004">4</key>
+		<key name="symbol_0005">5</key>
+		<key name="symbol_0006">6</key>
+		<key name="symbol_0007">7</key>
+		<key name="symbol_0008">8</key>
+		<key name="symbol_0009">9</key>
+		<key name="symbol_0010">0</key>
+		<key name="symbol_0011"><![CDATA[<span class=\"fixed_width\">--</span>]]></key> <!-- This is used in columns where no value was found -->
+		<key name="symbol_0012"></key>
+		<key name="symbol_0013"></key>
+		<key name="symbol_0014"></key>
+		<key name="symbol_0015"></key>
+		<key name="symbol_0016"></key>
+		<key name="symbol_0017"></key>
+		<key name="symbol_0018"></key>
+		<key name="symbol_0019"></key>
+		<key name="symbol_0020"></key>
+		
+		<!-- These are (usually technical) suffixes used after values -->
+		<key name="suffix_0001">YiB</key>
+		<key name="suffix_0002">ZiB</key>
+		<key name="suffix_0003">EiB</key>
+		<key name="suffix_0004">PiB</key>
+		<key name="suffix_0005">TiB</key>
+		<key name="suffix_0006">GiB</key>
+		<key name="suffix_0007">MiB</key>
+		<key name="suffix_0008">KiB</key>
+		<key name="suffix_0009">bytes</key>
+		<key name="suffix_0010"></key>
+		
+		<!-- These are 'state' messages and reflect the state of a given resource. -->
+		<key name="state_0001">unknown</key>
+		<key name="state_0002">none</key> <!-- name used for a host when no node is found/available -->
+		<key name="state_0003">Running</key>
+		<key name="state_0004">Offline</key>
+		<key name="state_0005">Success</key>
+		<key name="state_0006">Not Ready</key>
+		<key name="state_0007">no disc</key>
+		<key name="state_0008">Error</key>
+		<key name="state_0009">Ready</key>
+		<key name="state_0010">Mounted</key>
+		<key name="state_0011">Unmounted</key>
+		<key name="state_0012"></key>
+		<key name="state_0013"></key>
+		<key name="state_0014"></key>
+		<key name="state_0015"></key>
+		<key name="state_0016"></key>
+		<key name="state_0017"></key>
+		<key name="state_0018"></key>
+		<key name="state_0019"></key>
+		<key name="state_0020"></key>
+		
+		<!-- Titles used in tables -->
+		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
+		<key name="title_0002">Saving Changes...</key>
+		<key name="title_0003">Add a new #!string!brand_0003!# System</key>
+		<key name="title_0004">Configure the nodes for this new #!string!brand_0003!# and, if you wish, override global settings.</key>
+		<key name="title_0005">Existing #!string!brand_0003!# System</key>
+		<key name="title_0006"><![CDATA[Configure the nodes for this #!string!brand_0003!# and, if you wish, override global settings.<br />To remove this #!string!brand_0003!#, click on the 'X' icon beside the name to clear all fields and then save the form.]]></key>
+		<key name="title_0007">Global Overrides</key>
+		<key name="title_0008"><![CDATA[The values you set here will be used for this #!string!brand_0003!#, overridding the global values. You can override any or all values.<br />To use the global values, enter "<span class="fixed_width">#!inherit!#</span>".]]></key> <!-- The 'inherit' string is programatic, do not translate it. -->
+		<key name="title_0009">#!string!brand_0003!# Systems</key>
+		<key name="title_0010">Select an #!string!brand_0003!# to modify or delete.</key>
+		<key name="title_0011">Global Settings</key>
+		<key name="title_0012">The values you set here will be the default for all your #!string!brand_0003!# systems. You will be able to override any of these settings per-#!string!brand_0003!# below.</key>
+		<key name="title_0013">Company</key>
+		<key name="title_0014">Description</key>
+		<key name="title_0015">URL</key>
+		<key name="title_0016">No Storage Managers Found on #!variable!node_cluster_name!#</key>
+		<key name="title_0017">Restarting the remote desktop server on this dashboard.</key>
+		<key name="title_0018">Confirmation Required</key>
+		<key name="title_0019">Battery Backup Unit</key>
+		<key name="title_0020">Unconfigured Physical Disks</key>
+		<key name="title_0021">Logical Disk ##!variable!logical_disk!#</key>
+		<key name="title_0022"><![CDATA[Physical Disk [<span class="fixed_width">!variable!enclosure_device_id!#:#!variable!slot_number!#</span>]]]></key>
+		<key name="title_0023"><![CDATA[Updating the <span class="fixed_width">#!variable!server!#</span> server's CPU, RAM and boot devices...]]></key>
+		<key name="title_0024">Changing</key>
+		<key name="title_0025">Requested RAM was higher than available.</key>
+		<key name="title_0026">Requested CPU count was higher than available.</key>
+		<key name="title_0027">You need to power off the server for the changes to take effect.</key>
+		<key name="title_0028">There are two ways to do this:</key>
+		<key name="title_0029">It looks like neither the amount of RAM or the number of CPUs has changed.</key>
+		<key name="title_0030"><![CDATA[Inserting <span class="fixed_width">#!variable!media!#</span> into <span class="fixed_width">#!variable!drive!#</span>...]]></key>
+		<key name="title_0031"><![CDATA[Ejecting <span class="code">#!variable!drive!#</span>...]]></key>
+		<key name="title_0032"><![CDATA[Manage <span class="fixed_width">#!variable!server!#</span>.]]></key>
+		<key name="title_0033"><![CDATA[Adding the new <span class="fixed_width">#!variable!server!#</span> server to the cluster's <span class="fixed_width">#!variable!failover_domain!#</span> failover domain.]]></key>
+		<key name="title_0034"><![CDATA[Creating your new <span class="fixed_width">#!variable!server!#</span> server now.]]></key>
+		<key name="title_0035"><![CDATA[About to withdraw <b>#!variable!node_anvil_name!#</b> from cluster <b>#!variable!anvil!#</b>]]></key>
+		<key name="title_0036"><![CDATA[About to join <b>#!variable!node_anvil_name!#</b> to cluster <b>#!variable!anvil!#</b>.]]></key>
+		<key name="title_0037">About to join both nodes to the #!variable!anvil!# cluster.</key>
+		<key name="title_0038"><![CDATA[About to forcefully power off cluster node <b>#!variable!node_anvil_name!#</b>!]]></key>
+		<key name="title_0039"><![CDATA[About to power down the physical node <b>#!variable!node_anvil_name!#</b>!]]></key>
+		<key name="title_0040"><![CDATA[About to power on the physical node <b>#!variable!node_anvil_name!#</b>!]]></key>
+		<key name="title_0041">About to power on both nodes!</key>
+		<key name="title_0042"><![CDATA[About to boot up the server <b>#!variable!server!#</b> on <b>#!variable!node_anvil_name!#</b>]]></key>
+		<key name="title_0043"><![CDATA[About to shut down the server <b>#!variable!server!#</b>!]]></key>
+		<key name="title_0044"><![CDATA[About to forcefully power off <b>#!replace!server!#</b>!]]></key>
+		<key name="title_0045"><![CDATA[About to <span class="highlight_dangerous"><b>delete</b></span> the <b>#!replace!server!#</b> server!]]></key>
+		<key name="title_0046"><![CDATA[Booting #!variable!server!# on #!variable!node_anvil_name!# now...]]></key>
+		<key name="title_0047"><![CDATA[About to migrate the server <b><span class="fixed_width_button">#!variable!server!#</span></b> to <b><span class="fixed_width_button">#!variable!target!#</span></b>.]]></key>
+		<key name="title_0048">Booting of #!variable!server!# on #!variable!node_anvil_name!# failed!</key>
+		<key name="title_0049">Migrating #!variable!server!# to #!variable!target!# now...</key>
+		<key name="title_0050">Migration of #!variable!server!# to #!variable!target!# aborted!</key>
+		<key name="title_0051">Attempting orderly shut down of #!variable!server!# now...</key>
+		<key name="title_0052">Attempting to join #!variable!node_anvil_name!# to #!variable!anvil!# now...</key>
+		<key name="title_0053">Joining of #!variable!node_anvil_name!# to #!variable!anvil!# aborted!</key>
+		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
+		<key name="title_0055">Joining of both nodes to the #!variable!anvil!# cluster aborted!</key>
+		<key name="title_0056">Forcibly shutting down #!variable!server!# now...</key>
+		<key name="title_0057">Begining the process of deleting #!variable!server!# now...</key>
+		<key name="title_0058">Removing the server from the #!string!brand_0003!#'s management:</key>
+		<key name="title_0059">The server appears to still be running. I will force it off now.</key>
+		<key name="title_0060">Freeing up the server's storage now.</key>
+		<key name="title_0061">Shutting down #!variable!node_anvil_name!# now...</key>
+		<key name="title_0062">Withdrawl of #!variable!node_anvil_name!# aborted!</key>
+		<key name="title_0063">Powering on both nodes in the cluster now...</key>
+		<key name="title_0064">Booting both nodes in the #!variable!header!# cluster aborted!</key>
+		<key name="title_0065">Powering on #!variable!node_anvil_name!# now...</key>
+		<key name="title_0066">Powering on of #!variable!node_anvil_name!# failed!</key>
+		<key name="title_0067">Powering on of #!variable!node_anvil_name!# aborted!</key>
+		<key name="title_0068">Fencing #!variable!node_anvil_name!# now...</key>
+		<key name="title_0069">Powering on of #!variable!node_anvil_name!# aborted!</key>
+		<key name="title_0070">Withdrawing #!variable!node_anvil_name!# from the #!string!brand_0003!# now...</key>
+		<key name="title_0071">Withdrawl of #!variable!node_anvil_name!# aborted!</key>
+		<key name="title_0072">Attempting to recover the resource manager and, if necessary, the node's storage services...</key>
+		<key name="title_0073">#!string!brand_0003!# Offline</key>
+		<key name="title_0074">Available Resources</key>
+		<key name="title_0075">CPU Cores</key>
+		<key name="title_0076">RAM</key>
+		<key name="title_0077">Storage</key>
+		<key name="title_0078">Cores</key>
+		<key name="title_0079">Threads</key>
+		<key name="title_0080">Allocated</key>
+		<key name="title_0081">Total</key>
+		<key name="title_0082">Available</key>
+		<key name="title_0083">Volume Group</key>
+		<key name="title_0084">Physical Volume</key>
+		<key name="title_0085">Size</key>
+		<key name="title_0086">Used</key>
+		<key name="title_0087">Free</key>
+		<key name="title_0088">Servers - Details</key>
+		<key name="title_0089">Network</key>
+		<key name="title_0090">Servers - Status and Control</key>
+		<key name="title_0091">Preferred Host</key>
+		<key name="title_0092">Controls</key>
+		<key name="title_0093">Replicated Storage</key>
+		<key name="title_0094">Device</key>
+		<key name="title_0095">Connection</key>
+		<key name="title_0096">Role</key>
+		<key name="title_0097">Disk State</key>
+		<key name="title_0098">Resource</key>
+		<key name="title_0099">Shared File Systems</key>
+		<key name="title_0100">Mount Point</key>
+		<key name="title_0101">No shared file systems were found.</key>
+		<key name="title_0102">#!string!brand_0003!# Nodes - Status</key>
+		<key name="title_0103">#!string!brand_0003!# Membership</key> <!-- was 'cman' -->
+		<key name="title_0104">Resource Manager</key> <!-- was 'rgmanager' -->
+		<key name="title_0105">Replicated Storage</key> <!-- was 'drbd' -->
+		<key name="title_0106">Storage Pools</key> <!-- was 'clvmd' -->
+		<key name="title_0107">Shared Filesystems</key> <!-- was 'gfs2' -->
+		<key name="title_0108">Hypervisor</key> <!-- was 'libvirtd' -->
+		<key name="title_0109">#!string!brand_0003!# Nodes - Controls</key>
+		<key name="title_0110">Power</key>
+		<key name="title_0111">Membership</key>
+		<key name="title_0112">Special</key>
+		<key name="title_0113"></key>
+		
+		<!-- Row names are the short text strings to the left of rows. -->
+		<key name="row_0001">New!</key>
+		<key name="row_0002">Manage</key>
+		<key name="row_0003">Unknown</key>
+		<key name="row_0004">#!string!brand_0003!# Data Incomplete</key>
+		<key name="row_0005">#!string!brand_0003!# Name</key>
+		<key name="row_0006">Node 1 Name</key>
+		<key name="row_0007">Node 2 Name</key>
+		<key name="row_0008">Node 1 IP Address</key>
+		<key name="row_0009">Node 2 IP Address</key>
+		<key name="row_0010">Node 1 TCP Port</key>
+		<key name="row_0011">Node 2 TCP Port</key>
+		<key name="row_0012">Missing Node Name</key>
+		<key name="row_0013">Validating</key>
+		<key name="row_0014">Mail Server User</key>
+		<key name="row_0015">Alert Recipient</key>
+		<key name="row_0016">Mail Server Port</key>
+		<key name="row_0017">Mail Server Timeout</key>
+		<key name="row_0018">Sanity Checks Passed!</key>
+		<key name="row_0019">Done!</key>
+		<key name="row_0020">Problems Found</key>
+		<key name="row_0021">Description</key>
+		<key name="row_0022">Tracking URL</key>
+		<key name="row_0023">Owner</key>
+		<key name="row_0024">'ricci' Password</key>
+		<key name="row_0025">'root' Password</key>
+		<key name="row_0026">Mail Settings</key>
+		<key name="row_0027">Mail Server Address</key>
+		<key name="row_0028">Mail Server Password</key>
+		<key name="row_0029">Mail Security</key>
+		<key name="row_0030">Encrypt Password</key>
+		<key name="row_0031">Alert Recipient(s)</key>
+		<key name="row_0032">Note</key>
+		<key name="row_0033">No Access</key>
+		<key name="row_0034">Verification Failed</key>
+		<key name="row_0035">Bad Hostname</key>
+		<key name="row_0036">Permission Denied</key>
+		<key name="row_0037">Connection Refused</key>
+		<key name="row_0038">Connection Timed Out</key>
+		<key name="row_0039">Network Unreachable</key>
+		<key name="row_0040"><![CDATA[Error in <span class="code">hr_to_bytes()</span>]]></key>
+		<key name="row_0041">Connection Problem</key>
+		<key name="row_0042">Inaccesible</key>
+		<key name="row_0043">Inactive LV</key>
+		<key name="row_0044">Warning</key>
+		<key name="row_0045">Unable to Proceed</key>
+		<key name="row_0046">Model</key>
+		<key name="row_0047">Cache Size</key>
+		<key name="row_0048">Battery Backup (BBU)</key>
+		<key name="row_0049">Flash Module</key>
+		<key name="row_0050">Restore Hot-Spare on Insert</key>
+		<key name="row_0051">Capacity (Current / Design)</key>
+		<key name="row_0052">Current Charge</key>
+		<key name="row_0053">Replacement Needed</key>
+		<key name="row_0054">Learn Cycle Active</key>
+		<key name="row_0055">Next Learn Cycle</key>
+		<key name="row_0056">Total Drain/Charge Cycles</key>
+		<key name="row_0057">State</key>
+		<key name="row_0058">Bad Blocks Exist</key>
+		<key name="row_0059">RAID Level</key>
+		<key name="row_0060">Size</key>
+		<key name="row_0061">Number of Drives</key>
+		<key name="row_0062">Encryption Type</key>
+		<key name="row_0063">Target ID</key>
+		<key name="row_0064">LD Cache Policy</key>
+		<key name="row_0065">Disk Cache Policy</key>
+		<key name="row_0066">Span, Arm, Device ID</key>
+		<key name="row_0067">Device ID</key>
+		<key name="row_0068">Logical Disk not 'Optimal', Removal disabled</key>
+		<key name="row_0069">World Wide Number</key>
+		<key name="row_0070">Drive Temperature</key>
+		<key name="row_0071">Identify Light</key>
+		<key name="row_0072">Device Type</key>
+		<key name="row_0073">Media Error Count</key>
+		<key name="row_0074">"Other" Error Count</key>
+		<key name="row_0075">Predictive Failure Count</key>
+		<key name="row_0076">Raw Drive Size</key>
+		<key name="row_0077">Interface</key>
+		<key name="row_0078">Device to Adapter Speed</key>
+		<key name="row_0079">SAS Address 0</key>
+		<key name="row_0080">SAS Address 0</key>
+		<key name="row_0081">Remove Drive</key>
+		<key name="row_0082">Inserting</key>
+		<key name="row_0083">Success</key>
+		<key name="row_0084">Ejecting</key>
+		<key name="row_0085">Not Ready</key>
+		<key name="row_0086">Memory (RAM)</key>
+		<key name="row_0087">Number of CPUs</key>
+		<key name="row_0088">Desktop</key>
+		<key name="row_0089">Trouble?</key>
+		<key name="row_0090">Failure</key>
+		<key name="row_0091">Password</key>
+		<key name="row_0092">Checking VM State</key>
+		<key name="row_0093">Creating Definition</key>
+		<key name="row_0094">Removing libvirtd definition</key>
+		<key name="row_0095">Configuring #!string!brand_0003!#</key>
+		<key name="row_0096">Error</key>
+		<key name="row_0097">Enabling the Server</key>
+		<key name="row_0098">Starting</key>
+		<key name="row_0099">Beginning</key>
+		<key name="row_0100">Connect to Server</key>
+		<key name="row_0101">After First Reboot</key>
+		<key name="row_0102">Bad Server Name</key>
+		<key name="row_0103">Duplicate Server Name</key>
+		<key name="row_0104">Missing Server Name</key>
+		<key name="row_0105">Bad CPU Count</key>
+		<key name="row_0106">Not Enough CPUs</key>
+		<key name="row_0107">Bad RAM Size</key>
+		<key name="row_0108">Not Enough RAM</key>
+		<key name="row_0109">Conflicting Storage</key>
+		<key name="row_0110">Install Media</key>
+		<key name="row_0111">Driver Media</key>
+		<key name="row_0112">OS Variant Not Found</key>
+		<key name="row_0113">OS Variant</key>
+		<key name="row_0114">Server Name</key>
+		<key name="row_0115">Optimize for</key>
+		<key name="row_0116">New Media</key>
+		<key name="row_0117">Install From</key>
+		<key name="row_0118">Driver Disc</key>
+		<key name="row_0119">Storage Space</key>
+		<key name="row_0120">Caution</key>
+		<key name="row_0121">Dangerous!</key>
+		<key name="row_0122">Reconsider</key>
+		<key name="row_0123">Careful</key>
+		<key name="row_0124">Precautions</key>
+		<key name="row_0125">Retry</key>
+		<key name="row_0126">CRITICAL ERROR!</key>
+		<key name="row_0127"></key>
+		<key name="row_0128"></key>
+		<key name="row_0129"></key>
+		<key name="row_0130"></key>
+		
+		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
+		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0002!#</span> to add your first one!]]></key>
+		<key name="message_0002">Configure the #!string!brand_0003!# systems managed by #!string!brand_0002!#.</key>
+		<key name="message_0003"><![CDATA[I am sorry, but I can not find a cluster called <span class="fixed_width">#!variable!anvil!#</span> in the configuration file.<br /><br />Please update <span class="fixed_width">/etc/an/an.conf</span> in order to add a new cluster to this dashboard server.]]></key>
+		<key name="message_0004"><![CDATA[You appear to have tried to save an empty new #!string!brand_0003!#.<br />At minimum, the '<span class="highlight_ready">#!string!row_0005!#</span>', '<span class="highlight_ready">#!string!row_0006!#</span> and '<span class="highlight_ready">#!string!row_0007!#</span>' must be specified.]]></key>
+		<key name="message_0005"><![CDATA[The #!string!brand_0003!# with ID: [<span class="highlight_note" class="fixed_width">#!variable!id!#</span>] is missing some data.<br />At minimum, the '<span class="highlight_ready">#!string!row_0005!#</span>', '<span class="highlight_ready">#!string!row_0006!#</span> and '<span class="highlight_ready">#!string!row_0007!#</span>' must be specified.]]></key>
+		<key name="message_0006"><![CDATA[The IP address assigned to #!string!brand_0003!#: [<span class="highlight_detail">#!variable!name!#</span>]'s node named: [<span class="highlight_detail">#!variable!node!#</span>] appears to be invalid.]]></key>
+		<key name="message_0007"><![CDATA[The TCP port assigned to #!string!brand_0003!#: [<span class="highlight_detail">#!variable!name!#</span>]'s node named: [<span class="highlight_detail">#!variable!node!#</span>] appears to be invalid.<br />A TCP port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
+		<key name="message_0008"><![CDATA[Node 1 in #!string!brand_0003!#: [<span class="highlight_detail">#!variable!name!#</span>] appears to be missing.]]></key>
+		<key name="message_0009"><![CDATA[Node 2 in #!string!brand_0003!#: [<span class="highlight_detail">$this_name</span>] appears to be missing.]]></key>
+		<key name="message_0010">Making sure things look ok.</key>
+		<key name="message_0011"><![CDATA[The email address: [<span class="highlight_detail">#!variable!email!#</span>] does not appear to be valid.]]></key>
+		<key name="message_0012"><![CDATA[The mail server port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
+		<key name="message_0013"><![CDATA[You need to specify what TCP your mail server is listening on.<br />Usually this is either '<span class="highlight_detail">25</span>' or '<span class="highlight_detail">587</span>'.]]></key>
+		<key name="message_0014"><![CDATA[The timeout your specified: [<span class="highlight_detail">#!variable!timeout!#</span>] appears to have a mistake.<br />It needs to be a number of seconds. The default is '<span class="highlight_detail">60</span>' seconds.]]></key>
+		<key name="message_0015">Everything seems sensible, ready to save.</key>
+		<key name="message_0016"><![CDATA[Failed to copy the file: [<span class="highlight_detail">#!variable!file!#</span>] to: [<span class="highlight_detail">#!variable!destination!#</span>].<br />Shell call output:<br /><hr /><span class="highlight_detail">#!variable!output!#</span><hr />]]></key>
+		<key name="message_0017">Changes saved.</key>
+		<key name="message_0018">Please fix the issues found above. Once ready, please try again.</key>
+		<key name="message_0019"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />It is on an accessible subnet, so the node is likely off or there is a network problem.<br />If you just powered on the node, please be patient, it might still be booting.]]></key>
+		<key name="message_0020"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />The server running #!string!brand_0002!# is not currently on the same subnet as the node.]]></key>
+		<key name="message_0021"><![CDATA[SSH host key validation failed.<br />Have you saved <span class="fixed_width">#!variable!node!#</span>'s fingerprint in <span class="fixed_width">$conf->{'system'}{username}</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.]]></key>
+		<key name="message_0022"><![CDATA[Could not resolve the hostname: <span class="fixed_width">#!variable!node!#</span>. Have you setup your <span class="fixed_width">/etc/hosts</span> file or DNS server properly?]]></key>
+		<key name="message_0023"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. Is the "#!string!row_0025!#" correct in this #!string!brand_0003!#? Check <span class="fixed_width">/var/log/secure</span> on <span class="fixed_width">#!variable!node!#</span> for errors.]]></key>
+		<key name="message_0024"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />If you just powered the node on or off, it may not be allowing connections.<br />Please try again shortly.]]></key>
+		<key name="message_0025"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />The connection timed out.]]></key>
+		<key name="message_0026"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?]]></key>
+		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!system::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
+		<key name="message_0028"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.]]></key>
+		<key name="message_0029"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.<br />There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />In either case, please manually power on the nodes when you are ready to use them.<br />If they are on and you are seeing this message, then there might be a network problem.<br />Is this machine on the #!string!brand_0003!#'s <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>?]]></key>
+		<key name="message_0030"><![CDATA[The number: [#!variable!number!#] passed into the 'comma()' function contains a non-digit character or too many decimals.]]></key>
+		<key name="message_0031"><![CDATA[The passed byte size: [#!variable!size!#] contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.]]></key>
+		<key name="message_0032"><![CDATA[The passed byte size: [<span class="code">#!variable!size!#</span>] in the string: [sign: <span class="code">#!variable!sign!#</span>, size: <span class="code">#!variable!size!#</span>, type: <span class="code">#!variable!type!#</span>] contains an illegal value.<br />Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.<br />This is probably a program error (#!variable!file!#, line #!variable!line!#)]]></key>
+		<key name="message_0033"><![CDATA[The passed: [size: <span class="code">#!variable!size!#</span>, type: <span class="code">#!variable!type!#</span>] is not recognized.<br />Either an invalid size type was passed or I failed to properly parse the size type.<br />Valid size types are: '<span class="code">b</span>', '<span class="code">k</span>', '<span class="code">m</span>', '<span class="code">g</span>', '<span class="code">t</span>', '<span class="code">p</span>', '<span class="code">e</span>', '<span class="code">z</span>' or '<span class="code">y</span>'.<br />This is probably a program error (#!variable!file!#, line #!variable!line!#)]]></key>
+		<key name="message_0034"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.]]></key>
+		<key name="message_0035"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />]]></key>
+		<key name="message_0036"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />]]></key>
+		<key name="message_0037"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />]]></key>
+		<key name="message_0038"><![CDATA[Host name: [<span class="highlight_detail">#!variable!node!#</span>] does not resolve to an IP address.]]></key>
+		<key name="message_0039"><![CDATA[Connection to: [<span class="highlight_detail">#!variable!node!#</span>] on port: [<span class="highlight_detail">#!variable!port!#</span>] as the user: [<span class="highlight_detail">#!variable!user!#</span>] was refused.]]></key>
+		<key name="message_0040"><![CDATA[No route to: [<span class="highlight_detail">#!variable!node!#</span>].<br />Is the machine booting up still?<br />Is this dashboard server on the same network?]]></key>
+		<key name="message_0041"><![CDATA[Timed out while waiting for a reply from: [<span class="highlight_detail">#!variable!node!#</span>].<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.]]></key>
+		<key name="message_0042"><![CDATA[Unknown error while connecting to: [<span class="highlight_detail">#!variable!node!#</span>]: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
+		<key name="message_0043">Unable to log in. Please check the password for this cluster.</key>
+		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on #!variable!node!# while the #!string!brand_0003!#'s cluster is down. This is generally the sign of an unclean withdrawl of a node from the cluster! Please <a href="https://alteeve.com/w/Support">call support immediately</a>.]]></key>
+		<key name="message_0045"><![CDATA[The logical volume: [<span class="fixed_width">#!variable!lv!#</span>] on node: [<span class="fixed_width">#!variable!node!#</span>] is inactive!<br />Please <a href="https://alteeve.ca/w/Support" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
+		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume: [#!variable!lv!#]. Saw sizes: [#!variable!size!#] vs. [#!variable!bytes!#] and the backing volume group is: [#!variable!vg_1!#] vs [#!variable!vg_2!#]]]></key>
+		<key name="message_0047"><![CDATA[I was asked to check the power staus of: [#!variable!node!#] via it's peer: [#!variable!peer!#], but the power check command is empty.<br />This is likely a program error.]]></key>
+		<key name="message_0048"><![CDATA[I was trying to resolve the host name: [<span class="fixed_width">#!variable!target_host!#</span>] but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your: [<span class="fixed_width">/etc/hosts</span>] file?]]></key>
+		<key name="message_0049">I was trying to resolve a host name, but no name was given. This is likely a program error.</key>
+		<key name="message_0050"><![CDATA[Failed to write: [<span class="fixed_width">#!variable!cache_file!#</span>] as UID: [<span class="fixed_width">#!variable!uid!#</span>].<br />The error was: <span class="fixed_width">#!variable!errer!#</span>]]></key>
+		<key name="message_0051"><![CDATA[I am sorry, but I did not find any storage management tools on <span class="highlight_detail">#!replace!node!#</span>.<br />Please install <span class="fixed_width">MegaCli64</span> or another supported storage manager and try again.]]></key>
+		<key name="message_0052">Restarting the remote desktop server</key>
+		<key name="message_0053"><![CDATA[Please close this brower tab (or window).<br />You should now be able to connect to your server.]]></key>
+		<key name="message_0054">Drive can now be removed.</key>
+		<key name="message_0055">Temperaure unavailable while spun down</key>
+		<key name="message_0056">Rebuild will begin in just a moment.</key>
+		<key name="message_0057">Temperarily unavailable while in transition</key>
+		<key name="message_0058">Drive is coming online</key>
+		<key name="message_0059"><![CDATA[You've requested that the new RAM for this server be: [<span class="fixed_width">#!variable!requested_ram!#</span>].<br />Unfortunately, the highest you can use is: [<span class="fixed_width">#!variable!max_ram!#</span>].<br />Did someone else allocate some of the free RAM to another server?<br />No changes were made.]]></key>
+		<key name="message_0060"><![CDATA[You've requested that the CPU count for this server be: [<span class="fixed_width">#!variable!requested_cpus!#</span>].<br />Unfortunately, the highest you can use is: [<span class="fixed_width">#!variable!max_cpus!#</span>].<br />No changes were made.]]></key>
+		<key name="message_0061"><![CDATA[<br />Setting the RAM to [<span class="fixed_width">#!variable!ram!# #!variable!ram_suffix!#</span>], the number of CPUs to: [<span class="fixed_width">#!variable!requested_cpus!#</span>] and the boot device to [<span class="fixed_width">#!variable!requested_boot_device!#</span>].<br /><br />]]></key>
+		<key name="message_0062">Gracefully power off and then boot back up the server.</key>
+		<key name="message_0063"><![CDATA[While logged into your server, directly shut the OS down.<br /><span class="code"> &nbsp;</span> The #!string!brand_0003!# will automatically restart the server with the new settings.]]></key>
+		<key name="message_0064">Please don't just reboot. The configuration file is read on initial boot only.</key>
+		<key name="message_0065">No change was made to the server.</key>
+		<key name="message_0066">It looks like someone else already inserted a disc.</key>
+		<key name="message_0067">The disc was inserted successfully.</key>
+		<key name="message_0068">It would appear that something went wrong!</key>
+		<key name="message_0069"><![CDATA[I tried to insert the disc: [#!variable!media!#] into the drive: [#!variable!drive!#] and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
+		<key name="message_0070"><![CDATA[Updating <span class="fixed_width">#!variable!server!#</span>'s definition file directly.]]></key>
+		<key name="message_0071">It would appear that someone else already ejected the disc.</key>
+		<key name="message_0072">The optical drive's media has been ejected.</key>
+		<key name="message_0073"><![CDATA[I tried to eject the disc in drive: [<span class="fixed_width">#!variable!drive!#</span>] and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!replace!virsh_exit_code!#</span>] was received.]]></key>
+		<key name="message_0074">Saving the new configuration...</key>
+		<key name="message_0075"><![CDATA[I am sorry, but the #!string!brand_0003!#'s storage isn't running on either node.<br />Please try again once the #!string!brand_0003!#'s storage has started on at least one of the nodes.]]></key>
+		<key name="message_0076">The server is currently not using VNC. The server's configuration will be updated now. Please power off and then start the server (don't reboot) and then try again.</key>
+		<key name="message_0077">Connect directly to this server's desktop.</key>
+		<key name="message_0078">The server is turned off.</key>
+		<key name="message_0079">I think this server is running, but I don't know where. You can try connecting to it anyway.</key>
+		<key name="message_0080"><![CDATA[This version of #!string!brand_0002!# does not have in-browser remote desktop support yet.<br /><a href="#!string!brand_0012!#" target="_new">Please upgrade</a> to enable this feature.]]></key>
+		<key name="message_0081">Currently booting from the #!variable!boot_device!#.</span></key>
+		<key name="message_0082">Currently #!variable!current_ram!#, Maximum #!variable!maximum_ram!#</key>
+		<key name="message_0083">Currently #!variable!current_cpus!#</key>
+		<key name="message_0084"><![CDATA[Please Note: If the server is migrated to the other node,<br />you will have to refresh this page and then reconnect.]]></key>
+		<key name="message_0085"><![CDATA[If you're having trouble connecting to the server's desktop, <a href="?cluster=#!variable!reset_tomcat_url!#" target="_new">#!string!button_0020!#</a>.<br />This will restart the remote desktop server on this dashboard.]]></key>
+		<key name="message_0086"><![CDATA[I tried to update the definition file for: [<span class="fixed_width">#!variable!server!#</span>] and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
+		<key name="message_0087"><![CDATA[Unable to add the new <span class="fixed_width">#!variable!server!#</span> server to the cluster without a <span class="fixed_width">ricci</span> password!]]></key>
+		<key name="message_0088"><![CDATA[Please update the <a href="#!variable!manage_url!#" target="_new">#!string!row_0024!#</a> for this #!string!brand_0003!# and then try again by pressing '<span class="fixed_width">&lt;ctrl&gt;</span> + <span class="fixed_width">r</span>'.]]></key>
+		<key name="message_0089">I was unable to determine which failover domain to use for this new machine.</key>
+		<key name="message_0090">Checking now to make sure the new server is up and running.</key>
+		<key name="message_0091">It is not running at the moment, I will now boot the server.</key>
+		<key name="message_0092">It should now be booting up.</key>
+		<key name="message_0093">It didn't start on the first try. Trying again specifying the definition file.</key>
+		<key name="message_0094"><![CDATA[The new <span class="fixed_width">#!variable!server!#</span> server didn't start on reboot.<br />I tried to start it, but the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!replace!virsh_exit_code!#</span> was received.]]></key>
+		<key name="message_0095">It is already running, as expected.</key>
+		<key name="message_0096">The VM is now running on the peer. I will use that node for the next steps.</key>
+		<key name="message_0097"><![CDATA[The cluster needs to know what "hardware" to create for the new server when it starts.<br />This is done using a "definition" file, which we will record now.]]></key>
+		<key name="message_0098">I was about to add a server to the #!string!brand_0003!# but I don't have the new server's name. This is likely a software error.</key>
+		<key name="message_0099"><![CDATA[Saved successfully as <span class="fixed_width">#!variable!definition!#</span>.]]></key>
+		<key name="message_0100"><![CDATA[I tried to record the definition file and the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
+		<key name="message_0101"><![CDATA[To ensure only the Anvil! can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
+		<key name="message_0102"><![CDATA[Successfully removed the <span class="fixed_width">libvirtd</span> definition.]]></key>
+		<key name="message_0103"><![CDATA[I tried to remove the <span class="fixed_width">libvirtd</span> definition, which should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
+		<key name="message_0104">This is a non-fatal error. Proceeding.</key>
+		<key name="message_0105">I will now add the new server to the #!string!brand_0003!#.</key>
+		<key name="message_0106">Please be patient!</key>
+		<key name="message_0107">This can take several minutes to complete.</key>
+		<key name="message_0108"><![CDATA[<span class="highlight_bad">#!string!row_0044!#</span>: The <span class="code">ricci</span> daemon is not running on <span class="code">$node</span>.]]></key>
+		<key name="message_0109">This is probably a mis-configuration of the #!string!brand_0003!# node.</key>
+		<key name="message_0110"><![CDATA[Please ensure that <span class="code">ricci</span> is running and is set to start on boot.]]></key>
+		<key name="message_0111">The server has been added successfully.</key>
+		<key name="message_0112"><![CDATA[The call to add the new VM to the cluster should have returned: [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!ccs_exit_code!#</span>] was received.]]></key>
+		<key name="message_0113">Informing the #!string!brand_0003!# that the server is running.</key>
+		<key name="message_0114">The server has been added to the #!string!brand_0003!#.</key>
+		<key name="message_0115"><![CDATA[The call to tell the #!string!brand_0003!# that the new server is running should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!clusvcadm_exit_code!#</span> was received.]]></key>
+		<key name="message_0116">In just a moment, your new server should begin installing.</key>
+		<key name="message_0117">Please leave this window open until you have rebooted the new server for the first time!</key>
+		<key name="message_0118"><![CDATA[Writing provision script to <span class="code">#!variable!script!#</span>]]></key>
+		<key name="message_0119"><![CDATA[#!string!message_0120!#<br />Starting the installation of <span class="code">#!string!server!#</span> now.]]></key>
+		<key name="message_0120">Done.</key>
+		<key name="message_0121"><![CDATA[Failed to locate the host node!</span><br />Please use <span class="code">#!string!device_0004!#</span> on the dashboard machine to locate this server and finish the install. Sorry for the inconvenience.]]></key>
+		<key name="message_0122">If there were no errors, the installation should now have started.</key>
+		<key name="message_0123">Directly connect to your new server's desktop.</key>
+		<key name="message_0124">Once the installation is complete, please return here and click the link below.</key>
+		<key name="message_0125"><![CDATA[Please complete the install using the <span class="code">#!string!device_0004!#</span> on the dashboard's desktop.]]></key>
+		<key name="message_0126"><![CDATA[<b>After</b> the OS install is complete, please <a href="#!variable!url!#" class="button">#!string!button_0020!#</a> to add the VM to the cluster.]]></key>
+		<key name="message_0127">The server name can't have spaces in the name.</key>
+		<key name="message_0128"><![CDATA[The server name: [<span class="code">#!variable!server!#</span>] is already in use.]]></key>
+		<key name="message_0129"><![CDATA[All servers need to have a name. This is usally something like <span class="code">vmXX-purpose</span>.]]></key>
+		<key name="message_0130"><![CDATA[Somehow, the number of requested CPUs: [<span class="code">#!variable!cpu_cores!#</span>] has a non-digit in it. This is probably a program error.]]></key>
+		<key name="message_0131"><![CDATA[The cluster reports a maximum of <span class="code">#!variable!total_threads!#</span> CPUs, but it looks like you asked for <span class="code">#!variable!cpu_cores!#</span>. This is probably a program error.]]></key>
+		<key name="message_0132"><![CDATA[The amount of RAM must only contain digits. It looks like you entered: [<span class="code">#!variable!ram!#</span>].]]></key>
+		<key name="message_0133"><![CDATA[The cluster reports a maximum of <span class="code">#!variable!free_ram!#</span> free RAM, but it looks like you asked for <span class="code">#!variable!requested_ram!#</span>. Did someone else just build a server?]]></key>
+		<key name="message_0134">It looks like you asked to use storage from both nodes. This is not safe. Please clear one of the node's storage.</key>
+		<key name="message_0135">The installation media you selected seems to have disappeared.</key>
+		<key name="message_0136">You did not select installation media.</key>
+		<key name="message_0137">The driver media you selected seems to have disappeared.</key>
+		<key name="message_0138">Somehow, an OS optimization type was specified that is not valid. This is probably a program error.</key>
+		<key name="message_0139">No operating system optimization type was specified. This is probably a program error.</key>
+		<key name="message_0140">or</key> <!-- used between two options, like selecting storage pool 1 or 2 -->
+		<key name="message_0141">free</key> <!-- follows a size or unit, ie: X GB free -->
+		<key name="message_0142"><![CDATA[Create a new server on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#]]></key>
+		<key name="message_0143">You will need to answer some questions in order to create a new server.</key>
+		<key name="message_0144"><![CDATA[If you are unsure what a certain question means, please don't hesitate to <a href="#!string!brand_0012!#" target="_new">ask questions</a>.]]></key>
+		<key name="message_0145"><![CDATA[<span class="fixed_width"><u><b>#!variable!node_anvil_name!#</b></u></span> will leave the #!string!brand_0003!#.]]></key>
+		<key name="message_0146">Once withdrawn, it will no longer be able to run or recover any servers until it rejoins the #!string!brand_0003!#.</key>
+		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!replace!node_anvil_name!#</span> to the #!string!brand_0003!#.]]></key>
+		<key name="message_0148">This is usually a safe action.</key>
+		<key name="message_0149">Please note: If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).</key>
+		<key name="message_0150"><![CDATA[This will attempt to join both nodes of the <span class="fixed_width">#!variable!anvil!#</span> cluster.]]></key>
+		<key name="message_0151"><![CDATA[The cluster node <span class="fixed_width">#!variable!node_anvil_name!#</span> is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
+		<key name="message_0152">This will effectively press and hold your node's power button until the system is forced to power down.</key>
+		<key name="message_0153">Should that fail, the power to the node will be completely cut off.</key>
+		<key name="message_0154">This should be done as a last resort, when all other attempts to gracefully shut down the node have failed.</key>
+		<key name="message_0155"><![CDATA[<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off.]]></key>
+		<key name="message_0156"><![CDATA[This will send a <span class="fixed_width">poweroff</span> command to the <span class="fixed_width">#!variable!node_anvil_name!#</span> node.]]></key>
+		<key name="message_0157">If all is well, this node should gracefully power off.</key>
+		<key name="message_0158">If there is a problem with this node, like an incomplete withdrawl from the cluster, it may hang while trying to shut down.</key>
+		<key name="message_0159"><![CDATA[If this happens, return to the previous page and call a <span class="fixed_width">fence</span> action against this node.]]></key>
+		<key name="message_0160"><![CDATA[An attempt will be made to power on the <span class="fixed_width">#!variable!node_anvil_name!#</span> node.]]></key>
+		<key name="message_0161"><![CDATA[An attempt will be made to boot both nodes in the <span class="fixed_width">#!variable!anvil!#</span> cluster.]]></key>
+		<key name="message_0162">Please be patient, it can take a few minutes for the nodes to become accessible.</key>
+		<key name="message_0163"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be booted on cluster node <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0164">The node was selected because it is either the preferred host or the only host ready to run this server.</key>
+		<key name="message_0165"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span>, running on cluster node <span class="fixed_width">#!variable!node_anvil_name!#</span>, is about to be shut down.]]></key>
+		<key name="message_0166"><![CDATA[If #!variable!server!# is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />Make sure that Linux machines are running <span class="code">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be <span class="highlight_dangerous"><b>forced off</b></span>!]]></key>
+		<key name="message_0167"><![CDATA[Before proceeding, it is <b>strongly advised</b> that you connect to the server. If there are updates pending, please <b>reboot</b> the server first.<br />This will ensure that server shuts down cleanly.<br />Connect to this server by using <span class="fixed_width">#!string!device_0004!#</span> (connecting to <span class="fixed_width">#!variable!node_anvil_name!#</span>) or by using an RDP or SSH session.]]></key>
+		<key name="message_0168"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span>, running on cluster node <span class="fixed_width">#!variable!host!#</span>, is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
+		<key name="message_0169">This action is the same as pulling the power on a hardware server!</key>
+		<key name="message_0170">The server will have no chance to react and will be instantly turned off. A moment later, the #!string!brand_0003!# will restart this server.</key>
+		<key name="message_0171">This should be done as a last resort, when all other attempts to gain control of the server have failed.</key>
+		<key name="message_0172">This is a permanent and unreversable action!</key>
+		<key name="message_0173">The server, along with all of it's data, will be deleted.</key>
+		<key name="message_0174">It will be removed from the #!string!brand_0003!#'s management and forced off, if necessary.</key>
+		<key name="message_0175">The definition file will be deleted and it's backing storage will be removed.</key>
+		<key name="message_0176">Ensure you have backed up any data on the machine before proceeding!</key>
+		<key name="message_0177"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be migrated to cluster node <span class="fixed_width">#!variable!target!#</span>.<br />This server has #!variable!ram!# RAM, which will take roughly #!variable!migration_time_estimate!# seconds to migrate.]]></key>
+		<key name="message_0178"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be <span class="highlight_dangerous"><b>destroyed and deleted!</b></span>]]></key>
+		<key name="message_0179">System call output below:</key>
+		<key name="message_0180">The server is already running.</key>
+		<key name="message_0181">It looks like the attempt to start the server Failed. Will try to recover now...</key>
+		<key name="message_0182">Trying again to start the server...</key>
+		<key name="message_0183">It looks like there is a problem with this server.</key>
+		<key name="message_0184"><![CDATA[It appears that node <span class="fixed_width">#!variable!message!#</span> is no longer ready to run <span class="fixed_width">#!variable!server!#</span>.]]></key>
+		<key name="message_0185">This could be because some time has passed and the state of the node has changed.</key>
+		<key name="message_0186">Please go back to the status page for more details.</key>
+		<key name="message_0187"><![CDATA[It appears that node <span class="fixed_width">#!variable!target!#</span> is no longer ready to run <span class="fixed_width">#!variable!server!#</span>.]]></key>
+		<key name="message_0188">This can take a while, please be patient!</key>
+		<key name="message_0189">This process will complete before the storage services start. Please give a minute or two for storage to come online.</key>
+		<key name="message_0190"><![CDATA[It appears that <span class="fixed_width">#!variable!node!#</span> has already joined the #!string!brand_0003!#.]]></key>
+		<key name="message_0191">Output from both nodes will be mixed together and may cause unusual formatting. This is not a problem.</key>
+		<key name="message_0192">All children should be gone now but it seems the program went into an infinit loop.</key>
+		<key name="message_0193">If the server powered off properly, the #!string!brand_0003!# should boot it back up in a moment.</key>
+		<key name="message_0194">#!string!brand_0002!# appears to have failed to read the server's information properly.</key>
+		<key name="message_0195">Removal of #!variable!server!# has been aborted!</key>
+		<key name="message_0196">Can't delete: [#!variable!server!#] until at least one node is online.</key>
+		<key name="message_0197">The server has been successfully removed.</key>
+		<key name="message_0198"><![CDATA[The removal call should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.]]></key>
+		<key name="message_0199">The server has been forced off.</key>
+		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.]]></key>
+		<key name="message_0201"><![CDATA[Deleting <span class="fixed_width">#!variable!lv!#</span>...]]></key>
+		<key name="message_0202">Removed successfully</key>
+		<key name="message_0203"><![CDATA[It would appear that <span class="fixed_width">#!variable!lv!#</span> was not removed.]]></key>
+		<key name="message_0204"><![CDATA[The call to remove the server's storage should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!lvremove_exit_code!#</span> was received.]]></key>
+		<key name="message_0205"><![CDATA[The server <span class="fixed_width">#!variable!server!#</span> has been removed.]]></key>
+		<key name="message_0206">It would appear that something went very wrong!</key>
+		<key name="message_0207"><![CDATA[I was asked to delete the server definition file: [<span class="fixed_width">#!variable!file!#</span>], which does not belong to the #!string!brand_0003!#.]]></key>
+		<key name="message_0208"><![CDATA[For security reasons, only files in <span class="fixed_width">/shared/definitions/</span> can be deleted.]]></key>
+		<key name="message_0209"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been deleted.]]></key>
+		<key name="message_0210"><![CDATA[I tried to delete the file <span class="fixed_width">#!variable!file!#</span> and then verify that it was indeed removed.<br />This should have returned <span class="fixed_width">2</span>, but <span class="fixed_width">#!variable!ls_exit_code!#</span> was returned instead.]]></key>
+		<key name="message_0211"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been archived as<br /><span class="fixed_width">#!variable!dest!#</span>.]]></key>
+		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
+		<key name="message_0213"><![CDATA[This will complete once #!variable!node_anvil_name!# has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
+		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is now in use by a server.]]></key>
+		<key name="message_0215"><![CDATA[I was asked to power on: [#!variable!node!#], but the command to do so was not found in the cache. Manual power up is required.]]></key>
+		<key name="message_0216">I was asked to power on: [#!variable!node!#], but it appears to already be running. Start up aborted.</key>
+		<key name="message_0217"><![CDATA[I was asked to power on: [#!variable!node!#], but I am not able to log into the taget node's out of band management interface: [#!variable!target_host!#].<br />Please check to see if the address, user or password has changed. Unable to continue.]]></key>
+		<key name="message_0218"><![CDATA[I was asked to power on: [#!variable!node!#], but I am not on the same subnet as it's out of band management interface at: [#!variable!target_host!#].<br />Please restore access to the target subnet. Unable to continue.]]></key>
+		<key name="message_0219"><![CDATA[I was asked to power on: [#!variable!node!#], but I don't have a recorded method of checking or changing the power state for: [#!variable!target_host!#].<br />Please restore access to the target subnet. Unable to continue.]]></key>
+		<key name="message_0220"><![CDATA[I will now try to power on both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0221">It may take a few minutes before the dashboard can log into either node.</key>
+		<key name="message_0222">I will now try to power on #!variable!node_anvil_name!#.</key>
+		<key name="message_0223">It may take a few minutes before the dashboard can log into it.</key>
+		<key name="message_0224"><![CDATA[An unknown error has occured. Is <span class="code">#!variable!node!#</span>'s IPMI interface reachable?]]></key>
+		<key name="message_0225">The node #!variable!node_anvil_name!# is already reported as being powered up.</key>
+		<key name="message_0226">The node #!variable!node_anvil_name!#'s out of band management interface is currently unreachable.</key>
+		<key name="message_0227"><![CDATA[I was asked to power on: [#!variable!node!#] via it's peer: [#!variable!peer!#], but the power command is empty.<br />This is likely a program error.]]></key>
+		<key name="message_0228">I wasn't able to find the command needed to power on #!variable!node_anvil_name!#.</key>
+		<key name="message_0229">Either this node has not been seen before or the cache for this node was deleted.</key>
+		<key name="message_0230">You can not power on the node from the dashboard at this time.</key>
+		<key name="message_0231">Unable to determine the commands needed to fence #!variable!node!#. One of the nodes need to be accessible or the cache file must exist with the correct command.</key>
+		<key name="message_0232">Trying to fence #!variable!node!#, but it's peer, #!variable!peer!#, is also offline and the fence device at #!variable!address!# is not accessible from this machine.<br />Unable to proceed with fence action.</key>
+		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0234"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Proceeding with unfence action.]]></key>
+		<key name="message_0235"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed. Will try next method, if available.]]></key>
+		<key name="message_0236"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Fence operation a complete success!]]></key>
+		<key name="message_0237"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.]]></key>
+		<key name="message_0238">Stopping the #!string!brand_0003!# resource manager now..</key>
+		<key name="message_0239">Please be patient</key>
+		<key name="message_0240">#!string!brand_0003!# resource manager stopped successfully.</key>
+		<key name="message_0241">Stopping the #!string!brand_0003!#'s communication layer now...</key>
+		<key name="message_0242">#!string!brand_0003!#'s communication layer failed to stop!</key>
+		<key name="message_0243">Was something holding open the #!string!brand_0003!#'s storage?</key>
+		<key name="message_0244"><![CDATA[If a shell was logged in and sitting in the <span class="code">/shared</span> directory, a failure like this can occur.]]></key>
+		<key name="message_0245">Attempting to recover now...</key>
+		<key name="message_0246">#!string!brand_0003!#'s communication layer started successfully!</key>
+		<key name="message_0247">Unable to start the #!string!brand_0003!#'s communication layer!</key>
+		<key name="message_0248">#!string!brand_0003!#'s resource manager failed to stop!</key>
+		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_cluster_name!#</span> is now in use by a server.]]></key>
+		<key name="message_0250">#!string!brand_0003!#'s resource manager recovered successfully!</key>
+		<key name="message_0251"><![CDATA[Checking the <span class="fixed_width">#!variable!storage_service!#</span> storage service now.]]></key>
+		<key name="message_0252"><![CDATA[This requires a rescan of the #!string!brand_0003!#, please be patient.]]></key>
+		<key name="message_0253"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service has failed!]]></key>
+		<key name="message_0254"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage will now be cycled...]]></key>
+		<key name="message_0255"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service has been disabled.]]></key>
+		<key name="message_0256">Attempting to re-enable it now...</key>
+		<key name="message_0257"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage has been restarted.]]></key>
+		<key name="message_0258">Recovery has completed successfully!</key>
+		<key name="message_0259"><![CDATA[Please log into <span class="fixed_width_button">#!variable!node!#</span> and locate what held open the storage service.]]></key>
+		<key name="message_0260"><![CDATA[Trying to withdraw from the #!string!brand_0003!# before this is fixed could cause problems.]]></key>
+		<key name="message_0261">Proceed carefully!</key>
+		<key name="message_0262"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service failed to restart!]]></key>
+		<key name="message_0263"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service failed to disable!]]></key>
+		<key name="message_0264"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service appears to be ok!]]></key>
+		<key name="message_0265">Recovery of the storage services appears to be unnecessary.</key>
+		<key name="message_0266">Unable to identify the storage service for this node! This is likely a program error.</key>
+		<key name="message_0267">Failed to restart the resource manager daemon!</key>
+		<key name="message_0268">Both physical nodes appear to be powered off. #!string!brand_0003!# details are not available at this time.</key>
+		<key name="message_0269">Unable to connect to either #!string!brand_0003!# node. The status is not available at this time.</key>
+		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
+		<key name="message_0271"><![CDATA[I found a server with the name: [<span class=\"highlight_detail\">#!variable!server!#</span>] which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href=\"#!variable!url!#\"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
+		<key name="message_0272"><![CDATA[]]></key>
+		<key name="message_0273"><![CDATA[]]></key>
+		<key name="message_0274"><![CDATA[]]></key>
+		<key name="message_0275"><![CDATA[]]></key>
+		<key name="message_0276"><![CDATA[]]></key>
+		<key name="message_0277"><![CDATA[]]></key>
+		<key name="message_0278"><![CDATA[]]></key>
+		<key name="message_0279"><![CDATA[]]></key>
+		<key name="message_0280"><![CDATA[]]></key>
+		
+		<!-- LSI related messages -->
+		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
+		<key name="lsi_0002"><![CDATA[Successfully unmarked the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!disk!#</span> as a hot-spare.]]></key>
+		<key name="lsi_0003"><![CDATA[Failed to unmark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as a hot-spare.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0004">Mark Physical Disk as Hot-Spare</key>
+		<key name="lsi_0005"><![CDATA[Successfully marked the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as a global hot-spare.]]></key>
+		<key name="lsi_0006"><![CDATA[Failed to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as a global hot-spare.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0007"><![CDATA[Successfully marked disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as missing.]]></key>
+		<key name="lsi_0008"><![CDATA[Failed to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as missing.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0009"><![CDATA[Unable to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as missing. May not be be required, proceeding with spin-down.]]></key>
+		<key name="lsi_0010"><![CDATA[Successfully spun up the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
+		<key name="lsi_0011"><![CDATA[Failed to spin up the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0012">Spin Up Physical Disk</key>
+		<key name="lsi_0013">Mark Physical Disk as Missing</key>
+		<key name="lsi_0014">Spin Down Physical Disk</key>
+		<key name="lsi_0015"><![CDATA[Successfully spun down the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.<br /><br /><span class="highlight_good">It can now be safely removed.</span>]]></key>
+		<key name="lsi_0016"><![CDATA[Failed to spin down the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.<br /><br /><span class="highlight_dangerous">It is not safe to remove!</span><br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0017"><![CDATA[Unable to spin down the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online, firmware rejected the request.<br /><br />Will try to mark the disk as '<span class="highlight_detail">Unconfigured(good)</span>' and then try again.]]></key>
+		<key name="lsi_0018">Unable to Remove Physical Disk</key>
+		<key name="lsi_0019">Putting this disk offline would destroy the array and cause data loss.</key>
+		<key name="lsi_0020">Please replace the array's failed disk before taking this disk offline.</key>
+		<key name="lsi_0021"><![CDATA[The physical disk: <span class="highlight_detail">#!variable!disk!#</span> is a member of the degraded logical disk: <span class="highlight_detail">#!variable!logical_disk!#</span>.<br /><br />#!variable!reason!#]]></key>
+		<key name="lsi_0022"><![CDATA[This will take the disk: [<span class="highlight_detail">#!variable!disk!#</span>] offline, removing it from logical disk: [<span class="highlight_detail">#!variable!logical_disk!#</span>].<br /><br /><span class="highlight_dangerous_bold">This will degrade the array!</span><br /><br />Please do not proceed until you have the replacement drive ready to install.]]></key>
+		<key name="lsi_0023"><![CDATA[This will take the disk: [<span class="highlight_detail">#!variable!disk!#</span>] offline, preparing it for physical removal.]]></key>
+		<key name="lsi_0024"><![CDATA[<br /><br />Are you sure you wish to proceed?<br /><br /><a href="#!replace!confirm_url!#">#!string!button_0004!#</a> - or - <a href="#!replace!cancel_url!#">#!button!button_0005!#</a><br />]]></key>
+		<key name="lsi_0025"><![CDATA[Successfully put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> offline.]]></key>
+		<key name="lsi_0026">Put Physical Disk Offline</key>
+		<key name="lsi_0027"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> offline.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0028"><![CDATA[Successfully put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.]]></key>
+		<key name="lsi_0029"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0030"><![CDATA[Put Physical Disk Online]]></key>
+		<key name="lsi_0031"><![CDATA[Successfully added the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> to logical disk <span class="highlight_detail">##!variable!logical_disk!#</span>.]]></key>
+		<key name="lsi_0032"><![CDATA[Failed to add the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> to logical disk <span class="highlight_detail">##!variable!logical_disk!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0033">Add Physical Disk to Logical Disk</key>
+		<key name="lsi_0034"><![CDATA[Successfully marked the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as good.]]></key>
+		<key name="lsi_0035"><![CDATA[Failed to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as good.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0036">Mark Physical Disk as 'Good'</key>
+		<key name="lsi_0037"><![CDATA[Successfully <span class="highlight_detail">#!variable!say_action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
+		<key name="lsi_0038"><![CDATA[Failed to <span class="highlight_detail">#!variable!action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0039">Disk ID Call</key>
+		<key name="lsi_0040">RAID Controller ##!variable!adapter!#</key>
+		<key name="lsi_0041"><![CDATA[ - Missing disk in row: [<span class="fixed_width">#!variable!row!#</span>], replace with: [<span class="fixed_width">#!variable!minimum_size!#</span>] or larger.<br />]]></key>
+		<key name="lsi_0042"><![CDATA[<br />Rebuild is <span class="highlight_detail">#!variable!rebuild_percent!#%</span> complete, rebuilding for <span class="highlight_detail">#!variable!time_to_complete!#</span>.]]></key>
+		<key name="lsi_0043"><![CDATA[]]></key>
+		<key name="lsi_0044"><![CDATA[]]></key>
+		<key name="lsi_0045"><![CDATA[]]></key>
+		<key name="lsi_0046"><![CDATA[]]></key>
+		<key name="lsi_0047"><![CDATA[]]></key>
+		<key name="lsi_0048"><![CDATA[]]></key>
+		<key name="lsi_0049"><![CDATA[]]></key>
+		<key name="lsi_0050"><![CDATA[]]></key>
+		
+		<!-- Log messages -->
+		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
+		
+		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>
+		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
+		<key name="legal_0003">Release version #!conf!sys::version!#</key>
+	</lang>
+
+	<!-- Japanese -->
+	<lang name="ja" long_name="日本語">
+		<lang_comment>Madison Kelly、(mkelly@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
+	</lang>
+
+	<!-- French -->
+	<lang name="fr" long_name="Français">
+		<lang_comment>Géré par Madison Kelly (mkelly@alteeve.ca) pour Striker.</lang_comment>
+	</lang>
+</string>

@@ -6,7 +6,8 @@ v1.0.4 - <in-progress>
 - New AN! Repo created. Please run:
   ----
   curl https://alteeve.ca/repo/el6/an.repo > /etc/yum.repos.d/an.repo
-  yum clean all; yum install perl-Net-SSH2
+  yum clean all;
+  yum install perl-Net-SSH2 perl-TermReadKey
   ----
 - AN!CDB now updated /etc/ssh/ssh_config and /etc/hosts. Please be sure that
   apache can edit these if you want to use the new WebUI configuration tool.

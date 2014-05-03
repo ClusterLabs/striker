@@ -1,0 +1,56 @@
+<!-- This is for templates related to the "Select and Anvil!" page shown when 2+ Anvil!s are configured but none are selected. -->
+
+<!-- start open-table -->
+<table>
+	<tr>
+		<td colspan="4">
+			<b>#!string!title_0001!#</b>
+		</td>
+	</tr>
+<!-- end open-table -->
+
+<!-- start no-anvil-configured -->
+	<tr>
+		<td class="highlight_good">
+			#!string!row_0001!#
+		</td>
+		<td colspan="3">
+			#!string!message_0001!#
+		</td>
+	</tr>
+<!-- end no-anvil-configured -->
+
+<!-- start anvil-entry -->
+	<tr>
+		<td>
+			<a href="?cluster=#!replace!anvil!#">#!replace!anvil!#</a>
+		</td>
+		<td>
+			#!replace!company!#
+		</td>
+		<td>
+			#!replace!description!#
+		</td>
+		<td>
+			#!replace!url!#
+		</td>
+	</tr>
+<!-- end anvil-entry -->
+
+<!-- start close-table -->
+	<tr>
+		<td>
+			<a href="?config=true">#!string!row_0002!#</a>
+		</td>
+		<td colspan="3">
+			#!string!message_0002!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end close-table -->

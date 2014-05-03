@@ -13,6 +13,7 @@ use strict;
 use warnings;
 
 my $THIS_FILE = "an-mc";
+require "./common.lib";
 require "./an-cluster.lib";
 require "./an-mc.lib";
 
@@ -20,29 +21,31 @@ require "./an-mc.lib";
 # for the SSH call(s) to complete.
 $| = 1;
 
-# Remember to keep 'create_image_and_upload.pl' updated.
-my $conf={
-	path			=>	{
-		an_conf			=>	"/etc/an/an.conf",
-		check_dvd		=>	"/var/www/tools/check_dvd",
-		do_dd			=>	"/var/www/tools/do_dd",
-		hostname		=>	"/bin/hostname",
-		hosts			=>	"/etc/hosts",
-		'log'			=>	"/var/log/an-cdb.log",
-		media			=>	"/var/www/home/media/",
-		rsync			=>	"/usr/bin/rsync",
-		screen			=>	"/usr/bin/screen",
-		shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
-		status			=>	"/var/www/home/status/",
-	},
-	args			=>	{
-		check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
-		rsync			=>	"-av --partial",
-	},
-	'system'		=>	{
-		dd_block_size		=>	"1M",
-	},
-};
+my ($conf) = initialize($THIS_FILE);
+# 
+# # Remember to keep 'create_image_and_upload.pl' updated.
+# my $conf={
+# 	path			=>	{
+# 		an_conf			=>	"/etc/an/an.conf",
+# 		check_dvd		=>	"/var/www/tools/check_dvd",
+# 		do_dd			=>	"/var/www/tools/do_dd",
+# 		hostname		=>	"/bin/hostname",
+# 		hosts			=>	"/etc/hosts",
+# 		'log'			=>	"/var/log/an-cdb.log",
+# 		media			=>	"/var/www/home/media/",
+# 		rsync			=>	"/usr/bin/rsync",
+# 		screen			=>	"/usr/bin/screen",
+# 		shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
+# 		status			=>	"/var/www/home/status/",
+# 	},
+# 	args			=>	{
+# 		check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
+# 		rsync			=>	"-av --partial",
+# 	},
+# 	'system'		=>	{
+# 		dd_block_size		=>	"1M",
+# 	},
+# };
 
 find_executables($conf);
 read_hosts($conf);
@@ -77,7 +80,8 @@ get_cgi_vars($conf, [
 	"url",
 ]);
 
-header($conf, "AN!MC", "Media Connector", "logo_anvil-dashboard_01.png");
+# Print the header.
+header($conf);
 
 # Do I have a cluster name?
 #record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");

@@ -1,0 +1,479 @@
+<!-- These are templates for storage pages -->
+
+<!-- start no-managers-found -->
+<table>
+	<tr>
+		<td colspan="3">
+			<b><span class="fixed-width">#!replace!title!#</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end no-managers-found -->
+
+<!-- start lsi-complete-table-message -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b><span class="fixed_width">#!replace!title!#</span></b>
+		</td>
+	</tr>
+	<tr>
+		<td class="#!replace!row_class!#">
+			#!replace!row!#
+		</td>
+		<td>
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end lsi-complete-table-message -->
+
+<!-- start lsi-adapter-health-header -->
+<table class="hidden_table">
+	<tr>
+		<td colspan="3" class="td_hidden">
+			<table width="100%">
+				<tr>
+					<td colspan="3">
+						<b><span class="fixed_width">#!replace!anvil!# - #!replace!node_anvil_name!#</span></b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<br />
+						Status and Managerment of <span class="highlight_detail">#!replace!node!#</span>'s Storage<br />
+						<br />
+					</td>
+				</tr>
+			</table>
+			<br />
+<!-- end lsi-adapter-health-header -->
+
+<!-- start lsi-adapter-state -->
+			<table width="100%">
+				<tr>
+					<td colspan="3">
+						<b>#!replace!title!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan="5" width="128px" style="vertical-align: top;">
+						<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/raid_controller_128x128.png" border="0">
+					</td>
+					<td class="highlight_detail_left">
+						#!string!row_0046!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!model!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0047!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!cache_size!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0048!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!bbu!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0049!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!flash_module!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0050!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!restore_hotspare_on_insert!#
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end lsi-adapter-state -->
+
+<!-- start lsi-bbu-state -->
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan="2">
+			<table width="100%">
+				<tr>
+					<td colspan="3">
+						<b>#!string!title_0019!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan="8" width="128px" style="vertical-align: top;">
+						<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/raid_battery_128x128.png" border="0">
+					</td>
+					<td class="highlight_detail_left">
+						Battery State:
+					</td>
+					<td class="fixed_width_left">
+						<span class="#!replace!battery_state_class!#">#!replace!battery_state!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0046!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!manufacture_name!#, #!replace!bbu_type!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0051!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!full_capacity!# / #!replace!design_capacity!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0052!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!remaining_capacity!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0053!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!replace_bbu!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0054!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!learn_cycle!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0055!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!next_learn_cycle!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0056!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!cycle_count!#
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end lsi-bbu-state -->
+
+<!-- start lsi-unassigned-disks -->
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan="2">
+			<table width="100%" colspan="2">
+				<tr>
+					<td colspan="2">
+						<b>#!string!title_0020!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<br />
+						#!string!explain_0020!#<br />
+						<br />
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end lsi-unassigned-disks -->
+
+<!-- start lsi-logical-disk-state -->
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td colspan="2">
+			<table width="100%" colspan="2">
+				<tr>
+					<td colspan="3">
+						<b>#!replace!title!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan="9" width="128px" style="vertical-align: top;">
+ 						<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/raid_logical-disk_128x128.png" border="0">
+					</td>
+					<td class="highlight_detail_left">
+						#!string!row_0057!#:
+					</td>
+					<td class="fixed_width_left">
+						<span class="#!replace!logical_disk_state_class!#">#!replace!logical_disk_state!#</span> #!replace!missing!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0058!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!bad_blocks_exist!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0059!#:
+					</td>
+					<td class="fixed_width_left">
+						<a href="#!variable!raid_url!#" target="_new">#!replace!primary_raid_level!#</a>
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0060!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!size!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0061!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!number_of_drives!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0062!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!encryption_type!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0063!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!target_id!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0064!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!current_cache_policy!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0065!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!disk_cache_policy!#
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end lsi-logical-disk-state -->
+
+<!-- start lsi-physical-disk-state -->
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<table width="100%">
+				<tr>
+					<td colspan="3">
+						<b>#!replace!title!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td rowspan="16" width="128px" style="vertical-align: top;">
+						<a href="#!replace!id_led_url!#"><img src="#!replace!disk_icon!#" border="0"></a>
+					</td>
+					<td class="highlight_detail_left">
+						#!string!row_0046!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!model!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0069!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!wwn!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0057!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!state!#
+						<span class="#!replace!disk_state_class!#">#!replace!disk_state!#</span>
+						#!replace!disk_action!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0070!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!temperature!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0071!#:
+					</td>
+					<td class="fixed_width_left">
+						<a href="#!replace!id_led_url!#">#!replace!identify!#</a>
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0072!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!device_type!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0073!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!media_error_count!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0074!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!other_error_count!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0075!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!predictive_failure_count!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0076!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!raw_drive_size!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0077!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!pd_type!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0078!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!device_speed!# -> #!replace!link_speed!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0079!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!sas_address_0!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0080!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!sas_address_1!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!replace!location_title!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!location_body!#
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_detail_left">
+						#!string!row_0081!#:
+					</td>
+					<td class="fixed_width_left">
+						#!replace!offline_button!#
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end lsi-physical-disk-state -->
+
+<!-- start lsi-adapter-health-footer -->
+</table>
+<br />
+<!-- end lsi-adapter-health-footer -->

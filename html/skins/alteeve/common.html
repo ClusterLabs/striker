@@ -1,0 +1,140 @@
+<!-- These are templates used all over Striker. -->
+
+<!-- start header -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>#!string!brand_0001!# - #!string!brand_0002!#</title>
+	<link rel="stylesheet" href="#!conf!url::skins!#/#!conf!sys::skin!#/common.css" media="screen" />
+	<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/common.js"></script>
+	<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/jquery-latest.js"></script>
+</head>
+<body>
+<br />
+<table class="hidden_table">
+	<tr>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!back!#
+		</td>
+		<td class="td_hidden">
+			<a href="/cgi-bin/an-cdb?logo=true"><img class="logo" src="#!conf!url::skins!#/#!conf!sys::skin!#/images/logo_striker_01.png" alt="#!string!brand_0001!# - #!string!brand_0002!#"></a>
+		</td>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!refresh!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end header -->
+
+<!-- start footer -->
+<table class="hidden_table" width="100%">
+	<tr>
+		<td class="td_hidden">
+			<span class="legal">
+			#!string!legal_0001!#<br />
+			#!string!legal_0002!#<br />
+			#!string!legal_0003!#<br />
+			</span>
+		</td>
+	</tr>
+</table>
+<p style="position:fixed; right:10; bottom:0"><a href="#!replace!guacamole_url!#" target="_new" class="subtle_link">&#191;</a></p>
+</body>
+<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/t.png" onload="show_on_load();" border="0" />
+<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/t.png" onload="hide_on_load();" border="0" />
+</html>
+<!-- end footer -->
+
+<!-- start error-table -->
+<table>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0032!#
+		</td>
+		<td>
+			#!string!message!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end error-table -->
+
+<!-- start scanning-message -->
+<div id="hide_when_loaded">
+<table>
+	<tr>
+		<td>
+			<b>Please be patient.</b><br />
+			Gathering information from #!replace!anvil!#.<br />
+			This could take a minute to complete.
+		</td>
+		<td>
+			<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/gather_info.gif" border="0">
+		</td>
+	</tr>
+</table>
+<br />
+</div>
+<!-- end scanning-message -->
+
+<!-- start hr_to_bytes-error -->
+<table>
+	<tr>
+		<td class="highlight_bad">
+			#!string!row_0040!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!replace!message!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end hr_to_bytes-error -->
+
+<!-- start restart-guacamole-header -->
+<table>
+	<tr>
+		<td class="highlight_ready" colspan="2">
+			#!string!title_0017!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_warning_bold">#!string!row_0032!#</span>
+		</td>
+		<td>
+			<br />
+			#!string!message_0052!#:</br>
+			<br />
+<!-- end restart-guacamole-header -->
+
+<!-- start shell-call-output -->
+			<span class="fixed_width"><span class="code">#!replace!line!#</span></span><br />
+<!-- end shell-call-output -->
+
+<!-- start restart-guacamole-footer -->
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_good_bold">Done</span>
+		</td>
+		<td>
+			<br />
+			#!string!explain_0019!#</br>
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			#!string!message_0053!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end restart-guacamole-footer -->
