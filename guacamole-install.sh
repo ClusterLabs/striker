@@ -1,44 +1,45 @@
 #!/bin/bash
 
-echo "Installing Guacamole"
-if [ -e "/etc/yum.repos.d/epel.repo" ]
-then
-	echo " - EPEL repo is already installed."
-else
-	echo " - Installing EPEL"
-	if [ -e "/tmp/epel-release.html" ]
-	then
-		echo "   - Old epel-release.html' file found, removing it."
-		rm -f /tmp/epel-release.html
-	fi
-	echo "   - Downloading latest html page."
-	wget http://www.muug.mb.ca/pub/epel/6/i386/repoview/epel-release.html -O /tmp/epel-release.html
-
-	if [ -e "/tmp/epel-release.html" ]
-	then
-		echo "   - Parsing epel-release.html to build URL"
-		RPM=$(cat /tmp/epel-release.html |grep rpm | sed 's/.*\(epel-release-.*.noarch.rpm\).*/\1/')
-		URL="http://www.muug.mb.ca/pub/epel/6/i386/$RPM"
-		echo "   - Installing: $URL"
-		rpm -Uvh $URL
-	else
-		echo "   - Failed to download EPEL latest HTML page."
-		exit
-	fi
-	if [ -e "/etc/yum.repos.d/epel.repo" ]
-	then
-		echo "   - EPEL repo installed."
-	else
-		echo "   - EPEL repo failed to install."
-		exit
-	fi
-fi
+### No longer needed, in an-repo
+# echo "Installing Guacamole"
+# if [ -e "/etc/yum.repos.d/epel.repo" ]
+# then
+# 	echo " - EPEL repo is already installed."
+# else
+# 	echo " - Installing EPEL"
+# 	if [ -e "/tmp/epel-release.html" ]
+# 	then
+# 		echo "   - Old epel-release.html' file found, removing it."
+# 		rm -f /tmp/epel-release.html
+# 	fi
+# 	echo "   - Downloading latest html page."
+# 	wget http://www.muug.mb.ca/pub/epel/6/i386/repoview/epel-release.html -O /tmp/epel-release.html
+# 
+# 	if [ -e "/tmp/epel-release.html" ]
+# 	then
+# 		echo "   - Parsing epel-release.html to build URL"
+# 		RPM=$(cat /tmp/epel-release.html |grep rpm | sed 's/.*\(epel-release-.*.noarch.rpm\).*/\1/')
+# 		URL="http://www.muug.mb.ca/pub/epel/6/i386/$RPM"
+# 		echo "   - Installing: $URL"
+# 		rpm -Uvh $URL
+# 	else
+# 		echo "   - Failed to download EPEL latest HTML page."
+# 		exit
+# 	fi
+# 	if [ -e "/etc/yum.repos.d/epel.repo" ]
+# 	then
+# 		echo "   - EPEL repo installed."
+# 	else
+# 		echo "   - EPEL repo failed to install."
+# 		exit
+# 	fi
+# fi
 
 echo " - Installing packages (this will do nothing if already installed)"
 yum -y install tomcat6 guacd libguac-client-vnc libguac-client-ssh libguac-client-rdp
 echo " - Verifying packages were installed."
 OK=1
-if [ -e "/etc/tomcat6" ]
+if [ -e "/var/lib/tomcat6" ]
 then
 	echo "   - Tomcat installed."
 else
@@ -68,6 +69,7 @@ else
 	echo "   - Guacamole SSH client not found."
 	OK=0	
 fi
+
 if [ -e "/usr/lib64/libguac-client-rdp.so" ]
 then
 	echo "   - Guacamole RDP client installed."
@@ -98,6 +100,7 @@ else
 		exit
 	fi
 fi
+
 if [ -e "/usr/share/tomcat6/.guacamole" ]
 then
 	echo " - Tomcat configuration directory already exists"
@@ -111,6 +114,7 @@ else
 		exit
 	fi
 fi
+
 if [ -e "/var/lib/guacamole/classpath" ]
 then
 	echo " - Library directory already exists"
@@ -124,6 +128,8 @@ else
 		exit
 	fi
 fi
+
+# NOTE: This appears to still apply to 0.9.0
 if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
 then
 	echo " - noauth .jar already exists"
@@ -223,6 +229,7 @@ else
 		exit
 	fi
 fi
+
 if [ -e "/usr/share/tomcat6/.guacamole/guacamole.properties" ]
 then
 	echo " - guacamole.properties symlink already exists."

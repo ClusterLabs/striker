@@ -830,7 +830,7 @@ sub lsi_control_put_disk_offline
 		if ($this_logical_disk == 9999)
 		{
 			$message     = get_string($conf, {key => "lsi_0023"});
-			$alert       = "#!variable!row_0032!#";
+			$alert       = "#!string!row_0032!#";
 			$alert_class = "highlight_detail_bold";
 		}
 		# Both messages have the same second part that asks the user to confirm.
@@ -8185,7 +8185,7 @@ sub display_vm_state_and_controls
 			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">$say_target</a>";
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
-		my $stop_button      = "<span class=\"disabled_button\">#!string!button_0026!#</span>";
+		my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
 		my $force_off_button = "<span class=\"disabled_button\">#!string!button_0027!#</span>";
 		if ($conf->{vm}{$vm}{can_stop})
 		{
@@ -8239,7 +8239,7 @@ sub display_vm_state_and_controls
 			$say_vm_link   = "<span class=\"highlight_unavailable\">$say_vm</span>";
 		}
 		
-		print template($conf, "server.html", "display-server-details", {
+		print template($conf, "server.html", "display-server-details-entry", {
 			vm_link			=>	$say_vm_link,
 			say_node1		=>	$conf->{vm}{$vm}{say_node1},
 			say_node2		=>	$conf->{vm}{$vm}{say_node2},
@@ -8515,7 +8515,7 @@ sub display_node_details
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 
 		print template($conf, "server.html", "display-node-details-entry", {
-			hostname	=>	$conf->{node}{$node}{info}{host_name},
+			host_name	=>	$conf->{node}{$node}{info}{short_host_name},
 			cman		=>	$conf->{node}{$node}{daemon}{cman}{status},
 			rgmanager	=>	$conf->{node}{$node}{daemon}{rgmanager}{status},
 			drbd		=>	$conf->{node}{$node}{daemon}{drbd}{status},
@@ -8555,28 +8555,28 @@ sub display_node_controls
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
-		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">#!string!button_0031!#</span></a>" : "<span class=\"disabled_button\">#!string!button_0031!#</span>";
+		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\" class=\"button\">#!string!button_0031!#</a>" : "<span class=\"disabled_button\">#!string!button_0031!#</span>";
 		   $say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>" if $disable_join;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">#!string!button_0032!#</a>"  : "<span class=\"disabled_button\">#!string!button_0032!#</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
-		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">#!string!button_0033!#</a>" : "<span class=\"disabled_button\">#!string!button_0026!#</span>";
-		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_ready_bold\">#!string!button_0034!#</span></a>"   : "<span class=\"disabled_button\">#!string!button_0034!#</span>";
+		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">#!string!button_0033!#</a>" : "<span class=\"disabled_button\">#!string!button_0033!#</span>";
+		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\" class=\"button\">#!string!button_0034!#</a>"   : "<span class=\"disabled_button\">#!string!button_0034!#</span>";
 		
 		# At all times, the option to fence the node is made available.
-		my $say_fence     = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\"><span class=\"highlight_dangerous\">Fence Node</span></a>";
+		my $say_fence     = $conf->{node}{$node}{enable_poweron}  ? "<span class=\"highlight_unavailable\">#!string!button_0037!#</span>" : "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\" class=\"highlight_dangerous\">#!string!button_0037!#</a>";
 		my $say_dual_boot = "<span class=\"highlight_unavailable\">#!string!button_0035!#</span>";
-		my $say_dual_join = "<span class=\"highlight_unavailable\">#!replace!button_0036!#</span>";
+		my $say_dual_join = "<span class=\"highlight_unavailable\">#!string!button_0036!#</span>";
 		if ($rowspan)
 		{
 			# First row.
 			if ($dual_boot)
 			{
-				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\"><span class=\"highlight_ready_bold\">#!string!button_0035!#</span></a>";
+				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\" class=\"button\">#!string!button_0035!#</a>";
 			}
 			if ($dual_join)
 			{
-				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\"><span class=\"highlight_ready_bold\">#!replace!button_0036!#</span></a>";
+				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\" class=\"button\">#!string!button_0036!#</a>";
 				# Disable the per-node "join" options".
 				$say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>";
 				$disable_join  = 1;

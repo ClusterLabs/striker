@@ -10,7 +10,7 @@
 PASSWORD="secret"
 HOSTNAME=$(hostname)
 CUSTOMER="Alteeve's Niche!"
-VERSION="1.1.0b1"
+VERSION="1.1.0b2"
 
 clear;
 echo ""
@@ -125,7 +125,7 @@ then
 	fi
 fi	
 
-cat /dev/null > /etc/libvirt/qemu/networks/default.xml
+#cat /dev/null > /etc/libvirt/qemu/networks/default.xml
 
 if [ ! -e "/var/www/home" ]
 then
@@ -162,12 +162,12 @@ else
 fi
 if [ ! -e "/etc/passwd.anvil" ]
 then
-	sed -i.anvil 's/apache\(.*\)www:\/sbin\/nologin/apache\1www\/home:\/bin\/bash/g' /etc/passwd	
+	sed -i.anvil 's/apache\(.*\)www:\/sbin\/nologin/apache\1www\/home:\/bin\/bash/g' /etc/passwd
 fi
 # If there is already a backup, just edit the customer's name
 if [ -e "/etc/httpd/conf/httpd.conf.anvil" ]
 then
-	sed -i.anvil 's/Cluster Dashboard - .*/Cluster Dashboard - $CUSTOMER/' /etc/httpd/conf/httpd.conf
+	sed -i.anvil 's/Cluster Dashboard - .*/Striker Dashboard - $CUSTOMER/' /etc/httpd/conf/httpd.conf
 else
 	cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.anvil
 	sed -i 's/Timeout 60/Timeout 60000/' /etc/httpd/conf/httpd.conf
@@ -200,11 +200,11 @@ setenforce 0
 
 if [ ! -e "/root/.ssh/id_rsa" ]
 then
-	ssh-keygen -t rsa -N "" -b 4095 -f ~/.ssh/id_rsa
+	ssh-keygen -t rsa -N "" -b 8191 -f ~/.ssh/id_rsa
 fi
 if [ ! -e "/var/www/home/.ssh/id_rsa" ]
 then
-	su apache -c "ssh-keygen -t rsa -N \"\" -b 4095 -f ~/.ssh/id_rsa"
+	su apache -c "ssh-keygen -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa"
 fi
 
 if [ ! -e "/etc/an" ]
@@ -228,7 +228,7 @@ fi
 su apache -c "htpasswd -cdb /var/www/home/htpasswd admin '$PASSWORD'"
 if [ ! -e "/var/www/tools/v${VERSION}.tar.gz" ]
 then
-	cd /var/www/tools/
+	cd /root/
 	wget -c https://github.com/digimer/an-cdb/archive/v${VERSION}.tar.gz
 	tar -xvzf v${VERSION}.tar.gz
 	rsync -av ./an-cdb-${VERSION}/html /var/www/
@@ -243,8 +243,246 @@ if [ -e "/etc/guacamole/noauth-config.xml" ]
 then
 	echo "Guacamole already installed."
 else
-	echo "Calling Guacamole installed."
-	/var/www/tools/guacamole-install.sh
+	echo " - Installing packages (this will do nothing if already installed)"
+	yum -y install tomcat6 guacd libguac-client-vnc libguac-client-ssh libguac-client-rdp
+	echo " - Verifying packages were installed."
+	OK=1
+	if [ -e "/var/lib/tomcat6" ]
+	then
+		echo "   - Tomcat installed."
+	else
+		echo "   - Tomcat not found."
+		OK=0	
+	fi
+	if [ -e "/etc/rc.d/init.d/guacd" ]
+	then
+		echo "   - Guacamole installed."
+	else
+		echo "   - Guacamole not found."
+		OK=0	
+	fi
+
+	if [ -e "/usr/lib64/libguac-client-vnc.so" ]
+	then
+		echo "   - Guacamole VNC client installed."
+	else
+		echo "   - Guacamole VNC client not found."
+		OK=0	
+	fi
+
+	if [ -e "/usr/lib64/libguac-client-ssh.so" ]
+	then
+		echo "   - Guacamole SSH client installed."
+	else
+		echo "   - Guacamole SSH client not found."
+		OK=0	
+	fi
+
+	if [ -e "/usr/lib64/libguac-client-rdp.so" ]
+	then
+		echo "   - Guacamole RDP client installed."
+	else
+		echo "   - Guacamole RDP client not found."
+		OK=0	
+	fi
+
+	if [ $OK == 1 ]
+	then
+		echo " - Guacamole installed successfully!"
+	else
+		echo " - Guacamole failed to install."
+		exit
+	fi
+
+	echo "Configuring Guacamole"
+	if [ -e "/etc/guacamole" ]
+	then
+		echo " - Main configuration directory already exists"
+	else
+		mkdir /etc/guacamole
+		if [ -e "/etc/guacamole" ]
+		then
+			echo " - Main configuration directory created."
+		else
+			echo " - Failed to create: [/etc/guacamole]."
+			exit
+		fi
+	fi
+
+	if [ -e "/usr/share/tomcat6/.guacamole" ]
+	then
+		echo " - Tomcat configuration directory already exists"
+	else
+		mkdir -p /usr/share/tomcat6/.guacamole
+		if [ -e "/usr/share/tomcat6/.guacamole" ]
+		then
+			echo " - Tomcat configuration directory created."
+		else
+			echo " - Failed to create: [/usr/share/tomcat6/.guacamole/]."
+			exit
+		fi
+	fi
+
+	if [ -e "/var/lib/guacamole/classpath" ]
+	then
+		echo " - Library directory already exists"
+	else
+		mkdir -p /var/lib/guacamole/classpath
+		if [ -e "/var/lib/guacamole/classpath" ]
+		then
+			echo " - Library directory created."
+		else
+			echo " - Failed to create: [/var/lib/guacamole/classpath]."
+			exit
+		fi
+	fi
+
+	# NOTE: This appears to still apply to 0.9.0
+	if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+	then
+		echo " - noauth .jar already exists"
+	else
+		wget https://alteeve.ca/files/guacamole-auth-noauth-0.8.0.jar -O /var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar
+		if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+		then
+			echo " - noauth .jar downloaded."
+		else
+			echo " - Failed to download or save: [/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar]."
+			exit
+		fi
+	fi
+
+	echo "Downloading latest war file."
+	if [ -e "/var/lib/guacamole/guacamole.war" ]
+	then
+		echo " - .war already downloaded."
+	else
+		echo " - Downloading .war file"
+		if [ -e "/tmp/sf.html" ]
+		then
+			echo "   - Old sf.html' file found, removing it."
+			rm -f /tmp/sf.html
+		fi
+		echo "   - Downloading latest fs html page."
+		wget http://sourceforge.net/projects/guacamole/files/current/binary -O /tmp/sf.html
+
+		if [ -e "/tmp/sf.html" ]
+		then
+			echo "   - Parsing sf.html to build URL"
+			WAR=$(cat /tmp/sf.html |grep guacamole | grep "war/down" | sed 's/.*\(guacamole-0\..*\.war\)\/.*/\1/' | tr '\n' ' ' | awk '{print $1}')
+			URL="http://sourceforge.net/projects/guacamole/files/current/binary/$WAR"
+			echo "   - Downloading: $URL"
+			wget -c $URL -O /var/lib/guacamole/$WAR
+		else
+			echo "   - Failed to download guacamole WAR file."
+			exit
+		fi
+		if ls /var/lib/guacamole/guacamole-* &>/dev/null
+		then
+			echo "   - Guacamole $WAR downloaded successfully. Moving to 'guacamole.war'"
+			mv /var/lib/guacamole/$WAR /var/lib/guacamole/guacamole.war
+			if [ -e "/var/lib/guacamole/guacamole.war" ]
+			then
+				echo "   - Successfully moved to guacamole.war'"
+			else
+				echo "   - Failed to move $WAR to 'guacamole.war'"
+				exit
+			fi
+				
+		else
+			echo "   - Failed to download $WAR file."
+			exit
+		fi
+	fi
+
+	echo "Creating 'guacamole.properties'"
+	if [ -e "/etc/guacamole/guacamole.properties" ]
+	then
+		echo " - Already exists"
+	else
+		cat > /etc/guacamole/guacamole.properties << EOF
+	# Hostname and port of guacamole proxy
+	guacd-hostname: localhost
+	guacd-port:     4822
+
+	# Location to read extra .jar's from
+	lib-directory:  /var/lib/guacamole/classpath
+
+	# Authentication provider class
+	auth-provider: net.sourceforge.guacamole.net.auth.noauth.NoAuthenticationProvider
+
+	# NoAuth properties
+	noauth-config: /etc/guacamole/noauth-config.xml
+EOF
+		if [ -e "/etc/guacamole/guacamole.properties" ]
+		then
+			echo " - Created."
+		else
+			echo " - Failed to write: [/etc/guacamole/guacamole.properties]."
+			exit
+		fi
+	fi
+
+	echo "Creating symlinks."
+	if [ -e "/var/lib/tomcat6/webapps/guacamole.war" ]
+	then
+		echo " - guacamole.war symlink already exists."
+	else
+		ln -s /var/lib/guacamole/guacamole.war /var/lib/tomcat6/webapps/
+		if [ -e "/var/lib/tomcat6/webapps/guacamole.war" ]
+		then
+			echo " - guacamole.war symlink created."
+		else
+			echo " - Failed to create guacamole.war."
+			exit
+		fi
+	fi
+
+	if [ -e "/usr/share/tomcat6/.guacamole/guacamole.properties" ]
+	then
+		echo " - guacamole.properties symlink already exists."
+	else
+		ln -s /etc/guacamole/guacamole.properties /usr/share/tomcat6/.guacamole/
+		if [ -e "/usr/share/tomcat6/.guacamole/guacamole.properties" ]
+		then
+			echo " - guacamole.properties symlink created."
+		else
+			echo " - Failed to create guacamole.properties."
+			exit
+		fi
+	fi
+
+	# Create the skeleton 'noauth-config.xml' file.
+	echo "Creating base server configuration file."
+	if [ -e "/etc/guacamole/noauth-config.xml" ]
+	then
+		echo " - Server configuration file already exists."
+	else
+		cat > /etc/guacamole/noauth-config.xml << EOF
+	<configs>
+	</configs>
+EOF
+		# This is needed to allow AN!CDB to create backups and modify the
+		# config.
+		chmod 777 /etc/guacamole
+		chmod 666 /etc/guacamole/noauth-config.xml
+		if [ -e "/etc/guacamole/noauth-config.xml" ]
+		then
+			echo " - Server configuration file successfully created."
+		else
+			echo " - Failed to create server configuration file."
+			exit
+		fi
+	fi
+
+	echo "Configuring the daemons to start on boot."
+	chkconfig tomcat6 on
+	chkconfig guacd on
+	echo " - Both 'guacd' and 'tomcat6' are now enabled on boot."
+	/etc/init.d/tomcat6 restart
+	/etc/init.d/guacd restart
+	echo " - Daemons (re)started. Safe to ignore 'stop' errors above."
+	echo "Guacamole install finished!"
 fi
 
 # Configure iptables.

@@ -1,6 +1,6 @@
 Change log;
 
-v1.0.4 - <in-progress>
+v1.1.0 - <in-progress>
 - Major: Passwordless SSH is no longer required. Switched to using the 
   Net::SSH2 perl module.
 - New AN! Repo created. Please run:
@@ -52,6 +52,14 @@ v1.0.4 - <in-progress>
   read successfully, the percentage complete is shown.
 - Trying to upload a file without defining a file now throws a proper error
   message.
+- All printed text is now pulled from an XML file and processed by a new 
+  'get_string()' to enable future translations.
+- All browser formatting has been moved into a new templating system processed
+  by the new 'template' function for future skinning.
+- Changed the node control to disable 'Fence Node' when a node is already off.
+- Lots of miscellaneous formatting and text cleanup.
+- Started the process of renaming AN!CDB to Striker and changing the terms
+  'cluster' to 'Anvil!' and 'VM' to 'Server'.
 
 
 v1.0.3 - 2014-03-26
