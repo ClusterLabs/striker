@@ -70,7 +70,8 @@ yum clean all
 yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
-               perl-Test-Simple policycoreutils-python mod_ssl perl-TermReadKey
+               perl-Test-Simple policycoreutils-python mod_ssl libcdio \
+               perl-TermReadKey expect
 
 # Stuff from our repo
 yum -y install perl-Net-SSH2
@@ -192,11 +193,13 @@ chkconfig ip6tables off
 chkconfig firstboot off
 chkconfig iptables on
 chkconfig httpd on
+chkconfig acpid on
 
 setenforce 0
 #/etc/init.d/iptables stop
 /etc/init.d/ip6tables stop
 /etc/init.d/httpd start
+/etc/init.d/acpid start
 
 if [ ! -e "/root/.ssh/id_rsa" ]
 then

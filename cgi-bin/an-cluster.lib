@@ -2892,7 +2892,7 @@ sub gather_node_details
 	if ($error)
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Error: [$error], setting daemon states to 'Unknown'.\n");
-		$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad_bold\">#!string!row_0041!#</span>";
+		$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning_bold\">#!string!row_0041!#</span>";
 		$conf->{node}{$node}{info}{note}    = $error;
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 	}
@@ -3341,7 +3341,11 @@ sub remote_call
 	### TODO: Make this a better looking error.
 	if (not $node)
 	{
-		die "$THIS_FILE ".__LINE__."; remote_call(); I was asked to call: [$shell_call] but no node was defined. This is probably a program error, sorry about the inconvenience. Please <a href=\"#!string!brand_0012!#\" target=\"_new\">contact support</a> and we will try to help you.\n";
+		# No node...
+		my $say_error = get_string($conf, {key => "message_0274", variables => {
+				shell_call	=>	$shell_call,
+			}});
+		error($conf, "$say_error\n");
 	}
 	
 	my $state;

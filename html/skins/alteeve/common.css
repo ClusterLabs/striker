@@ -76,12 +76,12 @@ td {
 .fixed_width {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;
-	color: #1f1f1f;
+	/*color: #1f1f1f;*/
 }
 .fixed_width_left {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;
-	color: #1f1f1f;
+/* 	color: #1f1f1f; */
 	text-align: left;
 }
 
@@ -147,7 +147,7 @@ td {
 
 .highlight_warning_bold {
 	color: #936c02;
-	font-style: italic;
+	/*font-style: italic;*/
 	font-weight: bold;
 }
 

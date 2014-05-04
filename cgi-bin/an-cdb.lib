@@ -2345,7 +2345,14 @@ sub change_vm
 			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
 			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
 			
-			print template($conf, "server.html", "server-poweroff-required-message", {
+			# If the server is running, tell the user they need to
+			# power it off.
+			record($conf, "$THIS_FILE ".__LINE__."; host: [$conf->{vm}{$vm}{current_host}]<br />\n");
+			if ($conf->{vm}{$vm}{current_host})
+			{
+				print template($conf, "server.html", "server-poweroff-required-message");
+			}
+			print template($conf, "server.html", "update-server-config-footer", {
 				url	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
 			});
 
@@ -3290,6 +3297,9 @@ sub update_guacamole_config
 	my $this_port      = "";
 	foreach my $line (@{$conf->{guacamole}{config}{old}})
 	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^<\/config>/)
 		{
@@ -3474,6 +3484,9 @@ sub get_current_vm_vnc_info
 	
 	foreach my $line (@{$xml_ref})
 	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] definition line: [$line].\n");
 		if ($line =~ /^<graphics /)
 		{
 			($port)   = ($line =~ / port='(\d+)'/);
@@ -4129,7 +4142,7 @@ sub provision_vm
 {
 	my ($conf) = @_;
 	
-	my $say_title = get_string($conf, {key => "title_0016", variables => {
+	my $say_title = get_string($conf, {key => "title_0115", variables => {
 			server	=>	$conf->{new_vm}{name},
 		}});
 
@@ -4685,7 +4698,7 @@ sub confirm_provision_vm
 		$conf->{vg_selects}{$vg}{short_vg}      = $short_vg;
 	}
 	my $say_selects;
-	my $say_or      = template($conf, "server.html", "provision-server-storage-pool-or-message");
+	my $say_or      = template($conf, "server.html", "provision-server-storage-pool-or-message", {}, {}, 1);
 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{vg_selects}})
 	{
 		my $space            =  $conf->{vg_selects}{$vg}{space};
@@ -4926,7 +4939,7 @@ sub confirm_stop_vm
 	my $say_warning = get_string($conf, {key => "message_0166", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	my $say_precaution = get_string($conf, {key => "message_0166", variables => {
+	my $say_precaution = get_string($conf, {key => "message_0167", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
 	print template($conf, "server.html", "confirm-stop-server", {

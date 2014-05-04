@@ -116,16 +116,21 @@ sub download_url
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"wget -c $url -O /shared/files/$file",
+		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
 	});
+#		shell_call	=>	"wget -c $url -O /shared/files/$file",
+#		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
+		### TODO: This doesn't work anymore because the 'remote_call()'
+		### function returns all output in one go. Add a section to
+		### remote_call that does this for wget calls.
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/“/"/g;
 		$line =~ s/”/"/g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^(\d+)K .*? (\d+)% (.*?)(\w) (.*?)$/)
 		{
 			my $received = $1;
@@ -348,8 +353,15 @@ sub save_file_to_disk
 			and if the file is big, this might also take a while to finish.<br />
 			<br />
 			<pre>";
-		upload_to_shared($conf, $node, $out_file);
-		unlink $out_file;
+		if (upload_to_shared($conf, $node, $out_file))
+		{
+			print "It looks like the upload failed.<br />\n";
+		}
+		else
+		{
+			print "It looks like the upload succeeded, unlinking the source image.<br />\n";
+			#unlink $out_file;
+		}
 		print "
 			</pre>
 		</td>
@@ -375,23 +387,9 @@ sub image_and_upload
 	my ($conf) = @_;
 	
 	# Let the user know that this might take a bit.
-	print "
-<div id=\"hide_when_loaded\">
-<table align=\"center\">
-	<tr>
-		<td>
-			<b>Please be patient.</b><br />
-			Gathering information from $conf->{cgi}{cluster}.<br />
-			This could take a minute to complete.
-		</td>
-		<td>
-			<img src=\"/img/gather_info.gif\" border=\"0\">
-		</td>
-	</tr>
-</table>
-<br />
-</div>
-	";
+	print template($conf, "common.html", "scanning-message", {
+		anvil	=>	$conf->{cgi}{cluster},
+	});
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
@@ -511,15 +509,16 @@ sub image_and_upload
 			Please be patient! This could take up to <i>ten minutes</i>.<br />
 			<pre>
 ";
-			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
-			{
-				print $_;
-			}
-			$fh->close;
+			print "skipped...\n";
+# 			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
+# 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+# 			my $fh = IO::Handle->new();
+# 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+# 			while(<$fh>)
+# 			{
+# 				print $_;
+# 			}
+# 			$fh->close;
 			print "
 			</pre>
 		</td>
@@ -535,8 +534,15 @@ sub image_and_upload
 			This could take a long time, depending on the speed of the connection between the dashboard appliance and <i>Anvil!</i>.<br />
 			<pre>
 ";
-			upload_to_shared($conf, $node, $out_file);
-			unlink $out_file;
+			if (upload_to_shared($conf, $node, $out_file))
+			{
+				print "It looks like the upload failed.<br />\n";
+			}
+			else
+			{
+				print "It looks like the upload succeeded, unlinking the source image.<br />\n";
+				#unlink $out_file;
+			}
 			print "
 			</pre>
 		</td>
@@ -555,16 +561,86 @@ sub image_and_upload
 	return (0);
 }
 
+# This creates an 'expect' script for an rsync call.
+sub create_rsync_wrapper
+{
+	my ($conf, $node) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
+	my $sc = "
+echo \"#!/usr/bin/expect\" > ~/rsync.$node
+echo \"set timeout 3600\" >> ~/rsync.$node
+echo \"eval spawn rsync \\\$argv\" >> ~/rsync.$node
+echo \"expect  \\\"*?assword:\\\" \{ send \\\"$root_pw\\r\\\" \}\" >> ~/rsync.$node
+echo \"\" >> ~/rsync.$node
+chmod 755 ~/rsync.$node;";
+#echo \"expect eof\" >> ~/rsync.$node
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		print $_;
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This checks to see if we've see the peer before and if not, add it's ssh
+# fingerprint to known_hosts
+sub test_ssh_fingerprint
+{
+	my ($conf, $node) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
+	my $sc = "ssh root\@$node \"uname -a\"";
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		print "$line\n";
+		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
+		{
+			print "Node '$node''s ssh fingerprint has not been recorded yet, doing so now...\n";
+			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+			my $fh = IO::Handle->new();
+			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
+			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			while(<$fh>)
+			{
+				print $_;
+			}
+			$fh->close();
+			print "Done.\n";
+			sleep 5;
+		}
+	}
+	$fh->close();
+
+	return(0);
+}
+
 # This takes a path to a file on the dashboard and uploads it to the cluster's
 # /shared/files/ folder.
 sub upload_to_shared
 {
 	my ($conf, $node, $source_file) = @_;
 	
-	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+	# Some prep work.
+	test_ssh_fingerprint($conf, $node);
+	create_rsync_wrapper($conf, $node);
+	
+	my $sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+	#print "calling: [$sc]\n";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	my $no_key = 0;
 	while(<$fh>)
 	{
 		print $_;
