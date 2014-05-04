@@ -599,7 +599,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0070"><![CDATA[Updating <span class="fixed_width">#!variable!server!#</span>'s definition file directly.]]></key>
 		<key name="message_0071">It would appear that someone else already ejected the disc.</key>
 		<key name="message_0072">The optical drive's media has been ejected.</key>
-		<key name="message_0073"><![CDATA[I tried to eject the disc in drive <span class="fixed_width">#!variable!drive!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!replace!virsh_exit_code!#</span>] was received.]]></key>
+		<key name="message_0073"><![CDATA[I tried to eject the disc in drive <span class="fixed_width">#!variable!drive!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0074">Saving the new configuration...</key>
 		<key name="message_0075"><![CDATA[I am sorry, but the #!string!brand_0003!#'s storage isn't running on either node.<br />Please try again once the #!string!brand_0003!#'s storage has started on at least one of the nodes.]]></key>
 		<key name="message_0076">The server is currently not using VNC. The server's configuration will be updated now. Please power off and then start the server (don't reboot) and then try again.</key>
@@ -652,7 +652,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0123">Directly connect to your new server's desktop.</key>
 		<key name="message_0124">Once the installation is complete, please return here and click the link below.</key>
 		<key name="message_0125"><![CDATA[Please complete the install using the <span class="fixed_width">#!string!device_0004!#</span> on the dashboard's desktop.]]></key>
-		<key name="message_0126"><![CDATA[<b>After</b> the OS install is complete, please <a href="#!variable!url!#" class="button">#!string!button_0020!#</a> to add the server to the #!string!brand_0003!#.]]></key>
+		<key name="message_0126"><![CDATA[<b>After</b> the first reboot, <a href="#!variable!url!#" class="button">#!string!button_0020!#</a> to add the server to the #!string!brand_0003!#.]]></key>
 		<key name="message_0127">The server name can't have spaces in the name.</key>
 		<key name="message_0128"><![CDATA[The server name <span class="fixed_width">#!variable!server!#</span> is already in use.]]></key>
 		<key name="message_0129"><![CDATA[All servers need to have a name. This is usally something like <span class="fixed_width">vmXX-purpose</span>.]]></key>

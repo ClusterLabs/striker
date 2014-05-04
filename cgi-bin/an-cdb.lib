@@ -4166,58 +4166,61 @@ sub find_vm_host
 			if ($line =~ /^-/)
 			{
 				# It looks off... We have to go deeper!
-				#print "It appears to be off. Checking the peer to see if it is running there.<br />\n";
 				record($conf, "$THIS_FILE ".__LINE__."; The VM appears to be off. Checking the peer to see if it is running there.\n");
-				my $on_peer = 0;
-				my $found   = 0;
-				my ($error, $ssh_fh, $output) = remote_call($conf, {
-					node		=>	$peer,
-					port		=>	$conf->{node}{$peer}{port},
-					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
-					ssh_fh		=>	"",
-					'close'		=>	1,
-					shell_call	=>	"virsh list --all",
-				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
-				{
-					$line =~ s/^\s+//;
-					$line =~ s/\s+$//;
-					next if not $line;
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-					if ($line =~ /\s$vm\s/)
-					{
-						#print "Found it on the peer node. Checking if it's running there.<br />\n";
-						record($conf, "$THIS_FILE ".__LINE__."; Found it on the peer. Checking if it's running.\n");
-						if ($line =~ /^\d/)
-						{
-							$found   = 1;
-							$on_peer = 1;
-							$node    = $peer;
-							$host    = $peer;
-							#print "It is, I will use that node for the next steps.<br />\n";
-							record($conf, "$THIS_FILE ".__LINE__."; It is.\n");
-						}
-						else
-						{
-							$found = 1;
-							#print "It is not running on the peer.<br />\n";
-							record($conf, "$THIS_FILE ".__LINE__."; It is not running on the peer.\n");
-						}
-					}
-				}
-				if (($found) && (not $on_peer))
-				{
-					#print "I did not find it on the peer node.<br />\n";
-					record($conf, "$THIS_FILE ".__LINE__."; I did not find it on the peer node.\n");
-				}
 			}
 			else
 			{
+				# It's running.
 				$host = $node;
+				record($conf, "$THIS_FILE ".__LINE__."; The VM is running.\n");
 				#print "It is already running, as expected.<br />\n";
 			}
+		}
+	}
+	
+	if ($host eq "none")
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Looking for the VM on the peer node: [$peer].\n");
+		my $on_peer = 0;
+		my $found   = 0;
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$peer,
+			port		=>	$conf->{node}{$peer}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"virsh list --all",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			next if not $line;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /\s$vm\s/)
+			{
+				#print "Found it on the peer node. Checking if it's running there.<br />\n";
+				record($conf, "$THIS_FILE ".__LINE__."; Found it on the peer. Checking if it's running.\n");
+				if ($line =~ /^\d/)
+				{
+					$found   = 1;
+					$on_peer = 1;
+					$node    = $peer;
+					$host    = $peer;
+					record($conf, "$THIS_FILE ".__LINE__."; It is.\n");
+				}
+				else
+				{
+					$found = 1;
+					record($conf, "$THIS_FILE ".__LINE__."; It is not running on the peer.\n");
+				}
+			}
+		}
+		if (($found) && (not $on_peer))
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; I did not find it on the peer node.\n");
 		}
 	}
 	
