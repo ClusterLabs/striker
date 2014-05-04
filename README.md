@@ -1,4 +1,4 @@
-AN!CDB v1.0.3
+AN!CDB v1.1.0
 =============
 
   This program is a "Anvil! Dashboard" designed for simple management of the

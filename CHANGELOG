@@ -1,8 +1,11 @@
 Change log;
 
-v1.1.0 - <in-progress>
-- Major: Passwordless SSH is no longer required. Switched to using the 
-  Net::SSH2 perl module.
+v1.1.0 - 2014-05-04
+- NOTE: This is a major release. The instructions below should allow for an
+        in-place update, but a reinstall is recommended.
+        
+- Passwordless SSH is no longer required. Switched to using the Net::SSH2 perl
+  module.
 - New AN! Repo created. Please run:
   ----
   curl https://alteeve.ca/repo/el6/an.repo > /etc/yum.repos.d/an.repo
@@ -64,7 +67,7 @@ v1.1.0 - <in-progress>
   'expect' is installed. If it is not installed, direct rsync is used, though
   passwordless SSH is then required.
 - Moved the location of generated ISOs from the 'media' directory to '/tmp'.
-- LSI controller
+- LSI controller now supports clearing foreign states from disks.
   
 
 v1.0.3 - 2014-03-26
