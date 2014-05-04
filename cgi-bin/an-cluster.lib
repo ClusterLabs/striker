@@ -3336,7 +3336,7 @@ sub remote_call
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	
 	### TODO: Make this a better looking error.
 	if (not $node)

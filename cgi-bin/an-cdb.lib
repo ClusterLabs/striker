@@ -4261,10 +4261,10 @@ sub provision_vm
 	$provision .= "  --ram $conf->{new_vm}{ram} \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
-	$provision .= "  --cdrom /shared/files/$conf->{new_vm}{install_iso} \\\\\n";
+	$provision .= "  --cdrom '/shared/files/$conf->{new_vm}{install_iso}' \\\\\n";
 	if ($conf->{cgi}{driver_iso})
 	{
-		$provision .= "  --disk path=/shared/files/$conf->{new_vm}{driver_iso},device=cdrom --force\\\\\n";
+		$provision .= "  --disk path='/shared/files/$conf->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
 	}
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
 	# VNC doesn't show the mouse pointer properly on the default 'qxl'
