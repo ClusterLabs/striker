@@ -479,7 +479,7 @@ sub lsi_control_clear_foreign_state
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -1209,11 +1209,16 @@ sub lsi_control_disk_id_led
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	my $say_action        = "started";
+	my $say_action        = "#!string!state_0014!#";
 	if ($action eq "stop")
 	{
-		$say_action = "stopped";
+		$say_action = "#!string!state_0015!#";
 	}
+	elsif ($action ne "start")
+	{
+		$action = "start";
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; action: [$action], say_action: [$say_action]\n");
 	
 	my ($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
@@ -1507,6 +1512,10 @@ sub display_node_health
 							$say_disk_action  = "";
 							$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk\">".get_string($conf, {key => "button_0013"})."</a>";
 						}
+						### TODO: 'Copyback' state is when a drive has been inserted into an
+						### array after a hot-spare took over a failed disk. This state is
+						### where the hot-spare's data gets copied to the replaced drive, then
+						### the old hot spare reverts again to being a hot spare.
 						my $disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive_128x128.png";
 						my $id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
 						my $say_identify = get_string($conf, {key => "button_0014"});

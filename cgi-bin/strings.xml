@@ -268,8 +268,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0011">Unmounted</key>
 		<key name="state_0012">Foreign</key>
 		<key name="state_0013">Local</key>
-		<key name="state_0014"></key>
-		<key name="state_0015"></key>
+		<key name="state_0014">started</key>
+		<key name="state_0015">stopped</key>
 		<key name="state_0016"></key>
 		<key name="state_0017"></key>
 		<key name="state_0018"></key>
@@ -550,10 +550,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0021"><![CDATA[SSH host key validation failed.<br />Have you saved <span class="fixed_width">#!variable!node!#</span>'s fingerprint in <span class="fixed_width">$conf->{'system'}{username}</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.]]></key>
 		<key name="message_0022"><![CDATA[Could not resolve the hostname: <span class="fixed_width">#!variable!node!#</span>. Have you setup your <span class="fixed_width">/etc/hosts</span> file or DNS server properly?]]></key>
 		<key name="message_0023"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. Is the "#!string!row_0025!#" correct in this #!string!brand_0003!#? Check <span class="fixed_width">/var/log/secure</span> on <span class="fixed_width">#!variable!node!#</span> for errors.]]></key>
-		<key name="message_0024"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />If you just powered the node on or off, it may not be allowing connections.<br />Please try again shortly.]]></key>
-		<key name="message_0025"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />The connection timed out.]]></key>
-		<key name="message_0026"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?]]></key>
-		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!replace!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!system::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
+		<key name="message_0024"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />If you just powered the node on or off, it may not be allowing connections.<br />Please try again shortly.]]></key>
+		<key name="message_0025"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />The connection timed out.]]></key>
+		<key name="message_0026"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?]]></key>
+		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!system::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
 		<key name="message_0028"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.]]></key>
 		<key name="message_0029"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.<br />There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />In either case, please manually power on the nodes when you are ready to use them.<br />If they are on and you are seeing this message, then there might be a network problem.<br />Is this machine on the #!string!brand_0003!#'s <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>?]]></key>
 		<key name="message_0030"><![CDATA[The number <span class="fixed_width">#!variable!number!#</span> passed into the 'comma()' function contains a non-digit character or too many decimals.]]></key>
@@ -577,7 +577,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0048"><![CDATA[I was trying to resolve the host name <span class="fixed_width">#!variable!target_host!#</span> but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your <span class="fixed_width">/etc/hosts</span> file?]]></key>
 		<key name="message_0049">I was trying to resolve a host name, but no name was given. This is likely a program error.</key>
 		<key name="message_0050"><![CDATA[Failed to write <span class="fixed_width">#!variable!cache_file!#</span> as UID <span class="fixed_width">#!variable!uid!#</span>.<br />The error was: <span class="fixed_width">#!variable!errer!#</span>]]></key>
-		<key name="message_0051"><![CDATA[I am sorry, but I did not find any storage management tools on <span class="highlight_detail">#!replace!node!#</span>.<br />Please install <span class="fixed_width">MegaCli64</span> or another supported storage manager and try again.]]></key>
+		<key name="message_0051"><![CDATA[I am sorry, but I did not find any storage management tools on <span class="highlight_detail">#!variable!node!#</span>.<br />Please install <span class="fixed_width">MegaCli64</span> or another supported storage manager and try again.]]></key>
 		<key name="message_0052">Restarting the remote desktop server</key>
 		<key name="message_0053"><![CDATA[Please close this brower tab (or window).<br />You should now be able to connect to your server.]]></key>
 		<key name="message_0054">Drive can now be removed.</key>
@@ -620,7 +620,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0091">It is not running at the moment, I will now boot the server.</key>
 		<key name="message_0092">It should now be booting up.</key>
 		<key name="message_0093">It didn't start on the first try. Trying again specifying the definition file.</key>
-		<key name="message_0094"><![CDATA[The new <span class="fixed_width">#!variable!server!#</span> server didn't start on reboot.<br />I tried to start it, but the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!replace!virsh_exit_code!#</span> was received.]]></key>
+		<key name="message_0094"><![CDATA[The new <span class="fixed_width">#!variable!server!#</span> server didn't start on reboot.<br />I tried to start it, but the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
 		<key name="message_0095">It is already running, as expected.</key>
 		<key name="message_0096">The server is now running on the peer. I will use that node for the next steps.</key>
 		<key name="message_0097"><![CDATA[The #!string!brand_0003!# needs to know what "hardware" to create for the new server when it starts.<br />This is done using a "definition" file, which we will record now.]]></key>
@@ -835,18 +835,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="lsi_0024"><![CDATA[<br /><br />Are you sure you wish to proceed?<br /><br /><a href="#!variable!confirm_url!#">#!string!button_0004!#</a> - #!string!message_0140!# - <a href="#!variable!cancel_url!#"> #!string!button_0005!#</a><br />]]></key>
 		<key name="lsi_0025"><![CDATA[Successfully put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> offline.]]></key>
 		<key name="lsi_0026">Put Physical Disk Offline</key>
-		<key name="lsi_0027"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> offline.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0027"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> offline.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0028"><![CDATA[Successfully put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.]]></key>
-		<key name="lsi_0029"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0029"><![CDATA[Failed to put the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> online.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0030"><![CDATA[Put Physical Disk Online]]></key>
 		<key name="lsi_0031"><![CDATA[Successfully added the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> to logical disk <span class="highlight_detail">##!variable!logical_disk!#</span>.]]></key>
-		<key name="lsi_0032"><![CDATA[Failed to add the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> to logical disk <span class="highlight_detail">##!variable!logical_disk!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0032"><![CDATA[Failed to add the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> to logical disk <span class="highlight_detail">##!variable!logical_disk!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0033">Add Physical Disk to Logical Disk</key>
 		<key name="lsi_0034"><![CDATA[Successfully marked the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as good.]]></key>
-		<key name="lsi_0035"><![CDATA[Failed to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as good.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0035"><![CDATA[Failed to mark the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span> as good.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0036">Mark Physical Disk as 'Good'</key>
-		<key name="lsi_0037"><![CDATA[Successfully <span class="highlight_detail">#!variable!say_action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
-		<key name="lsi_0038"><![CDATA[Failed to <span class="highlight_detail">#!variable!action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!replace!message!#</span>]]></key>
+		<key name="lsi_0037"><![CDATA[Successfully <span class="highlight_detail">#!variable!action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
+		<key name="lsi_0038"><![CDATA[Failed to <span class="highlight_detail">#!variable!action!#</span> the disk ID LED for <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0039">Disk ID Call</key>
 		<key name="lsi_0040">RAID Controller ##!variable!adapter!#</key>
 		<key name="lsi_0041"><![CDATA[ - Missing disk in row <span class="fixed_width">#!variable!row!#</span>, replace with <span class="fixed_width">#!variable!minimum_size!#</span> or larger.<br />]]></key>
