@@ -42,6 +42,9 @@
 # - Pass a timestamp with all CGI commands for five minutes in the future and
 #   abort any actions that are older than that.
 # - Pass $THIS_FILE and __LINE__ on all 'error()' calls.
+# 
+# Bugs:
+# - Media Library isn't skinable/translatable yet.
 
 use strict;
 use warnings;

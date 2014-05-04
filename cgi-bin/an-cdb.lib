@@ -322,6 +322,11 @@ sub process_task
 					lsi_control_unmake_disk_as_hot_spare($conf);
 					get_storage_data($conf, $conf->{cgi}{node});
 				}
+				elsif ($conf->{cgi}{'do'} eq "clear_foreign_state")
+				{
+					lsi_control_clear_foreign_state($conf);
+					get_storage_data($conf, $conf->{cgi}{node});
+				}
 				### Prepare Unconfigured drives for removal
 				# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
 
@@ -446,6 +451,67 @@ sub lsi_control_unmake_disk_as_hot_spare
 	}
 	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0001!#",
+		row		=>	$title_message,
+		row_class	=>	$title_class,
+		message		=>	$message_body,
+	});
+
+	return(0);
+}
+
+# Thus clears a disk's foreign state
+sub lsi_control_clear_foreign_state
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_clear_foreign_state()\n");
+	
+	my $success           = 0;
+	my $return_string     = "";
+	my $cluster           = $conf->{cgi}{cluster};
+	my $node              = $conf->{cgi}{node};
+	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	
+	# Mark the disk as a global hot-spare.
+	my ($error, $ssh_fh, $output) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+	});
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
+	{
+		$return_string .= "$line<br />\n";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /is cleared/i)
+		{
+			$success = 1;
+		}
+	}
+	
+	# Show the user the results.
+	my $title_message = "#!string!state_0005!#";
+	my $title_class   = "highlight_good";
+	my $message_body  = get_string($conf, {key => "lsi_0043", variables => {
+				adapter	=>	$conf->{cgi}{adapter},
+			}});
+	if (not $success)
+	{
+		$title_message = "#!string!row_0044!#";
+		$title_class   = "highlight_warning";
+		$message_body  = get_string($conf, {key => "lsi_0044", variables => {
+				adapter	=>	$conf->{cgi}{adapter},
+				message	=>	$return_string,
+			}});
+	}
+	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+		title		=>	"#!string!lsi_0045!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
 		message		=>	$message_body,
@@ -1405,7 +1471,10 @@ sub display_node_health
 										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
 											$say_disk_action =  "<br />\n" if not $say_disk_action;
-											$say_disk_action .= "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk\">".get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk}})."</a><br />\n";
+											my $say_button   =  get_string($conf, {key => "button_0010", variables => {
+												logical_disk => $this_logical_disk}
+											});
+											$say_disk_action .= "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk\">$say_button</a><br />\n";
 										}
 									}
 								}
@@ -1420,7 +1489,8 @@ sub display_node_health
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
 						{
 							$disk_state_class = "highlight_detail";
-							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0012"})."</a>";
+							my $say_button    = get_string($conf, {key => "button_0012"});
+							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">$say_button</a>";
 							$say_temperature  = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0055"})."</a>";
 							$offline_button   = get_string($conf, {key => "message_0054"});
 						}
@@ -1447,6 +1517,16 @@ sub display_node_health
 							$id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
 							$say_identify = get_string($conf, {key => "button_0015"});
 						}
+						# This needs to be last because if a drive is foreign,
+						# we can't do anything else to it.
+						my $foreign_state_class = "fixed_width_left";
+						my $say_foreign_state   = "#!string!state_0013!#";
+						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} eq "Foreign")
+						{
+							$foreign_state_class = "highlight_warning_bold_fixed_width_left";
+							$say_foreign_state   = "#!string!state_0012!#";
+							$say_disk_action     = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0038"})."</a>";
+						}
 						
 						# Finally, show the drive.
 						my $title = get_string($conf, {key => "title_0022", variables => {
@@ -1460,6 +1540,8 @@ sub display_node_health
 							model				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data},
 							wwn				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn},
 							disk_state			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
+							foreign_state			=>	$say_foreign_state,
+							foreign_state_class		=>	$foreign_state_class,
 							disk_state_class		=>	$disk_state_class,
 							disk_action			=>	$say_disk_action,
 							temperature			=>	$say_temperature,
@@ -1993,6 +2075,11 @@ sub get_storage_data_lsi
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type} = $1;
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Media Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type}]\n";
+			}
+			elsif ($line =~ /Foreign State\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} = $1;
+				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Foreign State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state}]\n";
 			}
 			elsif ($line =~ /Drive Temperature\s*:\s*(\d+)C \((.*?) F\)/)
 			{

@@ -42,7 +42,8 @@
 		<key name="button_0035">Power On Both</key>
 		<key name="button_0036">Start #!string!brand_0004!#</key>
 		<key name="button_0037">Fence Node</key>
-		<key name="button_0038"></key>
+		<key name="button_0038">Clear Foreign State</key>
+		<key name="button_0039"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -265,8 +266,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0009">Ready</key>
 		<key name="state_0010">Mounted</key>
 		<key name="state_0011">Unmounted</key>
-		<key name="state_0012"></key>
-		<key name="state_0013"></key>
+		<key name="state_0012">Foreign</key>
+		<key name="state_0013">Local</key>
 		<key name="state_0014"></key>
 		<key name="state_0015"></key>
 		<key name="state_0016"></key>
@@ -521,7 +522,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0125">Retry</key>
 		<key name="row_0126">CRITICAL ERROR!</key>
 		<key name="row_0127">Output</key>
-		<key name="row_0128"></key>
+		<key name="row_0128">Foreign State</key>
 		<key name="row_0129"></key>
 		<key name="row_0130"></key>
 		
@@ -850,9 +851,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="lsi_0040">RAID Controller ##!variable!adapter!#</key>
 		<key name="lsi_0041"><![CDATA[ - Missing disk in row <span class="fixed_width">#!variable!row!#</span>, replace with <span class="fixed_width">#!variable!minimum_size!#</span> or larger.<br />]]></key>
 		<key name="lsi_0042"><![CDATA[<br />Rebuild is <span class="highlight_detail">#!variable!rebuild_percent!#%</span> complete, rebuilding for <span class="highlight_detail">#!variable!time_to_complete!#</span>.]]></key>
-		<key name="lsi_0043"><![CDATA[]]></key>
-		<key name="lsi_0044"><![CDATA[]]></key>
-		<key name="lsi_0045"><![CDATA[]]></key>
+		<key name="lsi_0043"><![CDATA[Successfully foreign configurations on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
+		<key name="lsi_0044"><![CDATA[Failed to clear foreign configurations on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
+		<key name="lsi_0045">Clear foreign configurations</key>
 		<key name="lsi_0046"><![CDATA[]]></key>
 		<key name="lsi_0047"><![CDATA[]]></key>
 		<key name="lsi_0048"><![CDATA[]]></key>

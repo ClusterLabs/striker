@@ -7,7 +7,7 @@ v1.1.0 - <in-progress>
   ----
   curl https://alteeve.ca/repo/el6/an.repo > /etc/yum.repos.d/an.repo
   yum clean all;
-  yum install perl-Net-SSH2 perl-TermReadKey
+  yum install perl-Net-SSH2 perl-TermReadKey expect
   ----
 - AN!CDB now updated /etc/ssh/ssh_config and /etc/hosts. Please be sure that
   apache can edit these if you want to use the new WebUI configuration tool.
@@ -60,7 +60,12 @@ v1.1.0 - <in-progress>
 - Lots of miscellaneous formatting and text cleanup.
 - Started the process of renaming AN!CDB to Striker and changing the terms
   'cluster' to 'Anvil!' and 'VM' to 'Server'.
-
+- Now use 'expect' to enable password-based rsyncs from Striker to nodes when
+  'expect' is installed. If it is not installed, direct rsync is used, though
+  passwordless SSH is then required.
+- Moved the location of generated ISOs from the 'media' directory to '/tmp'.
+- LSI controller
+  
 
 v1.0.3 - 2014-03-26
 - No prior change list. If you're curious, please see the git change history 

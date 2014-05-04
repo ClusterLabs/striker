@@ -151,6 +151,14 @@ td {
 	font-weight: bold;
 }
 
+.highlight_warning_bold_fixed_width_left {
+	color: #936c02;
+	font-weight: bold;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
+	text-align: left;
+}
+
 .highlight_bad {
 	color: #9a131a;
 	font-style: italic;
