@@ -172,7 +172,7 @@ then
 else
 	cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.anvil
 	sed -i 's/Timeout 60/Timeout 60000/' /etc/httpd/conf/httpd.conf
-	sed -i "/Directory \"\/var\/www\/cgi-bin\"/ a\    # Password login\n    AuthType Basic\n    AuthName \"AN!Cluster Dashboard - $CUSTOMER\"\n    AuthUserFile /var/www/home/htpasswd\n    Require user admin" /etc/httpd/conf/httpd.conf
+	sed -i "/Directory \"\/var\/www\/cgi-bin\"/ a\    # Password login\n    AuthType Basic\n    AuthName \"Striker - $CUSTOMER\"\n    AuthUserFile /var/www/home/htpasswd\n    Require user admin" /etc/httpd/conf/httpd.conf
 fi
 
 if [ ! -e "/etc/ssh/sshd_config.anvil" ]
@@ -404,18 +404,18 @@ else
 		echo " - Already exists"
 	else
 		cat > /etc/guacamole/guacamole.properties << EOF
-	# Hostname and port of guacamole proxy
-	guacd-hostname: localhost
-	guacd-port:     4822
+# Hostname and port of guacamole proxy
+guacd-hostname: localhost
+guacd-port:     4822
 
-	# Location to read extra .jar's from
-	lib-directory:  /var/lib/guacamole/classpath
+# Location to read extra .jar's from
+lib-directory:  /var/lib/guacamole/classpath
 
-	# Authentication provider class
-	auth-provider: net.sourceforge.guacamole.net.auth.noauth.NoAuthenticationProvider
+# Authentication provider class
+auth-provider: net.sourceforge.guacamole.net.auth.noauth.NoAuthenticationProvider
 
-	# NoAuth properties
-	noauth-config: /etc/guacamole/noauth-config.xml
+# NoAuth properties
+noauth-config: /etc/guacamole/noauth-config.xml
 EOF
 		if [ -e "/etc/guacamole/guacamole.properties" ]
 		then
@@ -462,8 +462,8 @@ EOF
 		echo " - Server configuration file already exists."
 	else
 		cat > /etc/guacamole/noauth-config.xml << EOF
-	<configs>
-	</configs>
+<configs>
+</configs>
 EOF
 		# This is needed to allow AN!CDB to create backups and modify the
 		# config.

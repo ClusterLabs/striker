@@ -1835,7 +1835,15 @@ sub get_guacamole_link
 	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}]\n");
 	if ($ENV{HTTP_REFERER})
 	{
-		($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+		if ($guacamole_url =~ /cgi-bin/)
+		{
+			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+		}
+		else
+		{
+			$guacamole_url = $ENV{HTTP_REFERER};
+		}
+		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
 	}
 	elsif ($ENV{HTTP_HOST})
 	{
@@ -1865,6 +1873,7 @@ sub get_guacamole_link
 	
 	# For now, guacamole can't use SSL (my bad, not theirs)
 	$guacamole_url =~ s/^https:/http:/;
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
 	return ($guacamole_url);
 }

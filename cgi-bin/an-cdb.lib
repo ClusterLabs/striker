@@ -1331,18 +1331,49 @@ sub display_node_health
 				{
 					$battery_state_class = "highlight_bad";
 				}
+				
+				# What I show depends on the device the user has.
+				my $say_current_capacity = "--";
+				my $say_design_capcity   = "--";
+				my $say_current_charge   = "--";
+				my $say_cycle_count      = "<span class=\"highlight_unavailable\">#!string!state_0016!#</a>";
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity})
+				{
+					$say_current_capacity = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity};
+				}
+				elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance})
+				{
+					$say_current_capacity = "$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance} %";
+				}
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity})
+				{
+					$say_design_capcity = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity};
+				}
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity})
+				{
+					$say_current_charge = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity};
+				}
+				elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy})
+				{
+					$say_current_charge = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy};
+				}
+				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count})
+				{
+					$say_cycle_count = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count};
+				}
+				
 				print template($conf, "lsi-storage.html", "lsi-bbu-state", {
 					battery_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
 					battery_state_class	=>	$battery_state_class,
 					manufacture_name	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
 					bbu_type		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type},
-					full_capacity		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity},
-					design_capacity		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity},
-					remaining_capacity	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity},
+					full_capacity		=>	$say_current_capacity,
+					design_capacity		=>	$say_design_capcity,
+					remaining_capacity	=>	$say_current_charge,
 					replace_bbu		=>	$say_replace_bbu,
 					learn_cycle		=>	$say_learn_cycle,
 					next_learn_cycle	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time},
-					cycle_count		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count},
+					cycle_count		=>	$say_cycle_count,
 				});
 			}
 			
@@ -1853,12 +1884,22 @@ sub get_storage_data_lsi
 			elsif ($line =~ /Full Charge Capacity\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} = $1;
-				#print "LSI Adapter number: [$this_adapter], BBU Full Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity}]\n";
+				record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], BBU Full Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity}]\n");
 			}
 			elsif ($line =~ /Manufacture Name\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name} = $1;
 				#print "LSI Adapter number: [$this_adapter], BBU Manufactore Name: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name}]\n";
+			}
+			elsif ($line =~ /Pack energy\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy} = $1;
+				#print "LSI Adapter number: [$this_adapter], Pack energy: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy}]\n";
+			}
+			elsif ($line =~ /Capacitance\s*:\s*(.*)/)
+			{
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance} = $1;
+				#print "LSI Adapter number: [$this_adapter], Capacitance: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance}]\n";
 			}
 		}
 		elsif ($in_section eq "logical_disk_info")
