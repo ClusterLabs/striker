@@ -15,6 +15,75 @@ use Term::ReadKey;
 my $THIS_FILE = "common.lib";
 
 
+# This creates an 'expect' script for an rsync call.
+sub create_rsync_wrapper
+{
+	my ($conf, $node) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
+	my $sc = "
+echo \"#!/usr/bin/expect\" > ~/rsync.$node
+echo \"set timeout 3600\" >> ~/rsync.$node
+echo \"eval spawn rsync \\\$argv\" >> ~/rsync.$node
+echo \"expect  \\\"*?assword:\\\" \{ send \\\"$root_pw\\r\\\" \}\" >> ~/rsync.$node
+echo \"expect eof\" >> ~/rsync.$node
+chmod 755 ~/rsync.$node;";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		print $_;
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+# This checks to see if we've see the peer before and if not, add it's ssh
+# fingerprint to known_hosts
+sub test_ssh_fingerprint
+{
+	my ($conf, $node) = @_;
+	
+	my $cluster = $conf->{cgi}{cluster};
+	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
+	my $sc = "ssh root\@$node \"uname -a\"";
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#print "$line\n";
+		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
+		{
+			# Add fingerprint to known_hosts
+			print get_string($conf, {key => "message_0279", variables => {
+				node	=>	$node,
+			}});
+			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+			my $fh = IO::Handle->new();
+			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
+			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	$line,
+				});
+			}
+			$fh->close();
+			print get_string($conf, {key => "message_0120"});
+			sleep 5;
+		}
+	}
+	$fh->close();
+
+	return(0);
+}
 
 # This simply sorts out the current directory the program is running in.
 sub get_current_directory
@@ -446,7 +515,7 @@ sub initialize_conf
 			language		=>	"en_CA",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.1.0",
+			version			=>	"1.1.1",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file

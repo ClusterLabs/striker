@@ -1,7 +1,10 @@
 Change log;
 
-v1.1.1 - <in-progress>
-- 
+v1.1.1 - 2014-05-20
+- Added support for pushing changed configs to Anvil!s via the dashboard.
+- Updated an-cm to use per-Anvil! override values.
+- Updated an-cm logging to print human-readable times instead of unix
+  timestamps.
 
 
 v1.1.0 - 2014-05-04

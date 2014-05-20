@@ -5420,7 +5420,7 @@ sub start_vm
 sub parse_text_line
 {
 	my ($conf, $line) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
 	
 	# 'Da good ^_^
 	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
@@ -5438,7 +5438,7 @@ sub parse_text_line
 	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
 	$line =~ s/\[\s+(failed)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	return($line);
 }
 

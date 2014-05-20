@@ -38,7 +38,7 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.0";
+our $VERSION  = "1.1.1";
 
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
@@ -1203,6 +1203,12 @@ sub show_common_config_section
 	$say_encrypt_pass_select =~ s/<select name=/<select tabindex="19" name=/;
 	#record($conf, "$THIS_FILE ".__LINE__."; say_security_select: [$say_security_select]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
+	# If both nodes are up, enable the 'Push' button.
+	my $push_button = "";
+	if ($conf->{cgi}{anvil})
+	{
+		$push_button = "- &nbsp; <a href=\"?config=true&anvil=$conf->{cgi}{anvil}&task=push\" class=\"button\">#!string!button_0039!#</a>";
+	}
 	
 	print template($conf, "config.html", "global-variables", {
 		anvil_id			=>	$this_id,
@@ -1232,6 +1238,7 @@ sub show_common_config_section
 		mail_data__to_name		=>	$mail_data__to_key,
 		mail_data__to_id		=>	$mail_data__to_key,
 		mail_data__to_value		=>	$conf->{cgi}{$mail_data__to_key},
+		push_button			=>	$push_button,
 	}); 
 	
 	return(0);
@@ -1277,6 +1284,169 @@ sub show_global_anvil_list
 	return(0);
 }
 
+# This checks to see if the Anvil! is online and, if both nodes are, pushes the
+# config to the nods.
+sub push_config_to_anvil
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; push_config_to_anvil()\n");
+	
+	my $anvil = $conf->{cgi}{anvil};
+	record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
+	
+	# Make sure both nodes are up.
+	$conf->{cgi}{cluster}            = $conf->{cgi}{anvil};
+	$conf->{'system'}{root_password} = $conf->{clusters}{$anvil}{root_pw};
+	scan_cluster($conf);
+	
+	my $up = @{$conf->{up_nodes}};
+	record($conf, "$THIS_FILE ".__LINE__."; online nodes: [$up]\n");
+	if ($up == 0)
+	{
+		# Neither node is reachable or online.
+		print template($conf, "config.html", "can-not-push-config-no-access");
+	}
+	elsif ($up == 1)
+	{
+		# Only one node online, don't update to prevent divergent
+		# configs.
+		print template($conf, "config.html", "can-not-push-config-only-one-node");
+	}
+	else
+	{
+		# Push!
+		my $config_file = $conf->{path}{an_conf};
+		if (not -r $config_file)
+		{
+			die "Failed to read local: [$config_file]\n";
+		}
+		
+		# We're going to want to backup each file before pushing the updates.
+		my ($say_date) =  get_date($conf, time);
+		my $date       =  $say_date;
+		$date          =~ s/ /_/;
+		$say_date      =~ s/ /, /;
+		
+		print template($conf, "config.html", "open-push-table");
+		foreach my $node (@{$conf->{up_nodes}})
+		{
+			my $message = get_string($conf, {key => "message_0280", variables => {
+					node		=>	$node,
+					source		=>	$config_file,
+					destination	=>	"$config_file.$date",
+				}});
+			print template($conf, "config.html", "open-push-entry", {
+				row	=>	"#!string!row_0130!#",
+				message	=>	"$message",
+			});
+			
+			# Make sure there is an '/etc/an' directory on the node
+			# and create it, if not.
+			my $sc = "if [ ! -e '/etc/an' ]; then mkdir /etc/an; fi; ls /etc/an";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my ($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$sc,
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
+			{
+				## This will show all the files in the directory, which isn't needed.
+				## So instead we just look for the config file in the output and
+				## report 'Found' if so.
+				record($conf, "$THIS_FILE ".__LINE__."; conf: [$config_file]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($config_file =~ /$line$/)
+				{
+					$line = get_string($conf, {key => "message_0283"});
+					print template($conf, "common.html", "shell-call-output", {
+						line	=>	$line,
+					});
+				}
+			}
+			$error  = "";
+			$output = "";
+			$sc     = "";
+			
+			# Backup, but don't care if it fails.
+			my $backup_file = "$config_file.$date";
+			$sc = "if [ -e \"$config_file\" ]; then cp $config_file $backup_file; fi; ls $backup_file";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	$ssh_fh,
+				'close'		=>	1,
+				shell_call	=>	$sc,
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; backup: [$backup_file]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; line:   [$line]\n");
+				if ($backup_file =~ /$line$/)
+				{
+					$line = get_string($conf, {key => "message_0284"});
+				}
+				if ($line =~ /No such file or directory/)
+				{
+					$line = get_string($conf, {key => "message_0285"});
+				}
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	$line,
+				});
+			}
+			print template($conf, "config.html", "close-push-entry");
+			
+			# See if I need to add the target node to the
+			# dashboard's '~/.ssh/known_hosts' file.
+			test_ssh_fingerprint($conf, $node);
+			
+			# Now push the actual config file.
+			$message = get_string($conf, {key => "message_0281", variables => {
+					node		=>	$node,
+					config_file	=>	"$config_file",
+				}});
+			print template($conf, "config.html", "open-push-entry", {
+				row	=>	"#!string!row_0131!#",
+				message	=>	"$message",
+			});
+			my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
+			# This is a dumb way to check, try a test upload and see if it fails.
+			if ( -e "/usr/bin/expect" )
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
+				create_rsync_wrapper($conf, $node);
+				$sc = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
+			}
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $fh = IO::Handle->new();
+			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			my $no_key = 0;
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	$line,
+				});
+			}
+			$fh->close;
+			print template($conf, "config.html", "close-push-entry");
+		}
+		print template($conf, "config.html", "close-table");
+	}
+	
+	return(0);
+}
+
 # This allows the user to configure their dashboard.
 sub configure_dashboard
 {
@@ -1289,6 +1459,10 @@ sub configure_dashboard
 	if ($conf->{cgi}{save})
 	{
 		save_dashboard_configure($conf);
+	}
+	elsif ($conf->{cgi}{task} eq "push")
+	{
+		push_config_to_anvil($conf);
 	}
 	
 	### Header section
@@ -2239,7 +2413,8 @@ sub read_files_on_shared
 	if (not $connected)
 	{
 		# Open the "not connected" table
-		print template($conf, "main-page.html", "connection-error-table-header", {
+		# Variable hash feeds into 'title_0116'
+		print template($conf, "main-page.html", "connection-error-table-header", {}, {
 			anvil	=>	$cluster,
 		});
 		
@@ -2896,7 +3071,7 @@ sub gather_node_details
 		'close'		=>	0,
 		shell_call	=>	"dmidecode -t 4,16,17",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmidecode: [$dmidecode (".@{$dmidecode}." lines)]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmidecode: [$dmidecode (".@{$dmidecode}." lines)]\n");
 
 	if ($error)
 	{
@@ -2912,13 +3087,14 @@ sub gather_node_details
 		$conf->{node}{$node}{connected} = 1;
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh]\n");
 	if ($conf->{node}{$node}{connected})
 	{
 		# Record that this node is up.
 		$conf->{'system'}{show_nodes} = 1;
 		$conf->{node}{$node}{up}      = 1;
 		push @{$conf->{up_nodes}}, $node;
+		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::up: [$conf->{node}{$node}{up}], up_nodes: [".@{$conf->{up_nodes}}."]\n");
 		
 		### Get the rest of the shell calls done before starting to
 		### parse.
@@ -4992,9 +5168,9 @@ sub on_same_network
 				
 				# Convert the power check command's address to
 				# use the raw IP.
-				record($conf, "$THIS_FILE ".__LINE__."; > node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; > node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 				$conf->{node}{$node}{info}{power_check_command} =~ s/-a (.*?) /-a $target_ip /;
-				record($conf, "$THIS_FILE ".__LINE__."; < node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; < node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 			}
 			else
 			{

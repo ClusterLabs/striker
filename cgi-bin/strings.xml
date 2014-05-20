@@ -43,7 +43,8 @@
 		<key name="button_0036">Start #!string!brand_0004!#</key>
 		<key name="button_0037">Fence Node</key>
 		<key name="button_0038">Clear Foreign State</key>
-		<key name="button_0039"></key>
+		<key name="button_0039">Push to Anvil!</key>
+		<key name="button_0040"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -392,7 +393,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0113">Please be patient.</key>
 		<key name="title_0114">Program Error</key>
 		<key name="title_0115"><![CDATA[Provisioning the new <span class="fixed_width">#!variable!server!#</span> server...]]></key>
-		<key name="title_0116"></key>
+		<key name="title_0116"><![CDATA[Unable to connect to the <span class="highlight_detail">#!replace!anvil!#</span> cluster!]]></key>
+		<key name="title_0117"></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -523,8 +525,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0126">CRITICAL ERROR!</key>
 		<key name="row_0127">Output</key>
 		<key name="row_0128">Foreign State</key>
-		<key name="row_0129"></key>
-		<key name="row_0130"></key>
+		<key name="row_0129">Aborted</key>
+		<key name="row_0130">Backup</key>
+		<key name="row_0131">Push</key>
+		<key name="row_0132"></key>
+		<key name="row_0133"></key>
+		<key name="row_0134"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0002!#</span> to add your first one!]]></key>
@@ -758,7 +764,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0229">Either this node has not been seen before or the cache for this node was deleted.</key>
 		<key name="message_0230">You can not power on the node from the dashboard at this time.</key>
 		<key name="message_0231">Unable to determine the commands needed to fence #!variable!node!#. One of the nodes need to be accessible or the cache file must exist with the correct command.</key>
-		<key name="message_0232">Trying to fence #!variable!node!#, but it's peer, #!variable!peer!#, is also offline and the fence device at #!variable!address!# is not accessible from this machine.<br />Unable to proceed with fence action.</key>
+		<key name="message_0232"><![CDATA[Trying to fence <span class="fixed_width">#!variable!node!#</span>, but it's peer, <span class="fixed_width">#!variable!peer!#</span>, is also offline and the fence device at <span class="fixed_width">#!variable!address!#</span> is not accessible from this machine.<br />Unable to proceed with fence action.]]></key>
 		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
 		<key name="message_0234"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Proceeding with unfence action.]]></key>
 		<key name="message_0235"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed. Will try next method, if available.]]></key>
@@ -801,12 +807,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
 		<key name="message_0273">This could take a minute to complete.</key>
 		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href=\"#!string!brand_0012!#\" target=\"_new\">contact support</a> and we will try to help fix this.]]></key>
-		<key name="message_0275"><![CDATA[]]></key>
-		<key name="message_0276"><![CDATA[]]></key>
-		<key name="message_0277"><![CDATA[]]></key>
-		<key name="message_0278"><![CDATA[]]></key>
-		<key name="message_0279"><![CDATA[]]></key>
-		<key name="message_0280"><![CDATA[]]></key>
+		<key name="message_0275"><![CDATA[Unable to connect to either node in the #!string!brand_0003!#.]]></key>
+		<key name="message_0276"><![CDATA[Please ensure both nodes are online, and then try pushing the configuration again.]]></key>
+		<key name="message_0277"><![CDATA[Only one node is online.]]></key>
+		<key name="message_0278"><![CDATA[To prevent configuration divergence, both nodes must be online and accessible.]]></key>
+		<key name="message_0279"><![CDATA[The <span class="fixed_width">#!variable!node!#</span> node's ssh fingerprint has not been recorded yet, doing so now...]]></key>
+		<key name="message_0280"><![CDATA[On the <span class="fixed_width">#!variable!node!#</span> node, I am backing up the: <span class="fixed_width">#!variable!source!#</span> file to: <span class="fixed_width">#!variable!destination!#</span>.<br />If the <span class="fixed_width">#!variable!source!#</span> does not exist, you will see a harmless error below.]]></key>
+		<key name="message_0281"><![CDATA[Pushing the updated <span class="fixed_width">#!variable!config_file!#</span> to <span class="fixed_width">#!variable!node!#</span>.]]></key>
+		<key name="message_0282">Command output below (if any)</key>
+		<key name="message_0283">Config directory exists</key>
+		<key name="message_0284">Backup successful</key>
+		<key name="message_0285">Backup failed or not possible</key>
+		<key name="message_0286"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

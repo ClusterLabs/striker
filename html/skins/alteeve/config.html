@@ -330,7 +330,7 @@
 					<td colspan="4">
 						<input type="hidden" name="config" id="config" value="true">
 						<input type="hidden" name="section" id="section" value="global">
-						<input type="submit" name="save" id="save" value="Save" class="button">
+						<input type="submit" name="save" id="save" value="Save" class="button"> #!replace!push_button!#
 					</td>
 				</tr>
 			</table>
@@ -463,3 +463,58 @@
 		</td>
 	</tr>
 <!-- end anvil-column-footer -->
+
+<!-- start can-not-push-config-no-access -->
+<table>
+	<tr>
+		<td class="highlight_warning">
+			#!string!row_0033!#
+		</td>
+		<td>
+			#!string!message_0275!#<br />
+			#!string!message_0276!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end can-not-push-config-no-access -->
+
+<!-- start can-not-push-config-only-one-node -->
+<table>
+	<tr>
+		<td class="highlight_warning">
+			#!string!row_0129!#
+		</td>
+		<td>
+			#!string!message_0277!#<br />
+			#!string!message_0278!#<br />
+			#!string!message_0276!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end can-not-push-config-only-one-node -->
+
+<!-- start open-push-table -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!row_0131!#</b>
+		</td>
+	</tr>
+<!-- end open-push-table -->
+
+<!-- start open-push-entry -->
+	<tr>
+		<td class="highlight_good">
+			#!replace!row!#
+		</td>
+		<td style="text-align: left;">
+			#!replace!message!#<br />
+			#!string!message_0282!#:<br />
+<!-- end open-push-entry -->
+
+<!-- start close-push-entry -->
+		</td>
+	</tr>
+<!-- end close-push-entry -->

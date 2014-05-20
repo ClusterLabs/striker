@@ -4563,8 +4563,20 @@ sub check_for_changes
 	check_storage($conf);
 	check_host($conf);
 	check_ups($conf);
+	check_mdstat($conf);
 	#record($conf, "$THIS_FILE ".__LINE__."; Comparing new to old.\n");
 	compare_new_and_old($conf);
+	
+	return(0);
+}
+
+# This reads '/proc/mdstat' to see if any software RAID arrays exist and, if
+# so, if anything has changed.
+sub check_mdstat
+{
+	my ($conf) = @_;
+	
+	
 	
 	return(0);
 }
@@ -5624,6 +5636,8 @@ sub compare_new_and_old
 						### TODO ; learn_cycle_active
 						if ($var eq "learn_cycle_active")
 						{
+							#record($conf, "$THIS_FILE ".__LINE__."; RAID adapter $adapter, BBU $say_translation ($var); old: [$old_value], new: [$new_value]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}]\n");
 							### Relearn cycle variables that change;
 							# battery_state;          "Operational" -> "Non Operational"
 							# remaining_capacity_low; "No" -> "Yes"
@@ -5655,8 +5669,8 @@ sub compare_new_and_old
 						# If a relearn cycle is active,
 						# ignore the expected-to-change
 						# variables.
-						#record($conf, "$THIS_FILE ".__LINE__."; var: [$var ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})], data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [".lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active})."], time: [".time."], system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]\n");
-						if ((lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}) eq "yes") || (time > $conf->{'system'}{check_bbu_health}))
+						record($conf, "$THIS_FILE ".__LINE__."; var: [$var ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})], data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [".lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active})."], time: [".time."], system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]\n");
+						if ((lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}) eq "yes") || (($conf->{'system'}{check_bbu_health}) && (time > $conf->{'system'}{check_bbu_health})))
 						{
 							if (($var eq "battery_state") ||
 							($var eq "remaining_capacity_low") ||
@@ -7442,10 +7456,10 @@ sub record
 	{
 		$fh = IO::Handle->new();
 		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".time."\n";
+		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".get_date($conf)."\n";
 		$conf->{handles}{'log'} = $fh;
 	}
-	print $fh time." ".$message;
+	print $fh get_date($conf)." ".$message;
 	#print time." ".$message;
 	
 	return (0);
@@ -7610,6 +7624,26 @@ sub read_conf
 				$conf->{cluster}{description} = $conf->{cluster}{$this_sequence}{description};
 				$conf->{cluster}{nodes}       = $conf->{cluster}{$this_sequence}{nodes};
 				#record($conf, "$THIS_FILE ".__LINE__."; cluster::company: [$conf->{cluster}{company}], cluster::description: [$conf->{cluster}{description}], cluster::nodes: [$conf->{cluster}{nodes}]\n");
+				
+				# If the user specified any overrides, use them.
+				foreach my $key (sort {$a cmp $b} keys %{$conf->{cluster}{$this_sequence}{smtp}})
+				{
+					if ($conf->{cluster}{$this_sequence}{smtp}{$key} ne "#!inherit!#")
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; > smtp::${key}: [$conf->{smtp}{$key}], cluster::${this_sequence}::smtp::${key}: [$conf->{cluster}{$this_sequence}{smtp}{$key}]\n");
+						$conf->{smtp}{$key} = $conf->{cluster}{$this_sequence}{smtp}{$key};
+						record($conf, "$THIS_FILE ".__LINE__."; < smtp::${key}: [$conf->{smtp}{$key}]\n");
+					}
+				}
+				foreach my $key (sort {$a cmp $b} keys %{$conf->{cluster}{$this_sequence}{mail_data}})
+				{
+					if ($conf->{cluster}{$this_sequence}{mail_data}{$key} ne "#!inherit!#")
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; > mail_data::${key}: [$conf->{mail_data}{$key}], cluster::${this_sequence}::smtp::${key}: [$conf->{cluster}{$this_sequence}{mail_data}{$key}]\n");
+						$conf->{mail_data}{$key} = $conf->{cluster}{$this_sequence}{mail_data}{$key};
+						record($conf, "$THIS_FILE ".__LINE__."; < mail_data::${key}: [$conf->{mail_data}{$key}]\n");
+					}
+				}
 				last;
 			}
 		}
@@ -7617,6 +7651,26 @@ sub read_conf
 	
 	return(0);
 }
+
+sub get_date
+{
+	my ($conf, $time) = @_;
+	$time = time if not defined $time;
+	
+	my @time   = localtime($time);
+	my $year   = ($time[5] + 1900);
+	my $month  = sprintf("%.2d", ($time[4] + 1));
+	my $day    = sprintf("%.2d", $time[3]);
+	my $hour   = sprintf("%.2d", $time[2]);
+	my $minute = sprintf("%.2d", $time[1]);
+	my $second = sprintf("%.2d", $time[0]);
+	
+	# this returns "yyyy-mm-dd_hh:mm:ss".
+	my $date = "$year-$month-$day $hour:$minute:$second";
+	
+	return ($date);
+}
+
 ###############################################################################
 # Sssh, there are private functions                                           #
 ###############################################################################

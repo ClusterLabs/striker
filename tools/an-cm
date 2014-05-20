@@ -155,8 +155,9 @@ while (1)
 	check_for_changes($conf);
 	sleep $conf->{'system'}{sleep_time};
 	
-	# Re-read the config files if they exist. Existence check to avoid
-	# closing the program if the configs get moved temporarily.
+	# Re-read the config files if they exist. 
+	### NOTE: Existance check avoids closing the program if the configs get
+	###       moved temporarily.
 	read_cluster_conf($conf) if -e $conf->{path}{cluster_conf};
 	read_conf($conf)         if -e $conf->{path}{an_conf};
 }

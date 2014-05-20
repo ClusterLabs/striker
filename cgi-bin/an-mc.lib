@@ -584,73 +584,6 @@ sub image_and_upload
 	return (0);
 }
 
-# This creates an 'expect' script for an rsync call.
-sub create_rsync_wrapper
-{
-	my ($conf, $node) = @_;
-	
-	my $cluster = $conf->{cgi}{cluster};
-	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
-	print "Creating 'expect' rsync wrapper.<br />";
-	my $sc = "
-echo \"#!/usr/bin/expect\" > ~/rsync.$node
-echo \"set timeout 3600\" >> ~/rsync.$node
-echo \"eval spawn rsync \\\$argv\" >> ~/rsync.$node
-echo \"expect  \\\"*?assword:\\\" \{ send \\\"$root_pw\\r\\\" \}\" >> ~/rsync.$node
-echo \"expect eof\" >> ~/rsync.$node
-chmod 755 ~/rsync.$node;";
-#echo \"expect eof\" >> ~/rsync.$node
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
-	{
-		print $_;
-	}
-	$fh->close();
-	
-	return(0);
-}
-
-# This checks to see if we've see the peer before and if not, add it's ssh
-# fingerprint to known_hosts
-sub test_ssh_fingerprint
-{
-	my ($conf, $node) = @_;
-	
-	my $cluster = $conf->{cgi}{cluster};
-	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
-	my $sc = "ssh root\@$node \"uname -a\"";
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		#print "$line\n";
-		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
-		{
-			print "Node '$node''s ssh fingerprint has not been recorded yet, doing so now...\n";
-			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
-			my $fh = IO::Handle->new();
-			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
-			{
-				chomp;
-				my $line = $_;
-				print "<span class=\"code\">$line</span><br />";
-			}
-			$fh->close();
-			print "Done.\n";
-			sleep 5;
-		}
-	}
-	$fh->close();
-
-	return(0);
-}
-
 # This takes a path to a file on the dashboard and uploads it to the cluster's
 # /shared/files/ folder.
 sub upload_to_shared
@@ -664,6 +597,7 @@ sub upload_to_shared
 	# This is a dumb way to check, try a test upload and see if it fails.
 	if ( -e "/usr/bin/expect" )
 	{
+		print "Creating 'expect' rsync wrapper.<br />";
 		create_rsync_wrapper($conf, $node);
 		$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
 	}
