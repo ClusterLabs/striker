@@ -80,6 +80,18 @@ yum -y install perl-Net-SSH2
 yum -y groupinstall development
 
 export PERL_MM_USE_DEFAULT=1
+perl -MCPAN -e 'install Test::More'
+if [ ! -e "/usr/local/share/perl5/Test/More.pm" ]
+then
+        echo "The perl module 'Test::More' didn't install, trying again."
+        perl -MCPAN -e 'install Test::More'
+        if [ ! -e "/usr/local/share/perl5/Test/More.pm" ]
+        then
+                echo "The perl module 'Test::More' failed to install.Unable to proceed."
+                exit;
+        fi
+fi        
+
 perl -MCPAN -e 'install("YAML")'
 if [ ! -e "/usr/local/share/perl5/YAML.pm" ]
 then

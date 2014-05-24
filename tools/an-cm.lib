@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# AN!CDB - Alteeve's Niche! Anvil! Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -8,18 +8,18 @@
 # able to take full liability for it's use. The authors take care to prevent
 # unexpected side effects when using this program. However, no software is
 # perfect and bugs may exist which could lead to hangs or crashes in the
-# program, in your cluster and possibly even data loss.
+# program, in your Anvil! and possibly even data loss.
 # 
 # If you are concerned about these risks, please stick to command line tools.
 # 
-# This program is designed to extend clusters built according to this tutorial:
-# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+# This program is designed to extend Anvil!s built according to this tutorial:
+# - https://alteeve.ca/w/AN!Cluster_Tutorial_2
 #
 # This program's source code and updates are available on Github:
 # - https://github.com/digimer/an-cdb
 #
 # Author;
-# Alteeve's Niche!  -  https://alteeve.com
+# Alteeve's Niche!  -  https://alteeve.ca
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 
@@ -39,7 +39,7 @@ $ENV{'PERL_UNICODE'}=1;
 our $THIS_FILE = "an-cm.lib";
 
 # This sends an email to the distrobution list with the current state of the
-# node and the cluster.
+# node and the Anvil!.
 sub send_state_email
 {
 	my ($conf) = @_;
@@ -65,6 +65,7 @@ sub read_states
 	check_storage($conf);
 	check_host($conf);
 	check_ups($conf);
+	check_mdstat($conf);
 	#check_vms($conf);
 	
 	return(0);
@@ -3853,6 +3854,41 @@ sub convert_to_fahrenheit
 	return($new_temp);
 }
 
+sub get_current_state_md
+{
+	my ($conf, $body) = @_;
+	
+	foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}})
+	{
+		$body .= "
+MD RAID Device: /dev/$this_md
+                State:         $conf->{data}{mdstat}{new}{device}{$this_md}{'state'}
+                Level:         $conf->{data}{mdstat}{new}{device}{$this_md}{level}
+                Members:
+";
+		foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}{device}})
+		{
+			my $say_failed = $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} ? "Yes" : "No";
+			$body .= "                - Device: $device, Order: $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order}, Failed? $say_failed\n";
+		}
+		$body .= "                Blocks:        [$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}
+                Total Disks:   $conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}
+                Current Disks: $conf->{data}{mdstat}{new}{device}{$this_md}{current_disks}
+                Superblock:    $conf->{data}{mdstat}{new}{device}{$this_md}{superblock}
+                State String:  $conf->{data}{mdstat}{new}{device}{$this_md}{state_string}";
+		if ($conf->{data}{mdstat}{new}{device}{$this_md}{recovering})
+		{
+			$body .= "                Recovery:      $conf->{data}{mdstat}{new}{device}{$this_md}{recovery}
+                Finish:        $conf->{data}{mdstat}{new}{device}{$this_md}{finish}
+                Rebuild Speed: $conf->{data}{mdstat}{new}{device}{$this_md}{speed}
+ ";
+		}
+		$body .= "\n";
+	}
+	
+	return($body);
+}
+
 # This adds information from LSI controller(s) to the current state body.
 sub get_current_state_lsi
 {
@@ -4576,7 +4612,112 @@ sub check_mdstat
 {
 	my ($conf) = @_;
 	
+	# Data
+	my $this_md       = "";
 	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{mdstat}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#print ">> mdstat: [$line]\n";
+		if (not $line)
+		{
+			$this_md       = "";
+			next;
+		}
+		if ($line =~ /^(md\d+) : (.*?) (.*?) (.*)$/)
+		{
+			$this_md = $1;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{'state'} = $2;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{level}   = $3;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{members} = $4;
+			#print "md: [$this_md], state: [$conf->{data}{mdstat}{new}{device}{$this_md}{'state'}], level: [$conf->{data}{mdstat}{new}{device}{$this_md}{level}], members: [$conf->{data}{mdstat}{new}{device}{$this_md}{members}]\n";
+			foreach my $device (split/ /, $conf->{data}{mdstat}{new}{device}{$this_md}{members})
+			{
+				#print " - >> device: [$device]\n";
+				my $failed = 0;
+				if ($device =~ /\(F\)/)
+				{
+					$failed =  1;
+					$device =~ s/\(F\)//;
+				}
+				my $order = "";
+				if ($device =~ /\[(\d+)\]/)
+				{
+					$order  =  $1;
+					$device =~ s/\[(\d+)\]//;
+				}
+				#print " - << device: [$device], order: [$order], failed: [$failed]\n";
+				$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order}  = $order;
+				$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} = $failed;
+			}
+			# Preset the rest of the values in case they're not set.
+			$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}   = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}   = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{superblock}    = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{state_string}  = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{recovering}    = 0;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{recovery}      = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{finish}        = "--";
+			$conf->{data}{mdstat}{new}{device}{$this_md}{speed}         = "--";
+		}
+		if ($line =~ /(\d+) blocks/)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{block_count} = $1;
+			#print "md: [$this_md], blocks: [$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}]\n";
+		}
+		if ($line =~ /\[(\d+)\/(\d+)\]/)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}   = $1;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} = $2;
+			#print "md: [$this_md], total_disks: [$conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}], current disks: [$conf->{data}{mdstat}{new}{device}{$this_md}{current_disks}]\n";
+		}
+		if ($line =~ /super (.*?) /)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{superblock} = $1;
+			#print "md: [$this_md], superblock version: [$conf->{data}{mdstat}{new}{device}{$this_md}{superblock}]\n";
+		}
+		if ($line =~ /\[([U_]+)\]/)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{state_string} = $1;
+			if ($conf->{data}{mdstat}{new}{device}{$this_md}{state_string} =~ /_/)
+			{
+				$conf->{data}{mdstat}{new}{device}{$this_md}{state_string} .= " (Degraded)";
+			}
+			#print "md: [$this_md], state_string: [$conf->{data}{mdstat}{new}{device}{$this_md}{state_string}]\n";
+		}
+		if ($line =~ /recovery = (.*?)%/)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{recovery}   = $1;
+			$conf->{data}{mdstat}{new}{device}{$this_md}{recovering} = 1;
+			#print "md: [$this_md], recovery: [$conf->{data}{mdstat}{new}{device}{$this_md}{recovery}]\n";
+		}
+		if ($line =~ /finish=(.*?) /)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{finish} = $1;
+			#print "md: [$this_md], finish: [$conf->{data}{mdstat}{new}{device}{$this_md}{finish}]\n";
+		}
+		if ($line =~ /speed=(.*)$/)
+		{
+			$conf->{data}{mdstat}{new}{device}{$this_md}{speed} = $1;
+			#print "md: [$this_md], finish: [$conf->{data}{mdstat}{new}{device}{$this_md}{speed}]\n";
+		}
+	}
+	$fh->close();
+	
+	# If I found any arrays, set the storage type to 'md'.
+	foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}})
+	{
+		$conf->{'system'}{storage} = "md";
+		last;
+	}
 	
 	return(0);
 }
@@ -4586,7 +4727,7 @@ sub initial_report
 {
 	my ($conf) = @_;
 
-	$conf->{mail_data}{subject} = "Cluster Monitor Start";
+	$conf->{mail_data}{subject} = "Anvil! Monitor Start";
 	$conf->{mail_data}{body}    = get_current_state($conf);
 	
 	# Send the email.
@@ -4606,11 +4747,11 @@ sub get_current_state
 	
 	# Clustat data
 	$body = "
-Cluster node's monitor program has started.
+Anvil! node's monitor program has started.
 
 Current State:
 
---[ Cluster Status ]--------------------------------------------------
+--[ Anvil! Status ]---------------------------------------------------
 ";
 	if ($conf->{'system'}{cluster_running})
 	{
@@ -4655,7 +4796,7 @@ Quorum:  $conf->{data}{clustat}{new}{quorum}
 	}
 	else
 	{
-		$body .= "\nThis node is not currently in the cluster.\n";
+		$body .= "\nThis node is not currently in the Anvil!.\n";
 	}
 	
 	# Network/bond data.
@@ -4952,6 +5093,10 @@ Interface: $dev
 	if ($conf->{'system'}{storage} eq "lsi")
 	{
 		$body = get_current_state_lsi($conf, $body);
+	}
+	elsif ($conf->{'system'}{storage} eq "md")
+	{
+		$body = get_current_state_md($conf, $body);
 	}
 	else
 	{
@@ -5276,7 +5421,7 @@ sub compare_new_and_old
 	if ($conf->{data}{clustat}{old}{cluster} ne $conf->{data}{clustat}{new}{cluster})
 	{
 		# Cluster name changed.
-		$changes .= "\nCluster name change!\n";
+		$changes .= "\nAnvil! name change!\n";
 		$changes .= "  $conf->{data}{clustat}{old}{cluster}\t-> $conf->{data}{clustat}{new}{cluster}\n";
 	}
 	$conf->{data}{clustat}{old}{quorum} = "--" if not defined $conf->{data}{clustat}{old}{quorum};
@@ -5562,6 +5707,7 @@ sub compare_new_and_old
 	}
 	
 	# Check for changes in the storage.
+	# LSI
 	if ($conf->{'system'}{storage} eq "lsi")
 	{
 		foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}})
@@ -6202,6 +6348,184 @@ sub compare_new_and_old
 		}
 	}
 	
+	# Software arrays
+	if ($conf->{'system'}{storage} eq "md")
+	{
+		foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}})
+		{
+			# Check if the state has changed
+			$conf->{data}{mdstat}{new}{device}{$this_md}{'state'} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{'state'};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{'state'} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{'state'};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{'state'} ne $conf->{data}{mdstat}{new}{device}{$this_md}{'state'})
+			{
+				$changes .= "\nSoftware RAID array $this_md; State has changed!\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{'state'}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{'state'}\n";
+			}
+			
+			# Now the RAID level
+			$conf->{data}{mdstat}{new}{device}{$this_md}{level} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{level};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{level} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{level};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{level} ne $conf->{data}{mdstat}{new}{device}{$this_md}{level})
+			{
+				$changes .= "\nSoftware RAID array $this_md; RAID level has changed!\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{level}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{level}\n";
+			}
+			
+			# Now check for changes in each device in this MD
+			foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}{device}})
+			{
+				# Drive order
+				$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order};
+				$conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{order} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{order};
+				if ($conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{order} ne $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order})
+				{
+					$changes .= "\nSoftware RAID array $this_md member device $device; Order has changed!\n";
+					$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{order}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order}\n";
+				}
+				
+				# Failed status
+				$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed};
+				$conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{failed} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{failed};
+				if ($conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{failed} ne $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed})
+				{
+					my $say_old_failed = $conf->{data}{mdstat}{old}{device}{$this_md}{device}{$device}{failed} ? "Failed" : "OK";
+					my $say_new_failed = $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} ? "Failed" : "OK";
+					$changes .= "\nSoftware RAID array $this_md member device $device; Failed status has changed!\n";
+					$changes .= "  $say_old_failed\t-> $say_new_failed\n";
+				}
+			}
+			
+			# Block count
+			$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}   = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{block_count};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{block_count}   = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{block_count};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{block_count} ne $conf->{data}{mdstat}{new}{device}{$this_md}{block_count})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Block count has changed!\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{block_count}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{block_count}\n";
+			}
+			
+			# Total number of disks in the array
+			$conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}   = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{total_disks};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{total_disks}   = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{total_disks};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{total_disks} ne $conf->{data}{mdstat}{new}{device}{$this_md}{total_disks})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Total number of expected disks in the array has changed!\n";
+				$changes .= "This will change if someone grew or shrunk the array size.\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{total_disks}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}\n";
+			}
+			
+			# Number of disks currently in the array (more == hot
+			# spares, less == failed disks)
+			$conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{current_disks};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{current_disks} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{current_disks};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{current_disks} ne $conf->{data}{mdstat}{new}{device}{$this_md}{current_disks})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Current number of disks in the array has changed!\n";
+				if (($conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} =~ /^\d+$/) && ($conf->{data}{mdstat}{old}{device}{$this_md}{current_disks} =~ /^\d+$/))
+				{
+					if ($conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} > $conf->{data}{mdstat}{old}{device}{$this_md}{current_disks})
+					{
+						$changes .= "The number of disks has increased, indicating either that a failed disk was replaced or a hot-spare was added.\n";
+					}
+					else
+					{
+						$changes .= "The number of disks has decreased, indicating either that a disk has failed or a hot-spare was removed.\n";
+					}
+				}
+				elsif ($conf->{data}{mdstat}{new}{device}{$this_md}{current_disks} =~ /^\d+$/)
+				{
+					$changes .= "The array may have just been created.\n";
+				}
+				elsif ($conf->{data}{mdstat}{old}{device}{$this_md}{current_disks} =~ /^\d+$/)
+				{
+					$changes .= "The array may have been removed.\n";
+				}
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{current_disks}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{current_disks}\n";
+			}
+			
+			# Superblock version
+			$conf->{data}{mdstat}{new}{device}{$this_md}{superblock}    = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{superblock};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{superblock}    = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{superblock};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{superblock} ne $conf->{data}{mdstat}{new}{device}{$this_md}{superblock})
+			{
+				$changes .= "\nSoftware RAID array $this_md; RAID superblock version has changed!\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{superblock}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{superblock}\n";
+			}
+			
+			# State string is the [UUU] string
+			$conf->{data}{mdstat}{new}{device}{$this_md}{state_string}  = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{state_string};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{state_string}  = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{state_string};
+			if ($conf->{data}{mdstat}{old}{device}{$this_md}{state_string} ne $conf->{data}{mdstat}{new}{device}{$this_md}{state_string})
+			{
+				$changes .= "\nSoftware RAID array $this_md; State string has changed!\n";
+				$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{state_string}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{state_string}\n";
+			}
+			
+			# These following options change every loop during a rebuild.
+			$conf->{data}{mdstat}{new}{device}{$this_md}{recovering}    = 0 if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{recovering};
+			$conf->{data}{mdstat}{old}{device}{$this_md}{recovering}    = 0 if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{recovering};
+			if ($conf->{data}{mdstat}{new}{device}{$this_md}{recovering} != $conf->{data}{mdstat}{old}{device}{$this_md}{recovering})
+			{
+				if ($conf->{data}{mdstat}{new}{device}{$this_md}{recovering})
+				{
+					$changes .= "\nSoftware RAID array $this_md; Recovery has begun!\n";
+					$changes .= "  $conf->{data}{mdstat}{old}{device}{$this_md}{recovering}\t-> $conf->{data}{mdstat}{new}{device}{$this_md}{recovering}\n\n";
+					$changes .= "The recovery stats below will change as the rebuild proceeds.\n";
+					$changes .= "  If you wish to monitor the recovery process,\n";
+					$changes .= "  please log into $conf->{node}{me}{short_name} and run 'watch cat /proc/mdstat'.\n";
+					$changes .= "  No further alerts will be sent until recovery has completed.\n";
+					$changes .= "  Recovery Percentage:   $conf->{data}{mdstat}{new}{device}{$this_md}{recovery}%\n";
+					$changes .= "  Estimated Finish:      $conf->{data}{mdstat}{new}{device}{$this_md}{finish}\n";
+					$changes .= "  Curent Recovery Speed: $conf->{data}{mdstat}{new}{device}{$this_md}{speed}\n";
+				}
+				else
+				{
+					$changes .= "\nSoftware RAID array $this_md; Recorvery completed.
+ - State:         [$conf->{data}{mdstat}{new}{device}{$this_md}{'state'}]
+ - Level:         [$conf->{data}{mdstat}{new}{device}{$this_md}{level}]
+ - Members:
+";
+		foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}{device}})
+		{
+			my $say_failed = $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} ? "Yes" : "No";
+			$changes .= "   - Device: [$device], Order: [$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order}], Failed? [$say_failed]\n";
+		}
+		$changes .= " - Blocks:        [$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}]
+ - Total Disks:   [$conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}]
+ - Current Disks: [$conf->{data}{mdstat}{new}{device}{$this_md}{current_disks}]
+ - Superblock:    [$conf->{data}{mdstat}{new}{device}{$this_md}{superblock}]
+ - State String:  [$conf->{data}{mdstat}{new}{device}{$this_md}{state_string}]
+ - Recovery:      [$conf->{data}{mdstat}{new}{device}{$this_md}{recovery}]
+ - Finish:        [$conf->{data}{mdstat}{new}{device}{$this_md}{finish}]
+ - Rebuild Speed: [$conf->{data}{mdstat}{new}{device}{$this_md}{speed}]
+";
+				}
+			}
+			elsif ($conf->{data}{mdstat}{new}{device}{$this_md}{recovering})
+			{
+				# Log the changes.
+				# Recovery percentage
+				$conf->{data}{mdstat}{new}{device}{$this_md}{recovery} = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{recovery};
+				$conf->{data}{mdstat}{old}{device}{$this_md}{recovery} = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{recovery};
+				
+				# Estimated time to finish
+				$conf->{data}{mdstat}{new}{device}{$this_md}{finish}   = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{finish};
+				$conf->{data}{mdstat}{old}{device}{$this_md}{finish}   = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{finish};
+				
+				# Recovery speed
+				$conf->{data}{mdstat}{new}{device}{$this_md}{speed}    = "--" if not defined $conf->{data}{mdstat}{new}{device}{$this_md}{speed};
+				$conf->{data}{mdstat}{old}{device}{$this_md}{speed}    = "--" if not defined $conf->{data}{mdstat}{old}{device}{$this_md}{speed};
+				
+				if (($conf->{data}{mdstat}{new}{device}{$this_md}{recovery} ne $conf->{data}{mdstat}{old}{device}{$this_md}{recovery}) ||
+				    ($conf->{data}{mdstat}{new}{device}{$this_md}{finish} ne $conf->{data}{mdstat}{old}{device}{$this_md}{finish}) ||
+				    ($conf->{data}{mdstat}{new}{device}{$this_md}{speed} ne $conf->{data}{mdstat}{old}{device}{$this_md}{speed}))
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; Software array: [$this_md] rebuilding; recovery: [$conf->{data}{mdstat}{old}{device}{$this_md}{recovery}% -> $conf->{data}{mdstat}{new}{device}{$this_md}{recovery}%], finish: [$conf->{data}{mdstat}{old}{device}{$this_md}{finish} -> $conf->{data}{mdstat}{new}{device}{$this_md}{finish}], speed: [$conf->{data}{mdstat}{old}{device}{$this_md}{speed} -> $conf->{data}{mdstat}{new}{device}{$this_md}{speed}].\n");
+				}
+			}
+		}
+	}
+	
 	# Check for changes in the host sensors.
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
 	{
@@ -6772,6 +7096,31 @@ sub compare_new_and_old
 			}
 		}
 	}
+	elsif ($conf->{'system'}{storage} eq "md")
+	{
+		# Software array
+		foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}})
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}})
+			{
+				# Devices in the array are broken out
+				if ($key eq "device")
+				{
+					foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}{device}})
+					{
+						foreach my $key2 (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}})
+						{
+							delete $conf->{data}{mdstat}{diff}{device}{$this_md}{device}{$device}{$key2};
+						}
+					}
+				}
+				else
+				{
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{$key};
+				}
+			}
+		}
+	}
 	
 	# Host sensors
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
@@ -6867,6 +7216,82 @@ sub compare_new_and_old
 			}
 		}
 	}
+	if ($conf->{'system'}{storage} eq "md")
+	{
+		foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{diff}{device}})
+		{
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{'state'})
+			{
+				$changes .= "\nSoftware RAID array $this_md; State has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{'state'};
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{level})
+			{
+				$changes .= "\nSoftware RAID array $this_md; RAID level has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{level};
+			}
+			foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{diff}{device}{$this_md}{device}})
+			{
+				if ($conf->{data}{mdstat}{diff}{device}{$this_md}{device}{$device}{order})
+				{
+					$changes .= "\nSoftware RAID array $this_md member device $device; Array order has vanished!\n";
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{level};
+				}
+				if ($conf->{data}{mdstat}{diff}{device}{$this_md}{device}{$device}{failed})
+				{
+					$changes .= "\nSoftware RAID array $this_md member device $device; 'Failed' status has vanished!\n";
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{failed};
+				}
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{block_count})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Block count has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{block_count};
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{total_disks})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Total disk count has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{total_disks};
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{current_disks})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Current disk count has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{current_disks};
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{superblock})
+			{
+				$changes .= "\nSoftware RAID array $this_md; Superblock version has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{superblock};
+			}
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{state_string})
+			{
+				$changes .= "\nSoftware RAID array $this_md; State string has vanished!\n";
+				delete $conf->{data}{mdstat}{diff}{device}{$this_md}{state_string};
+			}
+			
+			# The following values are allowed to vanish if the array is no longer recovering.
+			if ($conf->{data}{mdstat}{diff}{device}{$this_md}{recovering})
+			{
+				if ($conf->{data}{mdstat}{diff}{device}{$this_md}{recovery})
+				{
+					$changes .= "\nSoftware RAID array $this_md; Recovery percentage has vanished while the array is still recovering!\n";
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{recovery};
+				}
+				if ($conf->{data}{mdstat}{diff}{device}{$this_md}{finish})
+				{
+					$changes .= "\nSoftware RAID array $this_md; Estimated time left to complete recovery has vanished while the array is still recovering!\n";
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{finish};
+				}
+				if ($conf->{data}{mdstat}{diff}{device}{$this_md}{speed})
+				{
+					$changes .= "\nSoftware RAID array $this_md; Recovery speed has vanished while the array is still recovering!\n";
+					delete $conf->{data}{mdstat}{diff}{device}{$this_md}{speed};
+				}
+			}
+			delete $conf->{data}{mdstat}{diff}{device}{$this_md};
+		}
+		delete $conf->{data}{mdstat}{diff};
+	}
 	
 	# Host sensors
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
@@ -6895,7 +7320,7 @@ sub compare_new_and_old
 	{
 		$conf->{mail_data}{subject} = "State Change!";
 		$conf->{mail_data}{body}    = "
-Changes have been detected in the cluster. If you anticipated this
+Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
 unexpected, please feel free to contact support.
 
@@ -7034,7 +7459,7 @@ sub copy_hash
 {
 	my ($conf, $src, $dst) = @_;
 	
-	# TODO: Delete the entire set of 'old' hashes. Will simply clearing the hash reference free the memory or do I need to actually delete the hash reference?
+	# TODO: Delete the entire set of 'dst' hashes. Will simply clearing the hash reference free the memory or do I need to actually delete the hash reference?
 	# Clustat stuff.
 	$conf->{data}{clustat}{$dst} = {};
 	$conf->{data}{clustat}{$dst}{cluster} = $conf->{data}{clustat}{$src}{cluster};
@@ -7212,6 +7637,31 @@ sub copy_hash
 			}
 		}
 	}
+	elsif ($conf->{'system'}{storage} eq "md")
+	{
+		delete $conf->{data}{mdstat}{$dst};
+		foreach my $this_md (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{$src}{device}})
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{$src}{device}{$this_md}})
+			{
+				# Devices in the array are broken out
+				if ($key eq "device")
+				{
+					foreach my $device (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{$src}{device}{$this_md}{device}})
+					{
+						foreach my $key2 (sort {$a cmp $b} keys %{$conf->{data}{mdstat}{$src}{device}{$this_md}{device}{$device}})
+						{
+							$conf->{data}{mdstat}{$dst}{device}{$this_md}{device}{$device}{$key2} = $conf->{data}{mdstat}{$src}{device}{$this_md}{device}{$device}{$key2};
+						}
+					}
+				}
+				else
+				{
+					$conf->{data}{mdstat}{$dst}{device}{$this_md}{$key} = $conf->{data}{mdstat}{$src}{device}{$this_md}{$key};
+				}
+			}
+		}
+	}
 	
 	# Host sensors
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{$src}})
@@ -7329,7 +7779,7 @@ contact support.
                     https://alteeve.ca/w/Support
 
                                                      Alteeve's Niche!
-                                                      Cluster Monitor
+                                                       Anvil! Monitor
 ======================================================================
 --
 You received this email because you were listed as a contact for the
@@ -7456,7 +7906,7 @@ sub record
 	{
 		$fh = IO::Handle->new();
 		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CDB - Cluster Dasboard log at ".get_date($conf)."\n";
+		print $fh "======\nOpening AN!CM - Anvil! Monitor log at ".get_date($conf)."\n";
 		$conf->{handles}{'log'} = $fh;
 	}
 	print $fh get_date($conf)." ".$message;

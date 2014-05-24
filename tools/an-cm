@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 # 
-# AN!CM - Cluster Monitor
+# AN!CM - Anvil! Monitor
 # 
-# This program watches the hardware and cluster stack for changes, sending
+# This program watches the hardware and Anvil! stack for changes, sending
 # alert emails when needed.
 # 
 
@@ -45,6 +45,7 @@ my $conf = {
 		ipmitool		=>	"/usr/bin/ipmitool",
 		apcupsd			=>	"/sbin/apcupsd",
 		apcaccess		=>	"/sbin/apcaccess",
+		mdstat			=>	"/proc/mdstat",
 	},
 	alerts			=>	{
 		### NOTE: All temperatures here need to be in Celcius. If the
@@ -116,19 +117,19 @@ avoid_duplicate_run($conf);
 # Who am I?
 get_hostname($conf);
 
-# What cluster am I in?
+# What Anvil! am I in?
 read_conf($conf);
 if (not $conf->{this_cluster})
 {
 	# Either the config doesn't exist yet or 'this_cluster' hasn't need 
 	# defined and cluster.conf does not yet exist.
-	$conf->{mail_data}{subject} = "Cluster Monitor Start - Unknown Anvil!";
+	$conf->{mail_data}{subject} = "Anvil! Monitor Start - Unknown Anvil!";
 	$conf->{mail_data}{body}    = "
-The AN!CM monitor has started, but no cluster is defined in /etc/an/an.conf
+The AN!CM monitor has started, but no Anvil! is defined in /etc/an/an.conf
 and there is no /etc/cluster/cluster.conf file to refer to. Entering loop
 and will wait for one of these to appear.
 
-No action is required. The monitor will begin once this cluster is defined or
+No action is required. The monitor will begin once this Anvil! is defined or
 detected.
 ";
 	send_email($conf);
@@ -169,9 +170,9 @@ sub catch_sig
 {
 	my $signame = shift;
 	
-	$conf->{mail_data}{subject} = "Cluster Monitor Shutdown";
+	$conf->{mail_data}{subject} = "Anvil! Monitor Shutdown";
 	$conf->{mail_data}{body}    = "
-The $conf->{node}{me}{short_name} cluster node's monitor program has stopped.
+The $conf->{node}{me}{short_name} Anvil! node's monitor program has stopped.
 It received a SIG${signame} signal and shut down.
 ";
 	send_email($conf);

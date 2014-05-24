@@ -308,7 +308,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0028">There are two ways to do this:</key>
 		<key name="title_0029">It looks like neither the amount of RAM or the number of CPUs has changed.</key>
 		<key name="title_0030"><![CDATA[Inserting <span class="fixed_width">#!variable!media!#</span> into <span class="fixed_width">#!variable!drive!#</span>...]]></key>
-		<key name="title_0031"><![CDATA[Ejecting <span class="fixed_width">#!variable!drive!#</span>...]]></key>
+		<key name="title_0031"><![CDATA[Ejecting <span class="fixed_width">#!variable!device!#</span>...]]></key>
 		<key name="title_0032"><![CDATA[Manage <span class="fixed_width">#!variable!server!#</span>.]]></key>
 		<key name="title_0033"><![CDATA[Adding the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!#'s <span class="fixed_width">#!variable!failover_domain!#</span> failover domain.]]></key>
 		<key name="title_0034"><![CDATA[Creating your new <span class="fixed_width">#!variable!server!#</span> server now.]]></key>

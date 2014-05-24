@@ -2668,7 +2668,7 @@ sub vm_eject_media
 	
 	# The variables hash feeds into 'title_0031'.
 	print template($conf, "server.html", "eject-media-header", {}, {
-		drive	=>	$conf->{cgi}{device},
+		device	=>	$conf->{cgi}{device},
 	});
 	
 	# Archive the current config, just in case.

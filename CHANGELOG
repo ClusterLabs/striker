@@ -1,5 +1,12 @@
 Change log;
 
+v1.1.2 - <in progress>
+- Added 'Test::Harness' to the installers.
+- Fixed a text substitution error on the header box when inserting media into
+  a server's optical drive.
+- Added support for software (md) RAID arrays in AN!CM.
+
+
 v1.1.1 - 2014-05-20
 - Added support for pushing changed configs to Anvil!s via the dashboard.
 - Updated an-cm to use per-Anvil! override values.
