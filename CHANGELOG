@@ -1,6 +1,6 @@
 Change log;
 
-v1.1.2 - <in progress>
+v1.1.2 - 2014-05-23
 - Added 'Test::Harness' to the installers.
 - Fixed a text substitution error on the header box when inserting media into
   a server's optical drive.
