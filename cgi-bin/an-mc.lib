@@ -305,7 +305,7 @@ sub save_file_to_disk
 ";
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
-	my $in_fh    = $conf->{cgi_fh}{file};
+	my $in_fh = $conf->{cgi_fh}{file};
 	
 	if (not $in_fh)
 	{

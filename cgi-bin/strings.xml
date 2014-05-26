@@ -44,7 +44,10 @@
 		<key name="button_0037">Fence Node</key>
 		<key name="button_0038">Clear Foreign State</key>
 		<key name="button_0039">Push to Anvil!</key>
-		<key name="button_0040"></key>
+		<key name="button_0040">Backup/Load</key>
+		<key name="button_0041">Download</key>
+		<key name="button_0042"></key>
+		<key name="button_0043"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -119,6 +122,11 @@ mail_data::to				=	#!variable!mail_data__to!#
 # smtp::server in most cases.
 mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 
+# This is the port to use when connecting to the guacamole server. Normally,
+# this is 8080, but may be overridden on a per-#!string!brand_0004!# basis for remote
+# access configurations.
+guacd::port				=	#!variable!guacd__port!#
+
 ### Per-#!string!brand_0004!# Configurations
 
 # This defines each #!string!brand_0004!#. If you want to defined multiple #!string!brand_0004!#s in #!string!brand_0002!#,
@@ -144,6 +152,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 #              be used.
 # root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
 #              nodes.
+# guac::port:  This is used to control which TCP port is used when connecting
+#              to the guacamole server (in-browser remote desktop access).
 		</key>
  		<!-- TODO: text_0003 with '[#!variable!date!#' breaks an-cluster.lib... Fix it. -->
 		<key name="text_0003">### Last updated: #!variable!date!#</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
@@ -203,11 +213,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0033">Please use only one node's storage pool.</key>
 		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
-		<key name="explain_0036"><![CDATA[]]></key>
-		<key name="explain_0037"><![CDATA[]]></key>
-		<key name="explain_0038"><![CDATA[]]></key>
-		<key name="explain_0039"><![CDATA[]]></key>
-		<key name="explain_0040"><![CDATA[]]></key>
+		<key name="explain_0036">Save the current configuration of this #!string!brand_0002!# to a file on your computer. This can be used to restore the configuration should this dashboard get reset or replaced.</key>
+		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration. If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
+		<key name="explain_0038">It would appear that no file was uploaded.</key>
+		<key name="explain_0039"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> does not appear to be a valid backup file.]]></key>
+		<key name="explain_0040"><![CDATA[The mimetype detected was <span class="fixed_width">#!variable!mimetype!#</span>. The backup file should be '<span class="fixed_width">text/plain</span>'.]]></key>
+		<key name="explain_0041"><![CDATA[The backup file is expected to start with '<span class="fixed_width">&lt;!-- Striker Backup --&gt;</span>'.]]></key>
+		<key name="explain_0042"><![CDATA[If you want to setup multiple #!string!brand_0002!# dashboards behind a forwarding firewall,<br />you will need to set each to a unique remote desktop port.<br />Locally, the in-browser remote desktop connections listens on port <span class="fixed_width">8080</span>.<br />If you are configuring a remote connection entry for your #!string!brand_0003!#,<br />then you will want to change this to the incoming port that you setup in your firewall.]]></key>
+		<key name="explain_0043"><![CDATA[The backup configuration has been loaded!]]></key>
+		<key name="explain_0044"><![CDATA[]]></key>
+		<key name="explain_0045"><![CDATA[]]></key>
+		<key name="explain_0046"><![CDATA[]]></key>
+		<key name="explain_0047"><![CDATA[]]></key>
+		<key name="explain_0048"><![CDATA[]]></key>
+		<key name="explain_0049"><![CDATA[]]></key>
+		<key name="explain_0050"><![CDATA[]]></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -394,7 +414,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0114">Program Error</key>
 		<key name="title_0115"><![CDATA[Provisioning the new <span class="fixed_width">#!variable!server!#</span> server...]]></key>
 		<key name="title_0116"><![CDATA[Unable to connect to the <span class="highlight_detail">#!replace!anvil!#</span> cluster!]]></key>
-		<key name="title_0117"></key>
+		<key name="title_0117">Backup your current configuration or load a saved configuration</key>
+		<key name="title_0118">Upload of #!string!brand_0002!# failed</key>
+		<key name="title_0119">Upload of #!string!brand_0002!# successful</key>
+		<key name="title_0120"></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -528,9 +551,15 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0129">Aborted</key>
 		<key name="row_0130">Backup</key>
 		<key name="row_0131">Push</key>
-		<key name="row_0132"></key>
-		<key name="row_0133"></key>
-		<key name="row_0134"></key>
+		<key name="row_0132">Upload</key>
+		<key name="row_0133">Failed</key>
+		<key name="row_0134">Bad Mimetype</key>
+		<key name="row_0135">Guacamole Port</key>
+		<key name="row_0136"></key>
+		<key name="row_0137"></key>
+		<key name="row_0138"></key>
+		<key name="row_0139"></key>
+		<key name="row_0140"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0002!#</span> to add your first one!]]></key>
@@ -818,7 +847,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"><![CDATA[]]></key>
+		<key name="message_0286"><![CDATA[The TCP port assigned to the guacamole (the in-browser remote desktop server) appears to be invalid.<br />A TCP port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
+		<key name="message_0287"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

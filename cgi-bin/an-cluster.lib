@@ -38,7 +38,7 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.1";
+our $VERSION  = "1.1.3";
 
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
@@ -60,6 +60,7 @@ sub sanity_check_an_conf
 	my $smtp__helo_domain_key         = "smtp__helo_domain";
 	my $mail_data__to_key             = "mail_data__to";
 	my $mail_data__sending_domain_key = "mail_data__sending_domain";
+	my $guacd__port_key               = "guacd__port";
 
 	# These will be populated in a moment if an Anvil! is being saved.
 	my $name_key         = "";
@@ -102,6 +103,7 @@ sub sanity_check_an_conf
 		$nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
 		$nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
 		$nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
+		$guacd__port_key  = "cluster__${this_id}__guacd__port";
 		
 		my $this_name         =  $conf->{cgi}{$name_key};
 		   $this_cluster      =  $this_name;
@@ -114,11 +116,13 @@ sub sanity_check_an_conf
 		   $this_nodes_1_name =  $conf->{cgi}{$nodes_1_name_key};
 		   $this_nodes_1_ip   =  $conf->{cgi}{$nodes_1_ip_key};
 		   $this_nodes_1_port =  $conf->{cgi}{$nodes_1_port_key};
-		   $this_nodes_1_port =~ s/,//;
+		   $this_nodes_1_port =~ s/,//g;
 		   $this_nodes_2_name =  $conf->{cgi}{$nodes_2_name_key};
 		   $this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
 		   $this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
-		   $this_nodes_2_port =~ s/,//;
+		   $this_nodes_2_port =~ s/,//g;
+		my $guacd__port       =  $conf->{cgi}{$guacd__port_key};
+		   $guacd__port       =~ s/,//g;
 		
 		$smtp__server_key              = "cluster__${this_id}__smtp__server";
 		$smtp__port_key                = "cluster__${this_id}__smtp__port";
@@ -177,7 +181,8 @@ sub sanity_check_an_conf
 			(not $this_nodes_1_port) && 
 			(not $this_nodes_2_name) && 
 			(not $this_nodes_2_ip) && 
-			(not $this_nodes_2_port))
+			(not $this_nodes_2_port) &&
+			(not $guacd__port))
 		{
 			# If this isn't 'new', delete this Anvil! from the config.
 			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
@@ -396,6 +401,25 @@ sub sanity_check_an_conf
 	{
 		$conf->{cgi}{$smtp__timeout_key} = 60;
 	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$guacd__port_key: [$conf->{cgi}{$guacd__port_key}]\n");
+	if (($conf->{cgi}{$guacd__port_key}) && ($conf->{cgi}{$guacd__port_key} ne "#!inherit!#"))
+	{
+		$conf->{cgi}{$guacd__port_key} =~ s/,//g;
+		$conf->{cgi}{$guacd__port_key} =~ s/\s//g;
+		if (($conf->{cgi}{$guacd__port_key} =~ /\D/) || ($conf->{cgi}{$guacd__port_key} < 1) || ($conf->{cgi}{$guacd__port_key} > 65535))
+		{
+			$save = 0;
+			print template($conf, "config.html", "form-value-warning", {
+				row	=>	"#!string!row_0135!#",
+				message	=>	"#!string!message_0286!#",
+			}); 
+		}
+	}
+	elsif ($conf->{cgi}{$guacd__port_key} ne "#!inherit!#")
+	{
+		$conf->{cgi}{$guacd__port_key} = 8080;
+	}
 
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
 	if ($save)
@@ -450,6 +474,7 @@ sub sanity_check_an_conf
 			$conf->{cluster}{$this_id}{smtp}{helo_domain}         = $conf->{cgi}{$smtp__helo_domain_key};
 			$conf->{cluster}{$this_id}{mail_data}{to}             = $conf->{cgi}{$mail_data__to_key};
 			$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
+			$conf->{cluster}{$this_id}{guacd}{port}               = $conf->{cgi}{$guacd__port_key};
 			
 			# Record hosts
 			$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
@@ -503,6 +528,7 @@ sub sanity_check_an_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
+			$conf->{guacd}{port}               = $conf->{cgi}{guacd}{port};
 		}
 	}
 
@@ -521,7 +547,6 @@ sub write_new_an_conf
 	}); 
 	
 	# Start writing the config file.
-	my $last_line_was_blank = 0;
 	my $an_conf = IO::Handle->new();
 	open ($an_conf, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
 	my $say_date_header = get_string($conf, {key => "text_0003", variables => {
@@ -575,6 +600,7 @@ sub write_new_an_conf
 		smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
 		mail_data__to			=>	$conf->{mail_data}{to},
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
+		guacd__port			=>	$conf->{guacd}{port},
 	}});
 	print $an_conf $say_body;
 	
@@ -605,6 +631,7 @@ sub write_new_an_conf
 		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{helo_domain};
 		$conf->{cluster}{$this_id}{mail_data}{to}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{to};
 		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{sending_domain};
+		$conf->{cluster}{$this_id}{guacd}{port}               = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{guacd}{port};
 		
 		# Record this Anvil!'s overrides (or that it doesn't override,
 		# as the case may be).
@@ -618,7 +645,9 @@ sub write_new_an_conf
 		print $an_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
 		print $an_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
 		print $an_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
+		print $an_conf "cluster::${this_id}::guacd::port\t\t\t=\t$conf->{cluster}{$this_id}{guacd}{port}\n";
 	}
+	print $an_conf "\n";
 	$an_conf->close();
 	
 	return(0);
@@ -673,22 +702,27 @@ sub read_hosts
 sub read_ssh_config
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
 	my $fh = IO::Handle->new();
-	my $sc = "/etc/ssh/ssh_config";
+	my $sc = "$conf->{path}{ssh_config}";
+	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$sc]\n");
 	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
 		my $line = $_;
+		# I skip this to avoid multiple 'Last updated...' lines at the
+		# top of the file when I rewrite this.
+		next if $line =~ /^### Last updated: /;
+		#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
 		push @{$conf->{raw}{ssh_config}}, $line;
 		$line =~ s/#.*$//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
 		
 		if ($line =~ /^host (.*)/i)
 		{
@@ -756,6 +790,7 @@ sub write_new_ssh_config
 	print $ssh_config "$say_date_header\n";
 	
 	# Re print the ssh_config, but skip 'Host' sections for now.
+	my $last_line_was_blank = 0;
 	foreach my $line (@{$conf->{raw}{ssh_config}})
 	{
 		$say_date_header =~ s/\[.*?\]/\[\]/;
@@ -764,6 +799,22 @@ sub write_new_ssh_config
 		#record($conf, "$THIS_FILE ".__LINE__."; >> ssh_config line: [$line]\n");
 		last if ($line =~ /^Host\s+(.*)$/);
 		last if ($line =~ /^###############/);
+		# This cleans out multiple blank spaces which seem to creep in.
+		if (not $line)
+		{
+			if ($last_line_was_blank)
+			{
+				next;
+			}
+			else
+			{
+				$last_line_was_blank = 1;
+			}
+		}
+		else
+		{
+			$last_line_was_blank = 0;
+		}
 		print $ssh_config "$line\n";
 	}
 	
@@ -823,21 +874,21 @@ sub write_new_hosts
 			my $last_host = "";
 			foreach my $this_host (sort {$a cmp $b} split/ /, $hosts)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
 				next if not $this_host;
-				record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
 				next if $this_host eq $last_host;
 				$last_host = $this_host;
 				$say_hosts .= " $this_host";
-				record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
 			}
 			$say_hosts =~ s/\s+$//;
-			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		else
 		{
 			$say_hosts = $hosts;
-			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], say_hosts: [$say_hosts]\n");
 		print $hosts_file "$this_ip\t$say_hosts\n";
@@ -914,6 +965,7 @@ sub load_configuration_defaults
 	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+	$conf->{cgi}{guacd__port}               = defined $conf->{guacd}{port}               ? $conf->{guacd}{port}               : "";
 	
 	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
@@ -964,6 +1016,7 @@ sub load_configuration_defaults
 		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
+		my $guacd__port_key               = "cluster__${this_id}__guacd__port";
 		
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
@@ -975,6 +1028,7 @@ sub load_configuration_defaults
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
+		$conf->{cgi}{$guacd__port_key}               = defined $conf->{cluster}{$this_id}{guacd}{port}               ? $conf->{cluster}{$this_id}{guacd}{port}               : "#!inherit!#";
 	}
 	
 	return(0);
@@ -1023,6 +1077,7 @@ sub show_anvil_config_header
 		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
+		my $guacd__port_key               = "cluster__${this_id}__guacd__port";
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
 		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
@@ -1033,7 +1088,8 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		$conf->{cgi}{$guacd__port_key}               = defined $conf->{cluster}{$this_id}{guacd}{port}               ? $conf->{cluster}{$this_id}{guacd}{port}               : "#!inherit!#";
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}], cgi::$guacd__port_key: [$conf->{cgi}{$guacd__port_key}]\n");
 	}
 	
 	# Show the right header.
@@ -1059,6 +1115,7 @@ sub show_anvil_config_header
 	# Print the body of the global/overrides section.
 	print template($conf, "config.html", "anvil-variables", {
 		anvil_id			=>	$this_id,
+		anvil				=>	$conf->{cgi}{anvil},
 		clear_icon			=>	"$clear_icon",
 		cluster_name_name		=>	"cluster__${this_id}__name",
 		cluster_name_id			=>	"cluster__${this_id}__name",
@@ -1132,6 +1189,7 @@ sub show_common_config_section
 	my $smtp__helo_domain_key         = "smtp__helo_domain";
 	my $mail_data__to_key             = "mail_data__to";
 	my $mail_data__sending_domain_key = "mail_data__sending_domain";
+	my $guacd__port_key               = "guacd__port";
 	my $security_select_options       = [
 		"None",
 		"SSL/TLS",
@@ -1141,7 +1199,7 @@ sub show_common_config_section
 		"1#!#Yes",
 		"0#!#No"
 	];
-	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key], guacd__port_key: [$guacd__port_key]\n");
 	if (not $conf->{cgi}{save})
 	{
 		# First time loading the config, so pre-populate the values
@@ -1156,6 +1214,7 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+		$conf->{cgi}{guacd__port}               = defined $conf->{guacd}{port}               ? $conf->{guacd}{port}               : "";
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
@@ -1177,7 +1236,8 @@ sub show_common_config_section
 		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+		$guacd__port_key               = "cluster__${this_id}__guacd__port";
+		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key], guacd__port_key: [$guacd__port_key]\n");
 		
 		# Add the 'inherit' options.
 		push @{$security_select_options},     "#!inherit!#";
@@ -1194,7 +1254,8 @@ sub show_common_config_section
 	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
 	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
 	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
-	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
+	my $guacd__port                   = $conf->{cgi}{$guacd__port_key};
+	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain], guacd__port: [$guacd__port]\n");
 	
 	# Build the security and encrypt password select boxes.
 	my $say_security_select     = build_select($conf, "$smtp__security_key",     0, 0, 300, $conf->{cgi}{$smtp__security_key},     $security_select_options);
@@ -1207,7 +1268,11 @@ sub show_common_config_section
 	my $push_button = "";
 	if ($conf->{cgi}{anvil})
 	{
-		$push_button = "- &nbsp; <a href=\"?config=true&anvil=$conf->{cgi}{anvil}&task=push\" class=\"button\">#!string!button_0039!#</a>";
+		$push_button = "&nbsp; <a href=\"?config=true&anvil=$conf->{cgi}{anvil}&task=push\" class=\"button\">#!string!button_0039!#</a>";
+	}
+	else
+	{
+		$push_button = "&nbsp; <a href=\"?config=true&task=archive\" class=\"button\">#!string!button_0040!#</a>";
 	}
 	
 	print template($conf, "config.html", "global-variables", {
@@ -1218,6 +1283,9 @@ sub show_common_config_section
 		mail_data__sending_domain_name	=>	$mail_data__sending_domain_key,
 		mail_data__sending_domain_id	=>	$mail_data__sending_domain_key,
 		mail_data__sending_domain_value	=>	$conf->{cgi}{$mail_data__sending_domain_key},
+		guacd__port_name		=>	$guacd__port_key,
+		guacd__port_id			=>	$guacd__port_key,
+		guacd__port_value		=>	$conf->{cgi}{$guacd__port_key},
 		smtp__helo_domain_name		=>	$smtp__helo_domain_key,
 		smtp__helo_domain_id		=>	$smtp__helo_domain_key,
 		smtp__helo_domain_value		=>	$conf->{cgi}{$smtp__helo_domain_key},
@@ -1418,7 +1486,7 @@ sub push_config_to_anvil
 				row	=>	"#!string!row_0131!#",
 				message	=>	"$message",
 			});
-			my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
+			$sc = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			# This is a dumb way to check, try a test upload and see if it fails.
 			if ( -e "/usr/bin/expect" )
 			{
@@ -1447,6 +1515,197 @@ sub push_config_to_anvil
 	return(0);
 }
 
+# This offers an option for the user to either download the current config or
+# upload a past backup.
+sub show_archive_options
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; show_archive_options()\n");
+	
+	# First up, collect the config files and make them available for download.
+	my $backup_url = create_backup_file($conf);
+	
+	print template($conf, "config.html", "archive-menu", {
+		form_file	=>	"/cgi-bin/an-cdb",
+	});
+	
+	return(0);
+}
+
+# This gathers up the config files into a single bzip2 file and returns a URL
+# where the user can click to download.
+sub create_backup_file
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; create_backup_file()\n");
+	
+	my $config_data =  "<!-- Striker Backup -->\n";
+	   $config_data .= "<!-- Striker version $conf->{sys}{version} -->\n";
+	   $config_data .= "<!-- Backup created ".get_date($conf, time)." -->\n\n";
+	
+	# Read the three config files and write them out to a file.
+	foreach my $file ($conf->{path}{an_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config})
+	{
+		# Read in /etc/an/an.conf.
+		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
+		$config_data .= "<!-- start $file -->\n";
+		my $fh = IO::Handle->new();
+		my $sc = "$file";
+		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
+		while (<$fh>)
+		{
+			$config_data .= $_;
+		}
+		$fh->close();
+		$config_data .= "<!-- end $file -->\n\n";
+	}
+	#record($conf, "$THIS_FILE ".__LINE__."; config_data: [\n$config_data]\n");
+
+	# Modify the backup file and URL file names to insert this dashboard's hostname.
+	my $date                    =  get_date($conf);
+	   $date                    =~ s/ /_/;
+	my $backup_file             =  "$conf->{path}{backup_config}";
+	my $hostname                =  get_hostname($conf);
+	   $backup_file             =~ s/#!hostname!#/$hostname/;
+	   $backup_file             =~ s/#!date!#/$date/;
+	   $conf->{sys}{backup_url} =~ s/#!hostname!#/$hostname/;
+	   $conf->{sys}{backup_url} =~ s/#!date!#/$date/;
+	
+	# Now write out the file.
+	my $fh = IO::Handle->new();
+	my $sc = "$backup_file";
+	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$sc]\n");
+	open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
+	print $fh $config_data;
+	$fh->close();
+	
+	return(0);
+}
+
+# This checks the user's uploaded file and, if it is a valid backup file, uses
+# it's data to overwrite the existing config files.
+sub load_backup_configuration
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; load_backup_configuration()\n");
+	
+	# This file handle will contain the uploaded file, so be careful.
+	my $in_fh = $conf->{cgi_fh}{file};
+	
+	# Some variables.
+	my $this_file  = "";
+	my $an_conf    = "";
+	my $hosts      = "";
+	my $ssh_config = "";
+	my $valid      = 0;
+	
+	### NOTE: If this fails, we want to re-display the archive page.
+	# If the file handle is empty, nothing was uploaded.
+	record($conf, "$THIS_FILE ".__LINE__."; in_fh: [$in_fh], cgi_mimetype::file: [$conf->{cgi_mimetype}{file}]\n");
+	if (not $in_fh)
+	{
+		print template($conf, "config.html", "no-backup-file-uploaded");
+		show_archive_options($conf);
+		return(1);
+	}
+	elsif ($conf->{cgi_mimetype}{file} ne "text/plain")
+	{
+		# The variable hash feeds 'explain_0039' and 'explain_0040'.
+		print template($conf, "config.html", "backup-file-bad-mimetype", {}, {
+				file		=>	$conf->{cgi}{file},
+				mimetype	=>	$conf->{cgi_mimetype}{file},
+			});
+		show_archive_options($conf);
+		return(1);
+	}
+	else
+	{
+		# If the first line of the file isn't '<!-- Striker Backup -->',
+		# do not proceed.
+		while (<$in_fh>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /<!-- Striker Backup -->/)
+			{
+				# Looks like a valid file.
+				$valid = 1;
+			}
+			elsif (not $valid)
+			{
+				# Not a valid backup file.
+				# The variable hash feeds 'explain_0039'.
+				print template($conf, "config.html", "invalid-backup-file-uploaded", {}, {
+					file	=>	$conf->{cgi}{file},
+				});
+				show_archive_options($conf);
+				return(1);
+			}
+			else
+			{
+				# Where in a valid file.
+				if ($line =~ /<!-- end (.*?) -->/)
+				{
+					$this_file = "";
+					next;
+				}
+				if ($line =~ /<!-- start (.*?) -->/)
+				{
+					$this_file = $1;
+					next;
+				}
+				if ($this_file eq $conf->{path}{an_conf})
+				{
+					$an_conf .= "$line\n";
+				}
+				elsif ($this_file eq $conf->{path}{hosts})
+				{
+					$hosts .= "$line\n";
+				}
+				elsif ($this_file eq $conf->{path}{ssh_config})
+				{
+					$ssh_config .= "$line\n";
+				}
+				elsif ($this_file)
+				{
+					# Unknown file...
+					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$this_file], line: [$line]\n");
+				}
+			}
+		}
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; an.conf contents: [\n$an_conf]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; hosts contents: [\n$hosts]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; ssh_config contents: [\n$ssh_config]\n");
+	if (($an_conf) && ($hosts) && ($ssh_config))
+	{
+		### TODO: examine the contents of each file to ensure it looks sane.
+		# Looks good, write them out.
+		my $an_fh = IO::Handle->new();
+		open ($an_fh, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
+		print $an_fh $an_conf;
+		$an_fh->close();
+		
+		my $hosts_fh = IO::Handle->new();
+		open ($hosts_fh, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
+		print $hosts_fh $hosts;
+		$hosts_fh->close();
+		
+		my $ssh_fh = IO::Handle->new();
+		open ($ssh_fh, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
+		print $ssh_fh $ssh_config;
+		$ssh_fh->close();
+		print template($conf, "config.html", "backup-file-loaded", {}, {
+				file		=>	$conf->{cgi}{file},
+			});
+		footer($conf);
+		exit;
+	}
+	
+	return(0);
+}
+
 # This allows the user to configure their dashboard.
 sub configure_dashboard
 {
@@ -1463,6 +1722,14 @@ sub configure_dashboard
 	elsif ($conf->{cgi}{task} eq "push")
 	{
 		push_config_to_anvil($conf);
+	}
+	elsif ($conf->{cgi}{task} eq "archive")
+	{
+		show_archive_options($conf);
+	}
+	elsif ($conf->{cgi}{task} eq "load_config")
+	{
+		load_backup_configuration($conf);
 	}
 	
 	### Header section
@@ -1866,8 +2133,9 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$id}{url};
 		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$id}{ricci_pw};
 		$conf->{clusters}{$name}{root_pw}     = $conf->{cluster}{$id}{root_pw} ? $conf->{cluster}{$id}{root_pw} : $conf->{cluster}{$id}{ricci_pw};
+		$conf->{clusters}{$name}{guacd}{port} = $conf->{cluster}{$id}{guacd}{port} =~ /^\d+$/ ? $conf->{cluster}{$id}{guacd}{port} : $conf->{guacd}{port};
 		$conf->{clusters}{$name}{id}          = $id;
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}], guacd::port: [$conf->{clusters}{$name}{guacd}{port}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -1920,24 +2188,32 @@ sub header
 	my $say_refresh     = "&nbsp;";
 	
 	#if ($conf->{'system'}{show_refresh})
-	if ($conf->{cgi}{task})
+	if ($conf->{cgi}{config})
 	{
-		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
-		if ($conf->{cgi}{task} eq "manage_vm")
-		{
-			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
-		}
-		elsif ($conf->{cgi}{task} eq "display_health")
-		{
-			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
-		}
-	}
-	elsif ($conf->{cgi}{config})
-	{
+		$conf->{'system'}{cgi_string} =~ s/cluster=(.*?)&//;
+		$conf->{'system'}{cgi_string} =~ s/cluster=(.*)$//;
 		if ($conf->{cgi}{save})
 		{
-			$say_refresh = "<a href=\"$conf->{'system'}{cgi_string}\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
+			$say_refresh = "";
 			$say_back    = "<a href=\"?config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+			if ($conf->{cgi}{anvil})
+			{
+				$say_back = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+			}
+		}
+		elsif ($conf->{cgi}{task})
+		{
+			$say_refresh = "<a href=\"?config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
+			$say_back    = "<a href=\"?logo=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+			if ($conf->{cgi}{task} eq "load_config")
+			{
+				$say_refresh = "";
+				$say_back    = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+			}
+			elsif ($conf->{cgi}{anvil})
+			{
+				$say_refresh = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+			}
 		}
 		else
 		{
@@ -1947,6 +2223,18 @@ sub header
 			{
 				$say_back = "<a href=\"?config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
 			}
+		}
+	}
+	elsif ($conf->{cgi}{task})
+	{
+		$say_back = "<a href=\"?cluster=$conf->{cgi}{cluster}\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+		if ($conf->{cgi}{task} eq "manage_vm")
+		{
+			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
+		}
+		elsif ($conf->{cgi}{task} eq "display_health")
+		{
+			$say_refresh = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
 		}
 	}
 	elsif ($conf->{cgi}{logo})
@@ -2032,7 +2320,11 @@ sub get_guacamole_link
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
-	$guacamole_url .= ":8080/guacamole/client.xhtml";
+	my $cluster        = $conf->{cgi}{cluster};
+	my $guacamole_port = $conf->{clusters}{$cluster}{guacd}{port};
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], guacamole_port: [$guacamole_port]\n");
+	
+	$guacamole_url .= ":$guacamole_port/guacamole/client.xhtml";
 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 
 	$guacamole_url =~ s/:\d+(:\d+)/$1/;
@@ -2114,13 +2406,15 @@ sub get_cgi_vars
 		}
 		
 		# Avoid "uninitialized" warning messages.
-		$conf->{cgi}{$var}="";
+		$conf->{cgi}{$var} = "";
 		if (defined $cgi->param($var))
 		{
 			if ($var eq "file")
 			{
-				$conf->{cgi_fh}{$var} = $cgi->upload($var);
-				record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}]\n");
+				$conf->{cgi_fh}{$var}       = $cgi->upload($var);
+				my $file                    = $conf->{cgi_fh}{$var};
+				$conf->{cgi_mimetype}{$var} = $cgi->uploadInfo($file)->{'Content-Type'};
+				record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}], mimetype: [$conf->{cgi_mimetype}{$var}]\n");
 			}
 			$conf->{cgi}{$var} = $cgi->param($var);
 			# Make this UTF8 if it isn't already.

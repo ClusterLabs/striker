@@ -472,6 +472,7 @@ sub initialize_conf
 			'an-cdb_files'		=>	"/var/www/home",
 			'an-cdb_cache'		=>	"/var/www/home/cache",
 			an_conf			=>	"/etc/an/an.conf",
+			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
@@ -511,11 +512,12 @@ sub initialize_conf
 			rsync			=>	"-av --partial",
 		},
 		sys			=>	{
+			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
 			error_limit		=>	10000,
 			language		=>	"en_CA",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.1.1",
+			version			=>	"1.1.3",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file

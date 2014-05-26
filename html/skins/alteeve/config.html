@@ -8,6 +8,7 @@
 					</td>
 					<td style="border: 0px; text-align: left;">
 						<input type="hidden" name="anvil_id" value="#!replace!anvil_id!#">
+						<input type="hidden" name="anvil" value="#!replace!anvil!#">
 						<input type="text" name="#!replace!cluster_name_name!#" id="#!replace!cluster_name_id!#" value="#!replace!cluster_name_value!#" style="width: 200px;" tabindex="1">  &nbsp;<span class="subtle_text_fixed_width">(id: #!replace!anvil_id!#)</span> &nbsp; &nbsp; #!replace!clear_icon!#
 					</td>
 					<td style="text-align: left;">
@@ -322,6 +323,20 @@
 					</td>
 				</tr>
 				<tr>
+					<td class="highlight_ready">
+						#!string!row_0135!#
+					</td>
+					<td>
+						<input type="text" name="#!replace!guacd__port_name!#" id="#!replace!guacd__port_id!#" value="#!replace!guacd__port_value!#" style="width: 300px;" tabindex="21" />
+					</td>
+					<td style="text-align: left;">
+						#!string!explain_0042!#<br />
+					</td>
+					<td style="white-space: nowrap;">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
 					<td colspan="4">
 						&nbsp;
 					</td>
@@ -330,7 +345,16 @@
 					<td colspan="4">
 						<input type="hidden" name="config" id="config" value="true">
 						<input type="hidden" name="section" id="section" value="global">
-						<input type="submit" name="save" id="save" value="Save" class="button"> #!replace!push_button!#
+						<table class="hidden_table" width="100%">
+							<tr>
+								<td width="50%" class="hidden_td">
+									<input type="submit" name="save" id="save" value="Save" class="button">
+								</td>
+								<td width="50%" class="hidden_td">
+									#!replace!push_button!#
+								</td>
+							</tr>
+						</table>
 					</td>
 				</tr>
 			</table>
@@ -518,3 +542,119 @@
 		</td>
 	</tr>
 <!-- end close-push-entry -->
+
+<!-- start archive-menu -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!title_0117!#</b>
+		</td>
+	</tr>
+	<form method="post" enctype="multipart/form-data">
+	<input type="hidden" name="config" value="true">
+	<input type="hidden" name="task" value="load_config">
+	<tr>
+		<td>
+			<a href="#!conf!sys::backup_url!#" download><span class="button">#!string!button_0041!#</span></a>
+		</td>
+		<td>
+			#!string!explain_0036!#
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="2" class="highlight_ready_bold">
+			#!string!row_0132!#
+		</td>
+		<td>
+			<input type="file" name="file" value=""> <input type="submit" name="null" value="#!string!row_0132!#" class="button">
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!explain_0037!#
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end archive-menu -->
+
+<!-- start no-backup-file-uploaded -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!title_0118!#</b>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0133!#
+		</td>
+		<td>
+			#!string!explain_0038!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end no-backup-file-uploaded -->
+
+<!-- start backup-file-bad-mimetype -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!title_0118!#</b>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0134!#
+		</td>
+		<td>
+			#!string!explain_0039!#<br />
+			#!string!explain_0040!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end backup-file-bad-mimetype -->
+
+<!-- start invalid-backup-file-uploaded -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!title_0118!#</b>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0133!#
+		</td>
+		<td>
+			#!string!explain_0039!#<br />
+			#!string!explain_0041!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end invalid-backup-file-uploaded -->
+
+<!-- start backup-file-loaded -->
+<table>
+	<tr>
+		<td colspan="2">
+			<b>#!string!title_0119!#</b>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0083!#
+		</td>
+		<td>
+			<br />
+			#!string!explain_0043!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end backup-file-loaded -->

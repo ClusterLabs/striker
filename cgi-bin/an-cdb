@@ -70,7 +70,7 @@ convert_cluster_config($conf);
 
 # If there is only one cluster defined, use it. Note that I need a special
 # exception in get_cgi_vars() for this to work properly.
-if (not $conf->{cgi}{cluster})
+if ((not $conf->{cgi}{cluster}) && (not $conf->{cgi}{config}))
 {
 	my @cluster_name;
 	foreach my $cluster (keys %{$conf->{clusters}})
@@ -98,6 +98,8 @@ get_cgi_vars($conf, [
 	"disk_address",
 	"do",
 	"driver_iso",
+	"file",
+	"guacd__port",
 	"host",
 	"anvil_id",
 	"insert",
@@ -136,12 +138,6 @@ get_cgi_vars($conf, [
 	"vm_ram",
 ]);
 
-# If the user is configuring the system, make sure no given Anvil! is selected.
-if ($conf->{cgi}{config})
-{
-	$conf->{cgi}{cluster} = "";
-}
-
 # If 'anvil' was passed, get it's ID and then check for CGI variables.
 if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
 {
@@ -170,6 +166,7 @@ if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
 		"cluster__${this_id}__smtp__helo_domain",
 		"cluster__${this_id}__mail_data__to",
 		"cluster__${this_id}__mail_data__sending_domain",
+		"cluster__${this_id}__guacd__port",
 	]);
 }
 
@@ -222,7 +219,7 @@ elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
 	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
