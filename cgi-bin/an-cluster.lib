@@ -38,7 +38,112 @@ use Email::Simple::Creator;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.3";
+our $VERSION  = "1.1.4";
+
+# This shows the user the local hostname and IP addresses. It also provides a
+# link to update the underlying OS, if updates are available.
+sub configure_local_system
+{
+	my ($conf) = @_;
+	
+	# Show the 'scanning in progress' table.
+	# variables hash feeds 'message_0272'.
+	print template($conf, "common.html", "scanning-message", {}, {
+		anvil	=>	$conf->{cgi}{cluster},
+	});
+	
+	# Get the current hostname
+	my $hostname = get_hostname($conf);
+	
+	# Read the network configurations.
+	read_network_settings($conf);
+	
+	# Check for OS updates
+	check_for_updates($conf);
+	
+	return(0);
+}
+
+# This checks to see if there are any OS updates available.
+sub check_for_updates
+{
+	my ($conf) = @_;
+	
+	
+	return(0);
+}
+
+# This reads the local network cards and their configurations.
+sub read_network_settings
+{
+	my ($conf) = @_;
+	
+	call_gather_system_info($conf);
+	
+	
+	return(0);
+}
+
+# This calls 'gather-system-info' and parses the returned CSV.
+sub call_gather_system_info
+{
+	my ($conf) = @_;
+	
+	my $shell_call = $conf->{path}{'call_gather-system-info'};
+	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$shell_call 2>&1 |") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	binmode $fh, ":utf8:";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /hostname,(.*)/)
+		{
+			$conf->{sys}{hostname} = $1;
+		}
+		elsif ($line =~ /interface,(.*?),(.*?),(.*)/)
+		{
+			my $interface = $1;
+			my $key       = $2;
+			my $value     = $3;
+			$conf->{interface}{$interface}{$key} = $value;
+			#record($conf, "$THIS_FILE ".__LINE__."; interface::${interface}::$key: [$conf->{interface}{$interface}{$key}]\n");
+		}
+	}
+	$fh->close();
+	
+	record($conf, "$THIS_FILE ".__LINE__."; sys::hostname: [$conf->{sys}{hostname}]\n");
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		if (lc($conf->{interface}{$interface}{type}) eq "wireless")
+		{
+			delete $conf->{interface}{$interface};
+			next;
+		}
+		if (not $conf->{interface}{$interface}{seen_in_ethtool})
+		{
+			delete $conf->{interface}{$interface};
+			next;
+		}
+		if (($interface =~ /virbr/) or ($interface =~ /vnet/))
+		{
+			delete $conf->{interface}{$interface};
+			next;
+		}
+	}
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface]\n");
+		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; - $key:\t[$conf->{interface}{$interface}{$key}]\n");
+		}
+	}
+	
+	return(0);
+}
 
 # This sanity-checks an.conf values before saving.
 sub sanity_check_an_conf
@@ -528,7 +633,7 @@ sub sanity_check_an_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
-			$conf->{guacd}{port}               = $conf->{cgi}{guacd}{port};
+			$conf->{guacd}{port}               = $conf->{cgi}{guacd__port};
 		}
 	}
 
@@ -902,6 +1007,7 @@ sub write_new_hosts
 sub save_dashboard_configure
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
 	
 	my ($save) = sanity_check_an_conf($conf, $conf->{cgi}{section});
 	if ($save)

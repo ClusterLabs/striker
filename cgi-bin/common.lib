@@ -473,6 +473,7 @@ sub initialize_conf
 			'an-cdb_cache'		=>	"/var/www/home/cache",
 			an_conf			=>	"/etc/an/an.conf",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
+			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
@@ -517,7 +518,7 @@ sub initialize_conf
 			language		=>	"en_CA",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.1.3",
+			version			=>	"1.1.4",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
@@ -1329,13 +1330,13 @@ sub get_screen_width
 	my ($conf) = @_;
 	
 	my $cols = 0;
-	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
-	while (<$file_handle>)
+	open my $fh, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
+	while (<$fh>)
 	{
 		chomp;
 		$cols = $_;
 	}
-	$file_handle->close();
+	$fh->close();
 	
 	return($cols);
 }

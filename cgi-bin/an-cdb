@@ -131,6 +131,7 @@ get_cgi_vars($conf, [
 	"smtp__security",
 	"save",
 	"storage",
+	"system",
 	"target",
 	"task",
 	"vg_list",
@@ -214,6 +215,10 @@ if ($conf->{cgi}{logo})
 elsif ($conf->{cgi}{config})
 {
 	configure_dashboard($conf);
+}
+elsif ($conf->{cgi}{'system'})
+{
+	configure_local_system($conf);
 }
 elsif ($conf->{cgi}{cluster})
 {

@@ -10,7 +10,7 @@
 PASSWORD="secret"
 HOSTNAME=$(hostname)
 CUSTOMER="Alteeve's Niche!"
-VERSION="1.1.3"
+VERSION="1.1.4"
 
 clear;
 echo ""
@@ -250,7 +250,6 @@ then
         rsync -av ./an-cdb-${VERSION}/cgi-bin /var/www/
         rsync -av ./an-cdb-${VERSION}/tools /var/www/
         rsync -av ./an-cdb-${VERSION}/an.conf /etc/an/
-        rsync -av ./an-cdb-${VERSION}/guacamole-install.sh /var/www/tools/
 fi
 
 # Install Guacamole
@@ -352,7 +351,7 @@ else
                 fi
         fi
 
-        # NOTE: This appears to still apply to 0.9.0
+        # NOTE: This appears to still apply to 0.9.1
         if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
         then
                 echo " - noauth .jar already exists"
@@ -516,9 +515,11 @@ chown root:apache -R /etc/hosts
 chown root:root /var/www/tools/restart_tomcat6
 chown root:root /var/www/tools/check_dvd
 chown root:root /var/www/tools/do_dd
+chown root:root /var/www/tools/call_gather-system-info
 chmod 6755 /var/www/tools/check_dvd
 chmod 6755 /var/www/tools/do_dd
 chmod 6755 /var/www/tools/restart_tomcat6
+chmod 6755 /var/www/tools/call_gather-system-info
 chmod 770 /etc/an
 chmod 660 /etc/an/*
 chmod 664 /etc/ssh/ssh_config

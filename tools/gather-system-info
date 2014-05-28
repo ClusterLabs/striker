@@ -1,0 +1,435 @@
+#!/usr/bin/perl
+# 
+# This reads information about the system... Host name, IPs, etc. It records
+# it's findings in a CSV text file that the caller reads when this exits.
+#
+
+use strict;
+use warnings;
+use IO::Handle;
+my $THIS_FILE = "tools/gather-system-info";
+
+my $conf = {
+	data	=>	{
+		hostname	=>	"--",
+	},
+	paths	=>	{
+		ethtool		=>	"/usr/sbin/ethtool",
+		hostnamectl	=>	"/usr/bin/hostnamectl",
+		ip		=>	"/usr/sbin/ip",
+		interfaces	=>	"/etc/sysconfig/network-scripts/",
+	},
+};
+
+# Read the host name
+read_hostname($conf);
+
+# Now read the interface config files.
+read_interfaces($conf);
+
+# Next, read the 'ip addr show' output. This over-writes what was read in the
+# config files.
+read_ip($conf);
+
+# We'll read 'ethtool' to gather speed data from the interfaces.
+read_ethtool($conf);
+
+# Here's what I found.
+report_interfaces($conf);
+
+exit(0);
+
+# This calls 'ethtool' for each interface and records details about the 
+# interfaces like speed, duplex, etc.
+sub read_ethtool
+{
+	my ($conf) = @_;
+
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		next if $interface eq "lo";
+		#print "DEBUG; $THIS_FILE ".__LINE__."; interface: [$interface]\n";
+		my $in_slm      = 0;
+		my $max_speed   = "?";
+		my $speed       = "?";
+		my $duplex      = "?";
+		my $link_up     = "?";
+		my $shell_call  = "$conf->{paths}{ethtool} $interface";
+		my $file_handle = IO::Handle->new();
+		#print "DEBUG; $THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
+		open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to call: [$shell_call], error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			#print "DEBUG; $THIS_FILE ".__LINE__."; line: [$line]\n";
+			if (($line =~ /No such device/i) or ($line =~ /bad command line argument/i))
+			{
+				#print "DEBUG; Device not present, skipping.\n";
+				last;
+			}
+			
+			if ($line =~ /Supported link modes:\s+(.*)/)
+			{
+				$max_speed = $1;
+				$in_slm    = 1;
+			}
+			elsif ($in_slm)
+			{
+				if ($line =~ /^(\d+.*)/)
+				{
+					$max_speed = $1;
+				}
+				else
+				{
+					$in_slm = 0;
+				}
+			}
+			if ($line =~ /Speed: (.*)/)
+			{
+				$speed = $1;
+				$speed =~ s/Mb\/s/Mbps/;
+				$speed =~ s/(\d)(\D)/$1 $2/;
+			}
+			if ($line =~ /Duplex: (.*)/)
+			{
+				$duplex = $1;
+				#print "DEBUG $THIS_FILE ".__LINE__." duplex: [$duplex]\n"; 
+			}
+			if ($line =~ /Link detected: (.*)/)
+			{
+				$link_up = $1;
+				$link_up = $link_up eq "yes" ? 1 : 0;
+				#print "DEBUG; $THIS_FILE ".__LINE__."; link_up: [$link_up]\n";
+				$conf->{interface}{$interface}{seen_in_ethtool} = 1;
+			}
+		}
+		$file_handle->close();
+		
+		# I need to split off the duplex value and convert the 'BaseT'
+		# to 'Mbps' for consistency's sake.
+		my $max_duplex =  "?";
+		if ($max_speed ne "?")
+		{
+			$max_speed  =~ s/^.*?\s(\d+.*)/$1/;
+			$max_duplex =  $max_speed;
+			$max_speed  =~ s/\/.*$//;
+			$max_duplex =~ s/^.*\///;
+			$max_speed  =~ s/baseT/ Mbps/;
+			$max_duplex =  lc($max_duplex) eq "full" ? 1 : 0;
+		}
+		if ($duplex ne "?")
+		{
+			$duplex     =  lc($duplex)     eq "full" ? 1 : 0;
+		}
+		$conf->{interface}{$interface}{max_speed}  = $max_speed;
+		$conf->{interface}{$interface}{max_duplex} = $max_duplex;
+		$conf->{interface}{$interface}{speed}      = $speed;
+		$conf->{interface}{$interface}{duplex}     = $duplex;
+		$conf->{interface}{$interface}{link_up}    = $link_up;
+	}
+
+	return(0);
+}
+
+# This reads the hostname file.
+sub read_hostname
+{
+	my ($conf) = @_;
+
+	my $shell_call  = "$conf->{paths}{hostnamectl}";
+	my $file_handle = IO::Handle->new();
+	open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /Static hostname: (.*)$/)
+		{
+			my $hostname = $1;
+			print "hostname,$hostname\n";
+			$conf->{data}{hostname} = $hostname;
+		}
+	}
+	$file_handle->close();
+	
+	return;
+}
+
+# This calls 'ip addr show' to determine what NICs are available
+sub read_ip
+{
+	my ($conf) = @_;
+	
+	my $interface_number = "";
+	my $interface        = "";
+	my $shell_call       = "$conf->{paths}{ip} addr show";
+	my $file_handle      = IO::Handle->new();
+	open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#print "DEBUG: $THIS_FILE ".__LINE__."; line: [$line]\n";
+		if ($line =~ /^(\d+):\s(.*?): </)
+		{
+			$interface_number = $1;
+			$interface        = $2;
+			#print "DEBUG: $THIS_FILE ".__LINE__."; interface number: [$interface_number], interface: [$interface]\n";
+			if ($interface eq "lo")
+			{
+				$interface        = "";
+				$interface_number = "";
+				next;
+			}
+			if (not exists $conf->{interface}{$interface})
+			{
+				$conf->{interface}{$interface}{mac}       = "?";
+				$conf->{interface}{$interface}{ip}        = "?";
+				$conf->{interface}{$interface}{subnet}    = "?";
+				$conf->{interface}{$interface}{ip6}       = "?";
+				$conf->{interface}{$interface}{subnet6}   = "?";
+				$conf->{interface}{$interface}{gateway}   = "?";
+				$conf->{interface}{$interface}{dns1}      = "?";
+				$conf->{interface}{$interface}{dns2}      = "?";
+				$conf->{interface}{$interface}{defroute}  = "?";
+				$conf->{interface}{$interface}{bootproto} = "?";
+				$conf->{interface}{$interface}{mtu}       = "?";
+			}
+			$conf->{interface}{$interface}{seen_in_ip} = 1;
+			if ($line =~ /mtu (\d+)/)     { $conf->{interface}{$interface}{mtu}     = $1; }
+			if ($line =~ /state (.*?) /)  { $conf->{interface}{$interface}{'state'} = $1; }
+			if ($line =~ /state (.*?)\n/) { $conf->{interface}{$interface}{'state'} = $1; }
+		}
+		next if not $interface;
+		#print "DEBUG: $THIS_FILE ".__LINE__."; line: [$line]\n";
+		if ($line =~ /link\/ether (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)/)
+		{
+			$conf->{interface}{$interface}{mac} = $1;
+		}
+		if ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/(\d+) /)
+		{
+			$conf->{interface}{$interface}{ip}     = $1;
+			$conf->{interface}{$interface}{subnet} = $2;
+		}
+		if ($line =~ /inet6 (.*?)\/(\d+) /)
+		{
+			$conf->{interface}{$interface}{ip6}     = $1;
+			$conf->{interface}{$interface}{subnet6} = $2;
+		}
+	}
+	$file_handle->close();
+	
+	return;
+}
+
+# Convert subnet /xx notation to xxx.xxx.xxx.xxx notation.
+sub convert_subnet_slash_to_dotted_notation
+{
+	my ($conf, $slash) = @_;
+	
+	my $dotted;
+	
+	if    ($slash eq "32") { $dotted = "255.255.255.255"; } # Single host
+	elsif ($slash eq "31") { $dotted = "255.255.255.254"; } # Unusable
+	elsif ($slash eq "30") { $dotted = "255.255.255.252"; } # 1 usable address
+	elsif ($slash eq "29") { $dotted = "255.255.255.248"; } # 5 usable address
+	elsif ($slash eq "28") { $dotted = "255.255.255.240"; } # 1/16th of a /24
+	elsif ($slash eq "27") { $dotted = "255.255.255.224"; } # Eighth of a /24
+	elsif ($slash eq "26") { $dotted = "255.255.255.192"; } # Fourth of a /24
+	elsif ($slash eq "25") { $dotted = "255.255.255.128"; } # Half of a /24
+
+	elsif ($slash eq "24") { $dotted = "255.255.255.0";   } # 1 /24
+	elsif ($slash eq "23") { $dotted = "255.255.254.0";   } # 2 /24 nets
+	elsif ($slash eq "22") { $dotted = "255.255.252.0";   } # 4 /24 nets
+	elsif ($slash eq "21") { $dotted = "255.255.248.0";   } # 8 /24 nets
+	elsif ($slash eq "20") { $dotted = "255.255.240.0";   } # 16 /24 nets
+	elsif ($slash eq "19") { $dotted = "255.255.192.0";   } # 32 /24 nets
+	elsif ($slash eq "18") { $dotted = "255.255.255.0";   } # 64 /24 nets
+	elsif ($slash eq "17") { $dotted = "255.255.128.0";   } # 128 /24 nets
+
+	elsif ($slash eq "16") { $dotted = "255.255.0.0";     } # 1 /16
+	elsif ($slash eq "15") { $dotted = "255.254.0.0";     } # 2 /16 nets
+	elsif ($slash eq "14") { $dotted = "255.252.0.0";     } # 4 /16 nets
+	elsif ($slash eq "13") { $dotted = "255.248.0.0";     } # 8 /16 nets
+	elsif ($slash eq "12") { $dotted = "255.240.0.0";     } # 16 /16 nets
+	elsif ($slash eq "11") { $dotted = "255.224.0.0";     } # 32 /16 nets
+	elsif ($slash eq "10") { $dotted = "255.192.0.0";     } # 64 /16 nets
+	elsif ($slash eq "9")  { $dotted = "255.128.0.0";     } # 128 /16 nets
+
+	elsif ($slash eq "8")  { $dotted = "255.0.0.0";       } # 1 /8 net
+	elsif ($slash eq "7")  { $dotted = "254.0.0.0";       } # 2 /8 nets
+	elsif ($slash eq "6")  { $dotted = "252.0.0.0";       } # 4 /8 nets
+	elsif ($slash eq "5")  { $dotted = "248.0.0.0";       } # 8 /8 nets
+	elsif ($slash eq "4")  { $dotted = "240.0.0.0";       } # 16 /8 nets
+	elsif ($slash eq "3")  { $dotted = "224.0.0.0";       } # 32 /8 nets
+	elsif ($slash eq "2")  { $dotted = "192.0.0.0";       } # 64 /8 nets
+	elsif ($slash eq "1")  { $dotted = "128.0.0.0";       } # 128 /8 nets
+	else  { $dotted = $slash; } # wat?
+	
+	return($dotted);
+}
+
+# This prints out the CSV formatted interface info.
+sub report_interfaces
+{
+	my ($conf) = @_;
+	
+	# Before I print
+	
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		next if $interface eq "lo";
+		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
+		{
+			if ($key eq "subnet")
+			{
+				# Convert subnet /xx to dotted-decimal notation
+				$conf->{interface}{$interface}{$key} = convert_subnet_slash_to_dotted_notation($conf, $conf->{interface}{$interface}{$key});
+			}
+			print "interface,$interface,$key,$conf->{interface}{$interface}{$key}\n";
+		}
+	}
+}
+
+# This looks for 'ifcfg-ethX' files and dumps out the contents in a parsable manner
+sub read_interfaces
+{
+	my ($conf) = @_;
+
+	my $interface = "";
+	my $directory = "$conf->{paths}{interfaces}";
+	opendir(DIR, $directory) or die "ERROR: Failed to open the directory: [$directory], error: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if $file eq "ifcfg-lo";
+		if ($file =~ /^ifcfg-(.*)$/)
+		{
+			$interface = $1;
+			#print "Parsing interface: [$interface] config file: [$file]\n";
+			$conf->{interface}{$interface}{mac}             = "" if not $conf->{interface}{$interface}{mac};
+			$conf->{interface}{$interface}{ip}              = "" if not $conf->{interface}{$interface}{ip};
+			$conf->{interface}{$interface}{type}            = "" if not $conf->{interface}{$interface}{type};
+			$conf->{interface}{$interface}{mode}            = "" if not $conf->{interface}{$interface}{mode};
+			$conf->{interface}{$interface}{uuid}            = "" if not $conf->{interface}{$interface}{uuid};
+			$conf->{interface}{$interface}{ssid}            = "" if not $conf->{interface}{$interface}{ssid};
+			$conf->{interface}{$interface}{essid}           = "" if not $conf->{interface}{$interface}{essid};
+			$conf->{interface}{$interface}{subnet}          = "" if not $conf->{interface}{$interface}{subnet};
+			$conf->{interface}{$interface}{gateway}         = "" if not $conf->{interface}{$interface}{gateway};
+			$conf->{interface}{$interface}{dns1}            = "" if not $conf->{interface}{$interface}{dns1};
+			$conf->{interface}{$interface}{dns2}            = "" if not $conf->{interface}{$interface}{dns2};
+			$conf->{interface}{$interface}{defroute}        = "" if not $conf->{interface}{$interface}{defroute};
+			$conf->{interface}{$interface}{bootproto}       = "" if not $conf->{interface}{$interface}{bootproto};
+			$conf->{interface}{$interface}{mtu}             = "" if not $conf->{interface}{$interface}{mtu};
+			$conf->{interface}{$interface}{seen_in_ip}      = 0  if not $conf->{interface}{$interface}{seen_in_ip};
+			$conf->{interface}{$interface}{seen_in_ethtool} = 0  if not $conf->{interface}{$interface}{seen_in_ethtool};
+			
+			my $shell_call  = "$conf->{paths}{interfaces}$file";
+			my $file_handle = IO::Handle->new();
+			open($file_handle, "<$shell_call") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				if ($line =~ /HWADDR=(.*)$/)
+				{
+					my $mac = $1;
+					   $mac =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,mac,$mac\n";
+					$conf->{interface}{$interface}{mac} = $mac;
+				}
+				elsif ($line =~ /IPADDR=(.*)$/)
+				{
+					my $ip = $1;
+					   $ip =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,ip,$ip\n";
+					$conf->{interface}{$interface}{ip} = $ip;
+				}
+				elsif ($line =~ /TYPE=(.*)$/)
+				{
+					my $type = $1;
+					   $type =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{type} = $type;
+				}
+				elsif ($line =~ /MODE=(.*)$/)
+				{
+					my $mode = $1;
+					   $mode =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{mode} = $mode;
+				}
+				elsif ($line =~ /UUID=(.*)$/)
+				{
+					my $uuid = $1;
+					   $uuid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{uuid} = $uuid;
+				}
+				elsif ($line =~ /SSID=(.*)$/)
+				{
+					my $ssid = $1;
+					   $ssid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{ssid} = $ssid;
+				}
+				elsif ($line =~ /ESSID=(.*)$/)
+				{
+					my $essid = $1;
+					   $essid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{essid} = $essid;
+				}
+				elsif ($line =~ /NETMASK=(.*)$/)
+				{
+					my $subnet = $1;
+					   $subnet =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,subnet,$subnet\n";
+					$conf->{interface}{$interface}{subnet} = $subnet;
+				}
+				elsif ($line =~ /GATEWAY=(.*)$/)
+				{
+					my $gateway = $1;
+					   $gateway =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,gateway,$gateway\n";
+					$conf->{interface}{$interface}{gateway} = $gateway;
+				}
+				elsif ($line =~ /DNS1=(.*)$/)
+				{
+					my $dns1 = $1;
+					   $dns1 =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,dns1,$dns1\n";
+					$conf->{interface}{$interface}{dns1} = $dns1;
+				}
+				elsif ($line =~ /DNS2=(.*)$/)
+				{
+					my $dns2 = $1;
+					   $dns2 =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,dns2,$dns2\n";
+					$conf->{interface}{$interface}{dns2} = $dns2;
+				}
+				elsif ($line =~ /DEFROUTE=(.*)$/)
+				{
+					my $defroute =  $1;
+					   $defroute =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,defroute,$defroute\n";
+					$conf->{interface}{$interface}{defroute} = $defroute;
+				}
+				elsif ($line =~ /BOOTPROTO=(.*)$/)
+				{
+					my $bootproto =  $1;
+					   $bootproto =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,bootproto,$bootproto\n";
+					$conf->{interface}{$interface}{bootproto} = $bootproto;
+				}
+				elsif ($line =~ /MTU=(.*)$/)
+				{
+					my $mtu =  $1;
+					   $mtu =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,mtu,$mtu\n";
+					$conf->{interface}{$interface}{mtu} = $mtu;
+				}
+			}
+			
+		}
+	}
+	
+	return(0);
+}
