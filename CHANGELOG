@@ -1,5 +1,15 @@
 Change log;
 
+v1.1.5 - <in progress>
+- Fixed some undefined replacement string errors in the server details entry
+  for servers not yet added to the Anvil!.
+- Disabled the 'Delete' button for a server when it has not yet been added to
+  the Anvil!.
+- Fixed a variable substitution name in 'message_0211'.
+- Made the error displayed when a server fails to be added to the Anvil!
+  because of a missing failover domain entry in cluster.conf.
+
+
 v1.1.4 - 2014-05-27
 - Added the 'gather-system-info' (and associated setuid script).
 - Fixed a bug with saving the guacamole port definition.

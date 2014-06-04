@@ -3774,6 +3774,7 @@ sub update_vm_definition
 sub add_vm_to_cluster
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
 	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
@@ -3789,11 +3790,13 @@ sub add_vm_to_cluster
 			$peer = $this_node;
 		}
 	}
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	my $failover_domain;
 	
 	# First, find the failover domain...
 	$conf->{'system'}{ignore_missing_vm} = 1;
 	scan_cluster($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
 	foreach my $fod (keys %{$conf->{failoverdomain}})
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; fod: [$fod]\n");
@@ -7663,6 +7666,12 @@ sub display_vm_details
 		$lv_size[0]                          = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
 		$type[0]                             = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
 		$mac[0]                              = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
+		$conf->{vm}{$vm}{details}{cpu_count} = "--" if not defined $conf->{vm}{$vm}{details}{cpu_count};
+		$say_ram                             = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
+		$lv_path[0]                          = "--" if not defined $lv_path[0];
+		$lv_size[0]                          = "--" if not defined $lv_size[0];
+		$type[0]                             = "--" if not defined $type[0];
+		$mac[0]                              = "--" if not defined $mac[0];
 		print  template($conf, "server.html", "display-server-details-resources", {
 				say_vm		=>	$say_vm,
 				cpu_count	=>	$conf->{vm}{$vm}{details}{cpu_count},
@@ -7873,7 +7882,7 @@ sub read_vm_definition
 	my $current_interface_type;
 	if (not $conf->{vm}{$vm}{xml})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; I was asked to look at: [$vm]'s definition file, it was not read or was not found.");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
 		return (0);
 	}
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
@@ -8361,8 +8370,8 @@ sub display_vm_state_and_controls
 		#my $say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		# I need both nodes up to delete a VM.
 		my $say_delete_button = "<span class=\"disabled_button\">#!string!button_0030!#</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
-		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
+		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], prefered_host: [$prefered_host]\n");
+		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($prefered_host !~ /--/))
 		{
 			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">#!string!button_0030!#</span></a>";
 		}

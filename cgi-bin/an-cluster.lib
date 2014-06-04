@@ -2861,6 +2861,7 @@ sub record
 sub scan_cluster
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
 	set_node_names ($conf);
 	check_nodes    ($conf);
@@ -2876,6 +2877,7 @@ sub scan_cluster
 sub check_nodes
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; check_nodes()\n");
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -2894,6 +2896,7 @@ sub check_nodes
 sub check_node_status
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; check_node_status()\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
 	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
@@ -2944,6 +2947,7 @@ sub check_node_status
 sub post_scan_calculations
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; post_scan_calculations()\n");
 	
 	$conf->{resources}{total_ram}     = 0;
 	$conf->{resources}{total_cores}   = 0;

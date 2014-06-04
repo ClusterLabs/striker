@@ -417,7 +417,9 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="title_0117">Backup your current configuration or load a saved configuration</key>
 		<key name="title_0118">Upload of #!string!brand_0002!# failed</key>
 		<key name="title_0119">Upload of #!string!brand_0002!# successful</key>
-		<key name="title_0120"></key>
+		<key name="title_0120">Adding server to this #!string!brand_0003!#.</key>
+		<key name="title_0121"></key>
+		<key name="title_0122"></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -650,7 +652,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0086"><![CDATA[I tried to update the definition file for <span class="fixed_width">#!variable!server!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0087"><![CDATA[Unable to add the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!# without a <span class="fixed_width">ricci</span> password!]]></key>
 		<key name="message_0088"><![CDATA[Please update the <a href="#!variable!manage_url!#" target="_new">#!string!row_0024!#</a> for this #!string!brand_0003!# and then try again by pressing '<span class="fixed_width">&lt;ctrl&gt;</span> + <span class="fixed_width">r</span>'.]]></key>
-		<key name="message_0089">I was unable to determine which failover domain to use for this new machine.</key>
+		<key name="message_0089"><![CDATA[I was unable to determine which failover domain to use for this new machine.<br />Were the <span class="fixed_width">primary_n0*</span> <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Creating_the_Ordered_Fail-Over_Domains" target="_new">failover domains</a> added to the #!string!brand_0003!#'s <span class="fixed_width">/etc/cluster/cluster.conf</span> configuration?]]></key>
 		<key name="message_0090">Checking now to make sure the new server is up and running.</key>
 		<key name="message_0091">It is not running at the moment, I will now boot the server.</key>
 		<key name="message_0092">It should now be booting up.</key>
@@ -772,7 +774,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0208"><![CDATA[For security reasons, only files in <span class="fixed_width">/shared/definitions/</span> can be deleted.]]></key>
 		<key name="message_0209"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been deleted.]]></key>
 		<key name="message_0210"><![CDATA[I tried to delete the file <span class="fixed_width">#!variable!file!#</span> and then verify that it was indeed removed.<br />This should have returned <span class="fixed_width">2</span>, but <span class="fixed_width">#!variable!ls_exit_code!#</span> was returned instead.]]></key>
-		<key name="message_0211"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been archived as<br /><span class="fixed_width">#!variable!dest!#</span>.]]></key>
+		<key name="message_0211"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been archived as<br /><span class="fixed_width">#!variable!destination!#</span>.]]></key>
 		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
 		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_anvil_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
 		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off or it is now in use by a server.]]></key>
