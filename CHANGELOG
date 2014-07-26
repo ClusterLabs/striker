@@ -8,6 +8,12 @@ v1.1.5 - <in progress>
 - Fixed a variable substitution name in 'message_0211'.
 - Made the error displayed when a server fails to be added to the Anvil!
   because of a missing failover domain entry in cluster.conf.
+- Added, but commented out, 'no_kill="1"' to new VM services in rgmanager to
+  prevent force-off of servers that are slow to boot. This will be enabled as
+  soon as resource-agents is updated.
+  (as per: https://bugzilla.redhat.com/show_bug.cgi?id=1079032)
+- Removed the confirmation requirements for several fairly-safe commands, line
+  powering on nodes, booting servers, etc.
 
 
 v1.1.4 - 2014-05-27

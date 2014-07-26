@@ -60,9 +60,12 @@ sub test_ssh_fingerprint
 		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
 		{
 			# Add fingerprint to known_hosts
-			print get_string($conf, {key => "message_0279", variables => {
+			my $message = get_string($conf, {key => "message_0279", variables => {
 				node	=>	$node,
 			}});
+			print template($conf, "common.html", "generic-note", {
+				message	=>	$message,
+			});
 			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
 			my $fh = IO::Handle->new();
 			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
@@ -491,6 +494,7 @@ sub initialize_conf
 			'log'			=>	"/var/log/an-cdb.log",
 			lvdisplay		=>	"/sbin/lvdisplay",
 			ping			=>	"/usr/bin/ping",
+			restart_guacd		=>	"/var/www/tools/restart_guacd",
 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 			ssh_config		=>	"/etc/ssh/ssh_config",
 			virsh			=>	"/usr/bin/virsh",

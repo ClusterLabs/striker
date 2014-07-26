@@ -2316,9 +2316,13 @@ sub header
 				$say_refresh = "";
 				$say_back    = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
 			}
+			elsif ($conf->{cgi}{task} eq "push")
+			{
+				$say_refresh = "";
+			}
 			elsif ($conf->{cgi}{anvil})
 			{
-				$say_refresh = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png\" alt=\"#!string!button_0001!#\"></a>";
+				$say_refresh = "<a href=\"?anvil=$conf->{cgi}{anvil}&config=true\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png\" alt=\"#!string!button_0002!#\"></a>";
 			}
 		}
 		else

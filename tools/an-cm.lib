@@ -5110,137 +5110,144 @@ Interface: $dev
 	if ($conf->{'system'}{ipmi_available})
 	{
 		# Power state
-		my ($say_psu1_state, $say_psu1_watts) = (split/,/, $conf->{data}{ipmi}{new}{psu1_power}, 2);
-		my ($say_psu2_state, $say_psu2_watts) = (split/,/, $conf->{data}{ipmi}{new}{psu2_power}, 2);
-		
-		$say_psu1_state = sprintf("%-6s", $say_psu1_state);
-		$say_psu2_state = sprintf("%-6s", $say_psu2_state);
-		$say_psu1_watts = sprintf("%-10s", $say_psu1_watts);
-		$say_psu2_watts = sprintf("%-10s", $say_psu2_watts);
-		
-		# Some models have two PSU fans.
-		if ((exists $conf->{data}{ipmi}{new}{fan1_psu1}) ||
-		    (exists $conf->{data}{ipmi}{new}{fan2_psu1}) ||
-		    (exists $conf->{data}{ipmi}{new}{fan1_psu2}) ||
-		    (exists $conf->{data}{ipmi}{new}{fan2_psu2}))
+		if ((not $conf->{data}{ipmi}{new}{psu1_power}) && (not $conf->{data}{ipmi}{new}{psu2_power}))
 		{
-			# There are no temp readings in the RX300 S6, which 
-			# this section supports.
-			my ($say_fan1_psu1_state, $say_fan1_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu1}, 2);
-			#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1_state: [$say_fan1_psu1_state], say_fan1_psu1_rpms: [$say_fan1_psu1_rpms], data::ipmi::new::fan1_psu1: [$conf->{data}{ipmi}{new}{fan1_psu1}]\n");
-			my ($say_fan2_psu1_state, $say_fan2_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu1}, 2);
-			#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1_state: [$say_fan2_psu1_state], say_fan2_psu1_rpms: [$say_fan2_psu1_rpms], data::ipmi::new::fan2_psu1: [$conf->{data}{ipmi}{new}{fan2_psu1}]\n");
-			my ($say_fan1_psu2_state, $say_fan1_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu2}, 2);
-			#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2_state: [$say_fan1_psu2_state], say_fan1_psu2_rpms: [$say_fan1_psu2_rpms], data::ipmi::new::fan1_psu2: [$conf->{data}{ipmi}{new}{fan1_psu2}]\n");
-			my ($say_fan2_psu2_state, $say_fan2_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu2}, 2);
-			#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2_state: [$say_fan2_psu2_state], say_fan2_psu2_rpms: [$say_fan2_psu2_rpms], data::ipmi::new::fan2_psu2: [$conf->{data}{ipmi}{new}{fan2_psu2}]\n");
+			$body .= "\nPower Supply data not available.\n";
+		}
+		else
+		{
+			my ($say_psu1_state, $say_psu1_watts) = (split/,/, $conf->{data}{ipmi}{new}{psu1_power}, 2);
+			my ($say_psu2_state, $say_psu2_watts) = (split/,/, $conf->{data}{ipmi}{new}{psu2_power}, 2);
 			
-			my $say_fan1_psu1 = $say_fan1_psu1_rpms;
-			if ($say_fan1_psu1_state ne "ok")
+			$say_psu1_state = sprintf("%-6s", $say_psu1_state);
+			$say_psu2_state = sprintf("%-6s", $say_psu2_state);
+			$say_psu1_watts = sprintf("%-10s", $say_psu1_watts);
+			$say_psu2_watts = sprintf("%-10s", $say_psu2_watts);
+			
+			# Some models have two PSU fans.
+			if ((exists $conf->{data}{ipmi}{new}{fan1_psu1}) ||
+			(exists $conf->{data}{ipmi}{new}{fan2_psu1}) ||
+			(exists $conf->{data}{ipmi}{new}{fan1_psu2}) ||
+			(exists $conf->{data}{ipmi}{new}{fan2_psu2}))
 			{
-				$say_fan1_psu1 = $say_fan1_psu1_state;
-				record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1: [$say_fan1_psu1]\n");
-			}
-			$say_fan1_psu1 = sprintf("%-13s", $say_fan1_psu1);
-			
-			my $say_fan2_psu1 = $say_fan2_psu1_rpms;
-			if ($say_fan2_psu1_state ne "ok")
-			{
-				$say_fan2_psu1 = $say_fan2_psu1_state;
-				record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1: [$say_fan2_psu1]\n");
-			}
-			$say_fan2_psu1 = sprintf("%-13s", $say_fan2_psu1);
-			
-			my $say_fan1_psu2 = $say_fan1_psu2_rpms;
-			if ($say_fan1_psu2_state ne "ok")
-			{
-				$say_fan1_psu2 = $say_fan1_psu2_state;
-				record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2: [$say_fan1_psu2]\n");
-			}
-			$say_fan1_psu2 = sprintf("%-13s", $say_fan1_psu2);
-			
-			my $say_fan2_psu2 = $say_fan2_psu2_rpms;
-			if ($say_fan2_psu2_state ne "ok")
-			{
-				$say_fan2_psu2 = $say_fan2_psu2_state;
-				record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2: [$say_fan2_psu2]\n");
-			}
-			$say_fan2_psu2 = sprintf("%-13s", $say_fan2_psu2);
-			
-			$body .= "
+				# There are no temp readings in the RX300 S6, which 
+				# this section supports.
+				my ($say_fan1_psu1_state, $say_fan1_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu1}, 2);
+				#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1_state: [$say_fan1_psu1_state], say_fan1_psu1_rpms: [$say_fan1_psu1_rpms], data::ipmi::new::fan1_psu1: [$conf->{data}{ipmi}{new}{fan1_psu1}]\n");
+				my ($say_fan2_psu1_state, $say_fan2_psu1_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu1}, 2);
+				#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1_state: [$say_fan2_psu1_state], say_fan2_psu1_rpms: [$say_fan2_psu1_rpms], data::ipmi::new::fan2_psu1: [$conf->{data}{ipmi}{new}{fan2_psu1}]\n");
+				my ($say_fan1_psu2_state, $say_fan1_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan1_psu2}, 2);
+				#record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2_state: [$say_fan1_psu2_state], say_fan1_psu2_rpms: [$say_fan1_psu2_rpms], data::ipmi::new::fan1_psu2: [$conf->{data}{ipmi}{new}{fan1_psu2}]\n");
+				my ($say_fan2_psu2_state, $say_fan2_psu2_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan2_psu2}, 2);
+				#record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2_state: [$say_fan2_psu2_state], say_fan2_psu2_rpms: [$say_fan2_psu2_rpms], data::ipmi::new::fan2_psu2: [$conf->{data}{ipmi}{new}{fan2_psu2}]\n");
+				
+				my $say_fan1_psu1 = $say_fan1_psu1_rpms;
+				if ($say_fan1_psu1_state ne "ok")
+				{
+					$say_fan1_psu1 = $say_fan1_psu1_state;
+					record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu1: [$say_fan1_psu1]\n");
+				}
+				$say_fan1_psu1 = sprintf("%-13s", $say_fan1_psu1);
+				
+				my $say_fan2_psu1 = $say_fan2_psu1_rpms;
+				if ($say_fan2_psu1_state ne "ok")
+				{
+					$say_fan2_psu1 = $say_fan2_psu1_state;
+					record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu1: [$say_fan2_psu1]\n");
+				}
+				$say_fan2_psu1 = sprintf("%-13s", $say_fan2_psu1);
+				
+				my $say_fan1_psu2 = $say_fan1_psu2_rpms;
+				if ($say_fan1_psu2_state ne "ok")
+				{
+					$say_fan1_psu2 = $say_fan1_psu2_state;
+					record($conf, "$THIS_FILE ".__LINE__." say_fan1_psu2: [$say_fan1_psu2]\n");
+				}
+				$say_fan1_psu2 = sprintf("%-13s", $say_fan1_psu2);
+				
+				my $say_fan2_psu2 = $say_fan2_psu2_rpms;
+				if ($say_fan2_psu2_state ne "ok")
+				{
+					$say_fan2_psu2 = $say_fan2_psu2_state;
+					record($conf, "$THIS_FILE ".__LINE__." say_fan2_psu2: [$say_fan2_psu2]\n");
+				}
+				$say_fan2_psu2 = sprintf("%-13s", $say_fan2_psu2);
+				
+				$body .= "
 		+--------+------------+---------------+---------------+
- Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
+Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
 +---------------+--------+------------+---------------+---------------+
 |     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_fan1_psu1 | $say_fan2_psu1 |
 |     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_fan1_psu2 | $say_fan2_psu2 |
 +---------------+--------+------------+---------------+---------------+
 
 ";
-		}
-		else
-		{
-			# This applies to the RX300 S7
-			my ($say_psu1_fan_state, $say_psu1_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu1}, 2);
-			my ($say_psu2_fan_state, $say_psu2_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu2}, 2);
-			my $say_psu1_fan = $say_psu1_fan_rpms;
-			if ($say_psu1_fan_state ne "ok")
-			{
-				$say_psu1_fan = $say_psu1_fan_state;
 			}
-			$say_psu1_fan = sprintf("%-11s", $say_psu1_fan);
-			my $say_psu2_fan = $say_psu2_fan_rpms;
-			if ($say_psu2_fan_state ne "ok")
+			else
 			{
-				$say_psu2_fan = $say_psu2_fan_state;
-			}
-			$say_psu2_fan = sprintf("%-11s", $say_psu2_fan);
+				# This applies to the RX300 S7
+				my ($say_psu1_fan_state, $say_psu1_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu1}, 2);
+				my ($say_psu2_fan_state, $say_psu2_fan_rpms) = (split/,/, $conf->{data}{ipmi}{new}{fan_psu2}, 2);
+				my $say_psu1_fan = $say_psu1_fan_rpms;
+				if ($say_psu1_fan_state ne "ok")
+				{
+					$say_psu1_fan = $say_psu1_fan_state;
+				}
+				$say_psu1_fan = sprintf("%-11s", $say_psu1_fan);
+				my $say_psu2_fan = $say_psu2_fan_rpms;
+				if ($say_psu2_fan_state ne "ok")
+				{
+					$say_psu2_fan = $say_psu2_fan_state;
+				}
+				$say_psu2_fan = sprintf("%-11s", $say_psu2_fan);
 
-			my ($say_psu1_temp_inlet_state, $say_psu1_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu1_inlet}, 2);
-			my ($say_psu2_temp_inlet_state, $say_psu2_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu2_inlet}, 2);
-			$say_psu1_temp_inlet =~ s/\s.*//g;
-			$say_psu1_temp_inlet .= " *C";
-			$say_psu2_temp_inlet =~ s/\s.*//g;
-			$say_psu2_temp_inlet .= " *C";
-			if ($conf->{'system'}{use_fahrenheit})
-			{
-				$say_psu1_temp_inlet = convert_to_fahrenheit($conf, $say_psu1_temp_inlet);
-				$say_psu2_temp_inlet = convert_to_fahrenheit($conf, $say_psu2_temp_inlet);
-			}
-			my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
-			my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
+				my ($say_psu1_temp_inlet_state, $say_psu1_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu1_inlet}, 2);
+				my ($say_psu2_temp_inlet_state, $say_psu2_temp_inlet) = (split/,/, $conf->{data}{ipmi}{new}{psu2_inlet}, 2);
+				$say_psu1_temp_inlet =~ s/\s.*//g;
+				$say_psu1_temp_inlet .= " *C";
+				$say_psu2_temp_inlet =~ s/\s.*//g;
+				$say_psu2_temp_inlet .= " *C";
+				if ($conf->{'system'}{use_fahrenheit})
+				{
+					$say_psu1_temp_inlet = convert_to_fahrenheit($conf, $say_psu1_temp_inlet);
+					$say_psu2_temp_inlet = convert_to_fahrenheit($conf, $say_psu2_temp_inlet);
+				}
+				my $say_psu1_intake = sprintf("%-14s", "$say_psu1_temp_inlet_state, $say_psu1_temp_inlet");
+				my $say_psu2_intake = sprintf("%-14s", "$say_psu2_temp_inlet_state, $say_psu2_temp_inlet");
 
-			my ($say_psu1_temp_state, $say_psu1_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu1}, 2);
-			my ($say_psu2_temp_state, $say_psu2_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu2}, 2);
-			$say_psu1_temp =~ s/\s.*//g;
-			$say_psu1_temp .= " *C";
-			$say_psu2_temp =~ s/\s.*//g;
-			$say_psu2_temp .= " *C";
-			if ($conf->{'system'}{use_fahrenheit})
-			{
-				$say_psu1_temp = convert_to_fahrenheit($conf, $say_psu1_temp);
-				$say_psu2_temp = convert_to_fahrenheit($conf, $say_psu2_temp);
-			}
-			my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
-			my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
-		
-			$body .= "
+				my ($say_psu1_temp_state, $say_psu1_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu1}, 2);
+				my ($say_psu2_temp_state, $say_psu2_temp) = (split/,/, $conf->{data}{ipmi}{new}{psu2}, 2);
+				$say_psu1_temp =~ s/\s.*//g;
+				$say_psu1_temp .= " *C";
+				$say_psu2_temp =~ s/\s.*//g;
+				$say_psu2_temp .= " *C";
+				if ($conf->{'system'}{use_fahrenheit})
+				{
+					$say_psu1_temp = convert_to_fahrenheit($conf, $say_psu1_temp);
+					$say_psu2_temp = convert_to_fahrenheit($conf, $say_psu2_temp);
+				}
+				my $say_psu1_core = sprintf("%-14s", "$say_psu1_temp_state, $say_psu1_temp");
+				my $say_psu2_core = sprintf("%-14s", "$say_psu2_temp_state, $say_psu2_temp");
+			
+				$body .= "
 		+--------+------------+-------------+
- Power Supplies | Status |  Wattage   |  Fan Speed  |
+Power Supplies | Status |  Wattage   |  Fan Speed  |
 +---------------+--------+------------+-------------+
 |     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_psu1_fan |
 |     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_psu2_fan |
 +---------------+--------+------------+-------------+
 
 		+----------------+----------------+
- Power Supplies |     Intake     |      Core      |
+Power Supplies |     Intake     |      Core      |
 +---------------+----------------+----------------+
 |     PSU 1     | $say_psu1_intake | $say_psu1_core |
 |     PSU 2     | $say_psu2_intake | $say_psu2_core |
 +---------------+----------------+----------------+
 
 ";
+			}
 		}
-	
+		
 		# Power levels
 		$body .= "
                    +--------------+--------------+--------------+
@@ -5413,7 +5420,8 @@ sub compare_new_and_old
 {
 	my ($conf) = @_;
 	
-	my $changes = "";
+	my $changes       = "";
+	my $debug_changes = "";
 	
 	# Check clustat for changes.
 	$conf->{data}{clustat}{old}{cluster} = "--" if not defined $conf->{data}{clustat}{old}{cluster};
@@ -5737,7 +5745,7 @@ sub compare_new_and_old
 				}
 				elsif ($key eq "bbu")
 				{
-					# If the BBU post-learn cycle times is
+					# If the BBU post-learn cycle time is
 					# set, see if it's expired.
 					#record($conf, "$THIS_FILE ".__LINE__."; time: [".time."] > system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]?\n");
 					if (($conf->{'system'}{check_bbu_health}) && (time > $conf->{'system'}{check_bbu_health}))
@@ -5925,6 +5933,9 @@ sub compare_new_and_old
 								}
 								$conf->{'system'}{migration_target}   = 0;
 								$conf->{'system'}{emergency_shutdown} = 1;
+								record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+								record($conf, "$THIS_FILE ".__LINE__."; ### RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n");
+								record($conf, "$THIS_FILE ".__LINE__."; ###   $old_temp $units\t-> $new_temp $units\n");
 								$changes .= "\n#######################################################################\n";
 								$changes .= "RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
 								$changes .= "  $old_temp $units\t-> $new_temp $units\n";
@@ -6027,9 +6038,18 @@ sub compare_new_and_old
 						}
 						elsif ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} ne $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})
 						{
+							my $old_var = $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var};
+							my $new_var = $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var};
 							if ($var eq "learn_cycle_active")
 							{
 								record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery \"$say_translation\" has changed!; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+							}
+							elsif (($var eq "battery_state") && (($new_var eq "Learning") || ($old_var eq "Learning")))
+							{
+								# Learning cycle, safe to ignore.
+								record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery \"$say_translation\" has changed (in or out of learning)!; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+								$debug_changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed (in or out of learning)!\n";
+								$debug_changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
 							}
 							else
 							{
@@ -6148,6 +6168,9 @@ sub compare_new_and_old
 										}
 										$conf->{'system'}{migration_target}   = 0;
 										$conf->{'system'}{emergency_shutdown} = 1;
+										record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+										record($conf, "$THIS_FILE ".__LINE__."; ### RAID ${adapter}'s Physical Disk ${slot}'s \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n");
+										record($conf, "$THIS_FILE ".__LINE__."; ###   $old_temp $units\t-> $new_temp $units\n");
 										$changes .= "\n#######################################################################\n";
 										$changes .= "RAID ${adapter}'s Physical Disk ${slot}'s \"$say_translation\" is at or above the critical level of $power_down_threshold *C!\n";
 										$changes .= "  $old_temp $units\t-> $new_temp $units\n";
@@ -6301,6 +6324,9 @@ sub compare_new_and_old
 						}
 						$conf->{'system'}{migration_target}   = 0;
 						$conf->{'system'}{emergency_shutdown} = 1;
+						record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+						record($conf, "$THIS_FILE ".__LINE__."; ### RAID ${adapter}'s ROC temperature is at or above the critical level of $power_down_threshold *C!\n");
+						record($conf, "$THIS_FILE ".__LINE__."; ###   $old_temp $units\t-> $new_temp $units\n");
 						$changes .= "\n#######################################################################\n";
 						$changes .= "RAID ${adapter}'s ROC temperature is at or above the critical level of $power_down_threshold *C!\n";
 						$changes .= "  $old_temp $units\t-> $new_temp $units\n";
@@ -6761,23 +6787,56 @@ sub compare_new_and_old
 			$old_state = "--" if not defined $old_state;
 			$old_value = "--" if not defined $old_value;
 			
-			# Some servers periodically lose MEM sensor values. 
+			# Some servers periodically lose MEM, FAN and other sensor values. 
 			# When that happens, we will log but not alert.
 			if (($say_translation =~ /MEM (\w+)/) && ($new_state eq "ns"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has change!; $old_state, $old_value\t-> $new_state, $new_value.\n");
-				#my $subject =  "Memory sensor lost.";
-				#my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
-				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
-				#send_debug_email($conf, $subject, $body);
+				$debug_changes .= "\nHost sensor \"$say_translation\" has change!\n";
+				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
-			elsif (($old_state eq "--") or ($new_state eq "--"))
+			elsif (($say_translation =~ /FAN(\d+) SYS State/) || 
+			        ($say_translation =~ /I2C(\d+)/) || 
+			        ($say_translation =~ /Local Monitor/) || 
+			        ($say_translation =~ /PSU(\d+) Power State/) || 
+			        ($say_translation =~ /FAN PSU(\d+) State/) || 
+			        ($say_translation eq "Power Level State") || 
+			        ($say_translation eq "Total Power Out State") || 
+			        ($say_translation eq "Total Power State"))
+			{
+				if ((($new_state eq "ok") || ($new_state eq "--")) && (($new_value eq "0x00") || ($new_value eq "--")))
+				{
+					# This is what happens when a FAN disappears along with other sensors
+					record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has vanished!; $old_state, $old_value\t-> $new_state, $new_value.\n");
+					$debug_changes .= "\nHost Sensor \"$say_translation\" has vanished!\n";
+					$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				}
+				elsif ((($old_state eq "ok") || ($old_state eq "--")) && ($new_state eq "ok"))
+				{
+					# This is what happens when a FAN disappears along with other sensors
+					record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has returned!; $old_state, $old_value\t-> $new_state, $new_value.\n");
+					$debug_changes .= "\nHost Sensor \"$say_translation\" has returned!\n";
+					$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				}
+				else
+				{
+					# Not sure what's happening...
+					record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has changed!; $old_state, $old_value\t-> $new_state, $new_value.\n");
+					$debug_changes .= "\nHost Sensor \"$say_translation\" has changed!\n";
+					$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				}
+			}
+			elsif (($new_state eq "--") || ($new_state eq "ns"))
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has vanished!; $new_state, $new_value.\n");
+				$debug_changes .= "\nHost Sensor \"$say_translation\" has vanished!\n";
+				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
+			elsif (($old_state eq "--") || ($old_state eq "ns"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" has returned!; $new_state, $new_value.\n");
-				#my $subject =  "IPMI sensor returned.";
-				#my $body    =  "\nHost sensor \"$say_translation\" has change!\n";
-				#   $body    .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
-				#send_debug_email($conf, $subject, $body);
+				$debug_changes .= "\nHost Sensor \"$say_translation\" has returned!\n";
+				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
 			else
 			{
@@ -6824,6 +6883,10 @@ sub compare_new_and_old
 				$conf->{'system'}{emergency_shutdown} = 1;
 				if ($conf->{data}{ups}{new}{ups_count} == 1)
 				{
+					record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### The UPS is running on batteries and the remaining hold up time is below\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### critical levels! There are $best_time_left seconds remaining and the\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### shut down threshold is $shutdown_buffer seconds.\n");
 					$changes .= "\n#######################################################################\n";
 					$changes .= "The UPS is running on batteries and the remaining hold up time is below\n";
 					$changes .= "critical levels! There are $best_time_left seconds remaining and the\n";
@@ -6832,6 +6895,10 @@ sub compare_new_and_old
 				}
 				else
 				{
+					record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### The UPS is running on batteries and the remaining hold up time is below\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### hold up time below critical levels! There are $best_time_left seconds remaining\n");
+					record($conf, "$THIS_FILE ".__LINE__."; ### and the shut down threshold is $shutdown_buffer seconds.\n");
 					$changes .= "\n#######################################################################\n";
 					$changes .= "The strongest remaining UPS is running on batteries and the remaining\n";
 					$changes .= "hold up time below critical levels! There are $best_time_left seconds remaining\n";
@@ -7296,8 +7363,10 @@ sub compare_new_and_old
 	# Host sensors
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{diff}})
 	{
-		my $say_var = $conf->{translate}{ipmi}{$key};
+		my $say_var         = $conf->{translate}{ipmi}{$key};
+		my $say_translation = $conf->{translate}{ipmi}{$key} ? $conf->{translate}{ipmi}{$key} : $key;
 		record($conf, "$THIS_FILE ".__LINE__."; Host IPMI \"$say_var\" has disappeard!\n");
+		$debug_changes .= "\nHost Sensor \"$say_translation\" has vanished!\n";
 		#my $subject =  "IPMI sensor lost.";
 		#my $body    =  "\nThe IPMI \"$say_var\" value has disappeared!\n";
 		#send_debug_email($conf, $subject, $body);
@@ -7329,6 +7398,20 @@ $changes";
 		send_email($conf);
 		#record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
 		#die "testing...\n";
+	}
+	
+	# Send the debug email, if needed.
+	if ($debug_changes)
+	{
+		my $subject = "State Change!";
+		my $body    = "
+Changes have been detected in the Anvil!. If you anticipated this
+change then there is no reason for concern. If this change was 
+unexpected, please feel free to contact support.
+
+----------------------------------------------------------------------
+$debug_changes";
+		send_debug_email($conf, $subject, $body);
 	}
 	
 	return(0);
@@ -7378,6 +7461,9 @@ sub check_temperature
 				$conf->{'system'}{critical_event}     = 1;
 				$conf->{'system'}{migration_target}   = 0;
 				$conf->{'system'}{emergency_shutdown} = 1;
+				record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+				record($conf, "$THIS_FILE ".__LINE__."; ### $message_upper_to_power_down\n");
+				record($conf, "$THIS_FILE ".__LINE__."; ###   $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n");
 				$changes .= "\n#######################################################################\n";
 				$changes .= "$message_upper_to_power_down\n";
 				$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";
@@ -7430,6 +7516,9 @@ sub check_temperature
 			$conf->{'system'}{emergency_shutdown} = 1;
 			$conf->{'system'}{critical_event}     = 1;
 			$conf->{'system'}{migration_target}   = 0;
+			record($conf, "$THIS_FILE ".__LINE__."; ### Emergency shut down required!\n");
+			record($conf, "$THIS_FILE ".__LINE__."; ### $message_over_power_down\n");
+			record($conf, "$THIS_FILE ".__LINE__."; ###   $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n");
 			$changes .= "\n#######################################################################\n";
 			$changes .= "$message_over_power_down\n";
 			$changes .= "  $old_state, $old_temp $units\t-> $new_state, $new_temp $units\n";

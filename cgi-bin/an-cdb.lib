@@ -365,7 +365,7 @@ sub restart_tomcat
 		# Open the table for telling the user that tomcat is restarting.
 		print template($conf, "common.html", "restart-guacamole-header");
 	}
-	my $sc = "$conf->{path}{restart_tomcat} restart";
+	my $sc = "$conf->{path}{restart_guacd} restart && $conf->{path}{restart_tomcat} restart";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
@@ -3788,6 +3788,7 @@ sub add_vm_to_cluster
 		if ($this_node ne $node)
 		{
 			$peer = $this_node;
+			$node = $this_node if not $node;
 		}
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
@@ -4019,6 +4020,7 @@ sub add_vm_to_cluster
 		shell_call	=>	"virsh undefine $vm; echo virsh:\$?",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	my $undefine_ok = 0;
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
@@ -4029,7 +4031,16 @@ sub add_vm_to_cluster
 		{
 			$virsh_exit_code = $1;
 		}
+		if ($line =~ /cannot undefine transient domain/)
+		{
+			# This seems to be shown when trying to undefine a
+			# server that has already been undefined, so treat
+			# this like a success.
+			$undefine_ok = 1;
+		}
 	}
+	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code], undefine_ok: [$undefine_ok]\n");
+	$virsh_exit_code = "0" if $undefine_ok;
 	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
@@ -4039,6 +4050,8 @@ sub add_vm_to_cluster
 	}
 	else
 	{
+		$virsh_exit_code = "--" if not $virsh_exit_code;
+		record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 		my $say_error = get_string($conf, {key => "message_0103", variables => {
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
@@ -4059,7 +4072,9 @@ sub add_vm_to_cluster
 	   $ccs_call .= "exclusive=\"0\" ";
 	   $ccs_call .= "recovery=\"restart\" ";
 	   $ccs_call .= "max_restarts=\"2\" ";
-	   $ccs_call .= "restart_expire_time=\"600\"; echo ccs:\$?";
+	   $ccs_call .= "restart_expire_time=\"600\" ";
+	   #$ccs_call .= "no_kill=\"1\"; echo ccs:\$?";
+	   $ccs_call .= "; echo ccs:\$?";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$ccs_call]\n");
 	($error, $ssh_fh, $output) = remote_call($conf, {
 		node		=>	$node,
@@ -4101,13 +4116,13 @@ sub add_vm_to_cluster
 				# Show any output from the call.
 				$line = parse_text_line($conf, $line);
 				print template($conf, "server.html", "one-line-message", {
-					message	=>	"$line",
+					message	=>	"<span class=\"fixed_width\">$line</span>",
 				});
 			}
 		}
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
-	$ccs_exit_code = "-" if not defined $ccs_exit_code;
+	$ccs_exit_code = "--" if not defined $ccs_exit_code;
 	if ($ccs_exit_code eq "0")
 	{
 		print template($conf, "server.html", "one-line-message", {
@@ -4120,7 +4135,7 @@ sub add_vm_to_cluster
 	else
 	{
 		# ccs call failed
-		my $say_error = get_string($conf, {key => "message_0103", variables => {
+		my $say_error = get_string($conf, {key => "message_0112", variables => {
 			ccs_exit_code	=>	$ccs_exit_code,
 		}});
 		print template($conf, "server.html", "add-server-to-anvil-ccs-call-failed", {
@@ -8347,7 +8362,7 @@ sub display_vm_state_and_controls
 			my $say_target = get_string($conf, {key => "button_0025", variables => {
 				migration_target	=>	$say_migration_target,
 			}});
-			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}\">$say_target</a>";
+			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true\">$say_target</a>";
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
 		my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
@@ -8362,7 +8377,7 @@ sub display_vm_state_and_controls
 		my $start_button     = "<span class=\"disabled_button\">#!string!button_0029!#</span>";
 		if ($conf->{vm}{$vm}{boot_target})
 		{
-			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long\">#!string!button_0029!#</a>";
+			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true\">#!string!button_0029!#</a>";
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
@@ -8720,13 +8735,13 @@ sub display_node_controls
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
-		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name\" class=\"button\">#!string!button_0031!#</a>" : "<span class=\"disabled_button\">#!string!button_0031!#</span>";
+		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name&confirm=true\" class=\"button\">#!string!button_0031!#</a>" : "<span class=\"disabled_button\">#!string!button_0031!#</span>";
 		   $say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>" if $disable_join;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
 		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">#!string!button_0032!#</a>"  : "<span class=\"disabled_button\">#!string!button_0032!#</span>";
 		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
 		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">#!string!button_0033!#</a>" : "<span class=\"disabled_button\">#!string!button_0033!#</span>";
-		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name\" class=\"button\">#!string!button_0034!#</a>"   : "<span class=\"disabled_button\">#!string!button_0034!#</span>";
+		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true\" class=\"button\">#!string!button_0034!#</a>"   : "<span class=\"disabled_button\">#!string!button_0034!#</span>";
 		
 		# At all times, the option to fence the node is made available.
 		my $say_fence     = $conf->{node}{$node}{enable_poweron}  ? "<span class=\"highlight_unavailable\">#!string!button_0037!#</span>" : "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\" class=\"highlight_dangerous\">#!string!button_0037!#</a>";
@@ -8737,11 +8752,11 @@ sub display_node_controls
 			# First row.
 			if ($dual_boot)
 			{
-				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot\" class=\"button\">#!string!button_0035!#</a>";
+				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true\" class=\"button\">#!string!button_0035!#</a>";
 			}
 			if ($dual_join)
 			{
-				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join\" class=\"button\">#!string!button_0036!#</a>";
+				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true\" class=\"button\">#!string!button_0036!#</a>";
 				# Disable the per-node "join" options".
 				$say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>";
 				$disable_join  = 1;
