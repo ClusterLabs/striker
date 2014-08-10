@@ -1,2 +1,374 @@
 <!-- These templates are for the media library -->
 
+<!-- start download-website-header -->
+<table align="center">
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!title_0121!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			<span class="highlight_warning"><b>#!string!message_0106!#</b></span><br />
+			<br />
+			#!string!message_0288!#<br />
+			<br />
+			<span class="fixed_width">#!replace!file!#</span><br />
+			<br />
+			#!string!message_0289!#<br />
+			<br />
+			<span class="fixed_width">#!replace!url!#</span><br />
+			<br />
+<!-- end download-website-header -->
+
+<!-- start download-website-complete -->
+			<span class="highlight_good">#!string!message_0290!#<br />
+<!-- end download-website-complete -->
+
+<!-- start download-website-progress -->
+			#!replace!progress!#<br />
+			#!replace!remaining!#<br />
+<!-- end download-website-progress -->
+
+<!-- start download-website-footer -->
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good">
+			Done!
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end download-website-footer -->
+
+<!-- start download-website-confirm -->
+<table align="center">
+	<tr>
+		<td colspan="3">
+			<span class="highlight_ready_bold">#!replace!title!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!row_0137!#
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!message_0295!#<br />
+			<span class="fixed_width">#!replace!file!#</span><br />
+			#!string!message_0296!#<br />
+			<span class="fixed_width">#!replace!base!#</span><br />
+			#!replace!download!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning">
+			<b>#!replace!row_0120!#!</b>
+		</td>
+		<td colspan="2" align="left">
+			<br />
+			<i>#!string!explain_0044!#</i><br />
+			<br />
+			#!string!explain_0045!#<br />
+			<br />
+			#!string!explain_0046!#<br />
+			#!string!explain_0047!#<br />
+			#!string!explain_0048!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			<div class="align_right"><a href="#!replace!confirm_url!#"><b>#!string!button_0004!#</b></a></div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end download-website-confirm -->
+
+<!-- start save-to-disk-header -->
+<table align="center">
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!title_0123!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!message_0106!#<br />
+			<br />
+			#!string!explain_0049!#<br />
+			<br />
+<!-- end save-to-disk-header -->
+
+<!-- start save-to-disk-no-file -->
+	</tr>
+	<tr>
+		<td>
+			<br />
+			<span class="highlight_warning_bold">#!string!title_0124!#</span><br />
+			<br />
+			#!string!message_0297!#<br />
+			#!string!message_0298!#<br />
+			<br />
+		</td>
+	</tr>
+<!-- end save-to-disk-no-file -->
+
+<!-- start save-to-disk-starting -->
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good">
+			#!string!title_0125!#<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			#!string!message_0299!#<br />
+			<br />
+			#!string!explain_0049!#<br />
+			<br />
+<!-- end save-to-disk-starting -->
+
+<!-- start save-to-disk-failed -->
+			<br />
+			#!string!message_0230!#<br />
+			<br />
+<!-- end save-to-disk-failed -->
+
+<!-- start save-to-disk-success -->
+			<br />
+			#!string!message_0231!#<br />
+			<br />
+<!-- end save-to-disk-success -->
+
+<!-- start save-to-disk-footer -->
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good">
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end save-to-disk-footer -->
+
+<!-- start image-and-upload-name-conflict -->
+<table align="center">
+	<tr>
+		<td class="highlight_bad">
+			#!string!title_0126!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0232!#<br />
+			#!string!message_0233!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-name-conflict -->
+
+<!-- start image-and-upload-drive-gone -->
+<table align="center">
+	<tr>
+		<td class="highlight_warning">
+			#!string!title_0127!#
+		</td>
+		<td>
+			<br />
+			#!replace!missing_drive!#<br />
+			#!string!explain_0050!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<div class="align_right">#!replace!try_again!#</div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-drive-gone -->
+
+<!-- start image-and-upload-reload-needed -->
+<table align="center">
+	<tr>
+		<td class="highlight_warning">
+			#!string!title_0128!#
+		</td>
+		<td>
+			<br />
+			#!replace!drive_not_ready!#<br />
+			#!string!message_0236!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<div class="align_right">#!replace!try_again!#</div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-reload-needed -->
+
+<!-- start image-and-upload-no-disc -->
+<table align="center">
+	<tr>
+		<td class="highlight_warning">
+			#!string!title_0129!#
+		</td>
+		<td>
+			<br />
+			#!replace!no_disk!#<br />
+			#!string!message_0238!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<div class="align_right">#!replace!try_again!#</div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-no-disc -->
+
+<!-- start image-and-upload-proceed-header -->
+<table align="center">
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!title_0130!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			#!string!message_0106!#<br/>
+			#!string!explain_0051!#<br />
+			<br />
+<!-- end image-and-upload-proceed-header -->
+
+<!-- start image-and-upload-proceed-uploading -->
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!title_0131!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			#!string!explain_0052!#<br />
+			#!string!explain_0053!#<br />
+			<br />
+<!-- end image-and-upload-proceed-uploading -->
+
+<!-- start image-and-upload-proceed-upload-failed -->
+			<br />
+			#!string!message_0239!#<br />
+			<br />
+<!-- end image-and-upload-proceed-upload-failed -->
+
+<!-- start image-and-upload-proceed-upload-success -->
+			<br />
+			#!string!message_0240!#<br />
+			<br />
+<!-- end image-and-upload-proceed-upload-success -->
+
+<!-- start image-and-upload-proceed-footer -->
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!message_0120!#<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-proceed-footer -->
+
+<!-- start image-and-upload-confirm -->
+<table align="center">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_warning"><b>#!string!title_0133!#</b></span>
+		</td>
+		<td colspan="2" align="left">
+			<br />
+			#!string!explain_0054!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_ready_bold"><b>#!string!row_0138!#</b></span>
+		</td>
+		<td colspan="2">
+			</br />
+			#!string!message_0241!#<br >
+			<i>#!string!message_0242!#</i><br />
+			</br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_ready_bold"><b>#!string!row_0139!#</b></span>
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!message_0243!#<br />
+			<i>#!string!message_0244!#</i><br />
+			<br />
+		</td>
+	</tr>
+	<form method="post">
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0140!#
+		</td>
+		<td>
+			#!replace!input_name!#
+		</td>
+		<td class="subtle_text" style="text-align: left;">
+			#!string!message_0245!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			#!replace!hidden_inputs!#
+			<div class="align_right">#!replace!submit_button!#</div>
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end image-and-upload-confirm -->
+
+<!-- start  -->
+<!-- end  -->
+
+<!-- start  -->
+<!-- end  -->
+
+<!-- start  -->
+<!-- end  -->
+
+<!-- start  -->
+<!-- end  -->

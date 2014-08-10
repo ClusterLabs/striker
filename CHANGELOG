@@ -14,6 +14,9 @@ v1.1.5 - <in progress>
   (as per: https://bugzilla.redhat.com/show_bug.cgi?id=1079032)
 - Removed the confirmation requirements for several fairly-safe commands, line
   powering on nodes, booting servers, etc.
+- Updated the IPMI scanner code to redirect sensor loss/restore messages to a
+  now-smarter debug email address.
+- Made all buttons and images come from skins
 
 
 v1.1.4 - 2014-05-27

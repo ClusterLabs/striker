@@ -3871,7 +3871,7 @@ MD RAID Device: /dev/$this_md
 			my $say_failed = $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{failed} ? "Yes" : "No";
 			$body .= "                - Device: $device, Order: $conf->{data}{mdstat}{new}{device}{$this_md}{device}{$device}{order}, Failed? $say_failed\n";
 		}
-		$body .= "                Blocks:        [$conf->{data}{mdstat}{new}{device}{$this_md}{block_count}
+		$body .= "                Blocks:        $conf->{data}{mdstat}{new}{device}{$this_md}{block_count}
                 Total Disks:   $conf->{data}{mdstat}{new}{device}{$this_md}{total_disks}
                 Current Disks: $conf->{data}{mdstat}{new}{device}{$this_md}{current_disks}
                 Superblock:    $conf->{data}{mdstat}{new}{device}{$this_md}{superblock}

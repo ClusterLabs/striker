@@ -351,17 +351,16 @@ else
                 fi
         fi
 
-        # NOTE: This appears to still apply to 0.9.1
-        if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+        if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.9.2.jar" ]
         then
                 echo " - noauth .jar already exists"
         else
-                wget https://alteeve.ca/files/guacamole-auth-noauth-0.8.0.jar -O /var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar
-                if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar" ]
+                wget https://alteeve.ca/files/guacamole-auth-noauth-0.9.2.jar -O /var/lib/guacamole/classpath/guacamole-auth-noauth-0.9.2.jar
+                if [ -e "/var/lib/guacamole/classpath/guacamole-auth-noauth-0.9.2.jar" ]
                 then
                         echo " - noauth .jar downloaded."
                 else
-                        echo " - Failed to download or save: [/var/lib/guacamole/classpath/guacamole-auth-noauth-0.8.0.jar]."
+                        echo " - Failed to download or save: [/var/lib/guacamole/classpath/guacamole-auth-noauth-0.9.2.jar]."
                         exit
                 fi
         fi

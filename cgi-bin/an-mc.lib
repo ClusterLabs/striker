@@ -86,27 +86,11 @@ sub download_url
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	
 	my ($node) = read_files_on_shared($conf);
-	print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Downloading from a website.
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<br />
-			<span class=\"highlight_warning\"><b>Please be patient!</b></span><br />
-			<br />
-			I will now download:<br />
-			<br />
-			<span class=\"fixed_width\">$file</span><br />
-			<br />
-			From the website:<br />
-			<br />
-			<span class=\"fixed_width\">$url</span><br />
-			<br />
-";
+	print template($conf, "media-library.html", "download_website_header", {
+		file	=>	$file,
+		url	=>	$url,
+	});
+
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
 	my ($error, $ssh_fh, $output) = remote_call($conf, {
@@ -141,7 +125,7 @@ sub download_url
 			#record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent].\n");
 			if ($percent eq "100")
 			{
-				print "<span class=\"highlight_good\">Download Completed.<br />\n";
+				print template($conf, "media-library.html", "download-website-complete");
 			}
 			elsif ($percent >= $next_percent)
 			{
@@ -181,44 +165,67 @@ sub download_url
 					$seconds = $1;
 				}
 				#record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> h[$hours], m[$minutes], s[$seconds]\n");
-				my $say_hour   = $hours   == 1 ? "hour"   : "hours";
-				my $say_minute = $minutes == 1 ? "minute" : "minutes";
-				my $say_second = $seconds == 1 ? "second" : "seconds";
+				my $say_hour   = $hours   == 1 ? "#!string!suffix_0010!#" : "#!string!suffix_0011!#";
+				my $say_minute = $minutes == 1 ? "#!string!suffix_0012!#" : "#!string!suffix_0013!#";
+				my $say_second = $seconds == 1 ? "#!string!suffix_0014!#" : "#!string!suffix_0015!#";
 				my $say_time_remaining;
 				if ($hours)
 				{
-					$say_time_remaining = "<b>$hours</b> $say_hour, <b>$minutes</b> $say_minute and <b>$seconds</b> $say_second"; 
+					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+						hours		=>	$hours,
+						say_hour	=>	$say_hour,
+						minutes		=>	$minutes,
+						say_minute	=>	$say_minute,
+						seconds		=>	$minutes,
+						say_second	=>	$say_minute,
+					}});
 				}
 				elsif ($minutes)
 				{
-					$say_time_remaining = "<b>$minutes</b> $say_minute and <b>$seconds</b> $say_second"; 
+					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+						hours		=>	"0",
+						say_hour	=>	$say_hour,
+						minutes		=>	$minutes,
+						say_minute	=>	$say_minute,
+						seconds		=>	$minutes,
+						say_second	=>	$say_minute,
+					}});
 				}
 				else
 				{
-					$say_time_remaining = "<b>$seconds</b> $say_second"; 
+					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+						hours		=>	"0",
+						say_hour	=>	$say_hour,
+						minutes		=>	"0",
+						say_minute	=>	$say_minute,
+						seconds		=>	$minutes,
+						say_second	=>	$say_minute,
+					}});
 				}
 				#record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> [$say_time_remaining]\n");
-				print "Progress: <span class=\"fixed_width\">$percent%</span> finished, <span class=\"fixed_width\">$say_received</span> downloaded at ~ <span class=\"fixed_width\">$say_rate MiB/sec</span>.<br />\n";
-				print "Approximately $say_time_remaining remaining.<br />\n";
+				my $say_progress = get_string($conf, {key => "message_0291", variables => {
+					percent		=>	$percent,
+					received	=>	$say_received,
+					rate		=>	$say_rate,
+				}});
+				my $say_remaining = get_string($conf, {key => "message_0292", variables => {
+					time_remaining	=>	$say_time_remaining,
+				}});
+				print template($conf, "media-library.html", "download_website_progress", {
+					progress	=>	$say_progress,
+					remaining	=>	$say_remaining,
+				});
 			}
 		}
 		else
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			print "<span class=\"fixed_width\">$line</span><br />\n";
+			print template($conf, "common.html", "shell-call-output", {
+				line	=>	$line,
+			});
 		}
 	}
-	print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good\">
-			Done!
-		</td>
-	</tr>
-</table>
-<br />
-";
+	print template($conf, "media-library.html", "download-website-footer");
 	
 	return (0);
 }
@@ -231,53 +238,20 @@ sub confirm_download_url
 	my $cluster = $conf->{cgi}{cluster};
 	my $url     = $conf->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to download from the web directly to the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.</span>
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Download
-		</td>
-		<td colspan=\"2\">
-			<br />
-			The file:<br />
-			<span class=\"fixed_width\">$file</span><br />
-			Found at the web address:<br />
-			<span class=\"fixed_width\">$base</span><br />
-			Will be downloaded directly to the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning\">
-			<b>Caution!</b>
-		</td>
-		<td colspan=\"2\" align=\"left\">
-			<br />
-			<i>Downloading a file from the internet can take a long time!</i><br />
-			<br />
-			Please be sure that the web address above is a direct link to the file you want to download.<br />
-			<br />
-			Some webistes use referal links which may not work here.<br />
-			If the file you download doesn't work, please delete it from the <i>Anvil!</i> and then download the file yourself.<br />
-			Once you have the file, you can upload it to the <i>Anvil!</i> from your computer.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\">
-			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+	
+	my $say_title = get_string($conf, {key => "title_0122", variables => {
+		anvil	=>	$cluster,
+	}});
+	my $say_download = get_string($conf, {key => "message_0294", variables => {
+		anvil	=>	$cluster,
+	}});
+	
+	print template($conf, "media-library.html", "download-website-confirm", {
+		title		=>	$say_title,
+		base		=>	$base,
+		download	=>	$say_download,
+		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+	});
 
 	return (0);
 }
@@ -288,40 +262,16 @@ sub save_file_to_disk
 	my ($conf) = @_;
 	
 	my ($node) = read_files_on_shared($conf);
-	print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Saving the file to the <i>Anvil!</i>'s storage.
-		</td>
-	</tr>
-	<tr>
-		<td>
-			Please be patient!<br />
-			<br />
-			If the file is big and if your network is slow,<br />
-			This could take a while.<br />
-			<br />
-";
+	print template($conf, "media-library.html", "save-to-disk-header");
+	
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	my $in_fh = $conf->{cgi_fh}{file};
 	
 	if (not $in_fh)
 	{
-		print "
-	</tr>
-	<tr>
-		<td>
-			<br />
-			<span class=\"highlight_warning_bold\">No File Defined!</span><br />
-			<br />
-			It appears you clicked 'Upload' without first selecting a file.<br />
-			Please go back and try again.<br />
-			<br />
-		</td>
-	</tr>
-";
+		# User didn't specify a file.
+		print template($conf, "media-library.html", "save-to-disk-no-file");
 	}
 	else
 	{
@@ -337,55 +287,23 @@ sub save_file_to_disk
 			print $fh $_;
 		}
 		$fh->close;
-		print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good\">
-			Upload to the server is starting.<br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<br />
-			Now uploading to the <i>Anvil!</i>.<br />
-			<br />
-			If the connection between Striker and the <i>Anvil!</i> is slow<br />
-			and if the file is big, this might also take a while to finish.<br />
-			<br />
-";
+		
+		# Tell the user we're starting.
+		print template($conf, "media-library.html", "save-to-disk-starting");
+		
 		my $failed = upload_to_shared($conf, $node, $out_file);
 		if ($failed)
 		{
-			print "
-			<br />
-			It looks like the upload failed.<br />
-			<br />
-";
+			# Something went wrong
+			print template($conf, "media-library.html", "save-to-disk-failed");
 		}
 		else
 		{
-			# Looks like? Really? do a 'sum' of the files to confirm.
-			print "
-			<br />
-			It looks like the upload succeeded.<br />
-			<br />
-";
+			# TODO: "Looks like"? Really? do a 'sum' of the files to confirm.
+			print template($conf, "media-library.html", "save-to-disk-success");
 		}
-		print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_good\">
-			Upload to the <i>Anvil!</i> is finished.<br />
-		</td>
-	</tr>
-";
 	}
-	print "
-</table>
-<br />
-";
+	print template($conf, "media-library.html", "save-to-disk-footer");
 	
 	return (0);
 }
@@ -406,22 +324,11 @@ sub image_and_upload
 	my ($node) = read_files_on_shared($conf);
 	if (exists $conf->{files}{shared}{$name})
 	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_bad\">
-			Name Conflict
-		</td>
-		<td>
-			<br />
-			There is a file on the <i>Anvil!</i> called <span class=\"fixed_width\">$name</span> on the <i>Anvil!</i>.<br />
-			Please go back and give the file a different name.<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
+		# Tell the user a file with that name already exists.
+		# the variables hash ref feeds 'message_0232'.
+		print template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
+			name	=>	$name,
+		});
 	}
 	else
 	{
@@ -430,154 +337,92 @@ sub image_and_upload
 		
 		if (not exists $conf->{drive}{$dev})
 		{
-			print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_warning\">
-			Drive not found
-		</td>
-		<td>
-			<br />
-			The drive in <span class=\"fixed_width\">$dev</span> appears to no longer exist!<br />
-			If this is a USB drive, it may have been unplugged.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"2\">
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
-		</td>
-	</tr>
-</table>
-<br />
-";
+			# The drive vanished.
+			my $say_missing_drive = get_string($conf, {key => "message_0234", variables => {
+				device	=>	$dev,
+			}});
+			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_text	=>	"#!string!button_0043!#",
+			}, "", 1);
+			print template($conf, "media-library.html", "image-and-upload-drive-gone", {
+				missing_drive	=>	$say_missing_drive,
+				try_again	=>	$say_try_again,
+			});
 		}
 		elsif ($conf->{drive}{$dev}{reload})
 		{
-			# Need to reload to catch the disc.
-			print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_warning\">
-			Reload needed
-		</td>
-		<td>
-			<br />
-			The drive in <span class=\"fixed_width\">$dev</span> appears to not be ready.<br />
-			Please reload to try and read the disc again.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"2\">
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
-		</td>
-	</tr>
-</table>
-<br />
-";
+			# Need to reload to read the disc.
+			my $say_drive_not_ready = get_string($conf, {key => "message_0235", variables => {
+				device	=>	$dev,
+			}});
+			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_text	=>	"#!string!button_0043!#",
+			}, "", 1);
+			print template($conf, "media-library.html", "image-and-upload-reload-needed", {
+				drive_not_ready	=>	$say_drive_not_ready,
+				try_again	=>	$say_try_again,
+			});
 		}
 		elsif ($conf->{drive}{$dev}{no_disc})
 		{
-			print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_warning\">
-			No Disc
-		</td>
-		<td>
-			<br />
-			The disc in <span class=\"fixed_width\">$dev</span> appears to have been removed.<br />
-			Please reinsert the disc and then reload this page.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"2\">
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}\"><b>Try Again</b></a></div>
-		</td>
-	</tr>
-</table>
-<br />
-";
+			# No disc in the drive
+			my $say_no_disc = get_string($conf, {key => "message_0237", variables => {
+				device	=>	$dev,
+			}});
+			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_text	=>	"#!string!button_0043!#",
+			}, "", 1);
+			print template($conf, "media-library.html", "image-and-upload-no-disc", {
+				no_disk		=>	$say_no_disc,
+				try_again	=>	$say_try_again,
+			});
 		}
 		else
 		{
+			# Ok, we're good to go.
 			# Finally...
 			#my $out_file = $conf->{path}{media}.$name;
 			my $out_file = "'/tmp/$name'";
 			my $in_dev   = $dev;
-			print "
-<table align=\"center\">
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Creating Image of Physical Disc...
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<br />
-			Please be patient! This could take over ten minutes, depending on the size of the disc and the speed of your optical drive.<br />
-			<br />
-";
+			print template($conf, "media-library.html", "image-and-upload-proceed-header");
+			
 			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-#			print "skipped...<br />\n";
+
 			my $fh = IO::Handle->new();
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				print "<span class=\"code\">$line</span><br />";
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	$line,
+				});
 			}
 			$fh->close;
-			print "
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Uploading Image to <i>Anvil!</i>...
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<br />
-			Uploading image file: <span class=\"fixed_width\">$name</span> to the <span class=\"fixed_width\">$conf->{cgi}{cluster}</span> <i>Anvil!</i>.<br />
-			This could take a long time, depending on the speed of the connection between Striker and the <i>Anvil!</i>.<br />
-			<br />
-";
-			my $failed = upload_to_shared($conf, $node, $out_file);
+			# Starting to upload now.
+			# The variables hash feeds 'explain_0052'.
+			print template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
+				name	=>	$name,
+				anvil	=>	$conf->{cgi}{cluster},
+			});
+
+			my ($failed) = upload_to_shared($conf, $node, $out_file);
 			if ($failed)
 			{
-				print "
-			<br />
-			It looks like the upload failed.<br />
-			<br />
-";
+				# Upload appears to have failed.
+				print template($conf, "media-library.html", "image-and-upload-proceed-upload-failed");
 			}
 			else
 			{
 				# Looks like? Really? do a 'sum' of the files to confirm.
-				print "
-			<br />
-			It looks like the upload succeeded, unlinking the source image.<br />
-			<br />
-";
+				print template($conf, "media-library.html", "image-and-upload-proceed-upload-success");
 				unlink $out_file;
 			}
-			print "
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Done!<br />
-		</td>
-	</tr>
-</table>
-<br />
-";
+			print template($conf, "media-library.html", "image-and-upload-proceed-footer");
 		}
 	}
 	
@@ -610,7 +455,9 @@ sub upload_to_shared
 	{
 		chomp;
 		my $line = $_;
-		print "<span class=\"code\">$line</span><br />";
+		print template($conf, "common.html", "shell-call-output", {
+			line	=>	$line,
+		});
 	}
 	$fh->close;
 	
@@ -625,70 +472,59 @@ sub confirm_image_and_upload
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to create a disc image and upload it to the <i>Anvil!</i>: [$conf->{cgi}{cluster}].</span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_warning\"><b>Caution!</b></span>
-		</td>
-		<td colspan=\"2\" align=\"left\">
-			<br />
-			This process could take quite some time to complete!<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_ready_bold\"><b>Step 1</b></span>
-		</td>
-		<td colspan=\"2\">
-			</br />
-			The disc will be converted into an image file.<br >
-			<i>For a DVD, this could take around 10 minutes to complete.</i><br />
-			</br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_ready_bold\"><b>Step 2</b></span>
-		</td>
-		<td colspan=\"2\">
-			</br />
-			The image will be uploaded to the <i>Anvil!</i>'s <span class=\"fixed_width\">/shared/files/</span> directory.<br />
-			<i>If the <i>Anvil!</i> is remote and your internet connection is slow, this could take a very long time.</i><br />
-			<br />
-		</td>
-	</tr>
-	<form method=\"post\">
-	<tr>
-		<td class=\"highlight_good_bold\">
-			Image Name:
-		</td>
-		<td>
-			<input type=\"text\" name=\"name\" value=\"$name\" style=\"width: 250px;\">
-		</td>
-		<td class=\"subtle_text\" style=\"text-align: left;\">
-			This is the name that will be given to the DVD or CD image.
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\">
-			<input type=\"hidden\" name=\"dev\" value=\"$dev\">
-			<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
-			<input type=\"hidden\" name=\"task\" value=\"image_and_upload\">
-			<input type=\"hidden\" name=\"confirm\" value=\"true\">
-			<div class=\"align_right\"><input type=\"submit\" name=\"null\" value=\"Confirm\" class=\"button\"></div>
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+	
+	my $say_title = get_string($conf, {key => "title_0132", variables => {
+		anvil	=>	$conf->{cgi}{cluster},
+	}});
+	my $input_name = template($conf, "common.html", "form-input-no-class-defined-width", {
+		type	=>	"text",
+		name	=>	$name,
+		id	=>	$name,
+		value	=>	$name,
+		width	=>	"250px",
+	});
+	my $hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+		type	=>	"hidden",
+		name	=>	"dev",
+		id	=>	"dev",
+		value	=>	"$dev",
+	});
+	$hidden_inputs .= "\n";
+	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+		type	=>	"hidden",
+		name	=>	"cluster",
+		id	=>	"cluster",
+		value	=>	"$conf->{cgi}{cluster}",
+	});
+	$hidden_inputs .= "\n";
+	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+		type	=>	"hidden",
+		name	=>	"task",
+		id	=>	"task",
+		value	=>	"image_and_upload",
+	});
+	$hidden_inputs .= "\n";
+	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+		type	=>	"hidden",
+		name	=>	"confirm",
+		id	=>	"confirm",
+		value	=>	"true",
+	});
+	my $submit_button = template($conf, "common.html", "form-input", {
+		type	=>	"submit",
+		name	=>	"null",
+		id	=>	"null",
+		value	=>	"Confirm",
+		class	=>	"bold_button",
+	});
+
+	# Display the confirmation window now.
+	print template($conf, "media-library.html", "image-and-upload-confirm", {
+		title		=>	$say_title,
+		input_name	=>	$input_name,
+		hidden_inputs	=>	$hidden_inputs,
+		submit_button	=>	$submit_button,
+	});
 	
 	return (0);
 }
@@ -704,7 +540,7 @@ sub confirm_delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.</span>
+			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.</span>
 		</td>
 	</tr>
 	<tr>
@@ -713,7 +549,7 @@ sub confirm_delete_file
 		</td>
 		<td colspan=\"2\" align=\"left\">
 			<br />
-			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.<br />
+			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.<br />
 			<br />
 			<i>This action can not be undone!</i><br />
 			<br />
@@ -790,7 +626,7 @@ sub delete_file
 <table align=\"center\">
 	<tr>
 		<td colspan=\"3\">
-			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i> failed!</span>
+			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!# failed!</span>
 		</td>
 	</tr>
 	<tr>
@@ -799,7 +635,7 @@ sub delete_file
 		</td>
 		<td colspan=\"2\" align=\"left\">
 			<br />
-			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i> is already gone.<br />
+			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!# is already gone.<br />
 			It is possible that another user deleted this file already.<br />
 			<br />
 		</td>
@@ -1071,7 +907,7 @@ sub read_shared
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Create an image of your disc and upload it to the <i>Anvil!</i>
+			Create an image of your disc and upload it to the #!string!brand_0003!#
 		</td>
 	</tr>
 	<tr>
@@ -1139,7 +975,7 @@ sub read_shared
 <table width=\"100%\">
 	<tr>
 		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Download directly from a website address to the <i>Anvil!</i>.
+			Download directly from a website address to the #!string!brand_0003!#.
 		</td>
 	</tr>
 	<form method=\"post\" enctype=\"multipart/form-data\">
@@ -1153,7 +989,7 @@ sub read_shared
 			<input type=\"text\" name=\"url\" value=\"\" style=\"width: 250px;\">
 		</td>
 		<td>
-			<input type=\"submit\" name=\"null\" value=\"Download\" class=\"button\">
+			<input type=\"submit\" name=\"null\" value=\"Download\" class=\"bold_button\">
 		</td>
 	</tr>
 	<tr>
@@ -1191,7 +1027,7 @@ sub read_shared
 			<input type=\"file\" name=\"file\" value=\"\">
 		</td>
 		<td>
-			<input type=\"submit\" name=\"null\" value=\"Upload\" class=\"button\">
+			<input type=\"submit\" name=\"null\" value=\"#!string!button_0042!#\" class=\"bold_button\">
 		</td>
 	</tr>
 	<tr>
@@ -1219,7 +1055,7 @@ sub read_shared
 			<span class=\"highlight_warning\">Inaccessible</span>
 		</td>
 		<td>
-			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> <i>Anvil!</i>.
+			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.
 		</td>
 	<tr>
 </table>

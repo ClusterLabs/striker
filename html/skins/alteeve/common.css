@@ -222,11 +222,11 @@ td {
 	white-space: normal;
 }
 
-.button {
+/* This should be called 'bold_button' */
+.bold_button {
 	font-family: 'Dejavu Sans', Arial, Helvetica, Verdana, Sans-Serif;
 	font-size: 14px;
 	background: transparent;
-/* 	background: white; */
 	cursor: pointer;
 	color: #7f117f;
 	border: 0px;
@@ -319,6 +319,4 @@ img {
 	margin-left:5px;
 	background:url(images/tt_bottom.gif) top right no-repeat;
 	overflow:hidden;
-}den;
-};
 }

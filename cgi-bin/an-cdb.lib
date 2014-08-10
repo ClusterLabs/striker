@@ -865,6 +865,7 @@ sub lsi_control_put_disk_offline
 	my $this_adapter      = $conf->{cgi}{adapter};
 	my $this_logical_disk = $conf->{cgi}{logical_disk};
 	
+	record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 	if (($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded") && ($this_logical_disk != 9999))
 	{
 		my $reason = get_string($conf, {key => "lsi_0019"});
@@ -1387,6 +1388,7 @@ sub display_node_health
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
 				my $allow_offline  = 1;
+				#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded")
 				{
 					lsi_control_get_missing_disks($conf, $this_adapter, $this_logical_disk);
@@ -1414,6 +1416,8 @@ sub display_node_health
 				else
 				{
 					# Real logical disk
+					next if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'};
+					#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 					my $title = get_string($conf, {key => "title_0021", variables => {
 							logical_disk	=>	$this_logical_disk,
 						}});
@@ -1452,7 +1456,9 @@ sub display_node_health
 						{
 							$disk_temp_class = "highlight_warning";
 						}
-						my $say_temperature = "<span class=\"$disk_temp_class\">$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} &deg;C ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} &deg;F)</span>";
+						my $say_drive_temp_c = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} : "--";
+						my $say_drive_temp_f = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} : "--";
+						my $say_temperature = "<span class=\"$disk_temp_class\">$say_drive_temp_c &deg;C ($say_drive_temp_f &deg;F)</span>";
 						
 						my $say_location_title = get_string($conf, {key => "row_0066"});
 						my $say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
@@ -1462,13 +1468,22 @@ sub display_node_health
 							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						}
 						
-						my $offline_button = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "row_0067"})."</span>";
+						my $say_offline_disabled_button = template($conf, "common.html", "disabled_button", {
+							button_text	=>	get_string($conf, {key => "row_0067"}),
+						}, "", 1);
+						my $offline_button = $say_offline_disabled_button;
 						if ($allow_offline)
 						{
-							$offline_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk\">".get_string($conf, {key => "button_0006"})."</a>";
+							$offline_button = template($conf, "common.html", "enabled_button_no_class", {
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+								button_text	=>	"#!string!button_0006!#",
+							}, "", 1);
 							if ($this_logical_disk == 9999)
 							{
-								$offline_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk\">".get_string($conf, {key => "button_0007"})."</a>";
+								$offline_button = template($conf, "common.html", "enabled_button_no_class", {
+									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+									button_text	=>	"#!string!button_0007!#",
+								}, "", 1);
 							}
 						}
 						
@@ -1477,13 +1492,27 @@ sub display_node_health
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
 						{
 							$disk_state_class = "highlight_bad";
-							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0008"})."</a>";
+							$say_disk_action = template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action .= template($conf, "common.html", "enabled_button", {
+								button_class	=>	$disk_state_class,
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+								button_text	=>	"#!string!button_0008!#",
+							}, "", 1);
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
 						{
 							$disk_state_class = "highlight_detail";
-							$say_disk_action  =  " - <a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0009"})."</a>";
-							$say_disk_action  .= " - <a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0007"})."</a>";
+							my $say_put_disk_online_button = template($conf, "common.html", "enabled_button", {
+								button_class	=>	$disk_state_class,
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+								button_text	=>	"#!string!button_0009!#",
+							}, "", 1);
+							my $say_spin_disk_down_button = template($conf, "common.html", "enabled_button", {
+								button_class	=>	$disk_state_class,
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+								button_text	=>	"#!string!button_0007!#",
+							}, "", 1);
+							$say_disk_action  =  " - $say_put_disk_online_button - $say_spin_disk_down_button";
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
 						{
@@ -1506,42 +1535,57 @@ sub display_node_health
 									{
 										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
-											$say_disk_action =  "<br />\n" if not $say_disk_action;
-											my $say_button   =  get_string($conf, {key => "button_0010", variables => {
-												logical_disk => $this_logical_disk}
-											});
-											$say_disk_action .= "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk\">$say_button</a><br />\n";
+											$say_disk_action = template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
+											my $say_button   =  get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
+											$say_disk_action .= template($conf, "common.html", "enabled_button", {
+												button_class	=>	"bold_button",
+												button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
+												button_text	=>	$say_button,
+											}, "", 1);
+											$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
 										}
 									}
 								}
 								elsif ($this_logical_disk == 9999)
 								{
-									$say_disk_action =  "<br />\n" if not $say_disk_action;
-									$say_disk_action .= "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0011"})."</a><br />\n";
+									$say_disk_action = template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
+									
+									$say_disk_action .= template($conf, "common.html", "enabled_button_no_class", {
+										button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+										button_text	=>	"#!string!button_0011!#",
+									}, "", 1);
+									$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
 									#$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0011"})."</a>";
 								}
 							}
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
 						{
-							$disk_state_class = "highlight_detail";
-							my $say_button    = get_string($conf, {key => "button_0012"});
-							$say_disk_action  = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">$say_button</a>";
+							$disk_state_class =  "highlight_detail";
+							$say_disk_action  =  template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action  .= template($conf, "common.html", "enabled_button_no_class", {
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+								button_text	=>	"#!string!button_0012!#",
+							}, "", 1);
 							$say_temperature  = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0055"})."</a>";
 							$offline_button   = get_string($conf, {key => "message_0054"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
 						{
-							$disk_state_class = "highlight_detail";
-							$say_disk_action  = "<br />".get_string($conf, {key => "message_0056"});
-							$say_temperature  = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0057"})."</span>";
-							$offline_button   = get_string($conf, {key => "message_0058"});
+							$disk_state_class =  "highlight_detail";
+							$say_disk_action  =  template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action  .= get_string($conf, {key => "message_0056"});
+							$say_temperature  =  "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0057"})."</span>";
+							$offline_button   =  get_string($conf, {key => "message_0058"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
 						{
 							$disk_state_class = "highlight_detail";
 							$say_disk_action  = "";
-							$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk\">".get_string($conf, {key => "button_0013"})."</a>";
+							$offline_button   = template($conf, "common.html", "enabled_button_no_class", {
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+								button_text	=>	"#!string!button_0013!#",
+							}, "", 1);
 						}
 						### TODO: 'Copyback' state is when a drive has been inserted into an
 						### array after a hot-spare took over a failed disk. This state is
@@ -1563,9 +1607,13 @@ sub display_node_health
 						my $say_foreign_state   = "#!string!state_0013!#";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} eq "Foreign")
 						{
-							$foreign_state_class = "highlight_warning_bold_fixed_width_left";
-							$say_foreign_state   = "#!string!state_0012!#";
-							$say_disk_action     = "<br /><a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0038"})."</a>";
+							$foreign_state_class =  "highlight_warning_bold_fixed_width_left";
+							$say_foreign_state   =  "#!string!state_0012!#";
+							$say_disk_action     =  template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action     .= template($conf, "common.html", "enabled_button_no_class", {
+								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+								button_text	=>	"#!string!button_0038!#",
+							}, "", 1);
 						}
 						
 						# Finally, show the drive.
@@ -1573,6 +1621,7 @@ sub display_node_health
 								slot_number		=>	$this_slot_number,
 								enclosure_device_id	=>	$this_enclosure_device_id,
 							}});
+						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = "--" if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1};
 						print template($conf, "lsi-storage.html", "lsi-physical-disk-state", {
 							title				=>	$title,
 							id_led_url			=>	$id_led_url,
@@ -1905,6 +1954,7 @@ sub get_storage_data_lsi
 		elsif ($in_section eq "logical_disk_info")
 		{
 			#print "in_section: [$in_section], line: [$line]\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
 			if ($line =~ /Adapter (\d+) -- Virtual Drive Information/)
 			{
 				$this_adapter = $1;
@@ -1930,6 +1980,7 @@ sub get_storage_data_lsi
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} = $1;
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n";
+				#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 			}
 			elsif ($line =~ /Current Cache Policy\s*:\s*(.*)/)
 			{
@@ -1977,6 +2028,7 @@ sub get_storage_data_lsi
 			### TODO: Confirm that 'Disk Group' in fact relates to
 			###       the logical disk ID.
 			#print "in_section: [$in_section], line: [$line]\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
 			if ($line =~ /Adapter #(\d+)/)
 			{
 				$this_adapter = $1;
@@ -2135,6 +2187,7 @@ sub get_storage_data_lsi
 			{
 				my $temp_c = $1;
 				my $temp_f = $2;
+				#record($conf, "$THIS_FILE ".__LINE__."; temp_c: [$temp_c], temp_f: [$temp_f]\n");
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} = $temp_c;
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} = $temp_f;
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Drive Temperature (*C): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c}]\n";
@@ -3144,16 +3197,26 @@ sub manage_vm
 			# Offer the eject button.
 			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\" disabled>\n";
 			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"fixed_width\">$conf->{vm}{$vm}{cdrom}{$device}{media}</span>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm&do=eject&device=$device\" class=\"button\">#!string!button_0017!#</a>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = "<span class=\"highlight_unavailable\">#!string!button_0018!#</span>\n";
+			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = template($conf, "common.html", "enabled_button", {
+				button_class	=>	"bold_button",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm&do=eject&device=$device",
+				button_text	=>	"#!string!button_0017!#",
+			}, "", 1);
+			my $say_insert_disabled_button = template($conf, "common.html", "disabled_button", {
+				button_text	=>	"#!string!button_0018!#",
+			}, "", 1);
+			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = "$say_insert_disabled_button\n";
 		}
 		else
 		{
 			# Offer the insert button
 			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\">\n";
 			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"highlight_unavailable\">(#!string!state_0007!#)</span>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = "<span class=\"highlight_unavailable\">#!string!button_0017!#</span>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = "<input type=\"submit\" name=\"insert_$device\" value=\"Insert\" class=\"button\">\n";
+			my $say_eject_disabled_button = template($conf, "common.html", "disabled_button", {
+				button_text	=>	"#!string!button_0017!#",
+			}, "", 1);
+			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = "$say_eject_disabled_button\n";
+			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = "<input type=\"submit\" name=\"insert_$device\" value=\"Insert\" class=\"bold_button\">\n";
 		}
 		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
 		{
@@ -3225,7 +3288,10 @@ sub manage_vm
 			# will need to power off and restart the server before
 			# this will work.
 			$message     = "#!string!message_0076!#";
-			$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+			$remote_icon = template($conf, "common.html", "image", {
+				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+				alt_text	=>	"",
+			}, "", 1);
 			
 			# See if I need to update the XML definition file.
 			if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
@@ -3251,20 +3317,40 @@ sub manage_vm
 			if (not $node)
 			{
 				$message     = "#!string!message_0078!#";	# Server is off
-				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png\">";
+				$remote_icon = template($conf, "common.html", "image", {
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
+					alt_text	=>	"",
+				}, "", 1);
 			}
 			elsif ($node =~ /n01/)
 			{
-				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
+				my $image = template($conf, "common.html", "image", {
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+					alt_text	=>	"",
+				}, "", 1);
+				$remote_icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+					button_text	=>	"$image",
+				}, "", 1);
 			}
 			elsif ($node =~ /n02/)
 			{
-				$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
+				my $image = template($conf, "common.html", "image", {
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+					alt_text	=>	"",
+				}, "", 1);
+				$remote_icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+					button_text	=>	"$image",
+				}, "", 1);
 			}
 			else
 			{
 				$message     = "#!string!message_0079!#";	# Think the server is running, but unknown where.
-				$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+				$remote_icon = template($conf, "common.html", "image", {
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+					alt_text	=>	"",
+				}, "", 1);
 			}
 		}
 	}
@@ -3272,7 +3358,10 @@ sub manage_vm
 	{
 		# Not installed.
 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
-		$remote_icon = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+		$remote_icon = template($conf, "common.html", "image", {
+			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+			alt_text	=>	"",
+		}, "", 1);
 	}
 	
 	# Finally, print it all
@@ -3364,9 +3453,11 @@ sub switch_vm_xml_to_vnc
 			{
 				# The port here doesn't matter.
 				$in_graphics    =  0;
-				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
-				$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
-				$new_definition .= "    </graphics>\n";
+				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
+				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' />\n";
+				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='127.0.0.1'>\n";
+				#$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
+				#$new_definition .= "    </graphics>\n";
 				next;
 			}
 			else
@@ -4365,7 +4456,9 @@ sub provision_vm
 		}
 		$provision .= " \\\\\n";
 	}
-	$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	$provision .= "  --graphics vnc > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	#$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one
@@ -4446,11 +4539,25 @@ sub provision_vm
 		my ($guacamole_url) = get_guacamole_link($conf, $node);
 		if ($node =~ /n01/)
 		{
-			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
+			my $image = template($conf, "common.html", "image", {
+				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+				alt_text	=>	"",
+			}, "", 1);
+			$icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+				button_text	=>	"$image",
+			}, "", 1);
 		}
 		elsif ($node =~ /n02/)
 		{
-			$icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
+			my $image = template($conf, "common.html", "image", {
+				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+				alt_text	=>	"",
+			}, "", 1);
+			$icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+				button_text	=>	"$image",
+			}, "", 1);
 		}
 		else
 		{
@@ -5349,7 +5456,10 @@ sub start_vm
 					# will need to power off and restart the server before
 					# this will work.
 					$remote_message = get_string($conf, {key => "message_0076"});
-					$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+					$remote_icon    = template($conf, "common.html", "image", {
+						image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+						alt_text	=>	"",
+					}, "", 1);
 					
 					# See if I need to update the XML definition file.
 					if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
@@ -5375,20 +5485,40 @@ sub start_vm
 					if (not $node)
 					{
 						$remote_message = get_string($conf, {key => "message_0078"});
-						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png\">";
+						$remote_icon    = template($conf, "common.html", "image", {
+							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
+							alt_text	=>	"",
+						}, "", 1);
 					}
 					elsif ($node =~ /n01/)
 					{
-						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png\"></a>";
+						my $image = template($conf, "common.html", "image", {
+							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+							alt_text	=>	"",
+						}, "", 1);
+						$remote_icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+							button_text	=>	"$image",
+						}, "", 1);
 					}
 					elsif ($node =~ /n02/)
 					{
-						$remote_icon = "<a href=\"$guacamole_url?id=c\%2F$say_vm\" target=\"_new\"><img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png\"></a>";
+						my $image = template($conf, "common.html", "image", {
+							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+							alt_text	=>	"",
+						}, "", 1);
+						$remote_icon = template($conf, "common.html", "enabled_button_no_class_new_tab", {
+							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+							button_text	=>	"$image",
+						}, "", 1);
 					}
 					else
 					{
 						$remote_message = get_string($conf, {key => "message_0079"});
-						$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+						$remote_icon    = template($conf, "common.html", "image", {
+							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+							alt_text	=>	"",
+						}, "", 1);
 					}
 				}
 			}
@@ -5396,7 +5526,10 @@ sub start_vm
 			{
 				# Not installed.
 				$remote_message = "#!string!message_0080!#";
-				$remote_icon    = "<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png\">";
+				$remote_icon    = template($conf, "common.html", "image", {
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+					alt_text	=>	"",
+				}, "", 1);
 			}
 		}
 		
@@ -7527,21 +7660,33 @@ sub display_free_resources
 	# and both nodes are up, enable the "provision new server" button.
 	my $node1   = $conf->{'system'}{cluster}{node1_name};
 	my $node2   = $conf->{'system'}{cluster}{node2_name};
-	my $say_bns = "<span class=\"disabled_button\">#!string!button_0022!#</span>";
-	my $say_mc  = "<span class=\"disabled_button\">#!string!button_0023!#</span>";
+	#my $say_bns = "<span class=\"disabled_button\">#!string!button_0022!#</span>";
+	#my $say_mc  = "<span class=\"disabled_button\">#!string!button_0023!#</span>";
+	my $say_bns = template($conf, "common.html", "disabled_button", {
+		button_text	=>	"#!string!button_0022!#",
+	}, "", 1);
+	my $say_mc = template($conf, "common.html", "disabled_button", {
+		button_text	=>	"#!string!button_0023!#",
+	}, "", 1);
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
 		# The cluster is running, so enable the media library link.
-		$say_mc = "<a href=\"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}\" target=\"_new\">#!string!button_0023!#</a>";
+		$say_mc = template($conf, "common.html", "enabled_button_no_class", {
+			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
+			button_text	=>	"#!string!button_0023!#",
+		}, "", 1);
 		
 		# Enable the "New Server" button if there is enough free memory
 		# and storage space.
 		if (($enough_storage) && ($free_ram > 1073741824))
 		{
-			$say_bns = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link\">#!string!button_0022!#</a>";
+			$say_bns = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link",
+				button_text	=>	"#!string!button_0022!#",
+			}, "", 1);
 		}
 	}
 	print template($conf, "server.html", "display-details-bottom-button-bar", {
@@ -8356,39 +8501,72 @@ sub display_vm_state_and_controls
 		
 		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
 		$say_migration_target    =~ s/\..*?$//;
-		my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
+		#my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
+		my $migrate_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0024!#",
+		}, "", 1);
 		if ($conf->{vm}{$vm}{can_migrate})
 		{
 			my $say_target = get_string($conf, {key => "button_0025", variables => {
 				migration_target	=>	$say_migration_target,
 			}});
-			$migrate_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true\">$say_target</a>";
+			$migrate_button = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true",
+				button_text	=>	$say_target,
+			}, "", 1);
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
-		my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
-		my $force_off_button = "<span class=\"disabled_button\">#!string!button_0027!#</span>";
+		#my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
+		#my $force_off_button = "<span class=\"disabled_button\">#!string!button_0027!#</span>";
+		my $stop_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0033!#",
+		}, "", 1);
+		my $force_off_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0027!#",
+		}, "", 1);
 		if ($conf->{vm}{$vm}{can_stop})
 		{
 			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
 			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
-			$stop_button      = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node\">#!string!button_0028!#</a>";
-			$force_off_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}\" class=\"highlight_dangerous\">#!string!button_0027!#</a>";
+			$stop_button      = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node",
+				button_text	=>	"#!string!button_0028!#",
+			}, "", 1);
+			$force_off_button = template($conf, "common.html", "enabled_button", {
+				button_class	=>	"highlight_dangerous",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
+				button_text	=>	"#!string!button_0027!#",
+			}, "", 1);
 		}
-		my $start_button     = "<span class=\"disabled_button\">#!string!button_0029!#</span>";
+		#my $start_button     = "<span class=\"disabled_button\">#!string!button_0029!#</span>";
+		my $start_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0029!#",
+		}, "", 1);
+
 		if ($conf->{vm}{$vm}{boot_target})
 		{
-			$start_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true\">#!string!button_0029!#</a>";
+			$start_button = template($conf, "common.html", "enabled_button_no_class", {
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
+				button_text	=>	"#!string!button_0029!#",
+			}, "", 1);
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
 		# I need both nodes up to delete a VM.
 		#my $say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		# I need both nodes up to delete a VM.
-		my $say_delete_button = "<span class=\"disabled_button\">#!string!button_0030!#</span>";
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], prefered_host: [$prefered_host]\n");
+		#my $say_delete_button = "<span class=\"disabled_button\">#!string!button_0030!#</span>";
+		my $say_delete_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0030!#",
+		}, "", 1);
+		#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], prefered_host: [$prefered_host]\n");
 		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($prefered_host !~ /--/))
 		{
-			$say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">#!string!button_0030!#</span></a>";
+			$say_delete_button = template($conf, "common.html", "enabled_button", {
+				button_class	=>	"highlight_dangerous",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm",
+				button_text	=>	"#!string!button_0030!#",
+			}, "", 1);
 		}
 		
 		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
@@ -8413,10 +8591,17 @@ sub display_vm_state_and_controls
 		# I don't want to make the VM editable until the cluster is
 		# runnong on at least one node.
 		my $dual_join   = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-		my $say_vm_link = "<span class=\"fixed_width\"><a href=\"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm\">$say_vm</a></span>";
+		my $say_vm_link = template($conf, "common.html", "enabled_button", {
+			button_class	=>	"fixed_width_button",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm",
+			button_text	=>	"$say_vm",
+		}, "", 1);
 		if ($dual_join)
 		{
-			$say_vm_link   = "<span class=\"highlight_unavailable\">$say_vm</span>";
+			my $say_vm_disabled_button = template($conf, "common.html", "disabled_button", {
+				button_text	=>	"$say_vm",
+			}, "", 1);
+			$say_vm_link   = "$say_vm_disabled_button";
 		}
 		
 		print template($conf, "server.html", "display-server-details-entry", {
@@ -8735,30 +8920,92 @@ sub display_node_controls
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
-		my $say_join      = $conf->{node}{$node}{enable_join}     ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name&confirm=true\" class=\"button\">#!string!button_0031!#</a>" : "<span class=\"disabled_button\">#!string!button_0031!#</span>";
-		   $say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>" if $disable_join;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable_withdraw: [$conf->{node}{$node}{enable_withdraw}], node long name: [$node_long_name]\n");
-		my $say_withdraw  = $conf->{node}{$node}{enable_withdraw} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name\">#!string!button_0032!#</a>"  : "<span class=\"disabled_button\">#!string!button_0032!#</span>";
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::enable_poweroff: [$conf->{node}{$node}{enable_poweroff}]\n");
-		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name\">#!string!button_0033!#</a>" : "<span class=\"disabled_button\">#!string!button_0033!#</span>";
-		my $say_boot      = $conf->{node}{$node}{enable_poweron}  ? "<a href=\"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true\" class=\"button\">#!string!button_0034!#</a>"   : "<span class=\"disabled_button\">#!string!button_0034!#</span>";
+		# Join button.
+		my $say_join_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0031!#",
+		}, "", 1);
+		my $say_join_enabled_button = template($conf, "common.html", "enabled_button", {
+			button_class	=>	"bold_button",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name&confirm=true",
+			button_text	=>	"#!string!button_0031!#",
+		}, "", 1);
+		my $say_join      = $conf->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
+		   $say_join      = $say_join_disabled_button if $disable_join;
+		   
+		# Withdraw button
+		my $say_withdraw_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0032!#",
+		}, "", 1);
+		my $say_withdraw_enabled_button = template($conf, "common.html", "enabled_button_no_class", {
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name",
+			button_text	=>	"#!string!button_0032!#",
+		}, "", 1);
+		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
 		
-		# At all times, the option to fence the node is made available.
-		my $say_fence     = $conf->{node}{$node}{enable_poweron}  ? "<span class=\"highlight_unavailable\">#!string!button_0037!#</span>" : "<a href=\"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name\" class=\"highlight_dangerous\">#!string!button_0037!#</a>";
-		my $say_dual_boot = "<span class=\"highlight_unavailable\">#!string!button_0035!#</span>";
-		my $say_dual_join = "<span class=\"highlight_unavailable\">#!string!button_0036!#</span>";
+		# Shutdown button
+		my $say_shutdown_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0033!#",
+		}, "", 1);
+		my $say_shutdown_enabled_button = template($conf, "common.html", "enabled_button_no_class", {
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
+			button_text	=>	"#!string!button_0033!#",
+		}, "", 1);
+		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
+		
+		# Boot button
+		my $say_boot_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0034!#",
+		}, "", 1);
+		my $say_boot_enabled_button = template($conf, "common.html", "enabled_button", {
+			button_class	=>	"bold_button",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true",
+			button_text	=>	"#!string!button_0034!#",
+		}, "", 1);
+		my $say_boot = $conf->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
+		
+		# Fence button
+		# If the node is already confirmed off, no need to fence.
+		my $say_fence_node_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0037!#",
+		}, "", 1);
+		my $say_fence_node_enabled_button = template($conf, "common.html", "enabled_button", {
+			button_class	=>	"highlight_dangerous",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name",
+			button_text	=>	"#!string!button_0037!#",
+		}, "", 1);
+		my $say_fence = $conf->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
+		
+		# Dual-boot button.
+		my $say_dual_boot_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0035!#",
+		}, "", 1);
+		my $say_dual_boot = $say_dual_boot_disabled_button;
+		
+		# Dual-Join button
+		my $say_dual_join_disabled_button = template($conf, "common.html", "disabled_button", {
+			button_text	=>	"#!string!button_0036!#",
+		}, "", 1);
+		my $say_dual_join = $say_dual_join_disabled_button;
 		if ($rowspan)
 		{
 			# First row.
 			if ($dual_boot)
 			{
-				$say_dual_boot = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true\" class=\"button\">#!string!button_0035!#</a>";
+				$say_dual_boot = template($conf, "common.html", "enabled_button", {
+					button_class	=>	"bold_button",
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true",
+					button_text	=>	"#!string!button_0035!#",
+				}, "", 1);
 			}
 			if ($dual_join)
 			{
-				$say_dual_join = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true\" class=\"button\">#!string!button_0036!#</a>";
+				$say_dual_join = template($conf, "common.html", "enabled_button", {
+					button_class	=>	"bold_button",
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true",
+					button_text	=>	"#!string!button_0036!#",
+				}, "", 1);
 				# Disable the per-node "join" options".
-				$say_join      = "<span class=\"disabled_button\">#!string!button_0031!#</span>";
+				$say_join      = $say_join_disabled_button;
 				$disable_join  = 1;
 			}
 		}
@@ -8767,7 +9014,11 @@ sub display_node_controls
 		my $say_node_name = "$conf->{node}{$node}{info}{host_name}";
 		if ($conf->{node}{$node}{connected})
 		{
-			$say_node_name = "<a href=\"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name\" target=\"new\">$conf->{node}{$node}{info}{host_name}</a>";
+			$say_node_name = template($conf, "common.html", "enabled_button_new_tab", {
+				button_class	=>	"fixed_width_button",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name",
+				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
+			}, "", 1);
 		}
 
 		print template($conf, "server.html", "display-node-controls-entry-node-name", {

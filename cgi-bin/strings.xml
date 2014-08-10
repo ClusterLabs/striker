@@ -46,8 +46,16 @@
 		<key name="button_0039">Push to Anvil!</key>
 		<key name="button_0040">Backup/Load</key>
 		<key name="button_0041">Download</key>
-		<key name="button_0042"></key>
-		<key name="button_0043"></key>
+		<key name="button_0042">Upload</key>
+		<key name="button_0043">Try Again</key>
+		<key name="button_0044"></key>
+		<key name="button_0045"></key>
+		<key name="button_0046"></key>
+		<key name="button_0047"></key>
+		<key name="button_0048"></key>
+		<key name="button_0049"></key>
+		<key name="button_0050"></key>
+		<key name="button_0051"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -221,13 +229,23 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="explain_0041"><![CDATA[The backup file is expected to start with '<span class="fixed_width">&lt;!-- Striker Backup --&gt;</span>'.]]></key>
 		<key name="explain_0042"><![CDATA[If you want to setup multiple #!string!brand_0002!# dashboards behind a forwarding firewall,<br />you will need to set each to a unique remote desktop port.<br />Locally, the in-browser remote desktop connections listens on port <span class="fixed_width">8080</span>.<br />If you are configuring a remote connection entry for your #!string!brand_0003!#,<br />then you will want to change this to the incoming port that you setup in your firewall.]]></key>
 		<key name="explain_0043"><![CDATA[The backup configuration has been loaded!]]></key>
-		<key name="explain_0044"><![CDATA[]]></key>
-		<key name="explain_0045"><![CDATA[]]></key>
-		<key name="explain_0046"><![CDATA[]]></key>
-		<key name="explain_0047"><![CDATA[]]></key>
-		<key name="explain_0048"><![CDATA[]]></key>
-		<key name="explain_0049"><![CDATA[]]></key>
-		<key name="explain_0050"><![CDATA[]]></key>
+		<key name="explain_0044">Downloading a file from the internet can take a long time!</key>
+		<key name="explain_0045">Please be sure that the web address above is a direct link to the file you want to download.</key>
+		<key name="explain_0046">Some webistes use referal links which may not work here.</key>
+		<key name="explain_0047">If the file you download doesn't work, please delete it from the #!string!brand_0003!# and then download the file yourself.</key>
+		<key name="explain_0048">Once you have the file, you can upload it to the #!string!brand_0003!# from your computer.</key>
+		<key name="explain_0049">This could take a while if the file is big and if your network is slow.</key>
+		<key name="explain_0050">If this is a USB drive, it may have been unplugged.</key>
+		<key name="explain_0051">This could take over ten minutes, depending on the size of the disc and the speed of your optical drive.</key>
+		<key name="explain_0052"><![CDATA[Uploading image file: <span class="fixed_width">#!variable!name!#</span> to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="explain_0053">This could take a long time, depending on the speed of the connection between Striker and the #!string!brand_0003!#.</key>
+		<key name="explain_0054">This process could take quite some time to complete!</key>
+		<key name="explain_0055"><![CDATA[]]></key>
+		<key name="explain_0056"><![CDATA[]]></key>
+		<key name="explain_0057"><![CDATA[]]></key>
+		<key name="explain_0058"><![CDATA[]]></key>
+		<key name="explain_0059"><![CDATA[]]></key>
+		<key name="explain_0060"><![CDATA[]]></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -273,7 +291,17 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="suffix_0007">MiB</key>
 		<key name="suffix_0008">KiB</key>
 		<key name="suffix_0009">bytes</key>
-		<key name="suffix_0010"></key>
+		<key name="suffix_0010">hour</key>	<!-- Singular -->
+		<key name="suffix_0011">hours</key>	<!-- Plural -->
+		<key name="suffix_0012">minute</key>	<!-- Singular -->
+		<key name="suffix_0013">minutes</key>	<!-- Plural -->
+		<key name="suffix_0014">second</key>	<!-- Singular -->
+		<key name="suffix_0015">seconds</key>	<!-- Plural -->
+		<key name="suffix_0016"></key>
+		<key name="suffix_0017"></key>
+		<key name="suffix_0018"></key>
+		<key name="suffix_0019"></key>
+		<key name="suffix_0020"></key>
 		
 		<!-- These are 'state' messages and reflect the state of a given resource. -->
 		<key name="state_0001">unknown</key>
@@ -418,8 +446,26 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="title_0118">Upload of #!string!brand_0002!# failed</key>
 		<key name="title_0119">Upload of #!string!brand_0002!# successful</key>
 		<key name="title_0120">Adding server to this #!string!brand_0003!#.</key>
-		<key name="title_0121"></key>
-		<key name="title_0122"></key>
+		<key name="title_0121">Downloading from a website.</key>
+		<key name="title_0122"><![CDATA[About to download from the web directly to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="title_0123">Saving the file to the #!string!brand_0003!#'s storage.</key>
+		<key name="title_0124">No File Defined!</key>
+		<key name="title_0125">Upload to the server is starting.</key>
+		<key name="title_0126">Name Conflict!</key>
+		<key name="title_0127">Drive not found.</key>
+		<key name="title_0128">Reload needed.</key>
+		<key name="title_0129">No Disc.</key>
+		<key name="title_0130">Creating Image of Physical Disc...</key>
+		<key name="title_0131">Uploading Image to #!string!brand_0003!#...</key>
+		<key name="title_0132">About to create a disc image and upload it to the #!string!brand_0003!#: [#!variable!anvil!#].</key>
+		<key name="title_0133">Caution!</key>
+		<key name="title_0134"></key>
+		<key name="title_0135"></key>
+		<key name="title_0136"></key>
+		<key name="title_0137"></key>
+		<key name="title_0138"></key>
+		<key name="title_0139"></key>
+		<key name="title_0140"></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -558,10 +604,20 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="row_0134">Bad Mimetype</key>
 		<key name="row_0135">Guacamole Port</key>
 		<key name="row_0136">System</key>
-		<key name="row_0137"></key>
-		<key name="row_0138"></key>
-		<key name="row_0139"></key>
-		<key name="row_0140"></key>
+		<key name="row_0137">Download</key>
+		<key name="row_0138">Step 1</key>
+		<key name="row_0139">Step 2</key>
+		<key name="row_0140">Image Name:</key>
+		<key name="row_0141"></key>
+		<key name="row_0142"></key>
+		<key name="row_0143"></key>
+		<key name="row_0144"></key>
+		<key name="row_0145"></key>
+		<key name="row_0146"></key>
+		<key name="row_0147"></key>
+		<key name="row_0148"></key>
+		<key name="row_0149"></key>
+		<key name="row_0150"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0002!#</span> to add your first one!]]></key>
@@ -689,7 +745,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0123">Directly connect to your new server's desktop.</key>
 		<key name="message_0124">Once the installation is complete, please return here and click the link below.</key>
 		<key name="message_0125"><![CDATA[Please complete the install using the <span class="fixed_width">#!string!device_0004!#</span> on the dashboard's desktop.]]></key>
-		<key name="message_0126"><![CDATA[<b>After</b> the first reboot, <a href="#!variable!url!#" class="button">#!string!button_0020!#</a> to add the server to the #!string!brand_0003!#.]]></key>
+		<key name="message_0126"><![CDATA[<b>After</b> the first reboot, <a href="#!variable!url!#" class="bold_button">#!string!button_0020!#</a> to add the server to the #!string!brand_0003!#.]]></key>
 		<key name="message_0127">The server name can't have spaces in the name.</key>
 		<key name="message_0128"><![CDATA[The server name <span class="fixed_width">#!variable!server!#</span> is already in use.]]></key>
 		<key name="message_0129"><![CDATA[All servers need to have a name. This is usally something like <span class="fixed_width">vmXX-purpose</span>.]]></key>
@@ -837,7 +893,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
 		<key name="message_0273">This could take a minute to complete.</key>
-		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href=\"#!string!brand_0012!#\" target=\"_new\">contact support</a> and we will try to help fix this.]]></key>
+		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and we will try to help fix this.]]></key>
 		<key name="message_0275"><![CDATA[Unable to connect to either node in the #!string!brand_0003!#.]]></key>
 		<key name="message_0276"><![CDATA[Please ensure both nodes are online, and then try pushing the configuration again.]]></key>
 		<key name="message_0277"><![CDATA[Only one node is online.]]></key>
@@ -851,9 +907,39 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0285">Backup failed or not possible</key>
 		<key name="message_0286"><![CDATA[The TCP port assigned to the guacamole (the in-browser remote desktop server) appears to be invalid.<br />A TCP port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
-		<key name="message_0288"><![CDATA[]]></key>
-		<key name="message_0289"><![CDATA[]]></key>
-		<key name="message_0290"><![CDATA[]]></key>
+		<key name="message_0288">I will now download:</key>
+		<key name="message_0289">From the website:</key>
+		<key name="message_0290">Download Completed.</key>
+		<key name="message_0291"><![CDATA[Progress: <span class="fixed_width">#!variable!percent!#%</span> finished, <span class="fixed_width">#!variable!received!#</span> downloaded at ~ <span class="fixed_width">#!variable!rate!# MiB/sec</span>.]]></key>
+		<key name="message_0292">Approximately #!variable!time_remaining!# remaining.</key>
+		<key name="message_0293"><![CDATA[<b>#!variable!hours!#</b> #!variable!say_hour!#, <b>#!variable!minutes!#</b> #!variable!say_minute!# and <b>#!variable!seconds!#</b> #!variable!say_second!#.]]></key>
+		<key name="message_0294"><![CDATA[Will be downloaded directly to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0295">The file:</key>
+		<key name="message_0296">Found at the web address:</key>
+		<key name="message_0297">It appears you clicked '#!string!button_0042!#' without first selecting a file.</key>
+		<key name="message_0298">Please go back and try again.</key>
+		<key name="message_0299">Now uploading to the #!string!brand_0003!#.</key>
+		<key name="message_0230">It looks like the upload failed.</key>
+		<key name="message_0231">It looks like the upload succeeded.</key>
+		<key name="message_0232"><![CDATA[There is a file on the #!string!brand_0003!# called <span class="fixed_width">#!variable!name!#</span> on the #!string!brand_0003!#.]]></key>
+		<key name="message_0233">Please go back and give the file a different name.</key>
+		<key name="message_0234"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to no longer exist!]]></key>
+		<key name="message_0235"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to not be ready.]]></key>
+		<key name="message_0236">Please reload to try and read the disc again.</key>
+		<key name="message_0237"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
+		<key name="message_0238">Please reinsert the disc and then reload this page.</key>
+		<key name="message_0239">It looks like the upload failed.</key>
+		<key name="message_0240">It looks like the upload succeeded, unlinking the source image.</key>
+		<key name="message_0241">The disc will be converted into an image file.</key>
+		<key name="message_0242">For a DVD, this could take around 10 minutes to complete.</key>
+		<key name="message_0243"><![CDATA[The image will be uploaded to the #!string!brand_0003!#'s <span class="fixed_width">#!conf!path::shared!#</span> directory.]]></key>
+		<key name="message_0244">If the #!string!brand_0003!# is remote and your internet connection is slow, this could take a very long time.</key>
+		<key name="message_0245">This is the name that will be given to the DVD or CD image.</key>
+		<key name="message_0246"></key>
+		<key name="message_0247"></key>
+		<key name="message_0248"></key>
+		<key name="message_0249"></key>
+		<key name="message_0250"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
