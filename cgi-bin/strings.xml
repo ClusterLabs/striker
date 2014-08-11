@@ -242,8 +242,8 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="explain_0054">This process could take quite some time to complete!</key>
 		<key name="explain_0055">This action can not be undone!</key>
 		<key name="explain_0056">It is possible that another user deleted this file already.</key>
-		<key name="explain_0057"><![CDATA[]]></key>
-		<key name="explain_0058"><![CDATA[]]></key>
+		<key name="explain_0057"><![CDATA[#!string!symbol_0012!# By default, <span class="subtle_text_fixed_width">~256 MiB</span> is set aside for the file system journals.]]></key>
+		<key name="explain_0058"><![CDATA[Once a file transfer starts, it will continue even if you close the page<br />or the connection times out. If you wish to end the transfer, at this time,<br />you will need to restart the web server or reboot the dashboard server.]]></key>
 		<key name="explain_0059"><![CDATA[]]></key>
 		<key name="explain_0060"><![CDATA[]]></key>
 		
@@ -271,7 +271,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="symbol_0009">9</key>
 		<key name="symbol_0010">0</key>
 		<key name="symbol_0011"><![CDATA[<span class="fixed_width">--</span>]]></key> <!-- This is used in columns where no value was found -->
-		<key name="symbol_0012"></key>
+		<key name="symbol_0012">*</key>		<!-- Used to denote conditions (ie: "read below for details" type conditions) -->
 		<key name="symbol_0013"></key>
 		<key name="symbol_0014"></key>
 		<key name="symbol_0015"></key>
@@ -463,9 +463,19 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="title_0135"><![CDATA[Deleting <span class="fixed_width">#!variable!name!#</span>...]]></key>
 		<key name="title_0136"><![CDATA[Deletion of <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!cluster!#</span> #!string!brand_0003!# failed!]]></key>
 		<key name="title_0137">Configuration Error!</key>
-		<key name="title_0138"></key>
-		<key name="title_0139"></key>
-		<key name="title_0140"></key>
+		<key name="title_0138"><![CDATA[Shared space on <i>#!variable!anvil!#</i>:]]></key>
+		<key name="title_0139">Files already on the shared space:</key>
+		<key name="title_0140">Create an image of your disc and upload it to the #!string!brand_0003!#.</key>
+		<key name="title_0141">Download directly from a website address to the #!string!brand_0003!#.</key>
+		<key name="title_0142">Note!</key>
+		<key name="title_0143">Upload a file from your computer.</key>
+		<key name="title_0144"></key>
+		<key name="title_0145"></key>
+		<key name="title_0146"></key>
+		<key name="title_0147"></key>
+		<key name="title_0148"></key>
+		<key name="title_0149"></key>
+		<key name="title_0150"></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -609,15 +619,25 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="row_0139">Step 2</key>
 		<key name="row_0140">Image Name:</key>
 		<key name="row_0141">Failed!</key>
-		<key name="row_0142"></key>
-		<key name="row_0143"></key>
-		<key name="row_0144"></key>
-		<key name="row_0145"></key>
-		<key name="row_0146"></key>
-		<key name="row_0147"></key>
-		<key name="row_0148"></key>
-		<key name="row_0149"></key>
-		<key name="row_0150"></key>
+		<key name="row_0142">Total Space</key>
+		<key name="row_0143">Used Space</key>
+		<key name="row_0144">Free Space</key>
+		<key name="row_0145">File Name</key>
+		<key name="row_0146">Please Note:</key>
+		<key name="row_0147">Device</key>
+		<key name="row_0148">Disc Name</key>
+		<key name="row_0149">Address</key>
+		<key name="row_0150">File</key>
+		<key name="row_0151">Inaccessible</key>
+		<key name="row_0152"></key>
+		<key name="row_0153"></key>
+		<key name="row_0154"></key>
+		<key name="row_0155"></key>
+		<key name="row_0156"></key>
+		<key name="row_0157"></key>
+		<key name="row_0158"></key>
+		<key name="row_0159"></key>
+		<key name="row_0160"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0002!#</span> to add your first one!]]></key>
@@ -940,14 +960,14 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0248"><![CDATA[The file <span class="fixed_width">#!variable!name!#</span> on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# is already gone.]]></key>
 		<key name="message_0249"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> does not exist.]]></key>
 		<key name="message_0250"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> is not readible by the <span class="fixed_fidth">#!variable!user!#</span> user.]]></key>
-		<key name="message_0251"></key>
-		<key name="message_0252"></key>
-		<key name="message_0253"></key>
-		<key name="message_0254"></key>
-		<key name="message_0255"></key>
-		<key name="message_0256"></key>
-		<key name="message_0257"></key>
-		<key name="message_0258"></key>
+		<key name="message_0251">(Patches welcomed) :)</key>
+		<key name="message_0252">Disc read failed, please reload to try again.</key>
+		<key name="message_0253">No disc found.</key>
+		<key name="message_0254"><![CDATA[Unknown problem reading drive: [<span class="fixed_width">#!variable!device!#</span>]]]></key>
+		<key name="message_0255"><![CDATA[If the server hosting this file is slow or if the file is big,<br />the download might take a long time to complete.]]></key>
+		<key name="message_0256">There is no confirmation for this action.</key>
+		<key name="message_0257">Uploading a big file over a slow link might take a long time.</key>
+		<key name="message_0258"><![CDATA[I am sorry, but I can not connect to either node in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0259"></key>
 		<key name="message_0260"></key>
 		

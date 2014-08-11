@@ -458,17 +458,218 @@
 <br />
 <!-- end check-status-config-error -->
 
-<!-- start  -->
-<!-- end  -->
+<!-- start read-shared-header -->
+<table class="hidden_table" align="center" border="0">
+	<tr>
+		<td class="td_hidden">
+<!-- end read-shared-header -->
 
-<!-- start  -->
-<!-- end  -->
+<!-- start read-shared-list-header -->
+<table width="100%">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="table_header">#!string!row_0142!#</span>
+		</td>
+		<td>
+			<span class="table_header">#!string!row_0143!#</span><span class="subtle_text">#!string!symbol_0012!#</span>
+		</td>
+		<td>
+			<span class="table_header">#!string!row_0144!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="fixed_width">#!replace!total_space!#</span>
+		</td>
+		<td>
+			<span class="fixed_width">#!replace!used_space!#</span>
+		</td>
+		<td>
+			<span class="fixed_width">#!replace!free_space!#</span>
+		</td>
+	</tr>
+</table>
+<table width="100%" class="hidden_table">
+	<tr>
+		<td colspan="" class="subtle_text">
+			#!string!explain_0057!#
+		</td>
+	</tr>
+</table>
+<br />
+<table width="100%">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0139!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<span class="table_header">#!string!row_0145!#</span>
+		</td>
+		<td>
+			<span class="table_header">#!string!row_0060!#</span>
+		</td>
+	</tr>
+<!-- end read-shared-list-header -->
 
-<!-- start  -->
-<!-- end  -->
+<!-- start read-shared-file-entry -->
+	<tr>
+		<td>
+			<span class="fixed_width">#!replace!size!#</span>
+		</td>
+		<td>
+			<span class="fixed_width">#!replace!file!#</span>
+		</td>
+		<td>
+			#!replace!delete_button!#
+		</td>
+	</tr>
+<!-- end read-shared-file-entry -->
 
-<!-- start  -->
-<!-- end  -->
+<!-- start read-shared-optical-drive-header -->
+	<tr>
+</table>
+<br />
+<table width="100%">
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!row_0146!#
+		</td>
+		<td>
+			#!string!explain_0058!#<br />
+			<span class="subtle_text">#!string!message_0251!#</span>
+		</td>
+	</tr>
+</table>
+<br />
+<table width="100%">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0140!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="table_header">#!string!row_0147!#</span>
+		</td>
+		<td>
+			<span class="table_header">#!string!row_0148!#</span>
+		</td>
+		<td>
+			&nbsp;
+		</td>
+	</tr>
+<!-- end read-shared-optical-drive-header -->
 
-<!-- start  -->
-<!-- end  -->
+<!-- start read-shared-optical-drive-entry -->
+	<tr>
+		<td>
+			<span class="fixed_width">#!replace!device!#</span>
+		</td>
+		<td>
+			#!replace!disc_name!#
+		</td>
+		<td>
+			#!replace!upload!#
+		</td>
+	</tr>
+<!-- end read-shared-optical-drive-entry -->
+
+<!-- start read-shared-footer -->
+</table>
+<br />
+<!-- end read-shared-footer -->
+
+<!-- start read-shared-direct-download -->
+<table width="100%">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0141!#
+		</td>
+	</tr>
+	<form method="post" enctype="multipart/form-data">
+	#!replace!hidden_inputs!#
+	<tr>
+		<td>
+			#!string!row_0149!#:
+		</td>
+		<td>
+			#!replace!url_input!#
+		</td>
+		<td>
+			#!replace!download_button!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning">
+			#!string!title_0142!#
+		</td>
+		<td colspan="3">
+			<br />
+			#!string!message_0255!#<br />
+			<br />
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end read-shared-direct-download -->
+
+<!-- start read-shared-upload -->
+<form method="post" enctype="multipart/form-data">
+<table width="100%">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0143!#
+		</td>
+	</tr>
+	#!replace!hidden_inputs!#
+	<tr>
+		<td>
+			#!string!row_0150!#:
+		</td>
+		<td>
+			#!replace!file_input!#
+		</td>
+		<td>
+			#!replace!upload_button!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning">
+			#!string!title_0142!#
+		</td>
+		<td colspan="3">
+			<br />
+			<i>#!string!message_0256!#</i></br />
+			#!string!message_0257!#<br />
+			<br />
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end read-shared-upload -->
+
+<!-- start read-shared-no-access -->
+<table>
+	<tr>
+		<td class="highlight_warning">
+			#!string!row_0151!#
+		</td>
+		<td>
+			#!string!message_0258!#
+		</td>
+	<tr>
+</table>
+<br />
+<!-- end read-shared-no-access -->

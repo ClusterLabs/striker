@@ -719,23 +719,9 @@ sub read_shared
 	check_status($conf);
 	
 	# Let the user know that this might take a bit.
-	print "
-<div id=\"hide_when_loaded\">
-<table align=\"center\">
-	<tr>
-		<td>
-			<b>Please be patient.</b><br />
-			Gathering information from $conf->{cgi}{cluster}.<br />
-			This could take a minute to complete.
-		</td>
-		<td>
-			<img src=\"$conf->{url}{skins}/$conf->{sys}{skin}/images/gather_info.gif\" border=\"0\">
-		</td>
-	</tr>
-</table>
-<br />
-</div>
-	";
+	print template($conf, "common.html", "scanning-message", {
+		anvil	=>	$conf->{cgi}{cluster},
+	});
 	
 	my $cluster   = $conf->{cgi}{cluster};
 	my $connected = 0;
@@ -746,11 +732,7 @@ sub read_shared
 	my ($node) = read_files_on_shared($conf);
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 	
-	print "
-<table class=\"hidden_table\" align=\"center\" border=\"0\">
-	<tr>
-		<td class=\"td_hidden\">
-";
+	print template($conf, "media-library.html", "read-shared-header");
 	if ($node)
 	{
 		my $block_size       = $conf->{partition}{shared}{block_size};
@@ -761,120 +743,37 @@ sub read_shared
 		my $free_space       = ($conf->{partition}{shared}{free_space} * $block_size);
 		my $say_free_space   = bytes_to_hr($conf, $free_space);
 		my $say_used_percent = $conf->{partition}{shared}{used_percent}."%";
-		print "
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Shared space on <i>${cluster}</i>:
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"table_header\">Total Space</span>
-		</td>
-		<td>
-			<span class=\"table_header\">Used Space</span><span class=\"subtle_text\">*</span>
-		</td>
-		<td>
-			<span class=\"table_header\">Free Space</span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"fixed_width\">$say_total_space</span>
-		</td>
-		<td>
-			<span class=\"fixed_width\">$say_used_space</span>
-		</td>
-		<td>
-			<span class=\"fixed_width\">$say_free_space</span>
-		</td>
-	</tr>
-</table>
-<table width=\"100%\" class=\"hidden_table\">
-	<tr>
-		<td colspan=\"\" class=\"subtle_text\">
-			* By default, <span class=\"subtle_text_fixed_width\">~256 MiB</span> is set aside for the file system journals.
-		</td>
-	</tr>
-</table>
-<br />
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Files already on the shared space:
-		</td>
-	</tr>
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			<span class=\"table_header\">File Name</span>
-		</td>
-		<td>
-			<span class=\"table_header\">Size</span>
-		</td>
-	</tr>
-";
+		
+		# Print the general header and the files header
+		my $say_title = get_string($conf, {key => "title_0138", variables => {
+			anvil	=>	$cluster,
+		}});
+		print template($conf, "media-library.html", "read-shared-list-header", {
+			title		=>	$say_title,
+			total_space	=>	$say_total_space,
+			used_space	=>	$say_used_space,
+			free_space	=>	$say_free_space,
+		});
 		
 		# Show existing files.
 		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
 		{
 			next if $conf->{files}{shared}{$file}{type} ne "-";
 			my $say_size = bytes_to_hr($conf, $conf->{files}{shared}{$file}{size});
-			print "
-	<tr>
-		<td>
-			<span class=\"fixed_width\">$say_size</span>
-		</td>
-		<td>
-			<span class=\"fixed_width\">$file</span>
-		</td>
-		<td>
-			<a href=\"?cluster=$cluster&task=delete&name=$file\"><span class=\"highlight_bad\"><i>Delete</i></span></a>
-		</td>
-	</tr>
-";
+			my $delete_button = template($conf, "common.html", "enabled-button", {
+				button_link	=>	"?cluster=$cluster&task=delete&name=$file",
+				button_text	=>	"#!string!button_0030!#",
+				button_class	=>	"highlight_bad",
+			}, "", 1);
+			print template($conf, "media-library.html", "read-shared-file-entry", {
+				size		=>	$say_size,
+				file		=>	$file,
+				delete_button	=>	$delete_button,
+			});
 		}
 		
 		# Read from the DVD drive(s), if found.
-		print "
-	<tr>
-</table>
-<br />
-<table width=\"100%\">
-	<tr>
-		<td class=\"highlight_ready_bold\">
-			Please Note:
-		</td>
-		<td>
-			Once a file transfer starts, it will continue even if you close the page<br />
-			or the connection times out. If you wish to end the transfer, at this time,<br />
-			you will need to restart the web server or reboot the dashboard server.<br />
-			<span class=\"subtle_text\">(Patches welcomed) :)</span>
-		</td>
-	</tr>
-</table>
-<br />
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Create an image of your disc and upload it to the #!string!brand_0003!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"table_header\">Device</span>
-		</td>
-		<td>
-			<span class=\"table_header\">Disc Name</span>
-		</td>
-		<td>
-			&nbsp;
-		</td>
-	</tr>
-";
+		print template($conf, "media-library.html", "read-shared-optical-drive-header");
 
 		check_local_dvd($conf);
 		foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
@@ -884,136 +783,122 @@ sub read_shared
 			my $upload    = "--";
 			if ($conf->{drive}{$dev}{reload})
 			{
-				$disc_name = "Disc read failed, please reload to try again.";
+				# Drive wasn't ready, rescan needed.
+				$disc_name = "#!string!message_0252!#";
 			}
 			elsif ($conf->{drive}{$dev}{no_disc})
 			{
-				$disc_name = "No disc found.";
+				# No disc found
+				$disc_name = "#!string!message_0253!#";
 			}
 			elsif ($conf->{drive}{$dev}{volume})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso\"><b>Upload</b></a>";
+				$upload    = template($conf, "common.html", "enabled-button", {
+					button_class	=>	"bold_button",
+					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso",
+					button_text	=>	"#!string!button_0042!#",
+				}, "", 1);
 			}
 			elsif ($conf->{drive}{$dev}{volume_set})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
-				$upload    = "<a href=\"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso\"><b>Upload</b></a>";
+				$upload    = template($conf, "common.html", "enabled-button", {
+					button_class	=>	"bold_button",
+					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso",
+					button_text	=>	"#!string!button_0042!#",
+				}, "", 1);
 			}
 			else
 			{
-				$disc_name = "Unknown problem reading drive: [$dev]";
+				# Some other problem reading the disc.
+				$disc_name = get_string($conf, {key => "message_0254", variables => {
+					device	=>	$dev,
+				}});
 			}
-			print "
-	<tr>
-		<td>
-			<span class=\"fixed_width\">$dev</span>
-		</td>
-		<td>
-			$disc_name
-		</td>
-		<td>
-			$upload
-		</td>
-	</tr>
-";
+			print template($conf, "media-library.html", "read-shared-optical-drive-entry", {
+				device		=>	$dev,
+				disc_name	=>	$disc_name,
+				upload		=>	$upload,
+			});
 		}
-		print "
-</table>
-</br />
-";
+		print template($conf, "media-library.html", "read-shared-footer");
 
 		# Show the option to download an ISO directly from a URL.
-		print "
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Download directly from a website address to the #!string!brand_0003!#.
-		</td>
-	</tr>
-	<form method=\"post\" enctype=\"multipart/form-data\">
-	<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
-	<input type=\"hidden\" name=\"task\" value=\"download_url\">
-	<tr>
-		<td>
-			<span class=\"fixed_width\">Address</a>:
-		</td>
-		<td>
-			<input type=\"text\" name=\"url\" value=\"\" style=\"width: 250px;\">
-		</td>
-		<td>
-			<input type=\"submit\" name=\"null\" value=\"Download\" class=\"bold_button\">
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning\">
-			Note!
-		</td>
-		<td colspan=\"3\">
-			<br />
-			If the server hosting this file is slow or if the file is big,<br />
-			the download might take a long time to complete.<br />
-			<br />
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+		my $hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+			type	=>	"hidden",
+			name	=>	"cluster",
+			id	=>	"cluster",
+			value	=>	"$conf->{cgi}{cluster}",
+		});
+		$hidden_inputs .= "\n";
+		$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+			type	=>	"hidden",
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	"download_url",
+		});
+		my $url_input = template($conf, "common.html", "form-input-no-class-defined-width", {
+			type	=>	"text",
+			name	=>	"url",
+			id	=>	"url",
+			value	=>	"",
+			width	=>	"250px",
+		});
+		my $download_button = template($conf, "common.html", "form-input", {
+			type	=>	"submit",
+			name	=>	"null",
+			id	=>	"null",
+			value	=>	"#!string!button_0041!#",
+			class	=>	"bold_button",
+		});
+		print template($conf, "media-library.html", "read-shared-direct-download", {
+			hidden_inputs	=>	$hidden_inputs,
+			url_input	=>	$url_input,
+			download_button	=>	$download_button,
+		});
 
 		# Show the option to upload from the user's local machine.
-		print "
-<form method=\"post\" enctype=\"multipart/form-data\">
-<table width=\"100%\">
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Upload a file from your computer.
-		</td>
-	</tr>
-	<input type=\"hidden\" name=\"cluster\" value=\"$conf->{cgi}{cluster}\">
-	<input type=\"hidden\" name=\"task\" value=\"upload_file\">
-	<tr>
-		<td>
-			<span class=\"fixed_width\">File</span>:
-		</td>
-		<td>
-			<input type=\"file\" name=\"file\" value=\"\">
-		</td>
-		<td>
-			<input type=\"submit\" name=\"null\" value=\"#!string!button_0042!#\" class=\"bold_button\">
-		</td>
-	</tr>
-	<tr>
-		<td class=\"highlight_warning\">
-			Note!
-		</td>
-		<td colspan=\"3\">
-			<br />
-			<i>There is no confirmation for this action.</i></br />
-			Uploading a big file over a slow link might take a long time.<br />
-			<br />
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+		$hidden_inputs = "";
+		$hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+			type	=>	"hidden",
+			name	=>	"cluster",
+			id	=>	"cluster",
+			value	=>	"$conf->{cgi}{cluster}",
+		});
+		$hidden_inputs .= "\n";
+		$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+			type	=>	"hidden",
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	"upload_file",
+		});
+		my $file_input = template($conf, "common.html", "form-input-no-class", {
+			type	=>	"file",
+			name	=>	"file",
+			id	=>	"file",
+			value	=>	"",
+		});
+		my $upload_button = template($conf, "common.html", "form-input", {
+			type	=>	"submit",
+			name	=>	"null",
+			id	=>	"null",
+			value	=>	"#!string!button_0042!#",
+			class	=>	"bold_button",
+		});
+		print template($conf, "media-library.html", "read-shared-upload", {
+			hidden_inputs	=>	$hidden_inputs,
+			file_input	=>	$file_input,
+			upload_button	=>	$upload_button,
+		});
 	}
 	else
 	{
-		print "
-<table>
-	<tr>
-		<td>
-			<span class=\"highlight_warning\">Inaccessible</span>
-		</td>
-		<td>
-			I am sorry, but I can not connect to either node in the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.
-		</td>
-	<tr>
-</table>
-<br />
-";
+		# Can't access either node.
+		# The variables hash feeds 'message_0258'.
+		print template($conf, "media-library.html", "read-shared-no-access", {}, {
+			anvil	=>	$cluster,
+		});
 	}
 
 	return($connected);
