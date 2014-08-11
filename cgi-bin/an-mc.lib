@@ -514,7 +514,7 @@ sub confirm_image_and_upload
 		type	=>	"submit",
 		name	=>	"null",
 		id	=>	"null",
-		value	=>	"Confirm",
+		value	=>	"#!replace!button_0004!#",
 		class	=>	"bold_button",
 	});
 
@@ -536,34 +536,27 @@ sub confirm_delete_file
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
-	print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">About to delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.</span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_warning\"><b>Caution!</b></span>
-		</td>
-		<td colspan=\"2\" align=\"left\">
-			<br />
-			This will delete <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!#.<br />
-			<br />
-			<i>This action can not be undone!</i><br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\">
-			<div class=\"align_right\"><a href=\"$conf->{'system'}{cgi_string}&confirm=true\"><b>Confirm</b></a></div>
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+	
+	my $say_title = get_string($conf, {key => "title_0134", variables => {
+		name	=>	$name,
+		anvil	=>	$conf->{cgi}{cluster},
+	}});
+	my $say_delete = get_string($conf, {key => "message_0246", variables => {
+		name	=>	$name,
+		anvil	=>	$conf->{cgi}{cluster},
+	}});
+	my $confirm_button = template($conf, "common.html", "enabled-button", {
+		button_class	=>	"bold_button",
+		button_link	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		button_text	=>	"#!string!button_0004!#",
+	}, "", 1);
+
+	# Display the confirmation window now.
+	print template($conf, "media-library.html", "file-delete-confirm", {
+		title		=>	$say_title,
+		say_delete	=>	$say_delete,
+		confirm_button	=>	$confirm_button,
+	});
 	
 	return (0);
 }
@@ -581,19 +574,13 @@ sub delete_file
 	if (exists $conf->{files}{shared}{$name})
 	{
 		# Do the delete.
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<span class=\"highlight_ready_bold\">Deleting <span class=\"fixed_width\">$name</span>...</span>
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\">
-			<br />
-			Any output from the shell will be below (none expected):<br />
-			<br />
-";
+		my $say_title = get_string($conf, {key => "title_0135", variables => {
+			name	=>	$name,
+		}});
+		print template($conf, "media-library.html", "file-delete-header", {
+			title		=>	$say_title,
+		});
+		
 		my ($error, $ssh_fh, $output) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -606,50 +593,27 @@ sub delete_file
 		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			print "<span class=\"fixed_width\">$line</span><br />\n";
+			print template($conf, "common.html", "shell-call-output", {
+				line	=>	$line,
+			});
 		}
-		print "
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\" class=\"highlight_ready_bold\">
-			Done!
-		</td>
-	</tr>
-</table>
-<br />
-";
+		print template($conf, "media-library.html", "file-delete-footer");
 	}
 	else
 	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td colspan=\"3\">
-			<span class=\"highlight_warning\">Deletion of <span class=\"fixed_width\">$name</span> from the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!# failed!</span>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class=\"highlight_warning\"><b>Failed!</b></span>
-		</td>
-		<td colspan=\"2\" align=\"left\">
-			<br />
-			The file <span class=\"fixed_width\">$name</span> on the <span class=\"fixed_width\">$cluster</span> #!string!brand_0003!# is already gone.<br />
-			It is possible that another user deleted this file already.<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan=\"3\">
-			<!-- <div class=\"align_left\"><a href=\"?cluster=$conf->{cgi}{cluster}\"><b>Back</b></a></div> -->
-			&nbsp;
-		</td>
-	</tr>
-	</form>
-</table>
-<br />
-";
+		# Failed...
+		my $say_title = get_string($conf, {key => "title_0136", variables => {
+			name	=>	$name,
+			anvil	=>	$cluster,
+		}});
+		my $say_message = get_string($conf, {key => "message_0248", variables => {
+			name	=>	$name,
+			anvil	=>	$cluster,
+		}});
+		print template($conf, "media-library.html", "file-delete-failed", {
+			title	=>	$say_title,
+			message	=>	$say_message,
+		});
 	}
 	
 	return (0);
@@ -719,36 +683,25 @@ sub check_status
 	record($conf, "$THIS_FILE ".__LINE__."; path::status: [$conf->{path}{status}]\n");
 	if (not -e $conf->{path}{status})
 	{
-		print "
-<table align=\"center\">
-	<tr>
-		<td>
-			<span class=\"highlight_bad\">Configuration Error</span>
-		</td>
-		<td>
-			The directory: <span class=\"fixed_fidth\">$conf->{path}{status}</span> does not exist.
-		</td>
-	</tr>
-</table>
-<br />
-";
+		# Directory doesn't exist...
+		my $say_message = get_string($conf, {key => "message_0249", variables => {
+			directory	=>	$conf->{path}{status},
+		}});
+		print template($conf, "media-library.html", "check-status-config-error", {
+			message	=>	$say_message,
+		});
 	}
 	elsif (not -r $conf->{path}{status})
 	{
+		# Can't read the directory
 		my $user = getpwuid($<);
-		print "
-<table align=\"center\">
-	<tr>
-		<td>
-			<span class=\"highlight_bad\">Configuration Error</span>
-		</td>
-		<td>
-			The directory: <span class=\"fixed_fidth\">$conf->{path}{status}</span> is not readible by the <span class=\"fixed_fidth\">$user</span> user.
-		</td>
-	</tr>
-</table>
-<br />
-";
+		my $say_message = get_string($conf, {key => "message_0250", variables => {
+			directory	=>	$conf->{path}{status},
+			user		=>	$user,
+		}});
+		print template($conf, "media-library.html", "check-status-config-error", {
+			message	=>	$say_message,
+		});
 	}
 	
 	return (0);

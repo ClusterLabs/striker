@@ -240,8 +240,8 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="explain_0052"><![CDATA[Uploading image file: <span class="fixed_width">#!variable!name!#</span> to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="explain_0053">This could take a long time, depending on the speed of the connection between Striker and the #!string!brand_0003!#.</key>
 		<key name="explain_0054">This process could take quite some time to complete!</key>
-		<key name="explain_0055"><![CDATA[]]></key>
-		<key name="explain_0056"><![CDATA[]]></key>
+		<key name="explain_0055">This action can not be undone!</key>
+		<key name="explain_0056">It is possible that another user deleted this file already.</key>
 		<key name="explain_0057"><![CDATA[]]></key>
 		<key name="explain_0058"><![CDATA[]]></key>
 		<key name="explain_0059"><![CDATA[]]></key>
@@ -459,10 +459,10 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="title_0131">Uploading Image to #!string!brand_0003!#...</key>
 		<key name="title_0132">About to create a disc image and upload it to the #!string!brand_0003!#: [#!variable!anvil!#].</key>
 		<key name="title_0133">Caution!</key>
-		<key name="title_0134"></key>
-		<key name="title_0135"></key>
-		<key name="title_0136"></key>
-		<key name="title_0137"></key>
+		<key name="title_0134"><![CDATA[About to delete <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!cluster!#</span> #!string!brand_0003!#.]]></key>
+		<key name="title_0135"><![CDATA[Deleting <span class="fixed_width">#!variable!name!#</span>...]]></key>
+		<key name="title_0136"><![CDATA[Deletion of <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!cluster!#</span> #!string!brand_0003!# failed!]]></key>
+		<key name="title_0137">Configuration Error!</key>
 		<key name="title_0138"></key>
 		<key name="title_0139"></key>
 		<key name="title_0140"></key>
@@ -608,7 +608,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="row_0138">Step 1</key>
 		<key name="row_0139">Step 2</key>
 		<key name="row_0140">Image Name:</key>
-		<key name="row_0141"></key>
+		<key name="row_0141">Failed!</key>
 		<key name="row_0142"></key>
 		<key name="row_0143"></key>
 		<key name="row_0144"></key>
@@ -935,11 +935,21 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0243"><![CDATA[The image will be uploaded to the #!string!brand_0003!#'s <span class="fixed_width">#!conf!path::shared!#</span> directory.]]></key>
 		<key name="message_0244">If the #!string!brand_0003!# is remote and your internet connection is slow, this could take a very long time.</key>
 		<key name="message_0245">This is the name that will be given to the DVD or CD image.</key>
-		<key name="message_0246"></key>
-		<key name="message_0247"></key>
-		<key name="message_0248"></key>
-		<key name="message_0249"></key>
-		<key name="message_0250"></key>
+		<key name="message_0246"><![CDATA[This will delete <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0247">Any output from the shell will be below (none expected):</key>
+		<key name="message_0248"><![CDATA[The file <span class="fixed_width">#!variable!name!#</span> on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# is already gone.]]></key>
+		<key name="message_0249"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> does not exist.]]></key>
+		<key name="message_0250"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> is not readible by the <span class="fixed_fidth">#!variable!user!#</span> user.]]></key>
+		<key name="message_0251"></key>
+		<key name="message_0252"></key>
+		<key name="message_0253"></key>
+		<key name="message_0254"></key>
+		<key name="message_0255"></key>
+		<key name="message_0256"></key>
+		<key name="message_0257"></key>
+		<key name="message_0258"></key>
+		<key name="message_0259"></key>
+		<key name="message_0260"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
