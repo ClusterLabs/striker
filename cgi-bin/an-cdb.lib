@@ -1477,12 +1477,14 @@ sub display_node_health
 							$offline_button = template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 								button_text	=>	"#!string!button_0006!#",
+								id		=>	"put_disk_offline_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 							if ($this_logical_disk == 9999)
 							{
 								$offline_button = template($conf, "common.html", "enabled-button-no-class", {
 									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 									button_text	=>	"#!string!button_0007!#",
+									id		=>	"spin_disk_down_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}, "", 1);
 							}
 						}
@@ -1497,6 +1499,7 @@ sub display_node_health
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0008!#",
+								id		=>	"make_disk_good_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
@@ -1506,11 +1509,13 @@ sub display_node_health
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0009!#",
+								id		=>	"put_disk_online__${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
-							my $say_spin_disk_down_button = template($conf, "common.html", "enabled-button", {
+							my $say_spin_disk_down_button = template($conf, "common.html", "enabled-button_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}", {
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0007!#",
+								id		=>	"spin_disk_down",
 							}, "", 1);
 							$say_disk_action  =  " - $say_put_disk_online_button - $say_spin_disk_down_button";
 						}
@@ -1541,6 +1546,7 @@ sub display_node_health
 												button_class	=>	"bold_button",
 												button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
 												button_text	=>	$say_button,
+												id		=>	"add_disk_to_array_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 											}, "", 1);
 											$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
 										}
@@ -1553,6 +1559,7 @@ sub display_node_health
 									$say_disk_action .= template($conf, "common.html", "enabled-button-no-class", {
 										button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 										button_text	=>	"#!string!button_0011!#",
+										id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 									}, "", 1);
 									$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
 									#$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0011"})."</a>";
@@ -1566,6 +1573,7 @@ sub display_node_health
 							$say_disk_action  .= template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0012!#",
+								id		=>	"spin_disk_up_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 							$say_temperature  = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0055"})."</a>";
 							$offline_button   = get_string($conf, {key => "message_0054"});
@@ -1585,6 +1593,7 @@ sub display_node_health
 							$offline_button   = template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 								button_text	=>	"#!string!button_0013!#",
+								id		=>	"unmake_disk_as_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 						}
 						### TODO: 'Copyback' state is when a drive has been inserted into an
@@ -1613,6 +1622,7 @@ sub display_node_health
 							$say_disk_action     .= template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0038!#",
+								id		=>	"clear_foreign_state_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 						}
 						
@@ -3201,6 +3211,7 @@ sub manage_vm
 				button_class	=>	"bold_button",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm&do=eject&device=$device",
 				button_text	=>	"#!string!button_0017!#",
+				id		=>	"eject_$device",
 			}, "", 1);
 			my $say_insert_disabled_button = template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0018!#",
@@ -3297,6 +3308,7 @@ sub manage_vm
 			$remote_icon = template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 				alt_text	=>	"",
+				id		=>	"remote_icon",
 			}, "", 1);
 			
 			# See if I need to update the XML definition file.
@@ -3326,6 +3338,7 @@ sub manage_vm
 				$remote_icon = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
 					alt_text	=>	"",
+					id		=>	"remote_icon",
 				}, "", 1);
 			}
 			elsif ($node =~ /n01/)
@@ -3333,10 +3346,12 @@ sub manage_vm
 				my $image = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 					alt_text	=>	"",
+					id		=>	"server-desktop_n01",
 				}, "", 1);
 				$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 					button_text	=>	"$image",
+					id		=>	"guacamole_url_$say_vm",
 				}, "", 1);
 			}
 			elsif ($node =~ /n02/)
@@ -3344,10 +3359,12 @@ sub manage_vm
 				my $image = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 					alt_text	=>	"",
+					id		=>	"server-desktop_n02",
 				}, "", 1);
 				$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 					button_text	=>	"$image",
+					id		=>	"guacamole_url_$say_vm",
 				}, "", 1);
 			}
 			else
@@ -3356,6 +3373,7 @@ sub manage_vm
 				$remote_icon = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 					alt_text	=>	"",
+					id		=>	"server-desktop_oops",
 				}, "", 1);
 			}
 		}
@@ -3367,6 +3385,7 @@ sub manage_vm
 		$remote_icon = template($conf, "common.html", "image", {
 			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 			alt_text	=>	"",
+			id		=>	"server-desktop_oops",
 		}, "", 1);
 	}
 	
@@ -4548,10 +4567,12 @@ sub provision_vm
 			my $image = template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 				alt_text	=>	"",
+				id		=>	"server-desktop_n01",
 			}, "", 1);
 			$icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 				button_text	=>	"$image",
+				id		=>	"guacamole_url_$say_vm",
 			}, "", 1);
 		}
 		elsif ($node =~ /n02/)
@@ -4559,10 +4580,12 @@ sub provision_vm
 			my $image = template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 				alt_text	=>	"",
+				id		=>	"server-desktop_n02",
 			}, "", 1);
 			$icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 				button_text	=>	"$image",
+				id		=>	"guacamole_url_$say_vm",
 			}, "", 1);
 		}
 		else
@@ -5465,6 +5488,7 @@ sub start_vm
 					$remote_icon    = template($conf, "common.html", "image", {
 						image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 						alt_text	=>	"",
+						id		=>	"server-desktop_oops",
 					}, "", 1);
 					
 					# See if I need to update the XML definition file.
@@ -5494,6 +5518,7 @@ sub start_vm
 						$remote_icon    = template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
 							alt_text	=>	"",
+							id		=>	"server-desktop_offline",
 						}, "", 1);
 					}
 					elsif ($node =~ /n01/)
@@ -5501,10 +5526,12 @@ sub start_vm
 						my $image = template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 							alt_text	=>	"",
+							id		=>	"server-desktop_n01",
 						}, "", 1);
 						$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 							button_text	=>	"$image",
+							id		=>	"guacamole_url_$say_vm",
 						}, "", 1);
 					}
 					elsif ($node =~ /n02/)
@@ -5512,10 +5539,12 @@ sub start_vm
 						my $image = template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 							alt_text	=>	"",
+							id		=>	"server-desktop_n02",
 						}, "", 1);
 						$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 							button_text	=>	"$image",
+							id		=>	"guacamole_url_$say_vm",
 						}, "", 1);
 					}
 					else
@@ -5524,6 +5553,7 @@ sub start_vm
 						$remote_icon    = template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 							alt_text	=>	"",
+							id		=>	"server-desktop_oops",
 						}, "", 1);
 					}
 				}
@@ -5535,6 +5565,7 @@ sub start_vm
 				$remote_icon    = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 					alt_text	=>	"",
+					id		=>	"server-desktop_oops",
 				}, "", 1);
 			}
 		}
@@ -7683,6 +7714,7 @@ sub display_free_resources
 		$say_mc = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"#!string!button_0023!#",
+			id		=>	"media_library_$conf->{cgi}{cluster}",
 		}, "", 1);
 		
 		# Enable the "New Server" button if there is enough free memory
@@ -7692,6 +7724,7 @@ sub display_free_resources
 			$say_bns = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link",
 				button_text	=>	"#!string!button_0022!#",
+				id		=>	"provision",
 			}, "", 1);
 		}
 	}
@@ -8519,6 +8552,7 @@ sub display_vm_state_and_controls
 			$migrate_button = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true",
 				button_text	=>	$say_target,
+				id		=>	"migrate_vm_$vm",
 			}, "", 1);
 		}
 		my $host_node        = "$conf->{vm}{$vm}{host}";
@@ -8537,11 +8571,13 @@ sub display_vm_state_and_controls
 			$stop_button      = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node",
 				button_text	=>	"#!string!button_0028!#",
+				id		=>	"stop_vm_$vm",
 			}, "", 1);
 			$force_off_button = template($conf, "common.html", "enabled-button", {
 				button_class	=>	"highlight_dangerous",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
 				button_text	=>	"#!string!button_0027!#",
+				id		=>	"force_off_vm_$say_vm",
 			}, "", 1);
 		}
 		#my $start_button     = "<span class=\"disabled_button\">#!string!button_0029!#</span>";
@@ -8554,6 +8590,7 @@ sub display_vm_state_and_controls
 			$start_button = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
 				button_text	=>	"#!string!button_0029!#",
+				id		=>	"start_vm_$vm",
 			}, "", 1);
 		}
 		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
@@ -8572,6 +8609,7 @@ sub display_vm_state_and_controls
 				button_class	=>	"highlight_dangerous",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm",
 				button_text	=>	"#!string!button_0030!#",
+				id		=>	"delete_vm_$say_vm",
 			}, "", 1);
 		}
 		
@@ -8601,6 +8639,7 @@ sub display_vm_state_and_controls
 			button_class	=>	"fixed_width_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm",
 			button_text	=>	"$say_vm",
+			id		=>	"manage_vm_$say_vm",
 		}, "", 1);
 		if ($dual_join)
 		{
@@ -8905,8 +8944,18 @@ sub display_node_controls
 {
 	my ($conf) = @_;
 	
+	# Variables for the full template.
+	my $i = 0;
+	my @say_node_name;
+	my $say_dual_boot;
+	my $say_dual_join;
+	my @say_boot;
+	my @say_shutdown;
+	my @say_join;
+	my @say_withdraw;
+	my @say_fence;
+	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
-	print template($conf, "server.html", "display-node-controls-header");
 	my $disable_join = 0;
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
@@ -8934,9 +8983,10 @@ sub display_node_controls
 			button_class	=>	"bold_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name&confirm=true",
 			button_text	=>	"#!string!button_0031!#",
+			id		=>	"join_cluster_$node",
 		}, "", 1);
-		my $say_join      = $conf->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
-		   $say_join      = $say_join_disabled_button if $disable_join;
+		$say_join[$i] = $conf->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
+		$say_join[$i] = $say_join_disabled_button if $disable_join;
 		   
 		# Withdraw button
 		my $say_withdraw_disabled_button = template($conf, "common.html", "disabled-button", {
@@ -8945,8 +8995,9 @@ sub display_node_controls
 		my $say_withdraw_enabled_button = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0032!#",
+			id		=>	"withdraw_$node",
 		}, "", 1);
-		my $say_withdraw = $conf->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
+		$say_withdraw[$i] = $conf->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
 		
 		# Shutdown button
 		my $say_shutdown_disabled_button = template($conf, "common.html", "disabled-button", {
@@ -8955,8 +9006,9 @@ sub display_node_controls
 		my $say_shutdown_enabled_button = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0033!#",
+			id		=>	"poweroff_node_$node",
 		}, "", 1);
-		my $say_shutdown  = $conf->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
+		$say_shutdown[$i] = $conf->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
 		
 		# Boot button
 		my $say_boot_disabled_button = template($conf, "common.html", "disabled-button", {
@@ -8966,8 +9018,9 @@ sub display_node_controls
 			button_class	=>	"bold_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true",
 			button_text	=>	"#!string!button_0034!#",
+			id		=>	"poweron_node_$node",
 		}, "", 1);
-		my $say_boot = $conf->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
+		$say_boot[$i] = $conf->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
 		
 		# Fence button
 		# If the node is already confirmed off, no need to fence.
@@ -8978,85 +9031,90 @@ sub display_node_controls
 			button_class	=>	"highlight_dangerous",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0037!#",
+			id		=>	"fence_node_$node",
 		}, "", 1);
-		my $say_fence = $conf->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
+		$say_fence[$i] = $conf->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
 		
 		# Dual-boot button.
-		my $say_dual_boot_disabled_button = template($conf, "common.html", "disabled-button", {
-			button_text	=>	"#!string!button_0035!#",
-		}, "", 1);
-		my $say_dual_boot = $say_dual_boot_disabled_button;
-		
-		# Dual-Join button
-		my $say_dual_join_disabled_button = template($conf, "common.html", "disabled-button", {
-			button_text	=>	"#!string!button_0036!#",
-		}, "", 1);
-		my $say_dual_join = $say_dual_join_disabled_button;
-		if ($rowspan)
+		if ($i == 0)
 		{
-			# First row.
-			if ($dual_boot)
+			my $say_dual_boot_disabled_button = template($conf, "common.html", "disabled-button", {
+				button_text	=>	"#!string!button_0035!#",
+			}, "", 1);
+			$say_dual_boot_disabled_button =~ s/\n$//;
+			$say_dual_boot = $say_dual_boot_disabled_button;
+			record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+			
+			# Dual-Join button
+			my $say_dual_join_disabled_button = template($conf, "common.html", "disabled-button", {
+				button_text	=>	"#!string!button_0036!#",
+			}, "", 1);
+			$say_dual_join_disabled_button =~ s/\n$//;
+			$say_dual_join = $say_dual_join_disabled_button;
+			if ($rowspan)
 			{
-				$say_dual_boot = template($conf, "common.html", "enabled-button", {
-					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true",
-					button_text	=>	"#!string!button_0035!#",
-				}, "", 1);
-			}
-			if ($dual_join)
-			{
-				$say_dual_join = template($conf, "common.html", "enabled-button", {
-					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true",
-					button_text	=>	"#!string!button_0036!#",
-				}, "", 1);
-				# Disable the per-node "join" options".
-				$say_join      = $say_join_disabled_button;
-				$disable_join  = 1;
+				# First row.
+				if ($dual_boot)
+				{
+					$say_dual_boot = template($conf, "common.html", "enabled-button", {
+						button_class	=>	"bold_button",
+						button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true",
+						button_text	=>	"#!string!button_0035!#",
+						id		=>	"dual_boot",
+					}, "", 1);
+					record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+				}
+				if ($dual_join)
+				{
+					$say_dual_join = template($conf, "common.html", "enabled-button", {
+						button_class	=>	"bold_button",
+						button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true",
+						button_text	=>	"#!string!button_0036!#",
+						id		=>	"dual_join",
+					}, "", 1);
+					# Disable the per-node "join" options".
+					$say_join[$i] = $say_join_disabled_button;
+					$disable_join = 1;
+				}
 			}
 		}
 		
 		# Make the node names click-able to show the hardware states.
-		my $say_node_name = "$conf->{node}{$node}{info}{host_name}";
+		$say_node_name[$i] = "$conf->{node}{$node}{info}{host_name}";
+		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
 		if ($conf->{node}{$node}{connected})
 		{
-			$say_node_name = template($conf, "common.html", "enabled-button-new-tab", {
+			$say_node_name[$i] = template($conf, "common.html", "enabled-button-new-tab", {
 				button_class	=>	"fixed_width_button",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
+				id		=>	"display_health_$node",
 			}, "", 1);
+			#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
 		}
-
-		print template($conf, "server.html", "display-node-controls-entry-node-name", {
-			say_node_name	=>	$say_node_name,
-			
-		});
-		if ($rowspan)
-		{
-			# The dual boot message spans both columns
-			print template($conf, "server.html", "display-node-controls-entry-dual-boot", {
-				say_dual_boot	=>	$say_dual_boot,
-			});
-		}
-		print template($conf, "server.html", "display-node-controls-entry-power-control", {
-			say_boot	=>	$say_boot,
-			say_shutdown	=>	$say_shutdown,
-		});
-		if ($rowspan)
-		{
-			print template($conf, "server.html", "display-node-controls-entry-dual-join", {
-				say_dual_join	=>	$say_dual_join,
-			});
-		}
-		print template($conf, "server.html", "display-node-controls-entry-membership", {
-			say_join	=>	$say_join,
-			say_withdraw	=>	$say_withdraw,
-			say_fence	=>	$say_fence,
-		});
 		$rowspan = 0;
+		$i++;
 	}
-	print template($conf, "server.html", "display-node-controls-footer");
-
+	
+	record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+	my $node_control_page = template($conf, "server.html", "display-node-controls-full", {
+		say_node1_name		=>	$say_node_name[0],
+		say_node2_name		=>	$say_node_name[1],
+		dual_boot_button	=>	$say_dual_boot,
+		dual_join_button	=>	$say_dual_join,
+		say_node1_boot		=>	$say_boot[0],
+		say_node2_boot		=>	$say_boot[1],
+		say_node1_shutdown	=>	$say_shutdown[0],
+		say_node2_shutdown	=>	$say_shutdown[1],
+		say_node1_join		=>	$say_join[0],
+		say_node2_join		=>	$say_join[1],
+		say_node1_withdraw	=>	$say_withdraw[0],
+		say_node2_withdraw	=>	$say_withdraw[1],
+		say_node1_fence		=>	$say_fence[0],
+		say_node2_fence		=>	$say_fence[1],
+	});
+	print $node_control_page;
+	
 	return (0);
 }
 

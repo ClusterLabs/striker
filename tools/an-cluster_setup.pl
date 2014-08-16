@@ -64,6 +64,7 @@ my $conf = {
 		],
 		enable		=>	[
 			"ipmi",
+			"iptables",
 			"ntpd",
 			"ricci",
 			"modclusterd",
@@ -72,7 +73,6 @@ my $conf = {
 		disable		=>	[
 			"kdump",
 			"NetworkManager",
-			"iptables",
 			"ip6tables",
 			"drbd",
 			"clvmd",
@@ -113,7 +113,7 @@ print "\n-=] AN!Cluster Configuration\n\n";
 
 collect_data($conf);
 ask_questions($conf);
-disable_selinux($conf);
+#disable_selinux($conf);
 setup_ssh($conf);
 install_apps($conf);
 setup_ntpd($conf);

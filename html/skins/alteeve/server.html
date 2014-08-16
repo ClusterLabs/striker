@@ -2406,8 +2406,6 @@
 		</td>
 	</tr>
 </table>
-<!-- Enable this to have the page refresh automatically -->
-<!-- <meta http-equiv="refresh" content="30"> -->
 <br />
 <!-- end display-details-nodes-off -->
 
@@ -2992,7 +2990,7 @@
 <br />
 <!-- end display-node-details-footer -->
 
-<!-- start display-node-controls-header -->
+<!-- start display-node-controls-full -->
 <table width="100%">
 	<tr>
 		<td colspan="8">
@@ -3013,50 +3011,52 @@
 			<i>#!string!title_0112!#</i>
 		</td>
 	</tr>
-<!-- end display-node-controls-header -->
-
-<!-- start display-node-controls-entry-node-name -->
 	<tr>
 		<td>
-			<span class="fixed_width">#!replace!say_node_name!#</span>
+			#!replace!say_node1_name!#
 		</td>
-<!-- end display-node-controls-entry-node-name -->
-
-<!-- start display-node-controls-entry-dual-boot -->
 		<td rowspan="2">
-			#!replace!say_dual_boot!#
-		</td>
-<!-- end display-node-controls-entry-dual-boot -->
-
-<!-- start display-node-controls-entry-power-control -->
-		<td>
-			#!replace!say_boot!#
+			#!replace!dual_boot_button!#
 		</td>
 		<td>
-			#!replace!say_shutdown!#
+			#!replace!say_node1_boot!#
 		</td>
-<!-- end display-node-controls-entry-power-control -->
-
-<!-- start display-node-controls-entry-dual-join -->
+		<td>
+			#!replace!say_node1_shutdown!#
+		</td>
 		<td rowspan="2">
-			#!replace!say_dual_join!#
-		</td>
-<!-- end display-node-controls-entry-dual-join -->
-
-<!-- start display-node-controls-entry-membership -->
-		<td>
-			#!replace!say_join!#
+			#!replace!dual_join_button!#
 		</td>
 		<td>
-			#!replace!say_withdraw!#
+			#!replace!say_node1_join!#
 		</td>
 		<td>
-			#!replace!say_fence!#
+			#!replace!say_node1_withdraw!#
+		</td>
+		<td>
+			#!replace!say_node1_fence!#
 		</td>
 	</tr>
-<!-- end display-node-controls-entry-membership -->
-
-<!-- start display-node-controls-footer -->
+	<tr>
+		<td>
+			#!replace!say_node2_name!#
+		</td>
+		<td>
+			#!replace!say_node2_boot!#
+		</td>
+		<td>
+			#!replace!say_node2_shutdown!#
+		</td>
+		<td>
+			#!replace!say_node2_join!#
+		</td>
+		<td>
+			#!replace!say_node2_withdraw!#
+		</td>
+		<td>
+			#!replace!say_node2_fence!#
+		</td>
+	</tr>
 </table>
 <br />
-<!-- end display-node-controls-footer -->
+<!-- end display-node-controls-full -->

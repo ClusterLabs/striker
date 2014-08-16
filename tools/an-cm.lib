@@ -6947,7 +6947,7 @@ sub compare_new_and_old
 						$changes .= "\nUPS ${ups_name}'s is in 'BOOST ONLINE', which means it is compensating for low input voltage, called a \"brown out\". Power from the mains circuit sub-optimal.\n";
 						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
-					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} eq /^ONLINE/i)
+					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /^ONLINE/i)
 					{
 						$conf->{'system'}{clear_event} = 1;
 						delete $conf->{'system'}{ups_alert}{$ups_name}{status};

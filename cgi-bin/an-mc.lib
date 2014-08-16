@@ -549,6 +549,7 @@ sub confirm_delete_file
 		button_class	=>	"bold_button",
 		button_link	=>	"$conf->{'system'}{cgi_string}&confirm=true",
 		button_text	=>	"#!string!button_0004!#",
+		id		=>	"delete_file_confirmed",
 	}, "", 1);
 
 	# Display the confirmation window now.
@@ -764,6 +765,7 @@ sub read_shared
 				button_link	=>	"?cluster=$cluster&task=delete&name=$file",
 				button_text	=>	"#!string!button_0030!#",
 				button_class	=>	"highlight_bad",
+				id		=>	"delete_$file",
 			}, "", 1);
 			print template($conf, "media-library.html", "read-shared-file-entry", {
 				size		=>	$say_size,
@@ -798,6 +800,7 @@ sub read_shared
 					button_class	=>	"bold_button",
 					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso",
 					button_text	=>	"#!string!button_0042!#",
+					id		=>	"image_and_upload_$dev",
 				}, "", 1);
 			}
 			elsif ($conf->{drive}{$dev}{volume_set})
@@ -807,6 +810,7 @@ sub read_shared
 					button_class	=>	"bold_button",
 					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso",
 					button_text	=>	"#!string!button_0042!#",
+					id		=>	"image_and_upload_$dev",
 				}, "", 1);
 			}
 			else

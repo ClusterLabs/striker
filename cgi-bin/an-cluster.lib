@@ -1153,6 +1153,7 @@ sub show_anvil_config_header
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_clear-fields_16x16.png",
 		javascript	=>	"onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\"",
 		alt_text	=>	"",
+		id		=>	"clear",
 	}, "", 1);
 	my $this_name             = defined $conf->{clusters}{$this_cluster}{name}             ? $conf->{clusters}{$this_cluster}{name}             : "";
 	my $this_company          = defined $conf->{clusters}{$this_cluster}{company}          ? $conf->{clusters}{$this_cluster}{company}          : "";
@@ -1383,6 +1384,7 @@ sub show_common_config_section
 			button_class	=>	"bold_button",
 			button_link	=>	"?config=true&anvil=$conf->{cgi}{anvil}&task=push",
 			button_text	=>	"#!string!button_0039!#",
+			id		=>	"push",
 		}, "", 1);
 	}
 	else
@@ -1392,6 +1394,7 @@ sub show_common_config_section
 			button_class	=>	"bold_button",
 			button_link	=>	"?config=true&task=archive",
 			button_text	=>	"#!string!button_0040!#",
+			id		=>	"archive",
 		}, "", 1);
 	}
 	
@@ -1457,10 +1460,12 @@ sub show_global_anvil_list
 			my $image = template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
 				alt_text	=>	"",
+				id		=>	"url_icon",
 			}, "", 1);
 			$this_url = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$this_url",
 				button_text	=>	"$image",
+				id		=>	"url_$this_cluster",
 			}, "", 1);
 		}
 		
@@ -2230,10 +2235,12 @@ sub ask_which_cluster
 				my $image = template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
 					alt_text	=>	"",
+				id		=>	"url_icon",
 				}, "", 1);
 				$say_url = template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$conf->{clusters}{$cluster}{url}",
 					button_text	=>	$image,
+					id		=>	"url_$cluster",
 				}, "", 1);
 			}
 			print template($conf, "select-anvil.html", "anvil-entry", {
@@ -2324,10 +2331,12 @@ sub header
 	my $back_image = template($conf, "common.html", "image", {
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png",
 		alt_text	=>	"#!string!button_0001!#",
+		id		=>	"back_icon",
 	}, "", 1);
 	my $refresh_image = template($conf, "common.html", "image", {
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png",
 		alt_text	=>	"#!string!button_0002!#",
+		id		=>	"refresh_icon",
 	}, "", 1);
 	
 	#if ($conf->{'system'}{show_refresh})
@@ -2341,12 +2350,14 @@ sub header
 			$say_back    = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?config=true",
 				button_text	=>	"$back_image",
+				id		=>	"back",
 			}, "", 1);
 			if ($conf->{cgi}{anvil})
 			{
 				$say_back = template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$back_image",
+					id		=>	"back",
 				}, "", 1);
 			}
 		}
@@ -2355,10 +2366,12 @@ sub header
 			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?config=true",
 				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
 			}, "", 1);
 			$say_back = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?logo=true",
 				button_text	=>	"$back_image",
+				id		=>	"back",
 			}, "", 1);
 
 			if ($conf->{cgi}{task} eq "load_config")
@@ -2367,6 +2380,7 @@ sub header
 				$say_back    = template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$back_image",
+					id		=>	"back",
 				}, "", 1);
 			}
 			elsif ($conf->{cgi}{task} eq "push")
@@ -2378,6 +2392,7 @@ sub header
 				$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
 				}, "", 1);
 			}
 		}
@@ -2386,16 +2401,19 @@ sub header
 			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"$conf->{'system'}{cgi_string}",
 				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
 			}, "", 1);
 			$say_back = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?logo=true",
 				button_text	=>	"$back_image",
+				id		=>	"back",
 			}, "", 1);
 			if ($conf->{cgi}{anvil})
 			{
 				$say_back = template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?config=true",
 					button_text	=>	"$back_image",
+					id		=>	"back",
 				}, "", 1);
 			}
 		}
@@ -2405,12 +2423,14 @@ sub header
 		$say_back = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"$back_image",
+			id		=>	"back",
 		}, "", 1);
 		if ($conf->{cgi}{task} eq "manage_vm")
 		{
 			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
 				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
 			}, "", 1);
 		}
 		elsif ($conf->{cgi}{task} eq "display_health")
@@ -2418,6 +2438,7 @@ sub header
 			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
 				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
 			}, "", 1);
 		}
 	}
@@ -2426,6 +2447,7 @@ sub header
 		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?logo=true",
 			button_text	=>	"$refresh_image",
+			id		=>	"refresh",
 		}, "", 1);
 		$say_back    = "";
 	}
@@ -2434,6 +2456,7 @@ sub header
 		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"$conf->{'system'}{cgi_string}",
 			button_text	=>	"$refresh_image",
+			id		=>	"refresh",
 		}, "", 1);
 	}
 	print template($conf, "common.html", "header", {

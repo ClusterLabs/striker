@@ -17,6 +17,11 @@ v1.1.5 - <in progress>
 - Updated the IPMI scanner code to redirect sensor loss/restore messages to a
   now-smarter debug email address.
 - Made all buttons and images come from skins
+- Made the Media Library skinable and translatable, finally.
+- Added 'id="..."' to all links, input form fields and images.
+- Changed 'an-cluster-setup.sh' to no longer disable iptables or selinux.
+- Redid the Node Controls table to be a single template section instead of many
+  independent template segments.
 
 
 v1.1.4 - 2014-05-27
