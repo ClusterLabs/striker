@@ -165,7 +165,6 @@ sub sanity_check_an_conf
 	my $smtp__helo_domain_key         = "smtp__helo_domain";
 	my $mail_data__to_key             = "mail_data__to";
 	my $mail_data__sending_domain_key = "mail_data__sending_domain";
-	my $guacd__port_key               = "guacd__port";
 
 	# These will be populated in a moment if an Anvil! is being saved.
 	my $name_key         = "";
@@ -208,7 +207,6 @@ sub sanity_check_an_conf
 		$nodes_2_name_key = "cluster__${this_id}__nodes_2_name";
 		$nodes_2_ip_key   = "cluster__${this_id}__nodes_2_ip";
 		$nodes_2_port_key = "cluster__${this_id}__nodes_2_port";
-		$guacd__port_key  = "cluster__${this_id}__guacd__port";
 		
 		my $this_name         =  $conf->{cgi}{$name_key};
 		   $this_cluster      =  $this_name;
@@ -226,8 +224,6 @@ sub sanity_check_an_conf
 		   $this_nodes_2_ip   =  $conf->{cgi}{$nodes_2_ip_key};
 		   $this_nodes_2_port =  $conf->{cgi}{$nodes_2_port_key};
 		   $this_nodes_2_port =~ s/,//g;
-		my $guacd__port       =  $conf->{cgi}{$guacd__port_key};
-		   $guacd__port       =~ s/,//g;
 		
 		$smtp__server_key              = "cluster__${this_id}__smtp__server";
 		$smtp__port_key                = "cluster__${this_id}__smtp__port";
@@ -286,8 +282,7 @@ sub sanity_check_an_conf
 			(not $this_nodes_1_port) && 
 			(not $this_nodes_2_name) && 
 			(not $this_nodes_2_ip) && 
-			(not $this_nodes_2_port) &&
-			(not $guacd__port))
+			(not $this_nodes_2_port))
 		{
 			# If this isn't 'new', delete this Anvil! from the config.
 			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
@@ -506,25 +501,6 @@ sub sanity_check_an_conf
 	{
 		$conf->{cgi}{$smtp__timeout_key} = 60;
 	}
-	
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$guacd__port_key: [$conf->{cgi}{$guacd__port_key}]\n");
-	if (($conf->{cgi}{$guacd__port_key}) && ($conf->{cgi}{$guacd__port_key} ne "#!inherit!#"))
-	{
-		$conf->{cgi}{$guacd__port_key} =~ s/,//g;
-		$conf->{cgi}{$guacd__port_key} =~ s/\s//g;
-		if (($conf->{cgi}{$guacd__port_key} =~ /\D/) || ($conf->{cgi}{$guacd__port_key} < 1) || ($conf->{cgi}{$guacd__port_key} > 65535))
-		{
-			$save = 0;
-			print template($conf, "config.html", "form-value-warning", {
-				row	=>	"#!string!row_0135!#",
-				message	=>	"#!string!message_0286!#",
-			}); 
-		}
-	}
-	elsif ($conf->{cgi}{$guacd__port_key} ne "#!inherit!#")
-	{
-		$conf->{cgi}{$guacd__port_key} = 8080;
-	}
 
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
 	if ($save)
@@ -579,7 +555,6 @@ sub sanity_check_an_conf
 			$conf->{cluster}{$this_id}{smtp}{helo_domain}         = $conf->{cgi}{$smtp__helo_domain_key};
 			$conf->{cluster}{$this_id}{mail_data}{to}             = $conf->{cgi}{$mail_data__to_key};
 			$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
-			$conf->{cluster}{$this_id}{guacd}{port}               = $conf->{cgi}{$guacd__port_key};
 			
 			# Record hosts
 			$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
@@ -633,7 +608,6 @@ sub sanity_check_an_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
-			$conf->{guacd}{port}               = $conf->{cgi}{guacd__port};
 		}
 	}
 
@@ -705,7 +679,6 @@ sub write_new_an_conf
 		smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
 		mail_data__to			=>	$conf->{mail_data}{to},
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
-		guacd__port			=>	$conf->{guacd}{port},
 	}});
 	print $an_conf $say_body;
 	
@@ -736,7 +709,6 @@ sub write_new_an_conf
 		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{helo_domain};
 		$conf->{cluster}{$this_id}{mail_data}{to}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{to};
 		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{sending_domain};
-		$conf->{cluster}{$this_id}{guacd}{port}               = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{guacd}{port};
 		
 		# Record this Anvil!'s overrides (or that it doesn't override,
 		# as the case may be).
@@ -750,7 +722,6 @@ sub write_new_an_conf
 		print $an_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
 		print $an_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
 		print $an_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
-		print $an_conf "cluster::${this_id}::guacd::port\t\t\t=\t$conf->{cluster}{$this_id}{guacd}{port}\n";
 	}
 	print $an_conf "\n";
 	$an_conf->close();
@@ -1071,7 +1042,6 @@ sub load_configuration_defaults
 	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-	$conf->{cgi}{guacd__port}               = defined $conf->{guacd}{port}               ? $conf->{guacd}{port}               : "";
 	
 	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
@@ -1122,7 +1092,6 @@ sub load_configuration_defaults
 		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		my $guacd__port_key               = "cluster__${this_id}__guacd__port";
 		
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
@@ -1134,7 +1103,6 @@ sub load_configuration_defaults
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		$conf->{cgi}{$guacd__port_key}               = defined $conf->{cluster}{$this_id}{guacd}{port}               ? $conf->{cluster}{$this_id}{guacd}{port}               : "#!inherit!#";
 	}
 	
 	return(0);
@@ -1188,7 +1156,6 @@ sub show_anvil_config_header
 		my $smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		my $mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		my $guacd__port_key               = "cluster__${this_id}__guacd__port";
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
 		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
@@ -1199,8 +1166,7 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		$conf->{cgi}{$guacd__port_key}               = defined $conf->{cluster}{$this_id}{guacd}{port}               ? $conf->{cluster}{$this_id}{guacd}{port}               : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}], cgi::$guacd__port_key: [$conf->{cgi}{$guacd__port_key}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
@@ -1300,7 +1266,6 @@ sub show_common_config_section
 	my $smtp__helo_domain_key         = "smtp__helo_domain";
 	my $mail_data__to_key             = "mail_data__to";
 	my $mail_data__sending_domain_key = "mail_data__sending_domain";
-	my $guacd__port_key               = "guacd__port";
 	my $security_select_options       = [
 		"None",
 		"SSL/TLS",
@@ -1310,7 +1275,7 @@ sub show_common_config_section
 		"1#!#Yes",
 		"0#!#No"
 	];
-	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key], guacd__port_key: [$guacd__port_key]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
 	if (not $conf->{cgi}{save})
 	{
 		# First time loading the config, so pre-populate the values
@@ -1325,7 +1290,6 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-		$conf->{cgi}{guacd__port}               = defined $conf->{guacd}{port}               ? $conf->{guacd}{port}               : "";
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
@@ -1347,8 +1311,7 @@ sub show_common_config_section
 		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		$guacd__port_key               = "cluster__${this_id}__guacd__port";
-		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key], guacd__port_key: [$guacd__port_key]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
 		
 		# Add the 'inherit' options.
 		push @{$security_select_options},     "#!inherit!#";
@@ -1365,8 +1328,7 @@ sub show_common_config_section
 	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
 	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
 	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
-	my $guacd__port                   = $conf->{cgi}{$guacd__port_key};
-	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain], guacd__port: [$guacd__port]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
 	
 	# Build the security and encrypt password select boxes.
 	my $say_security_select     = build_select($conf, "$smtp__security_key",     0, 0, 300, $conf->{cgi}{$smtp__security_key},     $security_select_options);
@@ -1406,9 +1368,6 @@ sub show_common_config_section
 		mail_data__sending_domain_name	=>	$mail_data__sending_domain_key,
 		mail_data__sending_domain_id	=>	$mail_data__sending_domain_key,
 		mail_data__sending_domain_value	=>	$conf->{cgi}{$mail_data__sending_domain_key},
-		guacd__port_name		=>	$guacd__port_key,
-		guacd__port_id			=>	$guacd__port_key,
-		guacd__port_value		=>	$conf->{cgi}{$guacd__port_key},
 		smtp__helo_domain_name		=>	$smtp__helo_domain_key,
 		smtp__helo_domain_id		=>	$smtp__helo_domain_key,
 		smtp__helo_domain_value		=>	$conf->{cgi}{$smtp__helo_domain_key},
@@ -2274,9 +2233,8 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{url}         = $conf->{cluster}{$id}{url};
 		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$id}{ricci_pw};
 		$conf->{clusters}{$name}{root_pw}     = $conf->{cluster}{$id}{root_pw} ? $conf->{cluster}{$id}{root_pw} : $conf->{cluster}{$id}{ricci_pw};
-		$conf->{clusters}{$name}{guacd}{port} = $conf->{cluster}{$id}{guacd}{port} =~ /^\d+$/ ? $conf->{cluster}{$id}{guacd}{port} : $conf->{guacd}{port};
 		$conf->{clusters}{$name}{id}          = $id;
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}], guacd::port: [$conf->{clusters}{$name}{guacd}{port}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}]\n");
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
@@ -2499,7 +2457,7 @@ sub find_executables
 	return (0);
 }
 
-# This sorts out the URL for the guacamole link
+# This is the new 'get_guacamole_link()' that assumes 'mod_proxy' is in use.
 sub get_guacamole_link
 {
 	my ($conf, $node) = @_;
@@ -2507,52 +2465,49 @@ sub get_guacamole_link
 	
 	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
 	my $guacamole_url;
-	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
 	if ($ENV{HTTP_REFERER})
 	{
 		if ($guacamole_url =~ /cgi-bin/)
 		{
 			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		else
 		{
 			$guacamole_url = $ENV{HTTP_REFERER};
+			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
+		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	elsif ($ENV{HTTP_HOST})
 	{
 		if ($ENV{SERVER_PORT} eq "443")
 		{
 			$guacamole_url = "https://".$ENV{HTTP_HOST};
+			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		else
 		{
 			$guacamole_url = "http://".$ENV{HTTP_HOST};
+			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
-	my $cluster        = $conf->{cgi}{cluster};
-	my $guacamole_port = $conf->{clusters}{$cluster}{guacd}{port};
-	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], guacamole_port: [$guacamole_port]\n");
+	my $cluster = $conf->{cgi}{cluster};
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
 	
-	$guacamole_url .= ":$guacamole_port/guacamole/client.xhtml";
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-
-	$guacamole_url =~ s/:\d+(:\d+)/$1/;
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	$guacamole_url .= "/guacamole/client.xhtml";
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 
 	# No node specified, so return a link to the guacamole main page.
 	if (not $node)
 	{
 		$guacamole_url =~ s/\/client.xhtml.*$//;
-		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
-	
-	# For now, guacamole can't use SSL (my bad, not theirs)
-	$guacamole_url =~ s/^https:/http:/;
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
 	return ($guacamole_url);
 }

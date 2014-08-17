@@ -22,6 +22,14 @@ v1.1.5 - <in progress>
 - Changed 'an-cluster-setup.sh' to no longer disable iptables or selinux.
 - Redid the entire main page to return each panel as a completed template chunk
   which is then rendered at once on a final parent template.
+- Removed the "Join Anvil!" button's automatic confirmation due to the risk of
+  fencing the peer if it is not already in the cluster. Will make this smarter
+  later.
+- Removed all reference to the dedicated guacamole port (not proxied behind
+  apache).
+- Explained how to use the on-screen keyboard when a server is selected from
+  the main menu and updated the "Trouble?" note to remind the user to make sure
+  no one else is connected to a given server already.
   
 
 v1.1.4 - 2014-05-27

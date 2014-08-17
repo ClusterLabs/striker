@@ -547,3 +547,38 @@ echo "#                                                                         
 echo "##############################################################################"
 echo ""
 
+### Configuring mod_proxy to front guacamole
+### http://guac-dev.org/doc/gug/installing-guacamole.html#mod-proxy
+
+### This enables UTF-8, not strictly needed.
+# diff -U0 /etc/tomcat6/server.xml.anvil /etc/tomcat6/server.xml
+# --- /etc/tomcat6/server.xml.anvil	2014-08-17 12:00:33.942041900 -0400
+# +++ /etc/tomcat6/server.xml	2014-08-17 12:10:04.312040613 -0400
+# @@ -70 +70,2 @@
+# -               connectionTimeout="20000" 
+# +               connectionTimeout="20000"
+# +               URIEncoding="UTF-8" 
+#
+# /etc/init.d/tomcat6 restart
+# Stopping tomcat6:                                          [  OK  ]
+# Starting tomcat6:                                          [  OK  ]
+
+# diff -U0 /etc/httpd/conf/httpd.conf.anvil /etc/httpd/conf/httpd.conf
+# --- /etc/httpd/conf/httpd.conf.anvil	2014-08-17 12:04:55.697039671 -0400
+# +++ /etc/httpd/conf/httpd.conf	2014-08-17 12:38:40.145039535 -0400
+# @@ -956,0 +957,8 @@
+# +<Location /guacamole/>
+# +    Order allow,deny
+# +    Allow from all
+# +    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on
+# +    ProxyPassReverse http://localhost:8080/guacamole/
+# +</Location>
+# +SetEnvIf Request_URI "^/guacamole/tunnel" dontlog
+# +CustomLog  /var/log/httpd/guac.log common env=!dontlog
+#
+# /etc/init.d/httpd restart
+# Stopping httpd:                                            [  OK  ]
+# Starting httpd: httpd: apr_sockaddr_info_get() failed for an-m03.alteeve.ca
+# httpd: Could not reliably determine the server's fully qualified domain name, using 127.0.0.1 for ServerName
+#                                                            [  OK  ]
+

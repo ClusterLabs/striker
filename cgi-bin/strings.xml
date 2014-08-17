@@ -130,11 +130,6 @@ mail_data::to				=	#!variable!mail_data__to!#
 # smtp::server in most cases.
 mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 
-# This is the port to use when connecting to the guacamole server. Normally,
-# this is 8080, but may be overridden on a per-#!string!brand_0004!# basis for remote
-# access configurations.
-guacd::port				=	#!variable!guacd__port!#
-
 ### Per-#!string!brand_0004!# Configurations
 
 # This defines each #!string!brand_0004!#. If you want to defined multiple #!string!brand_0004!#s in #!string!brand_0002!#,
@@ -160,8 +155,6 @@ guacd::port				=	#!variable!guacd__port!#
 #              be used.
 # root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
 #              nodes.
-# guac::port:  This is used to control which TCP port is used when connecting
-#              to the guacamole server (in-browser remote desktop access).
 		</key>
  		<!-- TODO: text_0003 with '[#!variable!date!#' breaks an-cluster.lib... Fix it. -->
 		<key name="text_0003">### Last updated: #!variable!date!#</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
@@ -227,7 +220,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="explain_0039"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> does not appear to be a valid backup file.]]></key>
 		<key name="explain_0040"><![CDATA[The mimetype detected was <span class="fixed_width">#!variable!mimetype!#</span>. The backup file should be '<span class="fixed_width">text/plain</span>'.]]></key>
 		<key name="explain_0041"><![CDATA[The backup file is expected to start with '<span class="fixed_width">&lt;!-- Striker Backup --&gt;</span>'.]]></key>
-		<key name="explain_0042"><![CDATA[If you want to setup multiple #!string!brand_0002!# dashboards behind a forwarding firewall,<br />you will need to set each to a unique remote desktop port.<br />Locally, the in-browser remote desktop connections listens on port <span class="fixed_width">8080</span>.<br />If you are configuring a remote connection entry for your #!string!brand_0003!#,<br />then you will want to change this to the incoming port that you setup in your firewall.]]></key>
+		<key name="explain_0042"></key>	<!-- free -->
 		<key name="explain_0043"><![CDATA[The backup configuration has been loaded!]]></key>
 		<key name="explain_0044">Downloading a file from the internet can take a long time!</key>
 		<key name="explain_0045">Please be sure that the web address above is a direct link to the file you want to download.</key>
@@ -612,7 +605,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="row_0132">Upload</key>
 		<key name="row_0133">Failed</key>
 		<key name="row_0134">Bad Mimetype</key>
-		<key name="row_0135">Guacamole Port</key>
+		<key name="row_0135"></key>	<!-- free -->
 		<key name="row_0136">System</key>
 		<key name="row_0137">Download</key>
 		<key name="row_0138">Step 1</key>
@@ -629,7 +622,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="row_0149">Address</key>
 		<key name="row_0150">File</key>
 		<key name="row_0151">Inaccessible</key>
-		<key name="row_0152"></key>
+		<key name="row_0152">Boot Drive</key>
 		<key name="row_0153"></key>
 		<key name="row_0154"></key>
 		<key name="row_0155"></key>
@@ -678,7 +671,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0036"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />]]></key>
 		<key name="message_0037"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />]]></key>
 		<key name="message_0038"><![CDATA[Host name <span class="highlight_detail">#!variable!node!#</span> does not resolve to an IP address.]]></key>
-		<key name="message_0039"><![CDATA[Connection to <span class="highlight_detail">#!variable!node!#</span> on port <span class="highlight_detail">#!variable!port!#</span> as the user <span class="highlight_detail">#!variable!user!#</span> was refused.]]></key>
+		<key name="message_0039"><![CDATA[Connection to <span class="highlight_detail">#!variable!node!#</span> on port <span class="highlight_detail">#!variable!port!#</span> as the user <span class="highlight_detail">#!variable!user!#</span> was refused.<br />If you recently booted this server, it may be just about finished booting.<br />It is normal for the connection to be refused for a brief time during the boot process.]]></key>
 		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up still?<br />Is this dashboard server on the same network?]]></key>
 		<key name="message_0041"><![CDATA[Timed out while waiting for a reply from <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.]]></key>
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
@@ -724,7 +717,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0082"><![CDATA[Currently <span class="fixed_width">#!variable!current_ram!#</span>, Maximum <span class="fixed_width">#!variable!maximum_ram!#</span>.]]></key>
 		<key name="message_0083"><![CDATA[Currently <span class="fixed_width">#!variable!current_cpus!#</span>]]></key>
 		<key name="message_0084"><![CDATA[Please Note: If the server is migrated to the other node,<br />you will have to refresh this page and then reconnect.]]></key>
-		<key name="message_0085"><![CDATA[If you're having trouble connecting to the server's desktop, <a href="?cluster=#!variable!reset_tomcat_url!#" target="_new">#!string!button_0020!#</a>.<br />This will restart the remote desktop server on this dashboard.]]></key>
+		<key name="message_0085"><![CDATA[If you're having trouble connecting to the server's desktop,<br />first make sure no one else is connected to the server already<br />(via #!string!brand_0002!# or another program like "Virtual Machine Manager").<br />If no one is, <a href="?cluster=#!variable!reset_tomcat_url!#" target="_new">#!string!button_0020!#</a>.<br />This will restart the remote desktop server on this dashboard.]]></key>
 		<key name="message_0086"><![CDATA[I tried to update the definition file for <span class="fixed_width">#!variable!server!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0087"><![CDATA[Unable to add the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!# without a <span class="fixed_width">ricci</span> password!]]></key>
 		<key name="message_0088"><![CDATA[Please update the <a href="#!variable!manage_url!#" target="_new">#!string!row_0024!#</a> for this #!string!brand_0003!# and then try again by pressing '<span class="fixed_width">&lt;ctrl&gt;</span> + <span class="fixed_width">r</span>'.]]></key>
@@ -925,7 +918,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"><![CDATA[The TCP port assigned to the guacamole (the in-browser remote desktop server) appears to be invalid.<br />A TCP port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
+		<key name="message_0286"></key>	<!-- free -->
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
@@ -968,7 +961,7 @@ guacd::port				=	#!variable!guacd__port!#
 		<key name="message_0256">There is no confirmation for this action.</key>
 		<key name="message_0257">Uploading a big file over a slow link might take a long time.</key>
 		<key name="message_0258"><![CDATA[I am sorry, but I can not connect to either node in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="message_0259"></key>
+		<key name="message_0259"><![CDATA[When on the remote machine, you can access an on-screen keyboard<br />by pressing the <b>left</b> '<span class="fixed_width">&lt;ctrl&gt; + &lt;alt&gt; + &lt;shift&gt;</span>' keys at the same time.<br /><br />If you are using a tablet or phone, <br />place your finger left of your screen and swipe towards the right.]]></key>
 		<key name="message_0260"></key>
 		
 		<!-- LSI related messages -->

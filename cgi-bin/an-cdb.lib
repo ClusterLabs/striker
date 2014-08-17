@@ -7589,9 +7589,7 @@ sub display_details
 			node_control_panel		=>	$node_control_panel,
 			vm_state_and_control_panel	=>	$vm_state_and_control_panel,
 			node_details_panel		=>	$node_details_panel,
-			
 			server_details_panel		=>	$server_details_panel,
-			
 			gfs2_details_panel		=>	$gfs2_details_panel,
 			drbd_details_panel		=>	$drbd_details_panel,
 			free_resources_panel		=>	$free_resources_panel,
@@ -9027,9 +9025,11 @@ sub display_node_controls
 		my $say_join_disabled_button = template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0031!#",
 		}, "", 1);
+		### TODO: See if the peer is online already and, if so, add
+		###      'confirm=true' as the join is safe.
 		my $say_join_enabled_button = template($conf, "common.html", "enabled-button", {
 			button_class	=>	"bold_button",
-			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name&confirm=true",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0031!#",
 			id		=>	"join_cluster_$node",
 		}, "", 1);

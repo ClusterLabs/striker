@@ -99,7 +99,6 @@ get_cgi_vars($conf, [
 	"do",
 	"driver_iso",
 	"file",
-	"guacd__port",
 	"host",
 	"anvil_id",
 	"insert",
@@ -167,7 +166,6 @@ if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
 		"cluster__${this_id}__smtp__helo_domain",
 		"cluster__${this_id}__mail_data__to",
 		"cluster__${this_id}__mail_data__sending_domain",
-		"cluster__${this_id}__guacd__port",
 	]);
 }
 
