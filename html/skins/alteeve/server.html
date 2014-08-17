@@ -2390,25 +2390,6 @@
 	</tr>
 <!-- end recover-resource-manager-failed -->
 
-<!-- start display-details-nodes-off -->
-<table width="100%">
-	<tr>
-		<td colspan="2">
-			<b>#!string!title_0073!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_ready_bold">
-			#!string!state_0004!#
-		</td>
-		<td>
-			#!string!message_0268!#<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end display-details-nodes-off -->
-
 <!-- start display-details-nodes-unreachable -->
 <table width="100%">
 	<tr>
@@ -2434,192 +2415,201 @@
 		<td class="td_hidden">
 <!-- end display-details-header -->
 
-<!-- start display-details-footer -->
-</table>
-<br />
-<!-- end display-details-footer -->
-
 <!-- start display-details-free-resources-header -->
-<table width="100%">
-	<tr>
-		<td colspan="12">
-			<b>#!string!title_0074!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td colspan="3">
-			<i>#!string!title_0075!#</i>
-		</td>
-		<td colspan="3">
-			<i>#!string!title_0076!#</i>
-		</td>
-		<td colspan="6">
-			<i>#!string!title_0077!#</i>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			#!string!title_0078!#
-		</td>
-		<td>
-			#!string!title_0079!#
-		</td>
-		<td>
-			#!string!title_0080!#
-		</td>
-		<td>
-			#!string!title_0081!#
-		</td>
-		<td>
-			#!string!title_0080!#
-		</td>
-		<td>
-			#!string!title_0082!#
-		</td>
-		<td>
-			#!string!title_0083!#
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			#!string!title_0084!#
-		</td>
-		<td>
-			#!string!title_0085!#
-		</td>
-		<td>
-			#!string!title_0086!#
-		</td>
-		<td>
-			#!string!title_0087!#
-		</td>
-	</tr>
+<!-- ################################################################################# -->
+<!-- The following template segments are combined to create the Resource details panel -->
+<!-- ################################################################################# -->
+				<table width="100%">
+					<tr>
+						<td colspan="12">
+							<b>#!string!title_0074!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="3">
+							<i>#!string!title_0075!#</i>
+						</td>
+						<td colspan="3">
+							<i>#!string!title_0076!#</i>
+						</td>
+						<td colspan="6">
+							<i>#!string!title_0077!#</i>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							#!string!title_0078!#
+						</td>
+						<td>
+							#!string!title_0079!#
+						</td>
+						<td>
+							#!string!title_0080!#
+						</td>
+						<td>
+							#!string!title_0081!#
+						</td>
+						<td>
+							#!string!title_0080!#
+						</td>
+						<td>
+							#!string!title_0082!#
+						</td>
+						<td>
+							#!string!title_0083!#
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							#!string!title_0084!#
+						</td>
+						<td>
+							#!string!title_0085!#
+						</td>
+						<td>
+							#!string!title_0086!#
+						</td>
+						<td>
+							#!string!title_0087!#
+						</td>
+					</tr>
 <!-- end display-details-free-resources-header -->
 
 <!-- start display-details-free-resources-entry -->
-	<tr>
-		<td>
-			#!replace!total_cores!#
-		</td>
-		<td>
-			#!replace!total_threads!#
-		</td>
-		<td>
-			#!replace!allocated_cores!#
-		</td>
-		<td>
-			#!replace!real_total_ram!# (#!replace!say_total_ram!#)
-		</td>
-		<td>
-			#!replace!say_allocated_ram!#
-		</td>
-		<td>
-			#!replace!say_free_ram!#
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!say_vg!#</span>
-		</td>
-		<td>
-			#!string!message_0270!#
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!say_pv_name!#</span>
-		</td>
-		<td>
-			#!replace!say_vg_size!#
-		</td>
-		<td>
-			#!replace!say_vg_used!#
-		</td>
-		<td>
-			#!replace!say_vg_free!#
-		</td>
-	</tr>
+					<tr>
+						<td>
+							#!replace!total_cores!#
+						</td>
+						<td>
+							#!replace!total_threads!#
+						</td>
+						<td>
+							#!replace!allocated_cores!#
+						</td>
+						<td>
+							#!replace!real_total_ram!# (#!replace!say_total_ram!#)
+						</td>
+						<td>
+							#!replace!say_allocated_ram!#
+						</td>
+						<td>
+							#!replace!say_free_ram!#
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!say_vg!#</span>
+						</td>
+						<td>
+							#!string!message_0270!#
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!say_pv_name!#</span>
+						</td>
+						<td>
+							#!replace!say_vg_size!#
+						</td>
+						<td>
+							#!replace!say_vg_used!#
+						</td>
+						<td>
+							#!replace!say_vg_free!#
+						</td>
+					</tr>
 <!-- end display-details-free-resources-entry -->
 
 <!-- start display-details-free-resources-entry-extra-storage -->
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!vg!#</span>
-		</td>
-		<td>
-			#!string!message_0270!#
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!pv_name!#</span>
-		</td>
-		<td>
-			#!replace!say_vg_size!#
-		</td>
-		<td>
-			#!replace!say_vg_used!#
-		</td>
-		<td>
-			#!replace!say_vg_free!#
-		</td>
-	</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!vg!#</span>
+						</td>
+						<td>
+							#!string!message_0270!#
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!pv_name!#</span>
+						</td>
+						<td>
+							#!replace!say_vg_size!#
+						</td>
+						<td>
+							#!replace!say_vg_used!#
+						</td>
+						<td>
+							#!replace!say_vg_free!#
+						</td>
+					</tr>
 <!-- end display-details-free-resources-entry-extra-storage -->
 
 <!-- start display-details-bottom-button-bar -->
-	<tr>
-		<td colspan="12">
-			<table class="hidden_table" width="100%">
-				<tr>
-					<td width="50%" class="td_hidden">
-						#!replace!say_bns!#
-					</td>
-					<td width="50%" class="td_hidden">
-						#!replace!say_mc!#
-					</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
+					<tr>
+						<td colspan="12">
+							<table class="hidden_table" width="100%">
+								<tr>
+									<td width="50%" class="td_hidden">
+										#!replace!say_bns!#
+									</td>
+									<td width="50%" class="td_hidden">
+										#!replace!say_mc!#
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
 <!-- end display-details-bottom-button-bar -->
 
+<!-- start display-details-footer -->
+				</table>
+				<br />
+<!-- ################################################################################ -->
+<!-- The previous template segments are combined to create the Resource details panel -->
+<!-- ################################################################################ -->
+<!-- end display-details-footer -->
+
 <!-- start display-server-details-header -->
-<table width="100%">
-	<tr>
-		<td colspan="6">
-			<b>#!string!title_0088!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			<i>#!string!title_0075!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0076!#</i>
-		</td>
-		<td colspan="2">
-			<i>#!string!title_0077!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0089!#</i>
-		</td>
-	</tr>
+<!-- ############################################################################### -->
+<!-- The following template segments are combined to create the Server details panel -->
+<!-- ############################################################################### -->
+				<table width="100%">
+					<tr>
+						<td colspan="6">
+							<b>#!string!title_0088!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							<i>#!string!title_0075!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0076!#</i>
+						</td>
+						<td colspan="2">
+							<i>#!string!title_0077!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0089!#</i>
+						</td>
+					</tr>
 <!-- end display-server-details-header -->
 
 <!-- start display-server-details-network-entry -->
@@ -2627,26 +2617,26 @@
 <!-- end display-server-details-network-entry -->
 
 <!-- start display-server-details-resources -->
-	<tr>
-		<td>
-			<span class="fixed_width">#!replace!say_vm!#</span>
-		</td>
-		<td>
-			#!replace!cpu_count!#
-		</td>
-		<td>
-			#!replace!say_ram!#
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!lv_path!#</span>
-		</td>
-		<td>
-			#!replace!lv_size!#
-		</td>
-		<td>
-			#!replace!say_net_host!# <span class="highlight_detail">#!replace!type!#</span> / <span class="highlight_detail">#!replace!mac!#</span>
-		</td>
-	</tr>
+					<tr>
+						<td>
+							<span class="fixed_width">#!replace!say_vm!#</span>
+						</td>
+						<td>
+							#!replace!cpu_count!#
+						</td>
+						<td>
+							#!replace!say_ram!#
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!lv_path!#</span>
+						</td>
+						<td>
+							#!replace!lv_size!#
+						</td>
+						<td>
+							#!replace!say_net_host!# <span class="highlight_detail">#!replace!type!#</span> / <span class="highlight_detail">#!replace!mac!#</span>
+						</td>
+					</tr>
 <!-- end display-server-details-resources -->
 
 <!-- start display-server-details-entra-nics -->
@@ -2654,409 +2644,501 @@
 <!-- end display-server-details-entra-nics -->
 
 <!-- start display-server-details-entra-storage -->
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			#!replace!say_lv_path!#
-		</td>
-		<td>
-			#!replace!say_lv_size!#
-		</td>
-		<td>
-			#!replace!say_network!#
-		</td>
-	</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							#!replace!say_lv_path!#
+						</td>
+						<td>
+							#!replace!say_lv_size!#
+						</td>
+						<td>
+							#!replace!say_network!#
+						</td>
+					</tr>
 <!-- end display-server-details-entra-storage -->
 
 <!-- start display-server-details-footer -->
-</table>
-<br />
+				</table>
+				<br />
+<!-- ############################################################################## -->
+<!-- The previous template segments are combined to create the Server details panel -->
+<!-- ############################################################################## -->
 <!-- end display-server-details-footer -->
 
 <!-- start display-server-state-and-control-header -->
-<table width="100%">
-	<tr>
-		<td colspan="10">
-			<b>#!string!title_0090!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!node1_short_host_name!#</span>
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!node2_short_host_name!#</span>
-		</td>
-		<td>
-			#!string!title_0091!#
-		</td>
-		<td colspan="6">
-			<i>#!string!title_0092!#</i>
-		</td>
-	</tr>
+<!-- ############################################################################### -->
+<!-- The following template segments are combined to create the Server control panel -->
+<!-- ############################################################################### -->
+				<table width="100%">
+					<tr>
+						<td colspan="10">
+							<b>#!string!title_0090!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!node1_short_host_name!#</span>
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!node2_short_host_name!#</span>
+						</td>
+						<td>
+							#!string!title_0091!#
+						</td>
+						<td colspan="6">
+							<i>#!string!title_0092!#</i>
+						</td>
+					</tr>
 <!-- end display-server-state-and-control-header -->
 
 <!-- start display-server-details-entry -->
-	<tr>
-		<td>
-			#!replace!vm_link!#
-		</td>
-		<td>
-			#!replace!say_node1!#
-		</td>
-		<td>
-			#!replace!say_node2!#
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!prefered_host!#</span>
-		</td>
-		<td>
-			#!replace!start_button!#
-		</td>
-		<td>
-			#!replace!migrate_button!#
-		</td>
-		<td>
-			#!replace!stop_button!#
-		</td>
-		<td>
-			#!replace!force_off_button!#
-		</td>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			#!replace!delete_button!#
-		</td>
-	</tr>
+					<tr>
+						<td>
+							#!replace!vm_link!#
+						</td>
+						<td>
+							#!replace!say_node1!#
+						</td>
+						<td>
+							#!replace!say_node2!#
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!prefered_host!#</span>
+						</td>
+						<td>
+							#!replace!start_button!#
+						</td>
+						<td>
+							#!replace!migrate_button!#
+						</td>
+						<td>
+							#!replace!stop_button!#
+						</td>
+						<td>
+							#!replace!force_off_button!#
+						</td>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							#!replace!delete_button!#
+						</td>
+					</tr>
 <!-- end display-server-details-entry -->
 
 <!-- start display-server-state-and-control-footer -->
-</table>
-<br />
+				</table>
+				<br />
+<!-- ############################################################################## -->
+<!-- The previous template segments are combined to create the Server control panel -->
+<!-- ############################################################################## -->
 <!-- end display-server-state-and-control-footer -->
 
 <!-- start display-replicated-storage-header -->
-<table width="100%">
-	<tr>
-		<td colspan="9">
-			<b>#!string!title_0093!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td colspan="2">
-			<i>#!string!title_0094!#</i>
-		</td>
-		<td colspan="2">
-			<i>#!string!title_0095!#</i>
-		</td>
-		<td colspan="2">
-			<i>#!string!title_0096!#</i>
-		</td>
-		<td colspan="2">
-			<i>#!string!title_0097!#</i>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<i>#!string!title_0098!#</i>
-		</td>
-		<td>
-			#!replace!say_node1!#
-		</td>
-		<td>
-			#!replace!say_node2!#
-		</td>
-		<td>
-			#!replace!say_node1!#
-		</td>
-		<td>
-			#!replace!say_node2!#
-		</td>
-		<td>
-			#!replace!say_node1!#
-		</td>
-		<td>
-			#!replace!say_node2!#
-		</td>
-		<td>
-			#!replace!say_node1!#
-		</td>
-		<td>
-			#!replace!say_node2!#
-		</td>
-	</tr>
+<!-- ############################################################################# -->
+<!-- The following template segments are combined to create the DRBD control panel -->
+<!-- ############################################################################# -->
+				<table width="100%">
+					<tr>
+						<td colspan="9">
+							<b>#!string!title_0093!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td colspan="2">
+							<i>#!string!title_0094!#</i>
+						</td>
+						<td colspan="2">
+							<i>#!string!title_0095!#</i>
+						</td>
+						<td colspan="2">
+							<i>#!string!title_0096!#</i>
+						</td>
+						<td colspan="2">
+							<i>#!string!title_0097!#</i>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<i>#!string!title_0098!#</i>
+						</td>
+						<td>
+							#!replace!say_node1!#
+						</td>
+						<td>
+							#!replace!say_node2!#
+						</td>
+						<td>
+							#!replace!say_node1!#
+						</td>
+						<td>
+							#!replace!say_node2!#
+						</td>
+						<td>
+							#!replace!say_node1!#
+						</td>
+						<td>
+							#!replace!say_node2!#
+						</td>
+						<td>
+							#!replace!say_node1!#
+						</td>
+						<td>
+							#!replace!say_node2!#
+						</td>
+					</tr>
 <!-- end display-replicated-storage-header -->
 
 <!-- start display-replicated-storage-entry -->
-	<tr>
-		<td>
-			<span class="fixed_width">#!replace!res!#</span>
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!say_n1_dev!#</span>
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!say_n2_dev!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n1_cs!#">#!replace!say_n1_cs!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n2_cs!#">#!replace!say_n2_cs!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n1_ro!#">#!replace!say_n1_ro!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n2_ro!#">#!replace!say_n2_ro!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n1_ds!#">#!replace!say_n1_ds!#</span>
-		</td>
-		<td>
-			<span class="#!replace!class_n2_ds!#">#!replace!say_n2_ds!#</span>
-		</td>
-	</tr>
+					<tr>
+						<td>
+							<span class="fixed_width">#!replace!res!#</span>
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!say_n1_dev!#</span>
+						</td>
+						<td>
+							<span class="fixed_width">#!replace!say_n2_dev!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n1_cs!#">#!replace!say_n1_cs!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n2_cs!#">#!replace!say_n2_cs!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n1_ro!#">#!replace!say_n1_ro!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n2_ro!#">#!replace!say_n2_ro!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n1_ds!#">#!replace!say_n1_ds!#</span>
+						</td>
+						<td>
+							<span class="#!replace!class_n2_ds!#">#!replace!say_n2_ds!#</span>
+						</td>
+					</tr>
 <!-- end display-replicated-storage-entry -->
 
 <!-- start display-replicated-storage-footer -->
-</table>
-<br />
+				</table>
+				<br />
+<!-- ############################################################################ -->
+<!-- The previous template segments are combined to create the DRBD control panel -->
+<!-- ############################################################################ -->
 <!-- end display-replicated-storage-footer -->
 
 <!-- start display-cluster-storage-header -->
-<table width="100%">
-	<tr>
-		<td colspan="6">
-			<b>#!string!title_0099!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<i>#!string!title_0100!#</i>
-		</td>
-		<td>
-			<i>#!replace!say_node1!#</i>
-		</td>
-		<td>
-			<i>#!replace!say_node2!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0085!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0086!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0087!#</i>
-		</td>
-	</tr>
+<!-- ############################################################################# -->
+<!-- The following template segments are combined to create the GFS2 control panel -->
+<!-- ############################################################################# -->
+				<table width="100%">
+					<tr>
+						<td colspan="6">
+							<b>#!string!title_0099!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<i>#!string!title_0100!#</i>
+						</td>
+						<td>
+							<i>#!replace!say_node1!#</i>
+						</td>
+						<td>
+							<i>#!replace!say_node2!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0085!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0086!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0087!#</i>
+						</td>
+					</tr>
 <!-- end display-cluster-storage-header -->
 
 <!-- start display-cluster-storage-not-online -->
-	<tr>
-		<td>
-			#!string!symbol_0011!#
-		</td>
-		<td>
-			<span class="highlight_unavailable">--</span>
-		</td>
-		<td>
-			<span class="highlight_unavailable">--</span>
-		</td>
-		<td>
-			<span class="highlight_unavailable">--</span>
-		</td>
-		<td>
-			<span class="highlight_unavailable">--</span> / <span class="highlight_unavailable">--%</span>
-		</td>
-		<td>
-			<span class="highlight_unavailable">--</span>
-		</td>
-	</tr>
+					<tr>
+						<td>
+							#!string!symbol_0011!#
+						</td>
+						<td>
+							<span class="highlight_unavailable">--</span>
+						</td>
+						<td>
+							<span class="highlight_unavailable">--</span>
+						</td>
+						<td>
+							<span class="highlight_unavailable">--</span>
+						</td>
+						<td>
+							<span class="highlight_unavailable">--</span> / <span class="highlight_unavailable">--%</span>
+						</td>
+						<td>
+							<span class="highlight_unavailable">--</span>
+						</td>
+					</tr>
 <!-- end display-cluster-storage-not-online -->
 
 <!-- start display-cluster-storage-entry -->
-	<tr>
-		<td>
-			<span class="fixed_width">#!replace!mount_point!#</span>
-		</td>
-		<td>
-			#!replace!say_node1_mounted!#
-		</td>
-		<td>
-			#!replace!say_node2_mounted!#
-		</td>
-		<td>
-			#!replace!say_size!#
-		</td>
-		<td>
-			#!replace!say_used!# / #!replace!say_used_percent!#
-		</td>
-		<td>
-			#!replace!say_free!#
-		</td>
-	</tr>
+					<tr>
+						<td>
+							<span class="fixed_width">#!replace!mount_point!#</span>
+						</td>
+						<td>
+							#!replace!say_node1_mounted!#
+						</td>
+						<td>
+							#!replace!say_node2_mounted!#
+						</td>
+						<td>
+							#!replace!say_size!#
+						</td>
+						<td>
+							#!replace!say_used!# / #!replace!say_used_percent!#
+						</td>
+						<td>
+							#!replace!say_free!#
+						</td>
+					</tr>
 <!-- end display-cluster-storage-entry -->
 
 <!-- start display-cluster-storage-no-entries-found -->
-	<tr>
-		<td colspan="6">
-			<i>#!string!title_0101!#</i>
-		</td>
-	</tr>
+					<tr>
+						<td colspan="6">
+							<i>#!string!title_0101!#</i>
+						</td>
+					</tr>
 <!-- end display-cluster-storage-no-entries-found -->
 
 <!-- start display-cluster-storage-footer -->
-</table>
-<br />
+				</table>
+				<br />
+<!-- ############################################################################ -->
+<!-- The previous template segments are combined to create the GFS2 control panel -->
+<!-- ############################################################################ -->
 <!-- end display-cluster-storage-footer -->
 
-<!-- start display-node-details-header -->
-<table width="100%">
-	<tr>
-		<td colspan="7">
-			<b>#!string!title_0102!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td>
-			<i>#!string!title_0103!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0104!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0105!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0106!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0107!#</i>
-		</td>
-		<td>
-			<i>#!string!title_0108!#</i>
-		</td>
-	</tr>
-<!-- end display-node-details-header -->
-
-<!-- start display-node-details-entry -->
-	<tr>
-		<td>
-			&nbsp; <span class="fixed_width">#!replace!host_name!#</span> &nbsp;
-		</td>
-		<td>
-			#!replace!cman!#
-		</td>
-		<td>
-			#!replace!rgmanager!#
-		</td>
-		<td>
-			#!replace!drbd!#
-		</td>
-		<td>
-			#!replace!clvmd!#
-		</td>
-		<td>
-			#!replace!gfs2!#
-		</td>
-		<td>
-			#!replace!libvirtd!#
-		</td>
-	</tr>
-<!-- end display-node-details-entry -->
-
-<!-- start display-node-details-footer -->
-</table>
-<br />
-<!-- end display-node-details-footer -->
-
 <!-- start display-node-controls-full -->
-<table width="100%">
+				<table width="100%">
+					<tr>
+						<td colspan="8">
+							<b>#!string!title_0109!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td colspan="3">
+							<i>#!string!title_0110!#</i>
+						</td>
+						<td colspan="3">
+							<i>#!string!title_0111!#</i>
+						</td>
+						<td colspan="1">
+							<i>#!string!title_0112!#</i>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							#!replace!say_node1_name!#
+						</td>
+						<td rowspan="2">
+							#!replace!dual_boot_button!#
+						</td>
+						<td>
+							#!replace!say_node1_boot!#
+						</td>
+						<td>
+							#!replace!say_node1_shutdown!#
+						</td>
+						<td rowspan="2">
+							#!replace!dual_join_button!#
+						</td>
+						<td>
+							#!replace!say_node1_join!#
+						</td>
+						<td>
+							#!replace!say_node1_withdraw!#
+						</td>
+						<td>
+							#!replace!say_node1_fence!#
+						</td>
+					</tr>
+					<tr>
+						<td>
+							#!replace!say_node2_name!#
+						</td>
+						<td>
+							#!replace!say_node2_boot!#
+						</td>
+						<td>
+							#!replace!say_node2_shutdown!#
+						</td>
+						<td>
+							#!replace!say_node2_join!#
+						</td>
+						<td>
+							#!replace!say_node2_withdraw!#
+						</td>
+						<td>
+							#!replace!say_node2_fence!#
+						</td>
+					</tr>
+				</table>
+				<br />
+<!-- end display-node-controls-full -->
+
+<!-- start display-node-details-full -->
+				<table width="100%">
+					<tr>
+						<td colspan="7">
+							<b>#!string!title_0102!#</b>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp;
+						</td>
+						<td>
+							<i>#!string!title_0103!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0104!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0105!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0106!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0107!#</i>
+						</td>
+						<td>
+							<i>#!string!title_0108!#</i>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp; <span class="fixed_width">#!replace!node1_host_name!#</span> &nbsp;
+						</td>
+						<td>
+							#!replace!node1_cman!#
+						</td>
+						<td>
+							#!replace!node1_rgmanager!#
+						</td>
+						<td>
+							#!replace!node1_drbd!#
+						</td>
+						<td>
+							#!replace!node1_clvmd!#
+						</td>
+						<td>
+							#!replace!node1_gfs2!#
+						</td>
+						<td>
+							#!replace!node1_libvirtd!#
+						</td>
+					</tr>
+					<tr>
+						<td>
+							&nbsp; <span class="fixed_width">#!replace!node2_host_name!#</span> &nbsp;
+						</td>
+						<td>
+							#!replace!node2_cman!#
+						</td>
+						<td>
+							#!replace!node2_rgmanager!#
+						</td>
+						<td>
+							#!replace!node2_drbd!#
+						</td>
+						<td>
+							#!replace!node2_clvmd!#
+						</td>
+						<td>
+							#!replace!node2_gfs2!#
+						</td>
+						<td>
+							#!replace!node2_libvirtd!#
+						</td>
+					</tr>
+				</table>
+				<br />
+<!-- end display-node-details-full -->
+
+<!-- start main-page -->
+<table class="hidden_table" border="0">
 	<tr>
-		<td colspan="8">
-			<b>#!string!title_0109!#</b>
+		<td class="td_hidden">
+			<!-- node_control_panel -->
+			#!replace!node_control_panel!#
 		</td>
 	</tr>
 	<tr>
-		<td>
-			&nbsp;
-		</td>
-		<td colspan="3">
-			<i>#!string!title_0110!#</i>
-		</td>
-		<td colspan="3">
-			<i>#!string!title_0111!#</i>
-		</td>
-		<td colspan="1">
-			<i>#!string!title_0112!#</i>
+		<td class="td_hidden">
+			<!-- vm_state_and_control_panel -->
+			#!replace!vm_state_and_control_panel!#
 		</td>
 	</tr>
 	<tr>
-		<td>
-			#!replace!say_node1_name!#
-		</td>
-		<td rowspan="2">
-			#!replace!dual_boot_button!#
-		</td>
-		<td>
-			#!replace!say_node1_boot!#
-		</td>
-		<td>
-			#!replace!say_node1_shutdown!#
-		</td>
-		<td rowspan="2">
-			#!replace!dual_join_button!#
-		</td>
-		<td>
-			#!replace!say_node1_join!#
-		</td>
-		<td>
-			#!replace!say_node1_withdraw!#
-		</td>
-		<td>
-			#!replace!say_node1_fence!#
+		<td class="td_hidden">
+			<!-- node_details_panel -->
+			#!replace!node_details_panel!#
 		</td>
 	</tr>
 	<tr>
-		<td>
-			#!replace!say_node2_name!#
+		<td class="td_hidden">
+			<!-- server_details_panel -->
+			#!replace!server_details_panel!#
 		</td>
-		<td>
-			#!replace!say_node2_boot!#
+	</tr>
+	<tr>
+		<td class="td_hidden">
+			<!-- gfs2_details_panel -->
+			#!replace!gfs2_details_panel!#
 		</td>
-		<td>
-			#!replace!say_node2_shutdown!#
+	</tr>
+	<tr>
+		<td class="td_hidden">
+			<!-- drbd_details_panel -->
+			#!replace!drbd_details_panel!#
 		</td>
-		<td>
-			#!replace!say_node2_join!#
+	</tr>
+	<tr>
+		<td class="td_hidden">
+			<!-- free_resources_panel -->
+			#!replace!free_resources_panel!#
 		</td>
-		<td>
-			#!replace!say_node2_withdraw!#
-		</td>
-		<td>
-			#!replace!say_node2_fence!#
+	</tr>
+	<tr>
+		<td class="td_hidden">
+			<!-- no_access_panel -->
+			#!replace!no_access_panel!#
 		</td>
 	</tr>
 </table>
 <br />
-<!-- end display-node-controls-full -->
+<!-- end main-page -->

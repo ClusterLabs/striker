@@ -7527,9 +7527,10 @@ sub display_details
 {
 	my ($conf) = @_;
 	
-	print template($conf, "server.html", "display-details-header");
+	#print template($conf, "server.html", "display-details-header");
 	# Display the status of each node's daemons
 	my $up_nodes = @{$conf->{up_nodes}};
+	
 	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
 	# calls are available. IE: enable this when the cache exists and the
 	# fence command addresses are reachable.
@@ -7537,41 +7538,65 @@ sub display_details
 #	if ($conf->{'system'}{show_nodes})
 	if (1)
 	{
-		display_node_controls($conf);
+		my $node_control_panel = display_node_controls($conf);
+		#print $node_control_panel;
+		
+		my $vm_state_and_control_panel = "";
+		my $node_details_panel         = "";
+		my $server_details_panel       = "";
+		my $gfs2_details_panel         = "";
+		my $drbd_details_panel         = "";
+		my $free_resources_panel       = "";
+		my $no_access_panel            = "";
 
 		# I don't show below here unless at least one node is up.
 		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 		if ($conf->{'system'}{up_nodes} > 0)
 		{
 			# Show the user the current VM states and the control buttons.
-			display_vm_state_and_controls($conf);
+			$vm_state_and_control_panel = display_vm_state_and_controls($conf);
+			#print $vm_state_and_control_panel;
 			
 			# Show the state of the daemons.
-			display_node_details($conf);
+			$node_details_panel = display_node_details($conf);
+			#print $node_details_panel;
 		
 			# Show the details about each VM.
-			display_vm_details($conf);
+			$server_details_panel = display_vm_details($conf);
+			#print $server_details_panel;
 			
 			# Show the status of each node's GFS2 share(s)
-			display_gfs2_details($conf);
-		
+			$gfs2_details_panel = display_gfs2_details($conf);
+			#print $gfs2_details_panel;
+			
 			# This shows the status of each DRBD resource in the cluster.
-			display_drbd_details($conf);
-		
+			$drbd_details_panel = display_drbd_details($conf);
+			#print $drbd_details_panel;
+			
 			# Show the free resources available for new VMs.
-			display_free_resources($conf);
-			print template($conf, "server.html", "display-details-footer");
+			$free_resources_panel = display_free_resources($conf);
+			#print $free_resources_panel;
 		}
 		else
 		{
 			# Was able to confirm the nodes are off.
-			print template($conf, "server.html", "display-details-nodes-off");
+			$no_access_panel = template($conf, "server.html", "display-details-nodes-unreachable", {
+				message	=>	"#!string!message_0268!#",
+			});
 		}
-	}
-	else
-	{
-		# No access to the cluster at all.
-		print template($conf, "server.html", "display-details-nodes-unreachable");
+		
+		print template($conf, "server.html", "main-page", {
+			node_control_panel		=>	$node_control_panel,
+			vm_state_and_control_panel	=>	$vm_state_and_control_panel,
+			node_details_panel		=>	$node_details_panel,
+			
+			server_details_panel		=>	$server_details_panel,
+			
+			gfs2_details_panel		=>	$gfs2_details_panel,
+			drbd_details_panel		=>	$drbd_details_panel,
+			free_resources_panel		=>	$free_resources_panel,
+			no_access_panel			=>	$no_access_panel,
+		});
 	}
 	
 	return (0);
@@ -7582,7 +7607,7 @@ sub display_free_resources
 {
 	my ($conf) = @_;
 	
-	print template($conf, "server.html", "display-details-free-resources-header");
+	my $free_resources_panel .= template($conf, "server.html", "display-details-free-resources-header");
 	
 	# I only show one row for CPU and RAM, but usually have two or more
 	# VGs. So the first step is to put my VG info into an array.
@@ -7658,7 +7683,7 @@ sub display_free_resources
 	my $say_pv_name               =  $conf->{'system'}{clvmd_down} ? "--" : $pv_name[0];
 	
 	# Show the main info.
-	print template($conf, "server.html", "display-details-free-resources-entry", {
+	$free_resources_panel .= template($conf, "server.html", "display-details-free-resources-entry", {
 		total_cores		=>	$conf->{resources}{total_cores},
 		total_threads		=>	$conf->{resources}{total_threads},
 		allocated_cores		=>	$allocated_cores,
@@ -7672,8 +7697,7 @@ sub display_free_resources
 		say_vg_used		=>	$say_vg_used,
 		say_vg_free		=>	$say_vg_free,
 	});
-	print "
-";
+
 	if (@vg > 0)
 	{
 		for (my $i=1; $i < @vg; $i++)
@@ -7682,7 +7706,7 @@ sub display_free_resources
 			my $say_vg_used = bytes_to_hr($conf, $vg_used[$i]);
 			my $say_vg_free = bytes_to_hr($conf, $vg_free[$i]);
 			my $say_pv_name = $pv_name[$i];
-			print template($conf, "server.html", "display-details-free-resources-entry-extra-storage", {
+			$free_resources_panel .= template($conf, "server.html", "display-details-free-resources-entry-extra-storage", {
 				vg		=>	$vg[$i],
 				pv_name		=>	$pv_name[$i],
 				say_vg_size	=>	$say_vg_size,
@@ -7728,12 +7752,13 @@ sub display_free_resources
 			}, "", 1);
 		}
 	}
-	print template($conf, "server.html", "display-details-bottom-button-bar", {
+	$free_resources_panel .= template($conf, "server.html", "display-details-bottom-button-bar", {
 		say_bns	=>	$say_bns,
 		say_mc	=>	$say_mc,
 	});
+	$free_resources_panel .= template($conf, "server.html", "display-details-footer");
 
-	return (0);
+	return ($free_resources_panel);
 }
 
 # Simply converts a full domain name back to the node name used in the main hash.
@@ -7783,7 +7808,7 @@ sub display_vm_details
 	
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	print template($conf, "server.html", "display-server-details-header");
+	my $server_details_panel = template($conf, "server.html", "display-server-details-header");
 	
 	# Pull up the server details.
 	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
@@ -7871,7 +7896,7 @@ sub display_vm_details
 		$lv_size[0]                          = "--" if not defined $lv_size[0];
 		$type[0]                             = "--" if not defined $type[0];
 		$mac[0]                              = "--" if not defined $mac[0];
-		print  template($conf, "server.html", "display-server-details-resources", {
+		$server_details_panel .= template($conf, "server.html", "display-server-details-resources", {
 				say_vm		=>	$say_vm,
 				cpu_count	=>	$conf->{vm}{$vm}{details}{cpu_count},
 				say_ram		=>	$say_ram,
@@ -7910,8 +7935,8 @@ sub display_vm_details
 					$say_network = "$say_net_host <span class=\"highlight_detail\">$type[$i]</span> / <span class=\"highlight_detail\">$mac[$i]</span>";
 				}
 				
-				# Show extra LVs
-				print template($conf, "server.html", "display-server-details-entra-storage", {
+				# Show extra LVs and/or networks.
+				$server_details_panel .= template($conf, "server.html", "display-server-details-entra-storage", {
 					say_lv_path	=>	$say_lv_path,
 					say_lv_size	=>	$say_lv_size,
 					say_network	=>	$say_network,
@@ -7919,9 +7944,9 @@ sub display_vm_details
 			}
 		}
 	}
-	print template($conf, "server.html", "display-server-details-footer");
+	$server_details_panel .= template($conf, "server.html", "display-server-details-footer");
 
-	return (0);
+	return ($server_details_panel);
 }
 
 # This checks the daemons running on a node and returns '1' if all are running.
@@ -8497,7 +8522,7 @@ sub display_vm_state_and_controls
 	#record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node1_long: [$node1_long]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], node2_long: [$node2_long]\n");
 	
-	print template($conf, "server.html", "display-server-state-and-control-header", {
+	my $vm_state_and_control_panel = template($conf, "server.html", "display-server-state-and-control-header", {
 		anvil			=>	$conf->{cgi}{cluster},
 		node1_short_host_name	=>	$conf->{node}{$node1}{info}{short_host_name},
 		node2_short_host_name	=>	$conf->{node}{$node2}{info}{short_host_name},
@@ -8649,7 +8674,7 @@ sub display_vm_state_and_controls
 			$say_vm_link   = "$say_vm_disabled_button";
 		}
 		
-		print template($conf, "server.html", "display-server-details-entry", {
+		$vm_state_and_control_panel .= template($conf, "server.html", "display-server-details-entry", {
 			vm_link			=>	$say_vm_link,
 			say_node1		=>	$conf->{vm}{$vm}{say_node1},
 			say_node2		=>	$conf->{vm}{$vm}{say_node2},
@@ -8664,9 +8689,9 @@ sub display_vm_state_and_controls
 	
 	# When enabling the "Start" button, be sure to start on the highest 
 	# priority host in the failover domain, when possible.
-	print template($conf, "server.html", "display-server-state-and-control-footer");
+	$vm_state_and_control_panel .= template($conf, "server.html", "display-server-state-and-control-footer");
 	
-	return (0);
+	return ($vm_state_and_control_panel);
 }
 
 # This shows the status of each DRBD resource in the cluster.
@@ -8679,7 +8704,7 @@ sub display_drbd_details
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
-	print template($conf, "server.html", "display-replicated-storage-header", {
+	my $drbd_details_panel = template($conf, "server.html", "display-replicated-storage-header", {
 		say_node1	=>	$say_node1,
 		say_node2	=>	$say_node2,
 	});
@@ -8778,7 +8803,7 @@ sub display_drbd_details
 		   $class_n2_ds  = "highlight_warning" if $say_n2_ds =~ /Inconsistent/;
 		   $class_n2_ds  = "highlight_warning" if $say_n2_ds eq "Outdated";
 		   $class_n2_ds  = "highlight_bad"     if $say_n2_ds eq "Diskless";
-		print template($conf, "server.html", "display-replicated-storage-entry", {
+		$drbd_details_panel .= template($conf, "server.html", "display-replicated-storage-entry", {
 			res		=>	$res,
 			say_n1_dev	=>	$say_n1_dev,
 			say_n2_dev	=>	$say_n2_dev,
@@ -8796,9 +8821,9 @@ sub display_drbd_details
 			say_n2_ds	=>	$say_n2_ds,
 		});
 	}
-	print template($conf, "server.html", "display-replicated-storage-footer");
+	$drbd_details_panel .= template($conf, "server.html", "display-replicated-storage-footer");
 	
-	return (0);
+	return ($drbd_details_panel);
 }
 
 # This shows the details on each node's GFS2 mount(s)
@@ -8811,7 +8836,7 @@ sub display_gfs2_details
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
-	print template($conf, "server.html", "display-cluster-storage-header", {
+	my $gfs2_details_panel = template($conf, "server.html", "display-cluster-storage-header", {
 		say_node1	=>	$say_node1,
 		say_node2	=>	$say_node2,
 	});
@@ -8847,7 +8872,7 @@ sub display_gfs2_details
 		else
 		{
 			# Neither node is online at all.
-			print template($conf, "server.html", "display-cluster-storage-not-online");
+			$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-not-online");
 		}
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; gfs2_hash: [$gfs2_hash], node1 hash: [".(ref($conf->{node}{$node1}{gfs}))."], node2 hash: [".(ref($conf->{node}{$node2}{gfs}))."]\n");
@@ -8884,7 +8909,7 @@ sub display_gfs2_details
 				$say_used_percent = $conf->{node}{$node2}{gfs}{$mount_point}{percent_used};
 				$say_free         = $conf->{node}{$node2}{gfs}{$mount_point}{free_space};
 			}
-			print template($conf, "server.html", "display-cluster-storage-entry", {
+			$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-entry", {
 				mount_point		=>	$mount_point,
 				say_node1_mounted	=>	$say_node1_mounted,
 				say_node2_mounted	=>	$say_node2_mounted,
@@ -8898,11 +8923,11 @@ sub display_gfs2_details
 	else
 	{
 		# No gfs2 FSes found
-		print template($conf, "server.html", "display-cluster-storage-no-entries-found");
+		$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-no-entries-found");
 	}
-	print template($conf, "server.html", "display-cluster-storage-footer");
+	$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-footer");
 
-	return (0);
+	return ($gfs2_details_panel);
 }
 
 # This shows the user the state of the nodes and their daemons.
@@ -8916,27 +8941,50 @@ sub display_node_details
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	
-	print template($conf, "server.html", "display-node-details-header");
+	my $i = 0;
+	my @host_name;
+	my @cman;
+	my @rgmanager;
+	my @drbd;
+	my @clvmd;
+	my @gfs2;
+	my @libvirtd;
+	
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
 		my $say_short_name =  $node;
 		$say_short_name    =~ s/\..*//;
 		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
-
-		print template($conf, "server.html", "display-node-details-entry", {
-			host_name	=>	$conf->{node}{$node}{info}{short_host_name},
-			cman		=>	$conf->{node}{$node}{daemon}{cman}{status},
-			rgmanager	=>	$conf->{node}{$node}{daemon}{rgmanager}{status},
-			drbd		=>	$conf->{node}{$node}{daemon}{drbd}{status},
-			clvmd		=>	$conf->{node}{$node}{daemon}{clvmd}{status},
-			gfs2		=>	$conf->{node}{$node}{daemon}{gfs2}{status},
-			libvirtd	=>	$conf->{node}{$node}{daemon}{libvirtd}{status},
-		});
+		
+		$host_name[$i] = $conf->{node}{$node}{info}{short_host_name};
+		$cman[$i]      = $conf->{node}{$node}{daemon}{cman}{status};
+		$rgmanager[$i] = $conf->{node}{$node}{daemon}{rgmanager}{status};
+		$drbd[$i]      = $conf->{node}{$node}{daemon}{drbd}{status};
+		$clvmd[$i]     = $conf->{node}{$node}{daemon}{clvmd}{status};
+		$gfs2[$i]      = $conf->{node}{$node}{daemon}{gfs2}{status};
+		$libvirtd[$i]  = $conf->{node}{$node}{daemon}{libvirtd}{status};
+		$i++;
 	}
-	print template($conf, "server.html", "display-node-details-footer");
+	
+	my $node_details_panel =template($conf, "server.html", "display-node-details-full", {
+		node1_host_name	=>	$host_name[0],
+		node2_host_name	=>	$host_name[1],
+		node1_cman	=>	$cman[0],
+		node2_cman	=>	$cman[1],
+		node1_rgmanager	=>	$rgmanager[0],
+		node2_rgmanager	=>	$rgmanager[1],
+		node1_drbd	=>	$drbd[0],
+		node2_drbd	=>	$drbd[1],
+		node1_clvmd	=>	$clvmd[0],
+		node2_clvmd	=>	$clvmd[1],
+		node1_gfs2	=>	$gfs2[0],
+		node2_gfs2	=>	$gfs2[1],
+		node1_libvirtd	=>	$libvirtd[0],
+		node2_libvirtd	=>	$libvirtd[1],
+	});
 
-	return (0);
+	return ($node_details_panel);
 }
 
 # This shows the controls for the nodes.
@@ -9096,8 +9144,8 @@ sub display_node_controls
 		$i++;
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
-	my $node_control_page = template($conf, "server.html", "display-node-controls-full", {
+	#record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+	my $node_control_panel = template($conf, "server.html", "display-node-controls-full", {
 		say_node1_name		=>	$say_node_name[0],
 		say_node2_name		=>	$say_node_name[1],
 		dual_boot_button	=>	$say_dual_boot,
@@ -9113,9 +9161,8 @@ sub display_node_controls
 		say_node1_fence		=>	$say_fence[0],
 		say_node2_fence		=>	$say_fence[1],
 	});
-	print $node_control_page;
 	
-	return (0);
+	return ($node_control_panel);
 }
 
 1;
