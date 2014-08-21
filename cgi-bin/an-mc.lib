@@ -81,14 +81,21 @@ sub download_url
 {
 	my ($conf) = @_;
 	
+	# Show the 'scanning in progress' table.
+	# variables hash feeds 'message_0272'.
+	print template($conf, "common.html", "scanning-message", {}, {
+		anvil	=>	$conf->{cgi}{cluster},
+	});
+	
 	my $cluster       = $conf->{cgi}{cluster};
 	my $url           = $conf->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
+	$base .= "/" if $base !~ /\/$/;
 	
 	my ($node) = read_files_on_shared($conf);
-	print template($conf, "media-library.html", "download_website_header", {
+	print template($conf, "media-library.html", "download-website-header", {
 		file	=>	$file,
-		url	=>	$url,
+		base	=>	$base,
 	});
 
 	my $progress_points = 5;
@@ -247,6 +254,7 @@ sub confirm_download_url
 	}});
 	
 	print template($conf, "media-library.html", "download-website-confirm", {
+		file		=>	$file,
 		title		=>	$say_title,
 		base		=>	$base,
 		download	=>	$say_download,
@@ -275,23 +283,25 @@ sub save_file_to_disk
 	}
 	else
 	{
-		#my $out_file = $conf->{path}{media}.$conf->{cgi}{file};
-		my $out_file = "'/tmp/$conf->{cgi}{file}'";
-		my $sc = "$out_file";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc] with cgi fh: [$in_fh].\n");
-		my $fh = IO::Handle->new();
-		open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+		# TODO: Make sure characters like spaces and whatnot don't need
+		#       to be escaped.
+		my $out_file =  "$conf->{path}{media}/$conf->{cgi}{file}";
+		$out_file    =~ s/\/\//\//g;
+		record($conf, "$THIS_FILE ".__LINE__."; Writing out_file: [$out_file] with cgi fh: [$in_fh].\n");
+		
+		open (my $fh, ">", $out_file) or die "$THIS_FILE ".__LINE__."; Failed to open for writing: [$out_file], error was: $!\n";
 		binmode $fh;
 		while(<$in_fh>)
 		{
 			print $fh $_;
 		}
-		$fh->close;
+		close $fh;
 		
 		# Tell the user we're starting.
 		print template($conf, "media-library.html", "save-to-disk-starting");
 		
-		my $failed = upload_to_shared($conf, $node, $out_file);
+		my ($failed) = upload_to_shared($conf, $node, $out_file);
+		unlink $out_file if -e $out_file;
 		if ($failed)
 		{
 			# Something went wrong
@@ -320,25 +330,39 @@ sub image_and_upload
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
+	record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], name: [$name]\n");
 	
 	my ($node) = read_files_on_shared($conf);
-	if (exists $conf->{files}{shared}{$name})
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], files::shared::${name}: [$conf->{files}{shared}{$name}]\n");
+	if (not $name)
+	{
+		# Tell the user that no name was given.
+		print template($conf, "media-library.html", "image-and-upload-no-name");
+	}
+	elsif (not $dev)
+	{
+		# Tell the user that no name was given.
+		print template($conf, "media-library.html", "image-and-upload-no-device");
+	}
+	elsif (exists $conf->{files}{shared}{$name})
 	{
 		# Tell the user a file with that name already exists.
 		# the variables hash ref feeds 'message_0232'.
 		print template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
 			name	=>	$name,
 		});
+		record($conf, "$THIS_FILE ".__LINE__."; name: [$name]\n");
 	}
 	else
 	{
 		# Now make sure the disc is still in the drive.
 		check_local_dvd($conf);
 		
+		record($conf, "$THIS_FILE ".__LINE__."; drive::${dev}: [$conf->{drive}{$dev}], drive::${dev}::reload: [$conf->{drive}{$dev}{reload}], drive::${dev}::no_disc: [$conf->{drive}{$dev}{no_disc}]\n");
 		if (not exists $conf->{drive}{$dev})
 		{
 			# The drive vanished.
-			my $say_missing_drive = get_string($conf, {key => "message_0234", variables => {
+			my $say_missing_drive = get_string($conf, {key => "message_0304", variables => {
 				device	=>	$dev,
 			}});
 			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
@@ -353,7 +377,7 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{reload})
 		{
 			# Need to reload to read the disc.
-			my $say_drive_not_ready = get_string($conf, {key => "message_0235", variables => {
+			my $say_drive_not_ready = get_string($conf, {key => "message_0305", variables => {
 				device	=>	$dev,
 			}});
 			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
@@ -368,7 +392,7 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{no_disc})
 		{
 			# No disc in the drive
-			my $say_no_disc = get_string($conf, {key => "message_0237", variables => {
+			my $say_no_disc = get_string($conf, {key => "message_0307", variables => {
 				device	=>	$dev,
 			}});
 			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
@@ -385,42 +409,68 @@ sub image_and_upload
 			# Ok, we're good to go.
 			# Finally...
 			#my $out_file = $conf->{path}{media}.$name;
-			my $out_file = "'/tmp/$name'";
+			my $out_file = "'$conf->{path}{media}/$name'";
 			my $in_dev   = $dev;
-			print template($conf, "media-library.html", "image-and-upload-proceed-header");
+			record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], directory: [$conf->{path}{media}], name: [$name]\n");
+			my $message  = get_string($conf, {key => "explain_0059", variables => {
+				device		=>	$dev,
+				name		=>	$name,
+				directory	=>	$conf->{path}{media},
+			}});
+			record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+			print template($conf, "media-library.html", "image-and-upload-proceed-header", {
+				message		=>	$message,
+			});
 			
 			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-
+			
 			my $fh = IO::Handle->new();
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			my $error;
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; output: [$line]\n");
+				if ($line =~ /Is a directory/i)
+				{
+					$error .= get_string($conf, {key => "message_0333"});
+				}
 				print template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
 			$fh->close;
-			# Starting to upload now.
-			# The variables hash feeds 'explain_0052'.
-			print template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
-				name	=>	$name,
-				anvil	=>	$conf->{cgi}{cluster},
-			});
-
-			my ($failed) = upload_to_shared($conf, $node, $out_file);
-			if ($failed)
+			
+			if ($error)
 			{
-				# Upload appears to have failed.
-				print template($conf, "media-library.html", "image-and-upload-proceed-upload-failed");
+				# Image failed, no sense trying to upload.
+				print template($conf, "media-library.html", "image-and-upload-proceed-failed", {}, {
+					error	=>	$error,
+				});
 			}
 			else
 			{
-				# Looks like? Really? do a 'sum' of the files to confirm.
-				print template($conf, "media-library.html", "image-and-upload-proceed-upload-success");
-				unlink $out_file;
+				# Starting to upload now.
+				# The variables hash feeds 'explain_0052'.
+				print template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
+					name	=>	$name,
+					anvil	=>	$conf->{cgi}{cluster},
+				});
+
+				my ($failed) = upload_to_shared($conf, $node, $out_file);
+				unlink $out_file if -e $out_file;
+				if ($failed)
+				{
+					# Upload appears to have failed.
+					print template($conf, "media-library.html", "image-and-upload-proceed-upload-failed");
+				}
+				else
+				{
+					# Looks like? Really? do a 'sum' of the files to confirm.
+					print template($conf, "media-library.html", "image-and-upload-proceed-upload-success");
+				}
 			}
 			print template($conf, "media-library.html", "image-and-upload-proceed-footer");
 		}
@@ -437,16 +487,24 @@ sub upload_to_shared
 	
 	# Some prep work.
 	test_ssh_fingerprint($conf, $node);
+	my $failed = 0;
 	
 	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+	record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
 	# This is a dumb way to check, try a test upload and see if it fails.
-	if ( -e "/usr/bin/expect" )
+	if ( -e $conf->{path}{expect} )
 	{
-		print "Creating 'expect' rsync wrapper.<br />";
+		#print "Creating 'expect' rsync wrapper.<br />";
+		record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
 		create_rsync_wrapper($conf, $node);
 		$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+		record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
 	}
-	#print "calling: [$sc]\n";
+	else
+	{
+		print template($conf, "media-library.html", "image-and-upload-expect-not-found");
+	}
+
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
@@ -455,13 +513,17 @@ sub upload_to_shared
 	{
 		chomp;
 		my $line = $_;
+		if ($line =~ /Permission denied/i)
+		{
+			$failed = 1;
+		}
 		print template($conf, "common.html", "shell-call-output", {
 			line	=>	$line,
 		});
 	}
 	$fh->close;
 	
-	return (0);
+	return ($failed);
 }
 
 # This asks the user to confirm the image and upload task. It also gives a
@@ -478,45 +540,47 @@ sub confirm_image_and_upload
 	}});
 	my $input_name = template($conf, "common.html", "form-input-no-class-defined-width", {
 		type	=>	"text",
-		name	=>	$name,
+		name	=>	"name",
 		id	=>	$name,
 		value	=>	$name,
 		width	=>	"250px",
-	});
+	}, "", 1);
 	my $hidden_inputs = template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"dev",
 		id	=>	"dev",
 		value	=>	"$dev",
-	});
+	}, "", 1);
 	$hidden_inputs .= "\n";
 	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"cluster",
 		id	=>	"cluster",
 		value	=>	"$conf->{cgi}{cluster}",
-	});
+	}, "", 1);
 	$hidden_inputs .= "\n";
 	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"task",
 		id	=>	"task",
 		value	=>	"image_and_upload",
-	});
+	}, "", 1);
 	$hidden_inputs .= "\n";
 	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"confirm",
 		id	=>	"confirm",
 		value	=>	"true",
-	});
+	}, "", 1);
 	my $submit_button = template($conf, "common.html", "form-input", {
 		type	=>	"submit",
 		name	=>	"null",
 		id	=>	"null",
-		value	=>	"#!replace!button_0004!#",
+		value	=>	"#!string!button_0004!#",
 		class	=>	"bold_button",
-	});
+	}, "", 1);
+	$submit_button =~ s/^\s+//; $submit_button =~ s/\s+$//s;
+	record($conf, "$THIS_FILE ".__LINE__."; submit_button: [$submit_button]\n");
 
 	# Display the confirmation window now.
 	print template($conf, "media-library.html", "image-and-upload-confirm", {
@@ -541,7 +605,7 @@ sub confirm_delete_file
 		name	=>	$name,
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	my $say_delete = get_string($conf, {key => "message_0246", variables => {
+	my $say_delete = get_string($conf, {key => "message_0316", variables => {
 		name	=>	$name,
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
@@ -607,7 +671,7 @@ sub delete_file
 			name	=>	$name,
 			anvil	=>	$cluster,
 		}});
-		my $say_message = get_string($conf, {key => "message_0248", variables => {
+		my $say_message = get_string($conf, {key => "message_0318", variables => {
 			name	=>	$name,
 			anvil	=>	$cluster,
 		}});
@@ -685,7 +749,7 @@ sub check_status
 	if (not -e $conf->{path}{status})
 	{
 		# Directory doesn't exist...
-		my $say_message = get_string($conf, {key => "message_0249", variables => {
+		my $say_message = get_string($conf, {key => "message_0319", variables => {
 			directory	=>	$conf->{path}{status},
 		}});
 		print template($conf, "media-library.html", "check-status-config-error", {
@@ -696,7 +760,7 @@ sub check_status
 	{
 		# Can't read the directory
 		my $user = getpwuid($<);
-		my $say_message = get_string($conf, {key => "message_0250", variables => {
+		my $say_message = get_string($conf, {key => "message_0320", variables => {
 			directory	=>	$conf->{path}{status},
 			user		=>	$user,
 		}});
@@ -786,12 +850,12 @@ sub read_shared
 			if ($conf->{drive}{$dev}{reload})
 			{
 				# Drive wasn't ready, rescan needed.
-				$disc_name = "#!string!message_0252!#";
+				$disc_name = "#!string!message_0322!#";
 			}
 			elsif ($conf->{drive}{$dev}{no_disc})
 			{
 				# No disc found
-				$disc_name = "#!string!message_0253!#";
+				$disc_name = "#!string!message_0323!#";
 			}
 			elsif ($conf->{drive}{$dev}{volume})
 			{
@@ -816,7 +880,7 @@ sub read_shared
 			else
 			{
 				# Some other problem reading the disc.
-				$disc_name = get_string($conf, {key => "message_0254", variables => {
+				$disc_name = get_string($conf, {key => "message_0324", variables => {
 					device	=>	$dev,
 				}});
 			}
@@ -899,7 +963,7 @@ sub read_shared
 	else
 	{
 		# Can't access either node.
-		# The variables hash feeds 'message_0258'.
+		# The variables hash feeds 'message_0328'.
 		print template($conf, "media-library.html", "read-shared-no-access", {}, {
 			anvil	=>	$cluster,
 		});

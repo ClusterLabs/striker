@@ -237,7 +237,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0056">It is possible that another user deleted this file already.</key>
 		<key name="explain_0057"><![CDATA[#!string!symbol_0012!# By default, <span class="subtle_text_fixed_width">~256 MiB</span> is set aside for the file system journals.]]></key>
 		<key name="explain_0058"><![CDATA[Once a file transfer starts, it will continue even if you close the page<br />or the connection times out. If you wish to end the transfer, at this time,<br />you will need to restart the web server or reboot the dashboard server.]]></key>
-		<key name="explain_0059"><![CDATA[]]></key>
+		<key name="explain_0059"><![CDATA[Asking <span class="fixed_width">dd</span> to create an image of: [<span class="fixed_width">#!variable!device!#</span>] called: [<span class="fixed_width">#!variable!name!#</span>] in the: [<span class="fixed_width">#!variable!directory!#</span>] directory.]]></key>
 		<key name="explain_0060"><![CDATA[]]></key>
 		
 		<!-- These are strings used to describe devices -->
@@ -441,7 +441,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0120">Adding server to this #!string!brand_0003!#.</key>
 		<key name="title_0121">Downloading from a website.</key>
 		<key name="title_0122"><![CDATA[About to download from the web directly to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="title_0123">Saving the file to the #!string!brand_0003!#'s storage.</key>
+		<key name="title_0123">Uploading the file to the #!string!brand_0003!#'s storage.</key>
 		<key name="title_0124">No File Defined!</key>
 		<key name="title_0125">Upload to the server is starting.</key>
 		<key name="title_0126">Name Conflict!</key>
@@ -462,9 +462,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0141">Download directly from a website address to the #!string!brand_0003!#.</key>
 		<key name="title_0142">Note!</key>
 		<key name="title_0143">Upload a file from your computer.</key>
-		<key name="title_0144"></key>
-		<key name="title_0145"></key>
-		<key name="title_0146"></key>
+		<key name="title_0144">No name given!</key>
+		<key name="title_0145">No disc drive specified!</key>
+		<key name="title_0146">Imaging the disc failed.</key>
 		<key name="title_0147"></key>
 		<key name="title_0148"></key>
 		<key name="title_0149"></key>
@@ -932,37 +932,47 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0297">It appears you clicked '#!string!button_0042!#' without first selecting a file.</key>
 		<key name="message_0298">Please go back and try again.</key>
 		<key name="message_0299">Now uploading to the #!string!brand_0003!#.</key>
-		<key name="message_0230">It looks like the upload failed.</key>
-		<key name="message_0231">It looks like the upload succeeded.</key>
-		<key name="message_0232"><![CDATA[There is a file on the #!string!brand_0003!# called <span class="fixed_width">#!variable!name!#</span> on the #!string!brand_0003!#.]]></key>
-		<key name="message_0233">Please go back and give the file a different name.</key>
-		<key name="message_0234"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to no longer exist!]]></key>
-		<key name="message_0235"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to not be ready.]]></key>
-		<key name="message_0236">Please reload to try and read the disc again.</key>
-		<key name="message_0237"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
-		<key name="message_0238">Please reinsert the disc and then reload this page.</key>
-		<key name="message_0239">It looks like the upload failed.</key>
-		<key name="message_0240">It looks like the upload succeeded, unlinking the source image.</key>
-		<key name="message_0241">The disc will be converted into an image file.</key>
-		<key name="message_0242">For a DVD, this could take around 10 minutes to complete.</key>
-		<key name="message_0243"><![CDATA[The image will be uploaded to the #!string!brand_0003!#'s <span class="fixed_width">#!conf!path::shared!#</span> directory.]]></key>
-		<key name="message_0244">If the #!string!brand_0003!# is remote and your internet connection is slow, this could take a very long time.</key>
-		<key name="message_0245">This is the name that will be given to the DVD or CD image.</key>
-		<key name="message_0246"><![CDATA[This will delete <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="message_0247">Any output from the shell will be below (none expected):</key>
-		<key name="message_0248"><![CDATA[The file <span class="fixed_width">#!variable!name!#</span> on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# is already gone.]]></key>
-		<key name="message_0249"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> does not exist.]]></key>
-		<key name="message_0250"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> is not readible by the <span class="fixed_fidth">#!variable!user!#</span> user.]]></key>
-		<key name="message_0251">(Patches welcomed) :)</key>
-		<key name="message_0252">Disc read failed, please reload to try again.</key>
-		<key name="message_0253">No disc found.</key>
-		<key name="message_0254"><![CDATA[Unknown problem reading drive: [<span class="fixed_width">#!variable!device!#</span>]]]></key>
-		<key name="message_0255"><![CDATA[If the server hosting this file is slow or if the file is big,<br />the download might take a long time to complete.]]></key>
-		<key name="message_0256">There is no confirmation for this action.</key>
-		<key name="message_0257">Uploading a big file over a slow link might take a long time.</key>
-		<key name="message_0258"><![CDATA[I am sorry, but I can not connect to either node in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="message_0259"><![CDATA[When on the remote machine, you can access an on-screen keyboard<br />by pressing the <b>left</b> '<span class="fixed_width">&lt;ctrl&gt; + &lt;alt&gt; + &lt;shift&gt;</span>' keys at the same time.<br /><br />If you are using a tablet or phone, <br />place your finger left of your screen and swipe towards the right.]]></key>
-		<key name="message_0260"></key>
+		<key name="message_0300">It looks like the upload failed.</key>
+		<key name="message_0301">It looks like the upload succeeded.</key>
+		<key name="message_0302"><![CDATA[There is a file on the #!string!brand_0003!# called <span class="fixed_width">#!variable!name!#</span> on the #!string!brand_0003!#.]]></key>
+		<key name="message_0303">Please go back and give the file a different name.</key>
+		<key name="message_0304"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to no longer exist!]]></key>
+		<key name="message_0305"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to not be ready.]]></key>
+		<key name="message_0306">Please reload to try and read the disc again.</key>
+		<key name="message_0307"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
+		<key name="message_0308">Please reinsert the disc and then reload this page.</key>
+		<key name="message_0309"><![CDATA[<span class="highlight_bad_bold">Error</span>! It looks like the upload failed.]]></key>
+		<key name="message_0310">It looks like the upload succeeded, unlinking the source image.</key>
+		<key name="message_0311">The disc will be converted into an image file.</key>
+		<key name="message_0312">For a DVD, this could take around 10 minutes to complete.</key>
+		<key name="message_0313"><![CDATA[The image will be uploaded to the #!string!brand_0003!#'s <span class="fixed_width">#!conf!path::shared!#</span> directory.]]></key>
+		<key name="message_0314">If the #!string!brand_0003!# is remote and your internet connection is slow, this could take a very long time.</key>
+		<key name="message_0315">This is the name that will be given to the DVD or CD image.</key>
+		<key name="message_0316"><![CDATA[This will delete <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0317">Any output from the shell will be below (none expected):</key>
+		<key name="message_0318"><![CDATA[The file <span class="fixed_width">#!variable!name!#</span> on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# is already gone.]]></key>
+		<key name="message_0319"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> does not exist.]]></key>
+		<key name="message_0320"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> is not readible by the <span class="fixed_fidth">#!variable!user!#</span> user.]]></key>
+		<key name="message_0321">(Patches welcomed) :)</key>
+		<key name="message_0322">Disc read failed, please reload to try again.</key>
+		<key name="message_0323">No disc found.</key>
+		<key name="message_0324"><![CDATA[Unknown problem reading drive: [<span class="fixed_width">#!variable!device!#</span>]]]></key>
+		<key name="message_0325"><![CDATA[If the server hosting this file is slow or if the file is big,<br />the download might take a long time to complete.]]></key>
+		<key name="message_0326">There is no confirmation for this action.</key>
+		<key name="message_0327">Uploading a big file over a slow link might take a long time.</key>
+		<key name="message_0328"><![CDATA[I am sorry, but I can not connect to either node in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0329"><![CDATA[When on the remote machine, you can access an on-screen keyboard<br />by pressing the <b>left</b> '<span class="fixed_width">&lt;ctrl&gt; + &lt;alt&gt; + &lt;shift&gt;</span>' keys at the same time.<br /><br />If you are using a tablet or phone, <br />place your finger left of your screen and swipe towards the right.]]></key>
+		<key name="message_0330"><![CDATA[Failed to create the provision script: [#!variable!provision_script!#].<br />Has the <span class="fixed_width">/shared/provision</span>, <span class="fixed_width">/shared/archives</span>, <span class="fixed_width">/shared/files</span> and <span class="fixed_width">/shared/definitions</span>]]> directories been created?</key>
+		<key name="message_0331">No name was given for the disc image to be created.</key>
+		<key name="message_0332">No disc drive device name was given. This is probably a program error. #!string!brand_0011!#.</key>
+		<key name="message_0333">It looks like the name you gave matched an existing directory name.</key>
+		<key name="message_0334"><![CDATA[<span class="highlight_warning_bold">Warning</span>! The '<span class="fixed_width">expect</span>' program is not installed (or it was not found at '<span class="fixed_width">#!conf!path::expect!#</span>').<br />If you have not setup <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Copy_Public_Keys_to_Enable_SSH_Without_a_Password" target="_new">passwordless SSH</a>, then access to the node(s) will fail.]]></key>
+		<key name="message_0335"></key>
+		<key name="message_0336"></key>
+		<key name="message_0337"></key>
+		<key name="message_0338"></key>
+		<key name="message_0339"></key>
+		<key name="message_0340"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

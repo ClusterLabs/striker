@@ -29,10 +29,10 @@ use IO::Handle;
 use Net::SSH2;
 
 # Email stuff
-use Email::Sender::Simple qw(sendmail);
-use Email::Sender::Transport::SMTP::TLS;
-use Try::Tiny;
-use Email::Simple::Creator;
+# use Email::Sender::Simple qw(sendmail);
+# use Email::Sender::Transport::SMTP::TLS;
+# use Try::Tiny;
+# use Email::Simple::Creator;
 
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
@@ -2465,50 +2465,51 @@ sub get_guacamole_link
 	
 	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
 	my $guacamole_url;
-	record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
 	if ($ENV{HTTP_REFERER})
 	{
 		if ($guacamole_url =~ /cgi-bin/)
 		{
 			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
-			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		else
 		{
 			$guacamole_url = $ENV{HTTP_REFERER};
-			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
-		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	elsif ($ENV{HTTP_HOST})
 	{
 		if ($ENV{SERVER_PORT} eq "443")
 		{
 			$guacamole_url = "https://".$ENV{HTTP_HOST};
-			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 		else
 		{
 			$guacamole_url = "http://".$ENV{HTTP_HOST};
-			record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
-	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
 	
 	$guacamole_url .= "/guacamole/client.xhtml";
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 
 	# No node specified, so return a link to the guacamole main page.
 	if (not $node)
 	{
 		$guacamole_url =~ s/\/client.xhtml.*$//;
-		record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	
+	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	return ($guacamole_url);
 }
 
@@ -2586,7 +2587,7 @@ sub get_cgi_vars
 			}
 			$conf->{cgi}{$var} = $cgi->param($var);
 			# Make this UTF8 if it isn't already.
-			if (not Encode::is_utf8( $conf->{cgi}{$var} ))
+			if (not Encode::is_utf8($conf->{cgi}{$var}))
 			{
 				$conf->{cgi}{$var} = Encode::decode_utf8( $conf->{cgi}{$var} );
 			}
@@ -2895,7 +2896,7 @@ sub read_files_on_shared
 			cgi_string	=>	$conf->{'system'}{cgi_string},
 		});
 	}
-	print template($conf, "main-page.html", "close-table");
+	#print template($conf, "main-page.html", "close-table");
 	
 	return ($connected);
 }

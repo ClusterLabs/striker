@@ -28,10 +28,10 @@ use warnings;
 use IO::Handle;
 
 # Email stuff
-use Email::Sender::Simple qw(sendmail);
-use Email::Sender::Transport::SMTP::TLS;
-use Try::Tiny;
-use Email::Simple::Creator;
+# use Email::Sender::Simple qw(sendmail);
+# use Email::Sender::Transport::SMTP::TLS;
+# use Try::Tiny;
+# use Email::Simple::Creator;
 
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
@@ -7925,28 +7925,28 @@ Anvil! nodes directly and are not sent by Alteeve's Niche!.";
 		$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - $conf->{mail_data}{subject}";
 	}
 	$conf->{mail_data}{body}    .= $conf->{mail_data}{body_suffix};
-	my $transport = Email::Sender::Transport::SMTP::TLS->new(
-		host		=>	$conf->{smtp}{server},
-		port		=>	$conf->{smtp}{port},
-		username	=>	$conf->{smtp}{username},
-		password	=>	$conf->{smtp}{password},
-		helo		=>	$conf->{smtp}{helo_domain},
-	);
-
-	my $message = Email::Simple->create(
-		header	=> [
-			From	=>	$conf->{smtp}{username},
-			To	=>	$conf->{mail_data}{to},
-			Subject	=>	$conf->{mail_data}{subject},
-		],
-		body	=>	$conf->{mail_data}{body},
-	);
-	
-	try {
-		sendmail($message, { transport => $transport });
-	} catch {
-		die "Error sending email: $_";
-	};
+# 	my $transport = Email::Sender::Transport::SMTP::TLS->new(
+# 		host		=>	$conf->{smtp}{server},
+# 		port		=>	$conf->{smtp}{port},
+# 		username	=>	$conf->{smtp}{username},
+# 		password	=>	$conf->{smtp}{password},
+# 		helo		=>	$conf->{smtp}{helo_domain},
+# 	);
+# 
+# 	my $message = Email::Simple->create(
+# 		header	=> [
+# 			From	=>	$conf->{smtp}{username},
+# 			To	=>	$conf->{mail_data}{to},
+# 			Subject	=>	$conf->{mail_data}{subject},
+# 		],
+# 		body	=>	$conf->{mail_data}{body},
+# 	);
+# 	
+# 	try {
+# 		sendmail($message, { transport => $transport });
+# 	} catch {
+# 		die "Error sending email: $_";
+# 	};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
 	$conf->{mail_data}{subject} = "";

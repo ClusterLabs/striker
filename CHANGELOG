@@ -27,10 +27,15 @@ v1.1.5 - <in progress>
   later.
 - Removed all reference to the dedicated guacamole port (not proxied behind
   apache).
-- Explained how to use the on-screen keyboard when a server is selected from
-  the main menu and updated the "Trouble?" note to remind the user to make sure
-  no one else is connected to a given server already.
-  
+- Explained how to use the on-screen keyboard when displaying a remote desktop
+  link and updated the "Trouble?" note to remind the user to make sure no one
+  else is connected to a given server already.
+- Added a conditional to populating DRBD values when the DRBD daemon is up, as
+  it is possible that the daemon can be up before information about a resource
+  can be read, leading to "Undefined replacement key" alerts.
+- Created the 'striker-install' script to replace the old 'an-cdb-install.sh'
+  script.
+
 
 v1.1.4 - 2014-05-27
 - Added the 'gather-system-info' (and associated setuid script).

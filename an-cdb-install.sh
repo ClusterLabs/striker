@@ -11,6 +11,8 @@ PASSWORD="secret"
 HOSTNAME=$(hostname)
 CUSTOMER="Alteeve's Niche!"
 VERSION="1.1.4"
+MAILSERVER="mail.alteeve.ca"
+SMTPPORT="587"
 
 clear;
 echo ""
@@ -71,74 +73,12 @@ yum -y update
 yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay perl-CGI fence-agents \
                syslinux openssl-devel httpd screen ccs vim mlocate wget man \
                perl-Test-Simple policycoreutils-python mod_ssl libcdio \
-               perl-TermReadKey expect
+               perl-TermReadKey expect postfix cyrus-sasl cyrus-sasl-plain \
+               tomcat6 guacd libguac-client-vnc libguac-client-ssh \
+               libguac-client-rdp
 
 # Stuff from our repo
 yum -y install perl-Net-SSH2
-
-# Stuff for a GUI
-yum -y groupinstall development
-
-export PERL_MM_USE_DEFAULT=1
-perl -MCPAN -e 'install Test::More'
-if [ ! -e "/usr/local/share/perl5/Test/More.pm" ]
-then
-        echo "The perl module 'Test::More' didn't install, trying again."
-        perl -MCPAN -e 'install Test::More'
-        if [ ! -e "/usr/local/share/perl5/Test/More.pm" ]
-        then
-                echo "The perl module 'Test::More' failed to install.Unable to proceed."
-                exit;
-        fi
-fi        
-
-perl -MCPAN -e 'install("YAML")'
-if [ ! -e "/usr/local/share/perl5/YAML.pm" ]
-then
-        echo "The perl module 'YAML' didn't install, trying again."
-        perl -MCPAN -e 'install("YAML")'
-        if [ ! -e "/usr/local/share/perl5/YAML.pm" ]
-        then
-                echo "The perl module 'YAML' failed to install."
-                echo "Do you have an Internet connection? Unable to proceed."
-                exit;
-        fi
-fi        
-perl -MCPAN -e 'install Moose::Role'
-if [ ! -e "/usr/local/lib64/perl5/Moose/Role.pm" ]
-then
-        echo "The perl module 'Moose::Role' didn't install, trying again."
-        perl -MCPAN -e 'install Moose::Role'
-        if [ ! -e "/usr/local/lib64/perl5/Moose/Role.pm" ]
-        then
-                echo "The perl module 'Moose::Role' failed to install.Unable to proceed."
-                exit;
-        fi
-fi        
-perl -MCPAN -e 'install Throwable::Error'
-if [ ! -e "/usr/local/share/perl5/Throwable/Error.pm" ]
-then
-        echo "The perl module 'Throwable::Error' didn't install, trying again."
-        perl -MCPAN -e 'install Throwable::Error'
-        if [ ! -e "/usr/local/share/perl5/Throwable/Error.pm" ]
-        then
-                echo "The perl module 'Throwable::Error' failed to install.Unable to proceed."
-                exit;
-        fi
-fi        
-perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
-if [ ! -e "/usr/local/share/perl5/Email/Sender/Transport/SMTP/TLS.pm" ]
-then
-        echo "The perl module 'Email::Sender::Transport::SMTP::TLS' didn't install, trying again."
-        perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
-        if [ ! -e "/usr/local/share/perl5/Email/Sender/Transport/SMTP/TLS.pm" ]
-        then
-                echo "The perl module 'Email::Sender::Transport::SMTP::TLS' failed to install.Unable to proceed."
-                exit;
-        fi
-fi        
-
-#cat /dev/null > /etc/libvirt/qemu/networks/default.xml
 
 if [ ! -e "/var/www/home" ]
 then
@@ -185,6 +125,12 @@ else
         cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.anvil
         sed -i 's/Timeout 60/Timeout 60000/' /etc/httpd/conf/httpd.conf
         sed -i "/Directory \"\/var\/www\/cgi-bin\"/ a\    # Password login\n    AuthType Basic\n    AuthName \"Striker - $CUSTOMER\"\n    AuthUserFile /var/www/home/htpasswd\n    Require user admin" /etc/httpd/conf/httpd.conf
+        sed -i "s|#</Proxy>|#</Proxy>\n<Location /guacamole/>\n    Order allow,deny\n    Allow from all\n    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n    ProxyPassReverse http://localhost:8080/guacamole/\n</Location>\nSetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\nCustomLog  /var/log/httpd/guac.log common env=!dontlog|" /etc/httpd/conf/httpd.conf
+fi
+
+if [ ! -e "/etc/tomcat6/server.xml.anvil" ]
+then
+        sed -i.anvil "s|Connector port=\"8080\" protocol=\"HTTP/1.1\"|Connector port=\"8080\" protocol=\"HTTP\\/1.1\"\n               URIEncoding=\"UTF-8\"|" /etc/tomcat6/server.xml
 fi
 
 if [ ! -e "/etc/ssh/sshd_config.anvil" ]
@@ -208,9 +154,9 @@ chkconfig httpd on
 chkconfig acpid on
 
 setenforce 0
-#/etc/init.d/iptables stop
 /etc/init.d/ip6tables stop
-/etc/init.d/httpd start
+/etc/init.d/httpd restart
+/etc/init.d/tomcat6 restart
 /etc/init.d/acpid start
 
 if [ ! -e "/root/.ssh/id_rsa" ]
@@ -257,8 +203,6 @@ if [ -e "/etc/guacamole/noauth-config.xml" ]
 then
         echo "Guacamole already installed."
 else
-        echo " - Installing packages (this will do nothing if already installed)"
-        yum -y install tomcat6 guacd libguac-client-vnc libguac-client-ssh libguac-client-rdp
         echo " - Verifying packages were installed."
         OK=1
         if [ -e "/var/lib/tomcat6" ]
@@ -371,41 +315,8 @@ else
                 echo " - .war already downloaded."
         else
                 echo " - Downloading .war file"
-                if [ -e "/tmp/sf.html" ]
-                then
-                        echo "   - Old sf.html' file found, removing it."
-                        rm -f /tmp/sf.html
-                fi
-                echo "   - Downloading latest fs html page."
-                wget http://sourceforge.net/projects/guacamole/files/current/binary -O /tmp/sf.html
-
-                if [ -e "/tmp/sf.html" ]
-                then
-                        echo "   - Parsing sf.html to build URL"
-                        WAR=$(cat /tmp/sf.html |grep guacamole | grep "war/down" | sed 's/.*\(guacamole-0\..*\.war\)\/.*/\1/' | tr '\n' ' ' | awk '{print $1}')
-                        URL="http://sourceforge.net/projects/guacamole/files/current/binary/$WAR"
-                        echo "   - Downloading: $URL"
-                        wget -c $URL -O /var/lib/guacamole/$WAR
-                else
-                        echo "   - Failed to download guacamole WAR file."
-                        exit
-                fi
-                if ls /var/lib/guacamole/guacamole-* &>/dev/null
-                then
-                        echo "   - Guacamole $WAR downloaded successfully. Moving to 'guacamole.war'"
-                        mv /var/lib/guacamole/$WAR /var/lib/guacamole/guacamole.war
-                        if [ -e "/var/lib/guacamole/guacamole.war" ]
-                        then
-                                echo "   - Successfully moved to guacamole.war'"
-                        else
-                                echo "   - Failed to move $WAR to 'guacamole.war'"
-                                exit
-                        fi
-                                
-                else
-                        echo "   - Failed to download $WAR file."
-                        exit
-                fi
+                wget -c https://alteeve.ca/files/guacamole-0.9.2.war -O /var/lib/guacamole/guacamole-0.9.2.war
+                ln -s /var/lib/guacamole/guacamole-0.9.2.war /var/lib/guacamole/guacamole.war
         fi
 
         echo "Creating 'guacamole.properties'"
@@ -501,7 +412,6 @@ fi
 # Configure iptables.
 iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT
 iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT
-iptables -I INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT
 /etc/init.d/iptables save
 
 chown -R apache:apache /var/www/*
@@ -546,39 +456,3 @@ echo "#                       Dashboard install is complete.                    
 echo "#                                                                            #"
 echo "##############################################################################"
 echo ""
-
-### Configuring mod_proxy to front guacamole
-### http://guac-dev.org/doc/gug/installing-guacamole.html#mod-proxy
-
-### This enables UTF-8, not strictly needed.
-# diff -U0 /etc/tomcat6/server.xml.anvil /etc/tomcat6/server.xml
-# --- /etc/tomcat6/server.xml.anvil	2014-08-17 12:00:33.942041900 -0400
-# +++ /etc/tomcat6/server.xml	2014-08-17 12:10:04.312040613 -0400
-# @@ -70 +70,2 @@
-# -               connectionTimeout="20000" 
-# +               connectionTimeout="20000"
-# +               URIEncoding="UTF-8" 
-#
-# /etc/init.d/tomcat6 restart
-# Stopping tomcat6:                                          [  OK  ]
-# Starting tomcat6:                                          [  OK  ]
-
-# diff -U0 /etc/httpd/conf/httpd.conf.anvil /etc/httpd/conf/httpd.conf
-# --- /etc/httpd/conf/httpd.conf.anvil	2014-08-17 12:04:55.697039671 -0400
-# +++ /etc/httpd/conf/httpd.conf	2014-08-17 12:38:40.145039535 -0400
-# @@ -956,0 +957,8 @@
-# +<Location /guacamole/>
-# +    Order allow,deny
-# +    Allow from all
-# +    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on
-# +    ProxyPassReverse http://localhost:8080/guacamole/
-# +</Location>
-# +SetEnvIf Request_URI "^/guacamole/tunnel" dontlog
-# +CustomLog  /var/log/httpd/guac.log common env=!dontlog
-#
-# /etc/init.d/httpd restart
-# Stopping httpd:                                            [  OK  ]
-# Starting httpd: httpd: apr_sockaddr_info_get() failed for an-m03.alteeve.ca
-# httpd: Could not reliably determine the server's fully qualified domain name, using 127.0.0.1 for ServerName
-#                                                            [  OK  ]
-

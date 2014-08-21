@@ -46,17 +46,19 @@ chmod 755 ~/rsync.$node;";
 sub test_ssh_fingerprint
 {
 	my ($conf, $node) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
 	my $sc = "ssh root\@$node \"uname -a\"";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		#print "$line\n";
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
 		{
 			# Add fingerprint to known_hosts
@@ -484,6 +486,7 @@ sub initialize_conf
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
 			cp			=>	"/bin/cp",
 			email_password_file	=>	"/var/www/tools/email_pw.txt",
+			expect			=>	"/usr/bin/expect",
 			fence_ipmilan		=>	"/sbin/fence_ipmilan",
 			gethostip		=>	"/bin/gethostip",
 			'grep'			=>	"/bin/grep",
@@ -872,7 +875,7 @@ sub process_string
 		# Die if I've looped too many times.
 		if ($i > $conf->{sys}{error_limit})
 		{
-			hard_die($conf, $THIS_FILE, __LINE__, 8, "Infitie loop detected will processing escape variables in the string: [$string]. If this is triggered erroneously, increase the 'sys::error_limit' value.\n");
+			hard_die($conf, $THIS_FILE, __LINE__, 8, "Infitie loop detected will processing escape variables in the string: [$string]. If this is triggered erroneously, increase the 'sys::error_limit' value. If you are a developer or translator, did you use '#!replace!...!#' when you meant to use '#!variable!...!#' in a string key?\n");
 		}
 		$i++;
 	}

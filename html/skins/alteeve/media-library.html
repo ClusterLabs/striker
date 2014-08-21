@@ -18,7 +18,7 @@
 			<br />
 			#!string!message_0289!#<br />
 			<br />
-			<span class="fixed_width">#!replace!url!#</span><br />
+			<span class="fixed_width">#!replace!base!#</span><br />
 			<br />
 <!-- end download-website-header -->
 
@@ -66,7 +66,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_warning">
-			<b>#!replace!row_0120!#!</b>
+			<b>#!string!row_0120!#!</b>
 		</td>
 		<td colspan="2" align="left">
 			<br />
@@ -85,7 +85,6 @@
 			<div class="align_right"><a href="#!replace!confirm_url!#"><b>#!string!button_0004!#</b></a></div>
 		</td>
 	</tr>
-	</form>
 </table>
 <br />
 <!-- end download-website-confirm -->
@@ -138,13 +137,13 @@
 
 <!-- start save-to-disk-failed -->
 			<br />
-			#!string!message_0230!#<br />
+			#!string!message_0300!#<br />
 			<br />
 <!-- end save-to-disk-failed -->
 
 <!-- start save-to-disk-success -->
 			<br />
-			#!string!message_0231!#<br />
+			#!string!message_0301!#<br />
 			<br />
 <!-- end save-to-disk-success -->
 
@@ -160,6 +159,38 @@
 <br />
 <!-- end save-to-disk-footer -->
 
+<!-- start image-and-upload-no-name -->
+<table align="center">
+	<tr>
+		<td class="highlight_bad_bold">
+			#!string!title_0144!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0331!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-no-name -->
+
+<!-- start image-and-upload-no-device -->
+<table align="center">
+	<tr>
+		<td class="highlight_bad_bold">
+			#!string!title_0145!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0332!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end image-and-upload-no-device -->
+
 <!-- start image-and-upload-name-conflict -->
 <table align="center">
 	<tr>
@@ -168,8 +199,8 @@
 		</td>
 		<td>
 			<br />
-			#!string!message_0232!#<br />
-			#!string!message_0233!#<br />
+			#!string!message_0302!#<br />
+			#!string!message_0303!#<br />
 			<br />
 		</td>
 	</tr>
@@ -208,7 +239,7 @@
 		<td>
 			<br />
 			#!replace!drive_not_ready!#<br />
-			#!string!message_0236!#<br />
+			#!string!message_0306!#<br />
 			<br />
 		</td>
 	</tr>
@@ -253,8 +284,11 @@
 	<tr>
 		<td>
 			<br />
-			#!string!message_0106!#<br/>
+			<span class="highlight_warning">#!string!message_0106!#</span><br />
+			<br />
 			#!string!explain_0051!#<br />
+			<br />
+			#!replace!message!#<br />
 			<br />
 <!-- end image-and-upload-proceed-header -->
 
@@ -275,15 +309,37 @@
 			<br />
 <!-- end image-and-upload-proceed-uploading -->
 
+<!-- start image-and-upload-proceed-failed -->
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_bad_bold">
+			#!string!title_0146!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			#!replace!error!#<br />
+			<br />
+<!-- end image-and-upload-proceed-failed -->
+
 <!-- start image-and-upload-proceed-upload-failed -->
 			<br />
-			#!string!message_0239!#<br />
+			#!string!message_0309!#<br />
 			<br />
 <!-- end image-and-upload-proceed-upload-failed -->
 
+<!-- start image-and-upload-expect-not-found -->
+			<br />
+			#!string!message_0334!#<br />
+			<br />
+<!-- end image-and-upload-expect-not-found -->
+
 <!-- start image-and-upload-proceed-upload-success -->
 			<br />
-			#!string!message_0240!#<br />
+			#!string!message_0310!#<br />
 			<br />
 <!-- end image-and-upload-proceed-upload-success -->
 
@@ -322,8 +378,8 @@
 		</td>
 		<td colspan="2">
 			</br />
-			#!string!message_0241!#<br >
-			<i>#!string!message_0242!#</i><br />
+			#!string!message_0311!#<br >
+			<i>#!string!message_0312!#</i><br />
 			</br />
 		</td>
 	</tr>
@@ -333,8 +389,8 @@
 		</td>
 		<td colspan="2">
 			<br />
-			#!string!message_0243!#<br />
-			<i>#!string!message_0244!#</i><br />
+			#!string!message_0313!#<br />
+			<i>#!string!message_0314!#</i><br />
 			<br />
 		</td>
 	</tr>
@@ -347,7 +403,7 @@
 			#!replace!input_name!#
 		</td>
 		<td class="subtle_text" style="text-align: left;">
-			#!string!message_0245!#
+			#!string!message_0315!#
 		</td>
 	</tr>
 	<tr>
@@ -400,7 +456,7 @@
 	<tr>
 		<td colspan="3">
 			<br />
-			#!string!message_0247!#<br />
+			#!string!message_0317!#<br />
 			<br />
 <!-- end file-delete-header -->
 
@@ -546,7 +602,7 @@
 		</td>
 		<td>
 			#!string!explain_0058!#<br />
-			<span class="subtle_text">#!string!message_0251!#</span>
+			<span class="subtle_text">#!string!message_0321!#</span>
 		</td>
 	</tr>
 </table>
@@ -615,7 +671,7 @@
 		</td>
 		<td colspan="3">
 			<br />
-			#!string!message_0255!#<br />
+			#!string!message_0325!#<br />
 			<br />
 		</td>
 	</tr>
@@ -650,8 +706,8 @@
 		</td>
 		<td colspan="3">
 			<br />
-			<i>#!string!message_0256!#</i></br />
-			#!string!message_0257!#<br />
+			<i>#!string!message_0326!#</i></br />
+			#!string!message_0327!#<br />
 			<br />
 		</td>
 	</tr>
@@ -667,7 +723,7 @@
 			#!string!row_0151!#
 		</td>
 		<td>
-			#!string!message_0258!#
+			#!string!message_0328!#
 		</td>
 	<tr>
 </table>

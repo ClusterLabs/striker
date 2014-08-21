@@ -4481,7 +4481,9 @@ sub provision_vm
 		}
 		$provision .= " \\\\\n";
 	}
-	$provision .= "  --graphics vnc > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
+	# for why we're using '--noautoconsole --wait -1'. 
+	$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
@@ -4531,16 +4533,34 @@ sub provision_vm
 		shell_call	=>	"$script",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	my $error = 0;
 	foreach my $line (@{$output})
 	{
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
-		print template($conf, "server.html", "one-line-message", {
+		if ($line =~ /No such file or directory/i)
+		{
+			 # Failed to write the provision file.
+			$error = get_string($conf, {key => "message_0330", variables => {
+				provision_script	=>	$script,
+			}});
+		}
+		print template($conf, "server.html", "one-line-message-fixed-width", {
 			message	=>	"$line",
 		});
 	}
-	print template($conf, "server.html", "one-line-message", {
-		message	=>	"#!string!message_0120!#",
-	});
+	if (not $error)
+	{
+		print template($conf, "server.html", "one-line-message", {
+			message	=>	"#!string!message_0120!#",
+		});
+	}
+	else
+	{
+		print template($conf, "server.html", "provision-server-problem", {
+			message	=>	$error,
+		});
+		
+	}
 	
 	if (-e $conf->{path}{guacamole_config})
 	{
@@ -8727,10 +8747,10 @@ sub display_drbd_details
 			if ($conf->{node}{$node1}{daemon}{drbd}{exit_code} eq "0")
 			{
 				# It is. 
-				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{device};
-				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{connection_state};
-				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{role};
-				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{disk_state};
+				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{device}           if $conf->{drbd}{$res}{node}{$node1}{device};
+				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{connection_state} if $conf->{drbd}{$res}{node}{$node1}{connection_state};
+				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{role}             if $conf->{drbd}{$res}{node}{$node1}{role};
+				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{disk_state}       if $conf->{drbd}{$res}{node}{$node1}{disk_state};
 				if (($conf->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
 				{
 					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node1}{resync_percent}%)</span>";
@@ -8739,10 +8759,10 @@ sub display_drbd_details
 			else
 			{
 				# It is not, use the {res_file} values.
-				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{res_file}{device};
-				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state};
-				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{res_file}{role};
-				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{res_file}{disk_state};
+				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{res_file}{device}           if $conf->{drbd}{$res}{node}{$node1}{res_file}{device};
+				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state} if $conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state};
+				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{res_file}{role}             if $conf->{drbd}{$res}{node}{$node1}{res_file}{role};
+				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{res_file}{disk_state}       if $conf->{drbd}{$res}{node}{$node1}{res_file}{disk_state};
 			}
 		}
 		# Check if node 2 is online.
@@ -8752,10 +8772,10 @@ sub display_drbd_details
 			if ($conf->{node}{$node2}{daemon}{drbd}{exit_code} eq "0")
 			{
 				# It is. 
-				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{device};
-				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{connection_state};
-				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{role};
-				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{disk_state};
+				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{device}           if $conf->{drbd}{$res}{node}{$node2}{device};
+				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{connection_state} if $conf->{drbd}{$res}{node}{$node2}{connection_state};
+				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{role}             if $conf->{drbd}{$res}{node}{$node2}{role};
+				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{disk_state}       if $conf->{drbd}{$res}{node}{$node2}{disk_state};
 				if (($conf->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
 				{
 					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node2}{resync_percent}%)</span>";
@@ -8764,10 +8784,10 @@ sub display_drbd_details
 			else
 			{
 				# It is not, use the {res_file} values.
-				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{res_file}{device};
-				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{res_file}{connection_state};
-				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{res_file}{role};
-				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{res_file}{disk_state};
+				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{res_file}{device}           if $conf->{drbd}{$res}{node}{$node2}{res_file}{device};
+				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{res_file}{connection_state} if $conf->{drbd}{$res}{node}{$node2}{res_file}{connection_state};
+				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{res_file}{role}             if $conf->{drbd}{$res}{node}{$node2}{res_file}{role};
+				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{res_file}{disk_state}       if $conf->{drbd}{$res}{node}{$node2}{res_file}{disk_state};
 			}
 		}
 		
