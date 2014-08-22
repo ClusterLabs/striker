@@ -25,6 +25,7 @@
 # 10 - No switches passed.
 # 11 - Failed to bring up a network interface and network configuration was
 #      requested.
+# 12 - Failed to install all required packages.
 # 
 # TODO: Create an init script that deletes anything in the media directory on
 #       boot. Can't use /tmp as it's usually too small.
@@ -34,6 +35,9 @@ my $THIS_FILE =  $0;
 
 use strict;
 use warnings;
+
+# No capes!^H^H^H^Hbuffers!
+$| = 1;
 
 my $conf = {
 	directories	=>	{
@@ -45,38 +49,47 @@ my $conf = {
 		ifup		=>	"/sbin/ifup",
 		ip		=>	"/sbin/ip",
 		sed		=>	"/bin/sed",
+		yum		=>	"/usr/bin/yum",
 	},
 	packages	=>	{
-		install		=>	[
-					"ccs", 
-					"cpan perl-YAML-Tiny", 
-					"cyrus-sasl", 
-					"cyrus-sasl-plain", 
-					"expect", 
-					"fence-agents", 
-					"guacd", 
-					"httpd", 
-					"libcdio", 
-					"libguac-client-rdp",
-					"libguac-client-ssh", 
-					"libguac-client-vnc", 
-					"man", 
-					"mlocate", 
-					"mod_ssl", 
-					"perl-CGI", 
-					"perl-Net-SSLeay", 
-					"perl-TermReadKey",
-					"perl-Test-Simple", 
-					"policycoreutils-python", 
-					"postfix", 
-					"screen", 
-					"syslinux openssl-devel", 
-					"tomcat6", 
-					"vim", 
-					"wget", 
-					],
+		# These get set to '1' when their found to be installed.
+		to_install	=>	{
+			ccs				=>	0, 
+			'perl-YAML-Tiny'		=>	0, 
+			'cyrus-sasl'			=>	0, 
+			'cyrus-sasl-plain'		=>	0, 
+			expect				=>	0, 
+			'fence-agents'			=>	0, 
+			guacd				=>	0, 
+			httpd				=>	0, 
+			libcdio				=>	0, 
+			'libguac-client-rdp'		=>	0,
+			'libguac-client-ssh'		=>	0, 
+			'libguac-client-vnc'		=>	0, 
+			man				=>	0, 
+			mlocate				=>	0, 
+			mod_ssl				=>	0, 
+			'perl-CGI'			=>	0, 
+			'perl-CPAN'			=>	0, 
+			'perl-Net-SSLeay'		=>	0, 
+			'perl-TermReadKey'		=>	0,
+			'perl-Test-Simple'		=>	0, 
+			'policycoreutils-python'	=>	0, 
+			postfix				=>	0, 
+			screen				=>	0, 
+			syslinux			=>	0, 
+			'openssl-devel'			=>	0, 
+			tomcat6				=>	0, 
+			'vim-common'			=>	0, 
+			wget				=>	0, 
+		},
+		# This is populated by 'get_list_of_installed_packages()' and
+		# uses the found package name as the key and sets the value to
+		# '1'.
+		installed	=>	{},
 	},
 	path		=>	{
+		an_repo		=>	"/etc/yum.repos.d/an.repo",
 		backups		=>	"/root/anvil",
 		htpasswd	=>	"/var/www/home/htpasswd",
 		network_configs	=>	"/etc/sysconfig/network-scripts",
@@ -163,7 +176,260 @@ if (not $conf->{sys}{skip_network})
 # Now configure the Striker dashboard.
 setup_striker($conf);
 
+# If the user reconfigured the network, tell them they will need to reboot.
+if (not $conf->{sys}{skip_network})
+{
+	print "\n[ Warning ] - You may need to reboot the network if the network interfances\n";
+	print "[ Warning ] - were renamed. Simply restarting the network will likely not\n";
+	print "[ Warning ] - work.\n\n";
+}
+print "Installation of Striker is complete!\n";
+print "(just kidding, this installer isn't done yet.)\n\n";
 exit(0);
+
+# This handles the rest of the install (everything except the network).
+sub setup_striker
+{
+	my ($conf) = @_;
+	
+	print "Beginning configuration and installation processes now.\n\n";
+	sleep 2;
+	
+	# First up, install RPMs to make sure we've got everything we need.
+	install_packages($conf);
+	
+	return(0);
+}
+
+# This looks at the list of installed RPMs, compares them against the list of
+# needed RPMs and installs any that are missing.
+sub install_packages
+{
+	my ($conf) = @_;
+	
+	print "Checking if anything needs to be installed.\n";
+	
+	# First up, has the 'an-repo' been added?
+	configure_an_repo($conf);
+	
+	# Check for OS updates.
+	update_os($conf);
+	
+	# Get a list of already installed packages.
+	get_list_of_installed_packages($conf);
+	
+	# Install missing packages, if any.
+	install_missing_packages($conf);
+	
+	return(0);
+}
+
+# This will compare the list of required packages against the list of installed
+# packages and, if any are missing, install them
+sub install_missing_packages
+{
+	my ($conf) = @_;
+	
+	print "Checking to see if any packages need to be installed.\n";
+	my $to_install = "";
+	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
+	{
+		# Watch for autovivication...
+		if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+		{
+			$conf->{packages}{to_install}{$package} = 1;
+			print "- Package: [$package] already installed.\n";
+		}
+		else
+		{
+			print "- Package: [$package] needs to be installed.\n";
+			$to_install .= "$package ";
+		}
+	}
+	print "- Done\n\n";
+	
+	if ($to_install)
+	{
+		# Install the packages, then verify they actually installed.
+		print "Installing missing packages now. Please be patient.\n";
+		print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+		print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+		print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+		print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		print "- Done.\n\n";
+		
+		# Verify that everything is installed.
+		print "Verifying that everything is installed now.\n";
+		sleep 2;
+		get_list_of_installed_packages($conf);
+		my $missing = 0;
+		foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
+		{
+			# Watch for autovivication...
+			if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+			{
+				$conf->{packages}{to_install}{$package} = 1;
+				print "- Package: [$package] installed.\n";
+			}
+			else
+			{
+				print "[ Error ] - Package: [$package] failed to install!\n";
+				$missing = 1;
+			}
+		}
+		# If anything is missing, fail.
+		if ($missing)
+		{
+			print "[ Error ] - Not all required packages installed properly.\n";
+			print "[ Error ] - I am sorry, but this is a fatal error.\n";
+			print "[ Error ] - If you are on RHEL, is this machine registered?\n";
+			print "[ Error ] - If there was a problem accessing the repos, please check the\n";
+			print "[ Error ] - network connection and try again.\n\n";
+			exit(12);
+		}
+		else
+		{
+			print "- All required packages are now installed.\n";
+		}
+	}
+	
+	return(0);
+}
+
+# This updates the OS, if needed.
+sub update_os
+{
+	my ($conf) = @_;
+	
+	print "Checking for OS updates.\n";
+	print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+	print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+	print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+	print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+	my $shell_call = "$conf->{executable}{yum} -y update";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This gets a list of installed packages
+sub get_list_of_installed_packages
+{
+	my ($conf) = @_;
+	
+	# TODO: Use 'tput cols' to get the user's screen width.
+	my $dots = 0;
+	print "Getting a list of currently installed packages.\n- ";
+	my $shell_call = "$conf->{executable}{yum} list installed";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if $line =~ /^Loaded plugins/;
+		next if $line =~ /^Loading mirror/;
+		next if $line =~ /^ \* /;
+		next if $line =~ /^Installed Packages/;
+		next if $line =~ /^\s+\@/;
+		if ($line =~ /^(.*?)\.(.*?)\s+(.*?)\s+\@/)
+		{
+			my $package   = $1;
+			my $arch      = $2;
+			my $version   = $3;
+			# NOTE: Someday record the arch and version, but for
+			#       now, we don't care.
+			$conf->{packages}{installed}{$package} = 1;
+			#print "[ Debug ] - Package: [$package]\n";
+			if ($dots > 75)
+			{
+				print "\n- .";
+				$dots = 0;
+			}
+			else
+			{
+				print ".";
+				$dots++;
+			}
+		}
+		elsif ($line =~ /^(.*?)\.(.*?)\s+(.*)/)
+		{
+			my $package   = $1;
+			my $arch      = $2;
+			my $version   = $3;
+			#print "[ Debug ] - Package: [$package]\n";
+			if ($dots > 75)
+			{
+				print "\n- .";
+				$dots = 0;
+			}
+			else
+			{
+				print ".";
+				$dots++;
+			}
+		}
+	}
+	close $file_handle;
+	print "\n- Done!\n\n";
+	
+	return(0);
+}
+
+# This installs the AN!Repo if needed.
+sub configure_an_repo
+{
+	my ($conf) = @_;
+	
+	if (-e $conf->{path}{an_repo})
+	{
+		print "- The AN!Repo is already installed.\n";
+	}
+	else
+	{
+		# Create the repo
+		print "- The AN!Repo hasn't been added yet, adding it now.\n";
+		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
+		print $file_handle "[an-repo]\n";
+		print $file_handle "name=AN! Repo for Anvil! stuff\n";
+		print $file_handle "baseurl=https://alteeve.ca/repo/el6/\n";
+		print $file_handle "enabled=1\n";
+		print $file_handle "gpgcheck=0\n";
+		print $file_handle "protect=1\n";
+		close $file_handle;
+		
+		# No clear yum's cache
+		print "- Added. Clearing yum's cache.\n";
+		my $shell_call = "$conf->{executable}{yum} clean all";
+		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- output: [$line]\n";
+		}
+		close $file_handle;
+		print "- Done!\n\n";
+	}
+	
+	return(0);
+}
 
 # This looks at all NICs and 'ifup's any that are down.
 sub start_all_nics
@@ -298,14 +564,14 @@ sub update_network_config_files
 		if ($file =~ /^ifcfg-/)
 		{
 			my $full_path = "$conf->{path}{network_configs}/$file";
-			print "- File: [$full_path]\n";
+			print "- Deleting file: [$full_path]\n";
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
 	}
+	print "- Done.\n\n";
+	print "Writing new network configuration files.\n";
 	
 	# Now write out the config files.
-	print "Writing new network configuration files.\n";
-
 	# IFN first
 	my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn-link1";
 	print "- IFN Link 1: [$ifn_link1_file]\n";
@@ -338,6 +604,7 @@ sub update_network_config_files
 	print $file_handle "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
 	print $file_handle "DEFROUTE=\"no\"\n";
 	close $file_handle;
+	print "- Done.\n\n";
 	
 	return(0);
 }
@@ -396,6 +663,7 @@ sub write_udev_persistent_net
 		print $file_handle "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$this_mac\", NAME=\"$nic\"\n\n";
 	}
 	close $file_handle;
+	print "- Done.\n\n";
 	
 	return(0);
 }
