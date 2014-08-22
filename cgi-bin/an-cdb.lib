@@ -4482,7 +4482,7 @@ sub provision_vm
 		$provision .= " \\\\\n";
 	}
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
-	# for why we're using '--noautoconsole --wait -1'. 
+	# for why we're using '--noautoconsole --wait -1'.
 	$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
