@@ -26,6 +26,11 @@
 # 11 - Failed to bring up a network interface and network configuration was
 #      requested.
 # 12 - Failed to install all required packages.
+# 13 - OS isn't RHEL based.
+# 14 - OS isn't EL6.x
+# 15 - Unable to get the apache user's UID.
+# 16 - Unable to get the apache user's GID.
+# 17 - Installer didn't run as 'root'.
 # 
 # TODO: Create an init script that deletes anything in the media directory on
 #       boot. Can't use /tmp as it's usually too small.
@@ -46,9 +51,11 @@ my $conf = {
 	executable	=>	{
 		cp		=>	"/bin/cp",
 		git		=>	"/usr/bin/git",
+		htpasswd	=>	"/usr/bin/htpasswd",
 		ifup		=>	"/sbin/ifup",
 		ip		=>	"/sbin/ip",
 		sed		=>	"/bin/sed",
+		su		=>	"/bin/su",
 		yum		=>	"/usr/bin/yum",
 	},
 	packages	=>	{
@@ -90,19 +97,29 @@ my $conf = {
 	},
 	path		=>	{
 		an_repo		=>	"/etc/yum.repos.d/an.repo",
+		apache_config	=>	"/etc/httpd/conf/httpd.conf",
+		apache_dir	=>	"/etc/httpd",
+		apache_home	=>	"/var/www/home",
+		apache_htpasswd	=>	"/var/www/home/htpasswd",
+		apache_subdirs	=>	["archive", "cacahe", "media", "status"],
 		backups		=>	"/root/anvil",
-		htpasswd	=>	"/var/www/home/htpasswd",
 		network_configs	=>	"/etc/sysconfig/network-scripts",
+		os_release	=>	"/etc/redhat-release",
 		persistent_net	=>	"/etc/udev/rules.d/70-persistent-net.rules",
 	},
 	sys		=>	{
+		apache_group	=>	"apache",
+		apache_user	=>	"apache",
 		customer	=>	"Striker Dashboard",
 		mail_server	=>	"mail.alteeve.ca:587",
 		skip_hostname	=>	0,
 		skip_mail	=>	0,
 		skip_network	=>	0,
 		stable_version	=>	"1.1.4",
+		striker_user	=>	"admin",
+		striker_pass	=>	"",		# no default password, evar!
 		switch_count	=>	0,
+		apache_timeout	=>	"60000",	# This will go away with AJAX
 	},
 	url		=>	{
 		auth_noauth	=>	"https://alteeve.ca/files/guacamole-auth-noauth-0.9.2.jar",
@@ -138,6 +155,14 @@ print q`
 
 `;
 
+# Make sure we're running as 'root'
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	print "[ Error ] - I am sorry, but this program must be run as the root user.\n\n";
+	exit(17);
+}
+
 # Make sure we got what we needed from the command line.
 get_switches($conf);
 if (not $conf->{sys}{switch_count})
@@ -151,8 +176,8 @@ if (sanity_check_switches($conf))
 	exit(9);
 }
 
-# Tell the user we're starting
-
+# Make sure we're on EL6.x
+verify_os($conf);
 
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
@@ -187,6 +212,11 @@ print "Installation of Striker is complete!\n";
 print "(just kidding, this installer isn't done yet.)\n\n";
 exit(0);
 
+
+###############################################################################
+# Here be function!                                                           #
+###############################################################################
+
 # This handles the rest of the install (everything except the network).
 sub setup_striker
 {
@@ -197,6 +227,241 @@ sub setup_striker
 	
 	# First up, install RPMs to make sure we've got everything we need.
 	install_packages($conf);
+	
+	# Configure apache.
+	configure_apache($conf);
+	
+	return(0);
+}
+
+# This handles configuring apache.
+sub configure_apache
+{
+	my ($conf) = @_;
+	
+	print "Configuring Apache.\n";
+	
+	# Start by backing things up.
+	if (-e "$conf->{path}{backups}/httpd")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		print "- Backing up original files.\n";
+		backup_file($conf, $conf->{path}{apache_dir});
+	}
+	
+	# Create the apache user's home directory and sub-directories.
+	create_apache_home_directories($conf);
+	
+	# Create the htpasswd file.
+	create_apache_htpasswd($conf);
+	
+	# Now to start updating.
+	print "- Reading in the existing config file and adjusting as needed.\n";
+	my $apache_config = "";
+	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Skip lines from previous htpasswd configs.
+		next if $line =~ /^\s+# Password login/;
+		next if $line =~ /^\s+AuthType /;
+		next if $line =~ /^\s+AuthName /;
+		next if $line =~ /^\s+AuthUserFile /;
+		next if $line =~ /^\s+Require user /;
+		
+		### TODO: Set SSL as default and add an option for a user to
+		###       load their own certs.
+		# Now insert and/or modify things.
+		if ($line =~ /<Directory "\/var\/www\/cgi-bin/)
+		{
+			# Now insert our new authentication lines
+			$apache_config .= "$line\n";
+			$apache_config .= "    # Password login\n";
+			$apache_config .= "    AuthType Basic\n";
+			$apache_config .= "    AuthName \"Striker - $conf->{sys}{customer}\"\n";
+			$apache_config .= "    AuthUserFile $conf->{path}{apache_htpasswd}\n";
+			$apache_config .= "    Require user $conf->{sys}{striker_user}\n";
+		}
+		elsif ($line =~ /#<\/Proxy>/)
+		{
+			$apache_config .= "$line\n";
+			$apache_config .= "<Location /guacamole/>\n";
+			$apache_config .= "    Order allow,deny\n";
+			$apache_config .= "    Allow from all\n";
+			$apache_config .= "    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n";
+			$apache_config .= "    ProxyPassReverse http://localhost:8080/guacamole/\n";
+			$apache_config .= "</Location>\n";
+			$apache_config .= "SetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\n";
+			$apache_config .= "CustomLog /var/log/httpd/guac.log common env=!dontlog\n";
+		}
+		elsif ($line =~ /^Timeout /)
+		{
+			$apache_config .= "Timeout $conf->{sys}{apache_timeout}\n";
+		}
+		else
+		{
+			$apache_config .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Now write it out.
+	print "- Done. Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{apache_config}) or die "Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
+	print $file_handle $apache_config;
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# Create the htpasswd file.
+sub create_apache_htpasswd
+{
+	my ($conf) = @_;
+	
+	print "Setting up Striker's authentication via Apache's htpasswd...\n";
+	if (-e $conf->{path}{apache_htpasswd})
+	{
+		print "- Old: [$conf->{path}{apache_htpasswd}] found, deleting it.\n";
+		unlink $conf->{path}{apache_htpasswd} or die "Failed to delete: [$conf->{path}{apache_htpasswd}], error was: $!\n";
+	}
+	
+	print "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.\n";
+	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} '$conf->{sys}{striker_pass}'\"";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This creates the apache home directories and sets their permissions.
+sub create_apache_home_directories
+{
+	my ($conf) = @_;
+	
+	print "- Creating the apache home directories.\n";
+	my @dirs;
+	push @dirs, $conf->{path}{apache_home};
+	if (not -e $conf->{path}{apache_home})
+	{
+		print "  Creating: [$conf->{path}{apache_home}].\n";
+		mkdir $conf->{path}{apache_home} or die "Failed to create the directory: [$conf->{path}{apache_home}], the error was: $!\n";
+	}
+	else
+	{
+		print "  Home already exists: [$conf->{path}{apache_home}].\n";
+	}
+	foreach my $directory (@{$conf->{path}{apache_subdirs}})
+	{
+		my $full_path = "$conf->{path}{apache_home}/$directory";
+		push @dirs, $full_path;
+		if (not -e $full_path)
+		{
+			print "  Creating: [$full_path].\n";
+			mkdir $full_path or die "Failed to create the directory: [$full_path], the error was: $!\n";
+		}
+		else
+		{
+			print "  Already exists: [$full_path].\n";
+		}
+	}
+	
+	print "- Setting ownership to: [$conf->{sys}{apache_user}:$conf->{sys}{apache_group}].\n";
+	my $apache_uid = getpwnam($conf->{sys}{apache_user}); 
+	my $apache_gid = getgrnam($conf->{sys}{apache_group});
+	my $dir_mode   = 0775;
+	if (not $apache_uid)
+	{
+		print "[ Error ] - Unable to get the User ID for the apache user: [$conf->{sys}{apache_user}]\n";
+		print "[ Error ] - Did apache actually install properly?\n";
+		exit(15);
+	}
+	if (not $apache_gid)
+	{
+		print "[ Error ] - Unable to get the Group ID for the apache group: [$conf->{sys}{apache_group}]\n";
+		print "[ Error ] - Did apache actually install properly?\n";
+		exit(16);
+	}
+	chown $apache_uid, $apache_gid, @dirs;
+	print "- Setting mode to: [".sprintf("%04o", $dir_mode)."].\n";
+	chmod $dir_mode, @dirs;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This verifies that this is running on a RHEL 6 (or derivative) OS.
+sub verify_os
+{
+	my ($conf) = @_;
+	
+	# If the release file doesn't exist, it's most likely not EL.
+	print "Checking the operating system to ensure it is compatible.\n";
+	if (not -e $conf->{path}{os_release})
+	{
+		print "[ Error ] - This does not appear to be a RHEL (based) operating system.\n";
+		print "[ Error ] - At this time, only RHEL and derivatives version 6.x are supported.\n";
+		exit(13);
+	}
+	
+	# Read the release file and dig out the version.
+	my $major = -1;
+	my $minor = -1;
+	print "- We're on a RHEL (based) OS, good. Checking version.\n";
+	open (my $file_handle, "<", $conf->{path}{os_release}) or die "Failed to read: [$conf->{path}{os_release}], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /release (\d+)\.(\d+) /)
+		{
+			$major = $1;
+			$minor = $2;
+		}
+	}
+	close $file_handle;
+	
+	if ($major == 6)
+	{
+		# We're ok, but warn if minor is < 5
+		if ($minor < 5)
+		{
+			print "[ Warning ] - This OS appears to be a little old, you are on: [$major.$minor].\n";
+			print "[ Warning ] - Upgrading to at least version 6.5 is recommended, though not\n";
+			print "[ Warning ] - strictly required. If you encounter issues, please update before\n";
+			print "[ Warning ] - before filing a bug. Thank you.\n\n";
+			sleep 5;
+		}
+		else
+		{
+			print "- Looks good! You're on: [$major.$minor]\n\n";
+		}
+	}
+	elsif ($major > 6)
+	{
+		print "[ Error ] - I am sorry, but EL$major is not yet supported.\n";
+		print "[ Error ] - Please use RHEL 6.x or similar.\n";
+		exit(14);
+	}
+	else
+	{
+		print "[ Error ] - I am sorry, but EL$major is not supported.\n";
+		print "[ Error ] - Please use RHEL 6.x or similar.\n";
+		exit(14);
+	}
 	
 	return(0);
 }
@@ -252,10 +517,10 @@ sub install_missing_packages
 	{
 		# Install the packages, then verify they actually installed.
 		print "Installing missing packages now. Please be patient.\n";
-		print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
-		print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
-		print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
-		print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+		#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+		#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+		#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+		#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -310,11 +575,11 @@ sub update_os
 {
 	my ($conf) = @_;
 	
-	print "Checking for OS updates.\n";
-	print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
-	print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
-	print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
-	print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+	print "- Checking for OS updates.\n";
+	#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+	#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+	#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+	#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
 	my $shell_call = "$conf->{executable}{yum} -y update";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -857,6 +1122,12 @@ sub sanity_check_switches
 		print "[ Note ] - No customer/owner name given, will use: [$conf->{sys}{customer}]\n";
 		# TODO: check to see if apache limits the names allowed.
 	}
+	else
+	{
+		# TODO: Does this need to be sanitized to prevent injection of
+		#       malicious code? If so, how? Escape all quotes?
+		$conf->{sys}{customer} = $conf->{switches}{c};
+	}
 	
 	# See if they've asked for a specific version.
 	if (not $conf->{switches}{d})
@@ -896,11 +1167,25 @@ sub sanity_check_switches
 	}
 	
 	# Check to see if either the htpasswd file exists or the user is giving us a user now.
-	if ((not -e $conf->{path}{htpasswd}) && (not $conf->{switches}{u}))
+	if ((not -e $conf->{path}{apache_htpasswd}) && (not $conf->{switches}{u}))
 	{
-		print "[ Error ] - No apache credentials were set, and: [$conf->{path}{htpasswd}]\n";
+		print "[ Error ] - No apache credentials were set, and: [$conf->{path}{apache_htpasswd}]\n";
 		print "[ Error ] - doesn't exist. This is required for Striker to work securely.\n";
 		$bad_value = 1;
+	}
+	elsif ($conf->{switches}{u})
+	{
+		if ($conf->{switches}{u} =~ /^(.*?):(.*)$/)
+		{
+			$conf->{sys}{striker_user} = $1;
+			$conf->{sys}{striker_pass} = $2;
+		}
+		else
+		{
+			print "[ Error ] - The Striker user name and password were not specified correctly.\n";
+			print "[ Error ] - Please use '-u \"<user>:<password>\".\n";
+			$bad_value = 1;
+		}
 	}
 	
 	return($bad_value);
@@ -1340,7 +1625,7 @@ SWITCHES
 	This is the user name and password to set for Striker. This will be
 	used in apache's htpasswd authentication and will be stored in the
 |;
-	$help .= "	$conf->{path}{htpasswd} file.\n";
+	$help .= "	$conf->{path}{apache_htpasswd} file.\n";
 	$help .= q|
 
 Note that all IP addresses must be IPv4 in dotted-decimal notation. The netmask
