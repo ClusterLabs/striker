@@ -6750,7 +6750,7 @@ sub compare_new_and_old
 				{
 					# All is right in the world.
 					delete $conf->{'system'}{voltage_alert}{$var};
-					$changes .= "\nHost's \"$say_translation\" voltage has returned to normal. Deviation now within $recover mV of base $base_mv mV. Alert cleared.\n";
+					$changes .= "\nHost's \"$say_translation\" voltage has returned to normal. Deviation now within $recover V of base $base_volts V. Alert cleared.\n";
 					$changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 					$conf->{'system'}{clear_event}      = 1;
 					$conf->{'system'}{migration_target} = 0;

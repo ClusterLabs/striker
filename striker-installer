@@ -101,10 +101,12 @@ my $conf = {
 		apache_dir	=>	"/etc/httpd",
 		apache_home	=>	"/var/www/home",
 		apache_htpasswd	=>	"/var/www/home/htpasswd",
+		apache_shell	=>	"/bin/bash",
 		apache_subdirs	=>	["archive", "cacahe", "media", "status"],
 		backups		=>	"/root/anvil",
 		network_configs	=>	"/etc/sysconfig/network-scripts",
 		os_release	=>	"/etc/redhat-release",
+		passwd		=>	"/etc/passwd",
 		persistent_net	=>	"/etc/udev/rules.d/70-persistent-net.rules",
 	},
 	sys		=>	{
@@ -252,6 +254,9 @@ sub configure_apache
 		backup_file($conf, $conf->{path}{apache_dir});
 	}
 	
+	# Enable the 'apache' user.
+	enable_apache_user($conf);
+	
 	# Create the apache user's home directory and sub-directories.
 	create_apache_home_directories($conf);
 	
@@ -260,6 +265,7 @@ sub configure_apache
 	
 	# Now to start updating.
 	print "- Reading in the existing config file and adjusting as needed.\n";
+	my $in_guacamole  = 0;
 	my $apache_config = "";
 	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
 	while(<$file_handle>)
@@ -273,6 +279,18 @@ sub configure_apache
 		next if $line =~ /^\s+AuthName /;
 		next if $line =~ /^\s+AuthUserFile /;
 		next if $line =~ /^\s+Require user /;
+		
+		# Skip prior proxy entries.
+		if ($line =~ /^\s+<Location \/guacamole\/>/)
+		{
+			$in_guacamole = 1;
+		}
+		if ($line =~ /CustomLog \/var\/log\/httpd\/guac.log/)
+		{
+			$in_guacamole = 0;
+			next;
+		}
+		next if $in_guacamole;
 		
 		### TODO: Set SSL as default and add an option for a user to
 		###       load their own certs.
@@ -314,6 +332,46 @@ sub configure_apache
 	print "- Done. Writing out the new version.\n";
 	open ($file_handle, ">", $conf->{path}{apache_config}) or die "Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
 	print $file_handle $apache_config;
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This edits the passwd file to enable logins by apache.
+sub enable_apache_user
+{
+	my ($conf) = @_;
+	
+	print "- Reading in the existing system user file.\n";
+	my $passwd = "";
+	open (my $file_handle, "<", $conf->{path}{passwd}) or die "Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Update the apache user entry.
+		if ($line =~ /apache:x:(\d+):(\d+):(.*?):(.*?):(.*)/)
+		{
+			# Now insert our new authentication lines
+			my $uid  = $1;
+			my $gid  = $2;
+			my $name = $3;	# I don't care about this
+			my $home = $4;	# or this.
+			$passwd .= "apache:x:$uid:$gid:$name:$conf->{path}{apache_home}:$conf->{path}{apache_shell}\n";
+		}
+		else
+		{
+			$passwd .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Now write it out.
+	print "- Done. Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{passwd}) or die "Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
+	print $file_handle $passwd;
 	close $file_handle;
 	print "- Done.\n\n";
 	
