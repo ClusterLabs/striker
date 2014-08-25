@@ -1,0 +1,1 @@
+watch "cat /proc/net/bonding/bond0 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond1 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond2 |grep -i -e current -e primary -e status -e inter"

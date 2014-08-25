@@ -45,18 +45,34 @@ use warnings;
 $| = 1;
 
 my $conf = {
-	directories	=>	{
-		media		=>	"/var/www/home/media",
+	daemons		=>	{
+		# These will be both chkconfig on'ed and started after
+		# 'disable' is processes.
+		enable		=>	["iptables", "httpd", "acpid"],
+		# These will be both chkconfig off'ed and stopped.
+		disable		=>	["ip6tables", "firstboot", "NetworkManager"],
+	},
+	directory	=>	{
+		media			=>	"/var/www/home/media",
+		apache			=>	"/etc/httpd",
+		apache_subdirs		=>	["archive", "cacahe", "media", "status"],
+		guac_classpath		=>	"/var/lib/guacamole/classpath",
+		guac_etc		=>	"/etc/guacamole",
+		guac_lib		=>	"/var/lib/guacamole",
+		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
 	},
 	executable	=>	{
-		cp		=>	"/bin/cp",
-		git		=>	"/usr/bin/git",
-		htpasswd	=>	"/usr/bin/htpasswd",
-		ifup		=>	"/sbin/ifup",
-		ip		=>	"/sbin/ip",
-		sed		=>	"/bin/sed",
-		su		=>	"/bin/su",
-		yum		=>	"/usr/bin/yum",
+		cp			=>	"/bin/cp",
+		git			=>	"/usr/bin/git",
+		htpasswd		=>	"/usr/bin/htpasswd",
+		ifup			=>	"/sbin/ifup",
+		ip			=>	"/sbin/ip",
+		iptables		=>	"/sbin/iptables",
+		'iptables-save'		=>	"/sbin/iptables-save",
+		sed			=>	"/bin/sed",
+		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
+		su			=>	"/bin/su",
+		yum			=>	"/usr/bin/yum",
 	},
 	packages	=>	{
 		# These get set to '1' when their found to be installed.
@@ -96,32 +112,36 @@ my $conf = {
 		installed	=>	{},
 	},
 	path		=>	{
-		an_repo		=>	"/etc/yum.repos.d/an.repo",
-		apache_config	=>	"/etc/httpd/conf/httpd.conf",
-		apache_dir	=>	"/etc/httpd",
-		apache_home	=>	"/var/www/home",
-		apache_htpasswd	=>	"/var/www/home/htpasswd",
-		apache_shell	=>	"/bin/bash",
-		apache_subdirs	=>	["archive", "cacahe", "media", "status"],
-		backups		=>	"/root/anvil",
-		network_configs	=>	"/etc/sysconfig/network-scripts",
-		os_release	=>	"/etc/redhat-release",
-		passwd		=>	"/etc/passwd",
-		persistent_net	=>	"/etc/udev/rules.d/70-persistent-net.rules",
+		an_repo			=>	"/etc/yum.repos.d/an.repo",
+		apache_config		=>	"/etc/httpd/conf/httpd.conf",
+		apache_home		=>	"/var/www/home",
+		apache_htpasswd		=>	"/var/www/home/htpasswd",
+		apache_shell		=>	"/bin/bash",
+		backups			=>	"/root/anvil",
+		hostname		=>	"/etc/sysconfig/network",
+		iptables		=>	"/etc/sysconfig/iptables",
+		network_configs		=>	"/etc/sysconfig/network-scripts",
+		os_release		=>	"/etc/redhat-release",
+		passwd			=>	"/etc/passwd",
+		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+		selinux_config		=>	"/etc/selinux/config",
+		sshd_config		=>	"/etc/ssh/sshd_config",
+		tomcat_server		=>	"/etc/tomcat6/server.xml",
 	},
 	sys		=>	{
-		apache_group	=>	"apache",
-		apache_user	=>	"apache",
-		customer	=>	"Striker Dashboard",
-		mail_server	=>	"mail.alteeve.ca:587",
-		skip_hostname	=>	0,
-		skip_mail	=>	0,
-		skip_network	=>	0,
-		stable_version	=>	"1.1.4",
-		striker_user	=>	"admin",
-		striker_pass	=>	"",		# no default password, evar!
-		switch_count	=>	0,
-		apache_timeout	=>	"60000",	# This will go away with AJAX
+		apache_group		=>	"apache",
+		apache_user		=>	"apache",
+		customer		=>	"Striker Dashboard",
+		hostname		=>	"",
+		mail_server		=>	"mail.alteeve.ca:587",
+		skip_hostname		=>	0,
+		skip_mail		=>	0,
+		skip_network		=>	0,
+		stable_version		=>	"1.1.4",
+		striker_user		=>	"admin",
+		striker_pass		=>	"",		# no default password, evar!
+		switch_count		=>	0,
+		apache_timeout		=>	"60000",	# This will go away with AJAX
 	},
 	url		=>	{
 		auth_noauth	=>	"https://alteeve.ca/files/guacamole-auth-noauth-0.9.2.jar",
@@ -172,7 +192,8 @@ if (not $conf->{sys}{switch_count})
 	print_usage($conf);
 	exit(10);
 }
-
+# This sanity-checks the passed in command line switches and returns '1' if
+# any problems were found.
 if (sanity_check_switches($conf))
 {
 	exit(9);
@@ -200,8 +221,22 @@ if (not $conf->{sys}{skip_network})
 	reconfigure_network($conf);
 }
 
+# If passed, set the hostname.
+if (not $conf->{sys}{skip_hostname})
+{
+	set_hostname($conf);
+}
+
+# TODO: See if we can set contexts on files when selinux is disabled entirely.
+#       If not, and if relabeling is needed, write a run-once script to relabel
+#       our stuff on the next boot.
 # Now configure the Striker dashboard.
 setup_striker($conf);
+
+# Make sure that selinux is enabled. This runs after the main installer so that
+# we can ensure any files we created or installed have the right
+# labels/contexts.
+configure_selinux($conf);
 
 # If the user reconfigured the network, tell them they will need to reboot.
 if (not $conf->{sys}{skip_network})
@@ -233,6 +268,383 @@ sub setup_striker
 	# Configure apache.
 	configure_apache($conf);
 	
+	# Configure Tomcat
+	configure_tomcat($conf);
+	
+	# Configure guacamole
+	configure_guacamole($conf);
+	
+	# Configure SSH to allow faster logins when there is not Internet
+	# access. Also, create an SSH RSA keyset for apache, though it
+	# probably isn't needed anymore and might go away in a later update.
+	configure_ssh($conf);
+	
+	# Configure iptables to allow incoming HTTP and HTTPS traffic.
+	configure_iptables($conf);
+	
+	
+	return(0);
+}
+
+# Configure guacamole.
+sub configure_guacamole
+{
+	my ($conf) = @_;
+	
+	print "Configuring guacamole\n";
+	
+	# Create the guacamole directory if needed.
+	if (-e $conf->{directory}{guac_etc})
+	{
+		print "- Guacamole configuration directory already exists.\n";
+	}
+	else
+	{
+		print "- Creating the Guacamole configuration directory.\n";
+		mkdir $conf->{directory}{guac_etc} or die "Failed to create the directory: [$conf->{directory}{guac_etc}], error was: $!\n";
+	}
+	
+	# Make sure gacamole tomcat diretory exists
+	if (-e $conf->{directory}{guac_tomcat})
+	{
+		print "- Guacamole Tomcat directory already exists.\n";
+	}
+	else
+	{
+		print "- Creating the Guacamole Tomcat directory.\n";
+		mkdir $conf->{directory}{guac_tomcat} or die "Failed to create the directory: [$conf->{directory}{guac_tomcat}], error was: $!\n";
+	}
+	
+	# Make sure the library path directory exists (before we check classpath}.
+	if (-e $conf->{directory}{guac_lib})
+	{
+		print "- Guacamole library directory already exists.\n";
+	}
+	else
+	{
+		print "- Creating the Guacamole library directory.\n";
+		mkdir $conf->{directory}{guac_lib} or die "Failed to create the directory: [$conf->{directory}{guac_lib}], error was: $!\n";
+	}
+	
+	# Make sure the class path directory exists.
+	if (-e $conf->{directory}{guac_classpath})
+	{
+		print "- Guacamole classpath directory already exists.\n";
+	}
+	else
+	{
+		print "- Creating the Guacamole classpath directory.\n";
+		mkdir $conf->{directory}{guac_classpath} or die "Failed to create the directory: [$conf->{directory}{guac_classpath}], error was: $!\n";
+	}
+	print "Done!\n\n";
+	
+	return(0);
+}
+
+# Configure iptables to allow incoming HTTP and HTTPS traffic.
+sub configure_iptables
+{
+	my ($conf) = @_;
+	
+	# Read in the current rules so we don't recreate rules that already exist.
+	print "Configuring the firewall to allow normal and secure web access.\n";
+	if (-e "$conf->{path}{backups}/iptables")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{iptables}].\n";
+		backup_file($conf, $conf->{path}{iptables});
+	}
+	
+	my $http_open  = 0;
+	my $https_open = 0;
+	print "- Reading the current firewall configuration.\n";
+	my $shell_call = "$conf->{executable}{'iptables-save'}";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#print "- Output: [$line]\n";
+		if (($line =~ /--state NEW/) && ($line =~ /--dport 80/) && ($line =~ /ACCEPT/))
+		{
+			print "- Standard web access is already enabled.\n";
+			$http_open = 1;
+		}
+		if (($line =~ /--state NEW/) && ($line =~ /--dport 443/) && ($line =~ /ACCEPT/))
+		{
+			print "- Secure web access is already enabled.\n";
+			$https_open = 1;
+		}
+	}
+	close $file_handle;
+	
+	if (not $http_open)
+	{
+		print "- Opening access for standard web access.\n";
+		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	if (not $https_open)
+	{
+		print "- Opening access for secure web access.\n";
+		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	if ((not $http_open) || (not $https_open))
+	{
+		# Save the changes.
+		print "- Saving the new iptables configuration.\n";
+		my $shell_call = "/etc/init.d/iptables save";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			# The formatting here isn't nice.
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			#print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	print "Done!\n\n";
+	
+	return(0);
+}
+
+# Configre SSH to disable IP lookup to enable faster SSH access when there is
+# no Internet access. Also, create the apache user's RSA keys.
+sub configure_ssh
+{
+	my ($conf) = @_;
+	
+	print "Configuring SSH daemon to allow faster logins.\n";
+	$conf->{path}{sshd_config};
+	        
+	if (-e "$conf->{path}{backups}/sshd_config")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{sshd_config}].\n";
+		backup_file($conf, $conf->{path}{sshd_config});
+	}
+	
+	# Read in and then write out the server.xml file to enable UTF-8
+	my $sshd_config = "";
+	print "- Reading in the existing ssh daemon configuration file.\n";
+	open (my $file_handle, "<", $conf->{path}{sshd_config}) or die "Failed to read: [$conf->{path}{sshd_config}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Change the lines, if needed.
+		$line =~ s/#GSSAPIAuthentication no/GSSAPIAuthentication no/;
+		$line =~ s/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/;
+		$line =~ s/#UseDNS yes/UseDNS no/;
+		
+		$sshd_config .= "$line\n";
+	}
+	close $file_handle;
+	# Next, write it out.
+	print "- Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{sshd_config}) or die "Failed to write: [$conf->{path}{sshd_config}], the error was: $!\n";
+	print $file_handle $sshd_config;
+	close $file_handle;
+	
+	if (-e "$conf->{path}{apache_home}/.ssh/id_rsa")
+	{
+		print "- SSH RSA keys for: [$conf->{sys}{apache_user}] already created, skipping.\n";
+	}
+	else
+	{
+		print "- Generating: [$conf->{sys}{apache_user}]'s RSA keys.\n";
+		print "[ Note ] - Please be patient! It might take time to collect entropy.\n";
+		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This configures Tomcat, which we use for Guacamole.
+sub configure_tomcat
+{
+	my ($conf) = @_;
+	
+	print "Configuring Tomcat.\n";
+	$conf->{path}{tomcat_server};
+	        
+	if (-e "$conf->{path}{backups}/server.xml")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{tomcat_server}].\n";
+		backup_file($conf, $conf->{path}{tomcat_server});
+	}
+	
+	# Read in and then write out the server.xml file to enable UTF-8
+	my $tomcat_config = "";
+	print "- Reading in the existing tomcat server configuration server.\n";
+	open (my $file_handle, "<", $conf->{path}{tomcat_server}) or die "Failed to read: [$conf->{path}{tomcat_server}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Insert the UTF-8 string
+		if ($line =~ /<Connector port="8080" protocol="HTTP\/1.1"/)
+		{
+			$tomcat_config .= "$line\n";
+			$tomcat_config .= "               URIEncoding=\"UTF-8\"\n";
+		}
+		else
+		{
+			$tomcat_config .= "$line\n";
+		}
+	}
+	close $file_handle;
+	# Next, write it out.
+	print "- Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{tomcat_server}) or die "Failed to write: [$conf->{path}{tomcat_server}], the error was: $!\n";
+	print $file_handle $tomcat_config;
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This makes sure that selinux is enabled.
+sub configure_selinux
+{
+	my ($conf) = @_;
+	
+	print "Making sure that selinux is enabled.\n";
+	if (-e "$conf->{path}{backups}/config")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{selinux_config}].\n";
+		backup_file($conf, $conf->{path}{selinux_config});
+	}
+	
+	# If selinux is off, warn the user that the next boot might be slow.
+	my $current_policy = "";
+	my $selinux_config = "";
+	print "- Reading in the existing selinux config file.\n";
+	open (my $file_handle, "<", $conf->{path}{selinux_config}) or die "Failed to read: [$conf->{path}{selinux_config}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Update the SELinux policy.
+		if ($line =~ /^SELINUX=(.*)/)
+		{
+			# Record the current policy in case we want to alert
+			# the user.
+			$current_policy =  $1;
+			$selinux_config .= "SELINUX=enforcing\n";
+		}
+		else
+		{
+			$selinux_config .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# If the old policy was 'disabled', want that the next reboot could be
+	# slow.
+	if ($current_policy eq "disabled")
+	{
+		print "[ Warning ] - It looks like selinux was disabled.\n";
+		print "[ Warning ] - The next reboot might take longer than normal if a filesystem\n";
+		print "[ Warning ] - relabel is required.\n";
+		sleep 5;
+	}
+	
+	# Next, write it out.
+	print "- Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "Failed to write: [$conf->{path}{selinux_config}], the error was: $!\n";
+	print $file_handle $selinux_config;
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	# TODO: Set labels here.
+	
+	return(0);
+}
+
+# This sets the hostname of the system.
+sub set_hostname
+{
+	my ($conf) = @_;
+	
+	# First, edit the hostname file.
+	print "- Reading in the existing hostname file.\n";
+	my $hostname = "";
+	open (my $file_handle, "<", $conf->{path}{hostname}) or die "Failed to read: [$conf->{path}{hostname}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# Update the apache user entry.
+		if ($line =~ /^HOSTNAME=/)
+		{
+			# Now insert our new authentication lines
+			$hostname .= "HOSTNAME=$conf->{sys}{hostname}\n";
+		}
+		else
+		{
+			$hostname .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Next, write it out.
+	print "- Writing out the new version.\n";
+	open ($file_handle, ">", $conf->{path}{hostname}) or die "Failed to write: [$conf->{path}{hostname}], the error was: $!\n";
+	print $file_handle $hostname;
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	# And finally, change the hostname for the current session.
+	system("hostname $conf->{sys}{hostname}");
+	
 	return(0);
 }
 
@@ -251,7 +663,7 @@ sub configure_apache
 	else
 	{
 		print "- Backing up original files.\n";
-		backup_file($conf, $conf->{path}{apache_dir});
+		backup_file($conf, $conf->{directory}{apache});
 	}
 	
 	# Enable the 'apache' user.
@@ -329,7 +741,7 @@ sub configure_apache
 	close $file_handle;
 	
 	# Now write it out.
-	print "- Done. Writing out the new version.\n";
+	print "- Writing out the new version.\n";
 	open ($file_handle, ">", $conf->{path}{apache_config}) or die "Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
 	print $file_handle $apache_config;
 	close $file_handle;
@@ -369,7 +781,7 @@ sub enable_apache_user
 	close $file_handle;
 	
 	# Now write it out.
-	print "- Done. Writing out the new version.\n";
+	print "- Writing out the new version.\n";
 	open ($file_handle, ">", $conf->{path}{passwd}) or die "Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
 	print $file_handle $passwd;
 	close $file_handle;
@@ -422,7 +834,7 @@ sub create_apache_home_directories
 	{
 		print "  Home already exists: [$conf->{path}{apache_home}].\n";
 	}
-	foreach my $directory (@{$conf->{path}{apache_subdirs}})
+	foreach my $directory (@{$conf->{directory}{apache_subdirs}})
 	{
 		my $full_path = "$conf->{path}{apache_home}/$directory";
 		push @dirs, $full_path;
@@ -1164,8 +1576,8 @@ sub sanity_check_switches
 	# Check the hostname
 	if ($conf->{switches}{n})
 	{
-		### Make sure the hostname is sane.
-		# First, any double-dots, leading dots or trailing dots?
+		# Make sure the hostname is sane.
+		$conf->{sys}{hostname} = $conf->{switches}{n};
 		($bad_value) = sanity_check_hostname($conf, $conf->{switches}{n}, 0, $bad_value);
 	}
 	else

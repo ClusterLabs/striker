@@ -128,6 +128,7 @@ else
         sed -i "s|#</Proxy>|#</Proxy>\n<Location /guacamole/>\n    Order allow,deny\n    Allow from all\n    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n    ProxyPassReverse http://localhost:8080/guacamole/\n</Location>\nSetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\nCustomLog  /var/log/httpd/guac.log common env=!dontlog|" /etc/httpd/conf/httpd.conf
 fi
 
+
 if [ ! -e "/etc/tomcat6/server.xml.anvil" ]
 then
         sed -i.anvil "s|Connector port=\"8080\" protocol=\"HTTP/1.1\"|Connector port=\"8080\" protocol=\"HTTP\\/1.1\"\n               URIEncoding=\"UTF-8\"|" /etc/tomcat6/server.xml
