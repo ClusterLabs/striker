@@ -52,9 +52,9 @@ my $conf = {
 	daemons		=>	{
 		# These will be both chkconfig on'ed and started after
 		# 'disable' is processes.
-		enable			=>	["iptables", "httpd", "acpid", "tomcat6", "guacd"],
+		enable			=>	["iptables", "httpd", "acpid", "tomcat6", "guacd", "ntpd"],
 		# These will be both chkconfig off'ed and stopped.
-		disable			=>	["ip6tables", "firstboot", "NetworkManager"],
+		disable			=>	["ip6tables", "NetworkManager"],
 	},
 	directory	=>	{
 		media			=>	"/var/www/home/media",
@@ -70,6 +70,9 @@ my $conf = {
 	},
 	executable	=>	{
 		cp			=>	"/bin/cp",
+		chkconfig		=>	"/sbin/chkconfig",
+		'chmod'			=>	"/bin/chmod",
+		'chown'			=>	"/bin/chown",
 		git			=>	"/usr/bin/git",
 		htpasswd		=>	"/usr/bin/htpasswd",
 		ifup			=>	"/sbin/ifup",
@@ -77,8 +80,10 @@ my $conf = {
 		iptables		=>	"/sbin/iptables",
 		'iptables-save'		=>	"/sbin/iptables-save",
 		ln			=>	"/bin/ln",
+		restorecon		=>	"/sbin/restorecon",
 		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
+		semanage		=>	"/usr/sbin/semanage",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
@@ -102,9 +107,11 @@ my $conf = {
 			'libguac-client-vnc'		=>	0, 
 			man				=>	0, 
 			mlocate				=>	0, 
-			mod_ssl				=>	0, 
+			mod_ssl				=>	0,
+			ntp				=>	0,
 			'perl-CGI'			=>	0, 
 			'perl-CPAN'			=>	0, 
+			'perl-Net-SSH2'			=>	0,
 			'perl-Net-SSLeay'		=>	0, 
 			'perl-TermReadKey'		=>	0,
 			'perl-Test-Simple'		=>	0, 
@@ -143,10 +150,84 @@ my $conf = {
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 		selinux_config		=>	"/etc/selinux/config",
 		sshd_config		=>	"/etc/ssh/sshd_config",
+		striker_log		=>	"/var/log/an-cdb.log",
 		tomcat_server		=>	"/etc/tomcat6/server.xml",
 	},
 	permissions	=>	{
-		
+		document_root		=>	{
+			path			=>	"/var/www",
+			owner			=>	"apache",
+			group			=>	"apache",
+			mode			=>	"g+w",
+			recursive		=>	1,
+		},
+		striker_log		=>	{
+			path			=>	"/var/log/an-cdb.log",
+			owner			=>	"apache",
+			group			=>	"apache",
+			mode			=>	"g+w",
+			recursive		=>	0,
+			selinux			=>	"httpd_sys_content_t",
+		},
+		striker_config_dir	=>	{
+			path			=>	"/etc/an",
+			owner			=>	"apache",
+			group			=>	"apache",
+			mode			=>	"g+w",
+			recursive		=>	1,
+		},
+		striker_config	=>	{
+			path			=>	"/etc/an/an.conf",
+			owner			=>	"apache",
+			group			=>	"apache",
+			mode			=>	"0660",
+			recursive		=>	0,
+			selinux			=>	"httpd_sys_content_t",
+		},
+		ssh_config		=>	{
+			path			=>	"/etc/ssh/ssh_config",
+			owner			=>	"root",
+			group			=>	"apache",
+			mode			=>	"g+w",
+			recursive		=>	0,
+		},
+		hosts			=>	{
+			path			=>	"/etc/hosts",
+			owner			=>	"root",
+			group			=>	"apache",
+			mode			=>	"g+w",
+			recursive		=>	0,
+		},
+		# The following entries must sort last to ensure the setuid
+		# doesn't get changed by a change to the parent directory.
+		z_restart_tomcat	=>	{
+			path			=>	"/var/www/tools/restart_tomcat6",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
+		z_check_dvd		=>	{
+			path			=>	"/var/www/tools/check_dvd",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
+		z_do_dd			=>	{
+			path			=>	"/var/www/tools/do_dd",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
+		'z_call_gather-system-info'	=>	{
+			path			=>	"/var/www/tools/call_gather-system-info",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 	},
 	sys		=>	{
 		apache_group		=>	"apache",
@@ -267,8 +348,7 @@ if (not $conf->{sys}{skip_network})
 	print "[ Warning ] - were renamed. Simply restarting the network will likely not\n";
 	print "[ Warning ] - work.\n\n";
 }
-print "Installation of Striker is complete!\n";
-print "(just kidding, this installer isn't done yet.)\n\n";
+print "Installation of Striker is complete!\n\n";
 exit(0);
 
 
@@ -312,6 +392,55 @@ sub setup_striker
 	# Set owners and file modes.
 	set_file_ownership_and_modes($conf);
 	
+	# (Re)start daemons.
+	manage_daemons($conf);
+	
+	return(0);
+}
+
+# This is call restart or stop on daemons and makes sure they're set to (not)
+# run on boot.
+sub manage_daemons
+{
+	my ($conf) = @_;
+	
+	print "Configuring daemons to start/stop on boot and start/stop daemons.\n";
+	foreach my $daemon (@{$conf->{daemons}{disable}})
+	{
+		print "- Disabling: [$daemon] on boot and stopping it.\n";
+		my $shell_call = "$conf->{executable}{chkconfig} $daemon off && /etc/init.d/$daemon stop";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		sleep 1;
+	}
+	foreach my $daemon (@{$conf->{daemons}{enable}})
+	{
+		print "- Enabling: [$daemon] on boot and (re)starting it.\n";
+		my $shell_call = "$conf->{executable}{chkconfig} $daemon on && /etc/init.d/$daemon restart";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		sleep 1;
+	}
+	print "Done!\n\n";
+	
 	return(0);
 }
 
@@ -321,7 +450,47 @@ sub set_file_ownership_and_modes
 {
 	my ($conf) = @_;
 	
-	
+	print "Setting ownership and permissions/modes on Striker files.\n";
+	# I make shell calls here because it's too tricky to handle the
+	# recursive calls in native perl.
+	foreach my $file (sort {$a cmp $b} keys %{$conf->{permissions}})
+	{
+		my $path      = $conf->{permissions}{$file}{path};
+		my $owner     = $conf->{permissions}{$file}{owner};
+		my $group     = $conf->{permissions}{$file}{group};
+		my $mode      = $conf->{permissions}{$file}{mode};
+		my $recursive = $conf->{permissions}{$file}{recursive} ? "-R" : "";
+		my $selinux   = $conf->{permissions}{$file}{selinux};
+		print "- On: [$path],\n";
+		print "  Setting ownership and mode to: [$owner:$group] and: [$mode], respectively.\n";
+		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path && $conf->{executable}{chmod} $recursive $mode $path";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		
+		if ($selinux)
+		{
+			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/an-cdb.log 
+			#[root@striker ~]# restorecon /var/log/an-cdb.log 
+			print "  Setting selinux context to: [$selinux].\n";
+			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			close $file_handle;
+		}
+	}
+	print "Done!\n\n";
 	
 	return(0);
 }
@@ -385,6 +554,13 @@ sub install_striker_files
 		print "       to: [$destination]\n";
 		copy_file($conf, $source, $destination);
 	}
+	
+	# Create an empty log file
+	print "- Creating empty Striker log file.\n";
+	open (my $file_handle, ">", $conf->{path}{striker_log}) or die "Failed to write: [$conf->{path}{striker_log}], the error was: $!\n";
+	print $file_handle "";
+	close $file_handle;
+	
 	print "Done!\n\n";
 	
 	return(0);
@@ -395,7 +571,7 @@ sub rsync_files
 {
 	my ($conf, $source, $destination) = @_;
 	
-	my $shell_call = "$conf->{executable}{rsync} -av $source $destination";
+	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -934,11 +1110,16 @@ sub configure_tomcat
 	# Read in and then write out the server.xml file to enable UTF-8
 	my $tomcat_config = "";
 	print "- Reading in the existing tomcat server configuration server.\n";
+	#print "[ Debug ] - Reading: [$conf->{path}{tomcat_server}]\n";
 	open (my $file_handle, "<", $conf->{path}{tomcat_server}) or die "Failed to read: [$conf->{path}{tomcat_server}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
+		
+		# Avoid multiple 'URIEncoding="UTF-8"' entries
+		#print "[ Debug ] >> line: [$line]\n";
+		next if $line =~ /^\s+URIEncoding="UTF-8"$/;
 		
 		# Insert the UTF-8 string
 		if ($line =~ /<Connector port="8080" protocol="HTTP\/1.1"/)
@@ -2862,9 +3043,8 @@ sub check_nic_states
 		print "[ Error ] - Merged networks are not supported by this tool.\n";
 		exit(4);
 	}
-
+	
 	$unplugged_macs =~ s/,$//;
 	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
 	return($unplugged_macs);
 }
-
