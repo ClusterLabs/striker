@@ -32,7 +32,7 @@ use CGI::Carp "fatalsToBrowser";
 
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
-$ENV{'PERL_UNICODE'}=1;
+$ENV{'PERL_UNICODE'} = 1;
 my $THIS_FILE = "an-cdb.lib";
 
 # This takes a node name and returns the peer node.

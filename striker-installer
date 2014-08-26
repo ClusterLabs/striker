@@ -31,6 +31,10 @@
 # 15 - Unable to get the apache user's UID.
 # 16 - Unable to get the apache user's GID.
 # 17 - Installer didn't run as 'root'.
+# 18 - Failed to download a requested file.
+# 19 - Failed to copy a file.
+# 20 - Failed to create a symlink.
+# 21 - Failed to rsync a file or directory.
 # 
 # TODO: Create an init script that deletes anything in the media directory on
 #       boot. Can't use /tmp as it's usually too small.
@@ -48,9 +52,9 @@ my $conf = {
 	daemons		=>	{
 		# These will be both chkconfig on'ed and started after
 		# 'disable' is processes.
-		enable		=>	["iptables", "httpd", "acpid"],
+		enable			=>	["iptables", "httpd", "acpid", "tomcat6", "guacd"],
 		# These will be both chkconfig off'ed and stopped.
-		disable		=>	["ip6tables", "firstboot", "NetworkManager"],
+		disable			=>	["ip6tables", "firstboot", "NetworkManager"],
 	},
 	directory	=>	{
 		media			=>	"/var/www/home/media",
@@ -60,6 +64,9 @@ my $conf = {
 		guac_etc		=>	"/etc/guacamole",
 		guac_lib		=>	"/var/lib/guacamole",
 		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
+		document_root		=>	"/var/www/",
+		source			=>	"",
+		striker_config		=>	"/etc/an",
 	},
 	executable	=>	{
 		cp			=>	"/bin/cp",
@@ -69,9 +76,13 @@ my $conf = {
 		ip			=>	"/sbin/ip",
 		iptables		=>	"/sbin/iptables",
 		'iptables-save'		=>	"/sbin/iptables-save",
+		ln			=>	"/bin/ln",
+		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
+		tar			=>	"/bin/tar",
+		wget			=>	"/usr/bin/wget",
 		yum			=>	"/usr/bin/yum",
 	},
 	packages	=>	{
@@ -118,6 +129,12 @@ my $conf = {
 		apache_htpasswd		=>	"/var/www/home/htpasswd",
 		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
+		guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
+		guac_noauth_config	=>	"/etc/guacamole/noauth-config.xml",
+		guac_properties		=>	"/etc/guacamole/guacamole.properties",
+		guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
+		guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
+		guac_war_symlink	=>	"/var/lib/guacamole/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
@@ -128,25 +145,30 @@ my $conf = {
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		tomcat_server		=>	"/etc/tomcat6/server.xml",
 	},
+	permissions	=>	{
+		
+	},
 	sys		=>	{
 		apache_group		=>	"apache",
+		apache_timeout		=>	"60000",	# This will go away with AJAX
 		apache_user		=>	"apache",
 		customer		=>	"Striker Dashboard",
+		guac_version		=>	"0.9.2",
 		hostname		=>	"",
 		mail_server		=>	"mail.alteeve.ca:587",
 		skip_hostname		=>	0,
 		skip_mail		=>	0,
 		skip_network		=>	0,
-		stable_version		=>	"1.1.4",
+		stable_version		=>	"1.1.5",
+		striker_config		=>	"an.conf",
 		striker_user		=>	"admin",
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
-		apache_timeout		=>	"60000",	# This will go away with AJAX
+		tarball_dir		=>	"an-cdb-#!striker_version!#",
 	},
 	url		=>	{
-		auth_noauth	=>	"https://alteeve.ca/files/guacamole-auth-noauth-0.9.2.jar",
-		guacamole_war	=>	"https://alteeve.ca/files/guacamole-0.9.2.war",
-		striker		=>	"https://github.com/digimer/an-cdb/archive/v#!conf!version!#.tar.gz"
+		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.tar.gz",
+		striker		=>	"https://github.com/digimer/an-cdb/archive/v#!striker_version!#.tar.gz",
 	},
 	nics		=>	["bcn-link1", "ifn-link1"],
 	network		=>	{
@@ -260,10 +282,12 @@ sub setup_striker
 	my ($conf) = @_;
 	
 	print "Beginning configuration and installation processes now.\n\n";
-	sleep 2;
 	
 	# First up, install RPMs to make sure we've got everything we need.
 	install_packages($conf);
+	
+	# Download Striker, if needed.
+	download_striker($conf);
 	
 	# Configure apache.
 	configure_apache($conf);
@@ -282,8 +306,115 @@ sub setup_striker
 	# Configure iptables to allow incoming HTTP and HTTPS traffic.
 	configure_iptables($conf);
 	
+	# Copy Striker files into place
+	install_striker_files($conf);
+	
+	# Set owners and file modes.
+	set_file_ownership_and_modes($conf);
 	
 	return(0);
+}
+
+# Set the owning user and group for various files and set the mode/permissions
+# as well.
+sub set_file_ownership_and_modes
+{
+	my ($conf) = @_;
+	
+	
+	
+	return(0);
+}
+
+# Copy the files for Striker from the source directory into the apache
+# directory.
+sub install_striker_files
+{
+	my ($conf) = @_;
+	
+	# Copy the 'html' directory
+	print "Copying Striker program files into place.\n";
+	
+	if (-e "$conf->{path}{backups}/www")
+	{
+		print "- Backup already made, skipping.\n";
+	}
+	else
+	{
+		my $www_directory =  $conf->{directory}{document_root};
+		   $www_directory =~ s/\/$//;
+		print "- Backing up: [$www_directory].\n";
+		backup_file($conf, $www_directory);
+	}
+	
+	print "- Copying HTML files and skins.\n";
+	rsync_files($conf, "$conf->{directory}{source}/html",    $conf->{directory}{document_root});
+	
+	print "- Copying executable files and languages.\n";
+	rsync_files($conf, "$conf->{directory}{source}/cgi-bin", $conf->{directory}{document_root});
+	
+	print "- Copying tools.\n";
+	rsync_files($conf, "$conf->{directory}{source}/tools",   $conf->{directory}{document_root});
+	
+	my $striker_conf_file = $conf->{sys}{striker_config};
+	if (-e "$conf->{directory}{striker_config}/$conf->{sys}{striker_config}")
+	{
+		print "- Existing Striker configuration file found, not replacing it.\n";
+	}
+	else
+	{
+		# Make sure the striker /etc/ directory exists.
+		my $striker_conf_dir = ($conf->{directory}{striker_config} =~ /^.*\/(.*)$/)[0];
+		my $parent_dir       = $conf->{directory}{striker_config};
+		   $parent_dir       =~ s/$striker_conf_dir//;
+		if (-d $conf->{directory}{striker_config})
+		{
+			print "- Striker configuration directory already exists.\n";
+		}
+		else
+		{
+			print "- Creating the Striker configuration directory.\n";
+			mkdir $conf->{directory}{striker_config} or die "Failed to create the directory: [$conf->{directory}{striker_config}], error was: $!\n";
+		}
+		
+		print "- Copying base Striker configuration file.\n";
+		my $source      = "$conf->{directory}{source}/$conf->{sys}{striker_config}";
+		my $destination = $conf->{directory}{striker_config};
+		copy_file($conf, $source, $destination);
+		print "- Copying: [$source]\n";
+		print "       to: [$destination]\n";
+		copy_file($conf, $source, $destination);
+	}
+	print "Done!\n\n";
+	
+	return(0);
+}
+
+# This copies multiple files using rsync
+sub rsync_files
+{
+	my ($conf, $source, $destination) = @_;
+	
+	my $shell_call = "$conf->{executable}{rsync} -av $source $destination";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	
+	# Verify it copied successfully.
+	my $file = ($source =~ /^.*\/(.*)$/)[0];
+	   $file = "$destination/$file";
+	if (not -e $file)
+	{
+		print "[ Error ] - Failed to rsync: [$source]\n";
+		print "[ Error ] -              to: [$destination]\n";
+		exit(21);
+	}
 }
 
 # Configure guacamole.
@@ -336,6 +467,292 @@ sub configure_guacamole
 		print "- Creating the Guacamole classpath directory.\n";
 		mkdir $conf->{directory}{guac_classpath} or die "Failed to create the directory: [$conf->{directory}{guac_classpath}], error was: $!\n";
 	}
+	
+	# insert guacamole version into path names.
+	$conf->{path}{guac_noauth} =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
+	$conf->{path}{guac_war}    =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
+	
+	# Now start copying things into place.
+	if (-e $conf->{path}{guac_noauth})
+	{
+		print "- The 'auth-noauth' module is already in place.\n";
+	}
+	else
+	{
+		print "- Copying the 'auth-noauth' module into place.\n";
+		my $noauth_file =  ($conf->{path}{guac_noauth} =~ /^.*\/(.*)$/)[0];
+		my $destination =  $conf->{path}{guac_noauth};
+		   $destination =~ s/$noauth_file$//;
+		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
+		print "- Copying: [$source]\n";
+		print "       to: [$destination]\n";
+		copy_file($conf, $source, $destination);
+	}
+	
+	# Create the noauth config, if needed.
+	if (-e $conf->{path}{guac_noauth_config})
+	{
+		print "- The 'noauth' config already exists.\n";
+	}
+	else
+	{
+		print "- Copying the 'auth-noauth' module into place.\n";
+		my $noauth_file =  ($conf->{path}{guac_noauth_config} =~ /^.*\/(.*)$/)[0];
+		my $destination =  $conf->{path}{guac_noauth_config};
+		   $destination =~ s/$noauth_file$//;
+		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
+		print "- Copying: [$source]\n";
+		print "       to: [$destination]\n";
+		copy_file($conf, $source, $destination);
+	}
+	
+	# Copy the .war file and symlink it.
+	if (-e $conf->{path}{guac_war})
+	{
+		print "- Guacamole web archive file already in place.\n";
+	}
+	else
+	{
+		# Delete the symlink if it exists.
+		if (-l $conf->{path}{guac_war_symlink})
+		{
+			print "- Deleting the existing symlink.\n";
+			unlink $conf->{path}{guac_war_symlink} or die "Failed to delete the symlink: [$conf->{path}{guac_war_symlink}]\n";
+		}
+		
+		# Now copy.
+		my $war_file    =  ($conf->{path}{guac_war} =~ /^.*\/(.*)$/)[0];
+		my $destination =  $conf->{path}{guac_war};
+		   $destination =~ s/$war_file$//;
+		my $source      =  "$conf->{directory}{source}/guacamole/$war_file";
+		print "- Copying: [$source]\n";
+		print "       to: [$destination]\n";
+		copy_file($conf, $source, $destination);
+		
+		# If I am here, the copy succeeded.
+		print "- Creating guacamole web archive symlink.\n";
+		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		
+		if (-l $conf->{path}{guac_war_symlink})
+		{
+			print "- Symlink created successfully.\n";
+		}
+		else
+		{
+			print "[ Error ] - I was unable to link: [$destination/$war_file]\n";
+			print "[ Error ] -                   to: [$conf->{path}{guac_war_symlink}]\n";
+			exit(20);
+		}
+	}
+	
+	# Copy the guacamoly properties file into place.
+	if (-e $conf->{path}{guac_properties})
+	{
+		print "- Properties file already in place.\n";
+	}
+	else
+	{
+		my $properties_file =  ($conf->{path}{guac_properties} =~ /^.*\/(.*)$/)[0];
+		my $destination     =  $conf->{path}{guac_properties};
+		   $destination     =~ s/$properties_file$//;
+		my $source          =  "$conf->{directory}{source}/guacamole/$properties_file";
+		print "- Copying: [$source]\n";
+		print "       to: [$destination]\n";
+		copy_file($conf, $source, $destination);
+		
+		# Create the symlink, if needed.
+		print "- Creating guacamole properties symlink.\n";
+		my $shell_call = "$conf->{executable}{ln} -s $destination/$properties_file $conf->{path}{guac_properties_symlink}";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		
+		if (-l $conf->{path}{guac_properties_symlink})
+		{
+			print "- Symlink created successfully.\n";
+		}
+		else
+		{
+			print "[ Error ] - I was unable to link: [$destination/$properties_file]\n";
+			print "[ Error ] -                   to: [$conf->{path}{guac_properties_symlink}]\n";
+			exit(20);
+		}
+	}
+	
+	print "Done!\n\n";
+	
+	return(0);
+}
+
+# This copies a file... Hey, what it says on the tin.
+sub copy_file
+{
+	my ($conf, $source, $destination) = @_;
+	
+	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	
+	# Verify it copied successfully.
+	my $file = ($source =~ /^.*\/(.*)$/)[0];
+	   $file = "$destination/$file";
+	if (not -e $file)
+	{
+		print "[ Error ] - Failed to copy: [$source]\n";
+		print "[ Error ] -             to: [$destination]\n";
+		exit(19);
+	}
+	
+	return(0);
+}
+
+# Download Striker, if needed.
+sub download_striker
+{
+	my ($conf) = @_;
+	
+	print "Downloading Striker, if needed.\n";
+	my $extract  = "";
+	my $download = "";
+	if ($conf->{sys}{install_version} eq "git")
+	{
+		print "- Downloading the developer version from github.\n";
+		$download                  = $conf->{url}{git_master};
+		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
+		$conf->{directory}{source} = "./an-cdb-master";
+	}
+	else
+	{
+		if (-e "./version")
+		{
+			my $version;
+			print "- Version file exists, checking if it matches the requested version.\n";
+			open (my $file_handle, "<", "./version") or die "Failed to read: [./version], the error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				$version = $_;
+			}
+			close $file_handle;
+			
+			if ($version eq $conf->{sys}{install_version})
+			{
+				print "- Download not needed, files already available.\n";
+				$conf->{directory}{source} = "./";
+			}
+			else
+			{
+				print "- Local version: [$version] doesn't match requested version: [$conf->{sys}{install_version}]\n";
+				print "- Downloading requested version from: [$conf->{url}{striker}]\n";
+				$download                  = $conf->{url}{striker};
+				$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
+				$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+			}
+		}
+		else
+		{
+			# Download needed.
+			print "- Downloading version: [$conf->{sys}{install_version}] from: [$conf->{url}{striker}]\n";
+			$download                  = $conf->{url}{striker};
+			$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
+			$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+		}
+	}
+	
+	# Download, if needed
+	if ($download)
+	{
+		# See if it's already downloaded.
+		if (-e "./$extract")
+		{
+			print "- The source: [$extract] already exists, skipping.\n";
+		}
+		else
+		{
+			my $shell_call = "$conf->{executable}{wget} -c $download";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			print "==============================================================================\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			print "==============================================================================\n";
+			close $file_handle;
+			
+			# Make sure it downloaded.
+			if (not -e $extract)
+			{
+				print "[ Error ] - The download failed!\n";
+				print "[ Error ] - Does: [$download] exist?\n";
+				print "[ Error ] - Is there a working network connection?\n";
+				exit(18);
+			}
+			else
+			{
+				print "- Download complete.\n";
+			}
+		}
+	}
+	
+	# Extract, if needed.
+	if ($extract)
+	{
+		print "- Extracting: [$extract]\n";
+		print "[ Debug ] - Checking if the directory: [$conf->{directory}{source}] exists already.\n";
+		if (-d $conf->{directory}{source})
+		{
+			print "- The source appears to already be extracted, skipping.\n";
+		}
+		else
+		{
+			my $source_dir_found = 0;
+			my $shell_call       = "$conf->{executable}{tar} -xvf $extract";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				if (($line =~ /^(.*?)\/$/) && (not $source_dir_found))
+				{
+					# This overrides anything set above
+					# (though those need to be set in-case
+					# extraction wasn't needed).
+					my $source                 = $1;
+					$conf->{directory}{source} = "./$source";
+					$source_dir_found          = 1;
+				}
+				print "- Output: [$line]\n";
+			}
+			close $file_handle;
+		}
+	}
+	print "- Will use the source directory: [$conf->{directory}{source}]\n";
 	print "Done!\n\n";
 	
 	return(0);
@@ -491,7 +908,7 @@ sub configure_ssh
 		}
 		close $file_handle;
 	}
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -540,7 +957,7 @@ sub configure_tomcat
 	open ($file_handle, ">", $conf->{path}{tomcat_server}) or die "Failed to write: [$conf->{path}{tomcat_server}], the error was: $!\n";
 	print $file_handle $tomcat_config;
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -601,7 +1018,7 @@ sub configure_selinux
 	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "Failed to write: [$conf->{path}{selinux_config}], the error was: $!\n";
 	print $file_handle $selinux_config;
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	# TODO: Set labels here.
 	
@@ -614,6 +1031,7 @@ sub set_hostname
 	my ($conf) = @_;
 	
 	# First, edit the hostname file.
+	print "Configuring this system's host name.\n";
 	print "- Reading in the existing hostname file.\n";
 	my $hostname = "";
 	open (my $file_handle, "<", $conf->{path}{hostname}) or die "Failed to read: [$conf->{path}{hostname}], the error was: $!\n";
@@ -640,7 +1058,7 @@ sub set_hostname
 	open ($file_handle, ">", $conf->{path}{hostname}) or die "Failed to write: [$conf->{path}{hostname}], the error was: $!\n";
 	print $file_handle $hostname;
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	# And finally, change the hostname for the current session.
 	system("hostname $conf->{sys}{hostname}");
@@ -745,7 +1163,7 @@ sub configure_apache
 	open ($file_handle, ">", $conf->{path}{apache_config}) or die "Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
 	print $file_handle $apache_config;
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -785,7 +1203,7 @@ sub enable_apache_user
 	open ($file_handle, ">", $conf->{path}{passwd}) or die "Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
 	print $file_handle $passwd;
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -812,7 +1230,7 @@ sub create_apache_htpasswd
 		print "- Output: [$line]\n";
 	}
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -827,12 +1245,12 @@ sub create_apache_home_directories
 	push @dirs, $conf->{path}{apache_home};
 	if (not -e $conf->{path}{apache_home})
 	{
-		print "  Creating: [$conf->{path}{apache_home}].\n";
+		print "- Creating: [$conf->{path}{apache_home}].\n";
 		mkdir $conf->{path}{apache_home} or die "Failed to create the directory: [$conf->{path}{apache_home}], the error was: $!\n";
 	}
 	else
 	{
-		print "  Home already exists: [$conf->{path}{apache_home}].\n";
+		print "- Home already exists: [$conf->{path}{apache_home}].\n";
 	}
 	foreach my $directory (@{$conf->{directory}{apache_subdirs}})
 	{
@@ -840,12 +1258,12 @@ sub create_apache_home_directories
 		push @dirs, $full_path;
 		if (not -e $full_path)
 		{
-			print "  Creating: [$full_path].\n";
+			print "- Creating: [$full_path].\n";
 			mkdir $full_path or die "Failed to create the directory: [$full_path], the error was: $!\n";
 		}
 		else
 		{
-			print "  Already exists: [$full_path].\n";
+			print "- Already exists: [$full_path].\n";
 		}
 	}
 	
@@ -868,7 +1286,7 @@ sub create_apache_home_directories
 	chown $apache_uid, $apache_gid, @dirs;
 	print "- Setting mode to: [".sprintf("%04o", $dir_mode)."].\n";
 	chmod $dir_mode, @dirs;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1000,7 +1418,7 @@ sub install_missing_packages
 			print "- Output: [$line]\n";
 		}
 		close $file_handle;
-		print "- Done.\n\n";
+		print "Done.\n\n";
 		
 		# Verify that everything is installed.
 		print "Verifying that everything is installed now.\n";
@@ -1059,7 +1477,7 @@ sub update_os
 		print "- Output: [$line]\n";
 	}
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1186,7 +1604,7 @@ sub start_all_nics
 		print "- Checking if: [$nic_file] exists.\n";
 		if (not -e $nic_file)
 		{
-			print "  New device, writing a skeleton config file... ";
+			print "- New device, writing a skeleton config file... ";
 			my $shell_call = $nic_file;
 			open (my $file_handle, '>', "$shell_call") || die "\nFailed to write: [$shell_call], error was: $!\n";
 			print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
@@ -1201,7 +1619,7 @@ sub start_all_nics
 		else
 		{
 			# It exists, edit it if needed.
-			print "  Config file exists, changing BOOTPROTO to 'none'.\n";
+			print "- Config file exists, changing BOOTPROTO to 'none'.\n";
 			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
 			#print "[ Debug ] - Calling: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
@@ -1217,7 +1635,7 @@ sub start_all_nics
 		}
 			
 		# Now start the nic.
-		print "  Attempting to bring up: [$nic]...\n";
+		print "- Attempting to bring up: [$nic]...\n";
 		my $shell_call = "$conf->{executable}{ifup} $nic";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1303,7 +1721,7 @@ sub update_network_config_files
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
 	}
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	print "Writing new network configuration files.\n";
 	
 	# Now write out the config files.
@@ -1339,7 +1757,7 @@ sub update_network_config_files
 	print $file_handle "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
 	print $file_handle "DEFROUTE=\"no\"\n";
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1398,7 +1816,7 @@ sub write_udev_persistent_net
 		print $file_handle "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$this_mac\", NAME=\"$nic\"\n\n";
 	}
 	close $file_handle;
-	print "- Done.\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1524,12 +1942,12 @@ sub backup_file
 	{
 		chomp;
 		my $line = $_;
-		print "  Shell output: [$line]\n";
+		print "- Shell output: [$line]\n";
 	}
 	close $file_handle;
 	
 	### TODO: Verify the backed up file exists in the backup directory.
-	#print "  Done\n";
+	#print "- Done\n";
 	
 	return(0);
 }
@@ -1603,7 +2021,34 @@ sub sanity_check_switches
 	if (not $conf->{switches}{d})
 	{
 		print "[ Note ] - No specific version requested, will install: [$conf->{sys}{stable_version}]\n";
+		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
 		# TODO: check to see if the requested version exists
+	}
+	else
+	{
+		# Make sure the request is sane. First check for a supported
+		# version:
+		$conf->{sys}{install_version} =  $conf->{switches}{d};
+		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+		if (($conf->{switches}{d} eq "1.1.4") || ($conf->{switches}{d} eq "1.1.5"))
+		{
+			print "[ Note ] - Will install version: [$conf->{switches}{d}]\n";
+		}
+		elsif ($conf->{switches}{d} eq "git")
+		{
+			print "[ Note ] - Will install the latest version from git.\n";
+			print "\n ##############################################################################\n";
+			print " # [ Warning ] - Please do NOT use a git version in production!               #\n";
+			print " ##############################################################################\n\n";
+			sleep 5;
+		}
+		else
+		{
+			print "[ Error ] - Unsupported Striker version requested!\n";
+			print "[ Error ] - Is this installer too old?\n";
+			$bad_value = 1;
+		}
 	}
 	
 	# With mail, both or neither must be provided (XNOR y'all!)
@@ -1657,6 +2102,7 @@ sub sanity_check_switches
 			$bad_value = 1;
 		}
 	}
+	print "Sanity checks complete.\n\n";
 	
 	return($bad_value);
 }
@@ -2231,7 +2677,7 @@ sub select_nics
 		{
 			if (not $plug_in_message_printed)
 			{
-				print "  Please plug in all network cables to proceed.\n";
+				print "- Please plug in all network cables to proceed.\n";
 				$plug_in_message_printed = 1;
 			}
 			#print "MAC address of down links: [$down_links]\n";
@@ -2241,7 +2687,7 @@ sub select_nics
 		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		print "- Please unplug the interface you want to make:\n";
-		print "  [$say_nic]\n";
+		print "- [$say_nic]\n";
 		my $last_conflict = "";
 		while(1)
 		{
@@ -2250,15 +2696,15 @@ sub select_nics
 			{
 				if ($conf->{nic}{mac}{$down_links}{new_name})
 				{
-					print "  The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n" if ($last_conflict ne $down_links);
+					print "- The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n" if ($last_conflict ne $down_links);
 					$last_conflict = $down_links;
 				}
 				else
 				{
 					$conf->{nic}{mac}{$down_links}{new_name} = $nic;
 					$conf->{nic}{name}{$nic}                 = $down_links;
-					print "  NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}]\n";
-					print "  (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
+					print "- NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}]\n";
+					print "- (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
 					last;
 				}
 			}
@@ -2270,7 +2716,7 @@ sub select_nics
 	{
 		if (not $plug_in_message_printed)
 		{
-			print "  Please plug in all network cables to proceed.\n";
+			print "- Please plug in all network cables to proceed.\n";
 			$plug_in_message_printed = 1;
 		}
 		sleep 1;
@@ -2300,7 +2746,7 @@ sub select_nics
 			exit(2);
 		}
 		print "- Interface: [".uc($this_mac)."], currently named: [$current_name],\n";
-		print "  will be renamed to: [$nic]\n";
+		print "- will be renamed to: [$nic]\n";
 		#print "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)\n";
 	}
 	my $bcn_ip      = $conf->{network}{bcn}{ip};
@@ -2418,7 +2864,7 @@ sub check_nic_states
 	}
 
 	$unplugged_macs =~ s/,$//;
-	#print "  DEBUG: unpluggd_macs: [$unplugged_macs]\n";
+	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
 	return($unplugged_macs);
 }
 

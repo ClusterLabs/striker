@@ -38,7 +38,7 @@ use Net::SSH2;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.4";
+our $VERSION  = "1.1.5";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.
