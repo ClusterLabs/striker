@@ -35,6 +35,7 @@ v1.1.5 - <in progress>
   can be read, leading to "Undefined replacement key" alerts.
 - Created the 'striker-install' script to replace the old 'an-cdb-install.sh'
   script.
+- Removed all references to SMTP timeout.
 
 
 v1.1.4 - 2014-05-27

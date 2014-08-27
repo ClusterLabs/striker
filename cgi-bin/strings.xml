@@ -96,10 +96,6 @@ smtp::server				=	#!variable!smtp__server!#
 # This is the TCP port used to connect to the mail server.
 smtp::port				=	#!variable!smtp__port!#
 
-# This is the number of seconds to wait for a responce when connection to the
-# mail server on the given port that you set above.
-smtp::timeout				=	#!variable!smtp__timeout!#
-
 # This is the email address/IMAP user to send to the mail server. It is also
 # the address used in the 'From: ' field for emails sent from this machine.
 # NOTE: If you IMAP user name is not an email address, this may not work (it
@@ -191,7 +187,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0010"><![CDATA[The dashboard does not send email, but your #!string!brand_0003!# nodes will.<br />The <span class="fixed_width">#!conf!path::an_conf!#</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.]]></key>
 		<key name="explain_0011"><![CDATA[This is the mail server that your node will connect to in order to send email.<br />Your Internet service provider will give you this address, often called an "<i>SMTP Server</i>".]]></key>
 		<key name="explain_0012"><![CDATA[When connecting to the mail server address above, a specific "port" number must be specified.<br />Your ISP should mention what this port number along with the address.<br />Typically, this is "25" for unencrypted connections and "587" for encrypted connections.]]></key>
-		<key name="explain_0013"><![CDATA[This is how long, in seconds, we will wait for a response from the mail server.<br />If there is no answer after this time, the connection will be considered failed.<br />Generally speaking, 60 seconds is a good number.]]></key>
+		<key name="explain_0013"></key>		<!-- Free -->
 		<key name="explain_0014"><![CDATA[Some mail server require a user name and password. Usually, the user name will be you email address.<br /> Some ISPs do not require authentication, and in those cases, this can be left blank.<br /> Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.]]></key>
 		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter it's password here.]]></key>
 		<key name="explain_0016"><![CDATA[This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />As with the other mail settings, which to use will depends on your Internet service provider.<br />If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.]]></key>
@@ -487,7 +483,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0014">Mail Server User</key>
 		<key name="row_0015">Alert Recipient</key>
 		<key name="row_0016">Mail Server Port</key>
-		<key name="row_0017">Mail Server Timeout</key>
+		<key name="row_0017"></key>	<!-- Free -->
 		<key name="row_0018">Sanity Checks Passed!</key>
 		<key name="row_0019">Done!</key>
 		<key name="row_0020">Problems Found</key>
@@ -646,7 +642,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0011"><![CDATA[The email address <span class="highlight_detail">#!variable!email!#</span> does not appear to be valid.]]></key>
 		<key name="message_0012"><![CDATA[The mail server port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
 		<key name="message_0013"><![CDATA[You need to specify what TCP your mail server is listening on.<br />Usually this is either '<span class="highlight_detail">25</span>' or '<span class="highlight_detail">587</span>'.]]></key>
-		<key name="message_0014"><![CDATA[The timeout your specified <span class="highlight_detail">#!variable!timeout!#</span> appears to have a mistake.<br />It needs to be a number of seconds. The default is '<span class="highlight_detail">60</span>' seconds.]]></key>
+		<key name="message_0014"></key>		<!-- Free -->
 		<key name="message_0015">Everything seems sensible, ready to save.</key>
 		<key name="message_0016"><![CDATA[Failed to copy the file <span class="highlight_detail">#!variable!file!#</span> to <span class="highlight_detail">#!variable!destination!#</span>.<br />Shell call output:<br /><hr /><span class="highlight_detail">#!variable!output!#</span><hr />]]></key>
 		<key name="message_0017">Changes saved.</key>

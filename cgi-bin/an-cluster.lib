@@ -157,7 +157,6 @@ sub sanity_check_an_conf
 	# is modifying the global section or an anvil!.
 	my $smtp__server_key              = "smtp__server";
 	my $smtp__port_key                = "smtp__port";
-	my $smtp__timeout_key             = "smtp__timeout";
 	my $smtp__username_key            = "smtp__username";
 	my $smtp__password_key            = "smtp__password";
 	my $smtp__security_key            = "smtp__security";
@@ -227,7 +226,6 @@ sub sanity_check_an_conf
 		
 		$smtp__server_key              = "cluster__${this_id}__smtp__server";
 		$smtp__port_key                = "cluster__${this_id}__smtp__port";
-		$smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
 		$smtp__username_key            = "cluster__${this_id}__smtp__username";
 		$smtp__password_key            = "cluster__${this_id}__smtp__password";
 		$smtp__security_key            = "cluster__${this_id}__smtp__security";
@@ -481,26 +479,6 @@ sub sanity_check_an_conf
 			message	=>	"#!string!message_0013!#",
 		});
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}]\n");
-	if (($conf->{cgi}{$smtp__timeout_key}) && ($conf->{cgi}{$smtp__timeout_key} ne "#!inherit!#"))
-	{
-		$conf->{cgi}{$smtp__timeout_key} =~ s/,//g;
-		$conf->{cgi}{$smtp__timeout_key} =~ s/\s//g;
-		if ($conf->{cgi}{$smtp__timeout_key} =~ /\D/)
-		{
-			$save = 0;
-			print template($conf, "config.html", "form-value-warning", {
-				row	=>	"#!string!row_0017!#",
-				message	=>	"#!string!message_0014!#",
-			}, {
-				timeout	=>	$conf->{cgi}{$smtp__timeout_key},
-			}); 
-		}
-	}
-	elsif ($conf->{cgi}{$smtp__timeout_key} ne "#!inherit!#")
-	{
-		$conf->{cgi}{$smtp__timeout_key} = 60;
-	}
 
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
 	if ($save)
@@ -547,7 +525,6 @@ sub sanity_check_an_conf
 			# Record overrides, if any.
 			$conf->{cluster}{$this_id}{smtp}{server}              = $conf->{cgi}{$smtp__server_key};
 			$conf->{cluster}{$this_id}{smtp}{port}                = $conf->{cgi}{$smtp__port_key};
-			$conf->{cluster}{$this_id}{smtp}{timeout}             = $conf->{cgi}{$smtp__timeout_key};
 			$conf->{cluster}{$this_id}{smtp}{username}            = $conf->{cgi}{$smtp__username_key};
 			$conf->{cluster}{$this_id}{smtp}{password}            = $conf->{cgi}{$smtp__password_key};
 			$conf->{cluster}{$this_id}{smtp}{security}            = $conf->{cgi}{$smtp__security_key};
@@ -600,7 +577,6 @@ sub sanity_check_an_conf
 			# Modifying global, copy CGI to main variables.
 			$conf->{smtp}{server}              = $conf->{cgi}{smtp__server};
 			$conf->{smtp}{port}                = $conf->{cgi}{smtp__port};
-			$conf->{smtp}{timeout}             = $conf->{cgi}{smtp__timeout};
 			$conf->{smtp}{username}            = $conf->{cgi}{smtp__username};
 			$conf->{smtp}{password}            = $conf->{cgi}{smtp__password};
 			$conf->{smtp}{security}            = $conf->{cgi}{smtp__security};
@@ -671,7 +647,6 @@ sub write_new_an_conf
 	my $say_body = get_string($conf, {key => "text_0002", variables => {
 		smtp__server			=>	$conf->{smtp}{server},
 		smtp__port			=>	$conf->{smtp}{port},
-		smtp__timeout			=>	$conf->{smtp}{timeout},
 		smtp__username			=>	$conf->{smtp}{username},
 		smtp__password			=>	$conf->{smtp}{password},
 		smtp__security			=>	$conf->{smtp}{security},
@@ -701,7 +676,6 @@ sub write_new_an_conf
 		# Set any undefined values to '#!inherit!#'
 		$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
 		$conf->{cluster}{$this_id}{smtp}{port}                = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{port};
-		$conf->{cluster}{$this_id}{smtp}{timeout}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{timeout};
 		$conf->{cluster}{$this_id}{smtp}{username}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{username};
 		$conf->{cluster}{$this_id}{smtp}{password}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{password};
 		$conf->{cluster}{$this_id}{smtp}{security}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{security};
@@ -714,7 +688,6 @@ sub write_new_an_conf
 		# as the case may be).
 		print $an_conf "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
 		print $an_conf "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
-		print $an_conf "cluster::${this_id}::smtp::timeout\t\t=\t$conf->{cluster}{$this_id}{smtp}{timeout}\n";
 		print $an_conf "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
 		print $an_conf "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
 		print $an_conf "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
@@ -1034,7 +1007,6 @@ sub load_configuration_defaults
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
 	$conf->{cgi}{smtp__server}              = defined $conf->{smtp}{server}              ? $conf->{smtp}{server}              : "";
 	$conf->{cgi}{smtp__port}                = defined $conf->{smtp}{port}                ? $conf->{smtp}{port}                : "";
-	$conf->{cgi}{smtp__timeout}             = defined $conf->{smtp}{timeout}             ? $conf->{smtp}{timeout}             : "";
 	$conf->{cgi}{smtp__username}            = defined $conf->{smtp}{username}            ? $conf->{smtp}{username}            : "";
 	$conf->{cgi}{smtp__password}            = defined $conf->{smtp}{password}            ? $conf->{smtp}{password}            : "";
 	$conf->{cgi}{smtp__security}            = defined $conf->{smtp}{security}            ? $conf->{smtp}{security}            : "";
@@ -1084,7 +1056,6 @@ sub load_configuration_defaults
 		### set to '#!inherit!# to have them be deleted 
 		my $smtp__server_key              = "cluster__${this_id}__smtp__server";
 		my $smtp__port_key                = "cluster__${this_id}__smtp__port";
-		my $smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
 		my $smtp__username_key            = "cluster__${this_id}__smtp__username";
 		my $smtp__password_key            = "cluster__${this_id}__smtp__password";
 		my $smtp__security_key            = "cluster__${this_id}__smtp__security";
@@ -1095,7 +1066,6 @@ sub load_configuration_defaults
 		
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
-		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
 		$conf->{cgi}{$smtp__username_key}            = defined $conf->{cluster}{$this_id}{smtp}{username}            ? $conf->{cluster}{$this_id}{smtp}{username}            : "#!inherit!#";
 		$conf->{cgi}{$smtp__password_key}            = defined $conf->{cluster}{$this_id}{smtp}{password}            ? $conf->{cluster}{$this_id}{smtp}{password}            : "#!inherit!#";
 		$conf->{cgi}{$smtp__security_key}            = defined $conf->{cluster}{$this_id}{smtp}{security}            ? $conf->{cluster}{$this_id}{smtp}{security}            : "#!inherit!#";
@@ -1148,7 +1118,6 @@ sub show_anvil_config_header
 	{
 		my $smtp__server_key              = "cluster__${this_id}__smtp__server";
 		my $smtp__port_key                = "cluster__${this_id}__smtp__port";
-		my $smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
 		my $smtp__username_key            = "cluster__${this_id}__smtp__username";
 		my $smtp__password_key            = "cluster__${this_id}__smtp__password";
 		my $smtp__security_key            = "cluster__${this_id}__smtp__security";
@@ -1158,7 +1127,6 @@ sub show_anvil_config_header
 		my $mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
 		$conf->{cgi}{$smtp__server_key}              = defined $conf->{cluster}{$this_id}{smtp}{server}              ? $conf->{cluster}{$this_id}{smtp}{server}              : "#!inherit!#";
 		$conf->{cgi}{$smtp__port_key}                = defined $conf->{cluster}{$this_id}{smtp}{port}                ? $conf->{cluster}{$this_id}{smtp}{port}                : "#!inherit!#";
-		$conf->{cgi}{$smtp__timeout_key}             = defined $conf->{cluster}{$this_id}{smtp}{timeout}             ? $conf->{cluster}{$this_id}{smtp}{timeout}             : "#!inherit!#";
 		$conf->{cgi}{$smtp__username_key}            = defined $conf->{cluster}{$this_id}{smtp}{username}            ? $conf->{cluster}{$this_id}{smtp}{username}            : "#!inherit!#";
 		$conf->{cgi}{$smtp__password_key}            = defined $conf->{cluster}{$this_id}{smtp}{password}            ? $conf->{cluster}{$this_id}{smtp}{password}            : "#!inherit!#";
 		$conf->{cgi}{$smtp__security_key}            = defined $conf->{cluster}{$this_id}{smtp}{security}            ? $conf->{cluster}{$this_id}{smtp}{security}            : "#!inherit!#";
@@ -1166,7 +1134,7 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__timeout_key: [$conf->{cgi}{$smtp__timeout_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
@@ -1258,7 +1226,6 @@ sub show_common_config_section
 	# global, the override with the Anvil! if needed.
 	my $smtp__server_key              = "smtp__server";
 	my $smtp__port_key                = "smtp__port";
-	my $smtp__timeout_key             = "smtp__timeout";
 	my $smtp__username_key            = "smtp__username";
 	my $smtp__password_key            = "smtp__password";
 	my $smtp__security_key            = "smtp__security";
@@ -1275,14 +1242,13 @@ sub show_common_config_section
 		"1#!#Yes",
 		"0#!#No"
 	];
-	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
 	if (not $conf->{cgi}{save})
 	{
 		# First time loading the config, so pre-populate the values
 		# with the data from the config file.
 		$conf->{cgi}{smtp__server}              = defined $conf->{smtp}{server}              ? $conf->{smtp}{server}              : ""; 
 		$conf->{cgi}{smtp__port}                = defined $conf->{smtp}{port}                ? $conf->{smtp}{port}                : "";
-		$conf->{cgi}{smtp__timeout}             = defined $conf->{smtp}{timeout}             ? $conf->{smtp}{timeout}             : "";
 		$conf->{cgi}{smtp__username}            = defined $conf->{smtp}{username}            ? $conf->{smtp}{username}            : "";
 		$conf->{cgi}{smtp__password}            = defined $conf->{smtp}{password}            ? $conf->{smtp}{password}            : "";
 		$conf->{cgi}{smtp__security}            = defined $conf->{smtp}{security}            ? $conf->{smtp}{security}            : "";
@@ -1290,7 +1256,7 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__timeout: [$conf->{cgi}{smtp__timeout}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
 	# Switch to the per-Anvil! values if an Anvil! is defined.
@@ -1303,7 +1269,6 @@ sub show_common_config_section
 		$this_id                       = defined $conf->{clusters}{$this_cluster}{id} ? $conf->{clusters}{$this_cluster}{id} : "new";
 		$smtp__server_key              = "cluster__${this_id}__smtp__server";
 		$smtp__port_key                = "cluster__${this_id}__smtp__port";
-		$smtp__timeout_key             = "cluster__${this_id}__smtp__timeout";
 		$smtp__username_key            = "cluster__${this_id}__smtp__username";
 		$smtp__password_key            = "cluster__${this_id}__smtp__password";
 		$smtp__security_key            = "cluster__${this_id}__smtp__security";
@@ -1311,7 +1276,7 @@ sub show_common_config_section
 		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__timeout_key: [$smtp__timeout_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
 		
 		# Add the 'inherit' options.
 		push @{$security_select_options},     "#!inherit!#";
@@ -1320,7 +1285,6 @@ sub show_common_config_section
 	
 	my $say_smtp__server              = $conf->{cgi}{$smtp__server_key}; 
 	my $say_smtp__port                = $conf->{cgi}{$smtp__port_key};
-	my $say_smtp__timeout             = $conf->{cgi}{$smtp__timeout_key};
 	my $say_smtp__username            = $conf->{cgi}{$smtp__username_key};
 	my $say_smtp__password            = $conf->{cgi}{$smtp__password_key};
 	my $say_smtp__security            = $conf->{cgi}{$smtp__security_key};
@@ -1328,7 +1292,7 @@ sub show_common_config_section
 	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
 	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
 	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
-	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__timeout: [$say_smtp__timeout], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
 	
 	# Build the security and encrypt password select boxes.
 	my $say_security_select     = build_select($conf, "$smtp__security_key",     0, 0, 300, $conf->{cgi}{$smtp__security_key},     $security_select_options);
@@ -1374,9 +1338,6 @@ sub show_common_config_section
 		smtp__port_name			=>	$smtp__port_key,
 		smtp__port_id			=>	$smtp__port_key,
 		smtp__port_value		=>	$conf->{cgi}{$smtp__port_key},
-		smtp__timeout_name		=>	$smtp__timeout_key,
-		smtp__timeout_id		=>	$smtp__timeout_key,
-		smtp__timeout_value		=>	$conf->{cgi}{$smtp__timeout_key},
 		smtp__username_name		=>	$smtp__username_key,
 		smtp__username_id		=>	$smtp__username_key,
 		smtp__username_value		=>	$conf->{cgi}{$smtp__username_key},
@@ -4008,7 +3969,7 @@ sub remote_call
 	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
+		record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($node, $port, Timeout => 10))
 		{

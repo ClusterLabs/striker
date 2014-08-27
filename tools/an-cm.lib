@@ -7838,6 +7838,62 @@ Description:
 	return(0);
 }
 
+# This sends an email using postfix.
+sub send_email_local_relay
+{
+	my ($conf) = @_;
+	
+=pod
+echo 'mail.alteeve.ca mkelly@alteeve.ca:purple stapler what?' > /etc/postfix/relay_password
+chmod 600 /etc/postfix/relay_password
+chown root:root /etc/postfix/relay_password
+postmap /etc/postfix/relay_password
+sed -i.anvil "s|#relayhost = \[an.ip.add.ress\]|#relayhost = \[an.ip.add.ress\]\nrelayhost = \[mail.alteeve.ca\]:587\nsmtp_use_tls=yes\nsmtp_sasl_auth_enable = yes\nsmtp_sasl_password_maps = hash:/etc/postfix/relay_password\nsmtp_sasl_security_options =|" /etc/postfix/main.cf
+/etc/init.d/postfix reload
+
+Send:
+# Write message body to a file (called test.txt here)
+test.txt:
+====
+From: Anvil! Alert System <mkelly@alteeve.ca>
+To: mkelly@alteeve.ca, m@dison.me
+Subject: [ Striker ] - Test email 3
+
+Am I alive?
+Is this the real life?
+====
+mailx -t < test.txt
+=cut
+
+	# First, see if the relay file needs to be updated.
+	record($conf, "$THIS_FILE ".__LINE__."; Checking to see of the email relay file: [$conf->{path}{postfix_relay_file}] needs to be updated.\n");
+	if (-e $conf->{path}{postfix_relay_file})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; It exists, reading it.\n");
+		open (my $file_handle, "<", "$conf->{path}{postfix_relay_file}") or die "Failed to read: [./version], the error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /^(.*?)\s(.*?):(.*)$/)
+			{
+				my $domain   = $1;
+				my $email    = $2;
+				my $password = $3;
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Relay file doesn't exist at all, so this might be an upgrade.
+		# As such, check that the programs we need are installed.
+		record($conf, "$THIS_FILE ".__LINE__."; It doesn't exist, creating it.\n");
+	}
+	
+	return(0);
+}
+
 # Send am email.
 sub send_email
 {

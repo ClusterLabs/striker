@@ -46,6 +46,7 @@ my $conf = {
 		apcupsd			=>	"/sbin/apcupsd",
 		apcaccess		=>	"/sbin/apcaccess",
 		mdstat			=>	"/proc/mdstat",
+		postfix_relay_file	=>	"/etc/postfix/relay_password",
 	},
 	alerts			=>	{
 		### NOTE: All temperatures here need to be in Celcius. If the
