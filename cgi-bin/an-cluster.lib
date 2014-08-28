@@ -2271,7 +2271,7 @@ sub header
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}, "", 1);
-			if ($conf->{cgi}{anvil})
+			if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 			{
 				$say_back = template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",

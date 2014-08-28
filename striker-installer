@@ -56,7 +56,7 @@ my $conf = {
 		#       if 'acpid' was just installed.
 		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "ntpd"],
 		# These will be both chkconfig off'ed and stopped.
-		disable			=>	["ip6tables", "NetworkManager"],
+		disable			=>	["ip6tables"],
 	},
 	directory	=>	{
 		media			=>	"/var/www/home/media",
@@ -85,6 +85,7 @@ my $conf = {
 		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
 		semanage		=>	"/usr/sbin/semanage",
+		setenforce		=>	"/usr/sbin/setenforce",
 		setsebool		=>	"/usr/sbin/setsebool",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
@@ -144,7 +145,7 @@ my $conf = {
 		guac_properties		=>	"/etc/guacamole/guacamole.properties",
 		guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
 		guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
-		guac_war_symlink	=>	"/var/lib/guacamole/guacamole.war",
+		guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
@@ -206,9 +207,9 @@ my $conf = {
 		},
 		guac_noauth_config	=>	{
 			path			=>	"/etc/guacamole/noauth-config.xml",
-			owner			=>	"apache",
+			owner			=>	"root",
 			group			=>	"apache",
-			mode			=>	"0660",
+			mode			=>	"0664",
 			recursive		=>	0,
 			selinux			=>	"httpd_sys_content_t",
 		},
@@ -488,7 +489,10 @@ sub set_file_ownership_and_modes
 		}
 		close $file_handle;
 		
-		if ($selinux)
+		# NOTE: Disabled until I get the media library tools working
+		#       with selinux.
+		#if ($selinux)
+		if (0)
 		{
 			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/an-cdb.log 
 			#[root@striker ~]# restorecon /var/log/an-cdb.log 
@@ -507,17 +511,20 @@ sub set_file_ownership_and_modes
 	}
 	
 	# Allow httpd to make outbound network connections.
-	print "- Giving apache permission to create network connections.\n";
-	my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
+	if (0)
 	{
-		chomp;
-		my $line = $_;
-		print "- Output: [$line]\n";
+		print "- Giving apache permission to create network connections.\n";
+		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
 	}
-	close $file_handle;
 	print "Done!\n\n";
 	
 	return(0);
@@ -554,7 +561,7 @@ sub install_striker_files
 	rsync_files($conf, "$conf->{directory}{source}/tools",   $conf->{directory}{document_root});
 	
 	# Split the directory from the file.
-	my ($striker_conf_dir, $striker_conf_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/)[0];
+	my ($striker_conf_dir, $striker_conf_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/);
 	if (-e "$conf->{path}{striker_config}")
 	{
 		print "- Existing Striker configuration file found, not replacing it.\n";
@@ -770,10 +777,8 @@ sub configure_guacamole
 		}
 		
 		# Now copy.
-		my $war_file    =  ($conf->{path}{guac_war} =~ /^.*\/(.*)$/)[0];
-		my $destination =  $conf->{path}{guac_war};
-		   $destination =~ s/$war_file$//;
-		my $source      =  "$conf->{directory}{source}/guacamole/$war_file";
+		my ($destination, $war_file) = ($conf->{path}{guac_war} =~ /^(.*)\/(.*)$/);
+		my $source                   = "$conf->{directory}{source}/guacamole/$war_file";
 		print "- Copying: [$source]\n";
 		print "       to: [$destination]\n";
 		copy_file($conf, $source, $destination);
@@ -781,7 +786,7 @@ sub configure_guacamole
 		# If I am here, the copy succeeded.
 		print "- Creating guacamole web archive symlink.\n";
 		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
-		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -972,7 +977,7 @@ sub download_striker
 	if ($extract)
 	{
 		print "- Extracting: [$extract]\n";
-		print "[ Debug ] - Checking if the directory: [$conf->{directory}{source}] exists already.\n";
+		#print "[ Debug ] - Checking if the directory: [$conf->{directory}{source}] exists already.\n";
 		if (-d $conf->{directory}{source})
 		{
 			print "- The source appears to already be extracted, skipping.\n";
@@ -1168,7 +1173,6 @@ sub configure_tomcat
 	my ($conf) = @_;
 	
 	print "Configuring Tomcat.\n";
-	$conf->{path}{tomcat_server};
 	        
 	if (-e "$conf->{path}{backups}/server.xml")
 	{
@@ -1221,7 +1225,9 @@ sub configure_selinux
 {
 	my ($conf) = @_;
 	
-	print "Making sure that selinux is enabled.\n";
+	### TODO: Get the media library stuff working... ;_;
+	#print "Making sure that selinux is enabled.\n";
+	print "Making sure that selinux is permissive.\n";
 	if (-e "$conf->{path}{backups}/config")
 	{
 		print "- Backup already made, skipping.\n";
@@ -1248,7 +1254,8 @@ sub configure_selinux
 			# Record the current policy in case we want to alert
 			# the user.
 			$current_policy =  $1;
-			$selinux_config .= "SELINUX=enforcing\n";
+			#$selinux_config .= "SELINUX=enforcing\n";
+			$selinux_config .= "SELINUX=permissive\n";
 		}
 		else
 		{
@@ -1265,6 +1272,20 @@ sub configure_selinux
 		print "[ Warning ] - The next reboot might take longer than normal if a filesystem\n";
 		print "[ Warning ] - relabel is required.\n";
 		sleep 5;
+	}
+	elsif ($current_policy eq "enforcing")
+	{
+		# Set enforcing to 0.
+		print "- Setting selinux to 'permissive'.\n";
+		my $shell_call = "$conf->{executable}{setenforce} 0";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
 	}
 	
 	# Next, write it out.
@@ -1365,7 +1386,7 @@ sub configure_apache
 		next if $line =~ /^\s+Require user /;
 		
 		# Skip prior proxy entries.
-		if ($line =~ /^\s+<Location \/guacamole\/>/)
+		if ($line =~ /^<Location \/guacamole\/>/)
 		{
 			$in_guacamole = 1;
 		}
@@ -1466,15 +1487,18 @@ sub create_apache_htpasswd
 {
 	my ($conf) = @_;
 	
-	print "Setting up Striker's authentication via Apache's htpasswd...\n";
+	print "- Setting up Striker's authentication via Apache's htpasswd...\n";
 	if (-e $conf->{path}{apache_htpasswd})
 	{
 		print "- Old: [$conf->{path}{apache_htpasswd}] found, deleting it.\n";
 		unlink $conf->{path}{apache_htpasswd} or die "Failed to delete: [$conf->{path}{apache_htpasswd}], error was: $!\n";
 	}
 	
+	# Escape any single-quotes in the user's password.
+	$conf->{sys}{striker_pass} =~ s/"/\\\\\\\"/g;
 	print "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.\n";
-	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} '$conf->{sys}{striker_pass}'\"";
+	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_pass}\\\"\"";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1661,20 +1685,20 @@ sub install_missing_packages
 		#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
 		#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		print "==============================================================================\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
-			chomp;
-			my $line = $_;
-			print "- Output: [$line]\n";
+			print $_;
 		}
+		print "==============================================================================\n";
 		close $file_handle;
 		print "Done.\n\n";
 		
 		# Verify that everything is installed.
-		print "Verifying that everything is installed now.\n";
-		sleep 2;
+		sleep 5;
 		get_list_of_installed_packages($conf);
+		print "Verifying that everything is installed now.\n";
 		my $missing = 0;
 		foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
 		{
@@ -1702,7 +1726,7 @@ sub install_missing_packages
 		}
 		else
 		{
-			print "- All required packages are now installed.\n";
+			print "- All required packages are now installed.\n\n";
 		}
 	}
 	
@@ -1714,20 +1738,20 @@ sub update_os
 {
 	my ($conf) = @_;
 	
-	print "- Checking for OS updates.\n";
+	print "Checking for OS updates.\n";
 	#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
 	#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
 	#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
 	#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
 	my $shell_call = "$conf->{executable}{yum} -y update";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	print "==============================================================================\n";
 	while(<$file_handle>)
 	{
-		chomp;
-		my $line = $_;
-		print "- Output: [$line]\n";
+		print $_;
 	}
 	close $file_handle;
+	print "==============================================================================\n";
 	print "Done.\n\n";
 	
 	return(0);
@@ -1749,9 +1773,9 @@ sub get_list_of_installed_packages
 		my $line = $_;
 		next if $line =~ /^Loaded plugins/;
 		next if $line =~ /^Loading mirror/;
-		next if $line =~ /^ \* /;
 		next if $line =~ /^Installed Packages/;
-		next if $line =~ /^\s+\@/;
+		next if $line =~ /^\s/;
+		#print "[ Debug ] - line: [$line]\n";
 		if ($line =~ /^(.*?)\.(.*?)\s+(.*?)\s+\@/)
 		{
 			my $package   = $1;
@@ -1760,7 +1784,7 @@ sub get_list_of_installed_packages
 			# NOTE: Someday record the arch and version, but for
 			#       now, we don't care.
 			$conf->{packages}{installed}{$package} = 1;
-			#print "[ Debug ] - Package: [$package]\n";
+			#print "[ Debug ] - a) Package: [$package], arch: [$arch], version: [$version]\n";
 			if ($dots > 75)
 			{
 				print "\n- .";
@@ -1777,7 +1801,25 @@ sub get_list_of_installed_packages
 			my $package   = $1;
 			my $arch      = $2;
 			my $version   = $3;
-			#print "[ Debug ] - Package: [$package]\n";
+			$conf->{packages}{installed}{$package} = 1;
+			#print "[ Debug ] - b) Package: [$package], arch: [$arch], version: [$version]\n";
+			if ($dots > 75)
+			{
+				print "\n- .";
+				$dots = 0;
+			}
+			else
+			{
+				print ".";
+				$dots++;
+			}
+		}
+		elsif ($line =~ /^(.*?)\.(\S*)$/)
+		{
+			my $package   = $1;
+			my $arch      = $2;
+			$conf->{packages}{installed}{$package} = 1;
+			#print "[ Debug ] - c) Package: [$package], arch: [$arch]\n";
 			if ($dots > 75)
 			{
 				print "\n- .";
@@ -1791,7 +1833,7 @@ sub get_list_of_installed_packages
 		}
 	}
 	close $file_handle;
-	print "\n- Done!\n\n";
+	print "\nDone!\n\n";
 	
 	return(0);
 }
