@@ -69,6 +69,7 @@ sub test_ssh_fingerprint
 				message	=>	$message,
 			});
 			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+			print template($conf, "common.html", "shell-output-header");
 			my $fh = IO::Handle->new();
 			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
@@ -81,7 +82,11 @@ sub test_ssh_fingerprint
 				});
 			}
 			$fh->close();
-			print get_string($conf, {key => "message_0120"});
+			print template($conf, "common.html", "shell-output-footer");
+			$message = get_string($conf, {key => "message_0120"});
+			print template($conf, "common.html", "generic-note", {
+				message	=>	$message,
+			});
 			sleep 5;
 		}
 	}
