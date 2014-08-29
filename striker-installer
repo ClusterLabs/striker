@@ -222,6 +222,13 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		z_restart_guacd	=>	{
+			path			=>	"/var/www/tools/restart_guacd",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		z_check_dvd		=>	{
 			path			=>	"/var/www/tools/check_dvd",
 			owner			=>	"root",
@@ -455,7 +462,7 @@ sub manage_daemons
 		close $file_handle;
 		sleep 1;
 	}
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -525,7 +532,7 @@ sub set_file_ownership_and_modes
 		}
 		close $file_handle;
 	}
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -641,7 +648,7 @@ sub install_striker_files
 	print $file_handle "";
 	close $file_handle;
 	
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -848,7 +855,7 @@ sub configure_guacamole
 		}
 	}
 	
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1007,7 +1014,7 @@ sub download_striker
 		}
 	}
 	print "- Will use the source directory: [$conf->{directory}{source}]\n";
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1096,7 +1103,7 @@ sub configure_iptables
 		}
 		close $file_handle;
 	}
-	print "Done!\n\n";
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1610,7 +1617,7 @@ sub verify_os
 		}
 		else
 		{
-			print "- Looks good! You're on: [$major.$minor]\n\n";
+			print "- Looks good! You're on: [$major.$minor]\n";
 		}
 	}
 	elsif ($major > 6)
@@ -1625,6 +1632,7 @@ sub verify_os
 		print "[ Error ] - Please use RHEL 6.x or similar.\n";
 		exit(14);
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1882,6 +1890,7 @@ sub start_all_nics
 {
 	my ($conf) = @_;
 	
+	print "Making sure all network interfaces are up.\n";
 	check_nic_states($conf);
 	foreach my $this_iface (sort {$a cmp $b} keys %{$conf->{nic}{by_name}})
 	{
@@ -1893,7 +1902,7 @@ sub start_all_nics
 		# If I am here, the interface is down
 		my $nic       = $this_iface;
 		my $nic_file = "$conf->{path}{network_configs}/ifcfg-$nic";
-		print "The network interface: [$nic] is down. It must be started for the next stage.\n";
+		print "- The network interface: [$nic] is down. It must be started for the next stage.\n";
 		print "- Checking if: [$nic_file] exists.\n";
 		if (not -e $nic_file)
 		{
@@ -1907,7 +1916,7 @@ sub start_all_nics
 			print $file_handle "BOOTPROTO=\"none\"\n";
 			print $file_handle "NM_CONTROLLED=\"no\"\n";
 			close $file_handle;
-			print "Done.\n";
+			print "- Done.\n";
 		}
 		else
 		{
@@ -1936,15 +1945,15 @@ sub start_all_nics
 			chomp;
 			my $line = $_;
 			next if not $line;
-			print "[ Note ] - Output: [$line]\n";
+			print "- Output: [$line]\n";
 		}
 		close $file_handle;
 		
 		# See that it came up.
-		print "[ Note ] - Checking to see if it is up now.\n";
+		print "- Checking to see if it is up now.\n";
 		sleep 2;
-		my $is_up = 0;
-		$shell_call   = "$conf->{executable}{ip} link show $nic";
+		my $is_up   = 0;
+		$shell_call = "$conf->{executable}{ip} link show $nic";
 		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -1959,7 +1968,7 @@ sub start_all_nics
 		close $file_handle;
 		if ($is_up)
 		{
-			print "[ OK ] - The interface: [$nic] is now up!\n";
+			print "- The interface: [$nic] is now up!\n";
 		}
 		else
 		{
@@ -1968,6 +1977,7 @@ sub start_all_nics
 			exit(11);
 		}
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -2140,6 +2150,7 @@ sub backup_original_files
 {
 	my ($conf) = @_;
 	
+	print "Backing up some network related system files.\n";
 	if (not $conf->{path}{backups})
 	{
 		print "[ Error ] - The backup directory is not defined!\n";
@@ -2148,7 +2159,7 @@ sub backup_original_files
 	}
 	elsif (not -e $conf->{path}{backups})
 	{
-		print "The backup directory: [$conf->{path}{backups}] doesn't exist, creting it.\n";
+		print "- The backup directory: [$conf->{path}{backups}] doesn't exist, creting it.\n";
 		mkdir $conf->{path}{backups} or die warn "[ Warning ] - Failed to create the directory: [$conf->{path}{backups}].\n[ Warning ] - The error was: $!\n";
 		if (not -e $conf->{path}{backups})
 		{
@@ -2164,7 +2175,7 @@ sub backup_original_files
 	
 	# If there is already a backup created, skip it as we're probably being
 	# run a second (of thirteenth) time.
-	print "Backing up: [$conf->{path}{persistent_net}]\n";
+	print "- Backing up: [$conf->{path}{persistent_net}]\n";
 	if (-e "$conf->{path}{backups}/70-persistent-net.rules")
 	{
 		print "- Previous backup exists, skipping.\n";
@@ -2184,7 +2195,7 @@ sub backup_original_files
 	}
 	
 	# Backup the '/etc/sysconfig/network-scripts' directory.
-	print "Backing up: [$conf->{path}{network_configs}]\n";
+	print "- Backing up: [$conf->{path}{network_configs}]\n";
 	if (-e "$conf->{path}{backups}/network-scripts")
 	{
 		print "- Previous backup exists, skipping.\n";
@@ -2205,6 +2216,7 @@ sub backup_original_files
 			exit(8);
 		}
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -2972,7 +2984,7 @@ sub select_nics
 {
 	my ($conf) = @_;
 
-	print "\n-=] Configuring network to enable access to Anvil! systems.\n\n";
+	print "-=] Configuring network to enable access to Anvil! systems.\n\n";
 	print "Beginning NIC identification...\n";
 	foreach my $nic (@{$conf->{nics}})
 	{
@@ -3121,6 +3133,7 @@ sub check_nic_states
 		}
 		next if not $this_iface;
 		next if $this_iface eq "lo";
+		next if $this_iface =~ /wlan/;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
@@ -3149,8 +3162,17 @@ sub check_nic_states
 		# Somewhere in the loop, an empty '$this_mac' is being created... 
 		# (I'm looking at you, autovivication >_>)
 		next if not $this_mac;
-		$nic_count++ if (($this_iface ne "lo") && ($this_iface !~ /wlan/));
-		#print "NIC w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]\n";
+		my $this_iface = $conf->{nic}{mac}{$this_mac}{current_name};
+		
+		if (($this_iface eq "lo") || ($this_iface =~ /wlan/))
+		{
+			#print "[ Debug ] - Skipping interface: [$this_iface]\n";
+		}
+		else
+		{
+			$nic_count++;
+			#print "[ Debug ] - NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]\n";
+		}
 		if ($conf->{nic}{mac}{$this_mac}{link_state} ne "1")
 		{
 			$unplugged_macs .= "$this_mac,";

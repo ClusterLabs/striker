@@ -3478,11 +3478,11 @@ sub switch_vm_xml_to_vnc
 			{
 				# The port here doesn't matter.
 				$in_graphics    =  0;
-				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
-				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' />\n";
+				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
+				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' />\n";
 				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='127.0.0.1'>\n";
-				#$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
-				#$new_definition .= "    </graphics>\n";
+				$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
+				$new_definition .= "    </graphics>\n";
 				next;
 			}
 			else
@@ -4483,8 +4483,8 @@ sub provision_vm
 	}
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
-	$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	#$provision .= "  --graphics vnc,listen=0.0.0.0 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	$provision .= "  --graphics vnc,listen=0.0.0.0 --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
@@ -5593,9 +5593,11 @@ sub start_vm
 		print template($conf, "server.html", "start-server-output-footer");
 		if ($show_remote_desktop_link)
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
 			my $restart_tomcat = get_string($conf, {key => "message_0085", variables => {
 					reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
 				}});
+			#record($conf, "$THIS_FILE ".__LINE__."; restart_tomcat: [$restart_tomcat]\n");
 			print template($conf, "server.html", "start-server-show-guacamole-link", {
 				remote_icon	=>	$remote_icon,
 				remote_message	=>	$remote_message,

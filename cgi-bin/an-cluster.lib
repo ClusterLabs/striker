@@ -2271,6 +2271,10 @@ sub header
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}, "", 1);
+			if (($conf->{cgi}{anvil} eq "new") && ($conf->{cgi}{cluster__new__name}))
+			{
+				$conf->{cgi}{anvil} = $conf->{cgi}{cluster__new__name};
+			}
 			if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 			{
 				$say_back = template($conf, "common.html", "enabled-button-no-class", {
@@ -2466,7 +2470,7 @@ sub get_guacamole_link
 	# No node specified, so return a link to the guacamole main page.
 	if (not $node)
 	{
-		$guacamole_url =~ s/\/client.xhtml.*$//;
+		$guacamole_url =~ s/\/client.xhtml.*$/\//;
 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	

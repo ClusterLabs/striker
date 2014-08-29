@@ -7776,96 +7776,74 @@ sub send_debug_email
 {
 	my ($conf, $subject, $body) = @_;
 	
-	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
-	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
-	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
-	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
-	my $debug_subject_prefix      = "[ AN!CM - Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
-	my $debug_body_suffix         = "
-==[ Source Details ]==================================================
-
-Company: $conf->{cluster}{company}
-Anvil!:  $conf->{cluster}{name}
-Node:    $conf->{node}{me}{long_name}
-Description:
- - $conf->{cluster}{description}
-======================================================================
-";
-	
-	# If the password is in a file, read it.
-	if ($conf->{smtp}{password} =~ /^file:(.*)/)
-	{
-		my $file = $1;
-		my $sc = "$file";
-		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			$conf->{smtp}{password} = $_;
-			last;
-		}
-		$fh->close();
-	}
-	
-	my $debug_subject =  "$conf->{mail_data}{subject_prefix} - $subject";
-	my $debug_body    .= $body;
-	
-	my $transport = Email::Sender::Transport::SMTP::TLS->new(
-		host		=>	$conf->{smtp}{server},
-		port		=>	$conf->{smtp}{port},
-		username	=>	$conf->{smtp}{username},
-		password	=>	$conf->{smtp}{password},
-		helo		=>	$conf->{smtp}{helo_domain},
-	);
-
-	my $message = Email::Simple->create(
-		header	=> [
-			From	=>	$conf->{smtp}{username},
-			To	=>	$conf->{mail_data}{debug_to},
-			Subject	=>	$debug_subject,
-		],
-		body	=>	$debug_body,
-	);
-	
-	try {
-		sendmail($message, { transport => $transport });
-	} catch {
-		die "Error sending email: $_";
-	};
+# 	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
+# 	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
+# 	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
+# 	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
+# 	my $debug_subject_prefix      = "[ AN!CM - Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
+# 	my $debug_body_suffix         = "
+# ==[ Source Details ]==================================================
+# 
+# Company: $conf->{cluster}{company}
+# Anvil!:  $conf->{cluster}{name}
+# Node:    $conf->{node}{me}{long_name}
+# Description:
+#  - $conf->{cluster}{description}
+# ======================================================================
+# ";
+# 	
+# 	# If the password is in a file, read it.
+# 	if ($conf->{smtp}{password} =~ /^file:(.*)/)
+# 	{
+# 		my $file = $1;
+# 		my $sc = "$file";
+# 		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+# 		my $fh = IO::Handle->new();
+# 		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+# 		while(<$fh>)
+# 		{
+# 			chomp;
+# 			$conf->{smtp}{password} = $_;
+# 			last;
+# 		}
+# 		$fh->close();
+# 	}
+# 	
+# 	my $debug_subject =  "$conf->{mail_data}{subject_prefix} - $subject";
+# 	my $debug_body    .= $body;
+# 	
+# 	my $transport = Email::Sender::Transport::SMTP::TLS->new(
+# 		host		=>	$conf->{smtp}{server},
+# 		port		=>	$conf->{smtp}{port},
+# 		username	=>	$conf->{smtp}{username},
+# 		password	=>	$conf->{smtp}{password},
+# 		helo		=>	$conf->{smtp}{helo_domain},
+# 	);
+# 
+# 	my $message = Email::Simple->create(
+# 		header	=> [
+# 			From	=>	$conf->{smtp}{username},
+# 			To	=>	$conf->{mail_data}{debug_to},
+# 			Subject	=>	$debug_subject,
+# 		],
+# 		body	=>	$debug_body,
+# 	);
+# 	
+# 	try {
+# 		sendmail($message, { transport => $transport });
+# 	} catch {
+# 		die "Error sending email: $_";
+# 	};
 	
 	return(0);
 }
 
-# This sends an email using postfix.
-sub send_email_local_relay
+# This checks the local postfix and mail relay data and updates if needed.
+sub check_mail_config
 {
 	my ($conf) = @_;
 	
-=pod
-echo 'mail.alteeve.ca mkelly@alteeve.ca:purple stapler what?' > /etc/postfix/relay_password
-chmod 600 /etc/postfix/relay_password
-chown root:root /etc/postfix/relay_password
-postmap /etc/postfix/relay_password
-sed -i.anvil "s|#relayhost = \[an.ip.add.ress\]|#relayhost = \[an.ip.add.ress\]\nrelayhost = \[mail.alteeve.ca\]:587\nsmtp_use_tls=yes\nsmtp_sasl_auth_enable = yes\nsmtp_sasl_password_maps = hash:/etc/postfix/relay_password\nsmtp_sasl_security_options =|" /etc/postfix/main.cf
-/etc/init.d/postfix reload
-
-Send:
-# Write message body to a file (called test.txt here)
-test.txt:
-====
-From: Anvil! Alert System <mkelly@alteeve.ca>
-To: mkelly@alteeve.ca, m@dison.me
-Subject: [ Striker ] - Test email 3
-
-Am I alive?
-Is this the real life?
-====
-mailx -t < test.txt
-=cut
-
-	# First, see if the relay file needs to be updated.
+	my $write_relay_file = 0;
 	record($conf, "$THIS_FILE ".__LINE__."; Checking to see of the email relay file: [$conf->{path}{postfix_relay_file}] needs to be updated.\n");
 	if (-e $conf->{path}{postfix_relay_file})
 	{
@@ -7875,11 +7853,21 @@ mailx -t < test.txt
 		{
 			chomp;
 			my $line = $_;
-			if ($line =~ /^(.*?)\s(.*?):(.*)$/)
+			if ($line =~ /^(.*?):(\d+)\s(.*?):(.*)$/)
 			{
 				my $domain   = $1;
-				my $email    = $2;
-				my $password = $3;
+				my $port     = $2;
+				my $username = $3;
+				my $password = $4;
+				
+				if (($domain   ne $conf->{smtp}{server}) ||
+				    ($port     ne $conf->{smtp}{port}) ||
+				    ($username ne $conf->{smtp}{username}) ||
+				    ($password ne $conf->{smtp}{password}))
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; The email details have changed, rewriting the relay file.\n");
+					$write_relay_file = 1;
+				}
 			}
 		}
 		close $file_handle;
@@ -7889,16 +7877,129 @@ mailx -t < test.txt
 		# Relay file doesn't exist at all, so this might be an upgrade.
 		# As such, check that the programs we need are installed.
 		record($conf, "$THIS_FILE ".__LINE__."; It doesn't exist, creating it.\n");
+		$write_relay_file = 1;
+	}
+	
+	# (Re)write the relay file now, if needed.
+	record($conf, "$THIS_FILE ".__LINE__."; write_relay_file: [$write_relay_file].\n");
+	if ($write_relay_file)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Writing new relay file: [$conf->{path}{postfix_relay_file}].\n");
+		open (my $file_handle, ">", $conf->{path}{postfix_relay_file}) or die "Failed to write: [$conf->{path}{postfix_relay_file}], the error was: $!\n";
+		print $file_handle "$conf->{smtp}{server}:$conf->{smtp}{port} $conf->{smtp}{username}:$conf->{smtp}{password}\n";
+		close $file_handle;
+		
+		# Generate the binary version.
+		record($conf, "$THIS_FILE ".__LINE__."; Generating relay file's postmap binary DB.\n");
+		my $shell_call = "$conf->{path}{postmap} $conf->{path}{postfix_relay_file}";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call].\n");
+		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
+		}
+		close $file_handle;
+		
+		# If I am writing the file, there is a chance that postfix
+		# hasn't been configured yet. So check it and, if needed,
+		# fix it.
+		if (not -e "$conf->{path}{postfix_main}.anvil")
+		{
+			# Backup the original.
+			record($conf, "$THIS_FILE ".__LINE__."; Backing up the postfix main configuration file: [$conf->{path}{postfix_main}].\n");
+			my $shell_call = "$conf->{path}{cp} $conf->{path}{postfix_main} $conf->{path}{postfix_main}.anvil";
+			record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call].\n");
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
+			}
+			close $file_handle;
+		}
+		else
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Postfix configuration already backed up, skipping.\n");
+		}
+		
+		# Now update the postfix main.cf file.
+		my $postfix_main = "";
+		record($conf, "$THIS_FILE ".__LINE__."; Reading in: [$conf->{path}{postfix_main}].\n");
+		open ($file_handle, "<", "$conf->{path}{postfix_main}") or die "Failed to read: [./version], the error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			
+			# Avoid duplicates
+			next if $line =~ /^relayhost = \[/;
+			next if $line =~ /^smtp_use_tls =/;
+			next if $line =~ /^smtp_sasl_auth_enable =/;
+			next if $line =~ /^smtp_sasl_password_maps =/;
+			next if $line =~ /^smtp_sasl_security_options =/;
+			
+			if ($line =~ /#relayhost = \[an.ip.add.ress\]/)
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Inserting mail relay configuration.\n");
+				# TODO: Find out how to support non-secure mail
+				#       servers.
+				# TODO: Experiment if I really need to define
+				#       the mail server and IP both here and in
+				#       the relay file.
+				$postfix_main .= "$line\n";
+				$postfix_main .= "relayhost = [$conf->{smtp}{server}]:$conf->{smtp}{port}\n";
+				$postfix_main .= "smtp_use_tls = yes\n";
+				$postfix_main .= "smtp_sasl_auth_enable = yes\n";
+				$postfix_main .= "smtp_sasl_password_maps = hash:$conf->{path}{postfix_relay_file}\n";
+				$postfix_main .= "smtp_sasl_security_options =\n";
+			}
+			else
+			{
+				$postfix_main .= "$line\n";
+			}
+		}
+		close $file_handle;
+		
+		# Write out the new version.
+		record($conf, "$THIS_FILE ".__LINE__."; Writing the updated postfix configuration file: [$conf->{path}{postfix_main}].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; ====\n$postfix_main\n====\n");
+		open ($file_handle, ">", $conf->{path}{postfix_main}) or die "Failed to write: [$conf->{path}{postfix_main}], the error was: $!\n";
+		print $file_handle $postfix_main;
+		close $file_handle;
+		
+		# Reload postfix
+		record($conf, "$THIS_FILE ".__LINE__."; Restarting postfix.\n");
+		$shell_call = "/etc/init.d/postfix restart";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call].\n");
+		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
+		}
+		close $file_handle;
+		sleep 2;
 	}
 	
 	return(0);
 }
 
-# Send am email.
+# This sends an email using postfix.
 sub send_email
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; send_email()\n");
 	
+	# First, see if the relay file needs to be updated.
+	check_mail_config($conf);
+	
+	# Now generate the email.
 	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
 	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
 	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
@@ -7933,23 +8034,7 @@ emails, please contact your systems administrator. AN!CM runs on
 Anvil! nodes directly and are not sent by Alteeve's Niche!.";
 	}
 	
-	# If the password is in a file, read it.
-	if ($conf->{smtp}{password} =~ /^file:(.*)/)
-	{
-		my $file = $1;
-		my $sc = "$file";
-		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
-		while(<$fh>)
-		{
-			chomp;
-			$conf->{smtp}{password} = $_;
-			last;
-		}
-		$fh->close();
-	}
-	
+	# See if a prefix is needed.
 	if ($conf->{'system'}{emergency_shutdown})
 	{
 		if ($conf->{'system'}{disable_emergency_shutdown})
@@ -7980,62 +8065,75 @@ Anvil! nodes directly and are not sent by Alteeve's Niche!.";
 	{
 		$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - $conf->{mail_data}{subject}";
 	}
+	
+	# Append the suffix to the email.
 	$conf->{mail_data}{body}    .= $conf->{mail_data}{body_suffix};
-# 	my $transport = Email::Sender::Transport::SMTP::TLS->new(
-# 		host		=>	$conf->{smtp}{server},
-# 		port		=>	$conf->{smtp}{port},
-# 		username	=>	$conf->{smtp}{username},
-# 		password	=>	$conf->{smtp}{password},
-# 		helo		=>	$conf->{smtp}{helo_domain},
-# 	);
-# 
-# 	my $message = Email::Simple->create(
-# 		header	=> [
-# 			From	=>	$conf->{smtp}{username},
-# 			To	=>	$conf->{mail_data}{to},
-# 			Subject	=>	$conf->{mail_data}{subject},
-# 		],
-# 		body	=>	$conf->{mail_data}{body},
-# 	);
-# 	
-# 	try {
-# 		sendmail($message, { transport => $transport });
-# 	} catch {
-# 		die "Error sending email: $_";
-# 	};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
-	$conf->{mail_data}{subject} = "";
-	$conf->{mail_data}{body}    = "";
+	#$conf->{mail_data}{subject} = "";
+	#$conf->{mail_data}{body}    = "";
+	
+	# Make sure the mail alerts directory exists and create it if not.
+	if (not -e $conf->{path}{email_directory})
+	{
+		# Need to create it.
+		record($conf, "$THIS_FILE ".__LINE__."; Creating the alert email directory: [$conf->{path}{email_directory}].\n");
+		mkdir $conf->{path}{email_directory} or die "Failed to create the directory: [$conf->{path}{email_directory}], error was: $!\n";
+		my $dir_mode = 0775;
+		record($conf, "$THIS_FILE ".__LINE__."; Setting mode to: [".sprintf("%04o", $dir_mode)."].\n");
+		chmod $dir_mode, $conf->{path}{email_directory};
+	}
+	
+	# Select a known_free email file name.
+	my $email_file =  get_date($conf);
+	   $email_file =~ s/ /_/g;
+	   $email_file = "$conf->{path}{email_directory}/$email_file.1";
+	my $file_ok = 0;
+	until ($file_ok)
+	{
+		if (-e $email_file)
+		{
+			my ($file, $suffix) = ($email_file =~ /^(.*?)\.(\d+)$/);
+			$suffix++;
+			$email_file = "$file.$suffix\n";
+			# Make sure I'm not sending more than 10/sec...
+			if ($suffix > 10)
+			{
+				die "Looks like a loop was hit trying to find a unique file name! Got to: [$email_file] and gave up.\n";
+			}
+		}
+		else
+		{
+			$file_ok = 1;
+		}
+	}
+
+	# Write out the email file.
+	record($conf, "$THIS_FILE ".__LINE__."; Writing email file: [$email_file].\n");
+	open (my $file_handle, ">", $email_file) or die "Failed to write: [$email_file], the error was: $!\n";
+	print $file_handle "From: \"$conf->{alerts}{from_name}\" <$conf->{smtp}{username}\n";
+	print $file_handle "To: $conf->{mail_data}{to}\n";
+	print $file_handle "Subject: $conf->{mail_data}{subject}\n\n";
+	print $file_handle "$conf->{mail_data}{body}\n";
+	close $file_handle;
+	
+	# Send the email now.
+	my $shell_call = "$conf->{path}{mailx} -t < $email_file";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call].\n");
+	open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
+	}
+	close $file_handle;
 	
 	# Shutdown if needed.
 	if ($conf->{'system'}{emergency_shutdown})
 	{
-		$conf->{'system'}{emergency_shutdown} = 0;
-		if ($conf->{'system'}{disable_emergency_shutdown})
-		{
-			# Welp, they just voided their warranty...
-			$conf->{'system'}{critical_event} = 1;
-			$conf->{mail_data}{subject}       = "Automatic Shutdown DISABLED. Immediate shutdown required!";
-			$conf->{mail_data}{body}          = "
-Shutdown of: $conf->{node}{me}{long_name} is required!
-
-Sensors have detected dangerous operating conditions. This would
-normally trigger an automatic shutdown, but this has been disabled.
-
-IF THE NODE IS NOT POWERED OFF IMMEDIATELY, THE HARDWARE WARRANTY MAY
-BE VOIDED!
-
-The hardware is reporting that it is about to exceed maximum operating
-specifications. If this occurs, the hardware warranty will be voided.
-Please immediately shut down this machine if at all possible!
-";
-		}
-		else
-		{
-			# Shutdown.
-			### TODO: Call an-scs...
-		}
+		# Shutdown.
+		### TODO: Call an-scs...
 	}
 	
 	return(0);

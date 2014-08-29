@@ -47,11 +47,17 @@ my $conf = {
 		apcaccess		=>	"/sbin/apcaccess",
 		mdstat			=>	"/proc/mdstat",
 		postfix_relay_file	=>	"/etc/postfix/relay_password",
+		email_directory		=>	"/root/alerts",
+		mailx			=>	"/bin/mailx",
+		postmap			=>	"/usr/sbin/postmap",
+		postfix_main		=>	"/etc/postfix/main.cf",
+		cp			=>	"/bin/cp",
 	},
 	alerts			=>	{
 		### NOTE: All temperatures here need to be in Celcius. If the
 		###       user wants temperatures in fahrenheit, the 
 		###       temperature is adjusted just prior to display.
+		from_name		=>	"Anvil! Alerts",
 		storage			=>	{
 			delta			=>	5,	# A change of this amoint between scans will trigger an email. Factor the 'sleep_time' below.
 			upper_threshold		=>	45,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
