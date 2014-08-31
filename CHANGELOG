@@ -1,6 +1,6 @@
 Change log;
 
-v1.1.5 - <in progress>
+v1.1.5 - 2014-08-31
 - Fixed some undefined replacement string errors in the server details entry
   for servers not yet added to the Anvil!.
 - Disabled the 'Delete' button for a server when it has not yet been added to
@@ -37,6 +37,8 @@ v1.1.5 - <in progress>
   script.
 - Removed all references to SMTP timeout.
 - Added a "Back" button to the main Media Library page.
+- Reordered the restart calls when restarting guacamole and tomcat, and set it
+  up to detect when the start failed and retry up to three times.
 
 
 v1.1.4 - 2014-05-27

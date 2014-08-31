@@ -601,7 +601,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0132">Upload</key>
 		<key name="row_0133">Failed</key>
 		<key name="row_0134">Bad Mimetype</key>
-		<key name="row_0135"></key>	<!-- free -->
+		<key name="row_0135">Uploading</key>
 		<key name="row_0136">System</key>
 		<key name="row_0137">Download</key>
 		<key name="row_0138">Step 1</key>
@@ -668,7 +668,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0037"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />]]></key>
 		<key name="message_0038"><![CDATA[Host name <span class="highlight_detail">#!variable!node!#</span> does not resolve to an IP address.]]></key>
 		<key name="message_0039"><![CDATA[Connection to <span class="highlight_detail">#!variable!node!#</span> on port <span class="highlight_detail">#!variable!port!#</span> as the user <span class="highlight_detail">#!variable!user!#</span> was refused.<br />If you recently booted this server, it may be just about finished booting.<br />It is normal for the connection to be refused for a brief time during the boot process.]]></key>
-		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up still?<br />Is this dashboard server on the same network?]]></key>
+		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine in the process of booting up or powering off?<br />Is this dashboard server on the same network?]]></key>
 		<key name="message_0041"><![CDATA[Timed out while waiting for a reply from <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.]]></key>
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
 		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
@@ -937,7 +937,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0306">Please reload to try and read the disc again.</key>
 		<key name="message_0307"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
 		<key name="message_0308">Please reinsert the disc and then reload this page.</key>
-		<key name="message_0309"><![CDATA[<span class="highlight_bad_bold">Error</span>! It looks like the upload failed.]]></key>
+		<key name="message_0309">It looks like the upload failed.</key>
 		<key name="message_0310">It looks like the upload succeeded, unlinking the source image.</key>
 		<key name="message_0311">The disc will be converted into an image file.</key>
 		<key name="message_0312">For a DVD, this could take around 10 minutes to complete.</key>
@@ -962,9 +962,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0331">No name was given for the disc image to be created.</key>
 		<key name="message_0332">No disc drive device name was given. This is probably a program error. #!string!brand_0011!#.</key>
 		<key name="message_0333">It looks like the name you gave matched an existing directory name.</key>
-		<key name="message_0334"><![CDATA[<span class="highlight_warning_bold">Warning</span>! The '<span class="fixed_width">expect</span>' program is not installed (or it was not found at '<span class="fixed_width">#!conf!path::expect!#</span>').<br />If you have not setup <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Copy_Public_Keys_to_Enable_SSH_Without_a_Password" target="_new">passwordless SSH</a>, then access to the node(s) will fail.]]></key>
-		<key name="message_0335"></key>
-		<key name="message_0336"></key>
+		<key name="message_0334"><![CDATA[The '<span class="fixed_width">expect</span>' program is not installed (or it was not found at '<span class="fixed_width">#!conf!path::expect!#</span>').<br />If you have not setup <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Copy_Public_Keys_to_Enable_SSH_Without_a_Password" target="_new">passwordless SSH</a>, then access to the node(s) will fail.]]></key>
+		<key name="message_0335">Restart appears to have failed, trying again.</key>
+		<key name="message_0336">Restart failed too many times, giving up. #!string!brand_0011!#</key>
 		<key name="message_0337"></key>
 		<key name="message_0338"></key>
 		<key name="message_0339"></key>

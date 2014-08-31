@@ -98,6 +98,7 @@ sub download_url
 		base	=>	$base,
 	});
 
+	my $header_printed  = 0;
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
 	my ($error, $ssh_fh, $output) = remote_call($conf, {
@@ -109,8 +110,6 @@ sub download_url
 		'close'		=>	0,
 		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
 	});
-#		shell_call	=>	"wget -c $url -O /shared/files/$file",
-#		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
@@ -227,10 +226,19 @@ sub download_url
 		else
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if (not $header_printed)
+			{
+				print template($conf, "common.html", "open-shell-call-output");
+				$header_printed = 1;
+			}
 			print template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
+	}
+	if ($header_printed)
+	{
+		print template($conf, "common.html", "close-shell-call-output");
 	}
 	print template($conf, "media-library.html", "download-website-footer");
 	
@@ -425,6 +433,7 @@ sub image_and_upload
 			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 			
+			my $header_printed = 0;
 			my $fh = IO::Handle->new();
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			my $error;
@@ -432,6 +441,12 @@ sub image_and_upload
 			{
 				chomp;
 				my $line = $_;
+				
+				if (not $header_printed)
+				{
+					print template($conf, "common.html", "open-shell-call-output");
+					$header_printed = 1;
+				}
 				record($conf, "$THIS_FILE ".__LINE__."; output: [$line]\n");
 				if ($line =~ /Is a directory/i)
 				{
@@ -442,6 +457,10 @@ sub image_and_upload
 				});
 			}
 			$fh->close;
+			if ($header_printed)
+			{
+				print template($conf, "common.html", "close-shell-call-output");
+			}
 			
 			if ($error)
 			{

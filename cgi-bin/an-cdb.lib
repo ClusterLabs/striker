@@ -358,14 +358,67 @@ sub process_task
 sub restart_tomcat
 {
 	my ($conf, $quiet) = @_;
-	$quiet = 0 if not defined $quiet;
+	   $quiet     = 0 if not defined $quiet;
+	my $tries     = 0;
+	my $max_tries = 3;
 	
 	if (not $quiet)
 	{
 		# Open the table for telling the user that tomcat is restarting.
 		print template($conf, "common.html", "restart-guacamole-header");
 	}
-	my $sc = "$conf->{path}{restart_guacd} restart && $conf->{path}{restart_tomcat} restart";
+	
+	# Call the restart. It will return '1' if there was a failure and a
+	# retry is needed.
+	while (call_restart_tomcat_guacd($conf, $quiet))
+	{
+		$tries++;
+		if ($tries > $max_tries)
+		{
+			if ($quiet)
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+			}
+			else
+			{
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	"message_0336",
+				});
+			}
+			last;
+		}
+		else
+		{
+			if ($quiet)
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+			}
+			else
+			{
+				print template($conf, "common.html", "shell-call-output", {
+					line	=>	"message_0335",
+				});
+			}
+		}
+		sleep 5;
+	}
+	
+	# Done.
+	if (not $quiet)
+	{
+		print template($conf, "common.html", "restart-guacamole-footer");
+	}
+	
+	return(0);
+}
+
+# This handles the actual restart calls.
+sub call_restart_tomcat_guacd
+{
+	my ($conf, $quiet) = @_;
+	
+	my $retry = 0;
+	my $sc = "$conf->{path}{restart_tomcat} restart && $conf->{path}{restart_guacd} restart";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
@@ -373,6 +426,11 @@ sub restart_tomcat
 	{
 		chomp;
 		my $line = $_;
+		if (($line =~ /Starting/i) && ($line =~ /Failed/i))
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
+			$retry = 1;
+		}
 		if ($quiet)
 		{
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -386,14 +444,8 @@ sub restart_tomcat
 		}
 	}
 	$fh->close();
-	
-	# Done.
-	if (not $quiet)
-	{
-		print template($conf, "common.html", "restart-guacamole-footer");
-	}
-	
-	return(0);
+
+	return($retry);
 }
 
 # This unmarks a disk as a hot spare.
@@ -4614,8 +4666,14 @@ sub provision_vm
 			$icon = "<span class=\"highlight_warning\">#!string!message_0121!#";
 		}
 		
+		# Add the restart guac button.
+		my $restart_tomcat = get_string($conf, {key => "message_0085", variables => {
+				reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
+			}});
+		
 		print template($conf, "server.html", "provision-server-install-started", {
-			icon	=>	$icon,
+			icon		=>	$icon,
+			restart_tomcat	=>	$restart_tomcat,
 		});
 	}
 	else
