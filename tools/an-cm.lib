@@ -27,12 +27,6 @@ use strict;
 use warnings;
 use IO::Handle;
 
-# Email stuff
-# use Email::Sender::Simple qw(sendmail);
-# use Email::Sender::Transport::SMTP::TLS;
-# use Try::Tiny;
-# use Email::Simple::Creator;
-
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
@@ -4732,6 +4726,12 @@ sub initial_report
 	# Send the email.
 	send_email($conf);
 	
+	# This is uncommented to test debug email function only.
+# 	sleep 2;
+# 	my $subject =  "Test debug message";
+# 	my $body    =  "I don't really have anything to say.\n";
+# 	send_debug_email($conf, $subject, $body);
+	
 	#record($conf, "$THIS_FILE ".__LINE__."; Initial copy of new to old\n");
 	copy_hash($conf, "new", "old");
 	
@@ -7821,64 +7821,75 @@ sub send_debug_email
 {
 	my ($conf, $subject, $body) = @_;
 	
-# 	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
-# 	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
-# 	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
-# 	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
-# 	my $debug_subject_prefix      = "[ AN!CM - Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
-# 	my $debug_body_suffix         = "
-# ==[ Source Details ]==================================================
-# 
-# Company: $conf->{cluster}{company}
-# Anvil!:  $conf->{cluster}{name}
-# Node:    $conf->{node}{me}{long_name}
-# Description:
-#  - $conf->{cluster}{description}
-# ======================================================================
-# ";
-# 	
-# 	# If the password is in a file, read it.
-# 	if ($conf->{smtp}{password} =~ /^file:(.*)/)
-# 	{
-# 		my $file = $1;
-# 		my $sc = "$file";
-# 		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-# 		my $fh = IO::Handle->new();
-# 		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
-# 		while(<$fh>)
-# 		{
-# 			chomp;
-# 			$conf->{smtp}{password} = $_;
-# 			last;
-# 		}
-# 		$fh->close();
-# 	}
-# 	
-# 	my $debug_subject =  "$conf->{mail_data}{subject_prefix} - $subject";
-# 	my $debug_body    .= $body;
-# 	
-# 	my $transport = Email::Sender::Transport::SMTP::TLS->new(
-# 		host		=>	$conf->{smtp}{server},
-# 		port		=>	$conf->{smtp}{port},
-# 		username	=>	$conf->{smtp}{username},
-# 		password	=>	$conf->{smtp}{password},
-# 		helo		=>	$conf->{smtp}{helo_domain},
-# 	);
-# 
-# 	my $message = Email::Simple->create(
-# 		header	=> [
-# 			From	=>	$conf->{smtp}{username},
-# 			To	=>	$conf->{mail_data}{debug_to},
-# 			Subject	=>	$debug_subject,
-# 		],
-# 		body	=>	$debug_body,
-# 	);
-# 	
-# 	try {
-# 		sendmail($message, { transport => $transport });
-# 	} catch {
-# 		die "Error sending email: $_";
-# 	};
+	# First, see if the relay file needs to be updated.
+	check_mail_config($conf);
+	
+	# Now generate the email.
+	$conf->{cluster}{company}     = "Unknown company" if not $conf->{cluster}{company};
+	$conf->{cluster}{name}        = "Unknown Anvil!"  if not $conf->{cluster}{name};
+	$conf->{cluster}{description} = "No description"  if not $conf->{cluster}{description};
+	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
+	my $debug_subject_prefix      = "[ Anvil! Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
+	my $debug_body_suffix         = "
+==[ Source Details ]==================================================
+
+Company: $conf->{cluster}{company}
+Anvil!:  $conf->{cluster}{name}
+Node:    $conf->{node}{me}{long_name}
+Description:
+ - $conf->{cluster}{description}
+======================================================================
+";
+
+	my $debug_subject = "$debug_subject_prefix - $subject";
+	my $debug_body    = $body.$debug_body_suffix;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
+	
+	# Select a known_free email file name.
+	my $email_file =  get_date($conf);
+	   $email_file =~ s/ /_/g;
+	   $email_file = "$conf->{path}{email_directory}/$email_file.1";
+	my $file_ok = 0;
+	until ($file_ok)
+	{
+		if (-e $email_file)
+		{
+			my ($file, $suffix) = ($email_file =~ /^(.*?)\.(\d+)$/);
+			$suffix++;
+			$email_file = "$file.$suffix\n";
+			# Make sure I'm not sending more than 10/sec...
+			if ($suffix > 10)
+			{
+				die "Looks like a loop was hit trying to find a unique file name! Got to: [$email_file] and gave up.\n";
+			}
+		}
+		else
+		{
+			$file_ok = 1;
+		}
+	}
+
+	# Write out the email file.
+	record($conf, "$THIS_FILE ".__LINE__."; Writing email file: [$email_file].\n");
+	open (my $file_handle, ">", $email_file) or die "Failed to write: [$email_file], the error was: $!\n";
+	print $file_handle "From: \"$conf->{alerts}{from_name}\" <$conf->{smtp}{username}>\n";
+	print $file_handle "To: $conf->{mail_data}{debug_to}\n";
+	print $file_handle "Subject: $debug_subject\n\n";
+	print $file_handle "$debug_body\n";
+	close $file_handle;
+	
+	# Send the email now.
+	my $shell_call = "$conf->{path}{mailx} -t < $email_file";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call].\n");
+	open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
+	}
+	close $file_handle;
 	
 	return(0);
 }
@@ -8032,6 +8043,17 @@ sub check_mail_config
 		sleep 2;
 	}
 	
+	# Make sure the mail alerts directory exists and create it if not.
+	if (not -e $conf->{path}{email_directory})
+	{
+		# Need to create it.
+		record($conf, "$THIS_FILE ".__LINE__."; Creating the alert email directory: [$conf->{path}{email_directory}].\n");
+		mkdir $conf->{path}{email_directory} or die "Failed to create the directory: [$conf->{path}{email_directory}], error was: $!\n";
+		my $dir_mode = 0775;
+		record($conf, "$THIS_FILE ".__LINE__."; Setting mode to: [".sprintf("%04o", $dir_mode)."].\n");
+		chmod $dir_mode, $conf->{path}{email_directory};
+	}
+	
 	return(0);
 }
 
@@ -8051,7 +8073,7 @@ sub send_email
 	$conf->{node}{me}{short_name} = "Unknown node"    if not $conf->{node}{me}{short_name};
 	if (not $conf->{mail_data}{subject_prefix})
 	{
-		$conf->{mail_data}{subject_prefix} = "[ AN!CM ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
+		$conf->{mail_data}{subject_prefix} = "[ Anvil! Alert ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name}";
 	}
 	if (not $conf->{mail_data}{body_suffix})
 	{
@@ -8156,7 +8178,7 @@ Anvil! nodes directly and are not sent by Alteeve's Niche!.";
 	# Write out the email file.
 	record($conf, "$THIS_FILE ".__LINE__."; Writing email file: [$email_file].\n");
 	open (my $file_handle, ">", $email_file) or die "Failed to write: [$email_file], the error was: $!\n";
-	print $file_handle "From: \"$conf->{alerts}{from_name}\" <$conf->{smtp}{username}\n";
+	print $file_handle "From: \"$conf->{alerts}{from_name}\" <$conf->{smtp}{username}>\n";
 	print $file_handle "To: $conf->{mail_data}{to}\n";
 	print $file_handle "Subject: $conf->{mail_data}{subject}\n\n";
 	print $file_handle "$conf->{mail_data}{body}\n";
