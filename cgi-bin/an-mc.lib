@@ -492,7 +492,7 @@ sub upload_to_shared
 	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
 	record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
 	# This is a dumb way to check, try a test upload and see if it fails.
-	if ( -e $conf->{path}{expect} )
+	if (-e $conf->{path}{expect})
 	{
 		#print "Creating 'expect' rsync wrapper.<br />";
 		record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
@@ -504,7 +504,8 @@ sub upload_to_shared
 	{
 		print template($conf, "media-library.html", "image-and-upload-expect-not-found");
 	}
-
+	
+	my $header_printed = 0;
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
@@ -517,11 +518,21 @@ sub upload_to_shared
 		{
 			$failed = 1;
 		}
+		if (not $header_printed)
+		{
+			print template($conf, "common.html", "open-shell-call-output");
+			$header_printed = 1;
+		}
 		print template($conf, "common.html", "shell-call-output", {
 			line	=>	$line,
 		});
 	}
 	$fh->close;
+	
+	if ($header_printed)
+	{
+		print template($conf, "common.html", "close-shell-call-output");
+	}
 	
 	return ($failed);
 }

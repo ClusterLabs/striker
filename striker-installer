@@ -74,6 +74,7 @@ my $conf = {
 		chkconfig		=>	"/sbin/chkconfig",
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
+		echo			=>	"/bin/echo",
 		git			=>	"/usr/bin/git",
 		htpasswd		=>	"/usr/bin/htpasswd",
 		ifup			=>	"/sbin/ifup",
@@ -81,6 +82,7 @@ my $conf = {
 		iptables		=>	"/sbin/iptables",
 		'iptables-save'		=>	"/sbin/iptables-save",
 		ln			=>	"/bin/ln",
+		passwd			=>	"/usr/bin/passwd",
 		restorecon		=>	"/sbin/restorecon",
 		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
@@ -359,11 +361,6 @@ if (not $conf->{sys}{skip_hostname})
 # Now configure the Striker dashboard.
 setup_striker($conf);
 
-# Make sure that selinux is enabled. This runs after the main installer so that
-# we can ensure any files we created or installed have the right
-# labels/contexts.
-configure_selinux($conf);
-
 # If the user reconfigured the network, tell them they will need to reboot.
 if (not $conf->{sys}{skip_network})
 {
@@ -417,6 +414,17 @@ sub setup_striker
 	
 	# (Re)start daemons.
 	manage_daemons($conf);
+
+	# Make sure that selinux is enabled. This runs after the main installer so that
+	# we can ensure any files we created or installed have the right
+	# labels/contexts.
+	configure_selinux($conf);
+	
+	# NOTE: Always call this last. If the password gets set, there is a
+	#       notice box informing the user that we want to ensure doesn't
+	#       get scrolled off the screen.
+	# Set the root user's password.
+	set_root_password($conf);
 	
 	return(0);
 }
@@ -1485,6 +1493,41 @@ sub enable_apache_user
 	open ($file_handle, ">", $conf->{path}{passwd}) or die "Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
 	print $file_handle $passwd;
 	close $file_handle;
+	
+	return(0);
+}
+
+# This sets the local 'root' user's password.
+sub set_root_password
+{
+	my ($conf) = @_;
+	
+	print "Setting root user's password.\n";
+	if ($conf->{sys}{striker_pass})
+	{
+		$conf->{sys}{striker_pass} =~ s/"/\\"/g;
+		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_pass}\" | $conf->{executable}{passwd} root --stdin";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		print "Done!\n\n";
+		print " ##############################################################################\n";
+		print " # NOTE: Your 'root' user password is now the same as the Striker user's      #\n";
+		print " #       password you just specified. If you want a different password,       #\n";
+		print " #       change it now with 'passwd'!                                         #\n";
+		print " ##############################################################################\n\n";
+	}
+	else
+	{
+		print "- Password not set, leaving it unchanged.\n";
+		print "Done!\n\n";
+	}
 	
 	return(0);
 }
@@ -2860,9 +2903,12 @@ SWITCHES
 	$help .= "	$conf->{path}{apache_htpasswd} file.\n";
 	$help .= q|
 
-Note that all IP addresses must be IPv4 in dotted-decimal notation. The netmask
-can be in CIDR or dotted-decimal notation. Do not leave a space between the IP
-address and netmask
+	NOTE: This also sets the 'root' user's password on the striker
+	      appliance! 
+	
+NOTE: that all IP addresses must be IPv4 in dotted-decimal notation. The
+netmask can be in CIDR or dotted-decimal notation. Do not leave a space
+between the IP address and netmask
 
 
 EXAMPLE

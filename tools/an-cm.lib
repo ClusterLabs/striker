@@ -4479,7 +4479,6 @@ sub check_network
 			$conf->{data}{network}{new}{bridge}{$dev}{interfaces} = $interfaces;
 		}
 	}
-	#die "testing.\n";
 	
 	# Record the passive slave for each bond for easy reference
 	# later.
@@ -5484,8 +5483,16 @@ sub compare_new_and_old
 			{
 				if ($say_vm_title)
 				{
-					$say_service  = "VM $1; State change!";
-					$say_vm_title = 0;
+					if ($conf->{data}{clustat}{old}{service}{$service}{'state'} eq "--")
+					{
+						$say_service  = "A new server named \"$1\" has been created!";
+						$say_vm_title = 0;
+					}
+					else
+					{
+						$say_service  = "The server named \"$1\" has changed state!";
+						$say_vm_title = 0;
+					}
 				}
 			}
 			$changes .= "\n$say_service\n";
@@ -5823,7 +5830,7 @@ sub compare_new_and_old
 						# If a relearn cycle is active,
 						# ignore the expected-to-change
 						# variables.
-						record($conf, "$THIS_FILE ".__LINE__."; var: [$var ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})], data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [".lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active})."], time: [".time."], system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; var: [$var ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var})], data::lsi::new::adapter::${adapter}::bbu::learn_cycle_active: [".lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active})."], time: [".time."], system::check_bbu_health: [$conf->{'system'}{check_bbu_health}]\n");
 						if ((lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{learn_cycle_active}) eq "yes") || (($conf->{'system'}{check_bbu_health}) && (time > $conf->{'system'}{check_bbu_health})))
 						{
 							if (($var eq "battery_state") ||
@@ -5858,6 +5865,18 @@ sub compare_new_and_old
 						{
 							record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has changed; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
 							next;
+						}
+						
+						# Raises in values below are safe to ignore
+						if ($var eq "battery_backup_charge_time")
+						{
+							my $new_hours = ($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var} =~ /^(\d+) /)[0];
+							my $old_hours = ($conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} =~ /^(\d+) /)[0];
+							if ($new_hours > $old_hours)
+							{
+								record($conf, "$THIS_FILE ".__LINE__."; RAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has risen; $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var} -> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n");
+								next;
+							}
 						}
 						
 						# I need to watch for ranges in temperature, voltage and Joules.
@@ -7091,8 +7110,11 @@ sub compare_new_and_old
 	# is left in diff.
 	copy_hash($conf, "old", "diff");
 	
-	# Clustat isn't a concern.
-	delete $conf->{data}{clustat}{diff};
+	# Clustat
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{new}{service}})
+	{
+		delete $conf->{data}{clustat}{diff}{service}{$service};
+	}
 	
 	# Bridge
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bridge}})
@@ -7202,7 +7224,31 @@ sub compare_new_and_old
 	}
 	
 #------------------------------------------------------------------------------
-	# Now look for undeleted entries.
+	### Now look for undeleted entries.
+	# Services
+	foreach my $service (sort {$a cmp $b} keys %{$conf->{data}{clustat}{diff}{service}})
+	{
+		if ($service =~ /vm:(.*)/)
+		{
+			my $say_vm = $1;
+			$changes .= "\nThe Server named \"$say_vm\" appears to have been deleted!\n";
+			delete $conf->{data}{clustat}{diff}{service}{$service};
+		}
+		elsif ($service =~ /service:(.*)/)
+		{
+			my $say_service = $1;
+			$changes .= "\nThe cluster service \"$say_service\" appears to have been removed!\n";
+			delete $conf->{data}{clustat}{diff}{service}{$service};
+		}
+		else
+		{
+			# This should never be hit.
+			$changes .= "\nThe clustered service \"$service\" appears to have been removed!\n";
+			delete $conf->{data}{clustat}{diff}{service}{$service};
+		}
+	}
+	
+	# Bridges
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{diff}{bridge}})
 	{
 		$changes .= "\nThe bridge \"$dev\" appears to have been removed!\n";
@@ -7397,7 +7443,6 @@ unexpected, please feel free to contact support.
 $changes";
 		send_email($conf);
 		#record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
-		#die "testing...\n";
 	}
 	
 	# Send the debug email, if needed.

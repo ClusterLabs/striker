@@ -69,24 +69,26 @@ sub test_ssh_fingerprint
 				message	=>	$message,
 			});
 			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
-			print template($conf, "common.html", "shell-output-header");
+			#print template($conf, "common.html", "shell-output-header");
 			my $fh = IO::Handle->new();
-			my $sc = "ssh-keyscan $node >> ~/.ssh/known_hosts";
+			my $sc = "$conf->{path}{'ssh-keyscan'} $node >> ~/.ssh/known_hosts";
+			record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				print template($conf, "common.html", "shell-call-output", {
-					line	=>	$line,
-				});
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				#print template($conf, "common.html", "shell-call-output", {
+				#	line	=>	$line,
+				#});
 			}
 			$fh->close();
-			print template($conf, "common.html", "shell-output-footer");
-			$message = get_string($conf, {key => "message_0120"});
-			print template($conf, "common.html", "generic-note", {
-				message	=>	$message,
-			});
+			#print template($conf, "common.html", "shell-output-footer");
+			#$message = get_string($conf, {key => "message_0120"});
+			#print template($conf, "common.html", "generic-note", {
+			#	message	=>	$message,
+			#});
 			sleep 5;
 		}
 	}
@@ -520,6 +522,7 @@ sub initialize_conf
 			words_file		=>	"./strings.xml",
 			log_file		=>	"/var/log/an-cdb.log",
 			config_file		=>	"/etc/an/an.conf",
+			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
 		},
 		args			=>	{
 			check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",

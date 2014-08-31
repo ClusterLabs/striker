@@ -36,6 +36,7 @@ v1.1.5 - <in progress>
 - Created the 'striker-install' script to replace the old 'an-cdb-install.sh'
   script.
 - Removed all references to SMTP timeout.
+- Added a "Back" button to the main Media Library page.
 
 
 v1.1.4 - 2014-05-27

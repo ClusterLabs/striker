@@ -706,7 +706,7 @@ sub write_new_an_conf
 sub read_hosts
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
 	my $fh = IO::Handle->new();
@@ -722,7 +722,7 @@ sub read_hosts
 		next if not $line;
 		next if $line =~ /^127.0.0.1\s/;
 		next if $line =~ /^::1\s/;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		
 		my ($this_ip, $these_hosts);
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
@@ -737,7 +737,7 @@ sub read_hosts
 					$conf->{hosts}{by_ip}{$this_ip} = "";
 				}
 				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host ";
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
+				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
 			}
 		}
 	}
@@ -905,7 +905,7 @@ sub write_new_hosts
 
 	# Cycle through the passed variables and add them to the hashed created
 	# when the hosts file was last read.
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::ids: [$conf->{cgi}{ids}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::ids: [$conf->{cgi}{ids}]\n");
 	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
 	{
 		# A host can be one or more, separated by spaces.
@@ -923,21 +923,21 @@ sub write_new_hosts
 			my $last_host = "";
 			foreach my $this_host (sort {$a cmp $b} split/ /, $hosts)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
 				next if not $this_host;
-				#record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
 				next if $this_host eq $last_host;
 				$last_host = $this_host;
 				$say_hosts .= " $this_host";
-				#record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
 			}
 			$say_hosts =~ s/\s+$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		else
 		{
 			$say_hosts = $hosts;
-			#record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], say_hosts: [$say_hosts]\n");
 		print $hosts_file "$this_ip\t$say_hosts\n";
@@ -2241,7 +2241,8 @@ sub error
 
 sub header
 {
-	my ($conf, $logo) = @_;
+	my ($conf, $caller) = @_;
+	$caller = "an-cdb" if not $caller;
 	
 	# Header buttons.
 	my $say_back        = "&nbsp;";
@@ -2373,6 +2374,19 @@ sub header
 			id		=>	"refresh",
 		}, "", 1);
 		$say_back    = "";
+	}
+	elsif ($caller eq "an-mc")
+	{
+		$say_back = template($conf, "common.html", "enabled-button-no-class", {
+			button_link	=>	"/cgi-bin/an-cdb?cluster=$conf->{cgi}{cluster}",
+			button_text	=>	"$back_image",
+			id		=>	"back",
+		}, "", 1);
+		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+			button_link	=>	"$conf->{'system'}{cgi_string}",
+			button_text	=>	"$refresh_image",
+			id		=>	"refresh",
+		}, "", 1);
 	}
 	else
 	{
