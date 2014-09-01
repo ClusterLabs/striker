@@ -802,7 +802,7 @@ sub configure_guacamole
 		# If I am here, the copy succeeded.
 		print "- Creating guacamole web archive symlink.\n";
 		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
-		print "[ Debug ] - shell_call: [$shell_call]\n";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
