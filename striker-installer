@@ -1123,7 +1123,6 @@ sub configure_ssh
 	my ($conf) = @_;
 	
 	print "Configuring SSH daemon to allow faster logins.\n";
-	$conf->{path}{sshd_config};
 	        
 	if (-e "$conf->{path}{backups}/sshd_config")
 	{
