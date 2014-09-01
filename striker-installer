@@ -123,6 +123,7 @@ my $conf = {
 			'perl-Test-Simple'		=>	0, 
 			'policycoreutils-python'	=>	0, 
 			postfix				=>	0, 
+			rsync				=>	0,
 			screen				=>	0, 
 			syslinux			=>	0, 
 			'openssl-devel'			=>	0, 
@@ -274,7 +275,7 @@ my $conf = {
 	},
 	url		=>	{
 		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.tar.gz",
-		striker		=>	"https://github.com/digimer/an-cdb/archive/v#!striker_version!#.tar.gz",
+		striker		=>	"https://github.com/digimer/an-cdb/archive/#!striker_version!#.tar.gz",
 	},
 	nics		=>	["bcn-link1", "ifn-link1"],
 	network		=>	{
@@ -2369,6 +2370,8 @@ sub sanity_check_switches
 	{
 		print "[ Note ] - No specific version requested, will install: [$conf->{sys}{stable_version}]\n";
 		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
+		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		# TODO: check to see if the requested version exists
 	}
 	else
