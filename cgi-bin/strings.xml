@@ -461,8 +461,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0144">No name given!</key>
 		<key name="title_0145">No disc drive specified!</key>
 		<key name="title_0146">Imaging the disc failed.</key>
-		<key name="title_0147"></key>
-		<key name="title_0148"></key>
+		<key name="title_0147">Bad definition file!</key>
+		<key name="title_0148">Updating Server's Configuration File</key>
 		<key name="title_0149"></key>
 		<key name="title_0150"></key>
 		
@@ -704,7 +704,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0073"><![CDATA[I tried to eject the disc in drive <span class="fixed_width">#!variable!drive!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0074">Saving the new configuration...</key>
 		<key name="message_0075"><![CDATA[I am sorry, but the #!string!brand_0003!#'s storage isn't running on either node.<br />Please try again once the #!string!brand_0003!#'s storage has started on at least one of the nodes.]]></key>
-		<key name="message_0076">The server is currently not using VNC. The server's configuration will be updated now. Please power off and then start the server (don't reboot) and then try again.</key>
+		<key name="message_0076"><![CDATA[The server is currently not using VNC. The server's configuration will be updated now.<br />Please power off and then start the server (don't reboot) and then try again.]]></key>
 		<key name="message_0077">Connect directly to this server's desktop.</key>
 		<key name="message_0078">The server is turned off.</key>
 		<key name="message_0079">I think this server is running, but I don't know where. You can try connecting to it anyway.</key>
@@ -839,7 +839,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0208"><![CDATA[For security reasons, only files in <span class="fixed_width">/shared/definitions/</span> can be deleted.]]></key>
 		<key name="message_0209"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been deleted.]]></key>
 		<key name="message_0210"><![CDATA[I tried to delete the file <span class="fixed_width">#!variable!file!#</span> and then verify that it was indeed removed.<br />This should have returned <span class="fixed_width">2</span>, but <span class="fixed_width">#!variable!ls_exit_code!#</span> was returned instead.]]></key>
-		<key name="message_0211"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been archived as<br /><span class="fixed_width">#!variable!destination!#</span>.]]></key>
+		<key name="message_0211"><![CDATA[The file: [<span class="fixed_width">#!variable!file!#</span>] has been archived as:<br />[<span class="fixed_width">#!variable!destination!#</span>].]]></key>
 		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
 		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_anvil_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
 		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off or it is now in use by a server.]]></key>
@@ -965,10 +965,20 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0334"><![CDATA[The '<span class="fixed_width">expect</span>' program is not installed (or it was not found at '<span class="fixed_width">#!conf!path::expect!#</span>').<br />If you have not setup <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Copy_Public_Keys_to_Enable_SSH_Without_a_Password" target="_new">passwordless SSH</a>, then access to the node(s) will fail.]]></key>
 		<key name="message_0335">Restart appears to have failed, trying again.</key>
 		<key name="message_0336">Restart failed too many times, giving up. #!string!brand_0011!#</key>
-		<key name="message_0337"></key>
-		<key name="message_0338"></key>
-		<key name="message_0339"></key>
-		<key name="message_0340"></key>
+		<key name="message_0337"><![CDATA[It looks like there was a program error!]]></key>
+		<key name="message_0338"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are empty.]]></key>
+		<key name="message_0339"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are not formed properly.]]></key>
+		<key name="message_0340"><![CDATA[After trying to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />a check was made and the file was deemed to be corrupt. The original file was restored from backup file: [<span class="fixed_width">#!replace!backup_file!#</span>], which was created just before the new file was written.]]></key>
+		<key name="message_0341"><![CDATA[I was asked to uptade the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears that I don't have the original definition file's contents.]]></key>
+		<key name="message_0342">The definition file needs to be updated to switch the Server's graphics to VNC.</key>
+		<key name="message_0343"></key>
+		<key name="message_0344"></key>
+		<key name="message_0345"></key>
+		<key name="message_0346"></key>
+		<key name="message_0347"></key>
+		<key name="message_0348"></key>
+		<key name="message_0349"></key>
+		<key name="message_0350"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

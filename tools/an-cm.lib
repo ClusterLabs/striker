@@ -4728,9 +4728,9 @@ sub initial_report
 	
 	# This is uncommented to test debug email function only.
 # 	sleep 2;
-# 	my $subject =  "Test debug message";
-# 	my $body    =  "I don't really have anything to say.\n";
-# 	send_debug_email($conf, $subject, $body);
+# 	$conf->{mail_data}{debug_subject} =  "Test debug message";
+# 	$conf->{mail_data}{debug_body} =  "I don't really have anything to say.\n";
+# 	send_debug_email($conf);
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Initial copy of new to old\n");
 	copy_hash($conf, "new", "old");
@@ -5174,7 +5174,7 @@ Interface: $dev
 				
 				$body .= "
 		+--------+------------+---------------+---------------+
-Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
+ Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
 +---------------+--------+------------+---------------+---------------+
 |     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_fan1_psu1 | $say_fan2_psu1 |
 |     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_fan1_psu2 | $say_fan2_psu2 |
@@ -5230,14 +5230,14 @@ Power Supplies | Status |  Wattage   |  Fan 1 Speed  |  Fan 2 Speed  |
 			
 				$body .= "
 		+--------+------------+-------------+
-Power Supplies | Status |  Wattage   |  Fan Speed  |
+ Power Supplies | Status |  Wattage   |  Fan Speed  |
 +---------------+--------+------------+-------------+
 |     PSU 1     | $say_psu1_state | $say_psu1_watts | $say_psu1_fan |
 |     PSU 2     | $say_psu2_state | $say_psu2_watts | $say_psu2_fan |
 +---------------+--------+------------+-------------+
 
 		+----------------+----------------+
-Power Supplies |     Intake     |      Core      |
+ Power Supplies |     Intake     |      Core      |
 +---------------+----------------+----------------+
 |     PSU 1     | $say_psu1_intake | $say_psu1_core |
 |     PSU 2     | $say_psu2_intake | $say_psu2_core |
@@ -5285,13 +5285,13 @@ Power Supplies |     Intake     |      Core      |
 			$say_units = "*F";
 		}
 		$body .= "
-                 +-----------+-----------+
-  Temperatures   |   State   | Temp ($say_units) |
-+----------------+-----------+-----------+
+                  +-----------+-----------+
+   Temperatures   |   State   | Temp ($say_units) |
++-----------------+-----------+-----------+
 ";
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{data}{ipmi}{new}})
 		{
-			my $say_var = sprintf("%-14s", $conf->{translate}{ipmi}{$key});
+			my $say_var = sprintf("%-15s", $conf->{translate}{ipmi}{$key});
 			my ($say_state, $say_val) = (split/,/, $conf->{data}{ipmi}{new}{$key}, 2);
 			$say_state =  sprintf("%-9s", $say_state);
 			my $say_temp  =  sprintf("%-9s", "--");
@@ -5310,7 +5310,7 @@ Power Supplies |     Intake     |      Core      |
 			}
 			$body .= "| $say_var | $say_state | $say_temp |\n";
 		}
-		$body .= "+----------------+-----------+-----------+\n";
+		$body .= "+-----------------+-----------+-----------+\n";
 		
 		# Fans.
 		$body .= "
@@ -5764,22 +5764,22 @@ sub compare_new_and_old
 						{
 							my $say_translation = $conf->{translate}{lsi}{battery_state} ? $conf->{translate}{lsi}{battery_state} : "battery state";
 							$conf->{'system'}{warning_event} = 1;
-							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
-							$changes .= "  The battery many need to be replaced.\n";
+							$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{battery_state}]\n";
+							$debug_changes .= "  The battery many need to be replaced.\n";
 						}
 						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{remaining_capacity_low}) =~ /yes/)
 						{
 							my $say_translation = $conf->{translate}{lsi}{battery_state} ? $conf->{translate}{lsi}{battery_state} : "remaining capacity low";
 							$conf->{'system'}{warning_event} = 1;
-							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
-							$changes .= "  The battery many need to be replaced.\n";
+							$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed as having low capacity.\n";
+							$debug_changes .= "  The battery many need to be replaced.\n";
 						}
 						if (lc($conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{current_cache_policy}) =~ /writethrough/)
 						{
 							my $say_translation = $conf->{translate}{lsi}{current_cache_policy} ? $conf->{translate}{lsi}{current_cache_policy} : "current cache policy";
 							$conf->{'system'}{warning_event} = 1;
-							$changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
-							$changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
+							$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit's \"$say_translation\" has completed a relearn cycle but the battery is still listed being in 'WriteThrough' caching policy.\n";
+							$debug_changes .= "  The battery many need to be replaced or there may be a configuration issue.\n";
 						}
 					}
 					
@@ -5987,9 +5987,9 @@ sub compare_new_and_old
 							if ($current_voltage <= $lower_voltage)
 							{
 								next if $conf->{'system'}{bbu_needs_attention};
-								$changes .= "\nRAID ${adapter}'s Battery Backup Unit has fallen below the lower voltage threshhold!\n";
-								$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], lower threshhold: [$lower_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
-								$changes .= "  Recharging or replacing he battery is required.\n";
+								$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit has fallen below the lower voltage threshhold!\n";
+								$debug_changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], lower threshhold: [$lower_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
+								$debug_changes .= "  Recharging or replacing he battery is required.\n";
 								$conf->{'system'}{bbu_needs_attention} = 1;
 								$conf->{'system'}{warning_event}       = 1;
 							}
@@ -6001,9 +6001,9 @@ sub compare_new_and_old
 								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_voltage] > [$ok_voltage]\n");
 								if ($current_voltage > $ok_voltage)
 								{
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
-									$changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], OK voltage is: [$ok_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
-									$changes .= "  Recharging or replacing the backup unit is required.\n";
+									$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$debug_changes .= "Current voltage is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_voltage}], OK voltage is: [$ok_voltage], design voltage is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_voltage}]\n"; 
+									$debug_changes .= "  Recharging or replacing the backup unit is required.\n";
 									$conf->{'system'}{bbu_needs_attention} = 0;
 								}
 							}
@@ -6018,9 +6018,9 @@ sub compare_new_and_old
 							   $difference       =~ s/^-//;
 							if ($difference >= $max_delta)
 							{
-								$changes .= "\nRAID ${adapter}'s Battery Backup Unit power draw has changed by an amount exceeding alert tolerances.\n";
-								$changes .= "This may be do to a relearn cycle, which is normal.\n";
-								$changes .= "  Current draw: [$new_value], old draw: [$old_value], Alert trigger threshhold: [$max_delta mA / $conf->{'system'}{sleep_time} seconds]\n"; 
+								$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit power draw has changed by an amount exceeding alert tolerances.\n";
+								$debug_changes .= "This may be do to a relearn cycle, which is normal.\n";
+								$debug_changes .= "  Current draw: [$new_value], old draw: [$old_value], Alert trigger threshhold: [$max_delta mA / $conf->{'system'}{sleep_time} seconds]\n"; 
 							}
 						}
 						elsif ($var eq "pack_energy")
@@ -6034,9 +6034,9 @@ sub compare_new_and_old
 							if ($current_energy <= $lower_energy)
 							{
 								next if $conf->{'system'}{bbu_needs_attention};
-								$changes .= "\nRAID ${adapter}'s Capacitor Backup Unit has fallen below the lower energy threshhold!\n";
-								$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], lower threshhold: [$lower_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
-								$changes .= "  Recharging or replacing the backup unit is required.\n";
+								$debug_changes .= "\nRAID ${adapter}'s Capacitor Backup Unit has fallen below the lower energy threshhold!\n";
+								$debug_changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], lower threshhold: [$lower_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
+								$debug_changes .= "  Recharging or replacing the backup unit is required.\n";
 								$conf->{'system'}{bbu_needs_attention} = 1;
 								$conf->{'system'}{warning_event}       = 1;
 							}
@@ -6048,9 +6048,9 @@ sub compare_new_and_old
 								#record($conf, "$THIS_FILE ".__LINE__."; BBU needs attention; Checking in charged: [$current_energy] > [$ok_energy]\n");
 								if ($current_energy > $ok_energy)
 								{
-									$changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
-									$changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], OK energy is: [$ok_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
-									$changes .= "  Recharging or replacing he battery is required.\n";
+									$debug_changes .= "\nRAID ${adapter}'s Battery Backup Unit has risen above the minimum charge threshhold.\n";
+									$debug_changes .= "Current energy is: [$conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{design_energy}], OK energy is: [$ok_energy], design energy is: [$conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{design_energy}]\n"; 
+									$debug_changes .= "  Recharging or replacing he battery is required.\n";
 									$conf->{'system'}{bbu_needs_attention} = 0;
 								}
 							}
@@ -6072,8 +6072,8 @@ sub compare_new_and_old
 							}
 							else
 							{
-								$changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
-								$changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
+								$debug_changes .= "\nRAID ${adapter}'s Battery \"$say_translation\" has changed!\n";
+								$debug_changes .= "  $conf->{data}{lsi}{old}{adapter}{$adapter}{bbu}{$var}\t-> $conf->{data}{lsi}{new}{adapter}{$adapter}{bbu}{$var}\n";
 							}
 						}
 					}
@@ -6857,6 +6857,12 @@ sub compare_new_and_old
 				$debug_changes .= "\nHost Sensor \"$say_translation\" has returned!\n";
 				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
 			}
+			elsif (($old_state eq "ok") && ($new_state eq "ok"))
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" is OK but has changed!; $new_state, $new_value.\n");
+				$debug_changes .= "\nHost Sensor \"$say_translation\" is OK but has changed!\n";
+				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+			}
 			else
 			{
 				$changes .= "\nHost sensor \"$say_translation\" has change!\n";
@@ -6940,17 +6946,21 @@ sub compare_new_and_old
 				{
 					if (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/))
 					{
-						my $subject =  "UPS ${ups_name} is compensating for bad input power";
-						my $body    =  "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
-						   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
-						send_debug_email($conf, $subject, $body);
+						#my $subject =  "UPS ${ups_name} is compensating for bad input power";
+						#my $body    =  "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
+						#   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						#send_debug_email($conf, $subject, $body);
+						$debug_changes .=  "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
+						$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
 					elsif (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/))
 					{
-						my $subject =  "UPS ${ups_name} has returned to normal input power";
-						my $body    =  "UPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
-						   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
-						send_debug_email($conf, $subject, $body);
+						#my $subject =  "UPS ${ups_name} has returned to normal input power";
+						#my $body    =  "UPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
+						#   $body    .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						#send_debug_email($conf, $subject, $body);
+						$debug_changes .=  "UPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
+						$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
 					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /TRIM ONLINE/i)
 					{
@@ -7445,18 +7455,18 @@ $changes";
 		#record($conf, "$THIS_FILE ".__LINE__."; After change copy of new to old\n");
 	}
 	
-	# Send the debug email, if needed.
+	# Send the debug email if it is needed.
 	if ($debug_changes)
 	{
-		my $subject = "State Change!";
-		my $body    = "
+		$conf->{mail_data}{debug_subject} = "State Change!";
+		$conf->{mail_data}{debug_body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
 unexpected, please feel free to contact support.
 
 ----------------------------------------------------------------------
 $debug_changes";
-		send_debug_email($conf, $subject, $body);
+		send_debug_email($conf);
 	}
 	
 	return(0);
@@ -7819,7 +7829,10 @@ sub copy_hash
 # aren't important enough to bother clients about.
 sub send_debug_email
 {
-	my ($conf, $subject, $body) = @_;
+	my ($conf) = @_;
+	
+	my $subject = $conf->{mail_data}{debug_subject};
+	my $body    = $conf->{mail_data}{debug_body};
 	
 	# First, see if the relay file needs to be updated.
 	check_mail_config($conf);
@@ -7890,6 +7903,9 @@ Description:
 		record($conf, "$THIS_FILE ".__LINE__."; output: [$line].\n");
 	}
 	close $file_handle;
+	
+	$conf->{mail_data}{debug_subject} = "";
+	$conf->{mail_data}{debug_body}    = "";
 	
 	return(0);
 }
@@ -8106,7 +8122,7 @@ Anvil! nodes directly and are not sent by Alteeve's Niche!.";
 	{
 		if ($conf->{'system'}{disable_emergency_shutdown})
 		{
-			$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - EMERGENCY MANUAL SHUTDOWN REQUIRED! - $conf->{mail_data}{subject}";
+			#$conf->{mail_data}{subject} =  "$conf->{mail_data}{subject_prefix} - EMERGENCY MANUAL SHUTDOWN REQUIRED! - $conf->{mail_data}{subject}";
 		}
 		else
 		{
@@ -8216,7 +8232,7 @@ sub record
 	{
 		$fh = IO::Handle->new();
 		open ($fh, ">>$conf->{path}{'log'}") or die "Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CM - Anvil! Monitor log at ".get_date($conf)."\n";
+		print $fh "======\nOpening the Striker Monitor log at ".get_date($conf)."\n";
 		$conf->{handles}{'log'} = $fh;
 	}
 	print $fh get_date($conf)." ".$message;

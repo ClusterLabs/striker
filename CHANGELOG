@@ -1,7 +1,16 @@
 Change log;
 
-v1.2.0 - In progress
-- 
+v1.1.6 - 2014-09-23
+- Critical Update!
+- Fixed a bug where, if a server's XML definition file is set to use 'spice'
+  graphics instead of 'vnc', managing the VM could cause the XML file to be
+  blanked out. Recovery is possible by restoring the automatically-generated
+  backup, but this is still pretty not-good. 
+  - This issue has been fixed.
+  - Additionally, multiple safe guards have been added to sanity-check the
+    definition before writing and after writing, with automatic restore of the
+    original XML if the new version appears broken after writing.
+- Cleaned up some alert email text.
 
 
 v1.1.5 - 2014-08-31

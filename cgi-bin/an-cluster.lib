@@ -38,7 +38,7 @@ use Net::SSH2;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.5";
+our $VERSION  = "1.1.6";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.
@@ -706,7 +706,7 @@ sub write_new_an_conf
 sub read_hosts
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
 	my $fh = IO::Handle->new();
@@ -722,7 +722,7 @@ sub read_hosts
 		next if not $line;
 		next if $line =~ /^127.0.0.1\s/;
 		next if $line =~ /^::1\s/;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		
 		my ($this_ip, $these_hosts);
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
@@ -737,7 +737,7 @@ sub read_hosts
 					$conf->{hosts}{by_ip}{$this_ip} = "";
 				}
 				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host ";
-				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
 			}
 		}
 	}
@@ -4034,12 +4034,16 @@ sub remote_call
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
 		if (not $error)
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; user: [$user], password: [$password]\n");
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
 				$error = get_string($conf, {key => "message_0043"});
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+			else
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+			}
 		}
 	}
 	

@@ -23,6 +23,8 @@
 #   there is a timing-based conflict starting cman/rgmanager. When this
 #   happens, cman or drbd (via rgmanager failing to start) will lead to a fence
 #   of the effected peer.
+# - If /shared's dm device differs on the two nodes, VMs won't start is both
+#   nodes will think the other is not healthy.
 #
 
 use strict;

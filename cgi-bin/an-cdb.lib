@@ -2995,7 +2995,7 @@ sub manage_vm
 	}
 	
 	# Now choose the node to work through.
-	my $node;
+	my $node          = "";
 	my $vm_is_running = 0;
 	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
 	if ($conf->{vm}{$vm}{current_host})
@@ -3084,7 +3084,7 @@ sub manage_vm
 				}
 				
 				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
-				#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+				#ecord($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 			}
 		}
 		elsif ($in_os == 2)
@@ -3103,10 +3103,11 @@ sub manage_vm
 		}
 	}
 	$boot_select .= "</select>";
-	#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so
 	# now.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
 	if ($conf->{cgi}{change})
 	{
 		change_vm($conf, $node);
@@ -3131,7 +3132,7 @@ sub manage_vm
 	}
 	
 	### TODO: Merge insert and eject into one function.
-	#record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
 	if ($do_insert)
 	{
 		vm_insert_media($conf, $node, $insert_media, $insert_drive, $vm_is_running);
@@ -3344,11 +3345,30 @@ sub manage_vm
 	# Setup Guacamole, if installed.
 	my $message     = "";
 	my $remote_icon = "";
+	record($conf, "$THIS_FILE ".__LINE__."; path::guacamole_config: [$conf->{path}{guacamole_config}]\n");
 	if (-e $conf->{path}{guacamole_config})
 	{
 		# Installed.
-		my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Guacamole installed, getting VNC info.\n");
+		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+		
+		# See if I need to update the XML definition file.
+		record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
+		if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
+		{
+			# Rewrite the XML definition. The 'graphics' section should look like:
+			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
+			#       <listen type='address' address='0.0.0.0'/>
+			#     </graphics>
+			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file: [$conf->{vm}{$vm}{definition_file}] is not using VNC, updating it via: [$node].\n");
+			print template($conf, "server.html", "switch-to-vnc-header");
+			my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
+			switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
+			print template($conf, "server.html", "switch-to-vnc-footer");
+		}
+		
+		record($conf, "$THIS_FILE ".__LINE__."; type: [$type]\n");
 		if ($type ne "vnc")
 		{
 			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
@@ -3362,24 +3382,14 @@ sub manage_vm
 				alt_text	=>	"",
 				id		=>	"remote_icon",
 			}, "", 1);
-			
-			# See if I need to update the XML definition file.
-			if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
-			{
-				# Rewrite the XML definition. The 'graphics' section should look like:
-				#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
-				#       <listen type='address' address='0.0.0.0'/>
-				#     </graphics>
-				record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
-				archive_file($conf, $node, $conf->{vm}{$vm}{definition_file});
-				switch_vm_xml_to_vnc($conf, $node, $vm);
-			}
 		}
 		else
 		{
 			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
 			update_guacamole_config($conf, $say_vm, $node, $port);
 		}
+		
+		record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
 		if (not $message)
 		{
 			my ($guacamole_url) = get_guacamole_link($conf, $node);
@@ -3433,6 +3443,7 @@ sub manage_vm
 	else
 	{
 		# Not installed.
+		record($conf, "$THIS_FILE ".__LINE__."; Guacamole does not appear to be installed.\n");
 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
 		$remote_icon = template($conf, "common.html", "image", {
 			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
@@ -3511,59 +3522,180 @@ sub manage_vm
 # spice or another protocol.
 sub switch_vm_xml_to_vnc
 {
-	my ($conf, $node, $vm) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm]\n");
+	my ($conf, $node, $vm, $backup_file) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm], backup_file: [$backup_file]\n");
 	
+	my $proceed         = 1;
 	my $definition_file = $conf->{vm}{$vm}{definition_file};
 	my $new_definition  = "";
 	my $in_graphics     = 0;
-	foreach my $line (@{$conf->{vm}{$vm}{raw_xml}})
+	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	if (not $conf->{vm}{$vm}{raw_xml})
 	{
-		if ($line =~ /<graphics /)
+		my $say_error = get_string($conf, {key => "message_0341", variables => {
+			definition_file	=>	$definition_file,
+		}});
+		print template($conf, "common.html", "no-definition-file", {
+			error			=>	$say_error,
+		});
+		$proceed = 0;
+	}
+	else
+	{
+		foreach my $line (@{$conf->{vm}{$vm}{raw_xml}})
 		{
-			$in_graphics = 1;
-			next;
-		}
-		elsif ($in_graphics)
-		{
-			if ($line =~ /<\/graphics>/)
+			#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			if ($line =~ /<graphics /)
 			{
-				# The port here doesn't matter.
-				$in_graphics    =  0;
-				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
-				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' />\n";
-				#$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='127.0.0.1'>\n";
-				$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
-				$new_definition .= "    </graphics>\n";
+				$in_graphics = 1;
 				next;
+			}
+			elsif ($in_graphics)
+			{
+				if ($line =~ /<\/graphics>/)
+				{
+					# The port here doesn't matter.
+					$in_graphics    =  0;
+					$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
+					$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
+					$new_definition .= "    </graphics>\n";
+					#record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
+					next;
+				}
+				else
+				{
+					# Skip this.
+					next;
+				}
 			}
 			else
 			{
-				# Skip this.
-				next;
+				$new_definition .= "$line\n";
+				#record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
 			}
 		}
-		else
+		record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition===\n");
+		
+		# Make sure the definition file is sane.
+		if ($new_definition !~ /^<domain/s)
 		{
-			$new_definition .= "$line\n";
+			my $say_error = "";
+			if (length($new_definition) < 5)
+			{
+				# Empty
+				$say_error = get_string($conf, {key => "message_0338", variables => {
+					definition_file	=>	$definition_file,
+				}});
+			}
+			else
+			{
+				# Malformed
+				$say_error = get_string($conf, {key => "message_0339", variables => {
+					definition_file	=>	$definition_file,
+				}});
+			}
+			print template($conf, "common.html", "bad-definition-file", {
+				error			=>	$say_error,
+				definition_content	=>	$new_definition,
+			});
+			$proceed = 0;
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition\n===\n");
 	
 	# Write the new definition file.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
-		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
-	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	if ($proceed)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"cat > $definition_file << EOF\n$new_definition\nEOF",
+		});
+			#shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		
+		# Set the permissions
+		$error  = "";
+		$output = "";
+		($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"chmod 644 $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		
+		# Read it back.
+		$error  = "";
+		$output = "";
+		($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	"cat $definition_file",
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		my $recover         = 0;
+		my $first_line_read = 0;
+		my $read_content     = "";
+		foreach my $line (@{$output})
+		{
+			if (not $first_line_read)
+			{
+				$read_content .= "$line\n";
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line !~ /^<domain/)
+				{
+					# well crap...
+					$recover = 1;
+					record($conf, "$THIS_FILE ".__LINE__."; First line diesn't start with: '<domain', recovery required!\n");
+				}
+				$first_line_read = 1;
+			}
+		}
+		if ($recover)
+		{
+			my ($error, $ssh_fh, $output) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	"cp -f $backup_file $definition_file && chmod 644 $definition_file",
+			});
+			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			foreach my $line (@{$output})
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			}
+			
+			my $say_error = get_string($conf, {key => "message_0340", variables => {
+				definition_file	=>	$definition_file,
+				backup_file	=>	$backup_file,
+			}});
+			print template($conf, "common.html", "bad-definition-file", {
+				error			=>	$say_error,
+				definition_content	=>	$read_content,
+			});
+		}
 	}
 	
 	return(0);
@@ -3751,7 +3883,7 @@ sub update_guacamole_config
 # parses out the currently used VNC port and returns the host and port.
 sub get_current_vm_vnc_info
 {
-	my ($conf, $vm) = @_;
+	my ($conf, $vm, $node) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:/)
@@ -3764,7 +3896,6 @@ sub get_current_vm_vnc_info
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; say_vm: [$say_vm]\n");
 	
-	my $node    = "";
 	my $port    = "";
 	my $type    = "";
 	my $listen  = "";
@@ -3801,6 +3932,11 @@ sub get_current_vm_vnc_info
 			last;
 		}
 	}
+	
+	# Set the global hash values.
+	$conf->{vm}{$vm}{graphics}{type}     = $type;
+	$conf->{vm}{$vm}{graphics}{'listen'} = $listen;
+	$conf->{vm}{$vm}{graphics}{port}     = $port;
 	
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 	return($node, $type, $listen, $port);
@@ -4626,7 +4762,7 @@ sub provision_vm
 		# when the cluster was scanned last.
 		$conf->{vm}{$vm}{current_host} = $node;
 		sleep 3;
-		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm);
+		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		update_guacamole_config($conf, $say_vm, $node, $port);
 		
@@ -5553,7 +5689,7 @@ sub start_vm
 				{
 					sleep 3;
 				}
-				my ($node, $type, $listen, $port) = get_current_vm_vnc_info($conf, $vm);
+				($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
 				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 				if ($type ne "vnc")
 				{
@@ -5577,8 +5713,8 @@ sub start_vm
 						#       <listen type='address' address='0.0.0.0'/>
 						#     </graphics>
 						record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
-						archive_file($conf, $node, $conf->{vm}{$vm}{definition_file});
-						switch_vm_xml_to_vnc($conf, $node, $vm);
+						my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
+						switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
 					}
 				}
 				else
@@ -6340,7 +6476,7 @@ sub delete_vm
 					}
 					else
 					{
-						$line = parse_text_line($conf, $line);
+						#$line = parse_text_line($conf, $line);
 						print template($conf, "server.html", "one-line-message", {
 							message	=>	$line,
 						});
@@ -6367,7 +6503,7 @@ sub delete_vm
 			# Regardless of whether the removal succeeded, archive
 			# and then delete the definition file.
 			my $file = $conf->{vm}{$vm}{definition_file};
-			archive_file($conf, $host, $file);
+			archive_file($conf, $host, $file, 0, "hidden_table");
 			remove_vm_definition($conf, $host, $file);
 			# variables hash feeds 'message_0205'.
 			print template($conf, "server.html", "delete-server-success", {}, {
@@ -6458,15 +6594,17 @@ sub remove_vm_definition
 # This copies the passed file to 'node:/shared/archive'
 sub archive_file
 {
-	my ($conf, $node, $file, $quiet) = @_;
+	my ($conf, $node, $file, $quiet, $table_type) = @_;
+	$table_type = "hidden_table" if not $table_type;
 	$quiet = 0 if not defined $quiet;
+	record($conf, "$THIS_FILE ".__LINE__."; archive_file(); node: [$node], file: [$file], quiet: [$quiet], table_type: [$table_type]\n");
 	
 	### TODO: Check/create the archive directory.
 	
-	my ($dir, $file_name) = ($file =~ /^(.*)\/(.*?)$/);
-	my ($date) = get_date($conf, time);
-	my $dest = "/shared/archive/$file_name.$date";
-	   $dest =~ s/ /_/;
+	my ($directory, $file_name) =  ($file =~ /^(.*)\/(.*?)$/);
+	my ($date)                  =  get_date($conf, time);
+	my $destination             =  "/shared/archive/$file_name.$date";
+	   $destination             =~ s/ /_/;
 
 	my $cp_exit_code;
 	my ($error, $ssh_fh, $output) = remote_call($conf, {
@@ -6476,24 +6614,42 @@ sub archive_file
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"cp $file $dest; echo cp:\$?",
+		shell_call	=>	"cp $file $destination; echo cp:\$?",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	my $header_printed = 0;
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /cp:(\d+)/)
 		{
 			$cp_exit_code = $1;
 		}
 		else
 		{
+			if (not $header_printed)
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; table_type: [$table_type]\n");
+				if ($table_type eq "hidden_table")
+				{
+					print template($conf, "server.html", "one-line-message-header-hidden");
+				}
+				else
+				{
+					print template($conf, "server.html", "one-line-message-header");
+				}
+				$header_printed = 1;
+			}
 			$line = parse_text_line($conf, $line);
 			print template($conf, "server.html", "one-line-message", {
 				message	=>	$line,
 			});
 		}
+	}
+	if ($header_printed)
+	{
+		print template($conf, "server.html", "one-line-message-footer");
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
 	if ($cp_exit_code eq "0")
@@ -6501,15 +6657,24 @@ sub archive_file
 		# Success
 		if (not $quiet)
 		{
+			if ($table_type eq "hidden_table")
+			{
+				print template($conf, "server.html", "one-line-message-header-hidden");
+			}
+			else
+			{
+				print template($conf, "server.html", "one-line-message-header");
+			}
 			my $message = get_string($conf, {key => "message_0211", variables => {
 				file		=>	$file,
-				destination	=>	$dest,
+				destination	=>	$destination,
 			}});
 			print template($conf, "server.html", "one-line-message", {
 				message	=>	$message,
 			});
+			print template($conf, "server.html", "one-line-message-footer");
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; The file: [$file] has been archived as: [$dest].\n");
+		record($conf, "$THIS_FILE ".__LINE__."; The file: [$file] has been archived as: [$destination].\n");
 	}
 	else
 	{
@@ -6517,13 +6682,13 @@ sub archive_file
 		# The variables hash feeds 'message_0212'.
 		print template($conf, "server.html", "archive-file-failed", {}, {
 			file		=>	$file,
-			destination	=>	$dest,
+			destination	=>	$destination,
 			cp_exit_code	=>	$cp_exit_code,
 		});
-		$dest = 0;
+		$destination = 0;
 	}
 	
-	return ($dest);
+	return ($destination);
 }
 
 # This adds or removes a VM from the cluster.conf file.
@@ -8146,11 +8311,11 @@ sub read_vm_definition
 	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	#record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], XML: [$conf->{vm}{$vm}{xml}], def: [$conf->{vm}{$vm}{definition_file}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], XML: [$conf->{vm}{$vm}{xml}], def: [$conf->{vm}{$vm}{definition_file}]\n");
 	if ((not ref($conf->{vm}{$vm}{xml}) eq "ARRAY") && ($conf->{vm}{$vm}{definition_file}))
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
@@ -8176,6 +8341,7 @@ sub read_vm_definition
 		}
 	}
 	
+	my $fill_raw_xml = 0;
 	my $in_disk      = 0;
 	my $in_interface = 0;
 	my $current_bridge;
@@ -8187,11 +8353,17 @@ sub read_vm_definition
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
 		return (0);
 	}
+	record($conf, "$THIS_FILE ".__LINE__."; vm::$vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	if (not ref($conf->{vm}{$vm}{raw_xml}) eq "ARRAY")
+	{
+		$conf->{vm}{$vm}{raw_xml} = [];
+		$fill_raw_xml             = 1;
+	}
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
-		#$line = lc($line); # everything should be lower case already.
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line], fill_raw_xml: [$fill_raw_xml]\n");
+		push @{$conf->{vm}{$vm}{raw_xml}}, $line if $fill_raw_xml;
 		
 		# Pull out RAM amount.
 		if ($line =~ /<memory>(\d+)<\/memory>/)
@@ -8302,6 +8474,7 @@ sub read_vm_definition
 			$conf->{vm}{$vm}{graphics}{'listen'} = $listen;
 		}
 	}
+	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [".@{$conf->{vm}{$vm}{raw_xml}}." lines]\n");
 	
 	return (0);
 }
@@ -9171,7 +9344,7 @@ sub display_node_controls
 			}, "", 1);
 			$say_dual_boot_disabled_button =~ s/\n$//;
 			$say_dual_boot = $say_dual_boot_disabled_button;
-			record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
 			
 			# Dual-Join button
 			my $say_dual_join_disabled_button = template($conf, "common.html", "disabled-button", {
