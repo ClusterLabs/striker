@@ -1,5 +1,9 @@
 Change log;
 
+v1.1.7 - in-progress
+- Cleaned up the configuration page to make it much more usable.
+
+
 v1.1.6 - 2014-09-23
 - Critical Update!
 - Fixed a bug where, if a server's XML definition file is set to use 'spice'

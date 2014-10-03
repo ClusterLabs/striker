@@ -3229,13 +3229,13 @@ sub check_nic_states
 	
 	# If there are less than two NICs and the user is trying to configure
 	# the network, bail.
-	if ((not $conf->{sys}{skip_network}) && ($nic_count != 2))
-	{
-		print "[ Error ] - Found a total of: [$nic_count] NIC(s).\n";
-		print "[ Error ] - Two are needed for this program to work.\n";
-		print "[ Error ] - Merged networks are not supported by this tool.\n";
-		exit(4);
-	}
+# 	if ((not $conf->{sys}{skip_network}) && ($nic_count != 2))
+# 	{
+# 		print "[ Error ] - Found a total of: [$nic_count] NIC(s).\n";
+# 		print "[ Error ] - Two are needed for this program to work.\n";
+# 		print "[ Error ] - Merged networks are not supported by this tool.\n";
+# 		exit(4);
+# 	}
 	
 	$unplugged_macs =~ s/,$//;
 	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";

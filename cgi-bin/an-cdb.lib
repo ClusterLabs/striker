@@ -3084,7 +3084,7 @@ sub manage_vm
 				}
 				
 				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
-				#ecord($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 			}
 		}
 		elsif ($in_os == 2)
@@ -5541,10 +5541,10 @@ sub start_vm
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $vm                = $conf->{cgi}{vm};
-	my $say_vm            = ($vm =~ /vm:(.*)/)[0];
+	my $say_vm            = $vm =~ /^vm:/ ? ($vm =~ /vm:(.*)/)[0] : $vm;
 	my $remote_message    = "";
 	my $remote_icon       = "";
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# Make sure the node is still ready to take this VM.
 	scan_cluster($conf);

@@ -38,7 +38,7 @@ use Net::SSH2;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "an-cluster.lib";
-our $VERSION  = "1.1.6";
+our $VERSION  = "1.1.7";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.
@@ -1316,12 +1316,12 @@ sub show_common_config_section
 	else
 	{
 		$push_button =  "&nbsp; ";
-		$push_button .= template($conf, "common.html", "enabled-button", {
-			button_class	=>	"bold_button",
-			button_link	=>	"?config=true&task=archive",
-			button_text	=>	"#!string!button_0040!#",
-			id		=>	"archive",
-		}, "", 1);
+# 		$push_button .= template($conf, "common.html", "enabled-button", {
+# 			button_class	=>	"bold_button",
+# 			button_link	=>	"?config=true&task=archive",
+# 			button_text	=>	"#!string!button_0040!#",
+# 			id		=>	"archive",
+# 		}, "", 1);
 	}
 	
 	print template($conf, "config.html", "global-variables", {
@@ -1758,6 +1758,88 @@ sub load_backup_configuration
 	return(0);
 }
 
+# This presents a form for the user to complete. When complete, an XML file
+# with the install information for new nodes is created. This XML file is then
+# passed to 'tools/anvil-configure-node' 
+sub create_install_manifest
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
+	
+	my $show_form = 1;
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
+	if ($conf->{cgi}{'do'} eq "generate")
+	{
+		# Sanity check the user's answers and, if OK, generate the
+		# manifest and make it available for download.
+		if (sanity_check_manifest_answers($conf))
+		{
+			# There was a problem, redisplay the form.
+		}
+		else
+		{
+			# No errors, write out the manifest and create the
+			# download link.
+			$show_form = 0;
+			my ($url) = generate_install_manifest($conf);
+		}
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; show_form: [$show_form]\n");
+	if ($show_form)
+	{
+		# Set some default values if 'save' isn't set.
+		if (not $conf->{cgi}{save})
+		{
+			if (not $conf->{cgi}{anvil_prefix})            { $conf->{cgi}{anvil_prefix}            = "xx"; }
+			if (not $conf->{cgi}{anvil_domain})            { $conf->{cgi}{anvil_domain}            = "localdomain"; }
+			if (not $conf->{cgi}{anvil_sequence})          { $conf->{cgi}{anvil_sequence}          = "01"; }
+			if (not $conf->{cgi}{anvil_bcn_subnet_prefix}) { $conf->{cgi}{anvil_bcn_subnet_prefix} = "10.20"; }
+			if (not $conf->{cgi}{anvil_sn_subnet_prefix})  { $conf->{cgi}{anvil_sn_subnet_prefix}  = "10.10"; }
+			if (not $conf->{cgi}{anvil_ifn_subnet_prefix}) { $conf->{cgi}{anvil_ifn_subnet_prefix} = "10.255"; }
+		}
+		
+		# Show the manifest form.
+		print template($conf, "config.html", "install-manifest-form", {
+			form_file		=>	"/cgi-bin/an-cdb",
+			anvil_prefix		=>	$conf->{cgi}{anvil_prefix},
+			anvil_domain		=>	$conf->{cgi}{anvil_domain},
+			anvil_sequence		=>	$conf->{cgi}{anvil_sequence},
+			anvil_bcn_subnet_prefix	=>	$conf->{cgi}{anvil_bcn_subnet_prefix},
+			anvil_sn_subnet_prefix	=>	$conf->{cgi}{anvil_sn_subnet_prefix},
+			anvil_ifn_subnet_prefix	=>	$conf->{cgi}{anvil_ifn_subnet_prefix},
+			anvil_node1_name	=>	$conf->{cgi}{anvil_node1_name},
+			anvil_node2_name	=>	$conf->{cgi}{anvil_node2_name},
+			anvil_node1_ip		=>	$conf->{cgi}{anvil_node1_ip},
+			anvil_node2_ip		=>	$conf->{cgi}{anvil_node2_ip},
+		});
+	}
+	
+	return(0);
+}
+
+# This takes the (sanity-checked) form data and generates the XML manifest file
+# and then returns the download URL.
+sub generate_install_manifest
+{
+	my ($conf) = @_;
+	my $url;
+	
+	
+	return($url);
+}
+
+# This sanity-checks the user's answers.
+sub sanity_check_manifest_answers
+{
+	my ($conf) = @_;
+	my $problem = 1;
+	
+	# ...
+	
+	return($problem);
+}
+
 # This allows the user to configure their dashboard.
 sub configure_dashboard
 {
@@ -1767,6 +1849,7 @@ sub configure_dashboard
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}], cgi::task: [$conf->{cgi}{task}]\n");
 	if ($conf->{cgi}{save})
 	{
 		save_dashboard_configure($conf);
@@ -1782,6 +1865,11 @@ sub configure_dashboard
 	elsif ($conf->{cgi}{task} eq "load_config")
 	{
 		load_backup_configuration($conf);
+	}
+	elsif ($conf->{cgi}{task} eq "create-install-manifest")
+	{
+		create_install_manifest($conf);
+		return(0);
 	}
 	
 	### Header section
@@ -1815,7 +1903,7 @@ sub configure_dashboard
 	else
 	{
 		# Show the list of Anvil!s if this is the global section.
-		show_global_anvil_list($conf);
+		#show_global_anvil_list($conf);
 	}
 	# Close out the form.
 	print template($conf, "config.html", "close-form-table");
@@ -2150,6 +2238,20 @@ sub ask_which_cluster
 		{
 			next if not $cluster;
 			my $say_url = "&nbsp;";
+			
+			# Create the 'Configure' link.
+			my $image = template($conf, "common.html", "image", {
+				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_edit-anvil_16x16.png",
+				alt_text	=>	"#!string!button_0044!#",
+				id		=>	"configure_icon",
+			}, "", 1);
+			my $say_configure = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+				button_link	=>	"?config=true&anvil=$cluster",
+				button_text	=>	$image,
+				id		=>	"configure_$cluster",
+			}, "", 1);
+			
+			# If an info link has been specified, show it.
 			if ($conf->{clusters}{$cluster}{url})
 			{
 				my $image = template($conf, "common.html", "image", {
@@ -2167,6 +2269,7 @@ sub ask_which_cluster
 				anvil		=>	$cluster,
 				company		=>	$conf->{clusters}{$cluster}{company},
 				description	=>	$conf->{clusters}{$cluster}{description},
+				configure	=>	$say_configure,
 				url		=>	$say_url,
 			});
 		}
@@ -4131,7 +4234,7 @@ sub remote_call
 	}
 	
 	$error = "" if not defined $error;
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	return($error, $ssh_fh, $output);
 }
 

@@ -1,8 +1,16 @@
+
+// Used to zero-pad digits.
+function pad (str, max) {
+  str = str.toString();
+  return str.length < max ? pad("0" + str, max) : str;
+}
+
+// Hides things when the page finishes loading.
 function hide_on_load()
 {
 	document.getElementById('show_when_loaded').style.display = 'block'; 
 }
-
+// Shows things when the page finishes loading.
 function show_on_load()
 {
 	document.getElementById('hide_when_loaded').style.display = 'none'; 
