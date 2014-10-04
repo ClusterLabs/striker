@@ -6,6 +6,7 @@ $("#set_secondary_values").click(function(){
 	var bcn_prefix = $("#anvil_bcn_subnet_prefix").val();
 	var sn_prefix  = $("#anvil_sn_subnet_prefix").val();
 	var ifn_prefix = $("#anvil_ifn_subnet_prefix").val();
+	var regex_ipv4 = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
 	
 	// Make sure the sequence number is zero-padded if it's less than 10.
 	sequence = pad(sequence, 2);
@@ -66,12 +67,12 @@ $("#set_secondary_values").click(function(){
 		    node1_ipmi_ip = node1_ipmi_ip.replace(/\.\./g, ".");
 		    
 		// Make sure the generated IPs are sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node1_bcn_ip))
+		if (regex_ipv4.test(node1_bcn_ip))
 		{
 			node1_bcn_ip = node1_bcn_ip + '/255.255.0.0';
 			$("#anvil_node1_bcn_ip").val(node1_bcn_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node1_ipmi_ip))
+		if (regex_ipv4.test(node1_ipmi_ip))
 		{
 			node1_ipmi_ip = node1_ipmi_ip + '/255.255.0.0';
 			$("#anvil_node1_ipmi_ip").val(node1_ipmi_ip);
@@ -83,12 +84,12 @@ $("#set_secondary_values").click(function(){
 		var node2_ipmi_ip = bcn_prefix + '.' + ipmi_third + '.' + 1;
 		    node2_ipmi_ip = node2_ipmi_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node2_bcn_ip))
+		if (regex_ipv4.test(node2_bcn_ip))
 		{
 			node2_bcn_ip = node2_bcn_ip + '/255.255.0.0';
 			$("#anvil_node2_bcn_ip").val(node2_bcn_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node2_ipmi_ip))
+		if (regex_ipv4.test(node2_ipmi_ip))
 		{
 			node2_ipmi_ip = node2_ipmi_ip + '/255.255.0.0';
 			$("#anvil_node2_ipmi_ip").val(node2_ipmi_ip);
@@ -99,12 +100,12 @@ $("#set_secondary_values").click(function(){
 		    switch1_ip = switch1_ip.replace(/\.\./g, ".");
 		var switch2_ip = bcn_prefix + '.1.' + 1;
 		    switch2_ip = switch2_ip.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(switch1_ip))
+		if (regex_ipv4.test(switch1_ip))
 		{
 			switch1_ip = switch1_ip + '/255.255.0.0';
 			$("#anvil_switch1_ip").val(switch1_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(switch2_ip))
+		if (regex_ipv4.test(switch2_ip))
 		{
 			switch2_ip = switch2_ip + '/255.255.0.0';
 			$("#anvil_switch2_ip").val(switch2_ip);
@@ -115,12 +116,12 @@ $("#set_secondary_values").click(function(){
 		    pdu1_ip = pdu1_ip.replace(/\.\./g, ".");
 		var pdu2_ip = bcn_prefix + '.2.' + 1;
 		    pdu2_ip = pdu2_ip.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(pdu1_ip))
+		if (regex_ipv4.test(pdu1_ip))
 		{
 			pdu1_ip = pdu1_ip + '/255.255.0.0';
 			$("#anvil_pdu1_ip").val(pdu1_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(pdu2_ip))
+		if (regex_ipv4.test(pdu2_ip))
 		{
 			pdu2_ip = pdu2_ip + '/255.255.0.0';
 			$("#anvil_pdu2_ip").val(pdu2_ip);
@@ -131,12 +132,12 @@ $("#set_secondary_values").click(function(){
 		    ups1_ip = ups1_ip.replace(/\.\./g, ".");
 		var ups2_ip = bcn_prefix + '.3.' + 1;
 		    ups2_ip = ups2_ip.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(ups1_ip))
+		if (regex_ipv4.test(ups1_ip))
 		{
 			ups1_ip = ups1_ip + '/255.255.0.0';
 			$("#anvil_ups1_ip").val(ups1_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(ups2_ip))
+		if (regex_ipv4.test(ups2_ip))
 		{
 			ups2_ip = ups2_ip + '/255.255.0.0';
 			$("#anvil_ups2_ip").val(ups2_ip);
@@ -147,12 +148,12 @@ $("#set_secondary_values").click(function(){
 		    striker1_bcn_ip = striker1_bcn_ip.replace(/\.\./g, ".");
 		var striker2_bcn_ip = bcn_prefix + '.4.' + 1;
 		    striker2_bcn_ip = striker2_bcn_ip.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(striker1_bcn_ip))
+		if (regex_ipv4.test(striker1_bcn_ip))
 		{
 			striker1_bcn_ip = striker1_bcn_ip + '/255.255.0.0';
 			$("#anvil_striker1_bcn_ip").val(striker1_bcn_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(striker2_bcn_ip))
+		if (regex_ipv4.test(striker2_bcn_ip))
 		{
 			striker2_bcn_ip = striker2_bcn_ip + '/255.255.0.0';
 			$("#anvil_striker2_bcn_ip").val(striker2_bcn_ip);
@@ -165,7 +166,7 @@ $("#set_secondary_values").click(function(){
 		var node1_sn_ip = sn_prefix + '.' + third + '.' + 1;
 		    node1_sn_ip = node1_sn_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node1_sn_ip))
+		if (regex_ipv4.test(node1_sn_ip))
 		{
 			node1_sn_ip = node1_sn_ip + '/255.255.0.0';
 			$("#anvil_node1_sn_ip").val(node1_sn_ip);
@@ -175,7 +176,7 @@ $("#set_secondary_values").click(function(){
 		var node2_sn_ip = sn_prefix + '.' + third + '.' + 2;
 		    node2_sn_ip = node2_sn_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node2_sn_ip))
+		if (regex_ipv4.test(node2_sn_ip))
 		{
 			node2_sn_ip = node2_sn_ip + '/255.255.0.0';
 			$("#anvil_node2_sn_ip").val(node2_sn_ip);
@@ -188,7 +189,7 @@ $("#set_secondary_values").click(function(){
 		var node1_ifn_ip = ifn_prefix + '.' + third + '.' + 1;
 		    node1_ifn_ip = node1_ifn_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node1_ifn_ip))
+		if (regex_ipv4.test(node1_ifn_ip))
 		{
 			node1_ifn_ip = node1_ifn_ip + '/255.255.0.0';
 			$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
@@ -198,7 +199,7 @@ $("#set_secondary_values").click(function(){
 		var node2_ifn_ip = ifn_prefix + '.' + third + '.' + 2;
 		    node2_ifn_ip = node2_ifn_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(node2_ifn_ip))
+		if (regex_ipv4.test(node2_ifn_ip))
 		{
 			node2_ifn_ip = node2_ifn_ip + '/255.255.0.0';
 			$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
@@ -209,12 +210,12 @@ $("#set_secondary_values").click(function(){
 		    striker1_ifn_ip = striker1_ifn_ip.replace(/\.\./g, ".");
 		var striker2_ifn_ip = ifn_prefix + '.4.' + 1;
 		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(striker1_ifn_ip))
+		if (regex_ipv4.test(striker1_ifn_ip))
 		{
 			striker1_ifn_ip = striker1_ifn_ip + '/255.255.0.0';
 			$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
 		}
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(striker2_ifn_ip))
+		if (regex_ipv4.test(striker2_ifn_ip))
 		{
 			striker2_ifn_ip = striker2_ifn_ip + '/255.255.0.0';
 			$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
@@ -223,7 +224,7 @@ $("#set_secondary_values").click(function(){
 		// IFN Default Gateway
 		var ifn_gateway = ifn_prefix + '.255.254';
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
-		if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i.test(ifn_gateway))
+		if (regex_ipv4.test(ifn_gateway))
 		{
 			$("#anvil_ifn_gateway").val(ifn_gateway);
 		}
