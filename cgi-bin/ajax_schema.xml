@@ -1,0 +1,111 @@
+<!-- Notes:
+
+Button values are:
+0 == Button is disabled
+1 == Button is enabled
+
+Unless specified, all "state" values and specified as:
+0 == Off / Stopped
+1 == On / Started
+2 == Unknown state
+
+
+Note: The 'state' values for daemons reflects the basic 'status' output of the
+     daemon. It is entirely possible that a daemon can be in state '1' while
+     still having troubles. For example, 'clvmd' could be '1' whilst a given LV
+     could be 'inactive', so be sure to check a given daemon's sub-item staes.
+
+Note: All storage (RAM, Disk, etc) capacities will be represented as Bytes. The
+      UI will determine Base2/Base10, human-readible units to use, etc.
+
+DRBD:
+<resource id="..."> value is the DRBD resource name
+Possible values:
+<connection_state>
+* Connected
+* WFConnection	(waiting for analogy)
+* StandAlone	(not waiting for a connection)
+<role>
+* Primary
+* Secondary
+<disk_state>
+* UpToDate
+* Consistent
+* Inconsistent
+* Outdated
+* SyncSource
+* SyncTarget
+Other values will be added later
+-->
+
+<?xml version="1.0" encoding="UTF-8"?>
+<anvil>
+	<cluster id="an-cluster-05">
+		<nodes>
+			<node id="an-c05n01.alteeve.ca" short_name="an-c05n01">
+				<buttons>
+					<poweron>0</span>
+					<poweroff>0></span>
+					<join>0</span>
+					<withdraw>0</withdraw>
+					<hardware>1</hardware>
+					<fence>1</fence>
+				</buttons>
+				<state>
+					<system id="power">1</system>	<!-- Is the node powered on? -->
+					<system id="member">1</system>	<!-- Is the node in the Anvil!? -->
+					<daemon id="cman">1</daemon>
+					<daemon id="rgmanager">1</daemon>
+					<daemon id="drbd">1</daemon>
+					<daemon id="clvmd">1</daemon>
+					<daemon id="gfs2">1</daemon>
+					<daemon id="libvirtd">1</daemon>
+				</state>
+				<resources>
+					<resource id="cpu">
+						<cores>8</cores>
+						<model>Xeon E5-2609v2</model>
+						<frequency>2.5 GHz</frequency>
+					</resource>
+					<resource id="ram">
+						<total></total>
+						<used></used>
+						<available></available>
+					</resource>
+					<resource id="storage">
+						<partition id="/shared">
+							<device>/dev/sda5</device>
+							<total_space></total_space>
+							<used_space></used_space>
+							<free_space></free_space>
+						</partition>
+					</resource>
+				</resources>
+				
+				<drbd>
+					<resource id="r0">
+						<connection_state>Connected</connection_state>
+						<role>Primary</role>
+						<disk_state>UpToDate</disk_state>
+					</resource>
+				</drbd>
+				<clvmd>
+					<pv id="/dev/drbd0">
+					</pv>
+					<vg id="an-c05n01_vg0">
+					</vg>
+					<lv id="/dev/an-c05n01_vg0/shared">
+					</lv>
+				</clvmd>
+				<gfs2>
+					<partition id="774883e8-d0fe-a068-3969-4bb7dc679960">
+						<mount_point>/shared</mount_point>
+						<device>/dev/an-c05n01_vg0/shared</device>
+						<size></size>
+						<used></used>
+					</partition>
+				</gfs2>
+			</node>
+		</nodes>
+	</cluster>
+</anvil>
