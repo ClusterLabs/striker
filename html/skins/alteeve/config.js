@@ -9,20 +9,23 @@ $("#set_secondary_values").click(function(){
 	var regex_ipv4 = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
 	
 	// Make sure the sequence number is zero-padded if it's less than 10.
-	sequence = pad(sequence, 2);
-	$("#anvil_sequence").val(sequence);
+	var padded_sequence  = pad(sequence, 2);
+	var integer_sequence = sequence;
+	    integer_sequence = integer_sequence.replace(/^0+/, '');
+
+	$("#anvil_sequence").val(padded_sequence);
 	
 	// Put together some values.
 	// Host names
 	// Node 1
-	var node1_name = prefix + '-a' + sequence + 'n01.' + domain;
+	var node1_name = prefix + '-a' + padded_sequence + 'n01.' + domain;
 	$("#anvil_node1_name").val(node1_name);
 	// Node 2
-	var node2_name = prefix + '-a' + sequence + 'n02.' + domain;
+	var node2_name = prefix + '-a' + padded_sequence + 'n02.' + domain;
 	$("#anvil_node2_name").val(node2_name);
 	// Anvil! Name
 	var anvil_cluster_name = $("#anvil_cluster_name").val();
-	var anvil_name         = prefix + '-' + anvil_cluster_name + '-' + sequence;
+	var anvil_name         = prefix + '-' + anvil_cluster_name + '-' + padded_sequence;
 	$("#anvil_name").val(anvil_name);
 	
 	// Switch 1
@@ -50,11 +53,41 @@ $("#set_secondary_values").click(function(){
 	var striker2_name = prefix + '-striker02.' + domain;
 	$("#anvil_striker2_name").val(striker2_name);
 	
+	// Set the PDU outlet numbers
+	var remainder = (integer_sequence % 4);
+	//alert('integer_sequence: ['+integer_sequence+'], remainder: ['+remainder+']');
+	if (remainder == 1)
+	{
+		$("#anvil_node1_pdu1_outlet").val(1);
+		$("#anvil_node1_pdu2_outlet").val(1);
+		$("#anvil_node2_pdu1_outlet").val(2);
+		$("#anvil_node2_pdu2_outlet").val(2);
+	}
+	else if (remainder == 2)
+	{
+		$("#anvil_node1_pdu1_outlet").val(3);
+		$("#anvil_node1_pdu2_outlet").val(3);
+		$("#anvil_node2_pdu1_outlet").val(4);
+		$("#anvil_node2_pdu2_outlet").val(4);
+	}
+	else if (remainder == 3)
+	{
+		$("#anvil_node1_pdu1_outlet").val(5);
+		$("#anvil_node1_pdu2_outlet").val(5);
+		$("#anvil_node2_pdu1_outlet").val(6);
+		$("#anvil_node2_pdu2_outlet").val(6);
+	}
+	else if (remainder == 0)
+	{
+		$("#anvil_node1_pdu1_outlet").val(7);
+		$("#anvil_node1_pdu2_outlet").val(7);
+		$("#anvil_node2_pdu1_outlet").val(8);
+		$("#anvil_node2_pdu2_outlet").val(8);
+	}
+	
 	// IPs; *if* prefixes are passed.
 	// BCN
-	var third = sequence;
-	    third = third.replace(/^0+/, '');
-	    third = third * 10;
+	var third = integer_sequence * 10;
 	if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i.test(bcn_prefix))
 	{
 		// IPMI third octal

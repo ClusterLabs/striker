@@ -1639,10 +1639,14 @@ sub verify_os
 	{
 		chomp;
 		my $line = $_;
-		if ($line =~ /release (\d+)\.(\d+) /)
+		if ($line =~ /release (\d+)\.(.*)/)
 		{
 			$major = $1;
 			$minor = $2;
+			# CentOS uses 'CentOS Linux release 7.0.1406 (Core)', 
+			# so I need to parse off the second '.' and whatever 
+			# is after it.
+			$minor =~ s/\..*$//;
 		}
 	}
 	close $file_handle;

@@ -270,11 +270,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">dafault gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
-		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file.<br />Generally it will be in the format "<span class="code"><prefix>-#!string!brand_0013!#-<sequence></span>".]]></key>
-		<key name="explain_0096"><![CDATA[]]></key>
-		<key name="explain_0097"><![CDATA[]]></key>
-		<key name="explain_0098"><![CDATA[]]></key>
-		<key name="explain_0099"><![CDATA[]]></key>
+		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file.<br />Generally it will be in the format "<span class="code"><prefix>-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
+		<key name="explain_0096"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
+		<key name="explain_0097"><![CDATA[This is the outlet on the <b>second</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>second</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
+		<key name="explain_0098"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
+		<key name="explain_0099"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
 		<key name="explain_0100"><![CDATA[]]></key>
 		<key name="explain_0101"><![CDATA[]]></key>
 		
@@ -470,8 +470,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0189">IFN Primary DNS</key>
 		<key name="row_0190">IFN Secondary DNS</key>
 		<key name="row_0191">#!string!brand_0003!# Name</key>
-		<key name="row_0192"></key>
-		<key name="row_0193"></key>
+		<key name="row_0192"><![CDATA[PDU <span class="highlight_bad_bold">1</span> Outlet]]></key>
+		<key name="row_0193"><![CDATA[PDU <span class="highlight_bad_bold">2</span> Outlet]]></key>
 		<key name="row_0194"></key>
 		<key name="row_0195"></key>
 		<key name="row_0196"></key>
@@ -713,8 +713,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0149">Create an #!string!brand_0003!# Install Manifest</key>
 		<key name="title_0150">Primary Configuration Values</key>
 		<key name="title_0151">Secondary Configuration Values</key>
-		<key name="title_0152">Node 1 Variables</key>
-		<key name="title_0153">Node 2 Variables</key>
+		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">1</span> Variables]]></key>
+		<key name="title_0153"><![CDATA[Node <span class="highlight_bad_bold">2</span> Variables]]></key>
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155"></key>
 		<key name="title_0156"></key>
