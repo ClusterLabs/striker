@@ -51,7 +51,7 @@
 		<key name="button_0044">Configure</key>
 		<key name="button_0045">Save</key>
 		<key name="button_0046">Set Below Values</key>
-		<key name="button_0047"></key>
+		<key name="button_0047">Generate</key>
 		<key name="button_0048"></key>
 		<key name="button_0049"></key>
 		<key name="button_0050"></key>
@@ -270,13 +270,22 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">dafault gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
-		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file.<br />Generally it will be in the format "<span class="code"><prefix>-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
+		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file. It must be 15 <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters or less.<br />Generally it will be in the format "<span class="code">&lt;prefix&gt;-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
 		<key name="explain_0096"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
 		<key name="explain_0097"><![CDATA[This is the outlet on the <b>second</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>second</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
 		<key name="explain_0098"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
 		<key name="explain_0099"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
-		<key name="explain_0100"><![CDATA[]]></key>
-		<key name="explain_0101"><![CDATA[]]></key>
+		<key name="explain_0100"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
+		<key name="explain_0101"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters.]]></key>
+		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
+		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
+		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
+		<key name="explain_0105"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
+		<key name="explain_0106"><![CDATA[]]></key>
+		<key name="explain_0107"><![CDATA[]]></key>
+		<key name="explain_0108"><![CDATA[]]></key>
+		<key name="explain_0109"><![CDATA[]]></key>
+		<key name="explain_0110"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -716,7 +725,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">1</span> Variables]]></key>
 		<key name="title_0153"><![CDATA[Node <span class="highlight_bad_bold">2</span> Variables]]></key>
 		<key name="title_0154">Shared Variables</key>
-		<key name="title_0155"></key>
+		<key name="title_0155">Problem with the specified form values.</key>
 		<key name="title_0156"></key>
 		<key name="title_0157"></key>
 		<key name="title_0158"></key>

@@ -141,6 +141,7 @@ get_cgi_vars($conf, [
 	"do",
 	"driver_iso",
 	"file",
+	"generate",
 	"host",
 	"anvil_id",
 	"insert",

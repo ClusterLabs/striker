@@ -1,5 +1,24 @@
 <!-- These are used when a user is configuring an Anvil! or the global values -->
 
+<!-- start form-error -->
+<table>
+	<tr>
+		<td colspan="2" class="highlight_ready_bold">
+			#!string!title_0155!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0020!#
+		</td>
+		<td>
+			#!replace!message!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end form-error -->
+
 <!-- start install-manifest-form -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
@@ -32,7 +51,7 @@
 	<!-- Anvil! Prefix -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0159!#
+			#!string!row_0159!#<span class="highlight_bad_star">#!replace!anvil_prefix_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_prefix" id="anvil_prefix" value="#!replace!anvil_prefix!#" style="width: 200px;" />
@@ -47,7 +66,7 @@
 	<!-- Anvil! Sequence -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0161!#
+			#!string!row_0161!#<span class="highlight_bad_star">#!replace!anvil_sequence_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_sequence" id="anvil_sequence" value="#!replace!anvil_sequence!#" style="width: 200px;" />
@@ -62,7 +81,7 @@
 	<!-- User's Domain Name -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0160!#
+			#!string!row_0160!#<span class="highlight_bad_star">#!replace!anvil_domain_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_domain" id="anvil_domain" value="#!replace!anvil_domain!#" style="width: 200px;" />
@@ -141,6 +160,7 @@
 			&nbsp;
 		</td>
 	</tr>
+	
 	<!-- Secondary configuration variables. -->
 	<tr>
 		<td colspan="4" class="highlight_ready_bold">
@@ -164,10 +184,10 @@
 	<!-- Cluster name -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0191!#
+			#!string!row_0191!#<span class="highlight_bad_star">#!replace!anvil_name_star!#</span>
 		</td>
 		<td>
-			<input type="text" name="anvil_name" id="anvil_name" value="#!replace!anvil_name!#" style="width: 200px;" />
+			<input type="text" name="anvil_name" id="anvil_name" value="#!replace!anvil_name!#" style="width: 200px;" maxlength="15" />
 			<input type="hidden" name="anvil_cluster_name" id="anvil_cluster_name" value="#!string!brand_0013!#">
 		</td>
 		<td style="text-align: left;">
@@ -181,7 +201,7 @@
 	<!-- IFN Default Gateway -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0188!#
+			#!string!row_0188!#<span class="highlight_bad_star">#!replace!anvil_ifn_gateway_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ifn_gateway" id="anvil_ifn_gateway" value="#!replace!anvil_ifn_gateway!#" style="width: 200px;" />
@@ -196,7 +216,7 @@
 	<!-- IFN Primary DNS -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0189!#
+			#!string!row_0189!#<span class="highlight_bad_star">#!replace!anvil_ifn_dns1_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ifn_dns1" id="anvil_ifn_dns1" value="#!replace!anvil_ifn_dns1!#" style="width: 200px;" />
@@ -211,7 +231,7 @@
 	<!-- IFN Secondary DNS -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0190!#
+			#!string!row_0190!#<span class="highlight_bad_star">#!replace!anvil_ifn_dns2_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ifn_dns2" id="anvil_ifn_dns2" value="#!replace!anvil_ifn_dns2!#" style="width: 200px;" />
@@ -227,7 +247,7 @@
 	<!-- Switches -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0178!#
+			#!string!row_0178!#<span class="highlight_bad_star">#!replace!anvil_switch1_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_switch1_name" id="anvil_switch1_name" value="#!replace!anvil_switch1_name!#" style="width: 200px;" />
@@ -241,7 +261,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0179!#
+			#!string!row_0179!#<span class="highlight_bad_star">#!replace!anvil_switch1_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_switch1_ip" id="anvil_switch1_ip" value="#!replace!anvil_switch1_ip!#" style="width: 200px;" />
@@ -255,7 +275,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0180!#
+			#!string!row_0180!#<span class="highlight_bad_star">#!replace!anvil_switch2_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_switch2_name" id="anvil_switch2_name" value="#!replace!anvil_switch2_name!#" style="width: 200px;" />
@@ -269,7 +289,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0181!#
+			#!string!row_0181!#<span class="highlight_bad_star">#!replace!anvil_switch2_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_switch2_ip" id="anvil_switch2_ip" value="#!replace!anvil_switch2_ip!#" style="width: 200px;" />
@@ -284,7 +304,7 @@
 	<!-- PDUs -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0174!#
+			#!string!row_0174!#<span class="highlight_bad_star">#!replace!anvil_pdu1_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_pdu1_name" id="anvil_pdu1_name" value="#!replace!anvil_pdu1_name!#" style="width: 200px;" />
@@ -298,7 +318,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0175!#
+			#!string!row_0175!#<span class="highlight_bad_star">#!replace!anvil_pdu1_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_pdu1_ip" id="anvil_pdu1_ip" value="#!replace!anvil_pdu1_ip!#" style="width: 200px;" />
@@ -312,7 +332,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0176!#
+			#!string!row_0176!#<span class="highlight_bad_star">#!replace!anvil_pdu2_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_pdu2_name" id="anvil_pdu2_name" value="#!replace!anvil_pdu2_name!#" style="width: 200px;" />
@@ -326,7 +346,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0177!#
+			#!string!row_0177!#<span class="highlight_bad_star">#!replace!anvil_pdu2_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_pdu2_ip" id="anvil_pdu2_ip" value="#!replace!anvil_pdu2_ip!#" style="width: 200px;" />
@@ -341,7 +361,7 @@
 	<!-- UPSes -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0170!#
+			#!string!row_0170!#<span class="highlight_bad_star">#!replace!anvil_ups1_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ups1_name" id="anvil_ups1_name" value="#!replace!anvil_ups1_name!#" style="width: 200px;" />
@@ -355,7 +375,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0171!#
+			#!string!row_0171!#<span class="highlight_bad_star">#!replace!anvil_ups1_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ups1_ip" id="anvil_ups1_ip" value="#!replace!anvil_ups1_ip!#" style="width: 200px;" />
@@ -369,7 +389,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0172!#
+			#!string!row_0172!#<span class="highlight_bad_star">#!replace!anvil_ups2_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ups2_name" id="anvil_ups2_name" value="#!replace!anvil_ups2_name!#" style="width: 200px;" />
@@ -383,7 +403,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0173!#
+			#!string!row_0173!#<span class="highlight_bad_star">#!replace!anvil_ups2_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_ups2_ip" id="anvil_ups2_ip" value="#!replace!anvil_ups2_ip!#" style="width: 200px;" />
@@ -398,7 +418,7 @@
 	<!-- Striker dashboards -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0182!#
+			#!string!row_0182!#<span class="highlight_bad_star">#!replace!anvil_striker1_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker1_name" id="anvil_striker1_name" value="#!replace!anvil_striker1_name!#" style="width: 200px;" />
@@ -412,7 +432,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0183!#
+			#!string!row_0183!#<span class="highlight_bad_star">#!replace!anvil_striker1_bcn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker1_bcn_ip" id="anvil_striker1_bcn_ip" value="#!replace!anvil_striker1_bcn_ip!#" style="width: 200px;" />
@@ -426,7 +446,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0184!#
+			#!string!row_0184!#<span class="highlight_bad_star">#!replace!anvil_striker1_ifn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker1_ifn_ip" id="anvil_striker1_ifn_ip" value="#!replace!anvil_striker1_ifn_ip!#" style="width: 200px;" />
@@ -440,7 +460,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0185!#
+			#!string!row_0185!#<span class="highlight_bad_star">#!replace!anvil_striker2_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker2_name" id="anvil_striker2_name" value="#!replace!anvil_striker2_name!#" style="width: 200px;" />
@@ -454,7 +474,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0186!#
+			#!string!row_0186!#<span class="highlight_bad_star">#!replace!anvil_striker2_bcn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker2_bcn_ip" id="anvil_striker2_bcn_ip" value="#!replace!anvil_striker2_bcn_ip!#" style="width: 200px;" />
@@ -468,7 +488,7 @@
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0187!#
+			#!string!row_0187!#<span class="highlight_bad_star">#!replace!anvil_striker2_ifn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_striker2_ifn_ip" id="anvil_striker2_ifn_ip" value="#!replace!anvil_striker2_ifn_ip!#" style="width: 200px;" />
@@ -499,7 +519,7 @@
 	<!-- Host Name -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0165!#
+			#!string!row_0165!#<span class="highlight_bad_star">#!replace!anvil_node1_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_name" id="anvil_node1_name" value="#!replace!anvil_node1_name!#" style="width: 200px;" />
@@ -514,7 +534,7 @@
 	<!-- BCN IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0166!#
+			#!string!row_0166!#<span class="highlight_bad_star">#!replace!anvil_node1_bcn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_bcn_ip" id="anvil_node1_bcn_ip" value="#!replace!anvil_node1_bcn_ip!#" style="width: 200px;" />
@@ -529,7 +549,7 @@
 	<!-- IPMI IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0168!#
+			#!string!row_0168!#<span class="highlight_bad_star">#!replace!anvil_node1_ipmi_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_ipmi_ip" id="anvil_node1_ipmi_ip" value="#!replace!anvil_node1_ipmi_ip!#" style="width: 200px;" />
@@ -544,7 +564,7 @@
 	<!-- SN IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0167!#
+			#!string!row_0167!#<span class="highlight_bad_star">#!replace!anvil_node1_sn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_sn_ip" id="anvil_node1_sn_ip" value="#!replace!anvil_node1_sn_ip!#" style="width: 200px;" />
@@ -559,7 +579,7 @@
 	<!-- IFN IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0169!#
+			#!string!row_0169!#<span class="highlight_bad_star">#!replace!anvil_node1_ifn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_ifn_ip" id="anvil_node1_ifn_ip" value="#!replace!anvil_node1_ifn_ip!#" style="width: 200px;" />
@@ -574,7 +594,7 @@
 	<!-- PDU 1 Outlet ? -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0192!#
+			#!string!row_0192!#<span class="highlight_bad_star">#!replace!anvil_node1_pdu1_outlet_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_pdu1_outlet" id="anvil_node1_pdu1_outlet" value="#!replace!anvil_node1_pdu1_outlet!#" style="width: 200px;" />
@@ -589,7 +609,7 @@
 	<!-- PDU 2 Outlet ? -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0193!#
+			#!string!row_0193!#<span class="highlight_bad_star">#!replace!anvil_node1_pdu2_outlet_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node1_pdu2_outlet" id="anvil_node1_pdu2_outlet" value="#!replace!anvil_node1_pdu2_outlet!#" style="width: 200px;" />
@@ -613,7 +633,7 @@
 	<!-- Host Name -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0165!#
+			#!string!row_0165!#<span class="highlight_bad_star">#!replace!anvil_node2_name_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_name" id="anvil_node2_name" value="#!replace!anvil_node2_name!#" style="width: 200px;" />
@@ -628,7 +648,7 @@
 	<!-- BCN IP Address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0166!#
+			#!string!row_0166!#<span class="highlight_bad_star">#!replace!anvil_node2_bcn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_bcn_ip" id="anvil_node2_bcn_ip" value="#!replace!anvil_node2_bcn_ip!#" style="width: 200px;" />
@@ -643,7 +663,7 @@
 	<!-- IPMI IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0168!#
+			#!string!row_0168!#<span class="highlight_bad_star">#!replace!anvil_node2_ipmi_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_ipmi_ip" id="anvil_node2_ipmi_ip" value="#!replace!anvil_node2_ipmi_ip!#" style="width: 200px;" />
@@ -658,7 +678,7 @@
 	<!-- SN IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0167!#
+			#!string!row_0167!#<span class="highlight_bad_star">#!replace!anvil_node2_sn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_sn_ip" id="anvil_node2_sn_ip" value="#!replace!anvil_node2_sn_ip!#" style="width: 200px;" />
@@ -673,7 +693,7 @@
 	<!-- IFN IP address -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0169!#
+			#!string!row_0169!#<span class="highlight_bad_star">#!replace!anvil_node2_ifn_ip_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_ifn_ip" id="anvil_node2_ifn_ip" value="#!replace!anvil_node2_ifn_ip!#" style="width: 200px;" />
@@ -688,7 +708,7 @@
 	<!-- PDU 1 Outlet ? -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0192!#
+			#!string!row_0192!#<span class="highlight_bad_star">#!replace!anvil_node2_pdu1_outlet_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_pdu1_outlet" id="anvil_node2_pdu1_outlet" value="#!replace!anvil_node2_pdu1_outlet!#" style="width: 200px;" />
@@ -703,7 +723,7 @@
 	<!-- PDU 2 Outlet ? -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0193!#
+			#!string!row_0193!#<span class="highlight_bad_star">#!replace!anvil_node2_pdu2_outlet_star!#</span>
 		</td>
 		<td>
 			<input type="text" name="anvil_node2_pdu2_outlet" id="anvil_node2_pdu2_outlet" value="#!replace!anvil_node2_pdu2_outlet!#" style="width: 200px;" />
@@ -715,7 +735,6 @@
 			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
 		</td>
 	</tr>
-	
 	<tr>
 		<td colspan="4">
 			&nbsp;
@@ -729,7 +748,10 @@
 						&nbsp;
 					</td>
 					<td width="50%" class="hidden_td">
-						<input type="submit" name="save" id="save" value="#!string!button_0045!#" class="bold_button">
+						<input type="submit" name="do" id="do" value="#!string!button_0047!#" class="bold_button" />
+						<input type="hidden" name="config" id="config" value="true" />
+						<input type="hidden" name="generate" id="generate" value="true" />
+						<input type="hidden" name="task" id="task" value="create-install-manifest" />
 					</td>
 				</tr>
 			</table>

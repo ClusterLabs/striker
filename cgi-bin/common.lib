@@ -15,6 +15,63 @@ use Term::ReadKey;
 my $THIS_FILE = "common.lib";
 
 
+# This takes an integer and, if it is a valid CIDR range, returns the 
+# dotted-decimal equivalent. If it's not, it returns '#!INVALID!#'.
+sub convert_cidr_to_dotted_decimal
+{
+	my ($conf, $netmask) = @_;
+	
+	if ($netmask =~ /^\d{1,2}$/)
+	{
+		# Make sure it's a (useful) CIDR
+		if (($netmask >= 1) && ($netmask <= 32))
+		{
+			# 0 and 31 are useless in Striker
+			if    ($netmask == 1)  { $netmask = "128.0.0.0"; }
+			elsif ($netmask == 2)  { $netmask = "192.0.0.0"; }
+			elsif ($netmask == 3)  { $netmask = "224.0.0.0"; }
+			elsif ($netmask == 4)  { $netmask = "240.0.0.0"; }
+			elsif ($netmask == 5)  { $netmask = "248.0.0.0"; }
+			elsif ($netmask == 6)  { $netmask = "252.0.0.0"; }
+			elsif ($netmask == 7)  { $netmask = "254.0.0.0"; }
+			elsif ($netmask == 8)  { $netmask = "255.0.0.0"; }
+			elsif ($netmask == 9)  { $netmask = "255.128.0.0"; }
+			elsif ($netmask == 10) { $netmask = "255.192.0.0"; }
+			elsif ($netmask == 11) { $netmask = "255.224.0.0"; }
+			elsif ($netmask == 12) { $netmask = "255.240.0.0"; }
+			elsif ($netmask == 13) { $netmask = "255.248.0.0"; }
+			elsif ($netmask == 14) { $netmask = "255.252.0.0"; }
+			elsif ($netmask == 15) { $netmask = "255.254.0.0"; }
+			elsif ($netmask == 16) { $netmask = "255.255.0.0"; }
+			elsif ($netmask == 17) { $netmask = "255.255.128.0"; }
+			elsif ($netmask == 18) { $netmask = "255.255.192.0"; }
+			elsif ($netmask == 19) { $netmask = "255.255.224.0"; }
+			elsif ($netmask == 20) { $netmask = "255.255.240.0"; }
+			elsif ($netmask == 21) { $netmask = "255.255.248.0"; }
+			elsif ($netmask == 22) { $netmask = "255.255.252.0"; }
+			elsif ($netmask == 23) { $netmask = "255.255.254.0"; }
+			elsif ($netmask == 24) { $netmask = "255.255.255.0"; }
+			elsif ($netmask == 25) { $netmask = "255.255.255.128"; }
+			elsif ($netmask == 26) { $netmask = "255.255.255.192"; }
+			elsif ($netmask == 27) { $netmask = "255.255.255.224"; }
+			elsif ($netmask == 28) { $netmask = "255.255.255.240"; }
+			elsif ($netmask == 29) { $netmask = "255.255.255.248"; }
+			elsif ($netmask == 30) { $netmask = "255.255.255.252"; }
+			elsif ($netmask == 32) { $netmask = "255.255.255.255"; }
+			else
+			{
+				$netmask = "#!INVALID!#";
+			}
+		}
+		else
+		{
+			$netmask = "#!INVALID!#";
+		}
+	}
+	
+	return($netmask);
+}
+
 # This creates an 'expect' script for an rsync call.
 sub create_rsync_wrapper
 {

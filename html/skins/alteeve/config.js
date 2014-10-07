@@ -6,7 +6,8 @@ $("#set_secondary_values").click(function(){
 	var bcn_prefix = $("#anvil_bcn_subnet_prefix").val();
 	var sn_prefix  = $("#anvil_sn_subnet_prefix").val();
 	var ifn_prefix = $("#anvil_ifn_subnet_prefix").val();
-	var regex_ipv4 = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
+	var regex_ipv4      = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
+	var regex_two_octal = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i;
 	
 	// Make sure the sequence number is zero-padded if it's less than 10.
 	var padded_sequence  = pad(sequence, 2);
@@ -55,7 +56,6 @@ $("#set_secondary_values").click(function(){
 	
 	// Set the PDU outlet numbers
 	var remainder = (integer_sequence % 4);
-	//alert('integer_sequence: ['+integer_sequence+'], remainder: ['+remainder+']');
 	if (remainder == 1)
 	{
 		$("#anvil_node1_pdu1_outlet").val(1);
@@ -88,7 +88,7 @@ $("#set_secondary_values").click(function(){
 	// IPs; *if* prefixes are passed.
 	// BCN
 	var third = integer_sequence * 10;
-	if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i.test(bcn_prefix))
+	if (regex_two_octal.test(bcn_prefix))
 	{
 		// IPMI third octal
 		var ipmi_third = third + 1;
@@ -112,8 +112,8 @@ $("#set_secondary_values").click(function(){
 		}
 		
 		// Node 2
-		var node2_bcn_ip = bcn_prefix + '.' + third + '.' + 2;
-		    node2_bcn_ip = node2_bcn_ip.replace(/\.\./g, ".");
+		var node2_bcn_ip  = bcn_prefix + '.' + third + '.' + 2;
+		    node2_bcn_ip  = node2_bcn_ip.replace(/\.\./g, ".");
 		var node2_ipmi_ip = bcn_prefix + '.' + ipmi_third + '.' + 1;
 		    node2_ipmi_ip = node2_ipmi_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
@@ -193,7 +193,7 @@ $("#set_secondary_values").click(function(){
 		}
 	}
 	// SN
-	if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i.test(sn_prefix))
+	if (regex_two_octal.test(sn_prefix))
 	{
 		// Node 1
 		var node1_sn_ip = sn_prefix + '.' + third + '.' + 1;
@@ -216,7 +216,7 @@ $("#set_secondary_values").click(function(){
 		}
 	}
 	// IFN
-	if (/^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i.test(ifn_prefix))
+	if (regex_two_octal.test(ifn_prefix))
 	{
 		// Node 1
 		var node1_ifn_ip = ifn_prefix + '.' + third + '.' + 1;

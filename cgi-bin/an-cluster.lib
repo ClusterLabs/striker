@@ -1768,7 +1768,46 @@ sub create_install_manifest
 	
 	my $show_form = 1;
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
-	if ($conf->{cgi}{'do'} eq "generate")
+	$conf->{form}{anvil_prefix_star}            = "";
+	$conf->{form}{anvil_sequence_star}          = "";
+	$conf->{form}{anvil_domain_star}            = "";
+	$conf->{form}{anvil_name_star}              = "";
+	$conf->{form}{anvil_ifn_gateway_star}       = "";
+	$conf->{form}{anvil_ifn_dns1_star}          = "";
+	$conf->{form}{anvil_ifn_dns2_star}          = "";
+	$conf->{form}{anvil_switch1_name_star}      = "";
+	$conf->{form}{anvil_switch1_ip_star}        = "";
+	$conf->{form}{anvil_switch2_name_star}      = "";
+	$conf->{form}{anvil_switch2_ip_star}        = "";
+	$conf->{form}{anvil_pdu1_name_star}         = "";
+	$conf->{form}{anvil_pdu1_ip_star}           = "";
+	$conf->{form}{anvil_pdu2_name_star}         = "";
+	$conf->{form}{anvil_pdu2_ip_star}           = "";
+	$conf->{form}{anvil_ups1_name_star}         = "";
+	$conf->{form}{anvil_ups1_ip_star}           = "";
+	$conf->{form}{anvil_ups2_name_star}         = "";
+	$conf->{form}{anvil_ups2_ip_star}           = "";
+	$conf->{form}{anvil_striker1_name_star}     = "";
+	$conf->{form}{anvil_striker1_bcn_ip_star}   = "";
+	$conf->{form}{anvil_striker1_ifn_ip_star}   = "";
+	$conf->{form}{anvil_striker2_name_star}     = "";
+	$conf->{form}{anvil_striker2_bcn_ip_star}   = "";
+	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
+	$conf->{form}{anvil_node1_name_star}        = "";
+	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
+	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
+	$conf->{form}{anvil_node1_sn_ip_star}       = "";
+	$conf->{form}{anvil_node1_ifn_ip_star}      = "";
+	$conf->{form}{anvil_node1_pdu1_outlet_star} = "";
+	$conf->{form}{anvil_node1_pdu2_outlet_star} = "";
+	$conf->{form}{anvil_node2_name_star}        = "";
+	$conf->{form}{anvil_node2_bcn_ip_star}      = "";
+	$conf->{form}{anvil_node2_ipmi_ip_star}     = "";
+	$conf->{form}{anvil_node2_sn_ip_star}       = "";
+	$conf->{form}{anvil_node2_ifn_ip_star}      = "";
+	$conf->{form}{anvil_node2_pdu1_outlet_star} = "";
+	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
+	if ($conf->{cgi}{generate})
 	{
 		# Sanity check the user's answers and, if OK, generate the
 		# manifest and make it available for download.
@@ -1789,7 +1828,7 @@ sub create_install_manifest
 	if ($show_form)
 	{
 		# Set some default values if 'save' isn't set.
-		if (not $conf->{cgi}{save})
+		if (not $conf->{cgi}{generate})
 		{
 			if (not $conf->{cgi}{anvil_prefix})            { $conf->{cgi}{anvil_prefix}            = "xx"; }
 			if (not $conf->{cgi}{anvil_domain})            { $conf->{cgi}{anvil_domain}            = "localdomain"; }
@@ -1805,47 +1844,86 @@ sub create_install_manifest
 		print template($conf, "config.html", "install-manifest-form", {
 			form_file			=>	"/cgi-bin/an-cdb",
 			anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
-			anvil_domain			=>	$conf->{cgi}{anvil_domain},
+			anvil_prefix_star		=>	$conf->{form}{anvil_prefix_star},
 			anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
+			anvil_sequence_star		=>	$conf->{form}{anvil_sequence_star},
+			anvil_domain			=>	$conf->{cgi}{anvil_domain},
+			anvil_domain_star		=>	$conf->{form}{anvil_domain_star},
 			anvil_bcn_subnet_prefix		=>	$conf->{cgi}{anvil_bcn_subnet_prefix},
 			anvil_sn_subnet_prefix		=>	$conf->{cgi}{anvil_sn_subnet_prefix},
 			anvil_ifn_subnet_prefix		=>	$conf->{cgi}{anvil_ifn_subnet_prefix},
 			anvil_name			=>	$conf->{cgi}{anvil_name},
+			anvil_name_star			=>	$conf->{form}{anvil_name_star},
 			anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
+			anvil_node1_name_star		=>	$conf->{form}{anvil_node1_name_star},
 			anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
+			anvil_node1_bcn_ip_star		=>	$conf->{form}{anvil_node1_bcn_ip_star},
 			anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
+			anvil_node1_ipmi_ip_star	=>	$conf->{form}{anvil_node1_ipmi_ip_star},
 			anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
+			anvil_node1_sn_ip_star		=>	$conf->{form}{anvil_node1_sn_ip_star},
 			anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
+			anvil_node1_ifn_ip_star		=>	$conf->{form}{anvil_node1_ifn_ip_star},
 			anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
+			anvil_node1_pdu1_outlet_star	=>	$conf->{form}{anvil_node1_pdu1_outlet_star},
 			anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
+			anvil_node1_pdu2_outlet_star	=>	$conf->{form}{anvil_node1_pdu2_outlet_star},
 			anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
+			anvil_node2_name_star		=>	$conf->{form}{anvil_node2_name_star},
 			anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
+			anvil_node2_bcn_ip_star		=>	$conf->{form}{anvil_node2_bcn_ip_star},
 			anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
+			anvil_node2_ipmi_ip_star	=>	$conf->{form}{anvil_node2_ipmi_ip_star},
 			anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
+			anvil_node2_sn_ip_star		=>	$conf->{form}{anvil_node2_sn_ip_star},
 			anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
+			anvil_node2_ifn_ip_star		=>	$conf->{form}{anvil_node2_ifn_ip_star},
 			anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
+			anvil_node2_pdu1_outlet_star	=>	$conf->{form}{anvil_node2_pdu1_outlet_star},
 			anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
+			anvil_node2_pdu2_outlet_star	=>	$conf->{form}{anvil_node2_pdu2_outlet_star},
 			anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
+			anvil_ifn_gateway_star		=>	$conf->{form}{anvil_ifn_gateway_star},
 			anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
+			anvil_ifn_dns1_star		=>	$conf->{form}{anvil_ifn_dns1_star},
 			anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
+			anvil_ifn_dns2_star		=>	$conf->{form}{anvil_ifn_dns2_star},
 			anvil_ups1_name			=>	$conf->{cgi}{anvil_ups1_name},
+			anvil_ups1_name_star		=>	$conf->{form}{anvil_ups1_name_star},
 			anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
+			anvil_ups1_ip_star		=>	$conf->{form}{anvil_ups1_ip_star},
 			anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
+			anvil_ups2_name_star		=>	$conf->{form}{anvil_ups2_name_star},
 			anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
+			anvil_ups2_ip_star		=>	$conf->{form}{anvil_ups2_ip_star},
 			anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
+			anvil_pdu1_name_star		=>	$conf->{form}{anvil_pdu1_name_star},
 			anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
+			anvil_pdu1_ip_star		=>	$conf->{form}{anvil_pdu1_ip_star},
 			anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
+			anvil_pdu2_name_star		=>	$conf->{form}{anvil_pdu2_name_star},
 			anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
+			anvil_pdu2_ip_star		=>	$conf->{form}{anvil_pdu2_ip_star},
 			anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
+			anvil_switch1_name_star		=>	$conf->{form}{anvil_switch1_name_star},
 			anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
+			anvil_switch1_ip_star		=>	$conf->{form}{anvil_switch1_ip_star},
 			anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
+			anvil_switch2_name_star		=>	$conf->{form}{anvil_switch2_name_star},
 			anvil_switch2_ip		=>	$conf->{cgi}{anvil_switch2_ip},
+			anvil_switch2_ip_star		=>	$conf->{form}{anvil_switch2_ip_star},
 			anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
+			anvil_striker1_name_star	=>	$conf->{form}{anvil_striker1_name_star},
 			anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
+			anvil_striker1_bcn_ip_star	=>	$conf->{form}{anvil_striker1_bcn_ip_star},
 			anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
+			anvil_striker1_ifn_ip_star	=>	$conf->{form}{anvil_striker1_ifn_ip_star},
 			anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
+			anvil_striker2_name_star	=>	$conf->{form}{anvil_striker2_name_star},
 			anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
+			anvil_striker2_bcn_ip_star	=>	$conf->{form}{anvil_striker2_bcn_ip_star},
 			anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+			anvil_striker2_ifn_ip_star	=>	$conf->{form}{anvil_striker2_ifn_ip_star},
 		});
 	}
 	
@@ -1867,11 +1945,261 @@ sub generate_install_manifest
 sub sanity_check_manifest_answers
 {
 	my ($conf) = @_;
-	my $problem = 1;
 	
-	# ...
+	# Clear all variables.
+	my $problem = 0;
+	
+	### TODO: Decide whether it's worth failing on these three tests (prefix, sequence and domain)
+	# Make sure the Anvil! prefix is valid
+	if (not $conf->{cgi}{anvil_prefix})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_prefix} =~ /\W/)
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Make sure the sequence number is valid.
+	if (not $conf->{cgi}{anvil_sequence})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0161!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_sequence} =~ /\D/)
+	{
+		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0161!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Now check the domain
+	if (not $conf->{cgi}{anvil_domain})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0160!#"}}),
+		});
+		$problem = 1;
+	}	# This could be cleaner...
+	elsif (($conf->{cgi}{anvil_domain} !~ /^((([a-z]|[0-9]|\-)+)\.)+([a-z])+$/i) && (($conf->{cgi}{anvil_domain} !~ /^\w+$/) && ($conf->{cgi}{anvil_domain} !~ /-/)))
+	{
+		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0160!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	### Start testing common stuff.
+	if (not $conf->{cgi}{anvil_domain})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0160!#"}}),
+		});
+		$problem = 1;
+	}	# This could be cleaner...
+	elsif (($conf->{cgi}{anvil_domain} !~ /^((([a-z]|[0-9]|\-)+)\.)+([a-z])+$/i) && (($conf->{cgi}{anvil_domain} !~ /^\w+$/) && ($conf->{cgi}{anvil_domain} !~ /-/)))
+	{
+		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0160!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	
+	### Check the common IFN values.
+	# Check the gateway
+	if (not $conf->{cgi}{anvil_ifn_gateway})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0188!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_gateway}))
+	{
+		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0188!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check DNS 1
+	if (not $conf->{cgi}{anvil_ifn_dns1})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_ifn_dns1_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0189!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_dns1}))
+	{
+		$conf->{form}{anvil_ifn_dns1_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0189!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check DNS 2
+	if (not $conf->{cgi}{anvil_ifn_dns2})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_ifn_dns2_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0190!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_dns2}))
+	{
+		$conf->{form}{anvil_ifn_dns2_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0190!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check that the domain name is sane.
+	
+	### To check:
+	$conf->{form}{anvil_switch1_name_star}      = "";
+	$conf->{form}{anvil_switch1_ip_star}        = "";
+	$conf->{form}{anvil_switch2_name_star}      = "";
+	$conf->{form}{anvil_switch2_ip_star}        = "";
+	$conf->{form}{anvil_pdu1_name_star}         = "";
+	$conf->{form}{anvil_pdu1_ip_star}           = "";
+	$conf->{form}{anvil_pdu2_name_star}         = "";
+	$conf->{form}{anvil_pdu2_ip_star}           = "";
+	$conf->{form}{anvil_ups1_name_star}         = "";
+	$conf->{form}{anvil_ups1_ip_star}           = "";
+	$conf->{form}{anvil_ups2_name_star}         = "";
+	$conf->{form}{anvil_ups2_ip_star}           = "";
+	$conf->{form}{anvil_striker1_name_star}     = "";
+	$conf->{form}{anvil_striker1_bcn_ip_star}   = "";
+	$conf->{form}{anvil_striker1_ifn_ip_star}   = "";
+	$conf->{form}{anvil_striker2_name_star}     = "";
+	$conf->{form}{anvil_striker2_bcn_ip_star}   = "";
+	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
+	$conf->{form}{anvil_node1_name_star}        = "";
+	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
+	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
+	$conf->{form}{anvil_node1_sn_ip_star}       = "";
+	$conf->{form}{anvil_node1_ifn_ip_star}      = "";
+	$conf->{form}{anvil_node1_pdu1_outlet_star} = "";
+	$conf->{form}{anvil_node1_pdu2_outlet_star} = "";
+	$conf->{form}{anvil_node2_name_star}        = "";
+	$conf->{form}{anvil_node2_bcn_ip_star}      = "";
+	$conf->{form}{anvil_node2_ipmi_ip_star}     = "";
+	$conf->{form}{anvil_node2_sn_ip_star}       = "";
+	$conf->{form}{anvil_node2_ifn_ip_star}      = "";
+	$conf->{form}{anvil_node2_pdu1_outlet_star} = "";
+	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
 	
 	return($problem);
+}
+
+# Check if the passed string is a valid IP address and subnet mask (CIDR or
+# dotted-decimal).
+sub is_string_ipv4_with_subnet
+{
+	my ($conf, $ip) = @_;
+	my $subnet = "";
+	my $valid  = 1;
+	
+	# Make sure the string has a subnet after it.
+	if ($ip =~ /^(.*?)\/(.*)$/)
+	{
+		$ip     = $1;
+		$subnet = $2;
+		
+		# Check the IP
+		if (is_string_ipv4($conf, $ip))
+		{
+			# IP is ok, not convert to dotted decimal if needed.
+			if ($subnet =~ /^\d+$/)
+			{
+				($subnet) = convert_cidr_to_dotted_decimal($conf, $subnet);
+			}
+			# Should be dotted-decimal now, check it.
+			if (not is_string_ipv4($conf, $subnet))
+			{
+				# No luck.
+				$valid = 0;
+			}
+		}
+		else
+		{
+			# IP isn't valid, no sense checking the subnet
+			$valid = 0;
+		}
+	}
+	else
+	{
+		# This isn't an 'ip/nm' string at all.
+		$valid = 0;
+	}
+	
+	return($valid);
+}
+
+# Checks if the passed-in string is an IPv4 address (with or without a subnet
+# mask). Returns '1' if OK, 0 if not.
+sub is_string_ipv4
+{
+	my ($conf, $ip) = @_;
+	my $valid  = 1;
+	
+	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+	{
+		# It's in the right format.
+		my $first_octal  = $1;
+		my $second_octal = $2;
+		my $third_octal  = $3;
+		my $fourth_octal = $4;
+		
+		if (($first_octal  < 0) || ($first_octal  > 255) ||
+		    ($second_octal < 0) || ($second_octal > 255) ||
+		    ($third_octal  < 0) || ($third_octal  > 255) ||
+		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		{
+			# One of the octals is out of range.
+			$valid = 0;
+		}
+	}
+	else
+	{
+		# Not in the right format.
+		$valid = 0;
+	}
+	
+	return($valid);
 }
 
 # This allows the user to configure their dashboard.
@@ -2447,6 +2775,14 @@ sub header
 			elsif ($conf->{cgi}{task} eq "push")
 			{
 				$say_refresh = "";
+			}
+			elsif ($conf->{cgi}{task} eq "create-install-manifest")
+			{
+				$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?config=true&task=create-install-manifest",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}, "", 1);
 			}
 			elsif ($conf->{cgi}{anvil})
 			{

@@ -164,6 +164,12 @@ td {
 	font-style: italic;
 }
 
+.highlight_bad_star {
+	color: #9a131a;
+	font-style: italic;
+	vertical-align: super;
+}
+
 .highlight_bad_bold {
 	color: #9a131a;
 	font-style: italic;
