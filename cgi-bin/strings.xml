@@ -281,11 +281,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0105"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
-		<key name="explain_0106"><![CDATA[]]></key>
-		<key name="explain_0107"><![CDATA[]]></key>
-		<key name="explain_0108"><![CDATA[]]></key>
-		<key name="explain_0109"><![CDATA[]]></key>
+		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
+		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
+		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
+		<key name="explain_0109"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
 		<key name="explain_0110"><![CDATA[]]></key>
+		<key name="explain_0111"><![CDATA[]]></key>
+		<key name="explain_0112"><![CDATA[]]></key>
+		<key name="explain_0113"><![CDATA[]]></key>
+		<key name="explain_0114"><![CDATA[]]></key>
+		<key name="explain_0115"><![CDATA[]]></key>
+		<key name="explain_0116"><![CDATA[]]></key>
+		<key name="explain_0117"><![CDATA[]]></key>
+		<key name="explain_0118"><![CDATA[]]></key>
+		<key name="explain_0119"><![CDATA[]]></key>
+		<key name="explain_0120"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -726,8 +736,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0153"><![CDATA[Node <span class="highlight_bad_bold">2</span> Variables]]></key>
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155">Problem with the specified form values.</key>
-		<key name="title_0156"></key>
-		<key name="title_0157"></key>
+		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="title_0157"><![CDATA[Node <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="title_0158"></key>
 		<key name="title_0159"></key>
 		<key name="title_0160"></key>
