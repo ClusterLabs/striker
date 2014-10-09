@@ -240,9 +240,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0062"><![CDATA[This is the company or department domain name. It will be appended to all host names.]]></key>
 		<key name="explain_0063"><![CDATA[This is a sequence number for this #!string!brand_0003!#.<br />It is combined with the prefix above and, combined, must be unique across your network(s).<br /><span class="highlight_note_bold">Note</span>: Auto-generating IPs only works up to '<span class="code">25</span>. Beyond that, you need to manually specify the node IPs.]]></key>
 		<key name="explain_0064"><![CDATA[Fill out the rest of the form using default values combined with the "<i>#!string!title_0150!#</i>" answers above.]]></key>
-		<key name="explain_0065"><![CDATA[If you plan to use a <span class="code"><a href="https://alteeve.ca/w/CIDR" target="_new">/16</a></span> subnet for the <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>,<br />you can specify the subnet prefix here to pre-populate the IP addresses below.<br />The third octal will be derived from the #!string!brand_0003!# sequence number and the fourth octal from the node number.<br /><span class="highlight_note_bold">Note</span>: Clear this value if you plan to use a different subnet size.]]></key>
-		<key name="explain_0066"><![CDATA[If you plan to use a <span class="code"><a href="https://alteeve.ca/w/CIDR" target="_new">/16</a></span> subnet for the <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a>,<br />you can specify the subnet prefix here to pre-populate the IP addresses below.<br />The third octal will be derived from the #!string!brand_0003!# sequence number and the fourth octal from the node number.<br /><span class="highlight_note_bold">Note</span>: Clear this value if you plan to use a different subnet size.]]></key>
-		<key name="explain_0067"><![CDATA[If you plan to use a <span class="code"><a href="https://alteeve.ca/w/CIDR" target="_new">/16</a></span> subnet for the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a>,<br />you can specify the subnet prefix here to pre-populate the IP addresses below.<br />The third octal will be derived from the #!string!brand_0003!# sequence number and the fourth octal from the node number.<br /><span class="highlight_note_bold">Note</span>: Clear this value if you plan to use a different subnet size.]]></key>
+		<key name="explain_0065"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.20.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
+		<key name="explain_0066"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.10.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
+		<key name="explain_0067"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.255.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
 		<key name="explain_0068"><![CDATA[This is the host name for the first #!string!brand_0003!# node.]]></key>
 		<key name="explain_0069"><![CDATA[This is the host name for the second #!string!brand_0003!# node.]]></key>
 		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
@@ -285,12 +285,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
 		<key name="explain_0109"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
-		<key name="explain_0110"><![CDATA[]]></key>
-		<key name="explain_0111"><![CDATA[]]></key>
-		<key name="explain_0112"><![CDATA[]]></key>
-		<key name="explain_0113"><![CDATA[]]></key>
-		<key name="explain_0114"><![CDATA[]]></key>
-		<key name="explain_0115"><![CDATA[]]></key>
+		<key name="explain_0110"><![CDATA[This will set the password for multiple components of the #!string!brand_0003!#;<br />It will set each node's "<span class="code">root</span>" and "<span class="code"><a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci" target="_new">ricci</a></span>" users and the <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Reading_IPMI_Data_2" target="_new">IPMI user</a>'s password.<br />This doesn't have to match the password you set for this #!string!brand_0002!#, but generally it sould.<br /><span class="highlight_note_bold">Note</span>: <b>The password will be echoed back to you, and it will be stored in the manifest in plain text!</b><br />This is needed because the different passwords to set do not share a common encryption form.]]></key>
+		<key name="explain_0111"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty when the IP address is set.]]></key>
+		<key name="explain_0112"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty when the host name is set.]]></key>
+		<key name="explain_0113"><![CDATA[Review the values above. Once you are happy that they are accurate,<br />press <b>#!string!button_0047!#</b> and the install manifest will be created for you.]]></key>
+		<key name="explain_0114"><![CDATA[This is the amount of space that will be allocated to the "#!string!button_0023!#".<br />This is where install discs, driver disks and so on are stored for use in servers later.<br />Generally, the default of <span class="code">40 <a href="https://alteeve.ca/w/GiB" target="_new">GiB</a></span> is plenty. However, if you only plan to install one type of server, this can be reduced.<br />On the other hand, if you plan to install many different operating systems on your servers, you may wish to make this larger.]]></key>
+		<key name="explain_0115"><![CDATA[This is the amount of space to allocate to the first storage pool on your #!string!brand_0003!#.<br />This can be specified as a percentage of the free space, or you can set it to a specific size.<br />Which ever you choose, the difference will be used to determine the size of the second storage pool automatically.<br />If you set a static size equal to or larger than the actually available space, or if you choose <span class="code">100 %</span>, no second storage pool will be created.]]></key>
 		<key name="explain_0116"><![CDATA[]]></key>
 		<key name="explain_0117"><![CDATA[]]></key>
 		<key name="explain_0118"><![CDATA[]]></key>
@@ -459,9 +459,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0159">#!string!brand_0003!# Prefix</key>
 		<key name="row_0160">Domain Name</key>
 		<key name="row_0161">Sequence Number</key>
-		<key name="row_0162">BCN Subnet Prefix</key>
-		<key name="row_0163">SN Subnet Prefix</key>
-		<key name="row_0164">IFN Subnet Prefix</key>
+		<key name="row_0162">BCN Subnet</key>
+		<key name="row_0163">SN Subnet</key>
+		<key name="row_0164">IFN Subnet</key>
 		<key name="row_0165">Host Name</key>
 		<key name="row_0166">BCN IP Address</key>
 		<key name="row_0167">SN IP Address</key>
@@ -488,19 +488,41 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0188">IFN Default Gateway</key>
 		<key name="row_0189">IFN Primary DNS</key>
 		<key name="row_0190">IFN Secondary DNS</key>
-		<key name="row_0191">#!string!brand_0003!# Name</key>
+		<key name="row_0191">Media Library Size</key>
 		<key name="row_0192"><![CDATA[PDU <span class="highlight_bad_bold">1</span> Outlet]]></key>
 		<key name="row_0193"><![CDATA[PDU <span class="highlight_bad_bold">2</span> Outlet]]></key>
-		<key name="row_0194"></key>
-		<key name="row_0195"></key>
-		<key name="row_0196"></key>
-		<key name="row_0197"></key>
-		<key name="row_0198"></key>
-		<key name="row_0199"></key>
+		<key name="row_0194">#!string!brand_0003!# Password</key>
+		<key name="row_0195">Switches</key>
+		<key name="row_0196">PDUs</key>
+		<key name="row_0197">UPSes</key>
+		<key name="row_0198">Carefully Review</key>
+		<key name="row_0199">Storage Pools</key>
 		<key name="row_0200"></key>
+		<key name="row_0201"></key>
+		<key name="row_0202"></key>
+		<key name="row_0203"></key>
+		<key name="row_0204"></key>
+		<key name="row_0205"></key>
+		<key name="row_0206"></key>
+		<key name="row_0207"></key>
+		<key name="row_0208"></key>
+		<key name="row_0209"></key>
+		<key name="row_0210"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
+		
+		<!-- Table headers -->
+		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="header_0002"><![CDATA[Node <span class="highlight_bad_bold">2</span>]]></key>
+		<key name="header_0003"><![CDATA[Device <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="header_0004"><![CDATA[Device <span class="highlight_bad_bold">2</span>]]></key>
+		<key name="header_0005">Common Values</key>
+		<key name="header_0006">Host Name</key>
+		<key name="header_0007">IP Address</key>
+		<key name="header_0008"></key>
+		<key name="header_0009"></key>
+		<key name="header_0010"></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -738,9 +760,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0155">Problem with the specified form values.</key>
 		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
 		<key name="title_0157"><![CDATA[Node <span class="highlight_bad_bold">2</span>]]></key>
-		<key name="title_0158"></key>
-		<key name="title_0159"></key>
-		<key name="title_0160"></key>
+		<key name="title_0158">#!string!brand_0003!# Install Manifest Summary</key>
+		<key name="title_0159">Compute Nodes</key>
+		<key name="title_0160">Foundation Pack</key>
+		<key name="title_0161">Striker Dashboards</key>
+		<key name="title_0162">#!string!brand_0002!# 1</key>
+		<key name="title_0163">#!string!brand_0002!# 2</key>
+		<key name="title_0164"></key>
+		<key name="title_0165"></key>
+		<key name="title_0166"></key>
+		<key name="title_0167"></key>
+		<key name="title_0168"></key>
+		<key name="title_0169"></key>
+		<key name="title_0170"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0017!#</span> to add your first one!]]></key>

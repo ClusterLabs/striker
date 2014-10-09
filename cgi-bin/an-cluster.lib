@@ -1772,6 +1772,10 @@ sub create_install_manifest
 	$conf->{form}{anvil_sequence_star}          = "";
 	$conf->{form}{anvil_domain_star}            = "";
 	$conf->{form}{anvil_name_star}              = "";
+	$conf->{form}{anvil_password_star}          = "";
+	$conf->{form}{anvil_bcn_network_star}       = "";
+	$conf->{form}{anvil_sn_network_star}        = "";
+	$conf->{form}{anvil_ifn_network_star}       = "";
 	$conf->{form}{anvil_ifn_gateway_star}       = "";
 	$conf->{form}{anvil_ifn_dns1_star}          = "";
 	$conf->{form}{anvil_ifn_dns2_star}          = "";
@@ -1793,6 +1797,8 @@ sub create_install_manifest
 	$conf->{form}{anvil_striker2_name_star}     = "";
 	$conf->{form}{anvil_striker2_bcn_ip_star}   = "";
 	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
+	$conf->{form}{anvil_media_library_star}     = "";
+	$conf->{form}{anvil_storage_pool1_star}     = "";
 	$conf->{form}{anvil_node1_name_star}        = "";
 	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
 	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
@@ -1809,18 +1815,21 @@ sub create_install_manifest
 	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
 	if ($conf->{cgi}{generate})
 	{
-		# Sanity check the user's answers and, if OK, generate the
-		# manifest and make it available for download.
-		if (sanity_check_manifest_answers($conf))
-		{
-			# There was a problem, redisplay the form.
-		}
-		else
+		# Sanity check the user's answers and, if OK, returns 0. Any
+		# problem detected returns 1.
+		if (not sanity_check_manifest_answers($conf))
 		{
 			# No errors, write out the manifest and create the
 			# download link.
 			$show_form = 0;
-			my ($url) = generate_install_manifest($conf);
+			if (not $conf->{cgi}{confirm})
+			{
+				show_summary_manifest($conf);
+			}
+			else
+			{
+				my ($url) = generate_install_manifest($conf);
+			}
 		}
 	}
 	
@@ -1830,14 +1839,21 @@ sub create_install_manifest
 		# Set some default values if 'save' isn't set.
 		if (not $conf->{cgi}{generate})
 		{
-			if (not $conf->{cgi}{anvil_prefix})            { $conf->{cgi}{anvil_prefix}            = "xx"; }
-			if (not $conf->{cgi}{anvil_domain})            { $conf->{cgi}{anvil_domain}            = "localdomain"; }
-			if (not $conf->{cgi}{anvil_sequence})          { $conf->{cgi}{anvil_sequence}          = "01"; }
-			if (not $conf->{cgi}{anvil_bcn_subnet_prefix}) { $conf->{cgi}{anvil_bcn_subnet_prefix} = "10.20"; }
-			if (not $conf->{cgi}{anvil_sn_subnet_prefix})  { $conf->{cgi}{anvil_sn_subnet_prefix}  = "10.10"; }
-			if (not $conf->{cgi}{anvil_ifn_subnet_prefix}) { $conf->{cgi}{anvil_ifn_subnet_prefix} = "10.255"; }
-			if (not $conf->{cgi}{anvil_ifn_dns1})          { $conf->{cgi}{anvil_ifn_dns1}          = "8.8.8.8"; }
-			if (not $conf->{cgi}{anvil_ifn_dns2})          { $conf->{cgi}{anvil_ifn_dns2}          = "8.8.4.4"; }
+			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = "xx"; }
+			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = "localdomain"; }
+			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = "01"; }
+			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = "10.20.0.0"; }
+			if (not $conf->{cgi}{anvil_bcn_subnet})         { $conf->{cgi}{anvil_bcn_subnet}         = "255.255.0.0"; }
+			if (not $conf->{cgi}{anvil_sn_network})         { $conf->{cgi}{anvil_sn_network}         = "10.10.0.0"; }
+			if (not $conf->{cgi}{anvil_sn_subnet})          { $conf->{cgi}{anvil_sn_subnet}          = "255.255.0.0"; }
+			if (not $conf->{cgi}{anvil_ifn_network})        { $conf->{cgi}{anvil_ifn_network}        = "10.255.0.0"; }
+			if (not $conf->{cgi}{anvil_ifn_subnet})         { $conf->{cgi}{anvil_ifn_subnet}         = "255.255.0.0"; }
+			if (not $conf->{cgi}{anvil_ifn_dns1})           { $conf->{cgi}{anvil_ifn_dns1}           = "8.8.8.8"; }
+			if (not $conf->{cgi}{anvil_ifn_dns2})           { $conf->{cgi}{anvil_ifn_dns2}           = "8.8.4.4"; }
+			if (not $conf->{cgi}{anvil_media_library_size}) { $conf->{cgi}{anvil_media_library_size} = "40"; }
+			if (not $conf->{cgi}{anvil_media_library_unit}) { $conf->{cgi}{anvil_media_library_unit} = "GiB"; }
+			if (not $conf->{cgi}{anvil_storage_pool1_size}) { $conf->{cgi}{anvil_storage_pool1_size} = "50"; }
+			if (not $conf->{cgi}{anvil_storage_pool1_unit}) { $conf->{cgi}{anvil_storage_pool1_unit} = "%"; }
 		}
 		
 		# Show the manifest form.
@@ -1849,9 +1865,23 @@ sub create_install_manifest
 			anvil_sequence_star		=>	$conf->{form}{anvil_sequence_star},
 			anvil_domain			=>	$conf->{cgi}{anvil_domain},
 			anvil_domain_star		=>	$conf->{form}{anvil_domain_star},
-			anvil_bcn_subnet_prefix		=>	$conf->{cgi}{anvil_bcn_subnet_prefix},
-			anvil_sn_subnet_prefix		=>	$conf->{cgi}{anvil_sn_subnet_prefix},
-			anvil_ifn_subnet_prefix		=>	$conf->{cgi}{anvil_ifn_subnet_prefix},
+			anvil_password			=>	$conf->{cgi}{anvil_password},
+			anvil_password_star		=>	$conf->{form}{anvil_password_star},
+			anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
+			anvil_bcn_network_star		=>	$conf->{form}{anvil_bcn_network_star},
+			anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
+			anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
+			anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
+			anvil_sn_network_star		=>	$conf->{form}{anvil_sn_network_star},
+			anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
+			anvil_ifn_network_star		=>	$conf->{form}{anvil_ifn_network_star},
+			anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
+			anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
+			anvil_media_library_star	=>	$conf->{form}{anvil_media_library_star},
+			say_anvil_media_library_unit	=>	build_select($conf, "anvil_media_library_unit", 0, 0, 60, $conf->{cgi}{anvil_media_library_unit}, ["GiB", "TiB"]),
+			anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
+			anvil_storage_pool1_star	=>	$conf->{form}{anvil_storage_pool1_star},
+			say_anvil_storage_pool1_unit	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
 			anvil_name			=>	$conf->{cgi}{anvil_name},
 			anvil_name_star			=>	$conf->{form}{anvil_name_star},
 			anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
@@ -1937,8 +1967,249 @@ sub generate_install_manifest
 	my ($conf) = @_;
 	my $url;
 	
+# 		anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
+# 		anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
+# 		anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
+# 		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
+# 		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
+# 		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+
+	# Break up hostsnames
+	my ($node1_short_name)   = ($conf->{cgi}{anvil_node1_name}   =~ /^(.*?)\./);
+	my ($node2_short_name)   = ($conf->{cgi}{anvil_node2_name}   =~ /^(.*?)\./);
+	my ($switch1_short_name) = ($conf->{cgi}{anvil_switch1_name} =~ /^(.*?)\./);
+	my ($switch2_short_name) = ($conf->{cgi}{anvil_switch2_name} =~ /^(.*?)\./);
+	my ($pdu1_short_name)    = ($conf->{cgi}{anvil_pdu1_name} =~ /^(.*?)\./);
+	my ($pdu2_short_name)    = ($conf->{cgi}{anvil_pdu2_name} =~ /^(.*?)\./);
+	my ($ups1_short_name)    = ($conf->{cgi}{anvil_ups1_name} =~ /^(.*?)\./);
+	my ($ups2_short_name)    = ($conf->{cgi}{anvil_ups2_name} =~ /^(.*?)\./);
+	
+	# Break up IPs and subnets
+	my ($node1_bcn_ip,   $node1_bcn_netmask)   = (split/\//, $conf->{cgi}{anvil_node1_bcn_ip});
+	my ($node1_ipmi_ip,  $node1_ipmi_netmask)  = (split/\//, $conf->{cgi}{anvil_node1_ipmi_ip});
+	my ($node1_sn_ip,    $node1_sn_netmask)    = (split/\//, $conf->{cgi}{anvil_node1_sn_ip});
+	my ($node1_ifn_ip,   $node1_ifn_netmask)   = (split/\//, $conf->{cgi}{anvil_node1_ifn_ip});
+	my ($node2_bcn_ip,   $node2_bcn_netmask)   = (split/\//, $conf->{cgi}{anvil_node2_bcn_ip});
+	my ($node2_ipmi_ip,  $node2_ipmi_netmask)  = (split/\//, $conf->{cgi}{anvil_node2_ipmi_ip});
+	my ($node2_sn_ip,    $node2_sn_netmask)    = (split/\//, $conf->{cgi}{anvil_node2_sn_ip});
+	my ($node2_ifn_ip,   $node2_ifn_netmask)   = (split/\//, $conf->{cgi}{anvil_node2_ifn_ip});
+	my ($switch1_ip,     $switch1_netmask)     = (split/\//, $conf->{cgi}{anvil_switch1_ip});
+	my ($switch2_ip,     $switch2_netmask)     = (split/\//, $conf->{cgi}{anvil_switch2_ip});
+	my ($pdu1_ip,        $pdu1_netmask)        = (split/\//, $conf->{cgi}{anvil_pdu1_ip});
+	my ($pdu2_ip,        $pdu2_netmask)        = (split/\//, $conf->{cgi}{anvil_pdu2_ip});
+	my ($ups1_ip,        $ups1_netmask)        = (split/\//, $conf->{cgi}{anvil_ups1_ip});
+	my ($ups2_ip,        $ups2_netmask)        = (split/\//, $conf->{cgi}{anvil_ups2_ip});
+	
+	# Many things are currently static but might be made configurable later.
+# 	my $xml = "
+# <?xml version=\"1.0\" encoding=\"UTF-8\"?>
+# 
+# <!--
+# Generated on:    ".get_date($conf)."
+# Striker Version: $conf->{sys}{version
+# -->
+# 
+# <config>
+# 	<node name=\"$conf->{cgi}{anvil_node1_name}\">
+# 		<network name=\"bcn\">
+# 			<ip address=\"$node1_bcn_ip\" netmask=\"$node1_bcn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+# 			<bond name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge />
+# 		</network>
+# 		<network name=\"sn\">
+# 			<ip address=\"$node1_sn_ip\" netmask=\"$node1_sn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+# 			<bond name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge />
+# 		</network>
+# 		<network name=\"ifn\">
+# 			<ip address=\"$node1_ifn_ip\" netmask=\"$node1_ifn_netmask\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\"/>
+# 			<bond name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge name=\"ifn-bridge1\" />
+# 		</network>
+# 		<ipmi>
+# 			<ip address=\"$node1_ipmi_ip\" netmask=\"$node1_ipmi_netmask\" gateway=\"\" />
+# 			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+# 		</ipmi>
+# 		<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" />
+# 		<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" />
+# 	</node>
+# 	<node name=\"$conf->{cgi}{anvil_node2_name}\">
+# 		<network name=\"bcn\">
+# 			<ip address=\"$node2_bcn_ip\" netmask=\"$node2_bcn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+# 			<bond name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge />
+# 		</network>
+# 		<network name=\"sn\">
+# 			<ip address=\"$node2_sn_ip\" netmask=\"$node2_sn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+# 			<bond name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge />
+# 		</network>
+# 		<network name=\"ifn\">
+# 			<ip address=\"$node2_ifn_ip\" netmask=\"$node2_ifn_netmask\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\"/>
+# 			<bond name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
+# 			<bridge name=\"ifn-bridge1\" />
+# 		</network>
+# 		<ipmi>
+# 			<ip address=\"$node2_ipmi_ip\" netmask=\"$node2_ipmi_netmask\" gateway=\"\" />
+# 			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+# 		</ipmi>
+# 		<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" />
+# 		<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" />
+# 	</node>
+# 	<common>
+# 		<user name=\"root\" password=\"$conf->{cgi}{anvil_password}\" />
+# 		<user name=\"ricci\" password=\"$conf->{cgi}{anvil_password}\" />
+# 		<ssh keysize=\"8191\" />
+# 		<cluster name=\"$conf->{cgi}{anvil_name}\">
+# 			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" />
+# 		</cluster>
+# 		<switch>
+# 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$switch1_ifn_ip\" netmask=\"$switch1_ifn_netmask\" />
+# 			<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$switch2_ifn_ip\" netmask=\"$switch2_ifn_netmask\" />
+# 		</switch>
+# 		<ups>
+# 			<ups name=\"an-ups01.alteeve.ca\" port=\"3551\" ip=\"\" netmask=\"\"  />
+# 			<ups name=\"an-ups02.alteeve.ca\" port=\"3552\" ip=\"\" netmask=\"\"  />
+# 		</ups>
+# 		<pdu>
+# 			<pdu name=\"an-pdu01.alteeve.ca\" ip=\"\" netmask=\"\"  />
+# 			<pdu name=\"an-pdu02.alteeve.ca\" ip=\"\" netmask=\"\"  />
+# 		</pdu>
+# 		<rhn user=\"rhn\@example.com\" password=\"secret\">
+# 			<channel name=\"rhel-x86_64-server-rs-6\" />
+# 			<channel name=\"rhel-x86_64-server-optional-6\" />
+# 		</rhn>
+# 		<update os=\"true\" />
+# 		<daemons>
+# 			<daemon name=\"network\" start_on_boot=\"true\" />
+# 			<daemon name=\"ntpd\" start_on_boot=\"true\" />
+# 			<daemon name=\"ricci\" start_on_boot=\"true\" />
+# 			<daemon name=\"modclusterd\" start_on_boot=\"true\" />
+# 			<daemon name=\"ipmi\" start_on_boot=\"true\" />
+# 			<daemon name=\"iptables\" start_on_boot=\"true\" />
+# 			<daemon name=\"acpid\" start_on_boot=\"false\" />
+# 			<daemon name=\"ip6tables\" start_on_boot=\"false\" />
+# 			<daemon name=\"clvmd\" start_on_boot=\"false\" />
+# 			<daemon name=\"gfs2\" start_on_boot=\"false\" />
+# 			<daemon name=\"libvirtd\" start_on_boot=\"false\" />
+# 			<daemon name=\"cman\" start_on_boot=\"false\" />
+# 			<daemon name=\"rgmanager\" start_on_boot=\"false\" />
+# 		</daemons>
+# 		<iptables>
+# 			<!-- It is up to the generating script to set the right IPs, subnets and port ranges! -->
+# 			<rule sequence=\"01\" rule=\"iptables -I INPUT -m state --state NEW -m multiport -p udp -s 10.20.0.0/16 -d 10.20.0.0/16 --dports 5404,5405 -j ACCEPT\" />
+# 			<rule sequence=\"02\" rule=\"iptables -I INPUT -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport -p udp -s 10.20.0.0/16 --dports 5404,5405 -j ACCEPT\" />
+# 			<rule sequence=\"03\" rule=\"iptables -I INPUT -p igmp -j ACCEPT\" />
+# 			<rule sequence=\"04\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 21064 -j ACCEPT \" />
+# 			<rule sequence=\"05\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 11111 -j ACCEPT\" />
+# 			<rule sequence=\"06\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 16851 -j ACCEPT\" />
+# 			<rule sequence=\"07\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.10.0.0/16 -d 10.10.0.0/16 --dport 7788 -j ACCEPT\" />
+# 			<rule sequence=\"08\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.10.0.0/16 -d 10.10.0.0/16 --dport 7789 -j ACCEPT\" />
+# 			<rule sequence=\"09\" rule=\"iptables -I INPUT -p tcp -m tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 49152:49216 -j ACCEPT\" />
+# 			<rule sequence=\"10\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 5900:5999 -j ACCEPT\" />
+# 			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.255.0.0/16 -d 10.255.0.0/16 --dport 5900:5999 -j ACCEPT\" />
+# 		</iptables>
+# 		<storage>
+# 			<gfs2 size=\"40 GiB\" />
+# 			<!-- 
+# 			The size can only be specified for resource 0. The left-over space will be assigned to 'r1'.
+# 			The size value is either a percentage of the free space (factoring out the GFS2 partition) or a set size.
+# 			If the static size of 'r0' is greater than the available space, it will be truncated to fit the available space.
+# 			If the size of r0 is '100%' or all of the remaining space, 'r1' will not be created.
+# 			Note that any left over space less that 1 GiB will be left unused.
+# 			-->
+# 			<drbd>
+# 				<resource name=\"r0\" size=\"50%\" />
+# 				<resource name=\"r1\" />
+# 			</drbd>
+# 		</storage>
+# 		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
+# # Anvil! $conf->{cgi}{anvil_prefix}, Node 01
+# $node1_bcn_ip	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
+# $node1_ipmi_ip	$node1_short_name.ipmi
+# $node1_sn_ip	$node1_short_name.sn
+# $node1_ifn_ip	$node1_short_name.ifn
+# 
+# # Anvil! $conf->{cgi}{anvil_prefix}, Node 02
+# $node2_bcn_ip	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}
+# $node2_ipmi_ip	$node2_short_name.ipmi
+# $node2_sn_ip	$node2_short_name.sn
+# $node2_ifn_ip	$node2_short_name.ifn
+# 
+# # Network switches
+# $switch1_ip	$switch1_short_name $conf->{cgi}{anvil_switch1_name}
+# $switch2_ip	$switch2_short_name $conf->{cgi}{anvil_switch2_name}
+# 
+# # Switched PDUs
+# 10.20.2.1	an-pdu01 an-pdu01.alteeve.ca
+# 10.20.2.2	an-pdu02 an-pdu02.alteeve.ca
+# 
+# # UPSes
+# 10.20.3.1	an-ups01 an-ups01.alteeve.ca
+# 10.20.3.2	an-ups02 an-ups02.alteeve.ca
+# 
+# # Striker dashboards
+# 10.20.3.1	an-striker01 an-striker01.alteeve.ca
+# 10.20.3.2	an-striker02 an-striker02.alteeve.ca
+# 		</file>
+# 	</common>
+# </config>
+# ";
+	
 	
 	return($url);
+}
+
+# This shows a summary of what the user selected and asks them to confirm that
+# they are happy.
+sub show_summary_manifest
+{
+	my ($conf) = @_;
+	
+	# Show the manifest form.
+	print template($conf, "config.html", "install-manifest-summay", {
+		form_file			=>	"/cgi-bin/an-cdb",
+		anvil_name			=>	$conf->{cgi}{anvil_name},
+		anvil_password			=>	$conf->{cgi}{anvil_password},
+		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
+		anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
+		anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
+		anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
+		anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
+		anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
+		anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
+		anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
+		anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
+		anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
+		anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
+		anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
+		anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
+		anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
+		anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
+		anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
+		anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
+		anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
+		anvil_ups1_name			=>	$conf->{cgi}{anvil_ups1_name},
+		anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
+		anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
+		anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
+		anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
+		anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
+		anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
+		anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
+		anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
+		anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
+		anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
+		anvil_switch2_ip		=>	$conf->{cgi}{anvil_switch2_ip},
+		anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
+		anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
+		anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
+		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
+		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
+		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+	});
+	
+	return(0);
 }
 
 # This sanity-checks the user's answers.
@@ -1950,7 +2221,8 @@ sub sanity_check_manifest_answers
 	my $problem = 0;
 	
 	### TODO: Decide whether it's worth failing on these three tests (prefix, sequence and domain)
-	# Make sure the Anvil! prefix is valid
+	### Nope, not going to. Messes up the confirmation which doesn't need this, either.
+	# Make sure the Anvil! prefix is valid. This is used in the generated host's file.
 	if (not $conf->{cgi}{anvil_prefix})
 	{
 		# Not allowed to be blank.
@@ -2008,27 +2280,19 @@ sub sanity_check_manifest_answers
 		$problem = 1;
 	}
 	
-	### Start testing common stuff.
-	if (not $conf->{cgi}{anvil_domain})
+	# The password can not be blank, that's all we check for though.
+	if (not $conf->{cgi}{anvil_password})
 	{
 		# Not allowed to be blank.
-		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
+		$conf->{form}{anvil_password_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0160!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_domain}))
-	{
-		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0160!#"}}),
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0194!#"}}),
 		});
 		$problem = 1;
 	}
 	
-	
-	### Check the common IFN values.
+	### Start testing common stuff.
+	## Check the common IFN values.
 	# Check the gateway
 	if (not $conf->{cgi}{anvil_ifn_gateway})
 	{
@@ -2086,15 +2350,26 @@ sub sanity_check_manifest_answers
 		$problem = 1;
 	}
 	
-	# Check that switch #1's host name and IP are sane.
+	# Check that switch #1's host name and IP are sane, if set. The
+	# switches are allowed to be blank in case the user has unmanaged
+	# switches.
 	if (not $conf->{cgi}{anvil_switch1_name})
 	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0178!#"}}),
-		});
-		$problem = 1;
+		# Set it to '--' provided that the IP is also blank.
+		if (($conf->{cgi}{anvil_switch1_ip}) && ($conf->{cgi}{anvil_switch1_ip} ne "--"))
+		{
+			# IP set, so host name is needed.
+			$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
+			print template($conf, "config.html", "form-error", {
+				message	=>	get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
+			});
+			$problem = 1;
+		}
+		else
+		{
+			# Is OK
+			$conf->{cgi}{anvil_switch1_name} = "--";
+		}
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch1_name}))
 	{
@@ -2106,12 +2381,21 @@ sub sanity_check_manifest_answers
 	}
 	if (not $conf->{cgi}{anvil_switch1_ip})
 	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0179!#"}}),
-		});
-		$problem = 1;
+		# Set it to '--' provided that the IP is also blank.
+		if (($conf->{cgi}{anvil_switch1_name}) && ($conf->{cgi}{anvil_switch1_name} ne "--"))
+		{
+			# Host name set, so IP is needed.
+			$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
+			print template($conf, "config.html", "form-error", {
+				message	=>	get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0179!#"}}),
+			});
+			$problem = 1;
+		}
+		else
+		{
+			# Is OK
+			$conf->{cgi}{anvil_switch1_ip} = "--";
+		}
 	}
 	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_switch1_ip}))
 	{
@@ -2125,12 +2409,21 @@ sub sanity_check_manifest_answers
 	# Check that switch #2's host name and IP are sane.
 	if (not $conf->{cgi}{anvil_switch2_name})
 	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0180!#"}}),
-		});
-		$problem = 1;
+		# Set it to '--' provided that the IP is also blank.
+		if (($conf->{cgi}{anvil_switch2_ip}) && ($conf->{cgi}{anvil_switch2_ip} ne "--"))
+		{
+			# IP set, so host name is needed.
+			$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
+			print template($conf, "config.html", "form-error", {
+				message	=>	get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
+			});
+			$problem = 1;
+		}
+		else
+		{
+			# Is OK
+			$conf->{cgi}{anvil_switch2_name} = "--";
+		}
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch2_name}))
 	{
@@ -2142,12 +2435,21 @@ sub sanity_check_manifest_answers
 	}
 	if (not $conf->{cgi}{anvil_switch2_ip})
 	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0181!#"}}),
-		});
-		$problem = 1;
+		# Set it to '--' provided that the IP is also blank.
+		if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
+		{
+			# Host name set, so IP is needed.
+			$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
+			print template($conf, "config.html", "form-error", {
+				message	=>	get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0181!#"}}),
+			});
+			$problem = 1;
+		}
+		else
+		{
+			# Is OK
+			$conf->{cgi}{anvil_switch2_ip} = "--";
+		}
 	}
 	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_switch2_ip}))
 	{
@@ -3424,11 +3726,32 @@ sub header
 			}
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
-				$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?config=true&task=create-install-manifest",
-					button_text	=>	"$refresh_image",
-					id		=>	"refresh",
-				}, "", 1);
+				if ($conf->{cgi}{generate})
+				{
+					my $link =  $conf->{'system'}{cgi_string};
+					   $link =~ s/generate=true//;
+					   $link =~ s/anvil_password=.*?&//;
+					   $link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
+					   $link =~ s/&&/&/g;
+					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"$link",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}, "", 1);
+					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"$conf->{'system'}{cgi_string}",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}, "", 1);
+				}
+				else
+				{
+					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"?config=true&task=create-install-manifest",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}, "", 1);
+				}
 			}
 			elsif ($conf->{cgi}{anvil})
 			{

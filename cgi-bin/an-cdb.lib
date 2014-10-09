@@ -4721,7 +4721,7 @@ sub provision_vm
 		shell_call	=>	"$script",
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	my $error = 0;
+	$error = 0;
 	foreach my $line (@{$output})
 	{
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
