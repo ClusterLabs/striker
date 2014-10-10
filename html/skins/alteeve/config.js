@@ -137,7 +137,7 @@ $("#set_secondary_values").click(function(){
 		// Node 2
 		var node2_bcn_ip  = bcn_root + '.' + third + '.' + 2;
 		    node2_bcn_ip  = node2_bcn_ip.replace(/\.\./g, ".");
-		var node2_ipmi_ip = bcn_root + '.' + ipmi_third + '.' + 1;
+		var node2_ipmi_ip = bcn_root + '.' + ipmi_third + '.' + 2;
 		    node2_ipmi_ip = node2_ipmi_ip.replace(/\.\./g, ".");
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node2_bcn_ip))
@@ -152,7 +152,7 @@ $("#set_secondary_values").click(function(){
 		// Switches
 		var switch1_ip = bcn_root + '.1.' + 1;
 		    switch1_ip = switch1_ip.replace(/\.\./g, ".");
-		var switch2_ip = bcn_root + '.1.' + 1;
+		var switch2_ip = bcn_root + '.1.' + 2;
 		    switch2_ip = switch2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(switch1_ip))
 		{
@@ -166,7 +166,7 @@ $("#set_secondary_values").click(function(){
 		// PDUs
 		var pdu1_ip = bcn_root + '.2.' + 1;
 		    pdu1_ip = pdu1_ip.replace(/\.\./g, ".");
-		var pdu2_ip = bcn_root + '.2.' + 1;
+		var pdu2_ip = bcn_root + '.2.' + 2;
 		    pdu2_ip = pdu2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(pdu1_ip))
 		{
@@ -180,7 +180,7 @@ $("#set_secondary_values").click(function(){
 		// UPSes
 		var ups1_ip = bcn_root + '.3.' + 1;
 		    ups1_ip = ups1_ip.replace(/\.\./g, ".");
-		var ups2_ip = bcn_root + '.3.' + 1;
+		var ups2_ip = bcn_root + '.3.' + 2;
 		    ups2_ip = ups2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ups1_ip))
 		{
@@ -194,7 +194,7 @@ $("#set_secondary_values").click(function(){
 		// Striker Dashboards
 		var striker1_bcn_ip = bcn_root + '.4.' + 1;
 		    striker1_bcn_ip = striker1_bcn_ip.replace(/\.\./g, ".");
-		var striker2_bcn_ip = bcn_root + '.4.' + 1;
+		var striker2_bcn_ip = bcn_root + '.4.' + 2;
 		    striker2_bcn_ip = striker2_bcn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_bcn_ip))
 		{
@@ -250,7 +250,7 @@ $("#set_secondary_values").click(function(){
 		// Striker Dashboards
 		var striker1_ifn_ip = ifn_root + '.4.' + 1;
 		    striker1_ifn_ip = striker1_ifn_ip.replace(/\.\./g, ".");
-		var striker2_ifn_ip = ifn_root + '.4.' + 1;
+		var striker2_ifn_ip = ifn_root + '.4.' + 2;
 		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_ifn_ip))
 		{

@@ -69,7 +69,7 @@
 			#!replace!anvil_node1_ipmi_ip!#
 		</td>
 		<td class="fixed_width" colspan="2">
-			#!replace!anvil_node1_ipmi_ip!#
+			#!replace!anvil_node2_ipmi_ip!#
 		</td>
 	</tr>
 	<!-- SN IPs -->
@@ -188,83 +188,6 @@
 		</td>
 	</tr>
 	
-	<!-- Common Variables -->
-	<tr>
-		<td colspan="5" class="highlight_good_bold">
-			#!string!title_0154!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="5">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- Cluster name -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0005!#
-		</td>
-		<td class="fixed_width" colspan="2">
-			#!replace!anvil_name!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- Cluster password -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0194!#
-		</td>
-		<td class="fixed_width" colspan="2">
-			#!replace!anvil_password!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- IFN Gateway -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0188!#
-		</td>
-		<td class="fixed_width" colspan="2">
-			#!replace!anvil_ifn_gateway!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- IFN Primary DNS -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0189!#
-		</td>
-		<td class="fixed_width" colspan="2">
-			#!replace!anvil_ifn_dns1!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- IFN Secondary DNS -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0190!#
-		</td>
-		<td class="fixed_width" colspan="2">
-			#!replace!anvil_ifn_dns2!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan="5">
-			&nbsp;
-		</td>
-	</tr>
-	
 	<!-- Foundation Pack details -->
 	<tr>
 		<td colspan="5" class="highlight_good_bold">
@@ -363,6 +286,143 @@
 			&nbsp;
 		</td>
 	</tr>
+	
+	<!-- Common Variables -->
+	<tr>
+		<td colspan="5" class="highlight_good_bold">
+			#!string!title_0154!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="5">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Cluster name -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0005!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_name!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Cluster password -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0194!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_password!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Media Library (gfs2 /shared) Size -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0191!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_media_library_size!# #!replace!anvil_media_library_unit!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Storage Pool 1 (difference goes to 2, not set here) -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0199!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_storage_pool1_size!# #!replace!anvil_storage_pool1_unit!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- BCN Network Mask -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0200!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_bcn_subnet!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- SN Network Mask -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0201!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_sn_subnet!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- IFN Network Mask -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0202!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_ifn_subnet!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- IFN Gateway -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0188!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_ifn_gateway!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- IFN Primary DNS -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0189!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_ifn_dns1!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- IFN Secondary DNS -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0190!#
+		</td>
+		<td class="fixed_width" colspan="2">
+			#!replace!anvil_ifn_dns2!#
+		</td>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan="5">
+			&nbsp;
+		</td>
+	</tr>
 	<tr>
 		<td class="highlight_warning_bold">
 			#!string!row_0198!#
@@ -383,44 +443,56 @@
 						&nbsp;
 					</td>
 					<td width="50%" class="hidden_td">
-						<input type="hidden" name="anvil_name"              id="anvil_name"              value="#!replace!anvil_name!#" />
-						<input type="hidden" name="anvil_password"          id="anvil_password"          value="#!replace!anvil_password!#" />
-						<input type="hidden" name="anvil_node1_name"        id="anvil_node1_name"        value="#!replace!anvil_node1_name!#" />
-						<input type="hidden" name="anvil_node1_bcn_ip"      id="anvil_node1_bcn_ip"      value="#!replace!anvil_node1_bcn_ip!#" />
-						<input type="hidden" name="anvil_node1_ipmi_ip"     id="anvil_node1_ipmi_ip"     value="#!replace!anvil_node1_ipmi_ip!#" />
-						<input type="hidden" name="anvil_node1_sn_ip"       id="anvil_node1_sn_ip"       value="#!replace!anvil_node1_sn_ip!#" />
-						<input type="hidden" name="anvil_node1_ifn_ip"      id="anvil_node1_ifn_ip"      value="#!replace!anvil_node1_ifn_ip!#" />
-						<input type="hidden" name="anvil_node1_pdu1_outlet" id="anvil_node1_pdu1_outlet" value="#!replace!anvil_node1_pdu1_outlet!#" />
-						<input type="hidden" name="anvil_node1_pdu2_outlet" id="anvil_node1_pdu2_outlet" value="#!replace!anvil_node1_pdu2_outlet!#" />
-						<input type="hidden" name="anvil_node2_name"        id="anvil_node2_name"        value="#!replace!anvil_node2_name!#" />
-						<input type="hidden" name="anvil_node2_bcn_ip"      id="anvil_node2_bcn_ip"      value="#!replace!anvil_node2_bcn_ip!#" />
-						<input type="hidden" name="anvil_node2_ipmi_ip"     id="anvil_node2_ipmi_ip"     value="#!replace!anvil_node2_ipmi_ip!#" />
-						<input type="hidden" name="anvil_node2_sn_ip"       id="anvil_node2_sn_ip"       value="#!replace!anvil_node2_sn_ip!#" />
-						<input type="hidden" name="anvil_node2_ifn_ip"      id="anvil_node2_ifn_ip"      value="#!replace!anvil_node2_ifn_ip!#" />
-						<input type="hidden" name="anvil_node2_pdu1_outlet" id="anvil_node2_pdu1_outlet" value="#!replace!anvil_node2_pdu1_outlet!#" />
-						<input type="hidden" name="anvil_node2_pdu2_outlet" id="anvil_node2_pdu2_outlet" value="#!replace!anvil_node2_pdu2_outlet!#" />
-						<input type="hidden" name="anvil_ifn_gateway"       id="anvil_ifn_gateway"       value="#!replace!anvil_ifn_gateway!#" />
-						<input type="hidden" name="anvil_ifn_dns1"          id="anvil_ifn_dns1"          value="#!replace!anvil_ifn_dns1!#" />
-						<input type="hidden" name="anvil_ifn_dns2"          id="anvil_ifn_dns2"          value="#!replace!anvil_ifn_dns2!#" />
-						<input type="hidden" name="anvil_ups1_name"         id="anvil_ups1_name"         value="#!replace!anvil_ups1_name!#" />
-						<input type="hidden" name="anvil_ups1_ip"           id="anvil_ups1_ip"           value="#!replace!anvil_ups1_ip!#" />
-						<input type="hidden" name="anvil_ups2_name"         id="anvil_ups2_name"         value="#!replace!anvil_ups2_name!#" />
-						<input type="hidden" name="anvil_ups2_ip"           id="anvil_ups2_ip"           value="#!replace!anvil_ups2_ip!#" />
-						<input type="hidden" name="anvil_pdu1_name"         id="anvil_pdu1_name"         value="#!replace!anvil_pdu1_name!#" />
-						<input type="hidden" name="anvil_pdu1_ip"           id="anvil_pdu1_ip"           value="#!replace!anvil_pdu1_ip!#" />
-						<input type="hidden" name="anvil_pdu2_name"         id="anvil_pdu2_name"         value="#!replace!anvil_pdu2_name!#" />
-						<input type="hidden" name="anvil_pdu2_ip"           id="anvil_pdu2_ip"           value="#!replace!anvil_pdu2_ip!#" />
-						<input type="hidden" name="anvil_switch1_name"      id="anvil_switch1_name"      value="#!replace!anvil_switch1_name!#" />
-						<input type="hidden" name="anvil_switch1_ip"        id="anvil_switch1_ip"        value="#!replace!anvil_switch1_ip!#" />
-						<input type="hidden" name="anvil_switch2_name"      id="anvil_switch2_name"      value="#!replace!anvil_switch2_name!#" />
-						<input type="hidden" name="anvil_switch2_ip"        id="anvil_switch2_ip"        value="#!replace!anvil_switch2_ip!#" />
-						<input type="hidden" name="anvil_striker1_name"     id="anvil_striker1_name"     value="#!replace!anvil_striker1_name!#" />
-						<input type="hidden" name="anvil_striker1_bcn_ip"   id="anvil_striker1_bcn_ip"   value="#!replace!anvil_striker1_bcn_ip!#" />
-						<input type="hidden" name="anvil_striker1_ifn_ip"   id="anvil_striker1_ifn_ip"   value="#!replace!anvil_striker1_ifn_ip!#" />
-						<input type="hidden" name="anvil_striker2_name"     id="anvil_striker2_name"     value="#!replace!anvil_striker2_name!#" />
-						<input type="hidden" name="anvil_striker2_bcn_ip"   id="anvil_striker2_bcn_ip"   value="#!replace!anvil_striker2_bcn_ip!#" />
-						<input type="hidden" name="anvil_striker2_ifn_ip"   id="anvil_striker2_ifn_ip"   value="#!replace!anvil_striker2_ifn_ip!#" />
-						<input type="hidden" name="anvil_sequence"          id="anvil_sequence"          value="#!replace!anvil_sequence" />
+						<input type="hidden" name="anvil_media_library_size" id="anvil_media_library_size" value="#!replace!anvil_media_library_size!#" />
+						<input type="hidden" name="anvil_media_library_unit" id="anvil_media_library_unit" value="#!replace!anvil_media_library_unit!#" />
+						<input type="hidden" name="anvil_storage_pool1_size" id="anvil_storage_pool1_size" value="#!replace!anvil_storage_pool1_size!#" />
+						<input type="hidden" name="anvil_storage_pool1_unit" id="anvil_storage_pool1_unit" value="#!replace!anvil_storage_pool1_unit!#" />
+						<input type="hidden" name="anvil_bcn_network"        id="anvil_bcn_network"        value="#!replace!anvil_bcn_network!#" />
+						<input type="hidden" name="anvil_bcn_subnet"         id="anvil_bcn_subnet"         value="#!replace!anvil_bcn_subnet!#" />
+						<input type="hidden" name="anvil_sn_network"         id="anvil_sn_network"         value="#!replace!anvil_sn_network!#" />
+						<input type="hidden" name="anvil_sn_subnet"          id="anvil_sn_subnet"          value="#!replace!anvil_sn_subnet!#" />
+						<input type="hidden" name="anvil_ifn_network"        id="anvil_ifn_network"        value="#!replace!anvil_ifn_network!#" />
+						<input type="hidden" name="anvil_ifn_subnet"         id="anvil_ifn_subnet"         value="#!replace!anvil_ifn_subnet!#" />
+						<input type="hidden" name="anvil_prefix"             id="anvil_prefix"             value="#!replace!anvil_prefix!#" />
+						<input type="hidden" name="anvil_domain"             id="anvil_domain"             value="#!replace!anvil_domain!#" />
+						<input type="hidden" name="anvil_name"               id="anvil_name"               value="#!replace!anvil_name!#" />
+						<input type="hidden" name="anvil_password"           id="anvil_password"           value="#!replace!anvil_password!#" />
+						<input type="hidden" name="anvil_node1_name"         id="anvil_node1_name"         value="#!replace!anvil_node1_name!#" />
+						<input type="hidden" name="anvil_node1_bcn_ip"       id="anvil_node1_bcn_ip"       value="#!replace!anvil_node1_bcn_ip!#" />
+						<input type="hidden" name="anvil_node1_ipmi_ip"      id="anvil_node1_ipmi_ip"      value="#!replace!anvil_node1_ipmi_ip!#" />
+						<input type="hidden" name="anvil_node1_sn_ip"        id="anvil_node1_sn_ip"        value="#!replace!anvil_node1_sn_ip!#" />
+						<input type="hidden" name="anvil_node1_ifn_ip"       id="anvil_node1_ifn_ip"       value="#!replace!anvil_node1_ifn_ip!#" />
+						<input type="hidden" name="anvil_node1_pdu1_outlet"  id="anvil_node1_pdu1_outlet"  value="#!replace!anvil_node1_pdu1_outlet!#" />
+						<input type="hidden" name="anvil_node1_pdu2_outlet"  id="anvil_node1_pdu2_outlet"  value="#!replace!anvil_node1_pdu2_outlet!#" />
+						<input type="hidden" name="anvil_node2_name"         id="anvil_node2_name"         value="#!replace!anvil_node2_name!#" />
+						<input type="hidden" name="anvil_node2_bcn_ip"       id="anvil_node2_bcn_ip"       value="#!replace!anvil_node2_bcn_ip!#" />
+						<input type="hidden" name="anvil_node2_ipmi_ip"      id="anvil_node2_ipmi_ip"      value="#!replace!anvil_node2_ipmi_ip!#" />
+						<input type="hidden" name="anvil_node2_sn_ip"        id="anvil_node2_sn_ip"        value="#!replace!anvil_node2_sn_ip!#" />
+						<input type="hidden" name="anvil_node2_ifn_ip"       id="anvil_node2_ifn_ip"       value="#!replace!anvil_node2_ifn_ip!#" />
+						<input type="hidden" name="anvil_node2_pdu1_outlet"  id="anvil_node2_pdu1_outlet"  value="#!replace!anvil_node2_pdu1_outlet!#" />
+						<input type="hidden" name="anvil_node2_pdu2_outlet"  id="anvil_node2_pdu2_outlet"  value="#!replace!anvil_node2_pdu2_outlet!#" />
+						<input type="hidden" name="anvil_ifn_gateway"        id="anvil_ifn_gateway"        value="#!replace!anvil_ifn_gateway!#" />
+						<input type="hidden" name="anvil_ifn_dns1"           id="anvil_ifn_dns1"           value="#!replace!anvil_ifn_dns1!#" />
+						<input type="hidden" name="anvil_ifn_dns2"           id="anvil_ifn_dns2"           value="#!replace!anvil_ifn_dns2!#" />
+						<input type="hidden" name="anvil_ups1_name"          id="anvil_ups1_name"          value="#!replace!anvil_ups1_name!#" />
+						<input type="hidden" name="anvil_ups1_ip"            id="anvil_ups1_ip"            value="#!replace!anvil_ups1_ip!#" />
+						<input type="hidden" name="anvil_ups2_name"          id="anvil_ups2_name"          value="#!replace!anvil_ups2_name!#" />
+						<input type="hidden" name="anvil_ups2_ip"            id="anvil_ups2_ip"            value="#!replace!anvil_ups2_ip!#" />
+						<input type="hidden" name="anvil_pdu1_name"          id="anvil_pdu1_name"          value="#!replace!anvil_pdu1_name!#" />
+						<input type="hidden" name="anvil_pdu1_ip"            id="anvil_pdu1_ip"            value="#!replace!anvil_pdu1_ip!#" />
+						<input type="hidden" name="anvil_pdu2_name"          id="anvil_pdu2_name"          value="#!replace!anvil_pdu2_name!#" />
+						<input type="hidden" name="anvil_pdu2_ip"            id="anvil_pdu2_ip"            value="#!replace!anvil_pdu2_ip!#" />
+						<input type="hidden" name="anvil_switch1_name"       id="anvil_switch1_name"       value="#!replace!anvil_switch1_name!#" />
+						<input type="hidden" name="anvil_switch1_ip"         id="anvil_switch1_ip"         value="#!replace!anvil_switch1_ip!#" />
+						<input type="hidden" name="anvil_switch2_name"       id="anvil_switch2_name"       value="#!replace!anvil_switch2_name!#" />
+						<input type="hidden" name="anvil_switch2_ip"         id="anvil_switch2_ip"         value="#!replace!anvil_switch2_ip!#" />
+						<input type="hidden" name="anvil_striker1_name"      id="anvil_striker1_name"      value="#!replace!anvil_striker1_name!#" />
+						<input type="hidden" name="anvil_striker1_bcn_ip"    id="anvil_striker1_bcn_ip"    value="#!replace!anvil_striker1_bcn_ip!#" />
+						<input type="hidden" name="anvil_striker1_ifn_ip"    id="anvil_striker1_ifn_ip"    value="#!replace!anvil_striker1_ifn_ip!#" />
+						<input type="hidden" name="anvil_striker2_name"      id="anvil_striker2_name"      value="#!replace!anvil_striker2_name!#" />
+						<input type="hidden" name="anvil_striker2_bcn_ip"    id="anvil_striker2_bcn_ip"    value="#!replace!anvil_striker2_bcn_ip!#" />
+						<input type="hidden" name="anvil_striker2_ifn_ip"    id="anvil_striker2_ifn_ip"    value="#!replace!anvil_striker2_ifn_ip!#" />
+						<input type="hidden" name="anvil_sequence"           id="anvil_sequence"           value="#!replace!anvil_sequence" />
 						<input type="submit" name="do" id="do" value="#!string!button_0047!#" class="bold_button" />
 						<input type="hidden" name="config" id="config" value="true" />
 						<input type="hidden" name="generate" id="generate" value="true" />

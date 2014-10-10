@@ -507,9 +507,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0197">UPSes</key>
 		<key name="row_0198">Carefully Review</key>
 		<key name="row_0199">Storage Pools</key>
-		<key name="row_0200"></key>
-		<key name="row_0201"></key>
-		<key name="row_0202"></key>
+		<key name="row_0200">BCN Subnet Mask</key>
+		<key name="row_0201">SN Subnet Mask</key>
+		<key name="row_0202">IFN Subnet Mask</key>
 		<key name="row_0203"></key>
 		<key name="row_0204"></key>
 		<key name="row_0205"></key>
@@ -774,8 +774,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0159">Compute Nodes</key>
 		<key name="title_0160">Foundation Pack</key>
 		<key name="title_0161">Striker Dashboards</key>
-		<key name="title_0162">#!string!brand_0002!# 1</key>
-		<key name="title_0163">#!string!brand_0002!# 2</key>
+		<key name="title_0162"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="title_0163"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="title_0164"></key>
 		<key name="title_0165"></key>
 		<key name="title_0166"></key>
