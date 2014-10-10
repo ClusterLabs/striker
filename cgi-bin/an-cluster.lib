@@ -2220,8 +2220,6 @@ sub sanity_check_manifest_answers
 	# Clear all variables.
 	my $problem = 0;
 	
-	### TODO: Decide whether it's worth failing on these three tests (prefix, sequence and domain)
-	### Nope, not going to. Messes up the confirmation which doesn't need this, either.
 	# Make sure the Anvil! prefix is valid. This is used in the generated host's file.
 	if (not $conf->{cgi}{anvil_prefix})
 	{
@@ -2292,6 +2290,188 @@ sub sanity_check_manifest_answers
 	}
 	
 	### Start testing common stuff.
+	# BCN network block and subnet mask
+	if (not $conf->{cgi}{anvil_bcn_network})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0162!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_network}))
+	{
+		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0162!#"}}),
+		});
+		$problem = 1;
+	}
+	if (not $conf->{cgi}{anvil_bcn_subnet})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0162!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_subnet}))
+	{
+		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0162!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# SN network block and subnet mask
+	if (not $conf->{cgi}{anvil_sn_network})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0163!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_network}))
+	{
+		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0163!#"}}),
+		});
+		$problem = 1;
+	}
+	if (not $conf->{cgi}{anvil_sn_subnet})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0163!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_subnet}))
+	{
+		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0163!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# IFN network block and subnet mask
+	if (not $conf->{cgi}{anvil_ifn_network})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0164!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_network}))
+	{
+		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0164!#"}}),
+		});
+		$problem = 1;
+	}
+	if (not $conf->{cgi}{anvil_ifn_subnet})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0164!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_subnet}))
+	{
+		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0164!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	### TODO: Worth checking the select box values?
+	# Check the /shared and node 1 storage sizes.
+	if (not $conf->{cgi}{anvil_media_library_size})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0191!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_media_library_size}))
+	{
+		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0191!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check the size of the node 1 storage pool.
+	if (not $conf->{cgi}{anvil_storage_pool1_size})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0199!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_storage_pool1_size}))
+	{
+		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0199!#"}}),
+		});
+		$problem = 1;
+	} # Make sure the percentage is between 0 and 100.
+	elsif (($conf->{cgi}{anvil_storage_pool1_unit} eq "%") && (($conf->{cgi}{anvil_storage_pool1_size} < 0) || ($conf->{cgi}{anvil_storage_pool1_size} > 100)))
+	{
+		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0120", variables => { field => "#!string!row_0199!#"}}),
+		});
+		$problem = 1;
+	}
+
+	# Check the gateway
+	if (not $conf->{cgi}{anvil_name})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0005!#"}}),
+		});
+		$problem = 1;
+	} # cman only allows 1-15 characters
+	elsif (length($conf->{cgi}{anvil_name}) > 15)
+	{
+		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0122", variables => { field => "#!string!row_0005!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_name} =~ /[^a-zA-Z0-9\-]/)
+	{
+		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
+		print template($conf, "config.html", "form-error", {
+			message	=>	get_string($conf, {key => "explain_0123", variables => { field => "#!string!row_0005!#"}}),
+		});
+		$problem = 1;
+	}
+	
 	## Check the common IFN values.
 	# Check the gateway
 	if (not $conf->{cgi}{anvil_ifn_gateway})
@@ -2350,6 +2530,7 @@ sub sanity_check_manifest_answers
 		$problem = 1;
 	}
 	
+	### Foundation Pack
 	# Check that switch #1's host name and IP are sane, if set. The
 	# switches are allowed to be blank in case the user has unmanaged
 	# switches.
@@ -2397,7 +2578,7 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch1_ip} = "--";
 		}
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_switch1_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch1_ip}))
 	{
 		$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2451,7 +2632,7 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch2_ip} = "--";
 		}
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_switch2_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch2_ip}))
 	{
 		$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2487,7 +2668,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_pdu1_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pdu1_ip}))
 	{
 		$conf->{form}{anvil_pdu1_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2523,7 +2704,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_pdu2_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pdu2_ip}))
 	{
 		$conf->{form}{anvil_pdu2_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2559,7 +2740,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_ups1_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups1_ip}))
 	{
 		$conf->{form}{anvil_ups1_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2595,7 +2776,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_ups2_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups2_ip}))
 	{
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2631,7 +2812,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2648,7 +2829,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2684,7 +2865,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2701,7 +2882,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2749,7 +2930,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node1_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_bcn_ip}))
 	{
 		$conf->{form}{anvil_node1_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2773,7 +2954,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node1_ipmi_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ipmi_ip}))
 	{
 		$conf->{form}{anvil_node1_ipmi_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2797,7 +2978,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node1_sn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_sn_ip}))
 	{
 		$conf->{form}{anvil_node1_sn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2821,7 +3002,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node1_ifn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ifn_ip}))
 	{
 		$conf->{form}{anvil_node1_ifn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2919,7 +3100,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node2_bcn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_bcn_ip}))
 	{
 		$conf->{form}{anvil_node2_bcn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2943,7 +3124,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node2_ipmi_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ipmi_ip}))
 	{
 		$conf->{form}{anvil_node2_ipmi_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2967,7 +3148,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node2_sn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_sn_ip}))
 	{
 		$conf->{form}{anvil_node2_sn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -2991,7 +3172,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4_with_subnet($conf, $conf->{cgi}{anvil_node2_ifn_ip}))
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ifn_ip}))
 	{
 		$conf->{form}{anvil_node2_ifn_ip_star} = "#!string!symbol_0012!#";
 		print template($conf, "config.html", "form-error", {
@@ -3054,6 +3235,27 @@ sub sanity_check_manifest_answers
 	return($problem);
 }
 
+# Check if the passed string is an unsigned floating point number. A whole
+# number is allowed.
+sub is_string_integer_or_unsigned_float
+{
+	my ($conf, $string) = @_;
+	my $valid = 1;
+	
+	if ($string =~ /^\D/)
+	{
+		# Non-digit could mean it's signed or just garbage.
+		$valid = 0;
+	}
+	elsif (($string !~ /^\d+$/) && ($string != /^\d+\.\d+$/))
+	{
+		# Not an integer or float
+		$valid = 0;
+	}
+	
+	return($valid);
+}
+
 # Check to see if the string looks like a valid hostname
 sub is_domain_name
 {
@@ -3073,6 +3275,7 @@ sub is_domain_name
 	return($valid);
 }
 
+### Not currently used, but leaving it as it's likely going to be useful later.
 # Check if the passed string is a valid IP address and subnet mask (CIDR or
 # dotted-decimal).
 sub is_string_ipv4_with_subnet

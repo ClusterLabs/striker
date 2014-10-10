@@ -291,11 +291,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0113"><![CDATA[Review the values above. Once you are happy that they are accurate,<br />press <b>#!string!button_0047!#</b> and the install manifest will be created for you.]]></key>
 		<key name="explain_0114"><![CDATA[This is the amount of space that will be allocated to the "#!string!button_0023!#".<br />This is where install discs, driver disks and so on are stored for use in servers later.<br />Generally, the default of <span class="code">40 <a href="https://alteeve.ca/w/GiB" target="_new">GiB</a></span> is plenty. However, if you only plan to install one type of server, this can be reduced.<br />On the other hand, if you plan to install many different operating systems on your servers, you may wish to make this larger.]]></key>
 		<key name="explain_0115"><![CDATA[This is the amount of space to allocate to the first storage pool on your #!string!brand_0003!#.<br />This can be specified as a percentage of the free space, or you can set it to a specific size.<br />Which ever you choose, the difference will be used to determine the size of the second storage pool automatically.<br />If you set a static size equal to or larger than the actually available space, or if you choose <span class="code">100 %</span>, no second storage pool will be created.]]></key>
-		<key name="explain_0116"><![CDATA[]]></key>
-		<key name="explain_0117"><![CDATA[]]></key>
-		<key name="explain_0118"><![CDATA[]]></key>
-		<key name="explain_0119"><![CDATA[]]></key>
-		<key name="explain_0120"><![CDATA[]]></key>
+		<key name="explain_0116"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" address block value can not be empty.]]></key>
+		<key name="explain_0117"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" subnet mask value can not be empty.]]></key>
+		<key name="explain_0118"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" address block does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
+		<key name="explain_0119"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" subnet mask does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
+		<key name="explain_0120"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value must be between <span class="code">0</span> and <span class="code">100</span> when the units are <span class="code">%</span> (percentage).]]></key>
+		<key name="explain_0121"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number) or a floating point (number with a decimal) value.]]></key>
+		<key name="explain_0122"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" can not be longer than 15 characters.]]></key>
+		<key name="explain_0123"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters and dashes (<span class="code">-</span>).]]></key>
+		<key name="explain_0124"><![CDATA[]]></key>
+		<key name="explain_0125"><![CDATA[]]></key>
+		<key name="explain_0126"><![CDATA[]]></key>
+		<key name="explain_0127"><![CDATA[]]></key>
+		<key name="explain_0128"><![CDATA[]]></key>
+		<key name="explain_0129"><![CDATA[]]></key>
+		<key name="explain_0130"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
