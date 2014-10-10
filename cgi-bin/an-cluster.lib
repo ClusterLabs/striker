@@ -1966,196 +1966,171 @@ sub generate_install_manifest
 {
 	my ($conf) = @_;
 	my $url;
-	
-# 		anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
-# 		anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
-# 		anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
-# 		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
-# 		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
-# 		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
 
+=pod
+		$conf->{cgi}{anvil_striker1_name},
+		$conf->{cgi}{anvil_striker1_bcn_ip},
+		$conf->{cgi}{anvil_striker1_ifn_ip},
+		$conf->{cgi}{anvil_striker2_name},
+		$conf->{cgi}{anvil_striker2_bcn_ip},
+		$conf->{cgi}{anvil_striker2_ifn_ip},
+=cut
+		
 	# Break up hostsnames
-	my ($node1_short_name)   = ($conf->{cgi}{anvil_node1_name}   =~ /^(.*?)\./);
-	my ($node2_short_name)   = ($conf->{cgi}{anvil_node2_name}   =~ /^(.*?)\./);
-	my ($switch1_short_name) = ($conf->{cgi}{anvil_switch1_name} =~ /^(.*?)\./);
-	my ($switch2_short_name) = ($conf->{cgi}{anvil_switch2_name} =~ /^(.*?)\./);
-	my ($pdu1_short_name)    = ($conf->{cgi}{anvil_pdu1_name} =~ /^(.*?)\./);
-	my ($pdu2_short_name)    = ($conf->{cgi}{anvil_pdu2_name} =~ /^(.*?)\./);
-	my ($ups1_short_name)    = ($conf->{cgi}{anvil_ups1_name} =~ /^(.*?)\./);
-	my ($ups2_short_name)    = ($conf->{cgi}{anvil_ups2_name} =~ /^(.*?)\./);
-	
-	# Break up IPs and subnets
-	my ($node1_bcn_ip,   $node1_bcn_netmask)   = (split/\//, $conf->{cgi}{anvil_node1_bcn_ip});
-	my ($node1_ipmi_ip,  $node1_ipmi_netmask)  = (split/\//, $conf->{cgi}{anvil_node1_ipmi_ip});
-	my ($node1_sn_ip,    $node1_sn_netmask)    = (split/\//, $conf->{cgi}{anvil_node1_sn_ip});
-	my ($node1_ifn_ip,   $node1_ifn_netmask)   = (split/\//, $conf->{cgi}{anvil_node1_ifn_ip});
-	my ($node2_bcn_ip,   $node2_bcn_netmask)   = (split/\//, $conf->{cgi}{anvil_node2_bcn_ip});
-	my ($node2_ipmi_ip,  $node2_ipmi_netmask)  = (split/\//, $conf->{cgi}{anvil_node2_ipmi_ip});
-	my ($node2_sn_ip,    $node2_sn_netmask)    = (split/\//, $conf->{cgi}{anvil_node2_sn_ip});
-	my ($node2_ifn_ip,   $node2_ifn_netmask)   = (split/\//, $conf->{cgi}{anvil_node2_ifn_ip});
-	my ($switch1_ip,     $switch1_netmask)     = (split/\//, $conf->{cgi}{anvil_switch1_ip});
-	my ($switch2_ip,     $switch2_netmask)     = (split/\//, $conf->{cgi}{anvil_switch2_ip});
-	my ($pdu1_ip,        $pdu1_netmask)        = (split/\//, $conf->{cgi}{anvil_pdu1_ip});
-	my ($pdu2_ip,        $pdu2_netmask)        = (split/\//, $conf->{cgi}{anvil_pdu2_ip});
-	my ($ups1_ip,        $ups1_netmask)        = (split/\//, $conf->{cgi}{anvil_ups1_ip});
-	my ($ups2_ip,        $ups2_netmask)        = (split/\//, $conf->{cgi}{anvil_ups2_ip});
+	my ($node1_short_name)    = ($conf->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
+	my ($node2_short_name)    = ($conf->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
+	my ($switch1_short_name)  = ($conf->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
+	my ($switch2_short_name)  = ($conf->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
+	my ($pdu1_short_name)     = ($conf->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
+	my ($pdu2_short_name)     = ($conf->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+	my ($ups1_short_name)     = ($conf->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
+	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
+	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+	my ($striker2_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 	
 	# Many things are currently static but might be made configurable later.
-# 	my $xml = "
-# <?xml version=\"1.0\" encoding=\"UTF-8\"?>
-# 
-# <!--
-# Generated on:    ".get_date($conf)."
-# Striker Version: $conf->{sys}{version
-# -->
-# 
-# <config>
-# 	<node name=\"$conf->{cgi}{anvil_node1_name}\">
-# 		<network name=\"bcn\">
-# 			<ip address=\"$node1_bcn_ip\" netmask=\"$node1_bcn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-# 			<bond name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge />
-# 		</network>
-# 		<network name=\"sn\">
-# 			<ip address=\"$node1_sn_ip\" netmask=\"$node1_sn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-# 			<bond name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge />
-# 		</network>
-# 		<network name=\"ifn\">
-# 			<ip address=\"$node1_ifn_ip\" netmask=\"$node1_ifn_netmask\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\"/>
-# 			<bond name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge name=\"ifn-bridge1\" />
-# 		</network>
-# 		<ipmi>
-# 			<ip address=\"$node1_ipmi_ip\" netmask=\"$node1_ipmi_netmask\" gateway=\"\" />
-# 			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
-# 		</ipmi>
-# 		<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" />
-# 		<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" />
-# 	</node>
-# 	<node name=\"$conf->{cgi}{anvil_node2_name}\">
-# 		<network name=\"bcn\">
-# 			<ip address=\"$node2_bcn_ip\" netmask=\"$node2_bcn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-# 			<bond name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge />
-# 		</network>
-# 		<network name=\"sn\">
-# 			<ip address=\"$node2_sn_ip\" netmask=\"$node2_sn_netmask\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-# 			<bond name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge />
-# 		</network>
-# 		<network name=\"ifn\">
-# 			<ip address=\"$node2_ifn_ip\" netmask=\"$node2_ifn_netmask\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\"/>
-# 			<bond name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\" />
-# 			<bridge name=\"ifn-bridge1\" />
-# 		</network>
-# 		<ipmi>
-# 			<ip address=\"$node2_ipmi_ip\" netmask=\"$node2_ipmi_netmask\" gateway=\"\" />
-# 			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
-# 		</ipmi>
-# 		<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" />
-# 		<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" />
-# 	</node>
-# 	<common>
-# 		<user name=\"root\" password=\"$conf->{cgi}{anvil_password}\" />
-# 		<user name=\"ricci\" password=\"$conf->{cgi}{anvil_password}\" />
-# 		<ssh keysize=\"8191\" />
-# 		<cluster name=\"$conf->{cgi}{anvil_name}\">
-# 			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" />
-# 		</cluster>
-# 		<switch>
-# 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$switch1_ifn_ip\" netmask=\"$switch1_ifn_netmask\" />
-# 			<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$switch2_ifn_ip\" netmask=\"$switch2_ifn_netmask\" />
-# 		</switch>
-# 		<ups>
-# 			<ups name=\"an-ups01.alteeve.ca\" port=\"3551\" ip=\"\" netmask=\"\"  />
-# 			<ups name=\"an-ups02.alteeve.ca\" port=\"3552\" ip=\"\" netmask=\"\"  />
-# 		</ups>
-# 		<pdu>
-# 			<pdu name=\"an-pdu01.alteeve.ca\" ip=\"\" netmask=\"\"  />
-# 			<pdu name=\"an-pdu02.alteeve.ca\" ip=\"\" netmask=\"\"  />
-# 		</pdu>
-# 		<rhn user=\"rhn\@example.com\" password=\"secret\">
-# 			<channel name=\"rhel-x86_64-server-rs-6\" />
-# 			<channel name=\"rhel-x86_64-server-optional-6\" />
-# 		</rhn>
-# 		<update os=\"true\" />
-# 		<daemons>
-# 			<daemon name=\"network\" start_on_boot=\"true\" />
-# 			<daemon name=\"ntpd\" start_on_boot=\"true\" />
-# 			<daemon name=\"ricci\" start_on_boot=\"true\" />
-# 			<daemon name=\"modclusterd\" start_on_boot=\"true\" />
-# 			<daemon name=\"ipmi\" start_on_boot=\"true\" />
-# 			<daemon name=\"iptables\" start_on_boot=\"true\" />
-# 			<daemon name=\"acpid\" start_on_boot=\"false\" />
-# 			<daemon name=\"ip6tables\" start_on_boot=\"false\" />
-# 			<daemon name=\"clvmd\" start_on_boot=\"false\" />
-# 			<daemon name=\"gfs2\" start_on_boot=\"false\" />
-# 			<daemon name=\"libvirtd\" start_on_boot=\"false\" />
-# 			<daemon name=\"cman\" start_on_boot=\"false\" />
-# 			<daemon name=\"rgmanager\" start_on_boot=\"false\" />
-# 		</daemons>
-# 		<iptables>
-# 			<!-- It is up to the generating script to set the right IPs, subnets and port ranges! -->
-# 			<rule sequence=\"01\" rule=\"iptables -I INPUT -m state --state NEW -m multiport -p udp -s 10.20.0.0/16 -d 10.20.0.0/16 --dports 5404,5405 -j ACCEPT\" />
-# 			<rule sequence=\"02\" rule=\"iptables -I INPUT -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport -p udp -s 10.20.0.0/16 --dports 5404,5405 -j ACCEPT\" />
-# 			<rule sequence=\"03\" rule=\"iptables -I INPUT -p igmp -j ACCEPT\" />
-# 			<rule sequence=\"04\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 21064 -j ACCEPT \" />
-# 			<rule sequence=\"05\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 11111 -j ACCEPT\" />
-# 			<rule sequence=\"06\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 16851 -j ACCEPT\" />
-# 			<rule sequence=\"07\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.10.0.0/16 -d 10.10.0.0/16 --dport 7788 -j ACCEPT\" />
-# 			<rule sequence=\"08\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.10.0.0/16 -d 10.10.0.0/16 --dport 7789 -j ACCEPT\" />
-# 			<rule sequence=\"09\" rule=\"iptables -I INPUT -p tcp -m tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 49152:49216 -j ACCEPT\" />
-# 			<rule sequence=\"10\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.20.0.0/16 -d 10.20.0.0/16 --dport 5900:5999 -j ACCEPT\" />
-# 			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s 10.255.0.0/16 -d 10.255.0.0/16 --dport 5900:5999 -j ACCEPT\" />
-# 		</iptables>
-# 		<storage>
-# 			<gfs2 size=\"40 GiB\" />
-# 			<!-- 
-# 			The size can only be specified for resource 0. The left-over space will be assigned to 'r1'.
-# 			The size value is either a percentage of the free space (factoring out the GFS2 partition) or a set size.
-# 			If the static size of 'r0' is greater than the available space, it will be truncated to fit the available space.
-# 			If the size of r0 is '100%' or all of the remaining space, 'r1' will not be created.
-# 			Note that any left over space less that 1 GiB will be left unused.
-# 			-->
-# 			<drbd>
-# 				<resource name=\"r0\" size=\"50%\" />
-# 				<resource name=\"r1\" />
-# 			</drbd>
-# 		</storage>
-# 		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
-# # Anvil! $conf->{cgi}{anvil_prefix}, Node 01
-# $node1_bcn_ip	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
-# $node1_ipmi_ip	$node1_short_name.ipmi
-# $node1_sn_ip	$node1_short_name.sn
-# $node1_ifn_ip	$node1_short_name.ifn
-# 
-# # Anvil! $conf->{cgi}{anvil_prefix}, Node 02
-# $node2_bcn_ip	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}
-# $node2_ipmi_ip	$node2_short_name.ipmi
-# $node2_sn_ip	$node2_short_name.sn
-# $node2_ifn_ip	$node2_short_name.ifn
-# 
-# # Network switches
-# $switch1_ip	$switch1_short_name $conf->{cgi}{anvil_switch1_name}
-# $switch2_ip	$switch2_short_name $conf->{cgi}{anvil_switch2_name}
-# 
-# # Switched PDUs
-# 10.20.2.1	an-pdu01 an-pdu01.alteeve.ca
-# 10.20.2.2	an-pdu02 an-pdu02.alteeve.ca
-# 
-# # UPSes
-# 10.20.3.1	an-ups01 an-ups01.alteeve.ca
-# 10.20.3.2	an-ups02 an-ups02.alteeve.ca
-# 
-# # Striker dashboards
-# 10.20.3.1	an-striker01 an-striker01.alteeve.ca
-# 10.20.3.2	an-striker02 an-striker02.alteeve.ca
-# 		</file>
-# 	</common>
-# </config>
-# ";
-	
+	my $xml = "
+<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+
+<!--
+Generated on:    ".get_date($conf)."
+Striker Version: $conf->{sys}{version}
+-->
+
+<config>
+	<node name=\"$conf->{cgi}{anvil_node1_name}\">
+		<network>
+			<bcn ip=\"$conf->{cgi}{anvil_node1_bcn_ip}\" />
+			<sn ip=\"$conf->{cgi}{anvil_node1_sn_ip}\" />
+			<ifn ip=\"$conf->{cgi}{anvil_node1_ifn_ip}\" />
+		</network>
+		<ipmi name=\"${node1_short_name}.ipmi\">
+			<address ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" on=\"bcn\" />
+			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+		</ipmi>
+		<pdu>
+			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+		</pdu>
+	</node>
+	<node name=\"$conf->{cgi}{anvil_node2_name}\">
+		<network>
+			<bcn ip=\"$conf->{cgi}{anvil_node2_bcn_ip}\" />
+			<sn ip=\"$conf->{cgi}{anvil_node2_sn_ip}\" />
+			<ifn ip=\"$conf->{cgi}{anvil_node2_ifn_ip}\" />
+		</network>
+		<ipmi name=\"${node2_short_name}.ipmi\">
+			<address ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" on=\"bcn\" />
+			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+		</ipmi>
+		<pdu>
+			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+		</pdu>
+	</node>
+	<common>
+		<networks>
+			<bcn netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+			<sn netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+			<ifn netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\" />
+			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
+				<bcn name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" />
+				<sn name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" />
+				<ifn name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" />
+			</bonding>
+			<bridges>
+				<bridge name=\"ifn-bridge1\" on=\"ifn\" />
+			</bridges>
+		</networks>
+		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
+		<storage_poop_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
+		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" />
+		<ssh keysize=\"8191\" />
+		<cluster name=\"$conf->{cgi}{anvil_name}\">
+			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" />
+		</cluster>
+		<switch>
+			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" on=\"bcn\" />
+";
+	if ($conf->{cgi}{anvil_switch2_name} ne "--")
+	{
+		print "			<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" on=\"bcn\" />";
+	}
+	$xml .="
+		</switch>
+		<ups>
+			<ups name=\"$conf->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$conf->{cgi}{anvil_ups1_ip}\" on=\"bcn\" />
+			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" on=\"bcn\" />
+		</ups>
+		<pdu>
+			<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" on=\"bcn\" />
+			<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" on=\"bcn\" />
+		</pdu>
+		<update os=\"true\" />
+		<daemons>
+			<daemon name=\"network\" start_on_boot=\"true\" />
+			<daemon name=\"ntpd\" start_on_boot=\"true\" />
+			<daemon name=\"ricci\" start_on_boot=\"true\" />
+			<daemon name=\"modclusterd\" start_on_boot=\"true\" />
+			<daemon name=\"ipmi\" start_on_boot=\"true\" />
+			<daemon name=\"iptables\" start_on_boot=\"true\" />
+			<daemon name=\"acpid\" start_on_boot=\"false\" />
+			<daemon name=\"ip6tables\" start_on_boot=\"false\" />
+			<daemon name=\"clvmd\" start_on_boot=\"false\" />
+			<daemon name=\"gfs2\" start_on_boot=\"false\" />
+			<daemon name=\"libvirtd\" start_on_boot=\"false\" />
+			<daemon name=\"cman\" start_on_boot=\"false\" />
+			<daemon name=\"rgmanager\" start_on_boot=\"false\" />
+		</daemons>
+		<iptables>
+			<!-- It is up to the generating script to set the right IPs, subnets and port ranges! -->
+			<rule sequence=\"01\" rule=\"iptables -I INPUT -m state --state NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT\" />
+			<rule sequence=\"02\" rule=\"iptables -I INPUT -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT\" />
+			<rule sequence=\"03\" rule=\"iptables -I INPUT -p igmp -j ACCEPT\" />
+			<rule sequence=\"04\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 21064 -j ACCEPT \" />
+			<rule sequence=\"05\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 11111 -j ACCEPT\" />
+			<rule sequence=\"06\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 16851 -j ACCEPT\" />
+			<rule sequence=\"07\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dport 7788 -j ACCEPT\" />
+			<rule sequence=\"08\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dport 7789 -j ACCEPT\" />
+			<rule sequence=\"09\" rule=\"iptables -I INPUT -p tcp -m tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 49152:49216 -j ACCEPT\" />
+			<rule sequence=\"10\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 5900:5999 -j ACCEPT\" />
+			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} --dport 5900:5999 -j ACCEPT\" />
+		</iptables>
+		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
+# Anvil! $conf->{cgi}{anvil_sequence}, Node 01
+$conf->{cgi}{anvil_node1_bcn_ip}	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
+$conf->{cgi}{anvil_node1_ipmi_ip}	$node1_short_name.ipmi
+$conf->{cgi}{anvil_node1_sn_ip}	$node1_short_name.sn
+$conf->{cgi}{anvil_node1_ifn_ip}	$node1_short_name.ifn
+
+# Anvil! $conf->{cgi}{anvil_sequence}, Node 02
+$conf->{cgi}{anvil_node2_bcn_ip}	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}
+$conf->{cgi}{anvil_node2_ipmi_ip}	$node2_short_name.ipmi
+$conf->{cgi}{anvil_node2_sn_ip}	$node2_short_name.sn
+$conf->{cgi}{anvil_node2_ifn_ip}	$node2_short_name.ifn
+
+# Network switches
+$conf->{cgi}{anvil_switch1_ip}	$switch1_short_name $conf->{cgi}{anvil_switch1_name}
+$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}
+
+# Switched PDUs
+$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}
+$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}
+
+# UPSes
+$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}
+$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups1_name}
+
+# Striker dashboards
+$conf->{cgi}{anvil_striker1_bcn_ip}	$striker1_short_name.bcn $striker1_short_name $conf->{cgi}{anvil_striker1_name}
+$conf->{cgi}{anvil_striker1_ifn_ip}	$striker1_short_name.ifn
+$conf->{cgi}{anvil_striker2_bcn_ip}	$striker2_short_name.bcn $striker2_short_name $conf->{cgi}{anvil_striker2_name}
+$conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
+		</file>
+	</common>
+</config>
+";
+	print "<pre>".convert_text_to_html($conf, $xml)."</pre>\n";
 	
 	return($url);
 }
