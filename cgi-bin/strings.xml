@@ -52,7 +52,7 @@
 		<key name="button_0045">Save</key>
 		<key name="button_0046">Set Below Values</key>
 		<key name="button_0047">Generate</key>
-		<key name="button_0048"></key>
+		<key name="button_0048">Load</key>
 		<key name="button_0049"></key>
 		<key name="button_0050"></key>
 		<key name="button_0051"></key>
@@ -299,7 +299,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0121"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number) or a floating point (number with a decimal) value.]]></key>
 		<key name="explain_0122"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" can not be longer than 15 characters.]]></key>
 		<key name="explain_0123"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters and dashes (<span class="code">-</span>).]]></key>
-		<key name="explain_0124"><![CDATA[]]></key>
+		<key name="explain_0124"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It has been added to the manifest list. You can click on the file name to download it now if you wish.]]></key>
 		<key name="explain_0125"><![CDATA[]]></key>
 		<key name="explain_0126"><![CDATA[]]></key>
 		<key name="explain_0127"><![CDATA[]]></key>
@@ -510,7 +510,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0200">BCN Subnet Mask</key>
 		<key name="row_0201">SN Subnet Mask</key>
 		<key name="row_0202">IFN Subnet Mask</key>
-		<key name="row_0203"></key>
+		<key name="row_0203">Existing Manifest</key>
 		<key name="row_0204"></key>
 		<key name="row_0205"></key>
 		<key name="row_0206"></key>
@@ -776,8 +776,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0161">Striker Dashboards</key>
 		<key name="title_0162"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">1</span>]]></key>
 		<key name="title_0163"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
-		<key name="title_0164"></key>
-		<key name="title_0165"></key>
+		<key name="title_0164">Install Manifest Created</key>
+		<key name="title_0165">Existing Install Manifests</key>
 		<key name="title_0166"></key>
 		<key name="title_0167"></key>
 		<key name="title_0168"></key>
@@ -1130,7 +1130,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0343">Add an existing #!string!brand_0004!# to this #!string!brand_0002!# dashboard.</key>
 		<key name="message_0344">Backup this #!string!brand_0002!#'s configuration or load a saved configuration file.</key>
 		<key name="message_0345">Create an installation manifest for new #!string!brand_0004!# node(s).</key>
-		<key name="message_0346"></key>
+		<key name="message_0346"><![CDATA[For #!string!brand_0003!# "<span class="code">#!variable!anvil!#</span>" created on <span class="highlight_ready">#!variable!date!#</span> at <span class="highlight_ready">#!variable!time!#</span>.]]></key>
 		<key name="message_0347"></key>
 		<key name="message_0348"></key>
 		<key name="message_0349"></key>

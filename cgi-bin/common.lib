@@ -542,6 +542,8 @@ sub initialize_conf
 			'an-cdb_files'		=>	"/var/www/home",
 			'an-cdb_cache'		=>	"/var/www/home/cache",
 			an_conf			=>	"/etc/an/an.conf",
+			apache_manifests_dir	=>	"/var/www/html/manifests",
+			apache_manifests_url	=>	"/manifests",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
 			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
 			cat			=>	"/bin/cat",

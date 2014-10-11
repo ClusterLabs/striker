@@ -61,6 +61,7 @@ my $conf = {
 	directory	=>	{
 		media			=>	"/var/www/home/media",
 		apache			=>	"/etc/httpd",
+		apache_manifests	=>	"/var/www/html/manifests",
 		apache_subdirs		=>	["archive", "cache", "media", "status"],
 		guac_classpath		=>	"/var/lib/guacamole/classpath",
 		guac_etc		=>	"/etc/guacamole",
@@ -141,6 +142,7 @@ my $conf = {
 		apache_config		=>	"/etc/httpd/conf/httpd.conf",
 		apache_home		=>	"/var/www/home",
 		apache_htpasswd		=>	"/var/www/home/htpasswd",
+		apache_manifest_conf	=>	"/etc/httpd/conf.d/manifest.conf",
 		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
 		guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
@@ -1455,6 +1457,24 @@ sub configure_apache
 	close $file_handle;
 	print "Done.\n\n";
 	
+	# Write out the manifest.conf file
+	print "- Writing out the apache manifest configuration file.\n";
+	if (-e $conf->{path}{apache_manifest_conf})
+	{
+		print "- Apache manifest configuration file already exists.\n";
+	}
+	else
+	{
+		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "Failed to write: [$conf->{path}{apache_manifest_conf}], the error was: $!\n";
+		print $file_handle "<Directory \"/var/www/html/manifests/\">\n";
+		print $file_handle "  <FilesMatch \"\.xml\$\">\n";
+		print $file_handle "    Header set Content-Disposition attachment\n";
+		print $file_handle "  </FilesMatch>\n";
+		print $file_handle "</Directory>\n";
+		close $file_handle;
+		print "Done.\n\n";
+	}
+	
 	return(0);
 }
 
@@ -1591,6 +1611,17 @@ sub create_apache_home_directories
 		{
 			print "- Already exists: [$full_path].\n";
 		}
+	}
+	
+	# Make sure the directory that install manifests will be stored in is available.
+	if (not -e $conf->{path}{apache_manifests})
+	{
+		print "- Creating: [$conf->{path}{apache_manifests}].\n";
+		mkdir $conf->{path}{apache_manifests} or die "Failed to create the directory: [$conf->{path}{apache_manifests}], the error was: $!\n";
+	}
+	else
+	{
+		print "- Install manifests directory already exists: [$conf->{path}{apache_manifests}].\n";
 	}
 	
 	print "- Setting ownership to: [$conf->{sys}{apache_user}:$conf->{sys}{apache_group}].\n";

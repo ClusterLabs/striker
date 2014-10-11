@@ -1821,14 +1821,15 @@ sub create_install_manifest
 		{
 			# No errors, write out the manifest and create the
 			# download link.
-			$show_form = 0;
 			if (not $conf->{cgi}{confirm})
 			{
+				$show_form = 0;
 				show_summary_manifest($conf);
 			}
 			else
 			{
-				my ($url) = generate_install_manifest($conf);
+				# The form will redisplay after this.
+				generate_install_manifest($conf);
 			}
 		}
 	}
@@ -1836,6 +1837,9 @@ sub create_install_manifest
 	record($conf, "$THIS_FILE ".__LINE__."; show_form: [$show_form]\n");
 	if ($show_form)
 	{
+		# Show the existing install manifest files.
+		show_existing_install_manifests($conf);
+		
 		# Set some default values if 'save' isn't set.
 		if (not $conf->{cgi}{generate})
 		{
@@ -1960,22 +1964,49 @@ sub create_install_manifest
 	return(0);
 }
 
+# This looks for existing install manifest files and displays those it finds.
+sub show_existing_install_manifests
+{
+	my ($conf) = @_;
+	
+	print template($conf, "config.html", "install-manifest-header");
+	local(*DIR);
+	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if (($file eq ".") or ($file eq ".."));
+		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+:\d+:\d+).xml/)
+		{
+			my $anvil   = $1;
+			my $date    = $2;
+			my $time    = $3;
+			$conf->{manifest_file}{$file}{anvil} = get_string($conf, { key => "message_0346", variables => {
+									anvil	=>	$anvil,
+									date	=>	$date,
+									'time'	=>	$time,
+								}});
+		}
+	}
+	foreach my $file (sort {$b cmp $a} keys %{$conf->{manifest_file}})
+	{
+		print template($conf, "config.html", "install-manifest-entry", {
+			description	=>	$conf->{manifest_file}{$file}{anvil},
+			load		=>	"?config=true&task=create-install-manifest&load=$file",
+			download	=>	"?config=true&task=create-install-manifest&download=$file",
+			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
+		});
+	}
+	print template($conf, "config.html", "install-manifest-footer");
+	
+	return(0);
+}
+
 # This takes the (sanity-checked) form data and generates the XML manifest file
 # and then returns the download URL.
 sub generate_install_manifest
 {
 	my ($conf) = @_;
-	my $url;
-
-=pod
-		$conf->{cgi}{anvil_striker1_name},
-		$conf->{cgi}{anvil_striker1_bcn_ip},
-		$conf->{cgi}{anvil_striker1_ifn_ip},
-		$conf->{cgi}{anvil_striker2_name},
-		$conf->{cgi}{anvil_striker2_bcn_ip},
-		$conf->{cgi}{anvil_striker2_ifn_ip},
-=cut
-		
+	
 	# Break up hostsnames
 	my ($node1_short_name)    = ($conf->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
 	my ($node2_short_name)    = ($conf->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
@@ -1987,13 +2018,16 @@ sub generate_install_manifest
 	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 	my ($striker2_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+	my $date      =  get_date($conf);
+	my $file_date =  $date;
+	   $file_date =~ s/ /_/g;
 	
 	# Many things are currently static but might be made configurable later.
 	my $xml = "
 <?xml version=\"1.0\" encoding=\"UTF-8\"?>
 
 <!--
-Generated on:    ".get_date($conf)."
+Generated on:    $date
 Striker Version: $conf->{sys}{version}
 -->
 
@@ -2130,9 +2164,25 @@ $conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
 	</common>
 </config>
 ";
-	print "<pre>".convert_text_to_html($conf, $xml)."</pre>\n";
 	
-	return($url);
+	# Write out the file.
+	my $xml_file    = "install-manifest_".$conf->{cgi}{anvil_name}."_".$file_date.".xml";
+	my $target_path = $conf->{path}{apache_manifests_dir}."/".$xml_file;
+	my $target_url  = $conf->{path}{apache_manifests_url}."/".$xml_file;
+	open (my $file_handle, ">", $target_path) or die "Failed to write: [$target_path], the error was: $!\n";
+	print $file_handle $xml;
+	close $file_handle;
+	
+	print template($conf, "config.html", "manifest-created", {
+		message	=>	get_string($conf, {
+			key => "explain_0124", variables => {
+				url	=>	"$target_url",
+				file	=>	"$xml_file",
+			}
+		}),
+	});
+	
+	return($target_url);
 }
 
 # This shows a summary of what the user selected and asks them to confirm that
@@ -3916,13 +3966,22 @@ sub header
 			}
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
-				if ($conf->{cgi}{generate})
+				my $link =  $conf->{'system'}{cgi_string};
+					$link =~ s/generate=true//;
+					$link =~ s/anvil_password=.*?&//;
+					$link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
+					$link =~ s/&&/&/g;
+				if ($conf->{cgi}{confirm})
 				{
-					my $link =  $conf->{'system'}{cgi_string};
-					   $link =~ s/generate=true//;
-					   $link =~ s/anvil_password=.*?&//;
-					   $link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
-					   $link =~ s/&&/&/g;
+					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"$link",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}, "", 1);
+					$say_refresh = "";
+				}
+				elsif ($conf->{cgi}{generate})
+				{
 					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"$link",
 						button_text	=>	"$back_image",
