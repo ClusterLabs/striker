@@ -1813,6 +1813,46 @@ sub create_install_manifest
 	$conf->{form}{anvil_node2_ifn_ip_star}      = "";
 	$conf->{form}{anvil_node2_pdu1_outlet_star} = "";
 	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
+	if ($conf->{cgi}{'delete'})
+	{
+		if ($conf->{cgi}{confirm})
+		{
+			# Make sure that the file exists and that it is in the
+			# manifests directory.
+			my $file = $conf->{path}{apache_manifests_dir}."/".$conf->{cgi}{'delete'};
+			if (-e $file)
+			{
+				# OK to proceed.
+				unlink $file or die "Failed to delete: [$conf->{cgi}{'delete'}], error was: $!\n";
+				my $message = get_string($conf, { key => "message_0349", variables => {
+					file		=>	$file,
+				}});
+				print template($conf, "config.html", "delete-manifest-success", {
+					message	=>	$message,
+				});
+			}
+			else
+			{
+				# File is gone...
+				my $message = get_string($conf, { key => "message_0348", variables => {
+					file		=>	$conf->{cgi}{'delete'},
+					manifest_dir	=>	$conf->{path}{apache_manifests_dir},
+				}});
+				print template($conf, "config.html", "delete-manifest-failure", {
+					message	=>	$message,
+				});
+			}
+		}
+		else
+		{
+			$show_form = 0;
+			my $message = get_string($conf, { key => "message_0347", variables => { file => $conf->{cgi}{'delete'} }});
+			print template($conf, "config.html", "manifest-confirm-delete", {
+				message	=>	$message,
+				confirm	=>	"?config=true&task=create-install-manifest&delete=$conf->{cgi}{'delete'}&confirm=true",
+			});
+		}
+	}
 	if ($conf->{cgi}{generate})
 	{
 		# Sanity check the user's answers and, if OK, returns 0. Any
@@ -1841,7 +1881,11 @@ sub create_install_manifest
 		show_existing_install_manifests($conf);
 		
 		# Set some default values if 'save' isn't set.
-		if (not $conf->{cgi}{generate})
+		if ($conf->{cgi}{load})
+		{
+			load_install_manifest($conf, $conf->{cgi}{load});
+		}
+		elsif (not $conf->{cgi}{generate})
 		{
 			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = "xx"; }
 			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = "localdomain"; }
@@ -1964,6 +2008,200 @@ sub create_install_manifest
 	return(0);
 }
 
+# This reads in the passed in install manifest file name and loads it into the
+# appropriate cgi variables for use in the install manifest form.
+sub load_install_manifest
+{
+	my ($conf, $file) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
+	
+	# Read in the actual file.
+	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
+	#record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
+	if (-e $manifest_file)
+	{
+		# Load it!
+		print "<pre>\n";
+		
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($manifest_file, KeyAttr => {node => 'name'}, ForceArray => 1);
+		
+		use Data::Dumper;
+		
+		print "Common:\n";
+		# 'sort' is useless
+		foreach my $a (@{$data->{common}})
+		{
+			print "- a: [$a]\n";
+			foreach my $b (keys %{$a})
+			{
+				# Pull out and record the 'anvil'
+				if ($b eq "anvil")
+				{
+					# Only ever one entry in the array 
+					# reference, so we can safely 
+					# dereference immediately.
+					$conf->{install_manifest}{$file}{common}{anvil}{prefix}   = $a->{$b}->[0]->{prefix};
+					$conf->{install_manifest}{$file}{common}{anvil}{domain}   = $a->{$b}->[0]->{domain};
+					$conf->{install_manifest}{$file}{common}{anvil}{sequence} = $a->{$b}->[0]->{sequence};
+					$conf->{install_manifest}{$file}{common}{anvil}{password} = $a->{$b}->[0]->{password};
+				}
+				elsif ($b eq "cluster")
+				{
+					# Cluster Name
+					$conf->{install_manifest}{$file}{common}{cluster}{name} = $a->{$b}->[0]->{name};
+					
+					# Fencing stuff
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{post_join_delay} = $a->{$b}->[0]->{fence}->[0]->{post_join_delay};
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{order}           = $a->{$b}->[0]->{fence}->[0]->{order};
+				}
+				elsif ($b eq "daemons")
+				{
+					#print Dumper $a->{$b}->[0]->{daemons};
+					### wtf; why does this need 'keys @{}' ??
+					foreach my $c (keys @{$a->{$b}->[0]->{daemon}})
+					{
+						my $name          = $a->{$b}->[0]->{daemon}->[$c]->{name};
+						my $start_on_boot = $a->{$b}->[0]->{daemon}->[$c]->{start_on_boot};
+						$conf->{install_manifest}{$file}{common}{daemons}{$name}{start_on_boot} = $start_on_boot;
+					}
+				}
+				elsif ($b eq "file")
+				{
+					### wtf?! why does this work?
+					foreach my $c (keys @{$a->{$b}})
+					{
+						my $name    = $a->{$b}->[$c]->{name};
+						my $mode    = $a->{$b}->[$c]->{mode};
+						my $owner   = $a->{$b}->[$c]->{owner};
+						my $group   = $a->{$b}->[$c]->{group};
+						my $content = $a->{$b}->[$c]->{content};
+						
+						$conf->{install_manifest}{$file}{common}{files}{$name}{mode}    = $mode;
+						$conf->{install_manifest}{$file}{common}{files}{$name}{owner}   = $owner;
+						$conf->{install_manifest}{$file}{common}{files}{$name}{group}   = $group;
+						$conf->{install_manifest}{$file}{common}{files}{$name}{content} = $content;
+					}
+				}
+				elsif ($b eq "iptables")
+				{
+					foreach my $c (keys @{$a->{$b}->[0]->{rule}})
+					{
+						my $sequence = $a->{$b}->[0]->{rule}->[$c]->{sequence};
+						my $rule     = $a->{$b}->[0]->{rule}->[$c]->{rule};
+						if (exists $conf->{install_manifest}{$file}{common}{iptables}{rules}{$sequence})
+						{
+							die "Duplicate 'iptables' rule sequence in install manifest: [$file]\n"; 
+						}
+						$conf->{install_manifest}{$file}{common}{iptables}{rules}{$sequence}{rule} = $rule;
+					}
+				}
+				elsif ($b eq "media_library")
+				{
+					$conf->{install_manifest}{$file}{common}{media_library}{size}  = $a->{$b}->[0]->{size};
+					$conf->{install_manifest}{$file}{common}{media_library}{units} = $a->{$b}->[0]->{units};
+				}
+				elsif ($b eq "networks")
+				{
+					foreach my $c (keys %{$a->{$b}->[0]})
+					{
+						if ($c eq "bonding")
+						{
+							foreach my $d (sort {$a cmp $b} keys %{$a->{$b}->[0]->{$c}->[0]})
+							{
+								if ($d eq "opts")
+								{
+									# Global bonding options.
+									$conf->{install_manifest}{$file}{common}{network}{bonds}{options} = $a->{$b}->[0]->{$c}->[0]->{opts};
+									#print "Common bonding options: [$conf->{install_manifest}{$file}{common}{network}{bonds}{options}]\n";
+								}
+								else
+								{
+									# Named network.
+									my $name      = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{name};
+									my $primary   = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{primary};
+									my $secondary = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{secondary};
+									$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{primary}   = $primary;
+									$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{secondary} = $secondary;
+									#print "Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{secondary}]\n";
+								}
+							}
+						}
+						elsif ($c eq "bridges")
+						{
+							foreach my $d (keys @{$a->{$b}->[0]->{$c}->[0]->{bridge}})
+							{
+								my $name = $a->{$b}->[0]->{$c}->[0]->{bridge}->[$d]->{name};
+								my $on   = $a->{$b}->[0]->{$c}->[0]->{bridge}->[$d]->{on};
+								$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on} = $on;
+							}
+						}
+						else
+						{
+							#print "Network: [$c] -> [$a->{$b}->[0]->{$c}->[0]]\n";
+							#print Dumper $a->{$b}->[0]->{$c}->[0];
+							my $netmask  = $a->{$b}->[0]->{$c}->[0]->{netmask};
+							my $gateway  = $a->{$b}->[0]->{$c}->[0]->{gateway};
+							my $defroute = $a->{$b}->[0]->{$c}->[0]->{defroute};
+							my $dns1     = $a->{$b}->[0]->{$c}->[0]->{dns1};
+							my $dns2     = $a->{$b}->[0]->{$c}->[0]->{dns2};
+							
+							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{netmask}  = $netmask;
+							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{gateway}  = $gateway;
+							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{defroute} = $defroute;
+							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns1}     = $dns1;
+							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns2}     = $dns2;
+							#print "Network: [$c], netmask: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns2}]\n";
+						}
+					}
+					#print Dumper $a->{$b};
+				}
+				elsif ($b eq "pdu")
+				{
+					foreach my $c (keys @{$a->{$b}->[0]->{pdu}})
+					{
+						my $name = $a->{$b}->[0]->{pdu}->[$c]->{name};
+						my $ip   = $a->{$b}->[0]->{pdu}->[$c]->{ip};
+						my $on   = $a->{$b}->[0]->{pdu}->[$c]->{on};
+						
+						$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip} = $ip;
+						$conf->{install_manifest}{$file}{common}{pdu}{$name}{on} = $on;
+						#print "PDU: [$name], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{on}]\n";
+					}
+				}
+				else
+				{
+					print "-- b: [$b] -> $a->{$b}\n";
+				}
+			}
+		}
+		#print Dumper $conf->{install_manifest}{$file};
+		print "</pre>\n";
+		
+		# Load the common variables.
+		$conf->{cgi}{anvil_prefix}   = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
+		$conf->{cgi}{anvil_domain}   = $conf->{install_manifest}{$file}{common}{anvil}{domain};
+		$conf->{cgi}{anvil_sequence} = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
+		$conf->{cgi}{anvil_password} = $conf->{install_manifest}{$file}{common}{anvil}{password};
+		
+		# Media Library values
+		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
+		$conf->{cgi}{anvil_media_library_unit} = $conf->{install_manifest}{$file}{common}{media_library}{units};
+	}
+	else
+	{
+		# File is gone. ;_;
+		my $message = get_string($conf, { key => "message_0350", variables => {
+			manifest_file	=>	$manifest_file,
+		}});
+		print template($conf, "config.html", "load-manifest-failure", {
+			message	=>	$message,
+		});
+	}
+	
+	return(0);
+}
+
 # This looks for existing install manifest files and displays those it finds.
 sub show_existing_install_manifests
 {
@@ -1992,7 +2230,7 @@ sub show_existing_install_manifests
 		print template($conf, "config.html", "install-manifest-entry", {
 			description	=>	$conf->{manifest_file}{$file}{anvil},
 			load		=>	"?config=true&task=create-install-manifest&load=$file",
-			download	=>	"?config=true&task=create-install-manifest&download=$file",
+			download	=>	$conf->{path}{apache_manifests_url}."/".$file,
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
 		});
 	}
@@ -2023,8 +2261,7 @@ sub generate_install_manifest
 	   $file_date =~ s/ /_/g;
 	
 	# Many things are currently static but might be made configurable later.
-	my $xml = "
-<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+	my $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 
 <!--
 Generated on:    $date
@@ -2077,7 +2314,7 @@ Striker Version: $conf->{sys}{version}
 			</bridges>
 		</networks>
 		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
-		<storage_poop_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
+		<storage_pool_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
 		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" />
 		<ssh keysize=\"8191\" />
 		<cluster name=\"$conf->{cgi}{anvil_name}\">
@@ -3769,7 +4006,6 @@ sub ask_which_cluster
 {
 	my ($conf) = @_;
 	
-	### NOTE: Left off here...
 	print template($conf, "select-anvil.html", "open-table");
 	
 	my $anvil_count = 0;
@@ -3978,7 +4214,11 @@ sub header
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}, "", 1);
-					$say_refresh = "";
+					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"?config=true&task=create-install-manifest",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}, "", 1);
 				}
 				elsif ($conf->{cgi}{generate})
 				{

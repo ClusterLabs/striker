@@ -778,9 +778,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0163"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="title_0164">Install Manifest Created</key>
 		<key name="title_0165">Existing Install Manifests</key>
-		<key name="title_0166"></key>
-		<key name="title_0167"></key>
-		<key name="title_0168"></key>
+		<key name="title_0166">Confirm deletion of Install Manifest file</key>
+		<key name="title_0167">Delete of Install Manifest Failed</key>
+		<key name="title_0168">Load of Install Manifest Failed</key>
 		<key name="title_0169"></key>
 		<key name="title_0170"></key>
 		
@@ -1131,10 +1131,20 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0344">Backup this #!string!brand_0002!#'s configuration or load a saved configuration file.</key>
 		<key name="message_0345">Create an installation manifest for new #!string!brand_0004!# node(s).</key>
 		<key name="message_0346"><![CDATA[For #!string!brand_0003!# "<span class="code">#!variable!anvil!#</span>" created on <span class="highlight_ready">#!variable!date!#</span> at <span class="highlight_ready">#!variable!time!#</span>.]]></key>
-		<key name="message_0347"></key>
-		<key name="message_0348"></key>
-		<key name="message_0349"></key>
-		<key name="message_0350"></key>
+		<key name="message_0347"><![CDATA[Are you sure you want to delete the: <span class="code"><span class="highlight_ready">#!variable!file!#</span></span> file?]]></key>
+		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
+		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
+		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
+		<key name="message_0351"></key>
+		<key name="message_0352"></key>
+		<key name="message_0353"></key>
+		<key name="message_0354"></key>
+		<key name="message_0355"></key>
+		<key name="message_0356"></key>
+		<key name="message_0357"></key>
+		<key name="message_0358"></key>
+		<key name="message_0359"></key>
+		<key name="message_0360"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

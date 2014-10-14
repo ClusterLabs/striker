@@ -10,6 +10,7 @@ use CGI;
 use utf8;
 use IO::Handle;
 use Term::ReadKey;
+use XML::Simple qw(:strict);
 
 # Set static variables.
 my $THIS_FILE = "common.lib";

@@ -50,6 +50,10 @@ td {
 /* 	border-color: #ffffff; */
 }
 
+.td_hidden_white {
+	border: 1px solid #ffffff;
+}
+
 .hidden_table {
 	background-color: transparent;
 	border-collapse: collapse;
