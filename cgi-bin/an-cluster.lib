@@ -2015,24 +2015,83 @@ sub load_install_manifest
 	my ($conf, $file) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
 	
-	# Read in the actual file.
+	# Read in the install manifest file.
 	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
 	#record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
 	if (-e $manifest_file)
 	{
 		# Load it!
-		print "<pre>\n";
-		
 		my $xml  = XML::Simple->new();
 		my $data = $xml->XMLin($manifest_file, KeyAttr => {node => 'name'}, ForceArray => 1);
 		
-		use Data::Dumper;
+		# Nodes.
+		foreach my $node (keys %{$data->{node}})
+		{
+			#print "Node: [$node] -> [$data->{node}{$node}]\n";
+			#print Dumper $data->{node}{$node};
+			foreach my $a (keys %{$data->{node}{$node}})
+			{
+				if ($a eq "ipmi")
+				{
+					my $name     = $data->{node}{$node}{$a}->[0]->{name};
+					my $ip       = $data->{node}{$node}{$a}->[0]->{address}->[0]->{ip};
+					my $on       = $data->{node}{$node}{$a}->[0]->{address}->[0]->{on};
+					my $user     = $data->{node}{$node}{$a}->[0]->{auth}->[0]->{user};
+					my $password = $data->{node}{$node}{$a}->[0]->{auth}->[0]->{password};
+					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{name}     = $name;
+					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip}       = $ip;
+					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{on}       = $on;
+					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{user}     = $user;
+					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{password} = $password;
+					#print "Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{ip}], on: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{on}], user: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{user}], password: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password}]\n";
+				}
+				elsif ($a eq "network")
+				{
+					#print "a: [$a], -> b: [$data->{node}{$node}{network}->[0]]\n";
+					#print Dumper $data->{node}{$node}{network}->[0];
+					foreach my $network (keys %{$data->{node}{$node}{network}->[0]})
+					{
+						my $ip = $data->{node}{$node}{network}->[0]->{$network}->[0]->{ip};
+						$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip} = $ip;
+						#print "Node: [$node], Network: [$network], IP: [$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip}]\n";
+					}
+				}
+				elsif ($a eq "pdu")
+				{
+					#print "a: [$a] -> [$data->{node}{$node}{pdu}->[0]->{on}]\n";
+					#print Dumper $data->{node}{$node}{pdu}->[0]->{on};
+					foreach my $b (keys @{$data->{node}{$node}{pdu}->[0]->{on}})
+					{
+						my $name     = $data->{node}{$node}{pdu}->[0]->{on}->[$b]->{name};
+						my $port     = $data->{node}{$node}{pdu}->[0]->{on}->[$b]->{port};
+						my $agent    = $data->{node}{$node}{pdu}->[0]->{on}->[$b]->{agent};
+						my $user     = $data->{node}{$node}{pdu}->[0]->{on}->[$b]->{user};
+						my $password = $data->{node}{$node}{pdu}->[0]->{on}->[$b]->{password};
+						
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}     = $port;
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{agent}    = $agent;
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}     = $user;
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password} = $password;
+						
+						#print "Node: [$node], PDU: [$name], Agent: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{agent}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}]\n";
+						#print Dumper $data->{node}{$node}{pdu}->[0]->{on}->[$b];
+					}
+				}
+				else
+				{
+					#print "a: [$a] -> [$data->{node}{$node}{$a}]\n";
+					foreach my $b (keys @{$data->{node}{$node}{$a}})
+					{
+						#print "- b: [$b] -> [$data->{node}{$node}{$a}->[$b]]\n";
+						#print Dumper $data->{node}{$node}{$a}->[$b];
+					}
+				}
+			}
+		}
 		
-		print "Common:\n";
-		# 'sort' is useless
+		# The common variables
 		foreach my $a (@{$data->{common}})
 		{
-			print "- a: [$a]\n";
 			foreach my $b (keys %{$a})
 			{
 				# Pull out and record the 'anvil'
@@ -2057,13 +2116,12 @@ sub load_install_manifest
 				}
 				elsif ($b eq "daemons")
 				{
-					#print Dumper $a->{$b}->[0]->{daemons};
 					### wtf; why does this need 'keys @{}' ??
 					foreach my $c (keys @{$a->{$b}->[0]->{daemon}})
 					{
 						my $name          = $a->{$b}->[0]->{daemon}->[$c]->{name};
 						my $start_on_boot = $a->{$b}->[0]->{daemon}->[$c]->{start_on_boot};
-						$conf->{install_manifest}{$file}{common}{daemons}{$name}{start_on_boot} = $start_on_boot;
+						$conf->{install_manifest}{$file}{common}{daemon}{$name}{start_on_boot} = $start_on_boot;
 					}
 				}
 				elsif ($b eq "file")
@@ -2077,10 +2135,10 @@ sub load_install_manifest
 						my $group   = $a->{$b}->[$c]->{group};
 						my $content = $a->{$b}->[$c]->{content};
 						
-						$conf->{install_manifest}{$file}{common}{files}{$name}{mode}    = $mode;
-						$conf->{install_manifest}{$file}{common}{files}{$name}{owner}   = $owner;
-						$conf->{install_manifest}{$file}{common}{files}{$name}{group}   = $group;
-						$conf->{install_manifest}{$file}{common}{files}{$name}{content} = $content;
+						$conf->{install_manifest}{$file}{common}{file}{$name}{mode}    = $mode;
+						$conf->{install_manifest}{$file}{common}{file}{$name}{owner}   = $owner;
+						$conf->{install_manifest}{$file}{common}{file}{$name}{group}   = $group;
+						$conf->{install_manifest}{$file}{common}{file}{$name}{content} = $content;
 					}
 				}
 				elsif ($b eq "iptables")
@@ -2089,11 +2147,11 @@ sub load_install_manifest
 					{
 						my $sequence = $a->{$b}->[0]->{rule}->[$c]->{sequence};
 						my $rule     = $a->{$b}->[0]->{rule}->[$c]->{rule};
-						if (exists $conf->{install_manifest}{$file}{common}{iptables}{rules}{$sequence})
+						if (exists $conf->{install_manifest}{$file}{common}{iptables}{rule}{$sequence})
 						{
 							die "Duplicate 'iptables' rule sequence in install manifest: [$file]\n"; 
 						}
-						$conf->{install_manifest}{$file}{common}{iptables}{rules}{$sequence}{rule} = $rule;
+						$conf->{install_manifest}{$file}{common}{iptables}{rule}{$sequence}{rule} = $rule;
 					}
 				}
 				elsif ($b eq "media_library")
@@ -2107,12 +2165,12 @@ sub load_install_manifest
 					{
 						if ($c eq "bonding")
 						{
-							foreach my $d (sort {$a cmp $b} keys %{$a->{$b}->[0]->{$c}->[0]})
+							foreach my $d (keys %{$a->{$b}->[0]->{$c}->[0]})
 							{
 								if ($d eq "opts")
 								{
 									# Global bonding options.
-									$conf->{install_manifest}{$file}{common}{network}{bonds}{options} = $a->{$b}->[0]->{$c}->[0]->{opts};
+									$conf->{install_manifest}{$file}{common}{network}{bond}{options} = $a->{$b}->[0]->{$c}->[0]->{opts};
 									#print "Common bonding options: [$conf->{install_manifest}{$file}{common}{network}{bonds}{options}]\n";
 								}
 								else
@@ -2121,9 +2179,9 @@ sub load_install_manifest
 									my $name      = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{name};
 									my $primary   = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{primary};
 									my $secondary = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{secondary};
-									$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{primary}   = $primary;
-									$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{secondary} = $secondary;
-									#print "Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{$name}{secondary}]\n";
+									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}   = $primary;
+									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary} = $secondary;
+									#print "Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary}]\n";
 								}
 							}
 						}
@@ -2138,23 +2196,22 @@ sub load_install_manifest
 						}
 						else
 						{
-							#print "Network: [$c] -> [$a->{$b}->[0]->{$c}->[0]]\n";
-							#print Dumper $a->{$b}->[0]->{$c}->[0];
+							my $netblock = $a->{$b}->[0]->{$c}->[0]->{netblock};
 							my $netmask  = $a->{$b}->[0]->{$c}->[0]->{netmask};
 							my $gateway  = $a->{$b}->[0]->{$c}->[0]->{gateway};
 							my $defroute = $a->{$b}->[0]->{$c}->[0]->{defroute};
 							my $dns1     = $a->{$b}->[0]->{$c}->[0]->{dns1};
 							my $dns2     = $a->{$b}->[0]->{$c}->[0]->{dns2};
 							
-							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{netmask}  = $netmask;
-							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{gateway}  = $gateway;
-							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{defroute} = $defroute;
-							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns1}     = $dns1;
-							$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns2}     = $dns2;
-							#print "Network: [$c], netmask: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{networks}{interface}{$c}{dns2}]\n";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock} = $netblock;
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}  = $netmask;
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}  = $gateway;
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute} = $defroute;
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}     = $dns1;
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}     = $dns2;
+							#print "Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}]\n";
 						}
 					}
-					#print Dumper $a->{$b};
 				}
 				elsif ($b eq "pdu")
 				{
@@ -2169,14 +2226,69 @@ sub load_install_manifest
 						#print "PDU: [$name], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{on}]\n";
 					}
 				}
+				elsif ($b eq "ssh")
+				{
+					$conf->{install_manifest}{$file}{common}{ssh}{keysize} = $a->{$b}->[0]->{keysize};
+					#print "SSH keysize: [$conf->{install_manifest}{$file}{common}{ssh}{keysize}] bytes\n";
+				}
+				elsif ($b eq "storage_pool_1")
+				{
+					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size}  = $a->{$b}->[0]->{size};
+					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{units} = $a->{$b}->[0]->{units};
+					#print "Storage Pool 1: [$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size} $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units}]\n";
+				}
+				elsif ($b eq "striker")
+				{
+					foreach my $c (keys @{$a->{$b}->[0]->{striker}})
+					{
+						my $name   = $a->{$b}->[0]->{striker}->[$c]->{name};
+						my $bcn_ip = $a->{$b}->[0]->{striker}->[$c]->{bcn_ip};
+						my $ifn_ip = $a->{$b}->[0]->{striker}->[$c]->{ifn_ip};
+						
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip} = $bcn_ip;
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip} = $ifn_ip;
+						#print "Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}]\n";
+					}
+				}
+				elsif ($b eq "switch")
+				{
+					foreach my $c (keys @{$a->{$b}->[0]->{switch}})
+					{
+						my $name = $a->{$b}->[0]->{switch}->[$c]->{name};
+						my $ip   = $a->{$b}->[0]->{switch}->[$c]->{ip};
+						my $on   = $a->{$b}->[0]->{switch}->[$c]->{on};
+						$conf->{install_manifest}{$file}{common}{switch}{$name}{ip} = $ip;
+						$conf->{install_manifest}{$file}{common}{switch}{$name}{on} = $on;
+						#print "Switch: [$name], IP: [$conf->{install_manifest}{$file}{common}{switch}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{switch}{$name}{on}]\n";
+					}
+				}
+				elsif ($b eq "update")
+				{
+					$conf->{install_manifest}{$file}{common}{update}{os} = $a->{$b}->[0]->{os};
+					#print "Update OS: [$conf->{install_manifest}{$file}{common}{update}{os}]\n";
+				}
+				elsif ($b eq "ups")
+				{
+					foreach my $c (keys @{$a->{$b}->[0]->{ups}})
+					{
+						my $name = $a->{$b}->[0]->{ups}->[$c]->{name};
+						my $ip   = $a->{$b}->[0]->{ups}->[$c]->{ip};
+						my $on   = $a->{$b}->[0]->{ups}->[$c]->{on};
+						my $type = $a->{$b}->[0]->{ups}->[$c]->{type};
+						my $port = $a->{$b}->[0]->{ups}->[$c]->{port};
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}   = $ip;
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{on}   = $on;
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{type} = $type;
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{port} = $port;
+						#print "UPS: [$name], IP: [$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{ups}{$name}{on}], type: [$conf->{install_manifest}{$file}{common}{ups}{$name}{type}], port: [$conf->{install_manifest}{$file}{common}{ups}{$name}{port}]\n";
+					}
+				}
 				else
 				{
-					print "-- b: [$b] -> $a->{$b}\n";
+					record($conf, "$THIS_FILE ".__LINE__."; Extra element in install manifest file: [$file]; b: [$b] -> [$a->{$b}]\n");
 				}
 			}
 		}
-		#print Dumper $conf->{install_manifest}{$file};
-		print "</pre>\n";
 		
 		# Load the common variables.
 		$conf->{cgi}{anvil_prefix}   = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
@@ -2187,6 +2299,105 @@ sub load_install_manifest
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
 		$conf->{cgi}{anvil_media_library_unit} = $conf->{install_manifest}{$file}{common}{media_library}{units};
+		
+		# Networks
+		$conf->{cgi}{anvil_bcn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock};
+		$conf->{cgi}{anvil_bcn_subnet}  = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netmask};
+		$conf->{cgi}{anvil_sn_network}  = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netblock};
+		$conf->{cgi}{anvil_sn_subnet}   = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netmask};
+		$conf->{cgi}{anvil_ifn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
+		$conf->{cgi}{anvil_ifn_subnet}  = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
+		
+		# Storage Pool 1
+		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
+		$conf->{cgi}{anvil_storage_pool1_unit} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units};
+		
+		# Shared Variables
+		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
+		$conf->{cgi}{anvil_ifn_gateway} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{gateway};
+		$conf->{cgi}{anvil_ifn_dns1}    = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{dns1};
+		$conf->{cgi}{anvil_ifn_dns2}    = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{dns2};
+		
+		### Foundation Pack
+		# Switches
+		my $i = 1;
+		foreach my $switch (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{switch}})
+		{
+			# Probably an autovivication bug or something... getting empty hash references.
+			next if $switch =~ /^HASH/;
+			my $name_key = "anvil_switch".$i."_name";
+			my $ip_key   = "anvil_switch".$i."_ip";
+			$conf->{cgi}{$name_key} = $switch;
+			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{switch}{$switch}{ip};
+			#print "Switch: [$switch], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			$i++;
+		}
+		# PDUs
+		$i = 1;
+		foreach my $pdu (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{pdu}})
+		{
+			# Probably an autovivication bug or something... getting empty hash references.
+			next if $pdu =~ /^HASH/;
+			my $name_key = "anvil_pdu".$i."_name";
+			my $ip_key   = "anvil_pdu".$i."_ip";
+			$conf->{cgi}{$name_key} = $pdu;
+			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{pdu}{$pdu}{ip};
+			#print "PDU: [$pdu], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			$i++;
+		}
+		# UPSes
+		$i = 1;
+		foreach my $ups (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{ups}})
+		{
+			# Probably an autovivication bug or something... getting empty hash references.
+			next if $ups =~ /^HASH/;
+			my $name_key = "anvil_ups".$i."_name";
+			my $ip_key   = "anvil_ups".$i."_ip";
+			$conf->{cgi}{$name_key} = $ups;
+			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{ups}{$ups}{ip};
+			#print "UPS: [$ups], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			$i++;
+		}
+		# Striker Dashboards
+		$i = 1;
+		foreach my $striker (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{striker}{name}})
+		{
+			# Probably an autovivication bug or something... getting empty hash references.
+			next if $striker =~ /^HASH/;
+			my $name_key   = "anvil_striker".$i."_name";
+			my $bcn_ip_key = "anvil_striker".$i."_bcn_ip";
+			my $ifn_ip_key = "anvil_striker".$i."_ifn_ip";
+			$conf->{cgi}{$name_key}   = $striker;
+			$conf->{cgi}{$bcn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{bcn_ip};
+			$conf->{cgi}{$ifn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{ifn_ip};
+			$i++;
+		}
+		
+		### Now the Nodes.
+		$i = 1;
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}})
+		{
+			my $name_key    = "anvil_node".$i."_name";
+			my $bcn_ip_key  = "anvil_node".$i."_bcn_ip";
+			my $ipmi_ip_key = "anvil_node".$i."_ipmi_ip";
+			my $sn_ip_key   = "anvil_node".$i."_sn_ip";
+			my $ifn_ip_key  = "anvil_node".$i."_ifn_ip";
+			my $pdu1_key    = "anvil_node".$i."_pdu1_outlet";
+			my $pdu2_key    = "anvil_node".$i."_pdu2_outlet";
+			my $pdu1_name   = $conf->{cgi}{anvil_pdu1_name};
+			my $pdu2_name   = $conf->{cgi}{anvil_pdu2_name};
+			
+			$conf->{cgi}{$name_key}    = $node;
+			$conf->{cgi}{$bcn_ip_key}  = $conf->{install_manifest}{$file}{node}{$node}{network}{bcn}{ip};
+			$conf->{cgi}{$ipmi_ip_key} = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip};
+			$conf->{cgi}{$sn_ip_key}   = $conf->{install_manifest}{$file}{node}{$node}{network}{sn}{ip};
+			$conf->{cgi}{$ifn_ip_key}  = $conf->{install_manifest}{$file}{node}{$node}{network}{ifn}{ip};
+			$conf->{cgi}{$pdu1_key}    = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu1_name}{port};
+			$conf->{cgi}{$pdu2_key}    = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_name}{port};
+			
+			#print Dumper $conf->{install_manifest}{$file}{node}{$node};
+			$i++;
+		}
 	}
 	else
 	{
@@ -2277,7 +2488,7 @@ Striker Version: $conf->{sys}{version}
 		</network>
 		<ipmi name=\"${node1_short_name}.ipmi\">
 			<address ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" on=\"bcn\" />
-			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+			<auth user=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
 		</ipmi>
 		<pdu>
 			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
@@ -2292,7 +2503,7 @@ Striker Version: $conf->{sys}{version}
 		</network>
 		<ipmi name=\"${node2_short_name}.ipmi\">
 			<address ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" on=\"bcn\" />
-			<auth name=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+			<auth user=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
 		</ipmi>
 		<pdu>
 			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
@@ -2301,9 +2512,9 @@ Striker Version: $conf->{sys}{version}
 	</node>
 	<common>
 		<networks>
-			<bcn netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-			<sn netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
-			<ifn netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\" />
+			<bcn netblock=\"$conf->{cgi}{anvil_bcn_network}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+			<sn  netblock=\"$conf->{cgi}{anvil_sn_network}\" netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
+			<ifn netblock=\"$conf->{cgi}{anvil_ifn_network}\" netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\" />
 			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
 				<bcn name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" />
 				<sn name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" />
@@ -2337,6 +2548,10 @@ Striker Version: $conf->{sys}{version}
 			<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" on=\"bcn\" />
 			<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" on=\"bcn\" />
 		</pdu>
+		<striker>
+			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" />
+			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" />
+		</striker>
 		<update os=\"true\" />
 		<daemons>
 			<daemon name=\"network\" start_on_boot=\"true\" />
