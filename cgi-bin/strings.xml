@@ -53,7 +53,7 @@
 		<key name="button_0046">Set Below Values</key>
 		<key name="button_0047">Generate</key>
 		<key name="button_0048">Load</key>
-		<key name="button_0049"></key>
+		<key name="button_0049">Run</key>
 		<key name="button_0050"></key>
 		<key name="button_0051"></key>
 		
@@ -781,7 +781,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0166">Confirm deletion of Install Manifest file</key>
 		<key name="title_0167">Delete of Install Manifest Failed</key>
 		<key name="title_0168">Load of Install Manifest Failed</key>
-		<key name="title_0169"></key>
+		<key name="title_0169">Run the Install Manifest against an #!string!brand_0003!# node</key>
 		<key name="title_0170"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->

@@ -568,6 +568,7 @@ sub initialize_conf
 			restart_guacd		=>	"/var/www/tools/restart_guacd",
 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 			ssh_config		=>	"/etc/ssh/ssh_config",
+			sync			=>	"/bin/sync",
 			virsh			=>	"/usr/bin/virsh",
 			screen			=>	"/usr/bin/screen",
 			shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.

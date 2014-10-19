@@ -93,6 +93,7 @@ my $conf = {
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
+		unzip			=>	"/usr/bin/unzip",
 		wget			=>	"/usr/bin/wget",
 		yum			=>	"/usr/bin/yum",
 	},
@@ -277,8 +278,8 @@ my $conf = {
 		tarball_dir		=>	"an-cdb-#!striker_version!#",
 	},
 	url		=>	{
-		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.tar.gz",
-		striker		=>	"https://github.com/digimer/an-cdb/archive/#!striker_version!#.tar.gz",
+		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.zip",
+		striker		=>	"https://github.com/digimer/an-cdb/archive/#!striker_version!#.zip",
 	},
 	nics		=>	["bcn-link1", "ifn-link1"],
 	network		=>	{
@@ -1005,7 +1006,11 @@ sub download_striker
 		{
 			my $source_dir_found = 0;
 			my $shell_call       = "$conf->{executable}{tar} -xvf $extract";
-			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			if ($extract =~ /\.zip$/)
+			{
+				$shell_call = "$conf->{executable}{unzip} $extract";
+			}
+			print "[ Debug ] - shell_call: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -1013,11 +1018,20 @@ sub download_striker
 				my $line = $_;
 				if (($line =~ /^(.*?)\/$/) && (not $source_dir_found))
 				{
+					#print __LINE__."; [ Debug ] - line: [$line]\n";
 					# This overrides anything set above
 					# (though those need to be set in-case
 					# extraction wasn't needed).
-					my $source                 = $1;
+					my $source = $1;
+					#print __LINE__."; [ Debug ] - source: [$source]\n";
+					# When using 'unzip', the line as 'creating:' in it.
+					if ($line =~ /creating: (.*?\/)$/)
+					{
+						$source = $1;
+						#print __LINE__."; [ Debug ] - source: [$source]\n";
+					}
 					$conf->{directory}{source} = "./$source";
+					#print __LINE__."; [ Debug ] - directory::source: [$conf->{directory}{source}]\n";
 					$source_dir_found          = 1;
 				}
 				print "- Output: [$line]\n";
@@ -1615,14 +1629,14 @@ sub create_apache_home_directories
 	}
 	
 	# Make sure the directory that install manifests will be stored in is available.
-	if (not -e $conf->{path}{apache_manifests})
+	if (not -e $conf->{directory}{apache_manifests})
 	{
-		print "- Creating: [$conf->{path}{apache_manifests}].\n";
-		mkdir $conf->{path}{apache_manifests} or die "Failed to create the directory: [$conf->{path}{apache_manifests}], the error was: $!\n";
+		print "- Creating: [$conf->{directory}{apache_manifests}].\n";
+		mkdir $conf->{directory}{apache_manifests} or die "Failed to create the directory: [$conf->{directory}{apache_manifests}], the error was: $!\n";
 	}
 	else
 	{
-		print "- Install manifests directory already exists: [$conf->{path}{apache_manifests}].\n";
+		print "- Install manifests directory already exists: [$conf->{directory}{apache_manifests}].\n";
 	}
 	
 	print "- Setting ownership to: [$conf->{sys}{apache_user}:$conf->{sys}{apache_group}].\n";
@@ -1679,6 +1693,9 @@ sub verify_os
 			# so I need to parse off the second '.' and whatever 
 			# is after it.
 			$minor =~ s/\..*$//;
+			
+			# Some have 'x.y (Final)', this strips that last bit off.
+			$minor =~ s/\ \(.*?\)$//;
 		}
 	}
 	close $file_handle;

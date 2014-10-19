@@ -1,5 +1,38 @@
 <!-- These are used when a user is configuring an Anvil! or the global values -->
 
+<!-- start select-node-to-run-install-manifest-on -->
+<table>
+	<form action="#!replace!form_file!#" method="post" name="config">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0169!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td width="10%">
+			&nbsp;
+		</td>
+		<td width="45%">
+			#!string!header_0001!#
+		</td>
+		<td width="45%">
+			#!string!header_0002!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end select-node-to-run-install-manifest-on -->
+
 <!-- start install-manifest-summay -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
@@ -664,7 +697,7 @@
 <!-- start install-manifest-header -->
 <table>
 	<tr>
-		<td colspan="8" class="highlight_ready_bold">
+		<td colspan="10" class="highlight_ready_bold">
 			#!string!title_0165!#
 		</td>
 	</tr>
@@ -682,13 +715,19 @@
 			&nbsp;
 		</td>
 		<td>
-			<a href="#!replace!load!#">#!string!button_0048!#</a>
+			<a href="#!replace!load!#" class="button">#!string!button_0048!#</a>
 		</td>
 		<td>
 			&nbsp;
 		</td>
 		<td>
-			<a href="#!replace!download!#">#!string!button_0041!#</a>
+			<a href="#!replace!download!#" class="button">#!string!button_0041!#</a>
+		</td>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<a href="#!replace!run!#" class="bold_button">#!string!button_0049!#</a>
 		</td>
 		<td>
 			&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
