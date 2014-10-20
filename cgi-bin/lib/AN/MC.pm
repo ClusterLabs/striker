@@ -1,5 +1,5 @@
-#!/usr/bin/perl
-# 
+package AN::MC;
+
 # AN!MediaConnector
 # 
 # This allows a mechanism for taking a CD or DVD, turning it into an ISO and
@@ -83,7 +83,7 @@ sub download_url
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
-	print template($conf, "common.html", "scanning-message", {}, {
+	print AN::Common::template($conf, "common.html", "scanning-message", {}, {
 		anvil	=>	$conf->{cgi}{cluster},
 	});
 	
@@ -92,8 +92,8 @@ sub download_url
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	$base .= "/" if $base !~ /\/$/;
 	
-	my ($node) = read_files_on_shared($conf);
-	print template($conf, "media-library.html", "download-website-header", {
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	print AN::Common::template($conf, "media-library.html", "download-website-header", {
 		file	=>	$file,
 		base	=>	$base,
 	});
@@ -101,7 +101,7 @@ sub download_url
 	my $header_printed  = 0;
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -131,7 +131,7 @@ sub download_url
 			#record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent].\n");
 			if ($percent eq "100")
 			{
-				print template($conf, "media-library.html", "download-website-complete");
+				print AN::Common::template($conf, "media-library.html", "download-website-complete");
 			}
 			elsif ($percent >= $next_percent)
 			{
@@ -143,7 +143,7 @@ sub download_url
 					$next_percent += $progress_points;
 				}
 				$received        *= 1024;
-				my $say_received =  bytes_to_hr($conf, $received);
+				my $say_received =  AN::Cluster::bytes_to_hr($conf, $received);
 				#record($conf, "$THIS_FILE ".__LINE__."; received: [$received] -> [$say_received]\n");
 				if (uc($rate_suf) eq "M")
 				{
@@ -153,7 +153,7 @@ sub download_url
 				{
 					$rate            =  int(($rate * 1024));
 				}
-				my $say_rate     =  bytes_to_hr($conf, $rate);
+				my $say_rate     =  AN::Cluster::bytes_to_hr($conf, $rate);
 				#record($conf, "$THIS_FILE ".__LINE__."; rate: [$rate] -> [$say_rate]\n");
 				my $hours   = 0;
 				my $minutes = 0;
@@ -177,7 +177,7 @@ sub download_url
 				my $say_time_remaining;
 				if ($hours)
 				{
-					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
 						hours		=>	$hours,
 						say_hour	=>	$say_hour,
 						minutes		=>	$minutes,
@@ -188,7 +188,7 @@ sub download_url
 				}
 				elsif ($minutes)
 				{
-					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
 						hours		=>	"0",
 						say_hour	=>	$say_hour,
 						minutes		=>	$minutes,
@@ -199,7 +199,7 @@ sub download_url
 				}
 				else
 				{
-					$say_time_remaining = get_string($conf, {key => "message_0293", variables => {
+					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
 						hours		=>	"0",
 						say_hour	=>	$say_hour,
 						minutes		=>	"0",
@@ -209,15 +209,15 @@ sub download_url
 					}});
 				}
 				#record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> [$say_time_remaining]\n");
-				my $say_progress = get_string($conf, {key => "message_0291", variables => {
+				my $say_progress = AN::Common::get_string($conf, {key => "message_0291", variables => {
 					percent		=>	$percent,
 					received	=>	$say_received,
 					rate		=>	$say_rate,
 				}});
-				my $say_remaining = get_string($conf, {key => "message_0292", variables => {
+				my $say_remaining = AN::Common::get_string($conf, {key => "message_0292", variables => {
 					time_remaining	=>	$say_time_remaining,
 				}});
-				print template($conf, "media-library.html", "download_website_progress", {
+				print AN::Common::template($conf, "media-library.html", "download_website_progress", {
 					progress	=>	$say_progress,
 					remaining	=>	$say_remaining,
 				});
@@ -228,19 +228,19 @@ sub download_url
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if (not $header_printed)
 			{
-				print template($conf, "common.html", "open-shell-call-output");
+				print AN::Common::template($conf, "common.html", "open-shell-call-output");
 				$header_printed = 1;
 			}
-			print template($conf, "common.html", "shell-call-output", {
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
 	}
 	if ($header_printed)
 	{
-		print template($conf, "common.html", "close-shell-call-output");
+		print AN::Common::template($conf, "common.html", "close-shell-call-output");
 	}
-	print template($conf, "media-library.html", "download-website-footer");
+	print AN::Common::template($conf, "media-library.html", "download-website-footer");
 	
 	return (0);
 }
@@ -254,14 +254,14 @@ sub confirm_download_url
 	my $url     = $conf->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	
-	my $say_title = get_string($conf, {key => "title_0122", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0122", variables => {
 		anvil	=>	$cluster,
 	}});
-	my $say_download = get_string($conf, {key => "message_0294", variables => {
+	my $say_download = AN::Common::get_string($conf, {key => "message_0294", variables => {
 		anvil	=>	$cluster,
 	}});
 	
-	print template($conf, "media-library.html", "download-website-confirm", {
+	print AN::Common::template($conf, "media-library.html", "download-website-confirm", {
 		file		=>	$file,
 		title		=>	$say_title,
 		base		=>	$base,
@@ -277,8 +277,8 @@ sub save_file_to_disk
 {
 	my ($conf) = @_;
 	
-	my ($node) = read_files_on_shared($conf);
-	print template($conf, "media-library.html", "save-to-disk-header");
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	print AN::Common::template($conf, "media-library.html", "save-to-disk-header");
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
 	record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
@@ -287,7 +287,7 @@ sub save_file_to_disk
 	if (not $in_fh)
 	{
 		# User didn't specify a file.
-		print template($conf, "media-library.html", "save-to-disk-no-file");
+		print AN::Common::template($conf, "media-library.html", "save-to-disk-no-file");
 	}
 	else
 	{
@@ -306,22 +306,22 @@ sub save_file_to_disk
 		close $fh;
 		
 		# Tell the user we're starting.
-		print template($conf, "media-library.html", "save-to-disk-starting");
+		print AN::Common::template($conf, "media-library.html", "save-to-disk-starting");
 		
 		my ($failed) = upload_to_shared($conf, $node, $out_file);
 		unlink $out_file if -e $out_file;
 		if ($failed)
 		{
 			# Something went wrong
-			print template($conf, "media-library.html", "save-to-disk-failed");
+			print AN::Common::template($conf, "media-library.html", "save-to-disk-failed");
 		}
 		else
 		{
 			# TODO: "Looks like"? Really? do a 'sum' of the files to confirm.
-			print template($conf, "media-library.html", "save-to-disk-success");
+			print AN::Common::template($conf, "media-library.html", "save-to-disk-success");
 		}
 	}
-	print template($conf, "media-library.html", "save-to-disk-footer");
+	print AN::Common::template($conf, "media-library.html", "save-to-disk-footer");
 	
 	return (0);
 }
@@ -332,7 +332,7 @@ sub image_and_upload
 	my ($conf) = @_;
 	
 	# Let the user know that this might take a bit.
-	print template($conf, "common.html", "scanning-message", {
+	print AN::Common::template($conf, "common.html", "scanning-message", {
 		anvil	=>	$conf->{cgi}{cluster},
 	});
 	
@@ -340,23 +340,23 @@ sub image_and_upload
 	my $name = $conf->{cgi}{name};
 	record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], name: [$name]\n");
 	
-	my ($node) = read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], files::shared::${name}: [$conf->{files}{shared}{$name}]\n");
 	if (not $name)
 	{
 		# Tell the user that no name was given.
-		print template($conf, "media-library.html", "image-and-upload-no-name");
+		print AN::Common::template($conf, "media-library.html", "image-and-upload-no-name");
 	}
 	elsif (not $dev)
 	{
 		# Tell the user that no name was given.
-		print template($conf, "media-library.html", "image-and-upload-no-device");
+		print AN::Common::template($conf, "media-library.html", "image-and-upload-no-device");
 	}
 	elsif (exists $conf->{files}{shared}{$name})
 	{
 		# Tell the user a file with that name already exists.
 		# the variables hash ref feeds 'message_0232'.
-		print template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
+		print AN::Common::template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
 			name	=>	$name,
 		});
 		record($conf, "$THIS_FILE ".__LINE__."; name: [$name]\n");
@@ -370,14 +370,14 @@ sub image_and_upload
 		if (not exists $conf->{drive}{$dev})
 		{
 			# The drive vanished.
-			my $say_missing_drive = get_string($conf, {key => "message_0304", variables => {
+			my $say_missing_drive = AN::Common::get_string($conf, {key => "message_0304", variables => {
 				device	=>	$dev,
 			}});
-			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{'system'}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
-			print template($conf, "media-library.html", "image-and-upload-drive-gone", {
+			print AN::Common::template($conf, "media-library.html", "image-and-upload-drive-gone", {
 				missing_drive	=>	$say_missing_drive,
 				try_again	=>	$say_try_again,
 			});
@@ -385,14 +385,14 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{reload})
 		{
 			# Need to reload to read the disc.
-			my $say_drive_not_ready = get_string($conf, {key => "message_0305", variables => {
+			my $say_drive_not_ready = AN::Common::get_string($conf, {key => "message_0305", variables => {
 				device	=>	$dev,
 			}});
-			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{'system'}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
-			print template($conf, "media-library.html", "image-and-upload-reload-needed", {
+			print AN::Common::template($conf, "media-library.html", "image-and-upload-reload-needed", {
 				drive_not_ready	=>	$say_drive_not_ready,
 				try_again	=>	$say_try_again,
 			});
@@ -400,14 +400,14 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{no_disc})
 		{
 			# No disc in the drive
-			my $say_no_disc = get_string($conf, {key => "message_0307", variables => {
+			my $say_no_disc = AN::Common::get_string($conf, {key => "message_0307", variables => {
 				device	=>	$dev,
 			}});
-			my $say_try_again = template($conf, "common.html", "enabled_button_no_class", {
+			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{'system'}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
-			print template($conf, "media-library.html", "image-and-upload-no-disc", {
+			print AN::Common::template($conf, "media-library.html", "image-and-upload-no-disc", {
 				no_disk		=>	$say_no_disc,
 				try_again	=>	$say_try_again,
 			});
@@ -420,13 +420,13 @@ sub image_and_upload
 			my $out_file = "'$conf->{path}{media}/$name'";
 			my $in_dev   = $dev;
 			record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], directory: [$conf->{path}{media}], name: [$name]\n");
-			my $message  = get_string($conf, {key => "explain_0059", variables => {
+			my $message  = AN::Common::get_string($conf, {key => "explain_0059", variables => {
 				device		=>	$dev,
 				name		=>	$name,
 				directory	=>	$conf->{path}{media},
 			}});
 			record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
-			print template($conf, "media-library.html", "image-and-upload-proceed-header", {
+			print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-header", {
 				message		=>	$message,
 			});
 			
@@ -444,28 +444,28 @@ sub image_and_upload
 				
 				if (not $header_printed)
 				{
-					print template($conf, "common.html", "open-shell-call-output");
+					print AN::Common::template($conf, "common.html", "open-shell-call-output");
 					$header_printed = 1;
 				}
 				record($conf, "$THIS_FILE ".__LINE__."; output: [$line]\n");
 				if ($line =~ /Is a directory/i)
 				{
-					$error .= get_string($conf, {key => "message_0333"});
+					$error .= AN::Common::get_string($conf, {key => "message_0333"});
 				}
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
 			$fh->close;
 			if ($header_printed)
 			{
-				print template($conf, "common.html", "close-shell-call-output");
+				print AN::Common::template($conf, "common.html", "close-shell-call-output");
 			}
 			
 			if ($error)
 			{
 				# Image failed, no sense trying to upload.
-				print template($conf, "media-library.html", "image-and-upload-proceed-failed", {}, {
+				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-failed", {}, {
 					error	=>	$error,
 				});
 			}
@@ -473,7 +473,7 @@ sub image_and_upload
 			{
 				# Starting to upload now.
 				# The variables hash feeds 'explain_0052'.
-				print template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
+				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
 					name	=>	$name,
 					anvil	=>	$conf->{cgi}{cluster},
 				});
@@ -483,15 +483,15 @@ sub image_and_upload
 				if ($failed)
 				{
 					# Upload appears to have failed.
-					print template($conf, "media-library.html", "image-and-upload-proceed-upload-failed");
+					print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-upload-failed");
 				}
 				else
 				{
 					# Looks like? Really? do a 'sum' of the files to confirm.
-					print template($conf, "media-library.html", "image-and-upload-proceed-upload-success");
+					print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-upload-success");
 				}
 			}
-			print template($conf, "media-library.html", "image-and-upload-proceed-footer");
+			print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-footer");
 		}
 	}
 	
@@ -505,7 +505,7 @@ sub upload_to_shared
 	my ($conf, $node, $source_file) = @_;
 	
 	# Some prep work.
-	test_ssh_fingerprint($conf, $node);
+	AN::Common::test_ssh_fingerprint($conf, $node);
 	my $failed = 0;
 	
 	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
@@ -515,13 +515,13 @@ sub upload_to_shared
 	{
 		#print "Creating 'expect' rsync wrapper.<br />";
 		record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
-		create_rsync_wrapper($conf, $node);
+		AN::Common::create_rsync_wrapper($conf, $node);
 		$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
 		record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
 	}
 	else
 	{
-		print template($conf, "media-library.html", "image-and-upload-expect-not-found");
+		print AN::Common::template($conf, "media-library.html", "image-and-upload-expect-not-found");
 	}
 	
 	my $header_printed = 0;
@@ -539,10 +539,10 @@ sub upload_to_shared
 		}
 		if (not $header_printed)
 		{
-			print template($conf, "common.html", "open-shell-call-output");
+			print AN::Common::template($conf, "common.html", "open-shell-call-output");
 			$header_printed = 1;
 		}
-		print template($conf, "common.html", "shell-call-output", {
+		print AN::Common::template($conf, "common.html", "shell-call-output", {
 			line	=>	$line,
 		});
 	}
@@ -550,7 +550,7 @@ sub upload_to_shared
 	
 	if ($header_printed)
 	{
-		print template($conf, "common.html", "close-shell-call-output");
+		print AN::Common::template($conf, "common.html", "close-shell-call-output");
 	}
 	
 	return ($failed);
@@ -565,44 +565,44 @@ sub confirm_image_and_upload
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
 	
-	my $say_title = get_string($conf, {key => "title_0132", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0132", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	my $input_name = template($conf, "common.html", "form-input-no-class-defined-width", {
+	my $input_name = AN::Common::template($conf, "common.html", "form-input-no-class-defined-width", {
 		type	=>	"text",
 		name	=>	"name",
 		id	=>	$name,
 		value	=>	$name,
 		width	=>	"250px",
 	}, "", 1);
-	my $hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+	my $hidden_inputs = AN::Common::template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"dev",
 		id	=>	"dev",
 		value	=>	"$dev",
 	}, "", 1);
 	$hidden_inputs .= "\n";
-	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+	$hidden_inputs .= AN::Common::template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"cluster",
 		id	=>	"cluster",
 		value	=>	"$conf->{cgi}{cluster}",
 	}, "", 1);
 	$hidden_inputs .= "\n";
-	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+	$hidden_inputs .= AN::Common::template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"task",
 		id	=>	"task",
 		value	=>	"image_and_upload",
 	}, "", 1);
 	$hidden_inputs .= "\n";
-	$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+	$hidden_inputs .= AN::Common::template($conf, "common.html", "form-input-no-class", {
 		type	=>	"hidden",
 		name	=>	"confirm",
 		id	=>	"confirm",
 		value	=>	"true",
 	}, "", 1);
-	my $submit_button = template($conf, "common.html", "form-input", {
+	my $submit_button = AN::Common::template($conf, "common.html", "form-input", {
 		type	=>	"submit",
 		name	=>	"null",
 		id	=>	"null",
@@ -613,7 +613,7 @@ sub confirm_image_and_upload
 	record($conf, "$THIS_FILE ".__LINE__."; submit_button: [$submit_button]\n");
 
 	# Display the confirmation window now.
-	print template($conf, "media-library.html", "image-and-upload-confirm", {
+	print AN::Common::template($conf, "media-library.html", "image-and-upload-confirm", {
 		title		=>	$say_title,
 		input_name	=>	$input_name,
 		hidden_inputs	=>	$hidden_inputs,
@@ -631,15 +631,15 @@ sub confirm_delete_file
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
 	
-	my $say_title = get_string($conf, {key => "title_0134", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0134", variables => {
 		name	=>	$name,
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	my $say_delete = get_string($conf, {key => "message_0316", variables => {
+	my $say_delete = AN::Common::get_string($conf, {key => "message_0316", variables => {
 		name	=>	$name,
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	my $confirm_button = template($conf, "common.html", "enabled-button", {
+	my $confirm_button = AN::Common::template($conf, "common.html", "enabled-button", {
 		button_class	=>	"bold_button",
 		button_link	=>	"$conf->{'system'}{cgi_string}&confirm=true",
 		button_text	=>	"#!string!button_0004!#",
@@ -647,7 +647,7 @@ sub confirm_delete_file
 	}, "", 1);
 
 	# Display the confirmation window now.
-	print template($conf, "media-library.html", "file-delete-confirm", {
+	print AN::Common::template($conf, "media-library.html", "file-delete-confirm", {
 		title		=>	$say_title,
 		say_delete	=>	$say_delete,
 		confirm_button	=>	$confirm_button,
@@ -665,18 +665,18 @@ sub delete_file
 	###       VMs currently using the file being deleted.
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
-	my ($node) = read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	if (exists $conf->{files}{shared}{$name})
 	{
 		# Do the delete.
-		my $say_title = get_string($conf, {key => "title_0135", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0135", variables => {
 			name	=>	$name,
 		}});
-		print template($conf, "media-library.html", "file-delete-header", {
+		print AN::Common::template($conf, "media-library.html", "file-delete-header", {
 			title		=>	$say_title,
 		});
 		
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -688,24 +688,24 @@ sub delete_file
 		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			print template($conf, "common.html", "shell-call-output", {
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
-		print template($conf, "media-library.html", "file-delete-footer");
+		print AN::Common::template($conf, "media-library.html", "file-delete-footer");
 	}
 	else
 	{
 		# Failed...
-		my $say_title = get_string($conf, {key => "title_0136", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0136", variables => {
 			name	=>	$name,
 			anvil	=>	$cluster,
 		}});
-		my $say_message = get_string($conf, {key => "message_0318", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0318", variables => {
 			name	=>	$name,
 			anvil	=>	$cluster,
 		}});
-		print template($conf, "media-library.html", "file-delete-failed", {
+		print AN::Common::template($conf, "media-library.html", "file-delete-failed", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
@@ -779,10 +779,10 @@ sub check_status
 	if (not -e $conf->{path}{status})
 	{
 		# Directory doesn't exist...
-		my $say_message = get_string($conf, {key => "message_0319", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0319", variables => {
 			directory	=>	$conf->{path}{status},
 		}});
-		print template($conf, "media-library.html", "check-status-config-error", {
+		print AN::Common::template($conf, "media-library.html", "check-status-config-error", {
 			message	=>	$say_message,
 		});
 	}
@@ -790,11 +790,11 @@ sub check_status
 	{
 		# Can't read the directory
 		my $user = getpwuid($<);
-		my $say_message = get_string($conf, {key => "message_0320", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0320", variables => {
 			directory	=>	$conf->{path}{status},
 			user		=>	$user,
 		}});
-		print template($conf, "media-library.html", "check-status-config-error", {
+		print AN::Common::template($conf, "media-library.html", "check-status-config-error", {
 			message	=>	$say_message,
 		});
 	}
@@ -814,7 +814,7 @@ sub read_shared
 	check_status($conf);
 	
 	# Let the user know that this might take a bit.
-	print template($conf, "common.html", "scanning-message", {
+	print AN::Common::template($conf, "common.html", "scanning-message", {
 		anvil	=>	$conf->{cgi}{cluster},
 	});
 	
@@ -824,26 +824,26 @@ sub read_shared
 	
 	# This returns the name of the node used to read /shared/files/. If no
 	# node was available, it returns an empty string.
-	my ($node) = read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 	
-	print template($conf, "media-library.html", "read-shared-header");
+	print AN::Common::template($conf, "media-library.html", "read-shared-header");
 	if ($node)
 	{
 		my $block_size       = $conf->{partition}{shared}{block_size};
 		my $total_space      = ($conf->{partition}{shared}{total_space} * $block_size);
-		my $say_total_space  = bytes_to_hr($conf, $total_space);
+		my $say_total_space  = AN::Cluster::bytes_to_hr($conf, $total_space);
 		my $used_space       = ($conf->{partition}{shared}{used_space} * $block_size);
-		my $say_used_space   = bytes_to_hr($conf, $used_space);
+		my $say_used_space   = AN::Cluster::bytes_to_hr($conf, $used_space);
 		my $free_space       = ($conf->{partition}{shared}{free_space} * $block_size);
-		my $say_free_space   = bytes_to_hr($conf, $free_space);
+		my $say_free_space   = AN::Cluster::bytes_to_hr($conf, $free_space);
 		my $say_used_percent = $conf->{partition}{shared}{used_percent}."%";
 		
 		# Print the general header and the files header
-		my $say_title = get_string($conf, {key => "title_0138", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0138", variables => {
 			anvil	=>	$cluster,
 		}});
-		print template($conf, "media-library.html", "read-shared-list-header", {
+		print AN::Common::template($conf, "media-library.html", "read-shared-list-header", {
 			title		=>	$say_title,
 			total_space	=>	$say_total_space,
 			used_space	=>	$say_used_space,
@@ -854,14 +854,14 @@ sub read_shared
 		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
 		{
 			next if $conf->{files}{shared}{$file}{type} ne "-";
-			my $say_size = bytes_to_hr($conf, $conf->{files}{shared}{$file}{size});
-			my $delete_button = template($conf, "common.html", "enabled-button", {
+			my $say_size = AN::Cluster::bytes_to_hr($conf, $conf->{files}{shared}{$file}{size});
+			my $delete_button = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_link	=>	"?cluster=$cluster&task=delete&name=$file",
 				button_text	=>	"#!string!button_0030!#",
 				button_class	=>	"highlight_bad",
 				id		=>	"delete_$file",
 			}, "", 1);
-			print template($conf, "media-library.html", "read-shared-file-entry", {
+			print AN::Common::template($conf, "media-library.html", "read-shared-file-entry", {
 				size		=>	$say_size,
 				file		=>	$file,
 				delete_button	=>	$delete_button,
@@ -869,7 +869,7 @@ sub read_shared
 		}
 		
 		# Read from the DVD drive(s), if found.
-		print template($conf, "media-library.html", "read-shared-optical-drive-header");
+		print AN::Common::template($conf, "media-library.html", "read-shared-optical-drive-header");
 
 		check_local_dvd($conf);
 		foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
@@ -890,7 +890,7 @@ sub read_shared
 			elsif ($conf->{drive}{$dev}{volume})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
-				$upload    = template($conf, "common.html", "enabled-button", {
+				$upload    = AN::Common::template($conf, "common.html", "enabled-button", {
 					button_class	=>	"bold_button",
 					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso",
 					button_text	=>	"#!string!button_0042!#",
@@ -900,7 +900,7 @@ sub read_shared
 			elsif ($conf->{drive}{$dev}{volume_set})
 			{
 				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
-				$upload    = template($conf, "common.html", "enabled-button", {
+				$upload    = AN::Common::template($conf, "common.html", "enabled-button", {
 					button_class	=>	"bold_button",
 					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso",
 					button_text	=>	"#!string!button_0042!#",
@@ -910,47 +910,47 @@ sub read_shared
 			else
 			{
 				# Some other problem reading the disc.
-				$disc_name = get_string($conf, {key => "message_0324", variables => {
+				$disc_name = AN::Common::get_string($conf, {key => "message_0324", variables => {
 					device	=>	$dev,
 				}});
 			}
-			print template($conf, "media-library.html", "read-shared-optical-drive-entry", {
+			print AN::Common::template($conf, "media-library.html", "read-shared-optical-drive-entry", {
 				device		=>	$dev,
 				disc_name	=>	$disc_name,
 				upload		=>	$upload,
 			});
 		}
-		print template($conf, "media-library.html", "read-shared-footer");
+		print AN::Common::template($conf, "media-library.html", "read-shared-footer");
 
 		# Show the option to download an ISO directly from a URL.
-		my $hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+		my $hidden_inputs = AN::Common::template($conf, "common.html", "form-input-no-class", {
 			type	=>	"hidden",
 			name	=>	"cluster",
 			id	=>	"cluster",
 			value	=>	"$conf->{cgi}{cluster}",
 		});
 		$hidden_inputs .= "\n";
-		$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+		$hidden_inputs .= AN::Common::template($conf, "common.html", "form-input-no-class", {
 			type	=>	"hidden",
 			name	=>	"task",
 			id	=>	"task",
 			value	=>	"download_url",
 		});
-		my $url_input = template($conf, "common.html", "form-input-no-class-defined-width", {
+		my $url_input = AN::Common::template($conf, "common.html", "form-input-no-class-defined-width", {
 			type	=>	"text",
 			name	=>	"url",
 			id	=>	"url",
 			value	=>	"",
 			width	=>	"250px",
 		});
-		my $download_button = template($conf, "common.html", "form-input", {
+		my $download_button = AN::Common::template($conf, "common.html", "form-input", {
 			type	=>	"submit",
 			name	=>	"null",
 			id	=>	"null",
 			value	=>	"#!string!button_0041!#",
 			class	=>	"bold_button",
 		});
-		print template($conf, "media-library.html", "read-shared-direct-download", {
+		print AN::Common::template($conf, "media-library.html", "read-shared-direct-download", {
 			hidden_inputs	=>	$hidden_inputs,
 			url_input	=>	$url_input,
 			download_button	=>	$download_button,
@@ -958,33 +958,33 @@ sub read_shared
 
 		# Show the option to upload from the user's local machine.
 		$hidden_inputs = "";
-		$hidden_inputs = template($conf, "common.html", "form-input-no-class", {
+		$hidden_inputs = AN::Common::template($conf, "common.html", "form-input-no-class", {
 			type	=>	"hidden",
 			name	=>	"cluster",
 			id	=>	"cluster",
 			value	=>	"$conf->{cgi}{cluster}",
 		});
 		$hidden_inputs .= "\n";
-		$hidden_inputs .= template($conf, "common.html", "form-input-no-class", {
+		$hidden_inputs .= AN::Common::template($conf, "common.html", "form-input-no-class", {
 			type	=>	"hidden",
 			name	=>	"task",
 			id	=>	"task",
 			value	=>	"upload_file",
 		});
-		my $file_input = template($conf, "common.html", "form-input-no-class", {
+		my $file_input = AN::Common::template($conf, "common.html", "form-input-no-class", {
 			type	=>	"file",
 			name	=>	"file",
 			id	=>	"file",
 			value	=>	"",
 		});
-		my $upload_button = template($conf, "common.html", "form-input", {
+		my $upload_button = AN::Common::template($conf, "common.html", "form-input", {
 			type	=>	"submit",
 			name	=>	"null",
 			id	=>	"null",
 			value	=>	"#!string!button_0042!#",
 			class	=>	"bold_button",
 		});
-		print template($conf, "media-library.html", "read-shared-upload", {
+		print AN::Common::template($conf, "media-library.html", "read-shared-upload", {
 			hidden_inputs	=>	$hidden_inputs,
 			file_input	=>	$file_input,
 			upload_button	=>	$upload_button,
@@ -994,7 +994,7 @@ sub read_shared
 	{
 		# Can't access either node.
 		# The variables hash feeds 'message_0328'.
-		print template($conf, "media-library.html", "read-shared-no-access", {}, {
+		print AN::Common::template($conf, "media-library.html", "read-shared-no-access", {}, {
 			anvil	=>	$cluster,
 		});
 	}

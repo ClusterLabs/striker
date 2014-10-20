@@ -1,16 +1,13 @@
-#!/usr/bin/perl
-#
-# This will store general purpose functions.
-# 
+package AN::Common;
 
 use strict;
 use warnings;
-use Encode;
-use CGI;
-use utf8;
-use IO::Handle;
-use Term::ReadKey;
-use XML::Simple qw(:strict);
+#use Encode;
+#use CGI;
+#use utf8;
+#use IO::Handle;
+#use Term::ReadKey;
+#use XML::Simple qw(:strict);
 
 # Set static variables.
 my $THIS_FILE = "common.lib";
@@ -578,8 +575,8 @@ sub initialize_conf
 			rsync			=>	"/usr/bin/rsync",
 			skins			=>	"../html/skins/",
 			tput			=>	"/usr/bin/tput",
-			words_common		=>	"./common.xml",
-			words_file		=>	"./strings.xml",
+			words_common		=>	"Data/common.xml",
+			words_file		=>	"Data/strings.xml",
 			log_file		=>	"/var/log/an-cdb.log",
 			config_file		=>	"/etc/an/an.conf",
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
