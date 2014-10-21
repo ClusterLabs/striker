@@ -2,12 +2,14 @@ package AN::Common;
 
 use strict;
 use warnings;
-#use Encode;
-#use CGI;
-#use utf8;
-#use IO::Handle;
-#use Term::ReadKey;
+use Encode;
+use CGI;
+use utf8;
+use IO::Handle;
+use Term::ReadKey;
 #use XML::Simple qw(:strict);
+
+use AN::Cluster;
 
 # Set static variables.
 my $THIS_FILE = "common.lib";
@@ -78,13 +80,13 @@ sub create_rsync_wrapper
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
 	my $sc = "
-echo \"#!/usr/bin/expect\" > ~/rsync.$node
-echo \"set timeout 3600\" >> ~/rsync.$node
-echo \"eval spawn rsync \\\$argv\" >> ~/rsync.$node
-echo \"expect  \\\"*?assword:\\\" \{ send \\\"$root_pw\\r\\\" \}\" >> ~/rsync.$node
-echo \"expect eof\" >> ~/rsync.$node
+echo '#!/usr/bin/expect' > ~/rsync.$node
+echo 'set timeout 3600' >> ~/rsync.$node
+echo 'eval spawn rsync \$argv' >> ~/rsync.$node
+echo 'expect  \"*?assword:\" \{ send \"$root_pw\\\\n\" \}' >> ~/rsync.$node
+echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
@@ -101,19 +103,19 @@ chmod 755 ~/rsync.$node;";
 sub test_ssh_fingerprint
 {
 	my ($conf, $node) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
 	my $sc = "ssh root\@$node \"uname -a\"";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 	while(<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
 		{
 			# Add fingerprint to known_hosts
@@ -127,13 +129,13 @@ sub test_ssh_fingerprint
 			#print template($conf, "common.html", "shell-output-header");
 			my $fh = IO::Handle->new();
 			my $sc = "$conf->{path}{'ssh-keyscan'} $node >> ~/.ssh/known_hosts";
-			record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
 			{
 				chomp;
 				my $line = $_;
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				#print template($conf, "common.html", "shell-call-output", {
 				#	line	=>	$line,
 				#});
@@ -415,7 +417,7 @@ sub get_string
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
 	my $variables = $vars->{variables} ? $vars->{variables} : "";
-	#record($conf, "$THIS_FILE ".__LINE__."; key: [$key], language: [$language], variables: [$variables]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], language: [$language], variables: [$variables]\n");
 	
 	if (not $key)
 	{
@@ -450,7 +452,7 @@ sub get_string
 	
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
-	#record($conf, "$THIS_FILE ".__LINE__."; 1. string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 1. string: [$string]\n");
 	#print __LINE__."; 3. string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
@@ -461,9 +463,9 @@ sub get_string
 	#print __LINE__."; 4. string: [$string]\n";
 	
 	# Process all the #!...!# escape variables.
-	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	($string) = process_string($conf, $string, $variables);
-	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 	
 	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
 	return($string);
@@ -708,11 +710,7 @@ sub initialize_conf
 # printing to browsers.
 sub initialize_http
 {
-	my ($conf) = @_;
-	
-	print "Content-type: text/html; charset=utf-8\n\n";
-	
-	return(0);
+	#print  CGI::header('-charset'=>'utf-8');
 }
 
 # This takes a completed string and inserts variables into it as needed.
@@ -890,9 +888,9 @@ sub template
 	foreach my $string (@contents)
 	{
 		# Replace the '#!replace!...!#' substitution keys.
-		#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 		($string) = process_string_replace($conf, $string, $replace, $template_file, $template);
-		#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 		
 		# Process all the #!...!# escape variables.
 		#print "$THIS_FILE ".__LINE__."; >> string: [$string]\n";
@@ -914,28 +912,28 @@ sub template
 sub process_string
 {
 	my ($conf, $string, $variables) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	#print __LINE__."; i. string: [$string], variables: [$variables]\n";
 	
 	# Insert variables into #!variable!x!# 
 	my $i = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	($string) = insert_variables_into_string($conf, $string, $variables);
-	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 	
 	while ($string =~ /#!(.+?)!#/s)
 	{
 		# Insert strings that are referenced in this string.
-		#record($conf, "$THIS_FILE ".__LINE__."; [$i], 2.\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 2.\n");
 		($string) = process_string_insert_strings($conf, $string, $variables);
 		
 		# Protect unmatchable keys.
 		#print __LINE__."; [$i], 3.\n";
-		#record($conf, "$THIS_FILE ".__LINE__."; [$i], 3.\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 3.\n");
 		($string) = process_string_protect_escape_variables($conf, $string, "string");
 
 		# Inject any 'conf' values.
-		#record($conf, "$THIS_FILE ".__LINE__."; [$i], 4.\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 4.\n");
 		($string) = process_string_conf_escape_variables($conf, $string);
 		
 		# Die if I've looped too many times.
