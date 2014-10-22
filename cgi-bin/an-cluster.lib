@@ -5832,26 +5832,27 @@ sub gather_node_details
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], meminfo: [$meminfo (".@{$meminfo}." lines)]\n");
 		
 		# Get drbd info
-		($error, $ssh_fh, my $drbd_status) = remote_call($conf, {
+		($error, $ssh_fh, my $proc_drbd) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"drbdadm status",
+			shell_call	=>	"if [ -e /proc/drbd ]; then cat /proc/drbd; else echo 'drbd offline'; fi",
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], drbd_status: [$drbd_status (".@{$drbd_status}." lines)]\n");
-		($error, $ssh_fh, my $drbd_res_file) = remote_call($conf, {
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], proc_drbd: [$proc_drbd (".@{$proc_drbd}." lines)]\n");
+		#foreach my $line (@{$proc_drbd}) { record($conf, "$THIS_FILE ".__LINE__."; proc_drbd line: [$line]\n"); }
+		($error, $ssh_fh, my $parse_drbdadm_dumpxml) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"cat /etc/drbd.d/r?.res",
+			shell_call	=>	"drbdadm dump-xml",
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], drbd_res_file: [$drbd_res_file (".@{$drbd_res_file}." lines)]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], drbd_res_file: [$parse_drbdadm_dumpxml (".@{$parse_drbdadm_dumpxml}." lines)]\n");
 		
 		# clustat info
 		($error, $ssh_fh, my $clustat) = remote_call($conf, {
@@ -6013,21 +6014,21 @@ sub gather_node_details
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
 		
-		parse_dmidecode    ($conf, $node, $dmidecode);
-		parse_meminfo      ($conf, $node, $meminfo);
-		parse_drbd_status  ($conf, $node, $drbd_status);
-		parse_drbd_res_file($conf, $node, $drbd_res_file);
-		parse_clustat      ($conf, $node, $clustat);
-		parse_cluster_conf ($conf, $node, $cluster_conf);
-		parse_daemons      ($conf, $node, $daemons);
-		parse_lvm_scan     ($conf, $node, $lvm_scan);
-		parse_lvm_data     ($conf, $node, $lvm_data);
-		parse_gfs2         ($conf, $node, $gfs2);
-		parse_virsh        ($conf, $node, $virsh);
-		parse_vm_defs      ($conf, $node, $vm_defs);
-		parse_bonds        ($conf, $node, $bond);
-		parse_hosts        ($conf, $node, $hosts);
-		parse_dmesg        ($conf, $node, $dmesg);
+		parse_dmidecode      ($conf, $node, $dmidecode);
+		parse_meminfo        ($conf, $node, $meminfo);
+		parse_drbdadm_dumpxml($conf, $node, $parse_drbdadm_dumpxml);
+		parse_proc_drbd      ($conf, $node, $proc_drbd);
+		parse_clustat        ($conf, $node, $clustat);
+		parse_cluster_conf   ($conf, $node, $cluster_conf);
+		parse_daemons        ($conf, $node, $daemons);
+		parse_lvm_scan       ($conf, $node, $lvm_scan);
+		parse_lvm_data       ($conf, $node, $lvm_data);
+		parse_gfs2           ($conf, $node, $gfs2);
+		parse_virsh          ($conf, $node, $virsh);
+		parse_vm_defs        ($conf, $node, $vm_defs);
+		parse_bonds          ($conf, $node, $bond);
+		parse_hosts          ($conf, $node, $hosts);
+		parse_dmesg          ($conf, $node, $dmesg);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -6406,7 +6407,7 @@ sub remote_call
 	}
 	
 	$error = "" if not defined $error;
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	return($error, $ssh_fh, $output);
 }
 
@@ -6762,7 +6763,174 @@ sub parse_meminfo
 }
 
 # Parse the DRBD status.
-sub parse_drbd_status
+sub parse_proc_drbd
+{
+	my ($conf, $node, $array) = @_;
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_proc_drbd() for node: [$node]\n");
+	my $resource     = "";
+	my $minor_number = "";
+	foreach my $line (@{$array})
+	{
+		if ($line =~ /drbd offline/)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; DRBD does not appear to be running on node: [$node]\n");
+			last;
+		}
+		#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		if ($line =~ /version: (.*?) \(/)
+		{
+			$conf->{node}{$node}{drbd}{version} = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD version: [$conf->{node}{$node}{drbd}{version}]\n");
+			next;
+		}
+		elsif ($line =~ /GIT-hash: (.*?) build by (.*?), (\S+) (.*)$/)
+		{
+			$conf->{node}{$node}{drbd}{git_hash}   = $1;
+			$conf->{node}{$node}{drbd}{builder}    = $2;
+			$conf->{node}{$node}{drbd}{build_date} = $3;
+			$conf->{node}{$node}{drbd}{build_time} = $4;
+			record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD git hash: [$conf->{node}{$node}{drbd}{git_hash}], build by: [$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}]\n");
+		}
+		else
+		{
+			# This is just for hash key consistency
+			record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
+			{
+				   $minor_number     = $1;
+				my $connection_state = $2;
+				my $my_role          = $3;
+				my $peer_role        = $4;
+				my $my_disk_state    = $5;
+				my $peer_disk_state  = $6;
+				my $drbd_protocol    = $7;
+				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
+				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
+				record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+				   
+				$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} = $connection_state;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{my_role}          = $my_role;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{peer_role}        = $peer_role;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}    = $my_disk_state;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
+				record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], cs: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}], my ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_role}], peer ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_role}], my ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}], peer ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}], protocol: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}], io flags: [$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}]\n");
+			}
+			elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
+			{
+				# Details: http://www.drbd.org/users-guide/ch-admin.html#s-performance-indicators
+				my $network_sent            = $1;	# KiB send
+				my $network_received        = $2;	# KiB received
+				my $disk_write              = $3;	# KiB wrote
+				my $disk_read               = $4;	# KiB read
+				my $activity_log_updates    = $5;	# Number of updates of the activity log area of the meta data.
+				my $bitmap_updates          = $6;	# Number of updates of the bitmap area of the meta data.
+				my $local_count             = $7;	# Number of open requests to the local I/O sub-system issued by DRBD.
+				my $pending_requests        = $8;	# Number of requests sent to the partner, but that have not yet been answered by the latter.
+				my $unacknowledged_requests = $9;	# Number of requests received by the partner via the network connection, but that have not yet been answered.
+				my $app_pending_requests    = $10;	# Number of block I/O requests forwarded to DRBD, but not yet answered by DRBD.
+				my $epoch_objects           = $11;	# Number of epoch objects. Usually 1. Might increase under I/O load when using either the barrier or the none write ordering method.
+				my $write_order             = $12;	# Currently used write ordering method: b(barrier), f(flush), d(drain) or n(none).
+				my $out_of_sync             = $13;	# KiB that are out of sync
+				if    ($write_order eq "b") { $write_order = "barrier"; }
+				elsif ($write_order eq "f") { $write_order = "flush"; }
+				elsif ($write_order eq "d") { $write_order = "drain"; }
+				elsif ($write_order eq "n") { $write_order = "none"; }
+				
+				$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent}            = hr_to_bytes($conf, $network_sent, "KiB", 1);
+				$conf->{node}{$node}{drbd}{resource}{$resource}{network_received}        = hr_to_bytes($conf, $network_received, "KiB", 1);
+				$conf->{node}{$node}{drbd}{resource}{$resource}{disk_write}              = hr_to_bytes($conf, $disk_write, "KiB", 1);
+				$conf->{node}{$node}{drbd}{resource}{$resource}{disk_read}               = hr_to_bytes($conf, $disk_read, "KiB", 1);
+				$conf->{node}{$node}{drbd}{resource}{$resource}{activity_log_updates}    = $activity_log_updates;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{bitmap_updates}          = $bitmap_updates;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{local_count}             = $local_count;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{pending_requests}        = $pending_requests;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{unacknowledged_requests} = $unacknowledged_requests;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{app_pending_requests}    = $app_pending_requests;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{epoch_objects}           = $epoch_objects;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}             = $write_order;
+				$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync}             = hr_to_bytes($conf, $out_of_sync, "KiB", 1);
+				
+				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], network sent: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes], network received: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_received} bytes], disk write: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_write} bytes], disk read: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_read} bytes], activity log updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{activity_log_updates}], bitmap updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{bitmap_updates}], local count: [$conf->{node}{$node}{drbd}{resource}{$resource}{local_count}], pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{pending_requests}], unacknowledged requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{unacknowledged_requests}], application pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{app_pending_requests}], epoch objects: [$conf->{node}{$node}{drbd}{resource}{$resource}{epoch_objects}], write order: [$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}], out of sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync} bytes]\n");
+			}
+			else
+			{
+				# The resync lines aren't consistent, so I pull out data one piece at a time.
+				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /sync'ed: (.*?)%/)
+				{
+					my $percent_synced = $1;
+					$conf->{node}{$node}{drbd}{resource}{$resource}{syncing}        = 1;
+					$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} = $percent_synced;
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], percent synced: [$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} %]\n");
+				}
+				if ($line =~ /\((\d+)\/(\d+)\)M/)
+				{
+					# The 'M' is 'Mibibyte'
+					my $left_to_sync  = $1;
+					my $total_to_sync = $2;
+					
+					$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync}  = hr_to_bytes($conf, $left_to_sync, "MiB", 1);
+					$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} = hr_to_bytes($conf, $total_to_sync, "MiB", 1);
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], left to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes], total to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes]\n");
+				}
+				if ($line =~ /finish: (\d+):(\d+):(\d+)/)
+				{
+					my $hours   = $1;
+					my $minutes = $2;
+					my $seconds = $3;
+					$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
+					
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], eta to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)]\n");
+				}
+				if ($line =~ /speed: (.*?) \((.*?)\)/)
+				{
+					my $current_speed =  $1;
+					my $average_speed =  $2;
+					   $current_speed =~ s/,//g;
+					   $average_speed =~ s/,//g;
+					$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} = hr_to_bytes($conf, $current_speed, "KiB", 1);
+					$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} = hr_to_bytes($conf, $average_speed, "KiB", 1);
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], current_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec], average_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec]\n");
+				}
+				if ($line =~ /want: (.*?) K/)
+				{
+					# The 'want' line is only calculated on the sync target
+					my $want_speed =  $1;
+					   $want_speed =~ s/,//g;
+					$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} = hr_to_bytes($conf, $want_speed, "KiB", 1);
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], want_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes]\n");
+				}
+			}
+		}
+	}
+	
+	foreach my $resource (sort {$a cmp $b} keys %{$conf->{node}{$node}{drbd}{resource}})
+	{
+		next if not $resource;
+		record($conf, "$THIS_FILE ".__LINE__."; -- node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+		
+		$conf->{drbd}{$resource}{node}{$node}{minor}            = $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     ? $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     : "--";
+		$conf->{drbd}{$resource}{node}{$node}{connection_state} = $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} ? $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} : "--";
+		$conf->{drbd}{$resource}{node}{$node}{role}             = $conf->{node}{$node}{drbd}{resource}{$resource}{my_role}          ? $conf->{node}{$node}{drbd}{resource}{$resource}{my_role}          : "--";
+		$conf->{drbd}{$resource}{node}{$node}{disk_state}       = $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}    ? $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}    : "--";
+		$conf->{drbd}{$resource}{node}{$node}{device}           = $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      ? $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      : "--";
+		$conf->{drbd}{$resource}{node}{$node}{resync_percent}   = $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   ? $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   : "--";
+#		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$conf->{drbd}{$resource}{node}{$node}{minor}], connection state: [$conf->{drbd}{$resource}{node}{$node}{connection_state}], role: [$conf->{drbd}{$resource}{node}{$node}{role}], disk_state: [$conf->{drbd}{$resource}{node}{$node}{device}], device: [$conf->{drbd}{$resource}{node}{$node}{device}], resync percent: [$conf->{drbd}{$resource}{node}{$node}{resync_percent} %]\n");
+	}
+	
+	return(0);
+}
+
+# Parse the DRBD status.
+sub old_parse_drbd_status
 {
 	my ($conf, $node, $array) = @_;
 	
@@ -6816,71 +6984,151 @@ sub parse_drbd_status
 }
 
 # This reads the DRBD resource details from the resource definition files.
-sub parse_drbd_res_file
+sub parse_drbdadm_dumpxml
 {
 	my ($conf, $node, $array) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbd_res_file() for node: [$node]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbdadm_dumpxml() for node: [$node], array: [$array]\n");
 	
-	my $in_res      = "";
-	my $in_on       = "";
-	my $this_device = "--";
+	# Some variables we will fill later.
+	my $xml_data  = "";
 	
-	my $resources = 0;
+	# Convert the XML array into a string.
 	foreach my $line (@{$array})
 	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		$line =~ s/#.*//;
-		next if not $line;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$xml_data .= "$line\n";
+	}
+	
+	# Now feed the string into XML::Simple.
+	#record($conf, "$THIS_FILE ".__LINE__."; xml_data: ====\n$xml_data\n====\n");
+	if ($xml_data)
+	{
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		#record($conf, "$THIS_FILE ".__LINE__."; data: [$data]\n");
 		
-		if ($line =~ /^resource (.*?) {/)
+		foreach my $a (keys %{$data})
 		{
-			$in_res = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res: [$in_res]\n");
-			next;
-		}
-		
-		if ($in_res)
-		{
-			if ($line =~ /on (.*?) {/)
+			#print "a: [$a]\n";
+			if ($a eq "file")
 			{
-				$in_on = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res: [$in_res], on: [$in_on]\n");
-				next;
+				# This is just "/dev/drbd.conf", not needed.
 			}
-			if ($in_on)
+			elsif ($a eq "common")
 			{
-				# I don't want the closing brace of an 
-				# "on ... {" directive closing "in_res" early.
-				if ($line eq "}")
+				$conf->{node}{$node}{drbd}{protocol} = $data->{common}->[0]->{protocol};
+				#print "Node: [$node], Common: [$data->{common}->[0]], Protocol: [$conf->{node}{$node}{drbd}{protocol}]\n";
+				foreach my $b (@{$data->{common}->[0]->{section}})
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], closing 'on': [$in_on]\n");
-					$in_on = "";
-					next;
+					my $name = $b->{name};
+					#print "b: [$b], name: [$name]\n";
+					if ($name eq "handlers")
+					{
+						$conf->{node}{$node}{drbd}{fence}{handler}{name} = $b->{option}->[0]->{name};
+						$conf->{node}{$node}{drbd}{fence}{handler}{path} = $b->{option}->[0]->{value};
+						#print "Node: [$node], Fence handler: [$conf->{node}{$node}{drbd}{fence}{handler}{name}], path: [$conf->{node}{$node}{drbd}{fence}{handler}{path}]\n";
+					}
+					elsif ($name eq "disk")
+					{
+						$conf->{node}{$node}{drbd}{fence}{policy} = $b->{option}->[0]->{value};
+						#print "Node: [$node], Fence policy: [$conf->{node}{$node}{drbd}{fence}{policy}]\n";
+					}
+					elsif ($name eq "syncer")
+					{
+						$conf->{node}{$node}{drbd}{syncer}{rate} = $b->{option}->[0]->{value};
+						#print "Node: [$node], Sync rate: [$conf->{node}{$node}{drbd}{syncer}{rate}]\n";
+					}
+					elsif ($name eq "startup")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$conf->{node}{$node}{drbd}{startup}{$name} = $value;
+							#print "Node: [$node], Startup; name: [$name] -> [$conf->{node}{$node}{drbd}{startup}{$name}]\n";
+						}
+					}
+					elsif ($name eq "net")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$conf->{node}{$node}{drbd}{startup}{$name} = $value;
+							#print "Node: [$node], Network; name: [$name] -> [$conf->{node}{$node}{drbd}{startup}{$name}]\n";
+						}
+					}
+					else
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; Unexpected element: [$b] while parsing node: [$node]'s 'drbdadm dump-xml' data.\n");
+					}
+				}
+			}
+			elsif ($a eq "resource")
+			{
+				#print "node: [$node], resource; [$data->{resource}]\n";
+				foreach my $b (@{$data->{resource}})
+				{
+					my $resource = $b->{name};
+					foreach my $c (@{$b->{host}})
+					{
+						my $ip_type        = $c->{address}->[0]->{family};
+						my $ip_address     = $c->{address}->[0]->{content};
+						my $tcp_port       = $c->{address}->[0]->{port};
+						my $hostname       = $c->{name};
+						my $metadisk       = "--";
+						my $minor_number   = "--";
+						my $drbd_device    = "--";
+						my $backing_device = "--";
+						if (defined $c->{device}->[0]->{minor})
+						{
+							### DRBD 8.3 data
+							#print "DRBD 8.3\n";
+							$metadisk       = $c->{'meta-disk'}->[0];
+							$minor_number   = $c->{device}->[0]->{minor};
+							$drbd_device    = $c->{device}->[0]->{content};
+							$backing_device = $c->{device}->[0]->{content};
+						}
+						else
+						{
+							### DRBD 8.4 data
+							# TODO: This will have problems with multi-volume DRBD! Make it smarter.
+							#print "DRBD 8.4\n";
+							$metadisk       = $c->{volume}->[0]->{'meta-disk'}->[0];
+							$minor_number   = $c->{volume}->[0]->{device}->[0]->{minor};
+							$drbd_device    = $c->{volume}->[0]->{device}->[0]->{content};
+							$backing_device = $c->{volume}->[0]->{device}->[0]->{content};
+						}
+						
+						# This is used for locating a resource by it's minor number
+						$conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource} = $resource;
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], minor_number: [$minor_number], resource: [$conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource}].\n");
+						
+						# This is where the data itself is stored.
+						$conf->{node}{$node}{drbd}{resource}{$resource}{metadisk}       = $metadisk;
+						$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}   = $minor_number;
+						$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}    = $drbd_device;
+						$conf->{node}{$node}{drbd}{resource}{$resource}{backing_device} = $backing_device;
+						
+						# These entries are per-host.
+						$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address} = $ip_address;
+						$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type}    = $ip_type;
+						$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port}   = $tcp_port;
+						
+						# These are needed for the display.
+						$conf->{node}{$node}{drbd}{res_file}{$resource}{device}           = $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device};
+						$conf->{drbd}{$resource}{node}{$node}{res_file}{device}           = $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device};
+						$conf->{drbd}{$resource}{node}{$node}{res_file}{connection_state} = "--";
+						$conf->{drbd}{$resource}{node}{$node}{res_file}{role}             = "--";
+						$conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state}       = "--";
+
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor number: [$minor_number], metadisk: [$conf->{node}{$node}{drbd}{resource}{$resource}{metadisk}], DRBD device: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}], backing device: [$conf->{node}{$node}{drbd}{resource}{$resource}{backing_device}], hostname: [$hostname], IP: [$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address}:$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port} ($conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type})]\n");
+					}
 				}
 			}
 			else
 			{
-				if ($line eq "}")
-				{
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], closing 'res': [$in_res]\n");
-					$conf->{node}{$node}{drbd}{res_file}{$in_res}{device}           = $this_device;
-					$conf->{drbd}{$in_res}{node}{$node}{res_file}{device}           = $this_device;
-					$conf->{drbd}{$in_res}{node}{$node}{res_file}{connection_state} = "--";
-					$conf->{drbd}{$in_res}{node}{$node}{res_file}{role}             = "--";
-					$conf->{drbd}{$in_res}{node}{$node}{res_file}{disk_state}       = "--";
-					
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res: [$in_res], device: [$conf->{node}{$node}{drbd}{res_file}{$in_res}{device}]\n");
-					$in_res      = "";
-					$this_device = "--";
-				}
-				if ($line =~ /device\s+(.*?);/)
-				{
-					$this_device = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$this_device]\n");
-				}
+				record($conf, "$THIS_FILE ".__LINE__."; Unexpected element: [$a] while parsing node: [$node]'s 'drbdadm dump-xml' data.\n");
 			}
 		}
 	}

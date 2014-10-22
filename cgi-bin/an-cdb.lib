@@ -8962,6 +8962,7 @@ sub display_drbd_details
 
 	foreach my $res (sort {$a cmp $b} keys %{$conf->{drbd}})
 	{
+		next if not $res;
 		# If the DRBD daemon is stopped, I will use the values from the
 		# resource files.
 		my $say_n1_dev  = "--";
