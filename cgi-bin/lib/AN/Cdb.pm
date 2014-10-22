@@ -30,6 +30,9 @@ use Encode;
 use IO::Handle;
 use CGI::Carp "fatalsToBrowser";
 
+use AN::Cluster;
+use AN::Common;
+
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
