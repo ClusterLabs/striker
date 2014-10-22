@@ -710,7 +710,7 @@ sub initialize_conf
 # printing to browsers.
 sub initialize_http
 {
-	#print  CGI::header('-charset'=>'utf-8');
+	print  CGI::header('-charset'=>'utf-8');
 }
 
 # This takes a completed string and inserts variables into it as needed.
