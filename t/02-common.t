@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# $id$
+#  $id$
 
 use Test::More;
 use Test::Output;
