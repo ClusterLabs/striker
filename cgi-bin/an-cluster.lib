@@ -1876,6 +1876,8 @@ sub create_install_manifest
 	}
 	elsif ($conf->{cgi}{run})
 	{
+		# Read in the install manifest.
+		load_install_manifest($conf, $conf->{cgi}{run});
 		if ($conf->{cgi}{confirm})
 		{
 			# Do it.
@@ -2148,7 +2150,6 @@ sub load_install_manifest
 				}
 				elsif ($b eq "file")
 				{
-					### wtf?! why does this work?
 					foreach my $c (@{$a->{$b}})
 					{
 						my $name    = $c->{name};
@@ -2696,72 +2697,116 @@ sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
 	
-	# Show the manifest form.
-	print template($conf, "config.html", "select-node-to-run-install-manifest-on", {
-		form_file			=>	"/cgi-bin/an-cdb",
-		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
-		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
-		anvil_domain			=>	$conf->{cgi}{anvil_domain},
-		anvil_password			=>	$conf->{cgi}{anvil_password},
-		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
-		anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
-		anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
-		anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
-		anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
-		anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
-		anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
-		anvil_media_library_unit	=>	$conf->{cgi}{anvil_media_library_unit},
-		anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
-		anvil_storage_pool1_unit	=>	$conf->{cgi}{anvil_storage_pool1_unit},
-		anvil_name			=>	$conf->{cgi}{anvil_name},
-		anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
-		anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
-		anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
-		anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
-		anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
-		anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
-		anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
-		anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
-		anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
-		anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
-		anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
-		anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
-		anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
-		anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
-		anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
-		anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
-		anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
-		anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
-		anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
-		anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
-		anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
-		anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
-		anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
-		anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
-		anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
-		anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
-		anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
-		anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
-		anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
-		anvil_ups1_name			=>	$conf->{cgi}{anvil_ups1_name},
-		anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
-		anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
-		anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
-		anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
-		anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
-		anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
-		anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
-		anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
-		anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
-		anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
-		anvil_switch2_ip		=>	$conf->{cgi}{anvil_switch2_ip},
-		anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
-		anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
-		anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
-		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
-		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
-		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
-	});
+	# Ask if we're replacing a failed node or doing a fresh install.
+	if (not $conf->{cgi}{'do'})
+	{
+		print template($conf, "config.html", "ask-new-or-replace-run-install-manifest", {
+			new_link	=>	"$conf->{'system'}{cgi_string}&do=new",
+			replace_link	=>	"$conf->{'system'}{cgi_string}&do=replace",
+		});
+	}
+	else
+	{
+		if ($conf->{cgi}{'do'} eq "new")
+		{
+			# Show the manifest form.
+			$conf->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_bcn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node1_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_bcn_link2_mac} eq "--";
+			$conf->{cgi}{anvil_node1_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_sn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node1_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_sn_link2_mac} eq "--";
+			$conf->{cgi}{anvil_node1_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_ifn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node1_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_ifn_link2_mac} eq "--";
+			$conf->{cgi}{anvil_node2_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_bcn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node2_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_bcn_link2_mac} eq "--";
+			$conf->{cgi}{anvil_node2_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_sn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node2_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_sn_link2_mac} eq "--";
+			$conf->{cgi}{anvil_node2_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_ifn_link1_mac} eq "--";
+			$conf->{cgi}{anvil_node2_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_ifn_link2_mac} eq "--";
+			
+			# If the first storage pool is a percentage, calculate
+			# the percentage of the second. Otherwise, set storage
+			# pool 2 to just same 'remainder'.
+			my $say_storage_pool_1 = "$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}";
+			my $say_storage_pool_2 = "<span class=\"highlight_unavailable\">#!string!message_0357!#</span>";
+			if ($conf->{cgi}{anvil_storage_pool1_unit} eq "%")
+			{
+				$say_storage_pool_2 = (100 - $conf->{cgi}{anvil_storage_pool1_size})." %";
+			}
+			
+			# Grab the hosts file.
+			my $manifest   = $conf->{cgi}{run};
+			my $hosts_file = $conf->{install_manifest}{$manifest}{common}{file}{'/etc/hosts'}{content};
+			
+			print template($conf, "config.html", "select-node-to-run-install-manifest-on", {
+				form_file			=>	"/cgi-bin/an-cdb",
+				say_storage_pool_1		=>	$say_storage_pool_1,
+				say_storage_pool_2		=>	$say_storage_pool_2,
+				say_hosts_file			=>	$hosts_file,
+				anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
+				anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
+				anvil_domain			=>	$conf->{cgi}{anvil_domain},
+				anvil_password			=>	$conf->{cgi}{anvil_password},
+				anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
+				anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
+				anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
+				anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
+				anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
+				anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
+				anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
+				anvil_media_library_unit	=>	$conf->{cgi}{anvil_media_library_unit},
+				anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
+				anvil_storage_pool1_unit	=>	$conf->{cgi}{anvil_storage_pool1_unit},
+				anvil_name			=>	$conf->{cgi}{anvil_name},
+				anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
+				anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
+				anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+				anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
+				anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
+				anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
+				anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+				anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
+				anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
+				anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+				anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
+				anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
+				anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
+				anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
+				anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
+				anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+				anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
+				anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
+				anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
+				anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+				anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
+				anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
+				anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+				anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
+				anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
+				anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
+				anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
+				anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
+				anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
+				anvil_ups1_name			=>	$conf->{cgi}{anvil_ups1_name},
+				anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
+				anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
+				anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
+				anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
+				anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
+				anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
+				anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
+				anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
+				anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
+				anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
+				anvil_switch2_ip		=>	$conf->{cgi}{anvil_switch2_ip},
+				anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
+				anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
+				anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
+				anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
+				anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
+				anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+			});
+		}
+	}
 	
 	return(0);
 }
@@ -4568,6 +4613,19 @@ sub header
 				{
 					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"$link",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}, "", 1);
+					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"$conf->{'system'}{cgi_string}",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}, "", 1);
+				}
+				elsif ($conf->{cgi}{run})
+				{
+					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}, "", 1);
@@ -6793,12 +6851,12 @@ sub parse_proc_drbd
 			$conf->{node}{$node}{drbd}{builder}    = $2;
 			$conf->{node}{$node}{drbd}{build_date} = $3;
 			$conf->{node}{$node}{drbd}{build_time} = $4;
-			record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD git hash: [$conf->{node}{$node}{drbd}{git_hash}], build by: [$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD git hash: [$conf->{node}{$node}{drbd}{git_hash}], build by: [$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}]\n");
 		}
 		else
 		{
 			# This is just for hash key consistency
-			record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
 			if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
 			{
 				   $minor_number     = $1;
@@ -6810,7 +6868,7 @@ sub parse_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
-				record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
 				   
 				$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} = $connection_state;
@@ -6820,7 +6878,7 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
-				record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], cs: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}], my ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_role}], peer ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_role}], my ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}], peer ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}], protocol: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}], io flags: [$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}]\n");
 			}
 			elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
@@ -6858,18 +6916,18 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}             = $write_order;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync}             = hr_to_bytes($conf, $out_of_sync, "KiB", 1);
 				
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], network sent: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes], network received: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_received} bytes], disk write: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_write} bytes], disk read: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_read} bytes], activity log updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{activity_log_updates}], bitmap updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{bitmap_updates}], local count: [$conf->{node}{$node}{drbd}{resource}{$resource}{local_count}], pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{pending_requests}], unacknowledged requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{unacknowledged_requests}], application pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{app_pending_requests}], epoch objects: [$conf->{node}{$node}{drbd}{resource}{$resource}{epoch_objects}], write order: [$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}], out of sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync} bytes]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], network sent: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes], network received: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_received} bytes], disk write: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_write} bytes], disk read: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_read} bytes], activity log updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{activity_log_updates}], bitmap updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{bitmap_updates}], local count: [$conf->{node}{$node}{drbd}{resource}{$resource}{local_count}], pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{pending_requests}], unacknowledged requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{unacknowledged_requests}], application pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{app_pending_requests}], epoch objects: [$conf->{node}{$node}{drbd}{resource}{$resource}{epoch_objects}], write order: [$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}], out of sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync} bytes]\n");
 			}
 			else
 			{
 				# The resync lines aren't consistent, so I pull out data one piece at a time.
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line =~ /sync'ed: (.*?)%/)
 				{
 					my $percent_synced = $1;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{syncing}        = 1;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} = $percent_synced;
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], percent synced: [$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} %]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], percent synced: [$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} %]\n");
 				}
 				if ($line =~ /\((\d+)\/(\d+)\)M/)
 				{
@@ -6879,7 +6937,7 @@ sub parse_proc_drbd
 					
 					$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync}  = hr_to_bytes($conf, $left_to_sync, "MiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} = hr_to_bytes($conf, $total_to_sync, "MiB", 1);
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], left to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes], total to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], left to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes], total to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes]\n");
 				}
 				if ($line =~ /finish: (\d+):(\d+):(\d+)/)
 				{
@@ -6888,7 +6946,7 @@ sub parse_proc_drbd
 					my $seconds = $3;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
 					
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], eta to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], eta to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)]\n");
 				}
 				if ($line =~ /speed: (.*?) \((.*?)\)/)
 				{
@@ -6898,7 +6956,7 @@ sub parse_proc_drbd
 					   $average_speed =~ s/,//g;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} = hr_to_bytes($conf, $current_speed, "KiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} = hr_to_bytes($conf, $average_speed, "KiB", 1);
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], current_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec], average_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], current_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec], average_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec]\n");
 				}
 				if ($line =~ /want: (.*?) K/)
 				{
@@ -6906,7 +6964,7 @@ sub parse_proc_drbd
 					my $want_speed =  $1;
 					   $want_speed =~ s/,//g;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} = hr_to_bytes($conf, $want_speed, "KiB", 1);
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], want_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], want_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes]\n");
 				}
 			}
 		}
@@ -6915,7 +6973,7 @@ sub parse_proc_drbd
 	foreach my $resource (sort {$a cmp $b} keys %{$conf->{node}{$node}{drbd}{resource}})
 	{
 		next if not $resource;
-		record($conf, "$THIS_FILE ".__LINE__."; -- node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; -- node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
 		
 		$conf->{drbd}{$resource}{node}{$node}{minor}            = $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     ? $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     : "--";
 		$conf->{drbd}{$resource}{node}{$node}{connection_state} = $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} ? $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} : "--";

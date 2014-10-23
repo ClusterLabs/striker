@@ -54,8 +54,17 @@
 		<key name="button_0047">Generate</key>
 		<key name="button_0048">Load</key>
 		<key name="button_0049">Run</key>
-		<key name="button_0050"></key>
-		<key name="button_0051"></key>
+		<key name="button_0050">New Install</key>	<!-- Also used as a row value -->
+		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
+		<key name="button_0052"></key>
+		<key name="button_0053"></key>
+		<key name="button_0054"></key>
+		<key name="button_0055"></key>
+		<key name="button_0056"></key>
+		<key name="button_0057"></key>
+		<key name="button_0058"></key>
+		<key name="button_0059"></key>
+		<key name="button_0060"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -324,7 +333,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0014">Mail Server User</key>
 		<key name="row_0015">Alert Recipient</key>
 		<key name="row_0016">Mail Server Port</key>
-		<key name="row_0017">Add Existing #!string!brand_0004!#</key>
+		<key name="row_0017">Add a New #!string!brand_0004!#</key>
 		<key name="row_0018">Sanity Checks Passed!</key>
 		<key name="row_0019">Done!</key>
 		<key name="row_0020">Problems Found</key>
@@ -465,7 +474,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0155">System Message</key>
 		<key name="row_0156">Configure</key>
 		<key name="row_0157">Info</key>
-		<key name="row_0158">Create Install Manifest</key>
+		<key name="row_0158">Install Manifests</key>
 		<key name="row_0159">#!string!brand_0003!# Prefix</key>
 		<key name="row_0160">Domain Name</key>
 		<key name="row_0161">Sequence Number</key>
@@ -511,13 +520,23 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0201">SN Subnet Mask</key>
 		<key name="row_0202">IFN Subnet Mask</key>
 		<key name="row_0203">Existing Manifest</key>
-		<key name="row_0204"></key>
-		<key name="row_0205"></key>
-		<key name="row_0206"></key>
-		<key name="row_0207"></key>
-		<key name="row_0208"></key>
-		<key name="row_0209"></key>
-		<key name="row_0210"></key>
+		<key name="row_0204">IP Address</key>
+		<key name="row_0205">Subnet Mask</key>
+		<key name="row_0206">Gateway</key>
+		<key name="row_0207">Link 1 MAC</key>
+		<key name="row_0208">Link 2 MAC</key>
+		<key name="row_0209">IPMI Address</key>
+		<key name="row_0210">DNS1</key>
+		<key name="row_0211">DNS2</key>
+		<key name="row_0212">Outlet</key>
+		<key name="row_0213"><![CDATA[Storage Pool <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key>
+		<key name="row_0215"><![CDATA[<span class="fixed_width">/etc/hosts</span> File]]></key>
+		<key name="row_0216"></key>
+		<key name="row_0217"></key>
+		<key name="row_0218"></key>
+		<key name="row_0219"></key>
+		<key name="row_0220"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -782,7 +801,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0167">Delete of Install Manifest Failed</key>
 		<key name="title_0168">Load of Install Manifest Failed</key>
 		<key name="title_0169">Run the Install Manifest against an #!string!brand_0003!# node</key>
-		<key name="title_0170"></key>
+		<key name="title_0170">Select the install scenario</key>
+		<key name="title_0171"></key>
+		<key name="title_0172"></key>
+		<key name="title_0173"></key>
+		<key name="title_0174"></key>
+		<key name="title_0175"></key>
+		<key name="title_0176"></key>
+		<key name="title_0177"></key>
+		<key name="title_0178"></key>
+		<key name="title_0179"></key>
+		<key name="title_0180"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0017!#</span> to add your first one!]]></key>
@@ -1129,19 +1158,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0342">The definition file needs to be updated to switch the Server's graphics to VNC.</key>
 		<key name="message_0343">Add an existing #!string!brand_0004!# to this #!string!brand_0002!# dashboard.</key>
 		<key name="message_0344">Backup this #!string!brand_0002!#'s configuration or load a saved configuration file.</key>
-		<key name="message_0345">Create an installation manifest for new #!string!brand_0004!# node(s).</key>
+		<key name="message_0345">Create, load or run an installation manifest for new or replacement #!string!brand_0004!# node(s).</key>
 		<key name="message_0346"><![CDATA[For #!string!brand_0003!# "<span class="code">#!variable!anvil!#</span>" created on <span class="highlight_ready">#!variable!date!#</span> at <span class="highlight_ready">#!variable!time!#</span>.]]></key>
 		<key name="message_0347"><![CDATA[Are you sure you want to delete the: <span class="code"><span class="highlight_ready">#!variable!file!#</span></span> file?]]></key>
 		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
 		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
 		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
-		<key name="message_0351"></key>
-		<key name="message_0352"></key>
-		<key name="message_0353"></key>
-		<key name="message_0354"></key>
-		<key name="message_0355"></key>
-		<key name="message_0356"></key>
-		<key name="message_0357"></key>
+		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, select which node to run the installer against.]]></key>
+		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
+		<key name="message_0353">Are you replacing a node in an existing #!string!brand_0004!#?</key>
+		<key name="message_0354"><![CDATA[If so, please select "<span class="highlight_ready_bold">#!string!button_0051!#</span>" below.<br /><br />The other node must be online and reachable. It will be queried and if anything in the install manifest does not match up with what is found on the peer, the peer's values will be used.]]></key>
+		<key name="message_0355"><![CDATA[If this is a fresh install, please select "<span class="highlight_ready_bold">#!string!button_0050!#</span>" below.<br /><br />Both nodes must be available for the configuration to run. Storage will be initialized, causing <span class="highlight_warning_bold">any existing data to be lost</span>, on node 1 and fresh configuration files will be written.]]></key>
+		<key name="message_0356"><![CDATA[Both nodes will be configured, new configuration files will be written and <span class="highlight_warning_bold">any existing data will be erased</span>.]]></key>
+		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
 		<key name="message_0358"></key>
 		<key name="message_0359"></key>
 		<key name="message_0360"></key>

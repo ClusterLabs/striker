@@ -1,5 +1,50 @@
 <!-- These are used when a user is configuring an Anvil! or the global values -->
 
+<!-- start ask-new-or-replace-run-install-manifest -->
+<table>
+	<tr>
+		<td colspan="2" class="highlight_ready_bold">
+			#!string!title_0170!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<br />
+			#!string!message_0353!#<br />
+			<br />
+			#!string!message_0354!#<br />
+			<br />
+			#!string!message_0355!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<a href="#!replace!new_link!#" class="bold_button">#!string!button_0050!#</a>
+		</td>
+		<td>
+			<a href="#!replace!replace_link!#" class="bold_button">#!string!button_0051!#</a>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end ask-new-or-replace-run-install-manifest -->
+
 <!-- start select-node-to-run-install-manifest-on -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
@@ -14,14 +59,554 @@
 		</td>
 	</tr>
 	<tr>
-		<td width="10%">
+		<td class="highlight_ready_bold">
+			#!string!row_0032!#
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!message_0351!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!button_0050!#
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!message_0356!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
 			&nbsp;
 		</td>
-		<td width="45%">
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td class="highlight_ready_bold">
 			#!string!header_0001!#
 		</td>
-		<td width="45%">
+		<td class="highlight_ready_bold">
 			#!string!header_0002!#
+		</td>
+	</tr>
+	<!-- Hostnames -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0165!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_node1_name!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_node2_name!#
+		</td>
+	</tr>
+	<!-- BCN IP address -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!brand_0005!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_bcn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_bcn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_bcn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_bcn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_bcn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_bcn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_bcn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_bcn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- IPMI IP address -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0209!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_ipmi_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_bcn_subnet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_ipmi_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_bcn_subnet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- SN IP address -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!brand_0007!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_sn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_sn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_sn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_sn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_sn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_sn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_sn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_sn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- IFN IP address -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!brand_0009!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_ifn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0206!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_gateway!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0210!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_dns1!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0211!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_dns2!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_ifn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_ifn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0204!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_ifn_ip!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0205!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_subnet!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0206!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_gateway!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0210!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_dns1!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0211!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_ifn_dns2!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0207!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_ifn_link1_mac!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0208!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_ifn_link2_mac!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- PDU 1 -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0192!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0165!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_pdu1_name!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0212!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_pdu1_outlet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0165!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_pdu1_name!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0212!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_pdu1_outlet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- PDU 2 -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0193!#
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0165!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_pdu2_name!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0212!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node1_pdu2_outlet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table class="hidden_table">
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0165!#:</span>
+					</td>
+					<td class="td_hidden_white" class="fixed_width" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_pdu2_name!#</span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_hidden_white" style="text-align: right;">
+						<span class="subtle_text">#!string!row_0212!#:</span>
+					</td>
+					<td class="td_hidden_white" style="text-align: left;">
+						<span class="fixed_width">#!replace!anvil_node2_pdu2_outlet!#</span>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<!-- Common values -->
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td class="highlight_ready_bold">
+			#!string!header_0005!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Anvil Name -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0005!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_name!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Anvil Password -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0091!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_password!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- /shared space -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0191!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_media_library_size!# #!replace!anvil_media_library_unit!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Storage Pool 1 -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0213!#
+		</td>
+		<td class="fixed_width">
+			#!replace!say_storage_pool_1!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Storage Pool 2 -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0214!#
+		</td>
+		<td class="fixed_width">
+			#!replace!say_storage_pool_2!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<!-- Hosts File contents -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0215!#
+		</td>
+		<td colspan="2" style="text-align: left;">
+			<pre>
+				#!replace!say_hosts_file!#
+			</pre>
 		</td>
 	</tr>
 	<tr>
