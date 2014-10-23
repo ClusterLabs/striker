@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# $id$
+
 use Test::More;
 use Test::Output;
 use Cwd;
