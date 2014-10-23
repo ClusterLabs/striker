@@ -42,6 +42,7 @@ sub test__convert_cidr_to_dotted_decimal {
     is( $std, $result, "netmask '$netmask' result '$result' matches'$std" );
   }
 }
+
 # ========================================
 sub test__create_rsync_wrapper {
 
@@ -66,6 +67,7 @@ EOSTD
   is( $std, $wrapper, 'rsync wrapper created properly');
   unlink $wrapper_file;
 }
+
 # ========================================
 sub test__test_ssh_fingerprint {
 
@@ -78,34 +80,42 @@ sub test__test_ssh_fingerprint {
   my $result = AN::Common::test_ssh_fingerprint( $conf, '127.0.0.1');
 =cut
 }
+
 # ========================================
 sub test__get_current_directory {
 
 }
+
 # ========================================
 sub test__get_date_and_time {
 
 }
+
 # ========================================
 sub test__get_languages {
 
 }
+
 # ========================================
 sub test__get_string {
 
 }
+
 # ========================================
 sub test__get_wrapped_string {
 
 }
+
 # ========================================
 sub test__hard_die {
 
 }
+
 # ========================================
 sub test__initialize {
 
 }
+
 # ========================================
 sub test__initialize_conf {
 
@@ -120,12 +130,14 @@ sub test__initialize_conf {
   is_deeply( \@std_l1, \@l1, '$conf has right  top-level keys');
 
 }
+
 # ========================================
 sub test__initialize_http {
 
   my $std = "Content-Type: text/html; charset=utf-8\r\n\r\n";
   stdout_is( sub {AN::Common::initialize_http()}, $std, 'initialize_http');
 }
+
 # ========================================
 sub test__insert_variables_into_string {
 
@@ -138,62 +150,77 @@ sub test__insert_variables_into_string {
       'insert_variables_into_string'
       );
 }
+
 # ========================================
 sub test__read_configuration_file {
 
 }
+
 # ========================================
 sub test__to_log {
 
 }
+
 # ========================================
 sub test__template {
 
 }
+
 # ========================================
 sub test__process_string {
 
 }
+
 # ========================================
 sub test__process_string_insert_strings {
 
 }
+
 # ========================================
 sub test__process_string_conf_escape_variables {
 
 }
+
 # ========================================
 sub test__process_string_protect_escape_variables {
 
 }
+
 # ========================================
 sub test__process_string_replace {
 
 }
+
 # ========================================
 sub test__process_string_restore_escape_variables {
 
 }
+
 # ========================================
 sub test__read_strings {
 
 }
+
 # ========================================
 sub test__wrap_string {
 
 }
+
 # ========================================
 sub test__get_screen_width {
 
 }
+
 # ========================================
 sub test___add_hash_reference {
 
 }
+
 # ========================================
 sub test___get_hash_value_from_string {
 
 }
+
 # ========================================
 sub test___make_hash_reference {
 
