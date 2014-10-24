@@ -1,5 +1,7 @@
 package AN::Common;
 
+# $Id$
+
 use strict;
 use warnings;
 use Encode;
