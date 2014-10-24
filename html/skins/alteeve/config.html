@@ -45,7 +45,7 @@
 <br />
 <!-- end ask-new-or-replace-run-install-manifest -->
 
-<!-- start select-node-to-run-install-manifest-on -->
+<!-- start confirm-new-anvil-creation -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
 	<tr>
@@ -603,10 +603,8 @@
 		<td class="highlight_good_bold">
 			#!string!row_0215!#
 		</td>
-		<td colspan="2" style="text-align: left;">
-			<pre>
-				#!replace!say_hosts_file!#
-			</pre>
+		<td colspan="2" class="fixed_width" style="text-align: left;">
+			#!replace!say_hosts_file!#
 		</td>
 	</tr>
 	<tr>
@@ -614,9 +612,100 @@
 			&nbsp;
 		</td>
 	</tr>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!row_0216!#
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!explain_0125!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td class="highlight_ready_bold">
+			#!string!header_0001!#
+		</td>
+		<td class="highlight_ready_bold">
+			#!string!header_0002!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0217!#
+		</td>
+		<td class="highlight_ready_bold">
+			<input type="text" name="anvil_node1_current_ip" id="anvil_node1_current_ip" value="#!replace!anvil_node1_current_ip!#" style="width: 200px;">
+		</td>
+		<td class="highlight_ready_bold">
+			<input type="text" name="anvil_node1_current_ip" id="anvil_node1_current_ip" value="#!replace!anvil_node2_current_ip!#" style="width: 200px;">
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0218!#
+		</td>
+		<td class="highlight_ready_bold">
+			<input type="text" name="anvil_node1_current_password" id="anvil_node1_current_password" value="#!replace!anvil_node1_current_password!#" style="width: 200px;">
+		</td>
+		<td class="highlight_ready_bold">
+			<input type="text" name="anvil_node1_current_password" id="anvil_node1_current_password" value="#!replace!anvil_node2_current_password!#" style="width: 200px;">
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			<br />
+			#!string!title_0133!#<br />
+			<br />
+		</td>
+		<td colspan="2" class="highlight_ready_bold">
+			#!string!explain_0126!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_note_bold">
+			<br />
+			#!string!title_0142!#<br />
+			<br />
+		</td>
+		<td colspan="2">
+			<br />
+			#!string!explain_0127!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			&nbsp;
+		</td>
+		<td>
+			<input type="submit" name="confirm" id="confirm" value="#!string!button_0052!#" class="bold_button" />
+			<input type="hidden" name="config" id="config" value="true" />
+			<input type="hidden" name="task" id="task" value="create-install-manifest" />
+			<input type="hidden" name="do" id="do" value="new" />
+			<input type="hidden" name="run" id="run" value="#!replace!run!#" />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+	</form>
 </table>
 <br />
-<!-- end select-node-to-run-install-manifest-on -->
+<!-- end confirm-new-anvil-creation -->
 
 <!-- start install-manifest-summay -->
 <table>

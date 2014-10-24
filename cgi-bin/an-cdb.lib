@@ -3544,8 +3544,15 @@ sub switch_vm_xml_to_vnc
 	{
 		foreach my $line (@{$conf->{vm}{$vm}{raw_xml}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
-			if ($line =~ /<graphics /)
+			record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			if ($line =~ /<graphics .*\/>/)
+			{
+				# Self-closing element.
+				$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
+				$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
+				$new_definition .= "    </graphics>\n";
+			}
+			elsif ($line =~ /<graphics /)
 			{
 				$in_graphics = 1;
 				next;
@@ -3574,10 +3581,11 @@ sub switch_vm_xml_to_vnc
 				#record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
 			}
 		}
+		$new_definition =~ s/\n+$//;
 		record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition===\n");
 		
 		# Make sure the definition file is sane.
-		if ($new_definition !~ /^<domain/s)
+		if (($new_definition !~ /^<domain/s) || ($new_definition !~ /<\/domain>/s))
 		{
 			my $say_error = "";
 			if (length($new_definition) < 5)
@@ -3594,6 +3602,7 @@ sub switch_vm_xml_to_vnc
 					definition_file	=>	$definition_file,
 				}});
 			}
+			$new_definition = convert_text_to_html($conf, $new_definition);
 			print template($conf, "common.html", "bad-definition-file", {
 				error			=>	$say_error,
 				definition_content	=>	$new_definition,

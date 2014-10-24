@@ -106,6 +106,7 @@ sub test_ssh_fingerprint
 	my ($conf, $node) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
 	
+	my $failed  = 0;
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
 	my $sc = "ssh root\@$node \"uname -a\"";
@@ -115,11 +116,15 @@ sub test_ssh_fingerprint
 	while(<$fh>)
 	{
 		chomp;
-		my $line = $_;
+		my $line =  $_;
+		   $line =~ s/\n/ /g;
+		   $line =~ s/\r/ /g;
+		   $line =~ s/\s+$//;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if (($line =~ /The authenticity of host/) or ($line =~ /Host key verification failed/))
+		if ($line =~ /The authenticity of host/)
 		{
 			# Add fingerprint to known_hosts
+			record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
 			my $message = get_string($conf, {key => "message_0279", variables => {
 				node	=>	$node,
 			}});
@@ -129,7 +134,7 @@ sub test_ssh_fingerprint
 			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
 			#print template($conf, "common.html", "shell-output-header");
 			my $fh = IO::Handle->new();
-			my $sc = "$conf->{path}{'ssh-keyscan'} $node >> ~/.ssh/known_hosts";
+			my $sc = "$conf->{path}{'ssh-keyscan'} $node 2>&1 | grep ssh-rsa >> ~/.ssh/known_hosts";
 			record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
 			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 			while(<$fh>)
@@ -149,10 +154,36 @@ sub test_ssh_fingerprint
 			#});
 			sleep 5;
 		}
+		elsif ($line =~ /Host key verification failed/)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; host key verification failed message\n");
+			my $message = get_string($conf, {key => "message_0360", variables => {
+				node	=>	$node,
+			}});
+			print template($conf, "common.html", "generic-error", {
+				message	=>	$message,
+			});
+			$failed  = 1;
+		}
+		elsif ($line =~ /Offending key .*? (.*?):(\d+)/)
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; offending key message\n");
+			my $file = $1;
+			my $line = $2;
+			my $message = get_string($conf, {key => "message_0358", variables => {
+				node	=>	$node,
+				file	=>	$file,
+				line	=>	$line,
+			}});
+			print template($conf, "common.html", "generic-error", {
+				message	=>	$message,
+			});
+			$failed  = 1;
+		}
 	}
 	$fh->close();
 
-	return(0);
+	return($failed);
 }
 
 # This simply sorts out the current directory the program is running in.

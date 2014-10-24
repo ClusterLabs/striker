@@ -170,6 +170,17 @@
 	</tr>
 <!-- end generic-note -->
 
+<!-- start generic-error -->
+	<tr>
+		<td class="highlight_bad_bold">
+			#!string!row_0096!#
+		</td>
+		<td>
+			#!replace!message!#
+		</td>
+	</tr>
+<!-- end generic-error -->
+
 <!-- start shell-output-header -->
 	<tr>
 		<td class="highlight_warning_bold">
@@ -228,24 +239,23 @@
 <!-- end form-input-no-class-defined-width -->
 
 <!-- start bad-definition-file -->
-<table>
+<table class="hidden_table">
 	<tr>
-		<td colspan="2" class="highlight_warning_bold">
+		<td class="highlight_warning_bold" class="td_hidden_white">
 			#!string!title_0147!#
 		</td>
 	</tr>
 	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0096!#
-		</td>
-		<td>
+		<td style="text-align: left;" class="td_hidden_white">
 			<br />
 			#!string!message_0337!#<br />
 			<br />
 			#!replace!error!#<br />
 			<br />
 			<hr />
-			<span class="code">#!replace!definition_content!#<span><br />
+			<span class="fixed_width">
+			#!replace!definition_content!#
+			</span>
 			<hr />
 			</br>
 		</td>

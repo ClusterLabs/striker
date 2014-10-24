@@ -56,7 +56,7 @@
 		<key name="button_0049">Run</key>
 		<key name="button_0050">New Install</key>	<!-- Also used as a row value -->
 		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
-		<key name="button_0052"></key>
+		<key name="button_0052">Begin Install</key>
 		<key name="button_0053"></key>
 		<key name="button_0054"></key>
 		<key name="button_0055"></key>
@@ -309,9 +309,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0122"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" can not be longer than 15 characters.]]></key>
 		<key name="explain_0123"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters and dashes (<span class="code">-</span>).]]></key>
 		<key name="explain_0124"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It has been added to the manifest list. You can click on the file name to download it now if you wish.]]></key>
-		<key name="explain_0125"><![CDATA[]]></key>
-		<key name="explain_0126"><![CDATA[]]></key>
-		<key name="explain_0127"><![CDATA[]]></key>
+		<key name="explain_0125"><![CDATA[Have you reviewed the values that will be set carefully?<br /><br />If you are happy, enter the current IP address and the current <span class="code">root</span> user's password for both nodes.]]></key>
+		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
+		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
 		<key name="explain_0128"><![CDATA[]]></key>
 		<key name="explain_0129"><![CDATA[]]></key>
 		<key name="explain_0130"><![CDATA[]]></key>
@@ -532,9 +532,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0213"><![CDATA[Storage Pool <span class="highlight_bad_bold">1</span>]]></key>
 		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="row_0215"><![CDATA[<span class="fixed_width">/etc/hosts</span> File]]></key>
-		<key name="row_0216"></key>
-		<key name="row_0217"></key>
-		<key name="row_0218"></key>
+		<key name="row_0216">Ready?</key>
+		<key name="row_0217">Current IP Address</key>
+		<key name="row_0218">Current root Password</key>
 		<key name="row_0219"></key>
 		<key name="row_0220"></key>
 		
@@ -1171,9 +1171,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0355"><![CDATA[If this is a fresh install, please select "<span class="highlight_ready_bold">#!string!button_0050!#</span>" below.<br /><br />Both nodes must be available for the configuration to run. Storage will be initialized, causing <span class="highlight_warning_bold">any existing data to be lost</span>, on node 1 and fresh configuration files will be written.]]></key>
 		<key name="message_0356"><![CDATA[Both nodes will be configured, new configuration files will be written and <span class="highlight_warning_bold">any existing data will be erased</span>.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
-		<key name="message_0358"></key>
-		<key name="message_0359"></key>
-		<key name="message_0360"></key>
+		<key name="message_0358"><![CDATA[The [<span class="fixed_width">#!variable!node!#</span>] node's ssh fingerprint conflicts with another recorded key.<br />The problem is in the file: [<span class="fixed_width">#!variable!file!#</span>] at line: [<span class="fixed_width">#!variable!line!#</span>].<br /><br />#!string!brand_0011!#]]></key>
+		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
+		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
+		<key name="message_0361"></key>
+		<key name="message_0362"></key>
+		<key name="message_0363"></key>
+		<key name="message_0364"></key>
+		<key name="message_0365"></key>
+		<key name="message_0366"></key>
+		<key name="message_0367"></key>
+		<key name="message_0368"></key>
+		<key name="message_0369"></key>
+		<key name="message_0370"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

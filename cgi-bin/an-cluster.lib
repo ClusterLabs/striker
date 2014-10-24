@@ -2736,15 +2736,27 @@ sub confirm_install_manifest_run
 			# Grab the hosts file.
 			my $manifest   = $conf->{cgi}{run};
 			my $hosts_file = $conf->{install_manifest}{$manifest}{common}{file}{'/etc/hosts'}{content};
+			   $hosts_file =~ s/\n/<br \/>/g;
 			
-			print template($conf, "config.html", "select-node-to-run-install-manifest-on", {
+			# If this is the first load, the use the current IP and
+			# password.
+			if (not $conf->{cgi}{confirm})
+			{
+				$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip};
+				$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password};
+				$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip};
+				$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password};
+			}
+			
+			print template($conf, "config.html", "confirm-new-anvil-creation", {
 				form_file			=>	"/cgi-bin/an-cdb",
 				say_storage_pool_1		=>	$say_storage_pool_1,
 				say_storage_pool_2		=>	$say_storage_pool_2,
 				say_hosts_file			=>	$hosts_file,
-				anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
-				anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
-				anvil_domain			=>	$conf->{cgi}{anvil_domain},
+				anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+				anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+				anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
+				anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
 				anvil_password			=>	$conf->{cgi}{anvil_password},
 				anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
 				anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
@@ -2786,24 +2798,9 @@ sub confirm_install_manifest_run
 				anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
 				anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
 				anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
-				anvil_ups1_name			=>	$conf->{cgi}{anvil_ups1_name},
-				anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
-				anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
-				anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
 				anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
-				anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
 				anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
-				anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
-				anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
-				anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
-				anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
-				anvil_switch2_ip		=>	$conf->{cgi}{anvil_switch2_ip},
-				anvil_striker1_name		=>	$conf->{cgi}{anvil_striker1_name},
-				anvil_striker1_bcn_ip		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
-				anvil_striker1_ifn_ip		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
-				anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
-				anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
-				anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+				run				=>	$conf->{cgi}{run},
 			});
 		}
 	}
@@ -4094,14 +4091,16 @@ sub convert_text_to_html
 	my ($conf, $string) = @_;
 	$string = "" if not defined $string;
 
+	
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
 	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
 	$string =~ s/#/&#35;/g;		# Number sign - Must be third! /
-	$string =~ s/\t/&#09;/g;	# Horizontal tab
-	$string =~ s/\n/&#10;/g;	# Line feed
-	$string =~ s/\r/&#13;/g;	# Carriage Return
-	$string =~ s/\s/&#32;/g;	# Space
-	$string =~ s/!/&#33;/g;		# Exclamation mark
+# 	$string =~ s/\t/ &nbsp; &nbsp;/g;	# Horizontal tab
+	#$string =~ s/\n/&#10;/g;	# Line feed
+	#$string =~ s/\r/&#13;/g;	# Carriage Return
+# 	$string =~ s/\s/ /g;	# Space
+# 	$string =~ s/!/&#33;/g;		# Exclamation mark
+	$string =~ s/\n/#!br!#/g;
 	$string =~ s/"/&#34;/g;		# Quotation mark
 	$string =~ s/\$/&#36;/g;	# Dollar sign
 	$string =~ s/\%/&#37;/g;	# Percent sign
@@ -4234,6 +4233,8 @@ sub convert_text_to_html
 
 	# Make sure no control characters were double-encoded
 	$string =~ s/&lt;br \/&gt;/<br>/g;
+	
+	$string =~ s/#!br!#/<br \/>/g;
 	
 	return ($string);
 }
@@ -4892,10 +4893,18 @@ sub get_cgi_vars
 		{
 			if ($var eq "file")
 			{
-				$conf->{cgi_fh}{$var}       = $cgi->upload($var);
-				my $file                    = $conf->{cgi_fh}{$var};
-				$conf->{cgi_mimetype}{$var} = $cgi->uploadInfo($file)->{'Content-Type'};
-				record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}], mimetype: [$conf->{cgi_mimetype}{$var}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; var: [$var]\n");
+				if (not $cgi->upload($var))
+				{
+					record($conf, "$THIS_FILE ".__LINE__."; Empty file passed, looks like the user forgot to select a file to upload.\n");
+				}
+				else
+				{
+					$conf->{cgi_fh}{$var}       = $cgi->upload($var);
+					my $file                    = $conf->{cgi_fh}{$var};
+					$conf->{cgi_mimetype}{$var} = $cgi->uploadInfo($file)->{'Content-Type'};
+					record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}], mimetype: [$conf->{cgi_mimetype}{$var}]\n");
+				}
 			}
 			$conf->{cgi}{$var} = $cgi->param($var);
 			# Make this UTF8 if it isn't already.

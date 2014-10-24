@@ -505,52 +505,65 @@ sub upload_to_shared
 	my ($conf, $node, $source_file) = @_;
 	
 	# Some prep work.
-	test_ssh_fingerprint($conf, $node);
 	my $failed = 0;
+	($failed) = test_ssh_fingerprint($conf, $node);
 	
-	my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-	record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
-	# This is a dumb way to check, try a test upload and see if it fails.
-	if (-e $conf->{path}{expect})
+	if ($failed)
 	{
-		#print "Creating 'expect' rsync wrapper.<br />";
-		record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
-		create_rsync_wrapper($conf, $node);
-		$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-		record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
+		my $message = get_string($conf, {key => "message_0359", variables => {
+			node	=>	$node,
+			file	=>	$source_file,
+		}});
+		print template($conf, "common.html", "generic-error", {
+			message	=>	$message,
+		});
 	}
 	else
 	{
-		print template($conf, "media-library.html", "image-and-upload-expect-not-found");
-	}
-	
-	my $header_printed = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	my $no_key = 0;
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		if ($line =~ /Permission denied/i)
+		my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+		record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
+		# This is a dumb way to check, try a test upload and see if it fails.
+		if (-e $conf->{path}{expect})
 		{
-			$failed = 1;
+			#print "Creating 'expect' rsync wrapper.<br />";
+			record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
+			create_rsync_wrapper($conf, $node);
+			$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+			record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
 		}
-		if (not $header_printed)
+		else
 		{
-			print template($conf, "common.html", "open-shell-call-output");
-			$header_printed = 1;
+			print template($conf, "media-library.html", "image-and-upload-expect-not-found");
 		}
-		print template($conf, "common.html", "shell-call-output", {
-			line	=>	$line,
-		});
-	}
-	$fh->close;
-	
-	if ($header_printed)
-	{
-		print template($conf, "common.html", "close-shell-call-output");
+		
+		my $header_printed = 0;
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+		my $no_key = 0;
+		while(<$fh>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /Permission denied/i)
+			{
+				$failed = 1;
+			}
+			if (not $header_printed)
+			{
+				print template($conf, "common.html", "open-shell-call-output");
+				$header_printed = 1;
+			}
+			print template($conf, "common.html", "shell-call-output", {
+				line	=>	$line,
+			});
+		}
+		$fh->close;
+		
+		if ($header_printed)
+		{
+			print template($conf, "common.html", "close-shell-call-output");
+		}
 	}
 	
 	return ($failed);
