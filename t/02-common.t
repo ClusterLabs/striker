@@ -1,12 +1,39 @@
 #!/usr/bin/env perl
 
-#  $id$
-
 use Test::More;
 use Test::Output;
 use Cwd;
+
 use lib '../cgi-bin/lib/';
 use AN::Common;
+
+# ----------------------------------------------------------------------
+# Override inconvenient routines with predictable values.
+#
+
+package AN::Common;
+
+# ....................
+sub hard_die {
+
+  print "die hard";
+
+}
+# ....................
+sub get_date_and_time{
+
+  return ('Friday 13 October, 2014', '13:13:13');
+}
+
+package main;
+
+# ----------------------------------------------------------------------
+# Constants
+#
+# I would use Const::Fast but it isn't part of Perl::Core, so it would
+# need to be an additional import. Just use var 'constants' for now.
+#
+my $LOGFILE = 'test_log_file.log';
 
 # ----------------------------------------------------------------------
 # Test Subroutines
@@ -41,7 +68,7 @@ sub test__convert_cidr_to_dotted_decimal {
 	      :                         $std[$INVALID]
 	      );
     my $result = AN::Common::convert_cidr_to_dotted_decimal(undef, $netmask );
-    is( $std, $result, "netmask '$netmask' result '$result' matches'$std" );
+    is( $result, $std, "netmask '$netmask' result '$result' matches'$std" );
   }
 }
 
@@ -50,7 +77,7 @@ sub test__create_rsync_wrapper {
 
   my $conf = {cgi => {cluster => 'test'},
 	      clusters => {'test' => {root_pw => 'XXX' }},
-	      path => {log => getcwd() . '/test_logfile'},
+	      path => {log => getcwd() . $LOGFILE},
 	     };
   my $wrapper_suffix = 'node.123';
   AN::Common::create_rsync_wrapper( $conf, $wrapper_suffix );
@@ -66,7 +93,7 @@ expect  "*?assword:" { send "XXX\n" }
 expect eof
 EOSTD
 
-  is( $std, $wrapper, 'rsync wrapper created properly');
+  is( $wrapper, $std, 'rsync wrapper created properly');
   unlink $wrapper_file;
 }
 
@@ -76,7 +103,7 @@ sub test__test_ssh_fingerprint {
 =pod	#disable chunk 
   my $conf = {cgi => {cluster => 'test'},
 	      clusters => {'test' => {root_pw => 'XXX' }},
-	      path => {log => getcwd() . '/test_logfile'},
+	      path => {log => getcwd() . $LOGFILE},
 	     };
 
   my $result = AN::Common::test_ssh_fingerprint( $conf, '127.0.0.1');
@@ -86,6 +113,9 @@ sub test__test_ssh_fingerprint {
 # ========================================
 sub test__get_current_directory {
 
+    my $result =  AN::Common::get_current_directory();
+
+    is( $result, getcwd(), 'finds correct directory.');
 }
 
 # ========================================
@@ -129,7 +159,7 @@ sub test__initialize_conf {
 		    string   strings             sys
 		    system   up_nodes            url
 		 );
-  is_deeply( \@std_l1, \@l1, '$conf has right  top-level keys');
+  is_deeply( \@l1, \@std_l1, '$conf has right  top-level keys');
 
 }
 
@@ -147,10 +177,19 @@ sub test__insert_variables_into_string {
   my $variables = {s => 'sentence', n => 2};
   my $std = 'This sentence contains 2 variables.';
   my $conf = {sys => {error_limit => 3}};
-  is( $std, 
-      AN::Common::insert_variables_into_string( $conf, $string, $variables),
+  is( AN::Common::insert_variables_into_string( $conf, $string, $variables),
+      $std, 
       'insert_variables_into_string'
       );
+
+  $conf = {sys => {error_limit => 1}};
+  $string .=" Here's another #!variable!damn!# variable.";
+  $std .= "Here's another  variable.";
+
+  stdout_is( sub{AN::Common::insert_variables_into_string( $conf, $string,
+							   $variables)},
+	     'die hard', 'Detects too many iterations'
+	     );
 }
 
 # ========================================
@@ -160,6 +199,37 @@ sub test__read_configuration_file {
 
 # ========================================
 sub test__to_log {
+
+  my $conf = 
+    {path => {log_file => $LOGFILE,
+	     },
+     string => {lang => 
+		{English => 
+		 { key => {log_0001 => 
+		   {content => 'date: #!variable!date!#  time: #!variable!time!#'},
+		 }}}},
+     sys => {error_limit => 3,
+	     language => 'English',
+	     log_level => 3,
+	     log_language => 'English',
+	    },
+    };
+  my $logvar = { line => __LINE__,
+		 file => __FILE__,
+		 level => 3,
+		 message => 'logging at level 3',
+		 };
+  unlink $conf->{path}{log_file};
+  AN::Common::to_log( $conf, $logvar);
+  my @output = split "\n",`cat $LOGFILE`;
+  my $std_header = '-=] date: Friday 13 October, 2014  time: 13:13:13';
+  my $std_msg = ' logging at level 3';
+
+  is( $output[0], $std_header, 'log header is correct');
+
+  my ($path, $msg) = split ';', $output[1]; # The part after the semicolon.
+  like( $path, qr{t/02-common.t \d+\Z}, 'path part is correct');
+  is( $std_msg, $msg, 'log message is correct');
 
 }
 
