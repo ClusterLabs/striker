@@ -77,7 +77,7 @@ sub test__create_rsync_wrapper {
 
   my $conf = {cgi => {cluster => 'test'},
 	      clusters => {'test' => {root_pw => 'XXX' }},
-	      path => {log => getcwd() . $LOGFILE},
+	      path => {log => getcwd() . '/' . $LOGFILE},
 	     };
   my $wrapper_suffix = 'node.123';
   AN::Common::create_rsync_wrapper( $conf, $wrapper_suffix );
@@ -103,7 +103,7 @@ sub test__test_ssh_fingerprint {
 =pod	#disable chunk 
   my $conf = {cgi => {cluster => 'test'},
 	      clusters => {'test' => {root_pw => 'XXX' }},
-	      path => {log => getcwd() . $LOGFILE},
+	      path => {log => getcwd() . '/' . $LOGFILE},
 	     };
 
   my $result = AN::Common::test_ssh_fingerprint( $conf, '127.0.0.1');
