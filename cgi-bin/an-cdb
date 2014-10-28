@@ -53,6 +53,7 @@ my $THIS_FILE = "an-cdb";
 require "./common.lib";
 require "./an-cluster.lib";
 require "./an-cdb.lib";
+require "./install-manifest.lib";
 
 # Turn off buffering so that the pinwheel will display while waiting
 # for the SSH call(s) to complete.

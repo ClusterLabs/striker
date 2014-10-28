@@ -28,12 +28,6 @@ use warnings;
 use IO::Handle;
 use Net::SSH2;
 
-# Email stuff
-# use Email::Sender::Simple qw(sendmail);
-# use Email::Sender::Transport::SMTP::TLS;
-# use Try::Tiny;
-# use Email::Simple::Creator;
-
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
@@ -1881,6 +1875,16 @@ sub create_install_manifest
 		if ($conf->{cgi}{confirm})
 		{
 			# Do it.
+			$show_form = 0;
+			if ($conf->{cgi}{'do'} eq "new")
+			{
+				# New install
+				run_new_install_manifest($conf);
+			}
+			else
+			{
+				# Replacing a node.
+			}
 		}
 		else
 		{
@@ -2740,13 +2744,10 @@ sub confirm_install_manifest_run
 			
 			# If this is the first load, the use the current IP and
 			# password.
-			if (not $conf->{cgi}{confirm})
-			{
-				$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip};
-				$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password};
-				$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip};
-				$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password};
-			}
+			$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip} if not $conf->{cgi}{anvil_node1_current_ip};;
+			$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node1_current_password};
+			$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip} if not $conf->{cgi}{anvil_node2_current_ip};
+			$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
 			
 			print template($conf, "config.html", "confirm-new-anvil-creation", {
 				form_file			=>	"/cgi-bin/an-cdb",
@@ -4599,11 +4600,27 @@ sub header
 					$link =~ s/&&/&/g;
 				if ($conf->{cgi}{confirm})
 				{
-					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"$link",
-						button_text	=>	"$back_image",
-						id		=>	"back",
-					}, "", 1);
+					if ($conf->{cgi}{run})
+					{
+						my $back_url =  $conf->{'system'}{cgi_string};
+						   $back_url =~ s/confirm=.*?&//;
+						   $back_url =~ s/confirm=.*$//;
+						record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
+						record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
+						$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+							button_link	=>	"$back_url",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}, "", 1);
+					}
+					else
+					{
+						$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+							button_link	=>	"$link",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}, "", 1);
+					}
 					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$refresh_image",

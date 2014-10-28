@@ -312,9 +312,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0125"><![CDATA[Have you reviewed the values that will be set carefully?<br /><br />If you are happy, enter the current IP address and the current <span class="code">root</span> user's password for both nodes.]]></key>
 		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
 		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
-		<key name="explain_0128"><![CDATA[]]></key>
-		<key name="explain_0129"><![CDATA[]]></key>
-		<key name="explain_0130"><![CDATA[]]></key>
+		<key name="explain_0128"><![CDATA[Please be patient!<br /><br />Some tasks may not cause any output to be displayed for some time.<br /><br /><b>Please do not reload this page!</b>.]]></key>
+		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a while on slow Internet connections.<br />Please be patient!]]></key>
+		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a while on slow Internet connections.<br />Please be patient!]]></key>
+		<key name="explain_0131"><![CDATA[]]></key>
+		<key name="explain_0132"><![CDATA[]]></key>
+		<key name="explain_0133"><![CDATA[]]></key>
+		<key name="explain_0134"><![CDATA[]]></key>
+		<key name="explain_0135"><![CDATA[]]></key>
+		<key name="explain_0136"><![CDATA[]]></key>
+		<key name="explain_0137"><![CDATA[]]></key>
+		<key name="explain_0138"><![CDATA[]]></key>
+		<key name="explain_0139"><![CDATA[]]></key>
+		<key name="explain_0140"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -535,8 +545,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0216">Ready?</key>
 		<key name="row_0217">Current IP Address</key>
 		<key name="row_0218">Current root Password</key>
-		<key name="row_0219"></key>
-		<key name="row_0220"></key>
+		<key name="row_0219">Testing Connection</key>
+		<key name="row_0220">Checking OS Version</key>
+		<key name="row_0221">Checking for Existing Config</key>
+		<key name="row_0222">Checking for Free Space</key>
+		<key name="row_0223">Checking Internet Access</key>
+		<key name="row_0224">Note!</key>
+		<key name="row_0225"><![CDATA[Adding <span class="code">an-repo</span>]]></key>
+		<key name="row_0226">Installing Programs</key>
+		<key name="row_0227">Updating OS</key>
+		<key name="row_0228"></key>
+		<key name="row_0229"></key>
+		<key name="row_0230"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -549,8 +569,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0005">Common Values</key>
 		<key name="header_0006">Host Name</key>
 		<key name="header_0007">IP Address</key>
-		<key name="header_0008"></key>
-		<key name="header_0009"></key>
+		<key name="header_0008">Node 1</key>
+		<key name="header_0009">Node 2</key>
 		<key name="header_0010"></key>
 		
 		<!-- These are strings used to describe devices -->
@@ -626,10 +646,20 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0014">started</key>
 		<key name="state_0015">stopped</key>
 		<key name="state_0016">n/a</key> <!-- Not applicable -->
-		<key name="state_0017"></key>
-		<key name="state_0018"></key>
-		<key name="state_0019"></key>
-		<key name="state_0020"></key>
+		<key name="state_0017">OK</key>
+		<key name="state_0018">Failed!</key>
+		<key name="state_0019">Not Found</key>
+		<key name="state_0020">Exists!</key>
+		<key name="state_0021">No Access</key>
+		<key name="state_0022">Online</key>
+		<key name="state_0023">Added</key>
+		<key name="state_0024">Everything Installed</key>
+		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span>]]></key>
+		<key name="state_0026">Updated</key>
+		<key name="state_0027">Already up to Date</key>
+		<key name="state_0028"></key>
+		<key name="state_0029"></key>
+		<key name="state_0030"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -802,9 +832,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0168">Load of Install Manifest Failed</key>
 		<key name="title_0169">Run the Install Manifest against an #!string!brand_0003!# node</key>
 		<key name="title_0170">Select the install scenario</key>
-		<key name="title_0171"></key>
-		<key name="title_0172"></key>
-		<key name="title_0173"></key>
+		<key name="title_0171">Starting Configration of a new #!string!brand_0003!# on both nodes</key>
+		<key name="title_0172">Running some sanity checks...</key>
+		<key name="title_0173">Configuration Beginning</key>
 		<key name="title_0174"></key>
 		<key name="title_0175"></key>
 		<key name="title_0176"></key>
@@ -1174,16 +1204,26 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0358"><![CDATA[The [<span class="fixed_width">#!variable!node!#</span>] node's ssh fingerprint conflicts with another recorded key.<br />The problem is in the file: [<span class="fixed_width">#!variable!file!#</span>] at line: [<span class="fixed_width">#!variable!line!#</span>].<br /><br />#!string!brand_0011!#]]></key>
 		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
 		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
-		<key name="message_0361"></key>
-		<key name="message_0362"></key>
-		<key name="message_0363"></key>
-		<key name="message_0364"></key>
-		<key name="message_0365"></key>
-		<key name="message_0366"></key>
-		<key name="message_0367"></key>
-		<key name="message_0368"></key>
-		<key name="message_0369"></key>
-		<key name="message_0370"></key>
+		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please note that both nodes must but be listening for <a href="https://alteeve.ca/w/Ssh" target="_new" class="fixed_width">ssh</a> connections on <a href="http://en.wikipedia.org/wiki/Transmission_Control_Protocol" target="_new">TCP</a> port 22.<br />Remotely installation is not supported.<br />Please go back and verify that the <i>current</i> IP addresses are entered for each node.]]></key>
+		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
+		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
+		<key name="message_0364"><![CDATA[I am sorry, but both nodes must have free space.]]></key>
+		<key name="message_0365"><![CDATA[I am sorry, but both nodes must have the same amount of free space.]]></key>
+		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
+		<key name="message_0367"><![CDATA[Failed to add the AN!Repo.<br />This is not strictly required, but may mean some packages will not be installed automatically.]]></key>
+		<key name="message_0368"><![CDATA[There appears to be no internet connection, and the program <span class="code">parted</span> is not installed.]]></key>
+		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>
+		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
+		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
+		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
+		<key name="message_0373"></key>
+		<key name="message_0374"></key>
+		<key name="message_0375"></key>
+		<key name="message_0376"></key>
+		<key name="message_0377"></key>
+		<key name="message_0378"></key>
+		<key name="message_0379"></key>
+		<key name="message_0380"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
