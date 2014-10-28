@@ -11,18 +11,32 @@
 #      cable did not (properly) record that interfaces MAC address.
 # 2  - The referenced network interface seen when the user unplugged a network
 #      cable did not (properly) record that interfaces current device name.
-# 3  - Incomplete network configuration information passed in via the command
-#      line.
-# 4  - Insufficient number of network interfaces found. This program requires
-#      six (or more) interfaces to run.
-# 5  - The '$conf->{paths}{backups}' value is not set.
-# 6  - The '$conf->{paths}{backups}' backup directory failed to be created. The
+# 3  - 
+# 4  - 
+# 5  - The '$conf->{path}{backups}' value is not set.
+# 6  - The '$conf->{path}{backups}' backup directory failed to be created. The
 #      failure warning should be displayed immediately prior to this error.
 # 7  - backup_file() was called without a specified file to backup.
-# 8  - Failed to find the '$conf->{paths}{network_configs}' directory. I hope
+# 8  - Failed to find the '$conf->{path}{network_configs}' directory. I hope
 #      for the user's sake that this is a program problem...
 # 9  - There was one or more problems while sanity checking the command line
 #      options. The problems will be displayed prior to the exit.
+# 10 - No switches passed.
+# 11 - Failed to bring up a network interface and network configuration was
+#      requested.
+# 12 - 
+# 13 - 
+# 14 - 
+# 15 - 
+# 16 - 
+# 17 - Installer didn't run as 'root'.
+# 18 - 
+# 19 - Failed to copy a file.
+# 20 - 
+# 21 - Failed to rsync a file or directory.
+# 
+# TODO: Create an init script that deletes anything in the media directory on
+#       boot. Can't use /tmp as it's usually too small.
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -30,12 +44,21 @@ my $THIS_FILE =  $0;
 use strict;
 use warnings;
 
+# No capes!^H^H^H^Hbuffers!
+$| = 1;
+
 my $conf = {
 	executable	=>	{
-		cp		=>	"/usr/bin/cp",
-		ip		=>	"/usr/sbin/ip",
-		systemctl	=>	"/usr/bin/systemctl",
+		cp			=>	"/bin/cp",
+		ifup			=>	"/sbin/ifup",
+		ip			=>	"/sbin/ip",
 	},
+	path		=>	{
+		backups			=>	"/root/anvil",
+		network_configs		=>	"/etc/sysconfig/network-scripts",
+		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+	},
+	mode		=>	"interactive",
 	nics		=>	["bcn-link1", "bcn-link2", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2"],
 	network		=>	{
 		bcn		=>	{
@@ -54,19 +77,35 @@ my $conf = {
 			dns2		=>	"8.8.4.4",
 		},
 	},
-	paths		=>	{
-		backups		=>	"/root/anvil",
-		persistent_net	=>	"/etc/udev/rules.d/70-persistent-net.rules",
-		network_configs	=>	"/etc/sysconfig/network-scripts",
-	},
 };
+
+# Make sure we're running as 'root'
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	print "[ Error ] - I am sorry, but this program must be run as the root user.\n\n";
+	exit(17);
+}
 
 # Make sure we got what we needed from the command line.
 get_switches($conf);
+if (not $conf->{sys}{switch_count})
+{
+	print_usage($conf);
+	exit(10);
+}
+# This sanity-checks the passed in command line switches and returns '1' if
+# any problems were found.
 if (sanity_check_switches($conf))
 {
 	exit(9);
 }
+
+# Make backups, of course.
+backup_original_files($conf);
+
+# Make sure all NICs are up. If any aren't, start them.
+start_all_nics($conf);
 
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
@@ -76,18 +115,181 @@ until(select_nics($conf))
 }
 
 # If we're here, the user has OK'ed the changes.
-make_changes($conf);
+reconfigure_network($conf);
 
+# If the user reconfigured the network, tell them they will need to reboot.
+if (not $conf->{sys}{skip_network})
+{
+	print "\n[ Warning ] - You may need to reboot the network if the network interfances\n";
+	print "[ Warning ] - were renamed. Simply restarting the network will likely not\n";
+	print "[ Warning ] - work.\n\n";
+}
+print "Installation of Striker is complete!\n\n";
 exit(0);
 
-# This is a wrapper function that calls the various task-specific functions
-# that make the actual changes to the network.
-sub make_changes
+
+###############################################################################
+# Here be function!                                                           #
+###############################################################################
+
+# This copies multiple files using rsync
+sub rsync_files
+{
+	my ($conf, $source, $destination) = @_;
+	
+	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	
+	# Verify it copied successfully.
+	my $file = ($source =~ /^.*\/(.*)$/)[0];
+	   $file = "$destination/$file";
+	if (not -e $file)
+	{
+		print "[ Error ] - Failed to rsync: [$source]\n";
+		print "[ Error ] -              to: [$destination]\n";
+		exit(21);
+	}
+}
+
+# This copies a file... Hey, what it says on the tin.
+sub copy_file
+{
+	my ($conf, $source, $destination) = @_;
+	
+	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	
+	# Verify it copied successfully.
+	my $file = ($source =~ /^.*\/(.*)$/)[0];
+	   $file = "$destination/$file";
+	if (not -e $file)
+	{
+		print "[ Error ] - Failed to copy: [$source]\n";
+		print "[ Error ] -             to: [$destination]\n";
+		exit(19);
+	}
+	
+	return(0);
+}
+
+# This looks at all NICs and 'ifup's any that are down.
+sub start_all_nics
 {
 	my ($conf) = @_;
 	
-	# Make backups, of course.
-	backup_original_files($conf);
+	print "Making sure all network interfaces are up.\n";
+	check_nic_states($conf);
+	foreach my $this_iface (sort {$a cmp $b} keys %{$conf->{nic}{by_name}})
+	{
+		# See if it is up already.
+		my $link_state = $conf->{nic}{by_name}{$this_iface}{link_state};
+		my $mac        = $conf->{nic}{by_name}{$this_iface}{mac};
+		next if $link_state != 2;
+		
+		# If I am here, the interface is down
+		my $nic       = $this_iface;
+		my $nic_file = "$conf->{path}{network_configs}/ifcfg-$nic";
+		print "- The network interface: [$nic] is down. It must be started for the next stage.\n";
+		print "- Checking if: [$nic_file] exists.\n";
+		if (not -e $nic_file)
+		{
+			print "- New device, writing a skeleton config file... ";
+			my $shell_call = $nic_file;
+			open (my $file_handle, '>', "$shell_call") || die "\nFailed to write: [$shell_call], error was: $!\n";
+			print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
+			print $file_handle "# Temporary configuration file for discovered NIC.\n";
+			print $file_handle "HWADDR=\"$mac\"\n" if $mac;
+			print $file_handle "DEVICE=\"$nic\"\n";
+			print $file_handle "BOOTPROTO=\"none\"\n";
+			print $file_handle "NM_CONTROLLED=\"no\"\n";
+			close $file_handle;
+			print "- Done.\n";
+		}
+		else
+		{
+			# It exists, edit it if needed.
+			print "- Config file exists, changing BOOTPROTO to 'none'.\n";
+			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
+			#print "[ Debug ] - Calling: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				# TODO: Should this cause the installer to bail?
+				# This should not return anything, but just in case...
+				chomp;
+				my $line = $_;
+				print "[ Warning ] - Unexpected output: [$line]\n";
+			}
+			close $file_handle;
+		}
+			
+		# Now start the nic.
+		print "- Attempting to bring up: [$nic]...\n";
+		my $shell_call = "$conf->{executable}{ifup} $nic";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		
+		# See that it came up.
+		print "- Checking to see if it is up now.\n";
+		sleep 2;
+		my $is_up   = 0;
+		$shell_call = "$conf->{executable}{ip} link show $nic";
+		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /UP/)
+			{
+				$is_up = 1;
+				last;
+			}
+		}
+		close $file_handle;
+		if ($is_up)
+		{
+			print "- The interface: [$nic] is now up!\n";
+		}
+		else
+		{
+			print "[ Error ] - Unable to bring up the interface: [$nic]!\n";
+			print "[ Error ] - Please bring it up manually and try again.\n";
+			exit(11);
+		}
+	}
+	print "Done.\n\n";
+	
+	return(0);
+}
+
+# This is a wrapper function that calls the various task-specific functions
+# that make the actual changes to the network.
+sub reconfigure_network
+{
+	my ($conf) = @_;
 	
 	### TODO: Confirm that this is needed, may have to reboot anyway
 	# Stop the network.
@@ -110,9 +312,9 @@ sub update_network_config_files
 	
 	# First up, delete the old files.
 	print "Deleting old network configuration files:\n"; 
-	$conf->{paths}{network_configs} =~ s/\/$//g;
+	$conf->{path}{network_configs} =~ s/\/$//g;
 	local(*DIRECTORY);
-	opendir(DIRECTORY, $conf->{paths}{network_configs});
+	opendir(DIRECTORY, $conf->{path}{network_configs});
 	while(my $file = readdir(DIRECTORY))
 	{
 		next if $file eq ".";
@@ -120,112 +322,48 @@ sub update_network_config_files
 		next if $file eq "ifcfg-lo";
 		if ($file =~ /^ifcfg-/)
 		{
-			my $full_path = "$conf->{paths}{network_configs}/$file";
-			print "- File: [$full_path]\n";
+			my $full_path = "$conf->{path}{network_configs}/$file";
+			print "- Deleting file: [$full_path]\n";
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
 	}
+	print "Done.\n\n";
+	print "Writing new network configuration files.\n";
 	
 	# Now write out the config files.
-	print "Writing new network configuration files.\n";
-
-	# Bridge first
-	my $ifn_bridge_file = "$conf->{paths}{network_configs}/ifcfg-ifn-bridge1";
-	print "- IFN Bridge: [$ifn_bridge_file]\n";
-	my $shell_call = $ifn_bond_file;
+	# IFN first
+	my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn-link1";
+	print "- IFN Link 1: [$ifn_link1_file]\n";
+	my $shell_call = $ifn_link1_file;
 	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-	print $file_handle "# Internet-Facing Network - Bridge 1\n";
-	print $file_handle "DEVICE=\"ifn-bridge1\"\n";
-	print $file_handle "TYPE=\"Bridge\"\n";
+	print $file_handle "# Internet-Facing Network - Link 1\n";
+	print $file_handle "DEVICE=\"ifn-link1\"\n";
 	print $file_handle "BOOTPROTO=\"static\"\n";
+	print $file_handle "NM_CONTROLLED=\"no\"\n";
 	print $file_handle "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
 	print $file_handle "NETMASK=\"$conf->{network}{ifn}{netmask}\"\n";
 	print $file_handle "GATEWAY=\"$conf->{network}{ifn}{gateway}\"\n";
 	print $file_handle "DNS1=\"$conf->{network}{ifn}{dns1}\"\n";
 	print $file_handle "DNS2=\"$conf->{network}{ifn}{dns2}\"\n";
 	print $file_handle "DEFROUTE=\"yes\"\n";
-	$file_handle->close();
+	close $file_handle;
 	
-	### Bonds:
-	# IFN
-	my $ifn_bond_file = "$conf->{paths}{network_configs}/ifcfg-ifn-bond1";
-	print "- IFN Bond: [$ifn_bond_file]\n";
-	$shell_call = $ifn_bond_file;
-	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	# Now the BCN
+	my $bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn-link1";
+	print "- BCN Link 1: [$bcn_link1_file]\n";
+	$shell_call = $bcn_link1_file;
+	open ($file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-	print $file_handle "# Internet-Facing Network - Bond 1\n";
-	print $file_handle "DEVICE=\"ifn-bond1\"\n";
-	print $file_handle "BRIDGE=\"ifn-bridge1\"\n";
+	print $file_handle "# Back-Channel Network - Link 1\n";
+	print $file_handle "DEVICE=\"bcn-link1\"\n";
 	print $file_handle "BOOTPROTO=\"static\"\n";
-	print $file_handle "ONBOOT=\"yes\"\n";
-	print $file_handle "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn-link1\"\n";
-	$file_handle->close();
-
-	# SN
-	my $sn_bond_file = "$conf->{paths}{network_configs}/ifcfg-sn-bond1";
-	print "- SN Bond: [$sn_bond_file]\n";
-	$shell_call = $sn_bond_file;
-	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-	print $file_handle "# Storage Network - Bond 1\n";
-	print $file_handle "DEVICE=\"sn-bond1\"\n";
-	print $file_handle "BOOTPROTO=\"static\"\n";
-	print $file_handle "ONBOOT=\"yes\"\n";
-	print $file_handle "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=sn-link1\"\n";
-	print $file_handle "IPADDR=\"$conf->{network}{sn}{ip}\"\n";
-	print $file_handle "NETMASK=\"$conf->{network}{sn}{netmask}\"\n";
-	print $file_handle "DEFROUTE=\"no\"\n";
-	$file_handle->close();
-
-	# BCN
-	my $bcn_bond_file = "$conf->{paths}{network_configs}/ifcfg-bcn-bond1";
-	print "- BCN Bond: [$bcn_bond_file]\n";
-	$shell_call = $bcn_bond_file;
-	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-	print $file_handle "# Back-Channel Network - Bond 1\n";
-	print $file_handle "DEVICE=\"bcn-bond1\"\n";
-	print $file_handle "BOOTPROTO=\"static\"\n";
-	print $file_handle "ONBOOT=\"yes\"\n";
-	print $file_handle "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn-link1\"\n";
+	print $file_handle "NM_CONTROLLED=\"no\"\n";
 	print $file_handle "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
 	print $file_handle "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
 	print $file_handle "DEFROUTE=\"no\"\n";
-	$file_handle->close();
-	
-	### NICs
-	foreach my $nic (@{$conf->{nics}})
-	{
-		my $say_nic     = $nic;
-		my $say_short = "";
-		if    ($nic =~ /^bcn-link(\d)/)
-		{
-			$say_nic   = "Back-Channel Network - Link $1"; 
-			$say_short = "BCN Link $i";
-		}
-		elsif ($nic =~ /^sn-link(\d)/)
-		{
-			$say_nic   = "Storage Network - Link $1";
-			$say_short = "SN Link $i";
-		}
-		elsif ($nic =~ /^ifn-link(\d)/)
-		{
-			$say_nic   = "Internet-Facing Network - Link $1";
-			$say_short = "IFN Link $i";
-		}
-		my $this_mac = $conf->{nic}{name}{$nic};
-		
-		my $iface_file = "$conf->{paths}{network_configs}/ifcfg-ifn-bridge1";
-		print "- $say_short: [$iface_file]\n";
-		my $shell_call = $iface_file;
-		open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-		print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-		print $file_handle "# $say_nic\n";
-		print $file_handle "DEVICE=\"$nic\"\n";
-		print $file_handle "BOOTPROTO=\"static\"\n";
-		$file_handle->close();
-	}
+	close $file_handle;
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -263,15 +401,14 @@ sub write_udev_persistent_net
 {
 	my ($conf) = @_;
 	
-	my $shell_call = "$conf->{paths}{persistent_net}";
-	print "Writing the new udev rules file: [$conf->{paths}{persistent_net}]\n";
+	my $shell_call = "$conf->{path}{persistent_net}";
+	print "Writing the new udev rules file: [$conf->{path}{persistent_net}]\n";
 	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $say_nic = $nic;
 		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
 		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		my $this_mac = $conf->{nic}{name}{$nic};
 		if (not $this_mac)
@@ -284,29 +421,10 @@ sub write_udev_persistent_net
 		print $file_handle "# $say_nic\n";
 		print $file_handle "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$this_mac\", NAME=\"$nic\"\n\n";
 	}
-	$file_handle->close();
+	close $file_handle;
+	print "Done.\n\n";
 	
 	return(0);
-}
-
-# This starts or stops the specified systemd service.
-sub daemon_control
-{
-	my ($conf, $service, $task) = @_;
-	
-	my $message    = "";
-	my $shell_call = "$conf->{executable}{systemctl} $task $service";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$message .= "$line\n";
-		print "- Shell output: [$line]\n";
-	}
-	$file_handle->close();
-	
-	return($message);
 }
 
 # This backs up the udev (if it exists) and network files before making any
@@ -315,17 +433,18 @@ sub backup_original_files
 {
 	my ($conf) = @_;
 	
-	if (not $conf->{paths}{backups})
+	print "Backing up some network related system files.\n";
+	if (not $conf->{path}{backups})
 	{
 		print "[ Error ] - The backup directory is not defined!\n";
 		print "[ Error ] - Unable to safely proceed, exiting.\n";
 		exit(5);
 	}
-	elsif (not -e $conf->{paths}{backups})
+	elsif (not -e $conf->{path}{backups})
 	{
-		print "The backup directory: [$conf->{paths}{backups}] doesn't exist, creting it.\n";
-		mkdir $conf->{paths}{backups} or die warn "[ Warning ] - Failed to create the directory: [$conf->{paths}{backups}].\n[ Warning ] - The error was: $!\n";
-		if (not -e $conf->{paths}{backups})
+		print "- The backup directory: [$conf->{path}{backups}] doesn't exist, creting it.\n";
+		mkdir $conf->{path}{backups} or die warn "[ Warning ] - Failed to create the directory: [$conf->{path}{backups}].\n[ Warning ] - The error was: $!\n";
+		if (not -e $conf->{path}{backups})
 		{
 			print "[ Error ] - The backup directory was not created.\n";
 			print "[ Error ] - Unable to safely proceed, exiting.\n";
@@ -337,33 +456,50 @@ sub backup_original_files
 		}
 	}
 	
-	# Backup '70-persistent-net.rules' if it exists.
-	print "Backing up: [$conf->{paths}{persistent_net}]\n";
-	if (-e $conf->{paths}{persistent_net})
+	# If there is already a backup created, skip it as we're probably being
+	# run a second (of thirteenth) time.
+	print "- Backing up: [$conf->{path}{persistent_net}]\n";
+	if (-e "$conf->{path}{backups}/70-persistent-net.rules")
 	{
-		print "- It exists, backing it up.\n";
-		backup_file($conf, $conf->{paths}{persistent_net});
+		print "- Previous backup exists, skipping.\n";
 	}
 	else
 	{
-		print "- Doesn't exist, skipping.\n";
+		# Backup '70-persistent-net.rules' if it exists.
+		if (-e $conf->{path}{persistent_net})
+		{
+			print "- It exists, backing it up.\n";
+			backup_file($conf, $conf->{path}{persistent_net});
+		}
+		else
+		{
+			print "- Doesn't exist, skipping.\n";
+		}
 	}
 	
 	# Backup the '/etc/sysconfig/network-scripts' directory.
-	print "Backing up: [$conf->{paths}{network_configs}]\n";
-	if (-e $conf->{paths}{network_configs})
+	print "- Backing up: [$conf->{path}{network_configs}]\n";
+	if (-e "$conf->{path}{backups}/network-scripts")
 	{
-		# No need to say it exists
-		backup_file($conf, $conf->{paths}{network_configs});
+		print "- Previous backup exists, skipping.\n";
 	}
 	else
 	{
-		# Ok, the user has bigger problems
-		print "[ Error ] - The network configuration directory was not found!\n";
-		print "[ Error ] - This should not be possible.\n";
-		print "[ Error ] - Please check the internal paths::network_configs value.\n";
-		exit(8);
+		if (-e $conf->{path}{network_configs})
+		{
+			# No need to say it exists
+			backup_file($conf, $conf->{path}{network_configs});
+		}
+		else
+		{
+			# Ok, the user has bigger problems
+			print "[ Error ] - The network configuration directory was not found!\n";
+			print "[ Error ] - This should not be possible.\n";
+			print "[ Error ] - Please check the internal path::network_configs value.\n";
+			exit(8);
+		}
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -385,21 +521,21 @@ sub backup_file
 	# slash. Conversly, I want the backup directory to have a trailing
 	# slash, if it doesn't have it already.
 	$file =~ s/\/$//g;
-	$conf->{paths}{backups} .= "/" if $conf->{paths}{backups} !~ /\/$/;
+	$conf->{path}{backups} .= "/" if $conf->{path}{backups} !~ /\/$/;
 	
-	my $shell_call = "$conf->{executable}{cp} -ab $file $conf->{paths}{backups}";
-	print "- Copying: [$file] to: [$conf->{paths}{backups}]\n";
+	my $shell_call = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
+	print "- Copying: [$file] to: [$conf->{path}{backups}]\n";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "  Shell output: [$line]\n";
+		print "- Shell output: [$line]\n";
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	### TODO: Verify the backed up file exists in the backup directory.
-	#print "  Done\n";
+	#print "- Done\n";
 	
 	return(0);
 }
@@ -414,261 +550,282 @@ sub sanity_check_switches
 	# This will fail out if set to '1' once all sanity checking is done.
 	my $bad_value = 0;
 
+	# The network is a little tricker
 	if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
 	{
 		print_usage($conf);
 		exit(0);
 	}
-	elsif ((not $conf->{switches}{b}) || (not $conf->{switches}{s}) || (not $conf->{switches}{i}))
+	if (($conf->{switches}{b}) && ($conf->{switches}{s}) && ($conf->{switches}{i}))
 	{
-		print "[ Error ] - Incomplete network configuration information passed!\n";
-		print "[ Error ] - Unable to proceed unless all three networks are defined.\n\n";
-		sleep 1;
-		print_usage($conf);
-		exit(3);
+		# All defined, sanity check them.
+		($bad_value) = sanity_check_network($conf, $bad_value);
+	}
+	elsif (not $conf->{switches}{b})
+	{
+		print "[ Error ] - The Back-Channel Network details were not given.\n";
+		$bad_value = 1;
+	}
+	elsif (not $conf->{switches}{s})
+	{
+		print "[ Error ] - The Storage Network details were not given.\n";
+		$bad_value = 1;
+	}
+	elsif (not $conf->{switches}{i})
+	{
+		print "[ Error ] - The Internet-Facing Network details were not given.\n";
+		$bad_value = 1;
+	}
+	print "Sanity checks complete.\n\n";
+	
+	return($bad_value);
+}
+
+# This sanity checks the network settings passed by the user.
+sub sanity_check_network
+{
+	my ($conf, $bad_value) = @_;
+	
+	### Now sanity check passed values
+	# First up, the BCN
+	if ($conf->{switches}{b} =~ /^(.*?)\/(.*)$/)
+	{
+		my $ip      = $1;
+		my $netmask = $2;
+
+		### Verify sanity
+		# IP address
+		$ip = validate_ip_address($conf, $ip);
+		if ($ip eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified BCN IP address is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{bcn}{ip} = $ip;
+		}
+		
+		# Netmask
+		if ($netmask =~ /^\d{1,2}$/)
+		{
+			# Convert from CIDR to dotted-decimal
+			$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
+		}
+		else
+		{
+			$netmask = validate_ip_address($conf, $netmask);
+		}
+		if ($netmask eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified BCN netmask value is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{bcn}{netmask} = $netmask;
+		}
 	}
 	else
 	{
-		# First up, the BCN
-		if ($conf->{switches}{b} =~ /^(.*?)\/(.*)$/)
-		{
-			my $ip      = $1;
-			my $netmask = $2;
+		print "[ Error ] - The specified BCN IP address and netmask are malformed.\n";
+		$bad_value = 1;
+	}
+	
+	# Next is the SN
+	if ($conf->{switches}{s} =~ /^(.*?)\/(.*)$/)
+	{
+		my $ip      = $1;
+		my $netmask = $2;
 
-			### Verify sanity
-			# IP address
-			$ip = validate_ip_address($conf, $ip);
-			if ($ip eq "#!INVALID!#")
+		### Verify sanity
+		# IP address
+		$ip = validate_ip_address($conf, $ip);
+		if ($ip eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified SN IP address is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{sn}{ip} = $ip;
+		}
+		
+		# Netmask
+		if ($netmask =~ /^\d{1,2}$/)
+		{
+			# Convert from CIDR to dotted-decimal
+			$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
+		}
+		else
+		{
+			$netmask = validate_ip_address($conf, $netmask);
+		}
+		if ($netmask eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified SN netmask value is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{sn}{netmask} = $netmask;
+		}
+	}
+	else
+	{
+		print "[ Error ] - The specified SN IP address and netmask are malformed.\n";
+		$bad_value = 1;
+	}
+
+	# Now the IFN, which is a little more complicated.
+	if ($conf->{switches}{i} =~ /^(.*?)\/(.*)$/)
+	{
+		my $ip      = $1;
+		my $netmask = $2;
+		my $gateway = "";
+		my $dns1    = "";
+		my $dns2    = "";
+		
+		# The netmask should have ',dg=X' and possibly 'dns[12]=[YZ]',
+		# so pull those out.
+		#print "$THIS_FILE ".__LINE__."; ip: [$ip], netmask: [$netmask]\n";
+		if ($netmask =~ /,dg=/)
+		{
+			# Good, strip it out.
+			if ($netmask =~ /,dg=(.*?),/)
 			{
-				print "[ Error ] - The specified BCN IP address is not valid.\n";
+				$gateway = $1;
+				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+			}
+			else
+			{
+				$gateway = ($netmask =~ /,dg=(.*)/)[0];
+				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+			}
+		}
+		
+		# Now the nameservers.
+		if ($netmask =~ /,dns1=/)
+		{
+			# Good, strip it out.
+			if ($netmask =~ /,dns1=(.*?),/)
+			{
+				$dns1 = $1;
+				#print "$THIS_FILE ".__LINE__."; dns1: [$dns1]\n";
+			}
+			else
+			{
+				$dns1 = ($netmask =~ /,dns1=(.*)/)[0];
+				#print "$THIS_FILE ".__LINE__."; dns1: [$dns1]\n";
+			}
+		}
+		if ($netmask =~ /,dns2=/)
+		{
+			# Good, strip it out.
+			if ($netmask =~ /,dns2=(.*?),/)
+			{
+				$dns2 = $1;
+				#print "$THIS_FILE ".__LINE__."; dns2: [$dns2]\n";
+			}
+			else
+			{
+				$dns2 = ($netmask =~ /,dns2=(.*)/)[0];
+				#print "$THIS_FILE ".__LINE__."; dns2: [$dns2]\n";
+			}
+		}
+		
+		# Now delete everything from the netmask after the ','
+		$netmask =~ s/,.*$//;
+		#print "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n";
+
+		### Verify sanity
+		# IP address
+		$ip = validate_ip_address($conf, $ip);
+		if ($ip eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified IFN IP address is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{ifn}{ip} = $ip;
+		}
+		
+		# Netmask
+		if ($netmask =~ /^\d{1,2}$/)
+		{
+			# Convert from CIDR to dotted-decimal
+			$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
+		}
+		else
+		{
+			$netmask = validate_ip_address($conf, $netmask);
+		}
+		if ($netmask eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified IFN netmask value is not valid.\n";
+			$bad_value = 1;
+		}
+		else
+		{
+			$conf->{network}{ifn}{netmask} = $netmask;
+		}
+		
+		# Gateway
+		#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+		if ($gateway)
+		{
+			$gateway = validate_ip_address($conf, $gateway);
+			#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+			if ($gateway eq "#!INVALID!#")
+			{
+				print "[ Error ] - The specified IFN gateway value is not valid.\n";
 				$bad_value = 1;
 			}
 			else
 			{
-				$conf->{network}{bcn}{ip} = $ip;
-			}
-			
-			# Netmask
-			if ($netmask =~ /^\d{1,2}$/)
-			{
-				# Convert from CIDR to dotted-decimal
-				$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
-			}
-			else
-			{
-				$netmask = validate_ip_address($conf, $netmask);
-			}
-			if ($netmask eq "#!INVALID!#")
-			{
-				print "[ Error ] - The specified BCN netmask value is not valid.\n";
-				$bad_value = 1;
-			}
-			else
-			{
-				$conf->{network}{bcn}{netmask} = $netmask;
+				$conf->{network}{ifn}{gateway} = $gateway;
+				#print "$THIS_FILE ".__LINE__."; network::ifn::gateway: [$conf->{network}{ifn}{gateway}]\n";
 			}
 		}
 		else
 		{
-			print "[ Error ] - The specified BCN IP address and netmask are malformed.\n";
+			print "[ Error ] - The IFN gateway is not specified.\n";
 			$bad_value = 1;
 		}
 		
-		# Next, the SN. Basically identical to the BCN
-		if ($conf->{switches}{s} =~ /^(.*?)\/(.*)$/)
+		# DNS 1 and 2, if defined.
+		if ($dns1)
 		{
-			my $ip      = $1;
-			my $netmask = $2;
-
-			### Verify sanity
-			# IP address
-			$ip = validate_ip_address($conf, $ip);
-			if ($ip eq "#!INVALID!#")
+			$dns1 = validate_ip_address($conf, $dns1);
+			if ($dns1 eq "#!INVALID!#")
 			{
-				print "[ Error ] - The specified SN IP address is not valid.\n";
+				print "[ Error ] - The specified IFN dns1 value is not valid.\n";
 				$bad_value = 1;
 			}
 			else
 			{
-				$conf->{network}{sn}{ip} = $ip;
-			}
-			
-			# Netmask
-			if ($netmask =~ /^\d{1,2}$/)
-			{
-				# Convert from CIDR to dotted-decimal
-				$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
-			}
-			else
-			{
-				$netmask = validate_ip_address($conf, $netmask);
-			}
-			if ($netmask eq "#!INVALID!#")
-			{
-				print "[ Error ] - The specified SN netmask value is not valid.\n";
-				$bad_value = 1;
-			}
-			else
-			{
-				$conf->{network}{sn}{netmask} = $netmask;
+				$conf->{network}{ifn}{dns1} = $dns1;
 			}
 		}
-		else
+		if ($dns2)
 		{
-			print "[ Error ] - The specified SN IP address and netmask are malformed.\n";
-			$bad_value = 1;
-		}
-
-		# Lastly is the IFN, which is a little more complicated.
-		if ($conf->{switches}{i} =~ /^(.*?)\/(.*)$/)
-		{
-			my $ip      = $1;
-			my $netmask = $2;
-			my $gateway = "";
-			my $dns1    = "";
-			my $dns2    = "";
-			
-			# The netmask should have ',gw=X' and possibly 'dns[12]=[YZ]',
-			# so pull those out.
-			#print "$THIS_FILE ".__LINE__."; ip: [$ip], netmask: [$netmask]\n";
-			if ($netmask =~ /,gw=/)
+			$dns2 = validate_ip_address($conf, $dns2);
+			if ($dns2 eq "#!INVALID!#")
 			{
-				# Good, strip it out.
-				if ($netmask =~ /,gw=(.*?),/)
-				{
-					$gateway = $1;
-					#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
-				}
-				else
-				{
-					$gateway = ($netmask =~ /,gw=(.*)/)[0];
-					#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
-				}
-			}
-			
-			# Now the nameservers.
-			if ($netmask =~ /,dns1=/)
-			{
-				# Good, strip it out.
-				if ($netmask =~ /,dns1=(.*?),/)
-				{
-					$dns1 = $1;
-					#print "$THIS_FILE ".__LINE__."; dns1: [$dns1]\n";
-				}
-				else
-				{
-					$dns1 = ($netmask =~ /,dns1=(.*)/)[0];
-					#print "$THIS_FILE ".__LINE__."; dns1: [$dns1]\n";
-				}
-			}
-			if ($netmask =~ /,dns2=/)
-			{
-				# Good, strip it out.
-				if ($netmask =~ /,dns2=(.*?),/)
-				{
-					$dns2 = $1;
-					#print "$THIS_FILE ".__LINE__."; dns2: [$dns2]\n";
-				}
-				else
-				{
-					$dns2 = ($netmask =~ /,dns2=(.*)/)[0];
-					#print "$THIS_FILE ".__LINE__."; dns2: [$dns2]\n";
-				}
-			}
-			
-			# Now delete everything from the netmask after the ','
-			$netmask =~ s/,.*$//;
-			#print "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n";
-
-			### Verify sanity
-			# IP address
-			$ip = validate_ip_address($conf, $ip);
-			if ($ip eq "#!INVALID!#")
-			{
-				print "[ Error ] - The specified IFN IP address is not valid.\n";
+				print "[ Error ] - The specified IFN dns2 value is not valid.\n";
 				$bad_value = 1;
 			}
 			else
 			{
-				$conf->{network}{ifn}{ip} = $ip;
-			}
-			
-			# Netmask
-			if ($netmask =~ /^\d{1,2}$/)
-			{
-				# Convert from CIDR to dotted-decimal
-				$netmask = convert_cidr_to_dotted_decimal($conf, $netmask);
-			}
-			else
-			{
-				$netmask = validate_ip_address($conf, $netmask);
-			}
-			if ($netmask eq "#!INVALID!#")
-			{
-				print "[ Error ] - The specified IFN netmask value is not valid.\n";
-				$bad_value = 1;
-			}
-			else
-			{
-				$conf->{network}{ifn}{netmask} = $netmask;
-			}
-			
-			# Gateway
-			#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
-			if ($gateway)
-			{
-				$gateway = validate_ip_address($conf, $gateway);
-				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
-				if ($gateway eq "#!INVALID!#")
-				{
-					print "[ Error ] - The specified IFN gateway value is not valid.\n";
-					$bad_value = 1;
-				}
-				else
-				{
-					$conf->{network}{ifn}{gateway} = $gateway;
-					#print "$THIS_FILE ".__LINE__."; network::ifn::gateway: [$conf->{network}{ifn}{gateway}]\n";
-				}
-			}
-			else
-			{
-				print "[ Error ] - The IFN gateway is not specified.\n";
-				$bad_value = 1;
-			}
-			
-			# DNS 1 and 2, if defined.
-			if ($dns1)
-			{
-				$dns1 = validate_ip_address($conf, $dns1);
-				if ($dns1 eq "#!INVALID!#")
-				{
-					print "[ Error ] - The specified IFN dns1 value is not valid.\n";
-					$bad_value = 1;
-				}
-				else
-				{
-					$conf->{network}{ifn}{dns1} = $dns1;
-				}
-			}
-			if ($dns2)
-			{
-				$dns2 = validate_ip_address($conf, $dns2);
-				if ($dns2 eq "#!INVALID!#")
-				{
-					print "[ Error ] - The specified IFN dns2 value is not valid.\n";
-					$bad_value = 1;
-				}
-				else
-				{
-					$conf->{network}{ifn}{dns2} = $dns2;
-				}
+				$conf->{network}{ifn}{dns2} = $dns2;
 			}
 		}
-		else
-		{
-			print "[ Error ] - The specified IFN IP address and netmask are malformed.\n";
-			$bad_value = 1;
-		}
+	}
+	else
+	{
+		print "[ Error ] - The specified IFN IP address and netmask are malformed.\n";
+		$bad_value = 1;
 	}
 	
 	return($bad_value);
@@ -765,39 +922,33 @@ sub print_usage
 {
 	my ($conf) = @_;
 	
-	print q|
--=] Anvil! Network Configuration tool
+	my $help = q|
+ -=] Anvil! Network Configuration
 
 DESCRIPTION
 
-This tool promptes the user to identify which physical network interfaces will
-be used for which purpose. It does this by monitoring the link state of all
-interface using the 'ip' tool.
+This tool will remap the physical network interfaces to device names, create
+the bonded interfaces and create a bridge. It will configure the IP address,
+netmask and gateways of each as well.
 
-To understand what happens behind the scenes, please see: 
-* https://alteeve.ca/w/Changing_Ethernet_Device_Names_in_EL7_and_Fedora_15%2B
-
-The switches set below will determine the IP addresses set in the new network
-configuration files.
 
 SWITCHES
 
--b <ip_address/netmask>
+ -b <ip_address/netmask>
 	
-	This sets the IP address and subnet to be assigned to the new
-	'bcn-bond1' Back-Channel Network bonded interface.
+	This sets the IP address and subnet to be assigned to the Back-Channel
+	Network bonded interface.
 
--s <ip_address/netmask>
+ -h, -?, --help
 
-	This sets the IP address and subnet to be assigned to the new
-	'sn-bond1' Storage Network bonded interface.
+	Show this dialoge and exit.
 
--i <ip_address/netmask>,gw=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
+ -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 
-	This sets the IP address and subnet to be assigned to the new
-	'ifn-bridge1' Internet-Facing Network bridged interface. Unlike the
-	previous two switches, this switch requires a default gateway be
-	specified after the IP address via:
+	This sets the IP address and subnet to be assigned to the 
+	Internet-Facing Network bridge interface. Unlike -b and -s switches,
+	this switch requires a default gateway be specified after the IP
+	address via:
 
 	dg=<ip_address>
 	
@@ -811,27 +962,40 @@ SWITCHES
 		IPv4 addresses of the first and/or secondary DNS server. If
 		these are not set, dns1 will default to 8.8.8.8 and dns2 will
 		default to 8.8.4.4
+
+ -p, --parse
+
+	Print output suitable for parsing by a script.
+
+ -s <ip_address/netmask>
 	
--h, -?, --help
-
-	Show this dialoge and exit.
-
-Note that all IP addresses must be IPv4 in dotted-decimal notation. The netmask
-can be in CIDR or dotted-decimal notation. Do not leave a space between the IP
-address and netmask
+	This sets the IP address and subnet to be assigned to the Storage
+	Network bonded interface.
+	
+NOTE: that all IP addresses must be IPv4 in dotted-decimal notation. The
+netmask can be in CIDR or dotted-decimal notation. Do not leave a space
+between the IP address and netmask
 
 
 EXAMPLE
 
-./anvil-configure-network -b 10.20.40.1/16 -s 10.10.40.1/16 \
-		  -i 10.255.40.1/16,gw=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
+Normal install:
 
+ ./striker-installer -b 10.20.10.1/16 -s 10.10.10.1/16 \
+     -i 10.255.10.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
+
+                  
 SUPPORT
 
 https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 |;
+	open (my $file_handle, ">", "/tmp/striker-installer-help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $help;
+	close $file_handle;
+	
+	system("/usr/bin/less /tmp/striker-installer-help");
 
 	return(0);
 }
@@ -853,6 +1017,7 @@ sub get_switches
 		{
 			# If the argument is just '--', appeand everything
 			# after it to 'raw'.
+			$conf->{sys}{switch_count}++;
 			if ($argument eq "--")
 			{
 				$last_argument         = "raw";
@@ -905,11 +1070,7 @@ sub select_nics
 {
 	my ($conf) = @_;
 
-	system('clear');
-	print "\n-=] Configuring network for use as Anvil! node.\n\n";
-	#print "[ Warning ] - This program will stop and reconfigure the network!\n";
-	#print "[ Warning ] - Ensure you have direct access to the node before proceeding!\n";
-	#print "[ Warning ] - You can press <ctrl> + <C> at any time to abort.\n\n";
+	print "-=] Configuring network to enable access to Anvil! systems.\n\n";
 	print "Beginning NIC identification...\n";
 	foreach my $nic (@{$conf->{nics}})
 	{
@@ -918,7 +1079,7 @@ sub select_nics
 		{
 			if (not $plug_in_message_printed)
 			{
-				print "  Please plug in all network cables to proceed.\n";
+				print "- Please plug in all network cables to proceed.\n";
 				$plug_in_message_printed = 1;
 			}
 			#print "MAC address of down links: [$down_links]\n";
@@ -928,7 +1089,8 @@ sub select_nics
 		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
 		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
-		print "- Please unplug the interface you want to make: [$say_nic]\n";
+		print "- Please unplug the interface you want to make:\n";
+		print "- [$say_nic]\n";
 		my $last_conflict = "";
 		while(1)
 		{
@@ -937,14 +1099,15 @@ sub select_nics
 			{
 				if ($conf->{nic}{mac}{$down_links}{new_name})
 				{
-					print "  The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n" if ($last_conflict ne $down_links);
+					print "- The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n" if ($last_conflict ne $down_links);
 					$last_conflict = $down_links;
 				}
 				else
 				{
 					$conf->{nic}{mac}{$down_links}{new_name} = $nic;
 					$conf->{nic}{name}{$nic}                 = $down_links;
-					print "  NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}] (is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
+					print "- NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}]\n";
+					print "- (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
 					last;
 				}
 			}
@@ -956,7 +1119,7 @@ sub select_nics
 	{
 		if (not $plug_in_message_printed)
 		{
-			print "  Please plug in all network cables to proceed.\n";
+			print "- Please plug in all network cables to proceed.\n";
 			$plug_in_message_printed = 1;
 		}
 		sleep 1;
@@ -986,25 +1149,21 @@ sub select_nics
 			print "[ Error ] - Exiting.\n";
 			exit(2);
 		}
-		print "- Interface: [".uc($this_mac)."], currently named: [$current_name], will renamed: [$nic]\n";
+		print "- Interface: [".uc($this_mac)."], currently named: [$current_name],\n";
+		print "- will be renamed to: [$nic]\n";
 		#print "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)\n";
 	}
 	my $bcn_ip      = $conf->{network}{bcn}{ip};
 	my $bcn_netmask = $conf->{network}{bcn}{netmask};
-	print "\nThe Back-Channel Network bond will be set to:\n";
+	print "\nThe Back-Channel Network interface will be set to:\n";
 	print "- IP:      [$bcn_ip]\n";
 	print "- Netmask: [$bcn_netmask]\n\n";
-	my $sn_ip      = $conf->{network}{sn}{ip};
-	my $sn_netmask = $conf->{network}{sn}{netmask};
-	print "The Storage Network bond will be set to:\n";
-	print "- IP:      [$sn_ip]\n";
-	print "- Netmask: [$sn_netmask]\n\n";
 	my $ifn_ip      = $conf->{network}{ifn}{ip};
 	my $ifn_netmask = $conf->{network}{ifn}{netmask};
 	my $ifn_gateway = $conf->{network}{ifn}{gateway};
 	my $ifn_dns1    = $conf->{network}{ifn}{dns1};
 	my $ifn_dns2    = $conf->{network}{ifn}{dns2};
-	print "The Internet-Facing Network bridge will be set to:\n";
+	print "The Internet-Facing Network interface will be set to:\n";
 	print "- IP:      [$ifn_ip]\n";
 	print "- Netmask: [$ifn_netmask]\n";
 	print "- Gateway: [$ifn_gateway]\n";
@@ -1017,6 +1176,8 @@ sub select_nics
 	{
 		$proceed = 0;
 		print "- Ok, starting over.\n";
+		sleep 2;
+		system('clear');
 	}
 	else
 	{
@@ -1045,23 +1206,43 @@ sub check_nic_states
 			$this_iface      = $1;
 			$this_link_state = $2;
 			$this_mac        = "";
-			$this_link_state =~ s/,.*//;
+			if ($this_link_state =~ /UP/)
+			{
+				# This will be either BROADCAST or NO-CARRIER
+				$this_link_state =~ s/,.*//;
+			}
+			else
+			{
+				# The interface has been 'ifdown'ed or was not
+				# started on boot.
+				$this_link_state = "DOWN";
+			}
 			next;
 		}
 		next if not $this_iface;
 		next if $this_iface eq "lo";
+		next if $this_iface =~ /wlan/;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
 		{
 			$this_mac = $1;
 			#print "this_mac: [$this_mac]\n";
-			$this_link_state = $this_link_state eq "NO-CARRIER" ? 0 : 1;
-			$conf->{nic}{mac}{$this_mac}{current_name} = $this_iface;
-			$conf->{nic}{mac}{$this_mac}{link_state}   = $this_link_state;
+			if ($this_link_state eq "DOWN")
+			{
+				$this_link_state = 2;
+			}
+			else
+			{
+				$this_link_state = $this_link_state eq "NO-CARRIER" ? 0 : 1;
+			}
+			$conf->{nic}{mac}{$this_mac}{current_name}     = $this_iface;
+			$conf->{nic}{mac}{$this_mac}{link_state}       = $this_link_state;
+			$conf->{nic}{by_name}{$this_iface}{link_state} = $this_link_state;
+			$conf->{nic}{by_name}{$this_iface}{mac}        = $this_mac;
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 
 	my $nic_count = 0;
 	foreach my $this_mac (sort {$a cmp $b} keys %{$conf->{nic}{mac}})
@@ -1069,25 +1250,24 @@ sub check_nic_states
 		# Somewhere in the loop, an empty '$this_mac' is being created... 
 		# (I'm looking at you, autovivication >_>)
 		next if not $this_mac;
-		$nic_count++ if $this_iface ne "lo";
-		#print "NIC w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]\n";
-		if (not $conf->{nic}{mac}{$this_mac}{link_state})
+		my $this_iface = $conf->{nic}{mac}{$this_mac}{current_name};
+		
+		if (($this_iface eq "lo") || ($this_iface =~ /wlan/))
+		{
+			#print "[ Debug ] - Skipping interface: [$this_iface]\n";
+		}
+		else
+		{
+			$nic_count++;
+			#print "[ Debug ] - NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]\n";
+		}
+		if ($conf->{nic}{mac}{$this_mac}{link_state} ne "1")
 		{
 			$unplugged_macs .= "$this_mac,";
 		}
 	}
 	
-	# If there are less than six NICs, bail.
-	if ($nic_count < 6)
-	{
-		print "[ Error ] - Found a total of: [$nic_count] NIC(s).\n";
-		print "[ Error ] - Six (or more) are needed for this program to work.\n";
-		print "[ Error ] - Merged networks are not supported by this tool.\n";
-		exit(4);
-	}
-
 	$unplugged_macs =~ s/,$//;
-	#print "  DEBUG: unpluggd_macs: [$unplugged_macs]\n";
+	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
 	return($unplugged_macs);
 }
-
