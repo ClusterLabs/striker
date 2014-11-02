@@ -54,9 +54,8 @@ sub process_args {
     my $opt = {
         rate     => 30,                        # loop repetition rate in seconds
         agentdir => $Bin . '/agents',          # directory to scan
-        ignore   => [qw( .conf .rc .init )],   # suffixes to ignore
         duration => 24 * 60 * 60,    # when to spawn replacement ( seconds )
-        verbose  => 1,               # print strings for no change?
+        verbose  => 0,               # print strings for no change?
     };
 
     GetOptions( $opt, 'rate=i', 'agentdir=s', 'ignore=s@', 'duration=i',
@@ -66,6 +65,8 @@ sub process_args {
     pod2usage( -verbose => $BRIEF )
       if $opt->{help};               # display brief or verbose docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};
+
+    $opt->{ignore}   ||= [qw( .conf .rc .init )];   # default suffixes to ignore
 
     $opt->{agentdir} = $Bin . '/' . substr( $opt->{agentdir}, 2 )
       if 0 == index $opt->{agentdir}, './';
@@ -249,11 +250,6 @@ How often loop is run, in seconds. Must be one or greater; larger than
 
 Path to the directory to be scanned for additions and removals.
 
-=item B<duration N>
-
-How long should the program run, before spawning a fresh replacement?
-Typically 24 hours, i.e. 86400 seconds.
-
 =item B<-ignore .conf,.rc,.init>
 
 Ignore filenames with these suffixes. These additional files are meant
@@ -262,6 +258,32 @@ provided, or else multiple calls to the same command-line argument
 invoked, in the more verbose format:
 
     -ignore .conf  -ignore .rc  -ignore .init
+
+=item B<duration N>
+
+How long should the program run, before spawning a fresh replacement?
+Typically 24 hours, i.e. 86400 seconds.
+
+=item B<-verbose.
+
+Output a message even if no files have been added or deleted.
+
+=item B<showsleep>
+
+Adds a component to the output string showing the duration of
+processing, and the amount of time that will be spent sleeping before
+the next iteration. A sample output string looks like:
+
+    scan_for_agents 1414898302 [abc,xyz,zyx], [] 0:5.
+
+Where
+
+    'scan_for_agents' is the program name,
+    '1414898302' is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
+    [abc,xyz,zyx] are files added since the previous scan,
+    [] indicates no files deleted,
+    '0:5' indicates less than 1 second to scan the directory,
+         5 seconds to sleep till the next iteration.
 
 =item B<-help>
 
