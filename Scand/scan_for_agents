@@ -35,7 +35,7 @@ use FindBin qw($Bin);
 #const my $MAX_RATE => 600;
 
 my $COMMA               = q{,};
-my $PROG                = (fileparse( $PROGRAM_NAME ))[0];
+my $PROG                = ( fileparse($PROGRAM_NAME) )[0];
 my $BRIEF               = 1;
 my $VERBOSE             = 2;
 my $TIMED_OUT_ALARM_MSG = 'alarm timed out';
@@ -52,22 +52,26 @@ my $MAX_RATE            = 600;
 sub process_args {
 
     my $opt = {
-        rate     => 30,                  # loop repetition rate in seconds
-        agentdir => $Bin . '/agents',	 # directory to scan
-        ignore   => [qw( .conf .rc .init )], # suffixes to ignore
-        duration => 24 * 60 * 60,        # when to spawn replacement ( seconds )
-	verbose  => 1,                   # print strings for no change?
+        rate     => 30,                        # loop repetition rate in seconds
+        agentdir => $Bin . '/agents',          # directory to scan
+        ignore   => [qw( .conf .rc .init )],   # suffixes to ignore
+        duration => 24 * 60 * 60,    # when to spawn replacement ( seconds )
+        verbose  => 1,               # print strings for no change?
     };
 
     GetOptions( $opt, 'rate=i', 'agentdir=s', 'ignore=s@', 'duration=i',
-		"verbose!",
-		'man', 'help' )
-	or pod2usage(2);
+        "verbose!", 'man', 'help' )
+      or pod2usage(2);
 
-    pod2usage( -verbose => $BRIEF )   if $opt->{help}; # display brief or verbose docs.
+    pod2usage( -verbose => $BRIEF )
+      if $opt->{help};               # display brief or verbose docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};
 
-    @{ $opt->{ignore} } = split ',', join ',', @{ $opt->{ignore} }; # separate CSV values
+    $opt->{agentdir} = $Bin . '/' . substr( $opt->{agentdir}, 2 )
+      if 0 == index $opt->{agentdir}, './';
+
+    @{ $opt->{ignore} } = split ',', join ',',
+      @{ $opt->{ignore} };           # separate CSV values
 
     verify_args($opt);
     return $opt;
@@ -104,14 +108,18 @@ sub verify_args {
 
     pod2usage(
         -verbose => $BRIEF,
-        -message => "Total life '$opt->{duration}' < repetition rate $opt->{rate}"
+        -message =>
+          "Total life '$opt->{duration}' < repetition rate $opt->{rate}"
     ) unless $opt->{duration} > $opt->{rate};
 
     pod2usage(
         -verbose => $BRIEF,
-        -message => "Illegal character '/' in suffix ignore list '@{$opt->{ignore}}'"
-	) if grep { m{[/]} } @{$opt->{ignore}}
-    
+        -message =>
+          "Illegal character '/' in suffix ignore list '@{$opt->{ignore}}'"
+      )
+      if grep { m{[/]} }
+      @{ $opt->{ignore} }
+
 }
 
 # ......................................................................
@@ -136,17 +144,18 @@ sub scan_files {
     state %files;
     @files{ keys %files } = (0) x scalar keys %files;
 
-    my ( @added );
+    my (@added);
   FILE:
     for my $file ( glob "$options->{agentdir}/*" ) {
         my ( $name, $dir, $suffix ) = fileparse( $file, $SUFFIX_QR );
         next FILE
-	    if $suffix and exists $ignore->{$suffix};
-	my $fullname = $suffix ? $name . $suffix : $name;
-	push @added, $fullname
-	    unless exists $files{$fullname};
+          if $suffix and exists $ignore->{$suffix};
+        my $fullname = $suffix ? $name . $suffix : $name;
+        push @added, $fullname
+          unless exists $files{$fullname};
         $files{$fullname} = 1;    # mark as present
     }
+
     # detect and drop deleted files
     my (@dropped) =
       sort grep { 0 == $files{$_} } keys %files;    # file keys with zero value.
@@ -169,9 +178,11 @@ sub run_timed_loop {
 
     while ( $now < $end_time ) {    # loop until this time tomorrow
         my ( $new, $deleted ) = scan_files($options);
-	local $LIST_SEPARATOR = $COMMA;
+        local $LIST_SEPARATOR = $COMMA;
         say "$PROG @{[time]} [@$new], [@$deleted]."
-          if $options->{verbose} or @$new or @$deleted;
+          if $options->{verbose}
+          or @$new
+          or @$deleted;
 
         my ($elapsed) = time() - $now;
         sleep $options->{rate} - $elapsed;
