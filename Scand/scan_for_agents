@@ -60,7 +60,7 @@ sub process_args {
     };
 
     GetOptions( $opt, 'rate=i', 'agentdir=s', 'ignore=s@', 'duration=i',
-        "verbose!", 'man', 'help' )
+        'verbose!', 'showsleep', 'man', 'help' )
       or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )
@@ -179,13 +179,17 @@ sub run_timed_loop {
     while ( $now < $end_time ) {    # loop until this time tomorrow
         my ( $new, $deleted ) = scan_files($options);
         local $LIST_SEPARATOR = $COMMA;
-        say "$PROG @{[time]} [@$new], [@$deleted]."
+
+        my ($elapsed) = time() - $now;
+	my $pending   = $options->{rate} - $elapsed;
+
+	my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : '';
+        say "$PROG @{[time]} [@$new], [@$deleted]$extra_arg."
           if $options->{verbose}
           or @$new
           or @$deleted;
 
-        my ($elapsed) = time() - $now;
-        sleep $options->{rate} - $elapsed;
+        sleep $pending;
         $now = time();
     }
 }
