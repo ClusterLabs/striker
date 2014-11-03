@@ -400,6 +400,9 @@ sub update_nodes
 		message	=>	"#!string!explain_0130!#",
 	});
 	
+	# Make sure buffering is off.
+	$| = 1;
+	
 	# The OS update is good, but not fatal if it fails.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
@@ -407,7 +410,9 @@ sub update_nodes
 	$conf->{node}{$node1}{os_updated}    = 0;
 	$conf->{node}{$node2}{reboot_needed} = 0;
 	$conf->{node}{$node2}{os_updated}    = 0;
+	print template($conf, "install-manifest.html", "new-anvil-install-start-update-node1");
 	update_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	print template($conf, "install-manifest.html", "new-anvil-install-start-update-node2");
 	update_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvi2_node1_current_password});
 	
 	my $node1_class   = "highlight_good_bold";
@@ -422,8 +427,7 @@ sub update_nodes
 	{
 		$node2_message = "#!string!state_0027!#",
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	"#!string!row_0227!#",
+	print template($conf, "install-manifest.html", "new-anvil-install-start-update-done", {
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
@@ -451,6 +455,7 @@ sub update_node
 	});
 	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
+	my $dots = 0;
 	foreach my $line (@{$return})
 	{
 		$line =~ s/\n//g;
@@ -465,6 +470,13 @@ sub update_node
 		{
 			$conf->{node}{$node}{os_updated} = 1;
 			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], packages updated.\n");
+		}
+		print ".";
+		$dots++;
+		if ($dots >= 50)
+		{
+			print "<br />\n";
+			$dots = 0;
 		}
 	}
 	
