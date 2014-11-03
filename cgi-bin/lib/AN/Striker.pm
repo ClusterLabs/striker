@@ -1,5 +1,5 @@
-#!/usr/bin/perl
-#
+package AN::Striker;
+
 # Striker - Alteeve's Niche! Anvil Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
@@ -30,6 +30,9 @@ use Encode;
 use IO::Handle;
 use CGI::Carp "fatalsToBrowser";
 
+use AN::Cluster;
+use AN::Common;
+
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
@@ -51,7 +54,7 @@ sub get_peer_node
 	
 	if (not $peer)
 	{
-		error($conf, "I was asked to find the peer to: [$node], but failed. This is likely a program error.\n");
+		AN::Cluster::error($conf, "I was asked to find the peer to: [$node], but failed. This is likely a program error.\n");
 	}
 	
 	return($peer);
@@ -214,13 +217,13 @@ sub process_task
 			if (verify_vm_config($conf))
 			{
 				# We're golden
-				record($conf, "$THIS_FILE ".__LINE__."; VM verified, creating now.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM verified, creating now.\n");
 				provision_vm($conf);
 			}
 			else
 			{
 				# Something wasn't sane.
-				record($conf, "$THIS_FILE ".__LINE__."; VM verification failed.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM verification failed.\n");
 				confirm_provision_vm($conf);
 			}
 		}
@@ -241,7 +244,7 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "display_health")
 	{
-		print template($conf, "common.html", "scanning-message", {
+		print AN::Common::template($conf, "common.html", "scanning-message", {
 			anvil	=>	$conf->{cgi}{cluster},
 		});
 		get_storage_data($conf, $conf->{cgi}{node});
@@ -251,13 +254,13 @@ sub process_task
 		    (not $conf->{storage}{is}{mdadm}))
 		{
 			# No managers found
-			my $say_title = get_string($conf, {key => "title_0016", variables => {
+			my $say_title = AN::Common::get_string($conf, {key => "title_0016", variables => {
 				node	=>	$conf->{cgi}{node},
 			}});
-			my $say_message = get_string($conf, {key => "message_0051", variables => {
+			my $say_message = AN::Common::get_string($conf, {key => "message_0051", variables => {
 				node_cluster_name	=>	$conf->{cgi}{node_cluster_name},
 			}});
-			print template($conf, "lsi-storage.html", "no-managers-found", {
+			print AN::Common::template($conf, "lsi-storage.html", "no-managers-found", {
 				title	=>	$say_title,
 				message	=>	$say_message,
 			});
@@ -365,7 +368,7 @@ sub restart_tomcat
 	if (not $quiet)
 	{
 		# Open the table for telling the user that tomcat is restarting.
-		print template($conf, "common.html", "restart-guacamole-header");
+		print AN::Common::template($conf, "common.html", "restart-guacamole-header");
 	}
 	
 	# Call the restart. It will return '1' if there was a failure and a
@@ -377,11 +380,11 @@ sub restart_tomcat
 		{
 			if ($quiet)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
 			}
 			else
 			{
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	"message_0336",
 				});
 			}
@@ -391,11 +394,11 @@ sub restart_tomcat
 		{
 			if ($quiet)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
 			}
 			else
 			{
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	"message_0335",
 				});
 			}
@@ -406,7 +409,7 @@ sub restart_tomcat
 	# Done.
 	if (not $quiet)
 	{
-		print template($conf, "common.html", "restart-guacamole-footer");
+		print AN::Common::template($conf, "common.html", "restart-guacamole-footer");
 	}
 	
 	return(0);
@@ -419,7 +422,7 @@ sub call_restart_tomcat_guacd
 	
 	my $retry = 0;
 	my $sc = "$conf->{path}{restart_tomcat} restart && $conf->{path}{restart_guacd} restart";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 	while(<$fh>)
@@ -428,17 +431,17 @@ sub call_restart_tomcat_guacd
 		my $line = $_;
 		if (($line =~ /Starting/i) && ($line =~ /Failed/i))
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
 			$retry = 1;
 		}
 		if ($quiet)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
 		else
 		{
 			$line = parse_text_line($conf, $line);
-			print template($conf, "common.html", "shell-call-output", {
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
@@ -452,7 +455,7 @@ sub call_restart_tomcat_guacd
 sub lsi_control_unmake_disk_as_hot_spare
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_unmake_disk_as_hot_spare()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_unmake_disk_as_hot_spare()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -461,7 +464,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -470,14 +473,14 @@ sub lsi_control_unmake_disk_as_hot_spare
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /as Hot Spare Success/i)
 		{
 			$success = 1;
@@ -487,7 +490,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0002", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0002", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -495,13 +498,13 @@ sub lsi_control_unmake_disk_as_hot_spare
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = $message_body  = get_string($conf, {key => "lsi_0003", variables => {
+		$message_body  = $message_body  = AN::Common::get_string($conf, {key => "lsi_0003", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0001!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -515,7 +518,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 sub lsi_control_clear_foreign_state
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_clear_foreign_state()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_clear_foreign_state()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -524,7 +527,7 @@ sub lsi_control_clear_foreign_state
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -533,14 +536,14 @@ sub lsi_control_clear_foreign_state
 		'close'		=>	0,
 		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /is cleared/i)
 		{
 			$success = 1;
@@ -550,19 +553,19 @@ sub lsi_control_clear_foreign_state
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0043", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0043", variables => {
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0044", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0044", variables => {
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0045!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -576,7 +579,7 @@ sub lsi_control_clear_foreign_state
 sub lsi_control_make_disk_hot_spare
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_hot_spare()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_hot_spare()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -585,7 +588,7 @@ sub lsi_control_make_disk_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -594,14 +597,14 @@ sub lsi_control_make_disk_hot_spare
 		'close'		=>	0,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /as Hot Spare Success/i)
 		{
 			$success = 1;
@@ -611,7 +614,7 @@ sub lsi_control_make_disk_hot_spare
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0005", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0005", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -619,13 +622,13 @@ sub lsi_control_make_disk_hot_spare
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0006", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0006", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0004!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -639,7 +642,7 @@ sub lsi_control_make_disk_hot_spare
 sub lsi_control_mark_disk_missing
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_mark_disk_missing()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_mark_disk_missing()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -647,7 +650,7 @@ sub lsi_control_mark_disk_missing
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -656,14 +659,14 @@ sub lsi_control_mark_disk_missing
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /is marked missing/i)
 		{
 			$success = 1;
@@ -677,7 +680,7 @@ sub lsi_control_mark_disk_missing
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0007", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0007", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -685,7 +688,7 @@ sub lsi_control_mark_disk_missing
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0008", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0008", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -695,12 +698,12 @@ sub lsi_control_mark_disk_missing
 	{
 		$title_message = "#!string!row_0032!#";
 		$title_class   = "highlight_detail";
-		$message_body  = get_string($conf, {key => "lsi_0009", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0009", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0013!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -719,7 +722,7 @@ sub lsi_control_mark_disk_missing
 sub lsi_control_spin_disk_up
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_up()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_up()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -728,7 +731,7 @@ sub lsi_control_spin_disk_up
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# This spins the drive back up.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -737,14 +740,14 @@ sub lsi_control_spin_disk_up
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /Undo Prepare for removal Success/i)
 		{
 			$success = 1;
@@ -753,7 +756,7 @@ sub lsi_control_spin_disk_up
 
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0010", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0010", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -761,13 +764,13 @@ sub lsi_control_spin_disk_up
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0011", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0011", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0012!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -781,7 +784,7 @@ sub lsi_control_spin_disk_up
 sub lsi_control_spin_disk_down
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_down()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_down()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -789,7 +792,7 @@ sub lsi_control_spin_disk_down
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -798,14 +801,14 @@ sub lsi_control_spin_disk_down
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /Prepare for removal Success/i)
 		{
 			$success = 1;
@@ -818,7 +821,7 @@ sub lsi_control_spin_disk_down
 
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0015", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0015", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -826,7 +829,7 @@ sub lsi_control_spin_disk_down
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0016", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0016", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -836,12 +839,12 @@ sub lsi_control_spin_disk_down
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0017", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0017", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0014!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -865,7 +868,7 @@ sub lsi_control_spin_disk_down
 sub lsi_control_get_rebuild_progress
 {
 	my ($conf, $disk_address, $adapter) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_rebuild_progress(); disk_address: [$disk_address], adapter: [$adapter]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_rebuild_progress(); disk_address: [$disk_address], adapter: [$adapter]\n");
 	
 	my $rebuild_percent   = "";
 	my $time_to_complete  = "";
@@ -873,7 +876,7 @@ sub lsi_control_get_rebuild_progress
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -882,13 +885,13 @@ sub lsi_control_get_rebuild_progress
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /completed (\d+)% in (.*?)\./i)
 		{
 			$rebuild_percent  = $1;
@@ -903,7 +906,7 @@ sub lsi_control_get_rebuild_progress
 sub lsi_control_put_disk_offline
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_offline()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_offline()\n");
 	
 	### NOTE: I don't think I need this function. For now, I simply
 	###       redirect to the "prepare for removal" function.
@@ -917,20 +920,20 @@ sub lsi_control_put_disk_offline
 	my $this_adapter      = $conf->{cgi}{adapter};
 	my $this_logical_disk = $conf->{cgi}{logical_disk};
 	
-	record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 	if (($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded") && ($this_logical_disk != 9999))
 	{
-		my $reason = get_string($conf, {key => "lsi_0019"});
+		my $reason = AN::Common::get_string($conf, {key => "lsi_0019"});
 		if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level} eq "6")
 		{
-			$reason = get_string($conf, {key => "lsi_0020"});
+			$reason = AN::Common::get_string($conf, {key => "lsi_0020"});
 		}
-		my $message = get_string($conf, {key => "lsi_0021", variables => {
+		my $message = AN::Common::get_string($conf, {key => "lsi_0021", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 				reason		=>	$reason,
 			}});
-		print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+		print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 			title		=>	"#!string!lsi_0018!#",
 			row		=>	"#!string!row_0045!#",
 			row_class	=>	"highlight_warning",
@@ -941,7 +944,7 @@ sub lsi_control_put_disk_offline
 	
 	if (not $conf->{cgi}{confirm})
 	{
-		my $message = get_string($conf, {key => "lsi_0022", variables => {
+		my $message = AN::Common::get_string($conf, {key => "lsi_0022", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 			}});
@@ -949,16 +952,16 @@ sub lsi_control_put_disk_offline
 		my $alert_class =  "highlight_warning_bold";
 		if ($this_logical_disk == 9999)
 		{
-			$message     = get_string($conf, {key => "lsi_0023"});
+			$message     = AN::Common::get_string($conf, {key => "lsi_0023"});
 			$alert       = "#!string!row_0032!#";
 			$alert_class = "highlight_detail_bold";
 		}
 		# Both messages have the same second part that asks the user to confirm.
-		$message .= get_string($conf, {key => "lsi_0024", variables => {
+		$message .= AN::Common::get_string($conf, {key => "lsi_0024", variables => {
 				confirm_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$conf->{cgi}{disk_address}&adapter=$this_adapter&logical_disk=$this_logical_disk&confirm=true",
 				cancel_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
 			}});
-		print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+		print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 			title		=>	"#!string!title_0018!#",
 			row		=>	$alert,
 			row_class	=>	$alert_class,
@@ -967,7 +970,7 @@ sub lsi_control_put_disk_offline
 		return (0);
 	}
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -976,14 +979,14 @@ sub lsi_control_put_disk_offline
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /state changed to offline/i)
 		{
 			$success = 1;
@@ -992,7 +995,7 @@ sub lsi_control_put_disk_offline
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0025", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0025", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -1000,13 +1003,13 @@ sub lsi_control_put_disk_offline
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0027", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0027", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0026!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -1026,7 +1029,7 @@ sub lsi_control_put_disk_offline
 sub lsi_control_put_disk_online
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_online()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_online()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1034,7 +1037,7 @@ sub lsi_control_put_disk_online
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1043,14 +1046,14 @@ sub lsi_control_put_disk_online
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /started rebuild progress on device/i)
 		{
 			$success = 1;
@@ -1059,7 +1062,7 @@ sub lsi_control_put_disk_online
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0028", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0028", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -1067,13 +1070,13 @@ sub lsi_control_put_disk_online
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0029", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0029", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0030!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -1087,7 +1090,7 @@ sub lsi_control_put_disk_online
 sub lsi_control_add_disk_to_array
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_add_disk_to_array()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_add_disk_to_array()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1095,7 +1098,7 @@ sub lsi_control_add_disk_to_array
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1104,14 +1107,14 @@ sub lsi_control_add_disk_to_array
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if (($line =~ /successfully added the disk/i) || ($line =~ /missing pd at array/i))
 		{
 			$success = 1;
@@ -1120,7 +1123,7 @@ sub lsi_control_add_disk_to_array
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0031", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0031", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 				logical_disk	=>	$conf->{cgi}{logical_disk},
@@ -1129,14 +1132,14 @@ sub lsi_control_add_disk_to_array
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0032", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0032", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 				logical_disk	=>	$conf->{cgi}{logical_disk},
 				message		=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0033!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -1156,13 +1159,13 @@ sub lsi_control_add_disk_to_array
 sub lsi_control_get_missing_disks
 {
 	my ($conf, $this_adapter, $this_logical_disk) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_missing_disks(); this_adapter: [$this_adapter] this_logical_disk: [$this_logical_disk]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_missing_disks(); this_adapter: [$this_adapter] this_logical_disk: [$this_logical_disk]\n");
 	
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1171,13 +1174,13 @@ sub lsi_control_get_missing_disks
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /\d+\s+\d+\s+(\d+)\s(\d+)/i)
 		{
 			my $this_row     =  $1;
@@ -1194,7 +1197,7 @@ sub lsi_control_get_missing_disks
 sub lsi_control_make_disk_good
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_good()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_good()\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1202,7 +1205,7 @@ sub lsi_control_make_disk_good
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1211,14 +1214,14 @@ sub lsi_control_make_disk_good
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /state changed to unconfigured-good/i)
 		{
 			$success = 1;
@@ -1227,7 +1230,7 @@ sub lsi_control_make_disk_good
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0034", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0034", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 			}});
@@ -1235,13 +1238,13 @@ sub lsi_control_make_disk_good
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0035", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0035", variables => {
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 				message		=>	$return_string,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0036!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -1255,7 +1258,7 @@ sub lsi_control_make_disk_good
 sub lsi_control_disk_id_led
 {
 	my ($conf, $action) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; lsi_control_disk_id_led(); action: [$action]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_disk_id_led(); action: [$action]\n");
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1271,9 +1274,9 @@ sub lsi_control_disk_id_led
 	{
 		$action = "start";
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; action: [$action], say_action: [$say_action]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; action: [$action], say_action: [$say_action]\n");
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1282,14 +1285,14 @@ sub lsi_control_disk_id_led
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /command was successfully sent to firmware/i)
 		{
 			$success = 1;
@@ -1298,7 +1301,7 @@ sub lsi_control_disk_id_led
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = get_string($conf, {key => "lsi_0037", variables => {
+	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0037", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				action	=>	$say_action,
@@ -1307,14 +1310,14 @@ sub lsi_control_disk_id_led
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = get_string($conf, {key => "lsi_0038", variables => {
+		$message_body  = AN::Common::get_string($conf, {key => "lsi_0038", variables => {
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 				action	=>	$say_action,
 			}});
 	}
-	print template($conf, "lsi-storage.html", "lsi-complete-table-message", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-complete-table-message", {
 		title		=>	"#!string!lsi_0039!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
@@ -1335,7 +1338,7 @@ sub display_node_health
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Open up the table.
-	print template($conf, "lsi-storage.html", "lsi-adapter-health-header", {
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-adapter-health-header", {
 		anvil		=>	$cluster,
 		node_anvil_name	=>	$node_cluster_name,
 		node		=>	$node,
@@ -1363,11 +1366,11 @@ sub display_node_health
 			my $say_bbu   =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is}                        ? "Present" : "Not Installed";
 			my $say_flash =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is}                      ? "Present" : "Not Installed";
 			my $say_restore_hotspare_on_insert = $conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ? "Yes"     : "No";
-			my $say_title = get_string($conf, {key => "lsi_0040", variables => {
+			my $say_title = AN::Common::get_string($conf, {key => "lsi_0040", variables => {
 				adapter	=>	$this_adapter,
 			}});
 
-			print template($conf, "lsi-storage.html", "lsi-adapter-state", {
+			print AN::Common::template($conf, "lsi-storage.html", "lsi-adapter-state", {
 				title				=>	$say_title,
 				model				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
 				cache_size			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size},
@@ -1415,7 +1418,7 @@ sub display_node_health
 					$say_cycle_count = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count};
 				}
 				
-				print template($conf, "lsi-storage.html", "lsi-bbu-state", {
+				print AN::Common::template($conf, "lsi-storage.html", "lsi-bbu-state", {
 					battery_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
 					battery_state_class	=>	$battery_state_class,
 					manufacture_name	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
@@ -1440,7 +1443,7 @@ sub display_node_health
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
 				my $allow_offline  = 1;
-				#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} eq "Degraded")
 				{
 					lsi_control_get_missing_disks($conf, $this_adapter, $this_logical_disk);
@@ -1449,8 +1452,8 @@ sub display_node_health
 					$say_missing = "<br />";
 					foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 					{
-						my $say_minimum_size =  bytes_to_hr($conf, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row});
-						$say_missing         .= get_string($conf, {key => "lsi_0041", variables => {
+						my $say_minimum_size =  AN::Cluster::bytes_to_hr($conf, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row});
+						$say_missing         .= AN::Common::get_string($conf, {key => "lsi_0041", variables => {
 										row		=>	$this_row,
 										minimum_size	=>	$say_minimum_size,
 									}});
@@ -1463,17 +1466,17 @@ sub display_node_health
 					# Unconfigured disks, show the list 
 					# header in the place of the logic 
 					# disk state.
-					print template($conf, "lsi-storage.html", "lsi-unassigned-disks");
+					print AN::Common::template($conf, "lsi-storage.html", "lsi-unassigned-disks");
 				}
 				else
 				{
 					# Real logical disk
 					next if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'};
-					#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
-					my $title = get_string($conf, {key => "title_0021", variables => {
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
+					my $title = AN::Common::get_string($conf, {key => "title_0021", variables => {
 							logical_disk	=>	$this_logical_disk,
 						}});
-					print template($conf, "lsi-storage.html", "lsi-logical-disk-state", {
+					print AN::Common::template($conf, "lsi-storage.html", "lsi-logical-disk-state", {
 						title				=>	$title,
 						logical_disk_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 						logical_disk_state_class	=>	$logical_disk_state_class,
@@ -1498,7 +1501,7 @@ sub display_node_health
 					{
 						my $raw_size_sectors = hex($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
 						my $raw_size_bytes   = ($raw_size_sectors * $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
-						my $say_raw_size     = bytes_to_hr($conf, $raw_size_bytes);
+						my $say_raw_size     = AN::Cluster::bytes_to_hr($conf, $raw_size_bytes);
 						my $disk_temp_class  = "highlight_good";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 54)
 						{
@@ -1512,28 +1515,28 @@ sub display_node_health
 						my $say_drive_temp_f = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} : "--";
 						my $say_temperature = "<span class=\"$disk_temp_class\">$say_drive_temp_c &deg;C ($say_drive_temp_f &deg;F)</span>";
 						
-						my $say_location_title = get_string($conf, {key => "row_0066"});
+						my $say_location_title = AN::Common::get_string($conf, {key => "row_0066"});
 						my $say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						if ($this_logical_disk == 9999)
 						{
-							$say_location_title = get_string($conf, {key => "row_0067"});
+							$say_location_title = AN::Common::get_string($conf, {key => "row_0067"});
 							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						}
 						
-						my $say_offline_disabled_button = template($conf, "common.html", "disabled-button", {
-							button_text	=>	get_string($conf, {key => "row_0067"}),
+						my $say_offline_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
+							button_text	=>	AN::Common::get_string($conf, {key => "row_0067"}),
 						}, "", 1);
 						my $offline_button = $say_offline_disabled_button;
 						if ($allow_offline)
 						{
-							$offline_button = template($conf, "common.html", "enabled-button-no-class", {
+							$offline_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 								button_text	=>	"#!string!button_0006!#",
 								id		=>	"put_disk_offline_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
 							if ($this_logical_disk == 9999)
 							{
-								$offline_button = template($conf, "common.html", "enabled-button-no-class", {
+								$offline_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 									button_text	=>	"#!string!button_0007!#",
 									id		=>	"spin_disk_down_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
@@ -1546,8 +1549,8 @@ sub display_node_health
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
 						{
 							$disk_state_class = "highlight_bad";
-							$say_disk_action = template($conf, "common.html", "new_line", "", "", 1);
-							$say_disk_action .= template($conf, "common.html", "enabled-button", {
+							$say_disk_action = AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action .= AN::Common::template($conf, "common.html", "enabled-button", {
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0008!#",
@@ -1557,13 +1560,13 @@ sub display_node_health
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
 						{
 							$disk_state_class = "highlight_detail";
-							my $say_put_disk_online_button = template($conf, "common.html", "enabled-button", {
+							my $say_put_disk_online_button = AN::Common::template($conf, "common.html", "enabled-button", {
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0009!#",
 								id		=>	"put_disk_online__${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
-							my $say_spin_disk_down_button = template($conf, "common.html", "enabled-button_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}", {
+							my $say_spin_disk_down_button = AN::Common::template($conf, "common.html", "enabled-button_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}", {
 								button_class	=>	$disk_state_class,
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0007!#",
@@ -1575,7 +1578,7 @@ sub display_node_health
 						{
 							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($conf, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
 							$disk_state_class = "highlight_warning";
-							$say_disk_action  = get_string($conf, {key => "lsi_0042", variables => {
+							$say_disk_action  = AN::Common::get_string($conf, {key => "lsi_0042", variables => {
 								rebuild_percent		=>	$rebuild_percent,
 								time_to_complete	=>	$time_to_complete,
 							}})
@@ -1592,57 +1595,57 @@ sub display_node_health
 									{
 										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
-											$say_disk_action = template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
-											my $say_button   =  get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
-											$say_disk_action .= template($conf, "common.html", "enabled-button", {
+											$say_disk_action = AN::Common::template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
+											my $say_button   =  AN::Common::get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
+											$say_disk_action .= AN::Common::template($conf, "common.html", "enabled-button", {
 												button_class	=>	"bold_button",
 												button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
 												button_text	=>	$say_button,
 												id		=>	"add_disk_to_array_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 											}, "", 1);
-											$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
+											$say_disk_action .= AN::Common::template($conf, "common.html", "new_line", "", "", 1);
 										}
 									}
 								}
 								elsif ($this_logical_disk == 9999)
 								{
-									$say_disk_action = template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
+									$say_disk_action = AN::Common::template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
 									
-									$say_disk_action .= template($conf, "common.html", "enabled-button-no-class", {
+									$say_disk_action .= AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 										button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 										button_text	=>	"#!string!button_0011!#",
 										id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 									}, "", 1);
-									$say_disk_action .= template($conf, "common.html", "new_line", "", "", 1);
-									#$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".get_string($conf, {key => "button_0011"})."</a>";
+									$say_disk_action .= AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+									#$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".AN::Common::get_string($conf, {key => "button_0011"})."</a>";
 								}
 							}
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
 						{
 							$disk_state_class =  "highlight_detail";
-							$say_disk_action  =  template($conf, "common.html", "new_line", "", "", 1);
-							$say_disk_action  .= template($conf, "common.html", "enabled-button-no-class", {
+							$say_disk_action  =  AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action  .= AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0012!#",
 								id		=>	"spin_disk_up_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
-							$say_temperature  = "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0055"})."</a>";
-							$offline_button   = get_string($conf, {key => "message_0054"});
+							$say_temperature  = "<span class=\"highlight_unavailable\">".AN::Common::get_string($conf, {key => "message_0055"})."</a>";
+							$offline_button   = AN::Common::get_string($conf, {key => "message_0054"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
 						{
 							$disk_state_class =  "highlight_detail";
-							$say_disk_action  =  template($conf, "common.html", "new_line", "", "", 1);
-							$say_disk_action  .= get_string($conf, {key => "message_0056"});
-							$say_temperature  =  "<span class=\"highlight_unavailable\">".get_string($conf, {key => "message_0057"})."</span>";
-							$offline_button   =  get_string($conf, {key => "message_0058"});
+							$say_disk_action  =  AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action  .= AN::Common::get_string($conf, {key => "message_0056"});
+							$say_temperature  =  "<span class=\"highlight_unavailable\">".AN::Common::get_string($conf, {key => "message_0057"})."</span>";
+							$offline_button   =  AN::Common::get_string($conf, {key => "message_0058"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
 						{
 							$disk_state_class = "highlight_detail";
 							$say_disk_action  = "";
-							$offline_button   = template($conf, "common.html", "enabled-button-no-class", {
+							$offline_button   = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 								button_text	=>	"#!string!button_0013!#",
 								id		=>	"unmake_disk_as_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
@@ -1654,13 +1657,13 @@ sub display_node_health
 						### the old hot spare reverts again to being a hot spare.
 						my $disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive_128x128.png";
 						my $id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
-						my $say_identify = get_string($conf, {key => "button_0014"});
+						my $say_identify = AN::Common::get_string($conf, {key => "button_0014"});
 						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
 						{
 							$disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive-with-led_128x128.png";
 							$id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
-							$say_identify = get_string($conf, {key => "button_0015"});
+							$say_identify = AN::Common::get_string($conf, {key => "button_0015"});
 						}
 						# This needs to be last because if a drive is foreign,
 						# we can't do anything else to it.
@@ -1670,8 +1673,8 @@ sub display_node_health
 						{
 							$foreign_state_class =  "highlight_warning_bold_fixed_width_left";
 							$say_foreign_state   =  "#!string!state_0012!#";
-							$say_disk_action     =  template($conf, "common.html", "new_line", "", "", 1);
-							$say_disk_action     .= template($conf, "common.html", "enabled-button-no-class", {
+							$say_disk_action     =  AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action     .= AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0038!#",
 								id		=>	"clear_foreign_state_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
@@ -1679,12 +1682,12 @@ sub display_node_health
 						}
 						
 						# Finally, show the drive.
-						my $title = get_string($conf, {key => "title_0022", variables => {
+						my $title = AN::Common::get_string($conf, {key => "title_0022", variables => {
 								slot_number		=>	$this_slot_number,
 								enclosure_device_id	=>	$this_enclosure_device_id,
 							}});
 						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = "--" if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1};
-						print template($conf, "lsi-storage.html", "lsi-physical-disk-state", {
+						print AN::Common::template($conf, "lsi-storage.html", "lsi-physical-disk-state", {
 							title				=>	$title,
 							id_led_url			=>	$id_led_url,
 							disk_icon			=>	$disk_icon,
@@ -1719,7 +1722,7 @@ sub display_node_health
 	}
 	
 	# Close the table.
-	print template($conf, "lsi-storage.html", "lsi-adapter-health-footer");
+	print AN::Common::template($conf, "lsi-storage.html", "lsi-adapter-health-footer");
 
 	return(0);
 }
@@ -1733,7 +1736,7 @@ sub get_storage_data
 	$conf->{storage}{is}{lsi}   = "";
 	$conf->{storage}{is}{hp}    = "";
 	$conf->{storage}{is}{mdadm} = "";
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1743,13 +1746,13 @@ sub get_storage_data
 		#shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
 		shell_call	=>	"whereis MegaCli64 hpacucli",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^(.*?):\s(.*)/)
 		{
 			my $program = $1;
@@ -1758,19 +1761,19 @@ sub get_storage_data
 			if ($program eq "MegaCli64")
 			{
 				$conf->{storage}{is}{lsi} = $path;
-				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::lsi: [$conf->{storage}{is}{lsi}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage::is::lsi: [$conf->{storage}{is}{lsi}]\n");
 			}
 			elsif ($program eq "hpacucli")
 			{
 				$conf->{storage}{is}{hp} = $path;
-				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::hp: [$conf->{storage}{is}{hp}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage::is::hp: [$conf->{storage}{is}{hp}]\n");
 			}
 			elsif ($program eq "mdadm")
 			{
 				### TODO: This is always installed... 
 				### Check if any arrays are configured and drop this if none.
 				$conf->{storage}{is}{mdadm} = $path;
-				#record($conf, "$THIS_FILE ".__LINE__."; storage::is::mdadm: [$conf->{storage}{is}{mdadm}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage::is::mdadm: [$conf->{storage}{is}{mdadm}]\n");
 			}
 		}
 	}
@@ -1826,8 +1829,8 @@ sub get_storage_data_lsi
 	   $shell_call     .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
 	   $shell_call     .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
 	   $shell_call     .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \"PD Locate\" /root/MegaSAS.log;";
-	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -1836,13 +1839,13 @@ sub get_storage_data_lsi
 		'close'		=>	1,
 		shell_call	=>	"$shell_call",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if not $line;
 		if ($line =~ /==] Start (.*)/)
 		{
@@ -1995,7 +1998,7 @@ sub get_storage_data_lsi
 			elsif ($line =~ /Full Charge Capacity\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} = $1;
-				record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], BBU Full Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], BBU Full Capacity: [$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity}]\n");
 			}
 			elsif ($line =~ /Manufacture Name\s*:\s*(.*)/)
 			{
@@ -2016,7 +2019,7 @@ sub get_storage_data_lsi
 		elsif ($in_section eq "logical_disk_info")
 		{
 			#print "in_section: [$in_section], line: [$line]\n";
-			#record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
 			if ($line =~ /Adapter (\d+) -- Virtual Drive Information/)
 			{
 				$this_adapter = $1;
@@ -2042,7 +2045,7 @@ sub get_storage_data_lsi
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} = $1;
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n";
-				#record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'}]\n");
 			}
 			elsif ($line =~ /Current Cache Policy\s*:\s*(.*)/)
 			{
@@ -2090,7 +2093,7 @@ sub get_storage_data_lsi
 			### TODO: Confirm that 'Disk Group' in fact relates to
 			###       the logical disk ID.
 			#print "in_section: [$in_section], line: [$line]\n";
-			#record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
 			if ($line =~ /Adapter #(\d+)/)
 			{
 				$this_adapter = $1;
@@ -2249,7 +2252,7 @@ sub get_storage_data_lsi
 			{
 				my $temp_c = $1;
 				my $temp_f = $2;
-				#record($conf, "$THIS_FILE ".__LINE__."; temp_c: [$temp_c], temp_f: [$temp_f]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; temp_c: [$temp_c], temp_f: [$temp_f]\n");
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} = $temp_c;
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} = $temp_f;
 				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Drive Temperature (*C): [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c}]\n";
@@ -2384,24 +2387,24 @@ sub change_vm
 	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
 	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	   $current_ram           /= 1024;
-	my $requested_ram         =  hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
+	my $requested_ram         =  AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
 	   $requested_ram         /= 1024;
 	my $max_ram               =  $available_ram / 1024;
 	my $current_cpus          =  $conf->{vm}{$vm}{details}{cpu_count};
 	my $requested_cpus        =  $conf->{cgi}{cpu_cores};
 	my $current_boot_device   =  $conf->{vm}{$vm}{current_boot_device};
 	my $requested_boot_device =  $conf->{cgi}{boot_device};
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; - requested RAM:          [$requested_ram]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; - current RAM:            [$current_ram]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; - requested CPUs: [$requested_cpus]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; - requested RAM:          [$requested_ram]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; - current RAM:            [$current_ram]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; - requested CPUs: [$requested_cpus]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; - current CPUs:   [$current_cpus]\n");
 	
 	# Open the table.
-	my $title = get_string($conf, {key => "title_0023", variables => {
+	my $title = AN::Common::get_string($conf, {key => "title_0023", variables => {
 			server	=>	$say_vm,
 		}});
-	print template($conf, "server.html", "update-server-config-header", {
+	print AN::Common::template($conf, "server.html", "update-server-config-header", {
 		title	=>	$title,
 	});
 
@@ -2414,20 +2417,20 @@ sub change_vm
 	{
 		# Something has changed. Make sure the request is sane,
 		my $max_cpus      = $conf->{resources}{total_threads};
-		record($conf, "$THIS_FILE ".__LINE__."; requested ram:    [$requested_ram]\n");
-		record($conf, "$THIS_FILE ".__LINE__.";       max ram:    [$max_ram]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; requested cpus:   [$requested_cpus]\n");
-		#record($conf, "$THIS_FILE ".__LINE__.";       max cpus:   [$max_cpus]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; requested ram:    [$requested_ram]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";       max ram:    [$max_ram]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; requested cpus:   [$requested_cpus]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";       max cpus:   [$max_cpus]\n");
 		if ($requested_ram > $max_ram)
 		{
 			# Not enough RAM
-			my $say_requested_ram = bytes_to_hr($conf, ($requested_ram * 1024));
-			my $say_max_ram       = bytes_to_hr($conf, ($max_ram * 1024));
-			my $message = get_string($conf, {key => "message_0059", variables => {
+			my $say_requested_ram = AN::Cluster::bytes_to_hr($conf, ($requested_ram * 1024));
+			my $say_max_ram       = AN::Cluster::bytes_to_hr($conf, ($max_ram * 1024));
+			my $message = AN::Common::get_string($conf, {key => "message_0059", variables => {
 				requested_ram	=>	$title,
 				max_ram		=>	$say_requested_ram,
 			}});
-			print template($conf, "server.html", "update-server-error-message", {
+			print AN::Common::template($conf, "server.html", "update-server-error-message", {
 				title		=>	"#!string!title_0025!",
 				message		=>	$message,
 			});
@@ -2435,11 +2438,11 @@ sub change_vm
 		elsif ($requested_cpus > $max_cpus)
 		{
 			# Not enough CPUs
-			my $message = get_string($conf, {key => "message_0060", variables => {
+			my $message = AN::Common::get_string($conf, {key => "message_0060", variables => {
 				requested_cpus	=>	$requested_cpus,
 				max_cpus	=>	$max_cpus,
 			}});
-			print template($conf, "server.html", "update-server-error-message", {
+			print AN::Common::template($conf, "server.html", "update-server-error-message", {
 				title		=>	"#!string!title_0026!",
 				message		=>	$message,
 			});
@@ -2461,7 +2464,7 @@ sub change_vm
 			}
 			
 			# Rewrite the XML file.
-			print get_string($conf, {key => "message_0061", variables => {
+			print AN::Common::get_string($conf, {key => "message_0061", variables => {
 				ram			=>	$conf->{cgi}{ram},
 				ram_suffix		=>	$conf->{cgi}{ram_suffix},
 				requested_cpus		=>	$requested_cpus,
@@ -2469,8 +2472,8 @@ sub change_vm
 			}});
 			my $new_definition = "";
 			my $in_os          = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my ($error, $ssh_fh, $output) = remote_call($conf, {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -2479,97 +2482,97 @@ sub change_vm
 				'close'		=>	0,
 				shell_call	=>	"cat $definition_file",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
 				if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
 				{
 					my $prefix = $1;
 					$line = "${prefix}<memory>$requested_ram<\/memory>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /^(.*?)<memory unit='.*?'>\d+<\/memory>/)
 				{
 					my $prefix = $1;
 					$line = "${prefix}<memory unit='KiB'>$requested_ram<\/memory>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /^(.*?)<currentMemory>\d+<\/currentMemory>/)
 				{
 					my $prefix = $1;
 					$line = "${prefix}<currentMemory>$requested_ram<\/currentMemory>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /^(.*?)<currentMemory unit='.*?'>\d+<\/currentMemory>/)
 				{
 					my $prefix = $1;
 					$line = "${prefix}<currentMemory unit='KiB'>$requested_ram<\/currentMemory>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /^(.*?)<vcpu>(\d+)<\/vcpu>/)
 				{
 					my $prefix = $1;
 					$line = "${prefix}<vcpu>$requested_cpus<\/vcpu>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /^(.*?)<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
 				{
 					my $prefix    = $1;
 					my $placement = $2;
 					$line = "${prefix}<vcpu placement='$placement'>$requested_cpus<\/vcpu>";
-					#record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Changed line:    [$line]\n");
 				}
 				if ($line =~ /<os>/)
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
 					$in_os          =  1;
 					$new_definition .= "$line\n";
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
 					next;
 				}
 				if ($in_os)
 				{
 					if ($line =~ /<\/os>/)
 					{
-						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
 						$in_os          =  0;
 						# Write out the new list of 
 						# boot devices. Start with the
 						# requested boot device and 
 						# then loop through the rest.
 						$new_definition .= "    <boot dev='$requested_boot_device'/>\n";
-						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding initiall boot device: [$requested_boot_device]\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding initiall boot device: [$requested_boot_device]\n");
 						foreach my $device (split /,/, $conf->{vm}{$vm}{available_boot_devices})
 						{
 							next if $device eq $requested_boot_device;
 							$new_definition .= "    <boot dev='$device'/>\n";
-							#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding device: [$device] to boot list\n");
+							#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding device: [$device] to boot list\n");
 						}
 						
-						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
 						$new_definition .= "$line\n";
 						next;
 					}
 					elsif ($line !~ /<boot dev/)
 					{
 						$new_definition .= "$line\n";
-						#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding to 'os' element line: [$line].\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding to 'os' element line: [$line].\n");
 						next;
 					}
 				}
 				else
 				{
 					$new_definition .= "$line\n";
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
 				}
 			}
 			$new_definition =~ s/(\S)\s+$/$1\n/;
 			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 			
 			# Write the new definition file.
-			($error, $ssh_fh, $output) = remote_call($conf, {
+			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -2578,10 +2581,10 @@ sub change_vm
 				'close'		=>	1,
 				shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
@@ -2591,31 +2594,31 @@ sub change_vm
 			# to this machine.
 			$conf->{vm}{$vm}{xml}                = [];	# this is probably redundant
 			@{$conf->{vm}{$vm}{xml}}             = split/\n/, $new_definition;
-			#record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram KiB (".bytes_to_hr($conf, ($requested_ram * 1024)).")], vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram KiB (".AN::Cluster::bytes_to_hr($conf, ($requested_ram * 1024)).")], vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 			$conf->{vm}{$vm}{details}{ram}       = ($requested_ram * 1024);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::details::ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
 			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
 			
 			# If the server is running, tell the user they need to
 			# power it off.
-			record($conf, "$THIS_FILE ".__LINE__."; host: [$conf->{vm}{$vm}{current_host}]<br />\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host: [$conf->{vm}{$vm}{current_host}]<br />\n");
 			if ($conf->{vm}{$vm}{current_host})
 			{
-				print template($conf, "server.html", "server-poweroff-required-message");
+				print AN::Common::template($conf, "server.html", "server-poweroff-required-message");
 			}
-			print template($conf, "server.html", "update-server-config-footer", {
+			print AN::Common::template($conf, "server.html", "update-server-config-footer", {
 				url	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
 			});
 
-			footer($conf);
+			AN::Cluster::footer($conf);
 			exit(0);
 		}
 	}
 	else
 	{
 		# Nothing changed.
-		print template($conf, "server.html", "no-change-message");
+		print AN::Common::template($conf, "server.html", "no-change-message");
 	}
 	
 	return (0);
@@ -2638,7 +2641,7 @@ sub vm_insert_media
 	my ($backup)   = archive_file($conf, $node, $definition_file, 1);
 	
 	# The variables hash feeds into 'title_0030'.
-	print template($conf, "server.html", "insert-media-header", {}, {
+	print AN::Common::template($conf, "server.html", "insert-media-header", {}, {
 		media	=>	$insert_media,
 		drive	=>	$insert_drive,
 	});
@@ -2648,7 +2651,7 @@ sub vm_insert_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2657,21 +2660,21 @@ sub vm_insert_media
 			'close'		=>	1,
 			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\$?",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			next if not $line;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
 			}
 			else
 			{
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
@@ -2679,14 +2682,14 @@ sub vm_insert_media
 		if ($virsh_exit_code eq "1")
 		{
 			# Disk already inserted.
-			print template($conf, "server.html", "insert-media-failed-already-mounted");
+			print AN::Common::template($conf, "server.html", "insert-media-failed-already-mounted");
 
 			# Update the definition file in case it was missed by .
 			update_vm_definition($conf, $node, $vm);
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
-			print template($conf, "server.html", "insert-media-success");
+			print AN::Common::template($conf, "server.html", "insert-media-success");
 
 			# Update the definition file.
 			update_vm_definition($conf, $node, $vm);
@@ -2694,12 +2697,12 @@ sub vm_insert_media
 		else
 		{
 			$virsh_exit_code = "-" if not defined $virsh_exit_code;
-			my $say_error = get_string($conf, {key => "message_0069", variables => {
+			my $say_error = AN::Common::get_string($conf, {key => "message_0069", variables => {
 				media		=>	$insert_media,
 				drive		=>	$insert_drive,
 				virsh_exit_code	=>	$virsh_exit_code,
 			}});
-			print template($conf, "server.html", "insert-media-failed-bad-exit-code", {
+			print AN::Common::template($conf, "server.html", "insert-media-failed-bad-exit-code", {
 				error	=>	$say_error,
 			});
 		}
@@ -2708,11 +2711,11 @@ sub vm_insert_media
 	{
 		# The VM isn't running. Directly re-write the XML file.
 		# The variable hash feeds into 'message_0070'.
-		print template($conf, "server.html", "insert-media-server-off", {}, {
+		print AN::Common::template($conf, "server.html", "insert-media-server-off", {}, {
 			server	=>	$say_vm,
 		});
 		my $new_definition = "";
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2721,14 +2724,14 @@ sub vm_insert_media
 			'close'		=>	0,
 			shell_call	=>	"cat $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /dev='(.*?)'/)
 			{
 				my $this_device = $1;
-				record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
 				if ($this_device eq $insert_drive)
 				{
 					$new_definition .= "      <source file='/shared/files/$insert_media'/>\n";
@@ -2737,11 +2740,11 @@ sub vm_insert_media
 			$new_definition .= "$line\n";
 		}
 		$new_definition =~ s/(\S)\s+$/$1\n/;
-		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
 		# Write the new definition file.
-		print template($conf, "server.html", "saving-server-config");
-		($error, $ssh_fh, $output) = remote_call($conf, {
+		print AN::Common::template($conf, "server.html", "saving-server-config");
+		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2750,14 +2753,14 @@ sub vm_insert_media
 			'close'		=>	1,
 			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			print template($conf, "common.html", "shell-call-output", {
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
-		print template($conf, "server.html", "insert-media-footer");
+		print AN::Common::template($conf, "server.html", "insert-media-footer");
 		
 		# Lastly, copy the new definition to the stored XML for
 		# this VM.
@@ -2782,7 +2785,7 @@ sub vm_eject_media
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
 	# The variables hash feeds into 'title_0031'.
-	print template($conf, "server.html", "eject-media-header", {}, {
+	print AN::Common::template($conf, "server.html", "eject-media-header", {}, {
 		device	=>	$conf->{cgi}{device},
 	});
 	
@@ -2795,7 +2798,7 @@ sub vm_eject_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2804,21 +2807,21 @@ sub vm_eject_media
 			'close'		=>	1,
 			shell_call	=>	"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			next if not $line;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
 			}
 			else
 			{
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
@@ -2826,14 +2829,14 @@ sub vm_eject_media
 		if ($virsh_exit_code eq "1")
 		{
 			# Someone already ejected it.
-			print template($conf, "server.html", "eject-media-failed-already-ejected");
+			print AN::Common::template($conf, "server.html", "eject-media-failed-already-ejected");
 			
 			# Update the definition file in case it was missed by .
 			update_vm_definition($conf, $node, $vm);
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
-			print template($conf, "server.html", "eject-media-success");
+			print AN::Common::template($conf, "server.html", "eject-media-success");
 			
 			# Update the definition file.
 			update_vm_definition($conf, $node, $vm);
@@ -2841,11 +2844,11 @@ sub vm_eject_media
 		else
 		{
 			$virsh_exit_code = "-" if not defined $virsh_exit_code;
-			my $say_error = get_string($conf, {key => "message_0073", variables => {
+			my $say_error = AN::Common::get_string($conf, {key => "message_0073", variables => {
 				drive		=>	$drive,
 				virsh_exit_code	=>	$virsh_exit_code,
 			}});
-			print template($conf, "server.html", "eject-media-failed-bad-exit-code", {
+			print AN::Common::template($conf, "server.html", "eject-media-failed-bad-exit-code", {
 				error	=>	$say_error,
 			});
 		}
@@ -2854,14 +2857,14 @@ sub vm_eject_media
 	{
 		# The VM isn't running. Directly re-write the XML file.
 		# The variable hash feeds into 'message_0070'.
-		print template($conf, "server.html", "eject-media-server-off", {}, {
+		print AN::Common::template($conf, "server.html", "eject-media-server-off", {}, {
 			server	=>	$say_vm,
 		});
 		my $in_cdrom       = 0;
 		my $this_media     = "";
 		my $this_device    = "";
 		my $new_definition = "";
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2870,14 +2873,14 @@ sub vm_eject_media
 			'close'		=>	0,
 			shell_call	=>	"cat $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$new_definition .= "$line\n";
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Found a cdrom disk.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found a cdrom disk.\n");
 				$in_cdrom = 1;
 			}
 			if ($in_cdrom)
@@ -2885,25 +2888,25 @@ sub vm_eject_media
 				if ($line =~ /file='(.*?)'\/>/)
 				{
 					$this_media = $1;
-					record($conf, "$THIS_FILE ".__LINE__."; Found the media: [$this_media].\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the media: [$this_media].\n");
 				}
 				if ($line =~ /dev='(.*?)'/)
 				{
 					$this_device = $1;
-					record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the device: [$this_device].\n");
 				}
 				if ($line =~ /<\/disk>/)
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Checking if: [$this_device] is the device: [$conf->{cgi}{device}] I want to eject...\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if: [$this_device] is the device: [$conf->{cgi}{device}] I want to eject...\n");
 					if ($this_device eq $conf->{cgi}{device})
 					{
 						# This is the device I want to unmount.
-						record($conf, "$THIS_FILE ".__LINE__."; It is!\n");
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It is!\n");
 						$new_definition =~ s/<disk(.*?)device='cdrom'(.*?)<source file='$this_media'\/>\s+(.*?)<\/disk>/<disk${1}device='cdrom'${2}${3}<\/disk>/s;
 					}
 					else
 					{
-						record($conf, "$THIS_FILE ".__LINE__."; It is not.\n");
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It is not.\n");
 					}
 					$in_cdrom    = 0;
 					$this_device = "";
@@ -2912,11 +2915,11 @@ sub vm_eject_media
 			}
 		}
 		$new_definition =~ s/(\S)\s+$/$1\n/;
-		#record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
 		# Write the new definition file.
-		print template($conf, "server.html", "saving-server-config");
-		($error, $ssh_fh, $output) = remote_call($conf, {
+		print AN::Common::template($conf, "server.html", "saving-server-config");
+		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -2925,14 +2928,14 @@ sub vm_eject_media
 			'close'		=>	1,
 			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			print template($conf, "common.html", "shell-call-output", {
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
 		}
-		print template($conf, "server.html", "eject-media-footer");
+		print AN::Common::template($conf, "server.html", "eject-media-footer");
 
 		# Lastly, copy the new definition to the stored XML for
 		# this VM.
@@ -2962,7 +2965,7 @@ sub manage_vm
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
 	# First, see if the VM is up.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	
 	# Count how much RAM and CPU cores have been allocated.
 	$conf->{resources}{available_ram}   = 0;
@@ -2981,29 +2984,29 @@ sub manage_vm
 		else
 		{
 			$conf->{resources}{allocated_ram}   += $conf->{vm}{$vm}{details}{ram};
-			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$conf->{resources}{allocated_ram}], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$conf->{resources}{allocated_ram}], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 			$conf->{resources}{allocated_cores} += $conf->{vm}{$vm}{details}{cpu_count};
-			#record($conf, "$THIS_FILE ".__LINE__."; allocated_cores: [$conf->{resources}{allocated_cores}], vm: [$vm], cpu_count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; allocated_cores: [$conf->{resources}{allocated_cores}], vm: [$vm], cpu_count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
 		}
 	}
 	
 	# First up, if the cluster is not running, go no further.
-	#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::gfs2::exit_code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}], node::${node2}::daemon::gfs2::exit_code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::gfs2::exit_code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}], node::${node2}::daemon::gfs2::exit_code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code}))
 	{
-		print template($conf, "server.html", "storage-not-ready");
+		print AN::Common::template($conf, "server.html", "storage-not-ready");
 	}
 	
 	# Now choose the node to work through.
 	my $node          = "";
 	my $vm_is_running = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
 	if ($conf->{vm}{$vm}{current_host})
 	{
 		# Read the current VM config from virsh.
 		$vm_is_running = 1;
 		$node          = $conf->{vm}{$vm}{current_host};
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is running on: [$node], will read: [$conf->{vm}{$vm}{definition_file}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is running on: [$node], will read: [$conf->{vm}{$vm}{definition_file}].\n");
 	}
 	else
 	{
@@ -3018,14 +3021,14 @@ sub manage_vm
 			# Node 2 must be up.
 			$node = $node2;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is not running, will read: [$conf->{vm}{$vm}{definition_file}] via: [$node].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm] is not running, will read: [$conf->{vm}{$vm}{definition_file}] via: [$node].\n");
 		read_vm_definition($conf, $node, $vm);
 	}
 	
 	# Find the list of bootable devices and present them in a selection
 	# box.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
-	#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	$conf->{vm}{$vm}{current_boot_device}    = "";
 	$conf->{vm}{$vm}{available_boot_devices} = "";
 	my $say_current_boot_device              = "";
@@ -3033,12 +3036,12 @@ sub manage_vm
 	my $saw_cdrom                            = 0;
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; in_os: [$in_os] vm: [$vm], xml line: [$line].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_os: [$in_os] vm: [$vm], xml line: [$line].\n");
 		last if $line =~ /<\/domain>/;
 		
 		if ($line =~ /<os>/)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into the OS block.\n");
 			$in_os = 1;
 			next;
 		}
@@ -3046,7 +3049,7 @@ sub manage_vm
 		{
 			if ($line =~ /<\/os>/)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
 				$in_os = 0;
 				if ($saw_cdrom)
 				{
@@ -3061,7 +3064,7 @@ sub manage_vm
 			}
 			elsif ($line =~ /<boot dev='(.*?)'/)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], OS boot line: [$line].\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], OS boot line: [$line].\n");
 				my $device                               =  $1;
 				my $say_device                           =  $device;
 				$conf->{vm}{$vm}{available_boot_devices} .= "$device,";
@@ -3084,7 +3087,7 @@ sub manage_vm
 				}
 				
 				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
-				#record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 			}
 		}
 		elsif ($in_os == 2)
@@ -3094,7 +3097,7 @@ sub manage_vm
 			if ($line =~ /<disk .*?device='cdrom'/)
 			{
 				# There is a CD-ROM, add it as a boot option.
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Found a CDROM drive, adding it as a boot option.\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Found a CDROM drive, adding it as a boot option.\n");
 				my $say_device  =  "#!string!device_0002!#";
 				   $boot_select .= "<option value=\"cdrom\">$say_device</option>";
 				   $in_os = 0;
@@ -3103,11 +3106,11 @@ sub manage_vm
 		}
 	}
 	$boot_select .= "</select>";
-	record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so
 	# now.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
 	if ($conf->{cgi}{change})
 	{
 		change_vm($conf, $node);
@@ -3132,7 +3135,7 @@ sub manage_vm
 	}
 	
 	### TODO: Merge insert and eject into one function.
-	record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
 	if ($do_insert)
 	{
 		vm_insert_media($conf, $node, $insert_media, $insert_drive, $vm_is_running);
@@ -3145,7 +3148,7 @@ sub manage_vm
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -3154,17 +3157,17 @@ sub manage_vm
 		'close'		=>	1,
 		shell_call	=>	"df -P && ls -l /shared/files/",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 		if ($line =~ /\s(\d+)-blocks\s/)
 		{
 			$conf->{partition}{shared}{block_size} = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
 		}
 		elsif ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
 		{
@@ -3172,7 +3175,7 @@ sub manage_vm
 			$conf->{partition}{shared}{used_space}   = $2;
 			$conf->{partition}{shared}{free_space}   = $3;
 			$conf->{partition}{shared}{used_percent} = $4;
-			#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
 		}
 		elsif ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
 		{
@@ -3200,7 +3203,7 @@ sub manage_vm
 			$conf->{files}{shared}{$file}{day}    = $day;
 			$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
 			$conf->{files}{shared}{$file}{target} = $target;
-			#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
 		}
 	}
 
@@ -3211,19 +3214,19 @@ sub manage_vm
 	### TODO: Find out why the XML data is doubled up.
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], xml line: [$line].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], xml line: [$line].\n");
 		last if $line =~ /<\/domain>/;
 		if ($line =~ /device='cdrom'/)
 		{
 			$in_cdrom = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into a CD-ROM child element on: [$line].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], going into a CD-ROM child element on: [$line].\n");
 		}
 		elsif (($line =~ /<\/disk>/) && ($in_cdrom))
 		{
 			# Record what I found/
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting a CD-ROM child element on: [$line].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting a CD-ROM child element on: [$line].\n");
 			$conf->{vm}{$vm}{cdrom}{$this_device}{media} = $this_media ? $this_media : "";
-			#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::cdrom::${this_device}::media: [$conf->{vm}{$vm}{cdrom}{$this_device}{media}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::cdrom::${this_device}::media: [$conf->{vm}{$vm}{cdrom}{$this_device}{media}].\n");
 			$in_cdrom    = 0;
 			$this_device = "";
 			$this_media  = "";
@@ -3243,10 +3246,10 @@ sub manage_vm
 		}
 	}
 
-	#record($conf, "$THIS_FILE ".__LINE__."; current_cpu_count: [$current_cpu_count], current_ram: [$current_ram (".bytes_to_hr($conf, $current_ram).")], available_ram: [$available_ram (".bytes_to_hr($conf, $available_ram).")]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current_cpu_count: [$current_cpu_count], current_ram: [$current_ram (".AN::Cluster::bytes_to_hr($conf, $current_ram).")], available_ram: [$available_ram (".AN::Cluster::bytes_to_hr($conf, $available_ram).")]\n");
 	my $current_cpu_count = $conf->{vm}{$vm}{details}{cpu_count};
 	my $max_cpu_count     = $conf->{resources}{total_threads};
-	#record($conf, "$THIS_FILE ".__LINE__."; max_ram: [$max_ram (".bytes_to_hr($conf, $max_ram).")], max_cpu_count: [$max_cpu_count]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; max_ram: [$max_ram (".AN::Cluster::bytes_to_hr($conf, $max_ram).")], max_cpu_count: [$max_cpu_count]\n");
 	
 	# Create the media select boxes.
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
@@ -3260,13 +3263,13 @@ sub manage_vm
 			# Offer the eject button.
 			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\" disabled>\n";
 			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"fixed_width\">$conf->{vm}{$vm}{cdrom}{$device}{media}</span>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = template($conf, "common.html", "enabled-button", {
+			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_class	=>	"bold_button",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm&do=eject&device=$device",
 				button_text	=>	"#!string!button_0017!#",
 				id		=>	"eject_$device",
 			}, "", 1);
-			my $say_insert_disabled_button = template($conf, "common.html", "disabled-button", {
+			my $say_insert_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0018!#",
 			}, "", 1);
 			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = "$say_insert_disabled_button\n";
@@ -3276,11 +3279,11 @@ sub manage_vm
 			# Offer the insert button
 			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\">\n";
 			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"highlight_unavailable\">(#!string!state_0007!#)</span>\n";
-			my $say_eject_disabled_button = template($conf, "common.html", "disabled-button", {
+			my $say_eject_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0017!#",
 			}, "", 1);
 			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = "$say_eject_disabled_button\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = template($conf, "common.html", "form-input", {
+			$conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = AN::Common::template($conf, "common.html", "form-input", {
 				type	=>	"submit",
 				name	=>	"insert_$device",
 				id	=>	"insert_$device",
@@ -3291,7 +3294,7 @@ sub manage_vm
 		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
 		{
 			next if ($file eq $conf->{vm}{$vm}{cdrom}{$device}{media});
-			#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], cgi::${key}: [$conf->{cgi}{$key}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; file: [$file], cgi::${key}: [$conf->{cgi}{$key}]\n");
 			if ((defined $conf->{cgi}{$key}) && ($file eq $conf->{cgi}{$key}))
 			{
 				$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\" selected>$file</option>\n";
@@ -3302,7 +3305,7 @@ sub manage_vm
 			}
 		}
 		$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "</select>\n";
-		#record($conf, "$THIS_FILE ".__LINE__."; Media in: [$device] -> [$conf->{vm}{$vm}{cdrom}{$device}{media}]. [Select: $conf->{vm}{$vm}{cdrom}{$device}{say_select}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Media in: [$device] -> [$conf->{vm}{$vm}{cdrom}{$device}{media}]. [Select: $conf->{vm}{$vm}{cdrom}{$device}{say_select}]\n");
 	}
 	
 	# Allow the user to select the number of CPUs.
@@ -3320,64 +3323,64 @@ sub manage_vm
 		}
 	}
 	$conf->{cgi}{cpu_cores} = $current_cpu_count if not $conf->{cgi}{cpu_cores};
-	my $select_cpu_cores    = build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
-	#record($conf, "$THIS_FILE ".__LINE__."; select_cpu_cores: [$select_cpu_cores]\n");
+	my $select_cpu_cores    = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; select_cpu_cores: [$select_cpu_cores]\n");
 	
 	# Something has changed. Make sure the request is sane,
 	my $current_ram   = $conf->{vm}{$vm}{details}{ram};
-	record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
 
 	my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
 	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	my $max_ram       = $available_ram;
-	record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
 	
 	# If the user sets the RAM to less than 1 GiB, warn them. If the user
 	# sets the RAM to less that 32 MiB, error out.
-	my $say_max_ram          = bytes_to_hr($conf, $max_ram);
-	my $say_current_ram      = bytes_to_hr($conf, $current_ram);
+	my $say_max_ram          = AN::Cluster::bytes_to_hr($conf, $max_ram);
+	my $say_current_ram      = AN::Cluster::bytes_to_hr($conf, $current_ram);
 	my ($current_ram_value, $current_ram_suffix) = (split/ /, $say_current_ram);
 	$conf->{cgi}{ram}        = $current_ram_value if not $conf->{cgi}{ram};
 	$conf->{cgi}{ram_suffix} = $current_ram_suffix if not $conf->{cgi}{ram_suffix};
-	my $select_ram_suffix    = build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
-	#record($conf, "$THIS_FILE ".__LINE__."; (<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix\n");
+	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; (<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix\n");
 	
 	# Setup Guacamole, if installed.
 	my $message     = "";
 	my $remote_icon = "";
-	record($conf, "$THIS_FILE ".__LINE__."; path::guacamole_config: [$conf->{path}{guacamole_config}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::guacamole_config: [$conf->{path}{guacamole_config}]\n");
 	if (-e $conf->{path}{guacamole_config})
 	{
 		# Installed.
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Guacamole installed, getting VNC info.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Guacamole installed, getting VNC info.\n");
 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		
 		# See if I need to update the XML definition file.
-		record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
 		if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
 		{
 			# Rewrite the XML definition. The 'graphics' section should look like:
 			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
 			#       <listen type='address' address='0.0.0.0'/>
 			#     </graphics>
-			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file: [$conf->{vm}{$vm}{definition_file}] is not using VNC, updating it via: [$node].\n");
-			print template($conf, "server.html", "switch-to-vnc-header");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file: [$conf->{vm}{$vm}{definition_file}] is not using VNC, updating it via: [$node].\n");
+			print AN::Common::template($conf, "server.html", "switch-to-vnc-header");
 			my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
 			switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
-			print template($conf, "server.html", "switch-to-vnc-footer");
+			print AN::Common::template($conf, "server.html", "switch-to-vnc-footer");
 		}
 		
-		record($conf, "$THIS_FILE ".__LINE__."; type: [$type]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type]\n");
 		if ($type ne "vnc")
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
 			# Check the recorded XML file and is necesary, update
 			# it. In any case, disable VNC and tell the user they
 			# will need to power off and restart the server before
 			# this will work.
 			$message     = "#!string!message_0076!#";
-			$remote_icon = template($conf, "common.html", "image", {
+			$remote_icon = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 				alt_text	=>	"",
 				id		=>	"remote_icon",
@@ -3385,19 +3388,19 @@ sub manage_vm
 		}
 		else
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
 			update_guacamole_config($conf, $say_vm, $node, $port);
 		}
 		
-		record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
 		if (not $message)
 		{
-			my ($guacamole_url) = get_guacamole_link($conf, $node);
+			my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
 			$message = "#!string!message_0077!#";	# Connect to the desktop
 			if (not $node)
 			{
 				$message     = "#!string!message_0078!#";	# Server is off
-				$remote_icon = template($conf, "common.html", "image", {
+				$remote_icon = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
 					alt_text	=>	"",
 					id		=>	"remote_icon",
@@ -3405,12 +3408,12 @@ sub manage_vm
 			}
 			elsif ($node =~ /n01/)
 			{
-				my $image = template($conf, "common.html", "image", {
+				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 					alt_text	=>	"",
 					id		=>	"server-desktop_n01",
 				}, "", 1);
-				$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 					button_text	=>	"$image",
 					id		=>	"guacamole_url_$say_vm",
@@ -3418,12 +3421,12 @@ sub manage_vm
 			}
 			elsif ($node =~ /n02/)
 			{
-				my $image = template($conf, "common.html", "image", {
+				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 					alt_text	=>	"",
 					id		=>	"server-desktop_n02",
 				}, "", 1);
-				$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 					button_text	=>	"$image",
 					id		=>	"guacamole_url_$say_vm",
@@ -3432,7 +3435,7 @@ sub manage_vm
 			else
 			{
 				$message     = "#!string!message_0079!#";	# Think the server is running, but unknown where.
-				$remote_icon = template($conf, "common.html", "image", {
+				$remote_icon = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 					alt_text	=>	"",
 					id		=>	"server-desktop_oops",
@@ -3443,9 +3446,9 @@ sub manage_vm
 	else
 	{
 		# Not installed.
-		record($conf, "$THIS_FILE ".__LINE__."; Guacamole does not appear to be installed.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole does not appear to be installed.\n");
 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
-		$remote_icon = template($conf, "common.html", "image", {
+		$remote_icon = AN::Common::template($conf, "common.html", "image", {
 			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 			alt_text	=>	"",
 			id		=>	"server-desktop_oops",
@@ -3454,7 +3457,7 @@ sub manage_vm
 	
 	# Finally, print it all
 	# The variable hash feeds 'title_0032'.
-	print template($conf, "server.html", "manager-server-header", {}, {
+	print AN::Common::template($conf, "server.html", "manager-server-header", {}, {
 		server	=>	$say_vm,
 	});
 
@@ -3471,10 +3474,10 @@ sub manage_vm
 			$say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_eject};
 			$say_state  = "Disc in drive";
 		}
-		my $say_optical_drive = get_string($conf, {key => "device_0003", variables => {
+		my $say_optical_drive = AN::Common::get_string($conf, {key => "device_0003", variables => {
 				drive_number	=>	$i,
 			}});
-		print template($conf, "server.html", "manager-server-optical-drive", {
+		print AN::Common::template($conf, "server.html", "manager-server-optical-drive", {
 			optical_drive	=>	$say_optical_drive,
 			'state'		=>	$say_state,
 			disk		=>	$say_disk,
@@ -3483,22 +3486,22 @@ sub manage_vm
 		$i++;
 	}
 	
-	my $current_boot_device = get_string($conf, {key => "message_0081", variables => {
+	my $current_boot_device = AN::Common::get_string($conf, {key => "message_0081", variables => {
 			boot_device	=>	$say_current_boot_device,
 		}});
-	my $ram_details = get_string($conf, {key => "message_0082", variables => {
+	my $ram_details = AN::Common::get_string($conf, {key => "message_0082", variables => {
 			current_ram	=>	$say_current_ram,
 			maximum_ram	=>	$say_max_ram,
 		}});
-	my $cpu_details = get_string($conf, {key => "message_0083", variables => {
+	my $cpu_details = AN::Common::get_string($conf, {key => "message_0083", variables => {
 			current_cpus	=>	$conf->{vm}{$vm}{details}{cpu_count},
 		}});
-	my $restart_tomcat = get_string($conf, {key => "message_0085", variables => {
+	my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
 			reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
 		}});
 
 	# Display all this wonderful data.
-	print template($conf, "server.html", "manager-server-show-details", {
+	print AN::Common::template($conf, "server.html", "manager-server-show-details", {
 		current_boot_device	=>	$current_boot_device,
 		boot_select		=>	$boot_select,
 		ram_details		=>	$ram_details,
@@ -3523,19 +3526,19 @@ sub manage_vm
 sub switch_vm_xml_to_vnc
 {
 	my ($conf, $node, $vm, $backup_file) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm], backup_file: [$backup_file]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm], backup_file: [$backup_file]\n");
 	
 	my $proceed         = 1;
 	my $definition_file = $conf->{vm}{$vm}{definition_file};
 	my $new_definition  = "";
 	my $in_graphics     = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
 	if (not $conf->{vm}{$vm}{raw_xml})
 	{
-		my $say_error = get_string($conf, {key => "message_0341", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0341", variables => {
 			definition_file	=>	$definition_file,
 		}});
-		print template($conf, "common.html", "no-definition-file", {
+		print AN::Common::template($conf, "common.html", "no-definition-file", {
 			error			=>	$say_error,
 		});
 		$proceed = 0;
@@ -3544,7 +3547,7 @@ sub switch_vm_xml_to_vnc
 	{
 		foreach my $line (@{$conf->{vm}{$vm}{raw_xml}})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
 			if ($line =~ /<graphics .*\/>/)
 			{
 				# Self-closing element.
@@ -3566,7 +3569,7 @@ sub switch_vm_xml_to_vnc
 					$new_definition .= "    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>\n";
 					$new_definition .= "      <listen type='address' address='0.0.0.0'/>\n";
 					$new_definition .= "    </graphics>\n";
-					#record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
 					next;
 				}
 				else
@@ -3578,11 +3581,11 @@ sub switch_vm_xml_to_vnc
 			else
 			{
 				$new_definition .= "$line\n";
-				#record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << new_definition: [$new_definition]\n");
 			}
 		}
 		$new_definition =~ s/\n+$//;
-		record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition===\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New definition file:\n===\n$new_definition===\n");
 		
 		# Make sure the definition file is sane.
 		if (($new_definition !~ /^<domain/s) || ($new_definition !~ /<\/domain>/s))
@@ -3591,19 +3594,19 @@ sub switch_vm_xml_to_vnc
 			if (length($new_definition) < 5)
 			{
 				# Empty
-				$say_error = get_string($conf, {key => "message_0338", variables => {
+				$say_error = AN::Common::get_string($conf, {key => "message_0338", variables => {
 					definition_file	=>	$definition_file,
 				}});
 			}
 			else
 			{
 				# Malformed
-				$say_error = get_string($conf, {key => "message_0339", variables => {
+				$say_error = AN::Common::get_string($conf, {key => "message_0339", variables => {
 					definition_file	=>	$definition_file,
 				}});
 			}
-			$new_definition = convert_text_to_html($conf, $new_definition);
-			print template($conf, "common.html", "bad-definition-file", {
+			$new_definition = AN::Cluster::convert_text_to_html($conf, $new_definition);
+			print AN::Common::template($conf, "common.html", "bad-definition-file", {
 				error			=>	$say_error,
 				definition_content	=>	$new_definition,
 			});
@@ -3614,7 +3617,7 @@ sub switch_vm_xml_to_vnc
 	# Write the new definition file.
 	if ($proceed)
 	{
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -3624,16 +3627,16 @@ sub switch_vm_xml_to_vnc
 			shell_call	=>	"cat > $definition_file << EOF\n$new_definition\nEOF",
 		});
 			#shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
 		
 		# Set the permissions
 		$error  = "";
 		$output = "";
-		($error, $ssh_fh, $output) = remote_call($conf, {
+		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -3642,16 +3645,16 @@ sub switch_vm_xml_to_vnc
 			'close'		=>	0,
 			shell_call	=>	"chmod 644 $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
 		
 		# Read it back.
 		$error  = "";
 		$output = "";
-		($error, $ssh_fh, $output) = remote_call($conf, {
+		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -3660,7 +3663,7 @@ sub switch_vm_xml_to_vnc
 			'close'		=>	1,
 			shell_call	=>	"cat $definition_file",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		my $recover         = 0;
 		my $first_line_read = 0;
 		my $read_content     = "";
@@ -3669,19 +3672,19 @@ sub switch_vm_xml_to_vnc
 			if (not $first_line_read)
 			{
 				$read_content .= "$line\n";
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line !~ /^<domain/)
 				{
 					# well crap...
 					$recover = 1;
-					record($conf, "$THIS_FILE ".__LINE__."; First line diesn't start with: '<domain', recovery required!\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; First line diesn't start with: '<domain', recovery required!\n");
 				}
 				$first_line_read = 1;
 			}
 		}
 		if ($recover)
 		{
-			my ($error, $ssh_fh, $output) = remote_call($conf, {
+			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -3690,17 +3693,17 @@ sub switch_vm_xml_to_vnc
 				'close'		=>	0,
 				shell_call	=>	"cp -f $backup_file $definition_file && chmod 644 $definition_file",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			}
 			
-			my $say_error = get_string($conf, {key => "message_0340", variables => {
+			my $say_error = AN::Common::get_string($conf, {key => "message_0340", variables => {
 				definition_file	=>	$definition_file,
 				backup_file	=>	$backup_file,
 			}});
-			print template($conf, "common.html", "bad-definition-file", {
+			print AN::Common::template($conf, "common.html", "bad-definition-file", {
 				error			=>	$say_error,
 				definition_content	=>	$read_content,
 			});
@@ -3715,12 +3718,12 @@ sub switch_vm_xml_to_vnc
 sub update_guacamole_config
 {
 	my ($conf, $say_vm, $node, $port) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; update_guacamole_config; say_vm: [$say_vm], node: [$node], port: [$port]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_guacamole_config; say_vm: [$say_vm], node: [$node], port: [$port]\n");
 	
 	# Read the guacamole config file.
 	$conf->{guacamole}{config}{old} = [];
 	my $sc = $conf->{path}{guacamole_config};
-	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
 	my $fh = IO::Handle->new();
 	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
 	while(<$fh>)
@@ -3731,7 +3734,7 @@ sub update_guacamole_config
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		push @{$conf->{guacamole}{config}{old}}, $line;
 	}
 	$fh->close();
@@ -3746,7 +3749,7 @@ sub update_guacamole_config
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^<\/config>/)
 		{
 			# Save the data.
@@ -3755,27 +3758,27 @@ sub update_guacamole_config
 			
 			# See of this entry matches my current VM and, if so,
 			# see if the port or host needs to be updated.
-			#record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
 			if ($this_vm eq $say_vm)
 			{
 				$match_found = 1;
-				#record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
 				if (($node ne $this_host) || ($port ne $this_port))
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
 					$rewrite_needed                        = 1;
 					$conf->{guacamole}{vm}{$this_vm}{host} = $node;
 					$conf->{guacamole}{vm}{$this_vm}{port} = $port;
-					record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${this_vm}::host: [$conf->{guacamole}{vm}{$this_vm}{host}], guacamole::vm::${this_vm}::port: [$conf->{guacamole}{vm}{$this_vm}{port}]!\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${this_vm}::host: [$conf->{guacamole}{vm}{$this_vm}{host}], guacamole::vm::${this_vm}::port: [$conf->{guacamole}{vm}{$this_vm}{port}]!\n");
 				}
 				else
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
 				}
 			}
 			else
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
 				# See if this VM still exists on the cluster.
 				my $exists =  0;
 				foreach my $existing_vm (sort {$a cmp $b} keys %{$conf->{vm}})
@@ -3783,15 +3786,15 @@ sub update_guacamole_config
 					$existing_vm =~ s/^vm://;
 					if ($existing_vm eq $this_vm)
 					{
-						#record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
 						$exists = 1;
 					}
 				}
-				#record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
 				if ((not $exists) && ($this_vm ne $say_vm))
 				{
 					# Delete it so that it's removed from guacamole.
-					record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
 					delete $conf->{guacamole}{vm}{$this_vm};
 					$rewrite_needed = 1;
 				}
@@ -3806,19 +3809,19 @@ sub update_guacamole_config
 		if ($line =~ /^<config /)
 		{
 			($this_vm) = ($line =~ /name="(.*?)"/);
-			#record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm]\n");
 		}
 		
 		next if not $this_vm;
 		if (($line =~ /^<param /) && ($line =~ /name="hostname"/))
 		{
 			($this_host) = ($line =~ /value="(.*?)"/);
-			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
 		}
 		if (($line =~ /^<param /) && ($line =~ /name="port"/))
 		{
 			($this_port) = ($line =~ /value="(.*?)"/);
-			#record($conf, "$THIS_FILE ".__LINE__."; this_port: [$this_port]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_port: [$this_port]\n");
 		}
 	}
 	if (not $match_found)
@@ -3826,16 +3829,16 @@ sub update_guacamole_config
 		$rewrite_needed                       = 1;
 		$conf->{guacamole}{vm}{$say_vm}{host} = $node;
 		$conf->{guacamole}{vm}{$say_vm}{port} = $port;
-		#record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
-		record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
 	}
 	
 	# Now look to see if we need to update the config.
 	if ($rewrite_needed)
 	{
-		my ($date) = get_date($conf);
-		my $say_warning = get_string($conf, {key => "text_0006"});
-		my $say_updated = get_string($conf, {key => "text_0007", variables => {
+		my ($date) = AN::Cluster::get_date($conf);
+		my $say_warning = AN::Common::get_string($conf, {key => "text_0006"});
+		my $say_updated = AN::Common::get_string($conf, {key => "text_0007", variables => {
 				date	=>	$date,
 			}});
 		my $new_config;
@@ -3854,27 +3857,27 @@ sub update_guacamole_config
 		$new_config .= "</configs>\n";
 		
 		# Save the new config.
-		#record($conf, "$THIS_FILE ".__LINE__."; new guacamole config:\n===\n$new_config\n===\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new guacamole config:\n===\n$new_config\n===\n");
 		
 		# Backup the last config.
 		my $backup_file =  "$conf->{path}{guacamole_config}.$date";
 		   $backup_file =~ s/ /_/;
 		my $fh = IO::Handle->new();
 		my $sc = "cp $conf->{path}{guacamole_config} $backup_file";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
 		$fh->close();
 		
 		# Save the new config.
 		$fh = IO::Handle->new();
 		$sc = "$conf->{path}{guacamole_config}";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
 		print $fh $new_config;
 		$fh->close();
@@ -3882,7 +3885,7 @@ sub update_guacamole_config
 	else
 	{
 		# Rewrite not needed.
-		record($conf, "$THIS_FILE ".__LINE__."; Guacamole config update is not needed.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole config update is not needed.\n");
 	}
 	
 	return(0);
@@ -3893,7 +3896,7 @@ sub update_guacamole_config
 sub get_current_vm_vnc_info
 {
 	my ($conf, $vm, $node) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:/)
 	{
@@ -3903,18 +3906,18 @@ sub get_current_vm_vnc_info
 	{
 		$vm = "vm:$vm";
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; say_vm: [$say_vm]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_vm: [$say_vm]\n");
 	
 	my $port    = "";
 	my $type    = "";
 	my $listen  = "";
 	my $xml_ref = "";
 	
-	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
 	if ($conf->{vm}{$vm}{current_host})
 	{
 		$node = $conf->{vm}{$vm}{current_host};
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is running on: [$node].\n");
 		
 		# Read the current VM config from virsh.
 		read_live_xml($conf, $vm, $say_vm, $node);
@@ -3923,7 +3926,7 @@ sub get_current_vm_vnc_info
 	else
 	{
 		# The VM isn't running.
-		record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is not running.\n");
 		$xml_ref = $conf->{vm}{$vm}{xml};
 	}
 	
@@ -3931,13 +3934,13 @@ sub get_current_vm_vnc_info
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] definition line: [$line].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] definition line: [$line].\n");
 		if ($line =~ /^<graphics /)
 		{
 			($port)   = ($line =~ / port='(\d+)'/);
 			($type)   = ($line =~ / type='(.*?)'/);
 			($listen) = ($line =~ / listen='(.*?)'/);
-			record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
 			last;
 		}
 	}
@@ -3947,7 +3950,7 @@ sub get_current_vm_vnc_info
 	$conf->{vm}{$vm}{graphics}{'listen'} = $listen;
 	$conf->{vm}{$vm}{graphics}{port}     = $port;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 	return($node, $type, $listen, $port);
 }
 
@@ -3958,7 +3961,7 @@ sub read_live_xml
 	
 	$conf->{vm}{$vm}{live_xml} = [];
 	my $fh = IO::Handle->new();
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -3967,13 +3970,13 @@ sub read_live_xml
 		'close'		=>	1,
 		shell_call	=>	"virsh dumpxml $say_vm",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		push @{$conf->{vm}{$vm}{live_xml}}, $line;
 	}
 	
@@ -3984,7 +3987,7 @@ sub read_live_xml
 sub find_node_storage_pool
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in find_node_storage_pool().\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_node_storage_pool().\n");
 	
 	my $vm     = $conf->{cgi}{vm};
 	my $say_vm = ($vm =~ /^vm:(.*)/)[0];
@@ -3993,7 +3996,7 @@ sub find_node_storage_pool
 	my $in_block   = 0;
 	foreach my $line (sort {$a cmp $b} @{$conf->{vm}{$vm}{xml}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], xml line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], xml line: [$line]\n");
 		if (($line =~ /<disk/) && ($line =~ /type='block'/))
 		{
 			$in_block = 1;
@@ -4015,7 +4018,7 @@ sub find_node_storage_pool
 	}
 	my $lv_size = $conf->{resources}{lv}{$current_lv}{size};
 	my $on_vg   = $conf->{resources}{lv}{$current_lv}{on_vg};
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], current_lv: [$current_lv], size: [$lv_size], on_vg: [$on_vg]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], current_lv: [$current_lv], size: [$lv_size], on_vg: [$on_vg]\n");
 	
 	return($on_vg, $lv_size);
 }
@@ -4034,10 +4037,10 @@ sub update_vm_definition
 		$vm = "vm:$vm";
 	}
 	my $definition_file = $conf->{vm}{$vm}{definition_file};
-	record($conf, "$THIS_FILE ".__LINE__."; in update_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$definition_file]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in update_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$definition_file]\n");
 	
 	my $virsh_exit_code;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4046,13 +4049,13 @@ sub update_vm_definition
 		'close'		=>	1,
 		shell_call	=>	"virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
@@ -4062,7 +4065,7 @@ sub update_vm_definition
 			#print "<span class=\"code\">$line</span><br />\n";
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
 		# Delete the old definition values and read the new one.
@@ -4072,11 +4075,11 @@ sub update_vm_definition
 	else
 	{
 		$virsh_exit_code = "-" if not defined $virsh_exit_code;
-		my $say_error = get_string($conf, {key => "message_0086", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0086", variables => {
 			server		=>	$say_vm,
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
-		print template($conf, "server.html", "update-definition-failed-bad-exit-code", {
+		print AN::Common::template($conf, "server.html", "update-definition-failed-bad-exit-code", {
 			error	=>	$say_error,
 		});
 		return($virsh_exit_code);
@@ -4087,7 +4090,7 @@ sub update_vm_definition
 sub add_vm_to_cluster
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
 	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
@@ -4104,36 +4107,36 @@ sub add_vm_to_cluster
 			$node = $this_node if not $node;
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	my $failover_domain;
 	
 	# First, find the failover domain...
 	$conf->{'system'}{ignore_missing_vm} = 1;
-	scan_cluster($conf);
-	record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
+	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
 	foreach my $fod (keys %{$conf->{failoverdomain}})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; fod: [$fod]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; fod: [$fod]\n");
 		if ($fod =~ /primary_(.*?)$/)
 		{
 			my $node_suffix = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix]\n");
 			if ($node =~ /$node_suffix/)
 			{
 				$failover_domain = $fod;
-				record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
 				last;
 			}
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
 	
 	# If there is no password set, abort.
 	if (not $conf->{clusters}{$cluster}{ricci_pw})
 	{
 		# The variables hash feeds 'server' into 'message_0087' and 
 		# 'manage_url' into 'message_0088'.
-		print template($conf, "server.html", "add-server-to-anvil-no-ricci-password", {}, {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-ricci-password", {}, {
 			server		=>	$vm,
 			manage_url	=>	"?config=true&anvil=$cluster",
 		});
@@ -4143,13 +4146,13 @@ sub add_vm_to_cluster
 	if (not $failover_domain)
 	{
 		# No failover domain found
-		print template($conf, "server.html", "add-server-to-anvil-no-failover-domain");
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-failover-domain");
 		return (1);
 	}
 	
 	# Lets get started!
 	# The variable hash feeds into 'title_0033'.
-	print template($conf, "server.html", "add-server-to-anvil-header", {}, {
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-header", {}, {
 		server		=>	$vm,
 		failover_domain	=>	$failover_domain,
 	});
@@ -4160,12 +4163,12 @@ sub add_vm_to_cluster
 	if ($host eq "none")
 	{
 		# Server isn't running yet.
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0091!#",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
 		my $virsh_exit_code;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -4174,23 +4177,23 @@ sub add_vm_to_cluster
 			'close'		=>	0,
 			shell_call	=>	"virsh start $vm; echo virsh:\$?",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			next if not $line;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
 			}
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 		if ($virsh_exit_code eq "0")
 		{
 			# Server has booted.
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	"#!string!message_0092!#",
 			});
 		}
@@ -4199,12 +4202,12 @@ sub add_vm_to_cluster
 			# If something undefined the VM already and the server
 			# is not running, this will fail. Try to start the
 			# server using the definition file before giving up.
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	"#!string!message_0093!#",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
 			my $virsh_exit_code;
-			($error, $ssh_fh, $output) = remote_call($conf, {
+			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -4213,34 +4216,34 @@ sub add_vm_to_cluster
 				'close'		=>	1,
 				shell_call	=>	"virsh create /shared/definitions/${vm}.xml; echo virsh:\$?",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				next if not $line;
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line =~ /virsh:(\d+)/)
 				{
 					$virsh_exit_code = $1;
 				}
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 			if ($virsh_exit_code eq "0")
 			{
 				# Should now be booting.
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0092!#",
 				});
 			}
 			else
 			{
 				# Failed to boot.
-				my $say_error = get_string($conf, {key => "message_0094", variables => {
+				my $say_error = AN::Common::get_string($conf, {key => "message_0094", variables => {
 					server		=>	$vm,
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-				print template($conf, "server.html", "add-server-to-anvil-failed-to-boot", {
+				print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-boot", {
 					error	=>	$say_error,
 				});
 				return (1);
@@ -4250,7 +4253,7 @@ sub add_vm_to_cluster
 	elsif ($host eq $node)
 	{
 		# Already running
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0095!#",
 		});
 	}
@@ -4258,25 +4261,25 @@ sub add_vm_to_cluster
 	{
 		# Already running, but on the peer.
 		$node = $host;
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0096!#",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; The VM is now running on the peer. Will proceed using: [$node].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VM is now running on the peer. Will proceed using: [$node].\n");
 	}
 	
 	# Dump the VM's XML definition.
-	print template($conf, "server.html", "add-server-to-anvil-write-definition");
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-write-definition");
 
 	if (not $vm)
 	{
 		# No server name... wth?
-		print template($conf, "server.html", "add-server-to-anvil-no-server-name", {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-server-name", {
 			error	=>	"#!string!message_0098!#",
 		});
 		return (1);
 	}
 	my $virsh_exit_code;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4285,23 +4288,23 @@ sub add_vm_to_cluster
 		'close'		=>	0,
 		shell_call	=>	"virsh dumpxml $vm > $definition; echo virsh:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
 		# Wrote the definition.
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0099!#",
 		}, {
 			definition	=>	$definition,
@@ -4310,20 +4313,20 @@ sub add_vm_to_cluster
 	else
 	{
 		# Failed to write the definition file.
-		my $say_error = get_string($conf, {key => "message_0100", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0100", variables => {
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
-		print template($conf, "server.html", "add-server-to-anvil-failed-to-write-definition", {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-write-definition", {
 			error	=>	$say_error,
 		});
 		return (1);
 	}
 
 	# Undefine the new VM
-	print template($conf, "server.html", "add-server-to-anvil-undefine-server");
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-undefine-server");
 
 	undef $virsh_exit_code;
-	($error, $ssh_fh, $output) = remote_call($conf, {
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4332,14 +4335,14 @@ sub add_vm_to_cluster
 		'close'		=>	0,
 		shell_call	=>	"virsh undefine $vm; echo virsh:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $undefine_ok = 0;
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
@@ -4352,29 +4355,29 @@ sub add_vm_to_cluster
 			$undefine_ok = 1;
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code], undefine_ok: [$undefine_ok]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code], undefine_ok: [$undefine_ok]\n");
 	$virsh_exit_code = "0" if $undefine_ok;
-	record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0102!#",
 		});
 	}
 	else
 	{
 		$virsh_exit_code = "--" if not $virsh_exit_code;
-		record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
-		my $say_error = get_string($conf, {key => "message_0103", variables => {
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+		my $say_error = AN::Common::get_string($conf, {key => "message_0103", variables => {
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
-		print template($conf, "server.html", "add-server-to-anvil-failed-to-undefine-server", {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-undefine-server", {
 			error	=>	$say_error,
 		});
 	}
 	
 	# If I've made it this far, I am ready to add it to the cluster configuration.
-	print template($conf, "server.html", "add-server-to-anvil-add-to-rgmanager");
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-add-to-rgmanager");
 	
 	my $ccs_exit_code;
 	my $ccs_call =  "ccs ";
@@ -4388,8 +4391,8 @@ sub add_vm_to_cluster
 	   $ccs_call .= "restart_expire_time=\"600\" ";
 	   #$ccs_call .= "no_kill=\"1\"; echo ccs:\$?";
 	   $ccs_call .= "; echo ccs:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$ccs_call]\n");
-	($error, $ssh_fh, $output) = remote_call($conf, {
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$ccs_call]\n");
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4398,11 +4401,11 @@ sub add_vm_to_cluster
 		'close'		=>	0,
 		shell_call	=>	"$ccs_call"
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /ccs:(\d+)/)
 		{
 			$ccs_exit_code = $1;
@@ -4412,15 +4415,15 @@ sub add_vm_to_cluster
 			if ($line =~ /make sure the ricci server is started/)
 			{
 				# Tell the user that 'ricci' isn't running.
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0108!#",
 				}, {
 					node	=>	$node,
 				});
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0109!#",
 				});
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0110!#",
 				});
 			}
@@ -4428,17 +4431,17 @@ sub add_vm_to_cluster
 			{
 				# Show any output from the call.
 				$line = parse_text_line($conf, $line);
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"<span class=\"fixed_width\">$line</span>",
 				});
 			}
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
 	$ccs_exit_code = "--" if not defined $ccs_exit_code;
 	if ($ccs_exit_code eq "0")
 	{
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0111!#",
 		});
 		
@@ -4448,23 +4451,23 @@ sub add_vm_to_cluster
 	else
 	{
 		# ccs call failed
-		my $say_error = get_string($conf, {key => "message_0112", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0112", variables => {
 			ccs_exit_code	=>	$ccs_exit_code,
 		}});
-		print template($conf, "server.html", "add-server-to-anvil-ccs-call-failed", {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-ccs-call-failed", {
 			error	=>	$say_error,
 		});
 		return (1);
 	}
 	# Enable/boot the server.
-	print template($conf, "server.html", "add-server-to-anvil-enable-service");
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-enable-service");
 	
 	### TODO: Get the cluster's idea of the node name and use '-m ...'.
 	# Tell the cluster to start the VM. I don't bother to check for 
 	# readiness because I confirmed it was running on this node earlier.
 	my $clusvcadm_exit_code;
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [clusvcadm -e vm:$vm; echo clusvcadm:\$?]\n");
-	($error, $ssh_fh, $output) = remote_call($conf, {
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [clusvcadm -e vm:$vm; echo clusvcadm:\$?]\n");
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4473,11 +4476,11 @@ sub add_vm_to_cluster
 		'close'		=>	1,
 		shell_call	=>	"clusvcadm -e vm:$vm; echo clusvcadm:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /clusvcadm:(\d+)/)
 		{
 			$clusvcadm_exit_code = $1;
@@ -4485,27 +4488,27 @@ sub add_vm_to_cluster
 		else
 		{
 			$line = parse_text_line($conf, $line);
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	"$line",
 			});
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; clusvcadm exit code: [$clusvcadm_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; clusvcadm exit code: [$clusvcadm_exit_code]\n");
 	if ($clusvcadm_exit_code eq "0")
 	{
 		# Server added succcessfully.
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0114!#",
 		});
 	}
 	else
 	{
 		# 
-		my $say_error = get_string($conf, {key => "message_0115", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0115", variables => {
 			clusvcadm_exit_code	=>	$clusvcadm_exit_code,
 		}});
 		# The variable feeds 'message_0088'
-		print template($conf, "server.html", "add-server-to-anvil-clusvcadm-call-failed", {
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-clusvcadm-call-failed", {
 			error		=>	$say_error,
 		}, {
 			manage_url	=>	"?config=true&anvil=$cluster",
@@ -4513,7 +4516,7 @@ sub add_vm_to_cluster
 		return (1);
 	}
 	# Done!
-	print template($conf, "server.html", "add-server-to-anvil-footer");
+	print AN::Common::template($conf, "server.html", "add-server-to-anvil-footer");
 
 	return (0);
 }
@@ -4525,7 +4528,7 @@ sub find_vm_host
 	my ($conf, $node, $peer, $vm) = @_;
 	my $host = "none";
 	
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4534,26 +4537,26 @@ sub find_vm_host
 		'close'		=>	1,
 		shell_call	=>	"virsh list --all",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /\s$vm\s/)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; Found the VM.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the VM.\n");
 			if ($line =~ /^-/)
 			{
 				# It looks off... We have to go deeper!
-				record($conf, "$THIS_FILE ".__LINE__."; The VM appears to be off. Checking the peer to see if it is running there.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VM appears to be off. Checking the peer to see if it is running there.\n");
 			}
 			else
 			{
 				# It's running.
 				$host = $node;
-				record($conf, "$THIS_FILE ".__LINE__."; The VM is running.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VM is running.\n");
 				#print "It is already running, as expected.<br />\n";
 			}
 		}
@@ -4561,10 +4564,10 @@ sub find_vm_host
 	
 	if ($host eq "none")
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Looking for the VM on the peer node: [$peer].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Looking for the VM on the peer node: [$peer].\n");
 		my $on_peer = 0;
 		my $found   = 0;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$peer,
 			port		=>	$conf->{node}{$peer}{port},
 			user		=>	"root",
@@ -4573,35 +4576,35 @@ sub find_vm_host
 			'close'		=>	1,
 			shell_call	=>	"virsh list --all",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			next if not $line;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /\s$vm\s/)
 			{
 				#print "Found it on the peer node. Checking if it's running there.<br />\n";
-				record($conf, "$THIS_FILE ".__LINE__."; Found it on the peer. Checking if it's running.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found it on the peer. Checking if it's running.\n");
 				if ($line =~ /^\d/)
 				{
 					$found   = 1;
 					$on_peer = 1;
 					$node    = $peer;
 					$host    = $peer;
-					record($conf, "$THIS_FILE ".__LINE__."; It is.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It is.\n");
 				}
 				else
 				{
 					$found = 1;
-					record($conf, "$THIS_FILE ".__LINE__."; It is not running on the peer.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It is not running on the peer.\n");
 				}
 			}
 		}
 		if (($found) && (not $on_peer))
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; I did not find it on the peer node.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I did not find it on the peer node.\n");
 		}
 	}
 	
@@ -4613,11 +4616,11 @@ sub provision_vm
 {
 	my ($conf) = @_;
 	
-	my $say_title = get_string($conf, {key => "title_0115", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0115", variables => {
 			server	=>	$conf->{new_vm}{name},
 		}});
 
-	print template($conf, "server.html", "provision-server-header", {
+	print AN::Common::template($conf, "server.html", "provision-server-header", {
 		title	=>	$say_title,
 	});
 	
@@ -4670,7 +4673,7 @@ sub provision_vm
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
 	{
 		my $path = "/dev/$vg/$conf->{new_vm}{name}_$i";
-		record($conf, "$THIS_FILE ".__LINE__."; LV: [$path], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LV: [$path], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");
 		$provision .= "  --disk path=$path";
 		if ($conf->{new_vm}{virtio}{disk})
 		{
@@ -4683,20 +4686,20 @@ sub provision_vm
 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	$provision .= "  --graphics vnc,listen=0.0.0.0 --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one
 	###       good node.
 	
 	# Push the provision script into a file.
 	my $script = "/shared/provision/$conf->{new_vm}{name}.sh";
-	print template($conf, "server.html", "one-line-message", {
+	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0118!#",
 	}, {
 		script	=>	$script,
 	});
 	my $node = $conf->{new_vm}{host_node};
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4705,7 +4708,7 @@ sub provision_vm
 		'close'		=>	0,
 		shell_call	=>	"echo \"$provision\" > $script && chmod 755 $script",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		### I now detach this so I won't be here log enough to see the
@@ -4714,13 +4717,13 @@ sub provision_vm
 		#my $line = $_;
 		#print "\t\t\t<span class=\"code\">$line</span><br />\n";
 	}
-	print template($conf, "server.html", "one-line-message", {
+	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0119!#",
 	}, {
 		server	=>	$conf->{new_vm}{name},
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$script]\n");
-	($error, $ssh_fh, $output) = remote_call($conf, {
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$script]\n");
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -4729,7 +4732,7 @@ sub provision_vm
 		'close'		=>	1,
 		shell_call	=>	"$script",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	$error = 0;
 	foreach my $line (@{$output})
 	{
@@ -4737,23 +4740,23 @@ sub provision_vm
 		if ($line =~ /No such file or directory/i)
 		{
 			 # Failed to write the provision file.
-			$error = get_string($conf, {key => "message_0330", variables => {
+			$error = AN::Common::get_string($conf, {key => "message_0330", variables => {
 				provision_script	=>	$script,
 			}});
 		}
-		print template($conf, "server.html", "one-line-message-fixed-width", {
+		print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
 			message	=>	"$line",
 		});
 	}
 	if (not $error)
 	{
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0120!#",
 		});
 	}
 	else
 	{
-		print template($conf, "server.html", "provision-server-problem", {
+		print AN::Common::template($conf, "server.html", "provision-server-problem", {
 			message	=>	$error,
 		});
 		
@@ -4765,28 +4768,28 @@ sub provision_vm
 		my $node   = $conf->{new_vm}{host_node};
 		my $say_vm = $conf->{new_vm}{name};
 		my $vm     = "vm:$say_vm";
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
 		my $icon   = "";
 		# This needs to be set manually as this server didn't exist
 		# when the cluster was scanned last.
 		$conf->{vm}{$vm}{current_host} = $node;
 		sleep 3;
 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 		update_guacamole_config($conf, $say_vm, $node, $port);
 		
 		### FIXME: This is a dirty nasty hack. Fix this by managing
 		###        guacamole's cookies better.
 		restart_tomcat($conf, "1");
-		my ($guacamole_url) = get_guacamole_link($conf, $node);
+		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
 		if ($node =~ /n01/)
 		{
-			my $image = template($conf, "common.html", "image", {
+			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 				alt_text	=>	"",
 				id		=>	"server-desktop_n01",
 			}, "", 1);
-			$icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 				button_text	=>	"$image",
 				id		=>	"guacamole_url_$say_vm",
@@ -4794,12 +4797,12 @@ sub provision_vm
 		}
 		elsif ($node =~ /n02/)
 		{
-			my $image = template($conf, "common.html", "image", {
+			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 				alt_text	=>	"",
 				id		=>	"server-desktop_n02",
 			}, "", 1);
-			$icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 				button_text	=>	"$image",
 				id		=>	"guacamole_url_$say_vm",
@@ -4812,11 +4815,11 @@ sub provision_vm
 		}
 		
 		# Add the restart guac button.
-		my $restart_tomcat = get_string($conf, {key => "message_0085", variables => {
+		my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
 				reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
 			}});
 		
-		print template($conf, "server.html", "provision-server-install-started", {
+		print AN::Common::template($conf, "server.html", "provision-server-install-started", {
 			icon		=>	$icon,
 			restart_tomcat	=>	$restart_tomcat,
 		});
@@ -4824,12 +4827,12 @@ sub provision_vm
 	else
 	{
 		# No guacamole, so tell the user to use virt-manager.
-		print template($conf, "server.html", "provision-server-install-started-no-guacamole");
+		print AN::Common::template($conf, "server.html", "provision-server-install-started-no-guacamole");
 	}
 	
 	# Done!
 	# the variables hash feeds 'message_0126'.
-	print template($conf, "server.html", "provision-server-footer", {}, {
+	print AN::Common::template($conf, "server.html", "provision-server-footer", {}, {
 		url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$conf->{new_vm}{name}&node=$conf->{new_vm}{host_node}",
 	});
 	
@@ -4843,8 +4846,8 @@ sub verify_vm_config
 	
 	# First, get a current view of the cluster.
 	my $proceed = 1;
-	scan_cluster($conf);
-	read_files_on_shared($conf);
+	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::read_files_on_shared($conf);
 	
 	# If we connected, start parsing.
 	my $cluster = $conf->{cgi}{cluster};
@@ -4859,8 +4862,8 @@ sub verify_vm_config
 			if ($conf->{cgi}{name} =~ /\s/)
 			{
 				# Bad name
-				my $say_row     = get_string($conf, {key => "row_0102"});
-				my $say_message = get_string($conf, {key => "message_0127"});
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			else
@@ -4870,8 +4873,8 @@ sub verify_vm_config
 				if (exists $conf->{vm}{$vm_key})
 				{
 					# Duplicate name
-					my $say_row     = get_string($conf, {key => "row_0103"});
-					my $say_message = get_string($conf, {key => "message_0128", variables => {
+					my $say_row     = AN::Common::get_string($conf, {key => "row_0103"});
+					my $say_message = AN::Common::get_string($conf, {key => "message_0128", variables => {
 						server	=>	$vm,
 					}});
 					push @errors, "$say_row#!#$say_message";
@@ -4885,8 +4888,8 @@ sub verify_vm_config
 		else
 		{
 			# Missing server name
-			my $say_row     = get_string($conf, {key => "row_0104"});
-			my $say_message = get_string($conf, {key => "message_0129"});
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0104"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0129"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -4894,8 +4897,8 @@ sub verify_vm_config
 		if ($conf->{cgi}{cpu_cores} =~ /\D/)
 		{
 			# Not a digit.
-			my $say_row     = get_string($conf, {key => "row_0105"});
-			my $say_message = get_string($conf, {key => "message_0130", variables => {
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0105"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0130", variables => {
 				cpu_cores	=>	$conf->{cgi}{cpu_cores},
 			}});
 			push @errors, "$say_row#!#$say_message";
@@ -4903,8 +4906,8 @@ sub verify_vm_config
 		elsif ($conf->{cgi}{cpu_cores} > $conf->{resources}{total_threads})
 		{
 			# Not enough cores
-			my $say_row     = get_string($conf, {key => "row_0106"});
-			my $say_message = get_string($conf, {key => "message_0131", variables => {
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0106"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0131", variables => {
 				total_threads	=>	$conf->{resources}{total_threads},
 				cpu_cores	=>	$conf->{cgi}{cpu_cores},
 			}});
@@ -4919,22 +4922,22 @@ sub verify_vm_config
 		if ($conf->{cgi}{ram} =~ /\D/)
 		{
 			# RAM amount isn't a digit...
-			my $say_row     = get_string($conf, {key => "row_0107"});
-			my $say_message = get_string($conf, {key => "message_0132", variables => {
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0107"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0132", variables => {
 				ram	=>	$conf->{cgi}{ram},
 			}});
 			push @errors, "$say_row#!#$say_message";
 		}
-		my $requested_ram = hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
+		my $requested_ram = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
 		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
 		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
 		if ($requested_ram > $available_ram)
 		{
 			# Requested too much RAM.
-			my $say_free_ram  = bytes_to_hr($conf, $available_ram);
-			my $say_requested = bytes_to_hr($conf, $requested_ram);
-			my $say_row       = get_string($conf, {key => "row_0108"});
-			my $say_message   = get_string($conf, {key => "message_0133", variables => {
+			my $say_free_ram  = AN::Cluster::bytes_to_hr($conf, $available_ram);
+			my $say_requested = AN::Cluster::bytes_to_hr($conf, $requested_ram);
+			my $say_row       = AN::Common::get_string($conf, {key => "row_0108"});
+			my $say_message   = AN::Common::get_string($conf, {key => "message_0133", variables => {
 				free_ram	=>	$say_free_ram,
 				requested_ram	=>	$say_requested,
 			}});
@@ -4950,52 +4953,52 @@ sub verify_vm_config
 		# Look at the selected storage. if VGs named for two separate
 		# nodes are defined, error.
 		$conf->{new_vm}{host_node} = "";
-		#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}], vg_list: [$conf->{cgi}{vg_list}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}], vg_list: [$conf->{cgi}{vg_list}]\n");
 		foreach my $vg (split /,/, $conf->{cgi}{vg_list})
 		{
 			my $short_vg   = $vg;
 			my $short_node = $vg;
 			# Sometimes 'cXXnYY_vgZ' is used, sometimes
 			# 'cXXnYY-vgZ' is used.
-			#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node], vg: [$vg]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node], vg: [$vg]\n");
 			if ($vg =~ /^(.*?)_(vg\d+)$/)
 			{
 				$short_node = $1;
 				$short_vg   = $2;
-				#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
 			elsif ($vg =~ /^(.*?)-(vg\d+)$/)
 			{
 				$short_node = $1;
 				$short_vg   = $2;
-				#record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
 			my $say_node      = $short_vg;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
-			#record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
 			next if not $conf->{cgi}{$vg_key};
 			foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short_node: [$short_node]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short_node: [$short_node]\n");
 				if ($node =~ /$short_node/)
 				{
 					$say_node = $node;
-					#record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 					last;
 				}
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			if (not $conf->{new_vm}{host_node})
 			{
 				$conf->{new_vm}{host_node} = $say_node;
-				#record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			}
 			elsif ($conf->{new_vm}{host_node} ne $say_node)
 			{
 				# Conflicting Storage
-				my $say_row     = get_string($conf, {key => "row_0109"});
-				my $say_message = get_string($conf, {key => "message_0134"});
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0109"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0134"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			
@@ -5007,12 +5010,12 @@ sub verify_vm_config
 			else
 			{
 				# Make to lvcreate command a GiB value.
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::${vg_key}: [$conf->{cgi}{$vg_key}], cgi::${vg_suffix_key}: [$conf->{cgi}{$vg_suffix_key}]\n");
-				my $lv_size = hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
-				record($conf, "$THIS_FILE ".__LINE__."; > lv_size: [$lv_size]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::${vg_key}: [$conf->{cgi}{$vg_key}], cgi::${vg_suffix_key}: [$conf->{cgi}{$vg_suffix_key}]\n");
+				my $lv_size = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; > lv_size: [$lv_size]\n");
 				#$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
 				$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 30)));
-				record($conf, "$THIS_FILE ".__LINE__."; < lv_size: [$lv_size]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; < lv_size: [$lv_size]\n");
 				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
 			}
 		}
@@ -5028,16 +5031,16 @@ sub verify_vm_config
 			else
 			{
 				# Dude, where's my ISO?
-				my $say_row     = get_string($conf, {key => "row_0110"});
-				my $say_message = get_string($conf, {key => "message_0135"});
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0110"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0135"});
 				push @errors, "$say_row#!#$say_message";
 			}
 		}
 		else
 		{
 			# The user needs an install source...
-			my $say_row     = get_string($conf, {key => "row_0110"});
-			my $say_message = get_string($conf, {key => "message_0136"});
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0110"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0136"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -5068,8 +5071,8 @@ sub verify_vm_config
 			else
 			{
 				# Install media no longer exists.
-				my $say_row     = get_string($conf, {key => "row_0111"});
-				my $say_message = get_string($conf, {key => "message_0137"});
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0111"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0137"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			
@@ -5095,16 +5098,16 @@ sub verify_vm_config
 			if (not $match)
 			{
 				# OS variant specified but invalid
-				my $say_row     = get_string($conf, {key => "row_0112"});
-				my $say_message = get_string($conf, {key => "message_0138"});
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0112"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0138"});
 				push @errors, "$say_row#!#$say_message";
 			}
 		}
 		else
 		{
 			# No OS variant specified.
-			my $say_row     = get_string($conf, {key => "row_0113"});
-			my $say_message = get_string($conf, {key => "message_0139"});
+			my $say_row     = AN::Common::get_string($conf, {key => "row_0113"});
+			my $say_message = AN::Common::get_string($conf, {key => "message_0139"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -5112,17 +5115,17 @@ sub verify_vm_config
 		if (@errors > 0)
 		{
 			$proceed = 0;
-			print template($conf, "server.html", "verify-server-header");
+			print AN::Common::template($conf, "server.html", "verify-server-header");
 			
 			foreach my $error (@errors)
 			{
 				my ($title, $body) = ($error =~ /^(.*?)#!#(.*)$/);
-				print template($conf, "server.html", "verify-server-error", {
+				print AN::Common::template($conf, "server.html", "verify-server-error", {
 					title	=>	$title,
 					body	=>	$body,
 				});
 			}
-			print template($conf, "server.html", "verify-server-footer");
+			print AN::Common::template($conf, "server.html", "verify-server-footer");
 		}
 	}
 	else
@@ -5141,8 +5144,8 @@ sub confirm_provision_vm
 {
 	my ($conf) = @_;
 	
-	my ($node) = read_files_on_shared($conf);
-	record($conf, "$THIS_FILE ".__LINE__."; read file list from node: [$node]\n");
+	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read file list from node: [$node]\n");
 	return if not $node;
 	
 	my $cluster = $conf->{cgi}{cluster};
@@ -5166,28 +5169,28 @@ sub confirm_provision_vm
 		}
 	}
 	$conf->{cgi}{cpu_cores}  = 2 if not $conf->{cgi}{cpu_cores};
-	my $select_cpu_cores     = build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
+	my $select_cpu_cores     = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
 	foreach my $storage (sort {$a cmp $b} split/,/, $conf->{cgi}{max_storage})
 	{
 		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
-		my $say_max_storage          =  bytes_to_hr($conf, $space);
+		my $say_max_storage          =  AN::Cluster::bytes_to_hr($conf, $space);
 		$say_max_storage             =~ s/\.(\d+)//;
 		$conf->{cgi}{vg_list}        .= "$vg,";
 		my $vg_key                   =  "vg_$vg";
 		my $vg_suffix_key            =  "vg_suffix_$vg";
 		$conf->{cgi}{$vg_key}        =  ""    if not $conf->{cgi}{$vg_key};
 		$conf->{cgi}{$vg_suffix_key} =  "GiB" if not $conf->{cgi}{$vg_suffix_key};
-		my $select_vg_suffix                   =  build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB"]);
+		my $select_vg_suffix                   =  AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB"]);
 		if ($space < (2 ** 30))
 		{
 			# Less than a Terabyte
-			$select_vg_suffix            = build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB"]);
+			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB"]);
 			$conf->{cgi}{$vg_suffix_key} = "GiB" if not $conf->{cgi}{$vg_suffix_key};
 		}
 		elsif ($space < (2 ** 20))
 		{
 			# Less than a Gigabyte
-			$select_vg_suffix            = build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB"]);
+			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB"]);
 			$conf->{cgi}{$vg_suffix_key} = "MiB" if not $conf->{cgi}{$vg_suffix_key};
 		}
 		# Devine the node associated with this VG.
@@ -5215,7 +5218,7 @@ sub confirm_provision_vm
 		$conf->{vg_selects}{$vg}{short_vg}      = $short_vg;
 	}
 	my $say_selects;
-	my $say_or      = template($conf, "server.html", "provision-server-storage-pool-or-message", {}, {}, 1);
+	my $say_or      = AN::Common::template($conf, "server.html", "provision-server-storage-pool-or-message", {}, {}, 1);
 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{vg_selects}})
 	{
 		my $space            =  $conf->{vg_selects}{$vg}{space};
@@ -5225,7 +5228,7 @@ sub confirm_provision_vm
 		$say_node            =~ s/\..*$//;
 		my $short_vg         =  $conf->{vg_selects}{$vg}{short_vg};
 		my $vg_key           =  "vg_$vg";
-		$say_selects         .= template($conf, "server.html", "provision-server-selects", {
+		$say_selects         .= AN::Common::template($conf, "server.html", "provision-server-selects", {
 			node			=>	$say_node,
 			short_vg		=>	$short_vg,
 			max_storage		=>	$say_max_storage,
@@ -5236,22 +5239,22 @@ sub confirm_provision_vm
 		$say_selects         .= "$say_or";
 	}
 	$say_selects =~ s/$say_or$//m;
-	$say_selects .= template($conf, "server.html", "provision-server-vg-list-hidden-input", {
+	$say_selects .= AN::Common::template($conf, "server.html", "provision-server-vg-list-hidden-input", {
 		vg_list	=>	$conf->{cgi}{vg_list},
 	});
-	my $say_max_ram          = bytes_to_hr($conf, $conf->{cgi}{max_ram});
+	my $say_max_ram          = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{max_ram});
 	$conf->{cgi}{ram}        = 2 if not $conf->{cgi}{ram};
 	$conf->{cgi}{ram_suffix} = "GiB" if not $conf->{cgi}{ram_suffix};
-	my $select_ram_suffix    = build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
 	$conf->{cgi}{os_variant} = "generic" if not $conf->{cgi}{os_variant};
-	my $select_install_iso   = build_select($conf, "install_iso", 1, 1, 300, $conf->{cgi}{install_iso}, $images);
-	my $select_driver_iso    = build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
-	my $select_os_variant    = build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{'system'}{os_variant});
+	my $select_install_iso   = AN::Cluster::build_select($conf, "install_iso", 1, 1, 300, $conf->{cgi}{install_iso}, $images);
+	my $select_driver_iso    = AN::Cluster::build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
+	my $select_os_variant    = AN::Cluster::build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{'system'}{os_variant});
 	
-	my $say_title = get_string($conf, {key => "message_0142", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "message_0142", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	print template($conf, "server.html", "provision-server-questions", {
+	print AN::Common::template($conf, "server.html", "provision-server-questions", {
 		title			=>	$say_title,
 		name			=>	$conf->{cgi}{name},
 		select_os_variant	=>	$select_os_variant,
@@ -5279,14 +5282,14 @@ sub confirm_withdraw_node
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0035", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0035", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 		anvil		=>	$conf->{cgi}{cluster},
 	}});
-	my $say_message = get_string($conf, {key => "message_0145", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0145", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-withdrawl", {
+	print AN::Common::template($conf, "server.html", "confirm-withdrawl", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5301,14 +5304,14 @@ sub confirm_join_cluster
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0036", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0036", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 		anvil		=>	$conf->{cgi}{cluster},
 	}});
-	my $say_message = get_string($conf, {key => "message_0147", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0147", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-join-anvil", {
+	print AN::Common::template($conf, "server.html", "confirm-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5323,13 +5326,13 @@ sub confirm_dual_join
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0037", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0037", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	my $say_message = get_string($conf, {key => "message_0150", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0150", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	print template($conf, "server.html", "confirm-dual-join-anvil", {
+	print AN::Common::template($conf, "server.html", "confirm-dual-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5344,13 +5347,13 @@ sub confirm_fence_node
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0038", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0038", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	my $say_message = get_string($conf, {key => "message_0151", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0151", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-fence-node", {
+	print AN::Common::template($conf, "server.html", "confirm-fence-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5365,13 +5368,13 @@ sub confirm_poweroff_node
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0039", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0039", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	my $say_message = get_string($conf, {key => "message_0156", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0156", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-poweroff-node", {
+	print AN::Common::template($conf, "server.html", "confirm-poweroff-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5386,13 +5389,13 @@ sub confirm_poweron_node
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0040", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0040", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	my $say_message = get_string($conf, {key => "message_0160", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0160", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-poweron-node", {
+	print AN::Common::template($conf, "server.html", "confirm-poweron-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5407,10 +5410,10 @@ sub confirm_dual_boot
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_message = get_string($conf, {key => "message_0161", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0161", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	print template($conf, "server.html", "confirm-dual-poweron-node", {
+	print AN::Common::template($conf, "server.html", "confirm-dual-poweron-node", {
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
 	});
@@ -5423,15 +5426,15 @@ sub confirm_start_vm
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0042", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0042", variables => {
 		server		=>	$conf->{cgi}{vm},
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	my $say_message = get_string($conf, {key => "message_0163", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0163", variables => {
 		server		=>	$conf->{cgi}{vm},
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-start-server", {
+	print AN::Common::template($conf, "server.html", "confirm-start-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5446,20 +5449,20 @@ sub confirm_stop_vm
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0043", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0043", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	my $say_message = get_string($conf, {key => "message_0165", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0165", variables => {
 		server		=>	$conf->{cgi}{vm},
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	my $say_warning = get_string($conf, {key => "message_0166", variables => {
+	my $say_warning = AN::Common::get_string($conf, {key => "message_0166", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	my $say_precaution = get_string($conf, {key => "message_0167", variables => {
+	my $say_precaution = AN::Common::get_string($conf, {key => "message_0167", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
-	print template($conf, "server.html", "confirm-stop-server", {
+	print AN::Common::template($conf, "server.html", "confirm-stop-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		warning		=>	$say_warning,
@@ -5476,14 +5479,14 @@ sub confirm_force_off_vm
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0044", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0044", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	my $say_message = get_string($conf, {key => "message_0168", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0168", variables => {
 		server		=>	$conf->{cgi}{vm},
 		host		=>	$conf->{cgi}{host},
 	}});
-	print template($conf, "server.html", "confirm-force-off-server", {
+	print AN::Common::template($conf, "server.html", "confirm-force-off-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5498,13 +5501,13 @@ sub confirm_delete_vm
 	my ($conf) = @_;
 
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0045", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0045", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	my $say_message = get_string($conf, {key => "message_0178", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0178", variables => {
 		server		=>	$conf->{cgi}{vm},
 	}});
-	print template($conf, "server.html", "confirm-delete-server", {
+	print AN::Common::template($conf, "server.html", "confirm-delete-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5523,17 +5526,17 @@ sub confirm_migrate_vm
 	$migration_time_estimate *= 10; # ~10s / GB
 
 	# Ask the user to confirm
-	my $say_title = get_string($conf, {key => "title_0047", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0047", variables => {
 		server		=>	$conf->{cgi}{vm},
 		target		=>	$conf->{cgi}{target},
 	}});
-	my $say_message = get_string($conf, {key => "message_0177", variables => {
+	my $say_message = AN::Common::get_string($conf, {key => "message_0177", variables => {
 		server			=>	$conf->{cgi}{vm},
 		target			=>	$conf->{cgi}{target},
-		ram			=>	bytes_to_hr($conf, $conf->{cgi}{vm_ram}),
+		ram			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{vm_ram}),
 		migration_time_estimate	=>	$migration_time_estimate,
 	}});
-	print template($conf, "server.html", "confirm-migrate-server", {
+	print AN::Common::template($conf, "server.html", "confirm-migrate-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
@@ -5553,25 +5556,25 @@ sub start_vm
 	my $say_vm            = $vm =~ /^vm:/ ? ($vm =~ /vm:(.*)/)[0] : $vm;
 	my $remote_message    = "";
 	my $remote_icon       = "";
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm], node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# Make sure the node is still ready to take this VM.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $vm_key = "vm:$vm";
 	my $ready = check_node_readiness($conf, $vm_key, $node);
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
 	if ($ready)
 	{
-		my $say_title = get_string($conf, {key => "title_0046", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0046", variables => {
 			server		=>	$say_vm,
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "start-server-header", {
+		print AN::Common::template($conf, "server.html", "start-server-header", {
 			title		=>	$say_title,
 		});
 
 		my $show_remote_desktop_link = 0;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -5580,13 +5583,13 @@ sub start_vm
 			'close'		=>	0,
 			shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /Success/i)
 			{
 				# Set the host manually as the server wasn't
@@ -5594,19 +5597,19 @@ sub start_vm
 				my $vm_key = "vm:$vm";
 				$conf->{vm}{$vm_key}{current_host} = $node;
 				$show_remote_desktop_link      = 1;
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], vm_key: [$vm_key], node: [$node], vm::${vm_key}::current_host: [$conf->{vm}{$vm_key}{current_host}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], vm_key: [$vm_key], node: [$node], vm::${vm_key}::current_host: [$conf->{vm}{$vm_key}{current_host}]\n");
 			}
 			elsif ($line =~ /Service is already running/i)
 			{
 				$show_remote_desktop_link = 2;
 				$line = "";
-				print template($conf, "server.html", "start-server-already-running");
+				print AN::Common::template($conf, "server.html", "start-server-already-running");
 			}
 			elsif ($line =~ /Fail/i)
 			{
 				# The VM failed to start. Call a stop against it.
-				print template($conf, "server.html", "start-server-failed");
-				($error, $ssh_fh, $output) = remote_call($conf, {
+				print AN::Common::template($conf, "server.html", "start-server-failed");
+				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -5615,13 +5618,13 @@ sub start_vm
 					'close'		=>	0,
 					shell_call	=>	"clusvcadm -d vm:$vm",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -5630,13 +5633,13 @@ sub start_vm
 						$message = $line;
 						$status  = "";
 					}
-					print template($conf, "server.html", "start-server-shell-output", {
+					print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 						status	=>	$status,
 						message	=>	$message,
 					});
 				}
-				print template($conf, "server.html", "start-server-failed-trying-again");
-				($error, $ssh_fh, $output) = remote_call($conf, {
+				print AN::Common::template($conf, "server.html", "start-server-failed-trying-again");
+				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -5645,18 +5648,18 @@ sub start_vm
 					'close'		=>	1,
 					shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
 					if ($line =~ /Fail/i)
 					{
 						# The VM failed to start. Call a stop against it.
-						print template($conf, "server.html", "start-server-failed-again");
+						print AN::Common::template($conf, "server.html", "start-server-failed-again");
 					}
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -5665,7 +5668,7 @@ sub start_vm
 						$message = $line;
 						$status  = "";
 					}
-					print template($conf, "server.html", "start-server-shell-output", {
+					print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 						status	=>	$status,
 						message	=>	$message,
 					});
@@ -5679,7 +5682,7 @@ sub start_vm
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
@@ -5692,23 +5695,23 @@ sub start_vm
 			if (-e $conf->{path}{guacamole_config})
 			{
 				# Installed.
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 				# Give time for the server to actually come up.
 				if ($show_remote_desktop_link == 1)
 				{
 					sleep 3;
 				}
 				($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
 				if ($type ne "vnc")
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
 					# Check the recorded XML file and is necesary, update
 					# it. In any case, disable VNC and tell the user they
 					# will need to power off and restart the server before
 					# this will work.
-					$remote_message = get_string($conf, {key => "message_0076"});
-					$remote_icon    = template($conf, "common.html", "image", {
+					$remote_message = AN::Common::get_string($conf, {key => "message_0076"});
+					$remote_icon    = AN::Common::template($conf, "common.html", "image", {
 						image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 						alt_text	=>	"",
 						id		=>	"server-desktop_oops",
@@ -5721,24 +5724,24 @@ sub start_vm
 						#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
 						#       <listen type='address' address='0.0.0.0'/>
 						#     </graphics>
-						record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
 						my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
 						switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
 					}
 				}
 				else
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
 					update_guacamole_config($conf, $say_vm, $node, $port);
 				}
 				if (not $remote_message)
 				{
-					my ($guacamole_url) = get_guacamole_link($conf, $node);
-					$remote_message     = get_string($conf, {key => "message_0077"});
+					my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
+					$remote_message     = AN::Common::get_string($conf, {key => "message_0077"});
 					if (not $node)
 					{
-						$remote_message = get_string($conf, {key => "message_0078"});
-						$remote_icon    = template($conf, "common.html", "image", {
+						$remote_message = AN::Common::get_string($conf, {key => "message_0078"});
+						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
 							alt_text	=>	"",
 							id		=>	"server-desktop_offline",
@@ -5746,12 +5749,12 @@ sub start_vm
 					}
 					elsif ($node =~ /n01/)
 					{
-						my $image = template($conf, "common.html", "image", {
+						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
 							alt_text	=>	"",
 							id		=>	"server-desktop_n01",
 						}, "", 1);
-						$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 							button_text	=>	"$image",
 							id		=>	"guacamole_url_$say_vm",
@@ -5759,12 +5762,12 @@ sub start_vm
 					}
 					elsif ($node =~ /n02/)
 					{
-						my $image = template($conf, "common.html", "image", {
+						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
 							alt_text	=>	"",
 							id		=>	"server-desktop_n02",
 						}, "", 1);
-						$remote_icon = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
 							button_text	=>	"$image",
 							id		=>	"guacamole_url_$say_vm",
@@ -5772,8 +5775,8 @@ sub start_vm
 					}
 					else
 					{
-						$remote_message = get_string($conf, {key => "message_0079"});
-						$remote_icon    = template($conf, "common.html", "image", {
+						$remote_message = AN::Common::get_string($conf, {key => "message_0079"});
+						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 							alt_text	=>	"",
 							id		=>	"server-desktop_oops",
@@ -5785,7 +5788,7 @@ sub start_vm
 			{
 				# Not installed.
 				$remote_message = "#!string!message_0080!#";
-				$remote_icon    = template($conf, "common.html", "image", {
+				$remote_icon    = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 					alt_text	=>	"",
 					id		=>	"server-desktop_oops",
@@ -5793,34 +5796,34 @@ sub start_vm
 			}
 		}
 		
-		print template($conf, "server.html", "start-server-output-footer");
+		print AN::Common::template($conf, "server.html", "start-server-output-footer");
 		if ($show_remote_desktop_link)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
-			my $restart_tomcat = get_string($conf, {key => "message_0085", variables => {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
+			my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
 					reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
 				}});
-			#record($conf, "$THIS_FILE ".__LINE__."; restart_tomcat: [$restart_tomcat]\n");
-			print template($conf, "server.html", "start-server-show-guacamole-link", {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_tomcat: [$restart_tomcat]\n");
+			print AN::Common::template($conf, "server.html", "start-server-show-guacamole-link", {
 				remote_icon	=>	$remote_icon,
 				remote_message	=>	$remote_message,
 				restart_tomcat	=>	$restart_tomcat,
 			});
 		}
-		print template($conf, "server.html", "start-server-footer");
+		print AN::Common::template($conf, "server.html", "start-server-footer");
 	}
 	else
 	{
 		# The target node is not ready to run a server.
-		my $say_title = get_string($conf, {key => "title_0048", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0048", variables => {
 			server		=>	$vm,
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		my $say_message = get_string($conf, {key => "message_0184", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0184", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 			server		=>	$vm,
 		}});
-		print template($conf, "server.html", "start-server-node-not-ready", {
+		print AN::Common::template($conf, "server.html", "start-server-node-not-ready", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
@@ -5833,7 +5836,7 @@ sub start_vm
 sub parse_text_line
 {
 	my ($conf, $line) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
 	
 	# 'Da good ^_^
 	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
@@ -5851,7 +5854,7 @@ sub parse_text_line
 	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
 	$line =~ s/\[\s+(failed)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	return($line);
 }
 
@@ -5863,23 +5866,23 @@ sub migrate_vm
 	my $target = $conf->{cgi}{target};
 	my $vm     = $conf->{cgi}{vm};
 	my $node   = long_host_name_to_node_name($conf, $target);
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], target: [$target]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], target: [$target]\n");
 	
 	# Make sure the node is still ready to take this VM.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $vm_key = "vm:$vm";
 	my $ready = check_node_readiness($conf, $vm_key, $node);
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ready: [$ready]\n");
 	if ($ready)
 	{
-		my $say_title = get_string($conf, {key => "title_0049", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0049", variables => {
 			server	=>	$vm,
 			target	=>	$target,
 		}});
-		print template($conf, "server.html", "migrate-server-header", {
+		print AN::Common::template($conf, "server.html", "migrate-server-header", {
 			title	=>	$say_title,
 		});
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -5888,13 +5891,13 @@ sub migrate_vm
 			'close'		=>	1,
 			shell_call	=>	"$conf->{path}{clusvcadm} -M vm:$vm -m $target",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -5903,25 +5906,25 @@ sub migrate_vm
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
 		}
-		print template($conf, "server.html", "migrate-server-footer");
+		print AN::Common::template($conf, "server.html", "migrate-server-footer");
 	}
 	else
 	{
 		# Target not ready
-		my $say_title = get_string($conf, {key => "title_0050", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0050", variables => {
 			server	=>	$vm,
 			target	=>	$target,
 		}});
-		my $say_message = get_string($conf, {key => "message_0187", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0187", variables => {
 			server	=>	$vm,
 			target	=>	$target,
 		}});
-		print template($conf, "server.html", "migrate-server-target-not-ready", {
+		print AN::Common::template($conf, "server.html", "migrate-server-target-not-ready", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
@@ -5937,18 +5940,18 @@ sub stop_vm
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
 	
 	# This, more than 
-	scan_cluster($conf);
-	my $say_title = get_string($conf, {key => "title_0051", variables => {
+	AN::Cluster::scan_cluster($conf);
+	my $say_title = AN::Common::get_string($conf, {key => "title_0051", variables => {
 		server	=>	$vm,
 	}});
-	print template($conf, "server.html", "stop-server-header", {
+	print AN::Common::template($conf, "server.html", "stop-server-header", {
 		title	=>	$say_title,
 	});
 	my $say_node = node_name_to_long_host_name($conf, $node);
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -5957,14 +5960,14 @@ sub stop_vm
 		'close'		=>	1,
 		shell_call	=>	"$conf->{path}{clusvcadm} -d vm:$vm",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		$line =~ s/Local machine/$say_node/;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		$line = parse_text_line($conf, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
@@ -5973,12 +5976,12 @@ sub stop_vm
 			$message = $line;
 			$status  = "";
 		}
-		print template($conf, "server.html", "start-server-shell-output", {
+		print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 			status	=>	$status,
 			message	=>	$message,
 		});
 	}
-	print template($conf, "server.html", "stop-server-footer");
+	print AN::Common::template($conf, "server.html", "stop-server-footer");
 	
 	return(0);
 }
@@ -5991,10 +5994,10 @@ sub join_cluster
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $proceed           = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; in join_cluster(), node: [$node], node_cluster_name: [$node_cluster_name]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in join_cluster(), node: [$node], node_cluster_name: [$node_cluster_name]\n");
 	
 	# This, more than 
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	
 	# Proceed only if all of the storage components, cman and rgmanager are
 	# off.
@@ -6009,14 +6012,14 @@ sub join_cluster
 	}
 	if ($proceed)
 	{
-		my $say_title = get_string($conf, {key => "title_0052", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0052", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 			anvil		=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "join-anvil-header", {
+		print AN::Common::template($conf, "server.html", "join-anvil-header", {
 			title	=>	$say_title,
 		});
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -6025,13 +6028,13 @@ sub join_cluster
 			'close'		=>	1,
 			shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6040,21 +6043,21 @@ sub join_cluster
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
 		}
-		print template($conf, "server.html", "join-anvil-footer");
+		print AN::Common::template($conf, "server.html", "join-anvil-footer");
 	}
 	else
 	{
 		# Node is already in the Anvil!
-		my $say_title = get_string($conf, {key => "title_0053", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0053", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 			anvil		=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "join-anvil-aborted", {
+		print AN::Common::template($conf, "server.html", "join-anvil-aborted", {
 			title	=>	$say_title,
 		});
 	}
@@ -6069,10 +6072,10 @@ sub dual_join
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $proceed = 1;
-	#record($conf, "$THIS_FILE ".__LINE__."; in dual_join(), cluster: [$cluster]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in dual_join(), cluster: [$cluster]\n");
 	
 	# This, more than 
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	
 	# Proceed only if all of the storage components, cman and rgmanager are
 	# off.
@@ -6087,7 +6090,7 @@ sub dual_join
 		{
 			$proceed = 0;
 			# Already joined the Anvil!
-			my $reason = get_string($conf, {key => "message_0190", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0190", variables => {
 				node	=>	$node,
 			}});
 			push @abort_reason, $reason;
@@ -6095,17 +6098,17 @@ sub dual_join
 	}
 	if ($proceed)
 	{
-		my $say_title = get_string($conf, {key => "title_0054", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0054", variables => {
 			anvil	=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "dual-join-anvil-header", {
+		print AN::Common::template($conf, "server.html", "dual-join-anvil-header", {
 			title	=>	$say_title,
 		});
 
 		# I need to fork here because the calls won't return until cman
 		# either talks to it's peer or fences it.
 		my $parent_pid = $$;
-		#record($conf, "$THIS_FILE ".__LINE__."; Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
 		my %pids;
 		my $node_count = @{$conf->{clusters}{$cluster}{nodes}};
 		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
@@ -6115,14 +6118,14 @@ sub dual_join
 			{
 				# Parent thread.
 				$pids{$pid} = 1;
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Spawned child with PID: [$pid].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Spawned child with PID: [$pid].\n");
 			}
 			else
 			{
 				# This is the child thread, so do the call.
 				# Note that, without the 'die', we could end
 				# up here if the fork() failed.
-				my ($error, $ssh_fh, $output) = remote_call($conf, {
+				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -6131,14 +6134,14 @@ sub dual_join
 					'close'		=>	1,
 					shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
 					next if not $line;
-					record($conf, "$THIS_FILE ".__LINE__."; $node; $line\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $node; $line\n");
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6147,7 +6150,7 @@ sub dual_join
 						$message = $line;
 						$status  = "";
 					}
-					print template($conf, "server.html", "dual-join-anvil-output", {
+					print AN::Common::template($conf, "server.html", "dual-join-anvil-output", {
 						node	=>	$node,
 						message	=>	$message,
 						status	=>	$status,
@@ -6179,11 +6182,11 @@ sub dual_join
 				$pid = wait;
 				if ($pid < 1)
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
 				}
 				else
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Parent process told that child with PID: [$pid] has exited.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process told that child with PID: [$pid] has exited.\n");
 				}
 				
 				# This deletes the just-exited child process' PID from the
@@ -6193,31 +6196,31 @@ sub dual_join
 				# This counter is a safety mechanism. If I see more PIDs exit
 				# than I spawned, something went oddly and I need to bail.
 				$saw_reaped++;
-				my $say_error = get_string($conf, {key => "message_0192"});
-				error($conf, "$say_error\n") if $saw_reaped > ($node_count + 1);
+				my $say_error = AN::Common::get_string($conf, {key => "message_0192"});
+				AN::Cluster::error($conf, "$say_error\n") if $saw_reaped > ($node_count + 1);
 			}
 			while $pid > 0;	# This re-enters the do() loop for as
 					# long as the PID returned by wait()
 					# was >0.
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; All child processes reaped, exiting threaded execution.\n");
-		print template($conf, "server.html", "dual-join-anvil-footer");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; All child processes reaped, exiting threaded execution.\n");
+		print AN::Common::template($conf, "server.html", "dual-join-anvil-footer");
 	}
 	else
 	{
-		my $say_title = get_string($conf, {key => "title_0055", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0055", variables => {
 			anvil	=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "dual-join-anvil-aborted-header", {
+		print AN::Common::template($conf, "server.html", "dual-join-anvil-aborted-header", {
 			title	=>	$say_title,
 		});
 		foreach my $reason (@abort_reason)
 		{
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	"$reason",
 			});
 		}
-		print template($conf, "server.html", "dual-join-anvil-aborted-footer");
+		print AN::Common::template($conf, "server.html", "dual-join-anvil-aborted-footer");
 	}
 	
 	return(0);
@@ -6231,17 +6234,17 @@ sub force_off_vm
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
-	#record($conf, "$THIS_FILE ".__LINE__."; in force_off_vm(), vm: [$vm], node: [$node]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in force_off_vm(), vm: [$vm], node: [$node]\n");
 	
 	# This, more than 
-	scan_cluster($conf);
-	my $say_title = get_string($conf, {key => "title_0056", variables => {
+	AN::Cluster::scan_cluster($conf);
+	my $say_title = AN::Common::get_string($conf, {key => "title_0056", variables => {
 		server	=>	$vm,
 	}});
-	print template($conf, "server.html", "force-off-server-header", {
+	print AN::Common::template($conf, "server.html", "force-off-server-header", {
 		title	=>	$say_title,
 	});
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -6250,13 +6253,13 @@ sub force_off_vm
 		'close'		=>	1,
 		shell_call	=>	"virsh destroy $vm",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		$line = parse_text_line($conf, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6265,12 +6268,12 @@ sub force_off_vm
 			$message = $line;
 			$status  = "";
 		}
-		print template($conf, "server.html", "start-server-shell-output", {
+		print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 			status	=>	$status,
 			message	=>	$message,
 		});
 	}
-	print template($conf, "server.html", "force-off-server-footer");
+	print AN::Common::template($conf, "server.html", "force-off-server-footer");
 	
 	return(0);
 }
@@ -6285,10 +6288,10 @@ sub delete_vm
 	my $cluster = $conf->{cgi}{cluster};
 	my $say_vm  = $conf->{cgi}{vm};
 	my $vm      = "vm:$conf->{cgi}{vm}";
-	record($conf, "$THIS_FILE ".__LINE__."; in delete_vm(), vm: [$vm], cluster: [$cluster]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in delete_vm(), vm: [$vm], cluster: [$cluster]\n");
 	
 	# This, more than 
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $proceed      = 1;
 	my $stop_vm      = 0;
 	my $say_host     = "";
@@ -6297,12 +6300,12 @@ sub delete_vm
 	my $node         = $conf->{'system'}{cluster}{node1_name};
 	my $node1        = $conf->{'system'}{cluster}{node1_name};
 	my $node2        = $conf->{'system'}{cluster}{node2_name};
-	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::host: [$conf->{vm}{$vm}{host}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::host: [$conf->{vm}{$vm}{host}]\n");
 	if (not $conf->{vm}{$vm}{host})
 	{
 		$proceed      = 0;
 		# Failed to read the server's details.
-		my $sat_problem = get_string($conf, {key => "message_0195", variables => {
+		my $sat_problem = AN::Common::get_string($conf, {key => "message_0195", variables => {
 			server	=>	$say_vm,
 		}});
 		$abort_reason = "<b>$sat_problem!</b><br />#!string!message_0194!#<br />#!string!explain_0035!#<br />#!string!brand_0011!#<br />";
@@ -6328,23 +6331,23 @@ sub delete_vm
 		{
 			$proceed      = 0;
 			# Neither node is online.
-			$abort_reason = get_string($conf, {key => "message_0196", variables => {
+			$abort_reason = AN::Common::get_string($conf, {key => "message_0196", variables => {
 				server	=>	$say_vm,
 			}});
 		}
 	}
 	
 	# Get to work!
-	my $say_title = get_string($conf, {key => "title_0057", variables => {
+	my $say_title = AN::Common::get_string($conf, {key => "title_0057", variables => {
 		server	=>	$vm,
 	}});
-	print template($conf, "server.html", "delete-server-header", {
+	print AN::Common::template($conf, "server.html", "delete-server-header", {
 		title	=>	$say_title,
 	});
 
 	if ($proceed)
 	{
-		print template($conf, "server.html", "delete-server-start");
+		print AN::Common::template($conf, "server.html", "delete-server-start");
 		### Note: I don't use 'path' for these calls as the location of
 		###       a program on the cluster may differ from the local
 		###       copy. Further, I will have $PATH on the far side of
@@ -6352,7 +6355,7 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$host,
 			port		=>	$conf->{node}{$host}{port},
 			user		=>	"root",
@@ -6361,11 +6364,11 @@ sub delete_vm
 			'close'		=>	0,
 			shell_call	=>	"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			next if not $line;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /ccs:(\d+)/)
 			{
 				$ccs_exit_code = $1;
@@ -6373,40 +6376,40 @@ sub delete_vm
 			else
 			{
 				$line = parse_text_line($conf, $line);
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	$line,
 				});
 			}
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ccs exit code: [$ccs_exit_code]\n");
 		if ($ccs_exit_code eq "0")
 		{
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	"#!string!message_0197!#",
 			});
 			$proceed = 1;
 		}
 		else
 		{
-			my $say_error = get_string($conf, {key => "message_0198", variables => {
+			my $say_error = AN::Common::get_string($conf, {key => "message_0198", variables => {
 				ccs_exit_code	=>	$ccs_exit_code,
 			}});
-			print template($conf, "server.html", "delete-server-bad-exit-code", {
+			print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 				error	=>	$say_error,
 			});
 		}
-		print template($conf, "server.html", "delete-server-start-footer");
+		print AN::Common::template($conf, "server.html", "delete-server-start-footer");
 		
 		my $stop_exit_code;
 		if (($stop_vm) && ($ccs_exit_code eq "0"))
 		{
 			# Server is still running, kill it.
-			print template($conf, "server.html", "delete-server-force-off-header");
+			print AN::Common::template($conf, "server.html", "delete-server-force-off-header");
 			
 			   $proceed = 0;
 			my $virsh_exit_code;
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			($error, $ssh_fh, $output) = remote_call($conf, {
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$host,
 				port		=>	$conf->{node}{$host}{port},
 				user		=>	"root",
@@ -6415,11 +6418,11 @@ sub delete_vm
 				'close'		=>	0,
 				shell_call	=>	"virsh destroy $say_vm; echo virsh:\$?",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
 				next if not $line;
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line =~ /virsh:(\d+)/)
 				{
 					$virsh_exit_code = $1;
@@ -6427,45 +6430,45 @@ sub delete_vm
 				else
 				{
 					$line = parse_text_line($conf, $line);
-					print template($conf, "server.html", "one-line-message", {
+					print AN::Common::template($conf, "server.html", "one-line-message", {
 						message	=>	$line,
 					});
 				}
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 			if ($virsh_exit_code eq "0")
 			{
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0199!#",
 				});
 				$proceed = 1;
 			}
 			else
 			{
-				my $say_error = get_string($conf, {key => "message_0200", variables => {
+				my $say_error = AN::Common::get_string($conf, {key => "message_0200", variables => {
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-				print template($conf, "server.html", "delete-server-bad-exit-code", {
+				print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 					error	=>	$say_error,
 				});
 			}
-			print template($conf, "server.html", "delete-server-force-off-footer");
+			print AN::Common::template($conf, "server.html", "delete-server-force-off-footer");
 		}
 		
 		# Now delete the backing LVs
 		if ($proceed)
 		{
 			# Free up the storage
-			print template($conf, "server.html", "delete-server-remove-lv-header");
+			print AN::Common::template($conf, "server.html", "delete-server-remove-lv-header");
 			foreach my $lv (keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 			{
-				print template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	"#!string!message_0201!#",
 				}, {
 					lv	=>	$lv,
 				});
 				my $lvremove_exit_code;
-				($error, $ssh_fh, $output) = remote_call($conf, {
+				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$host,
 					port		=>	$conf->{node}{$host}{port},
 					user		=>	"root",
@@ -6474,11 +6477,11 @@ sub delete_vm
 					'close'		=>	1,
 					shell_call	=>	"lvremove -f $lv; echo lvremove:\$?",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					next if not $line;
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					if ($line =~ /lvremove:(\d+)/)
 					{
 						$lvremove_exit_code = $1;
@@ -6486,24 +6489,24 @@ sub delete_vm
 					else
 					{
 						#$line = parse_text_line($conf, $line);
-						print template($conf, "server.html", "one-line-message", {
+						print AN::Common::template($conf, "server.html", "one-line-message", {
 							message	=>	$line,
 						});
 					}
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; lvremove exit code: [$lvremove_exit_code]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lvremove exit code: [$lvremove_exit_code]\n");
 				if ($lvremove_exit_code eq "0")
 				{
-					print template($conf, "server.html", "one-line-message", {
+					print AN::Common::template($conf, "server.html", "one-line-message", {
 						message	=>	"#!string!message_0202!#",
 					});
 				}
 				else
 				{
-					my $say_error = get_string($conf, {key => "message_0204", variables => {
+					my $say_error = AN::Common::get_string($conf, {key => "message_0204", variables => {
 						lvremove_exit_code	=>	$lvremove_exit_code,
 					}});
-					print template($conf, "server.html", "delete-server-bad-exit-code", {
+					print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 						error			=>	$say_error,
 					});
 				}
@@ -6515,18 +6518,18 @@ sub delete_vm
 			archive_file($conf, $host, $file, 0, "hidden_table");
 			remove_vm_definition($conf, $host, $file);
 			# variables hash feeds 'message_0205'.
-			print template($conf, "server.html", "delete-server-success", {}, {
+			print AN::Common::template($conf, "server.html", "delete-server-success", {}, {
 				server	=>	$say_vm,
 			});
 		}
 	}
 	else
 	{
-		print template($conf, "server.html", "delete-server-abort-reason", {
+		print AN::Common::template($conf, "server.html", "delete-server-abort-reason", {
 			abort_reason	=>	$abort_reason,
 		});
 	}
-	print template($conf, "server.html", "delete-server-footer");
+	print AN::Common::template($conf, "server.html", "delete-server-footer");
 	
 	return(0);
 }
@@ -6541,7 +6544,7 @@ sub remove_vm_definition
 	{
 		# We will only touch files in /shared/definitions
 		# The variables hash feeds 'message_0207'.
-		print template($conf, "server.html", "remove-vm-definition-wrong-definition-file", {}, {
+		print AN::Common::template($conf, "server.html", "remove-vm-definition-wrong-definition-file", {}, {
 			file	=>	$file,
 		});
 		return (1);
@@ -6550,7 +6553,7 @@ sub remove_vm_definition
 	# 'rm' seems to return '0' no matter what. So I use the 'ls' to ensure
 	# the file is gone. 'ls' will return '2' on file not found.
 	my $ls_exit_code;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -6559,11 +6562,11 @@ sub remove_vm_definition
 		'close'		=>	1,
 		shell_call	=>	"rm -f $file; ls $file; echo ls:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /ls:(\d+)/)
 		{
 			$ls_exit_code = $1;
@@ -6572,16 +6575,16 @@ sub remove_vm_definition
 		{
 			### There will be output, I don't care about it.
 			#$line = parse_text_line($conf, $line);
-			#print template($conf, "server.html", "one-line-message", {
+			#print AN::Common::template($conf, "server.html", "one-line-message", {
 			#	message	=>	$line,
 			#});
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; ls exit code: [$ls_exit_code]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ls exit code: [$ls_exit_code]\n");
 	if ($ls_exit_code eq "2")
 	{
 		# File deleted successfully.
-		print template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	"#!string!message_0209!#",
 		}, {
 			file	=>	$file,
@@ -6591,7 +6594,7 @@ sub remove_vm_definition
 	{
 		# Delete seems to have failed
 		# The variables hash feeds 'message_0210'
-		print template($conf, "server.html", "remove-vm-definition-failed", {}, {
+		print AN::Common::template($conf, "server.html", "remove-vm-definition-failed", {}, {
 			file		=>	$file,
 			ls_exit_code	=>	$ls_exit_code,
 		});
@@ -6606,17 +6609,17 @@ sub archive_file
 	my ($conf, $node, $file, $quiet, $table_type) = @_;
 	$table_type = "hidden_table" if not $table_type;
 	$quiet = 0 if not defined $quiet;
-	record($conf, "$THIS_FILE ".__LINE__."; archive_file(); node: [$node], file: [$file], quiet: [$quiet], table_type: [$table_type]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; archive_file(); node: [$node], file: [$file], quiet: [$quiet], table_type: [$table_type]\n");
 	
 	### TODO: Check/create the archive directory.
 	
 	my ($directory, $file_name) =  ($file =~ /^(.*)\/(.*?)$/);
-	my ($date)                  =  get_date($conf, time);
+	my ($date)                  =  AN::Cluster::get_date($conf, time);
 	my $destination             =  "/shared/archive/$file_name.$date";
 	   $destination             =~ s/ /_/;
 
 	my $cp_exit_code;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -6625,12 +6628,12 @@ sub archive_file
 		'close'		=>	1,
 		shell_call	=>	"cp $file $destination; echo cp:\$?",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $header_printed = 0;
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /cp:(\d+)/)
 		{
 			$cp_exit_code = $1;
@@ -6639,28 +6642,28 @@ sub archive_file
 		{
 			if (not $header_printed)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; table_type: [$table_type]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; table_type: [$table_type]\n");
 				if ($table_type eq "hidden_table")
 				{
-					print template($conf, "server.html", "one-line-message-header-hidden");
+					print AN::Common::template($conf, "server.html", "one-line-message-header-hidden");
 				}
 				else
 				{
-					print template($conf, "server.html", "one-line-message-header");
+					print AN::Common::template($conf, "server.html", "one-line-message-header");
 				}
 				$header_printed = 1;
 			}
 			$line = parse_text_line($conf, $line);
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	$line,
 			});
 		}
 	}
 	if ($header_printed)
 	{
-		print template($conf, "server.html", "one-line-message-footer");
+		print AN::Common::template($conf, "server.html", "one-line-message-footer");
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cp exit code: [$cp_exit_code]\n");
 	if ($cp_exit_code eq "0")
 	{
 		# Success
@@ -6668,28 +6671,28 @@ sub archive_file
 		{
 			if ($table_type eq "hidden_table")
 			{
-				print template($conf, "server.html", "one-line-message-header-hidden");
+				print AN::Common::template($conf, "server.html", "one-line-message-header-hidden");
 			}
 			else
 			{
-				print template($conf, "server.html", "one-line-message-header");
+				print AN::Common::template($conf, "server.html", "one-line-message-header");
 			}
-			my $message = get_string($conf, {key => "message_0211", variables => {
+			my $message = AN::Common::get_string($conf, {key => "message_0211", variables => {
 				file		=>	$file,
 				destination	=>	$destination,
 			}});
-			print template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	$message,
 			});
-			print template($conf, "server.html", "one-line-message-footer");
+			print AN::Common::template($conf, "server.html", "one-line-message-footer");
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; The file: [$file] has been archived as: [$destination].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The file: [$file] has been archived as: [$destination].\n");
 	}
 	else
 	{
 		# Failure
 		# The variables hash feeds 'message_0212'.
-		print template($conf, "server.html", "archive-file-failed", {}, {
+		print AN::Common::template($conf, "server.html", "archive-file-failed", {}, {
 			file		=>	$file,
 			destination	=>	$destination,
 			cp_exit_code	=>	$cp_exit_code,
@@ -6729,23 +6732,23 @@ sub poweroff_node
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $proceed = $conf->{node}{$node}{enable_poweroff};
-	record($conf, "$THIS_FILE ".__LINE__."; in poweroff_node(), node: [$node], proceed: [$proceed]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in poweroff_node(), node: [$node], proceed: [$proceed]\n");
 	if ($proceed)
 	{
 		# Call the 'poweroff'.
-		my $say_title = get_string($conf, {key => "title_0061", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0061", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		my $say_message = get_string($conf, {key => "message_0213", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0213", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "poweroff-node-header", {
+		print AN::Common::template($conf, "server.html", "poweroff-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -6754,13 +6757,13 @@ sub poweroff_node
 			'close'		=>	1,
 			shell_call	=>	"poweroff && echo \"Power down initiated. Please return to the main page now.\"",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6769,29 +6772,29 @@ sub poweroff_node
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
 		}
-		print template($conf, "server.html", "poweroff-node-footer");
+		print AN::Common::template($conf, "server.html", "poweroff-node-footer");
 	}
 	else
 	{
 		# Aborted, in use now.
-		my $say_title = get_string($conf, {key => "title_0062", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0062", variables => {
 			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 		}});
-		my $say_message = get_string($conf, {key => "message_0214", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0214", variables => {
 			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 		}});
-		print template($conf, "server.html", "poweroff-node-aborted", {
+		print AN::Common::template($conf, "server.html", "poweroff-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
 	}
 	
-	footer($conf);
+	AN::Cluster::footer($conf);
 	
 	return(0);
 }
@@ -6807,16 +6810,16 @@ sub dual_boot
 	my $sc      = "";
 	# TODO: Provide an option to boot just one node if one node fails for
 	# some reason but the other node is fine.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my @abort_reasons;
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		# Read the cache files.
-		read_node_cache($conf, $node);
+		AN::Cluster::read_node_cache($conf, $node);
 		if (not $conf->{node}{$node}{info}{power_check_command})
 		{
 			# No cache
-			my $reason = get_string($conf, {key => "message_0215", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0215", variables => {
 				node	=>	$node,
 			}});
 			push @abort_reasons, "$reason\n";
@@ -6824,12 +6827,12 @@ sub dual_boot
 		}
 		
 		# Confirm the node is off still.
-		check_if_on($conf, $node);
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::is_on: [$conf->{node}{$node}{is_on}]\n");
+		AN::Cluster::check_if_on($conf, $node);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::is_on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 1)
 		{
 			# Already on.
-			my $reason = get_string($conf, {key => "message_0216", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0216", variables => {
 				node	=>	$node,
 			}});
 			push @abort_reasons, "$reason\n";
@@ -6839,7 +6842,7 @@ sub dual_boot
 		{
 			# Can't reach IPMI interface
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = get_string($conf, {key => "message_0217", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0217", variables => {
 				node		=>	$node,
 				target_host	=>	$target_host,
 			}});
@@ -6850,7 +6853,7 @@ sub dual_boot
 		{
 			# Not on the IPMI interface's subnet
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = get_string($conf, {key => "message_0218", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0218", variables => {
 				node		=>	$node,
 				target_host	=>	$target_host,
 			}});
@@ -6861,7 +6864,7 @@ sub dual_boot
 		{
 			# Cache found, but no power command recorded
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = get_string($conf, {key => "message_0219", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0219", variables => {
 				node		=>	$node,
 				target_host	=>	$target_host,
 			}});
@@ -6876,20 +6879,20 @@ sub dual_boot
 	# Let's go
 	if ($proceed)
 	{
-		my $say_message = get_string($conf, {key => "message_0220", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0220", variables => {
 			anvil	=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "dual-boot-header", {
+		print AN::Common::template($conf, "server.html", "dual-boot-header", {
 			message	=>	$say_message,
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 		while(<$fh>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6898,30 +6901,30 @@ sub dual_boot
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
 		}
 		$fh->close();
-		print template($conf, "server.html", "dual-boot-footer");
+		print AN::Common::template($conf, "server.html", "dual-boot-footer");
 	}
 	else
 	{
 		# Abort, abort!
-		my $say_title= get_string($conf, {key => "title_0064", variables => {
+		my $say_title= AN::Common::get_string($conf, {key => "title_0064", variables => {
 			anvil	=>	$conf->{cgi}{cluster},
 		}});
-		print template($conf, "server.html", "dual-boot-aborted-header", {
+		print AN::Common::template($conf, "server.html", "dual-boot-aborted-header", {
 			title	=>	$say_title,
 		});
 		foreach my $reason (@abort_reasons)
 		{
-			print template($conf, "server.html", "dual-boot-abort-reason", {
+			print AN::Common::template($conf, "server.html", "dual-boot-abort-reason", {
 				reason	=>	$reason,
 			});
 		}
-		print template($conf, "server.html", "dual-boot-aborted-footer");
+		print AN::Common::template($conf, "server.html", "dual-boot-aborted-footer");
 	}
 	
 	return(0);
@@ -6935,15 +6938,15 @@ sub poweron_node
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node]\n");
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	scan_cluster($conf);
-	check_if_on($conf, $node);
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::check_if_on($conf, $node);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 	my $proceed      = 0;
 	# Unknown error is the default.
-	my $abort_reason = get_string($conf, {key => "message_0224", variables => {
+	my $abort_reason = AN::Common::get_string($conf, {key => "message_0224", variables => {
 		node	=>	$node,
 	}});
 	if ($conf->{node}{$node}{is_on} == 0)
@@ -6953,28 +6956,28 @@ sub poweron_node
 	elsif ($conf->{node}{$node}{is_on} == 1)
 	{
 		# Already on
-		$abort_reason = get_string($conf, {key => "message_0225", variables => {
+		$abort_reason = AN::Common::get_string($conf, {key => "message_0225", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
 	}
 	elsif ($conf->{node}{$node}{is_on} == 2)
 	{
 		# Unable to contact the IPMI BMC
-		$abort_reason = get_string($conf, {key => "message_0226", variables => {
+		$abort_reason = AN::Common::get_string($conf, {key => "message_0226", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], proceed: [$proceed]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], proceed: [$proceed]\n");
 	if ($proceed)
 	{
 		# It is still off.
-		my $say_title = get_string($conf, {key => "title_0065", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0065", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		my $say_message = get_string($conf, {key => "message_0222", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0222", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "poweron-node-header", {
+		print AN::Common::template($conf, "server.html", "poweron-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
@@ -6982,28 +6985,28 @@ sub poweron_node
 		# The node is still off. Now can I call it from it's peer?
 		my $peer  = "";
 		my $is_on = 2;
-		record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 		if ($conf->{'system'}{up_nodes} == 1)
 		{
 			# It has to be the peer of this node.
 			$peer = @{$conf->{up_nodes}}[0];
 		}
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 		if ($peer)
 		{
 			# It's peer is up, use it.
 			if (not $conf->{node}{$node}{info}{power_check_command})
 			{
 				# Can't find the power command on the peer
-				my $error = get_string($conf, {key => "message_0227", variables => {
+				my $error = AN::Common::get_string($conf, {key => "message_0227", variables => {
 						node	=>	$node,
 						peer	=>	$peer,
 					}});
-				error($conf, "$error\n");
+				AN::Cluster::error($conf, "$error\n");
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
-			my ($error, $ssh_fh, $output) = remote_call($conf, {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$peer,
 				port		=>	$conf->{node}{$peer}{port},
 				user		=>	"root",
@@ -7012,15 +7015,15 @@ sub poweron_node
 				'close'		=>	1,
 				shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o on",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-				print template($conf, "server.html", "one-line-message", {
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	$line,
 				});
 			}
-			print template($conf, "server.html", "poweron-node-close-tr");
+			print AN::Common::template($conf, "server.html", "poweron-node-close-tr");
 		}
 		else
 		{
@@ -7028,44 +7031,44 @@ sub poweron_node
 			if ($conf->{node}{$node}{info}{power_check_command})
 			{
 				my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target host: [$target_host], power check command: [$conf->{node}{$node}{info}{power_check_command}].\n");
-				my ($local_access, $target_ip) = on_same_network($conf, $target_host, $node);
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local access: [$local_access].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], target host: [$target_host], power check command: [$conf->{node}{$node}{info}{power_check_command}].\n");
+				my ($local_access, $target_ip) = AN::Cluster::on_same_network($conf, $target_host, $node);
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local access: [$local_access].\n");
 				if ($local_access)
 				{
 					# I can reach it directly
 					my $sc = "$conf->{node}{$node}{info}{power_check_command} -o on";
-					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 					my $fh = IO::Handle->new();
 					open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 					while(<$fh>)
 					{
 						chomp;
 						my $line = $_;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
-						print template($conf, "server.html", "one-line-message", {
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+						print AN::Common::template($conf, "server.html", "one-line-message", {
 							message	=>	$line,
 						});
 					}
 					$fh->close();
-					print template($conf, "server.html", "poweron-node-close-tr");
+					print AN::Common::template($conf, "server.html", "poweron-node-close-tr");
 				}
 				else
 				{
 					# I can't reach it from here.
-					record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
 				}
 			}
 			else
 			{
 				# Can't check the power.
-				my $say_title = get_string($conf, {key => "title_0066", variables => {
+				my $say_title = AN::Common::get_string($conf, {key => "title_0066", variables => {
 					node_anvil_name	=>	$node_cluster_name,
 				}});
-				my $say_message = get_string($conf, {key => "message_0228", variables => {
+				my $say_message = AN::Common::get_string($conf, {key => "message_0228", variables => {
 					node_anvil_name	=>	$node_cluster_name,
 				}});
-				print template($conf, "server.html", "poweron-node-failed", {
+				print AN::Common::template($conf, "server.html", "poweron-node-failed", {
 					title	=>	$say_title,
 					message	=>	$say_message,
 				});
@@ -7075,16 +7078,16 @@ sub poweron_node
 	else
 	{
 		# Poweron aborted
-		my $say_title = get_string($conf, {key => "title_0067", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0067", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "poweron-node-aborted", {
+		print AN::Common::template($conf, "server.html", "poweron-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$abort_reason,
 		});
 	}
-	print template($conf, "server.html", "poweron-node-footer");
-	footer($conf);
+	print AN::Common::template($conf, "server.html", "poweron-node-footer");
+	AN::Cluster::footer($conf);
 	
 	return(0);
 }
@@ -7099,10 +7102,10 @@ sub fence_node
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $peer              = get_peer_node($conf, $node);
-	record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node], peer: [$peer], cluster name: [$node_cluster_name]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node], peer: [$peer], cluster name: [$node_cluster_name]\n");
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $proceed      = 1;
 	my @abort_reason = "";
 	
@@ -7114,7 +7117,7 @@ sub fence_node
 	}
 	else
 	{
-		read_node_cache($conf, $node);
+		AN::Cluster::read_node_cache($conf, $node);
 		if ($conf->{node}{$node}{info}{fence_methods})
 		{
 			$fence_string = $conf->{node}{$node}{info}{fence_methods};
@@ -7122,7 +7125,7 @@ sub fence_node
 		else
 		{
 			$proceed      = 0;
-			my $reason = get_string($conf, {key => "message_0231", variables => {
+			my $reason = AN::Common::get_string($conf, {key => "message_0231", variables => {
 				node	=>	$node,
 			}});
 			push @abort_reason, "$reason\n";
@@ -7140,11 +7143,11 @@ sub fence_node
 			# address.
 			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
 			{
-				my ($local_access, $target_ip) = on_same_network($conf, $address, $node);
+				my ($local_access, $target_ip) = AN::Cluster::on_same_network($conf, $address, $node);
 				if (not $local_access)
 				{
 					$proceed = 0;
-					my $reason = get_string($conf, {key => "message_0232", variables => {
+					my $reason = AN::Common::get_string($conf, {key => "message_0232", variables => {
 						node	=>	$node,
 						peer	=>	$peer,
 						address	=>	$address,
@@ -7155,16 +7158,16 @@ sub fence_node
 		}
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], proceed: [$proceed]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], proceed: [$proceed]\n");
 	if ($proceed)
 	{
-		my $say_title = get_string($conf, {key => "title_0068", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0068", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		my $say_message = get_string($conf, {key => "message_0233", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0233", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "fence-node-header", {
+		print AN::Common::template($conf, "server.html", "fence-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
@@ -7178,7 +7181,7 @@ sub fence_node
 		my $unfence_success = 0;
 		foreach my $line ($fence_string =~ /\d+:.*?;\./g)
 		{
-			print template($conf, "server.html", "fence-node-output-header");
+			print AN::Common::template($conf, "server.html", "fence-node-output-header");
 			my ($method_num, $method_name, $command) = ($line =~ /(\d+):(.*?): (.*?;)\./);
 			my $off_command = $command;
 			my $on_command  = $command;
@@ -7211,7 +7214,7 @@ sub fence_node
 			{
 				my $node    = $1;
 				my $command = $2;
-				(my $error, $ssh_fh, $output) = remote_call($conf, {
+				(my $error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -7220,11 +7223,11 @@ sub fence_node
 					'close'		=>	0,
 					shell_call	=>	"$command",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
 				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
@@ -7236,7 +7239,7 @@ sub fence_node
 			}
 			foreach my $line (@{$output})
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 				# This is how I get the fence call's exit code.
 				if ($line =~ /fence:(\d+)/)
 				{
@@ -7249,20 +7252,20 @@ sub fence_node
 				}
 				else
 				{
-					print template($conf, "server.html", "one-line-message", {
+					print AN::Common::template($conf, "server.html", "one-line-message", {
 						message	=>	$line,
 					});
 				}
 			}
-			print template($conf, "server.html", "fence-node-output-footer");
+			print AN::Common::template($conf, "server.html", "fence-node-output-footer");
 			if ($off_success)
 			{
 				# Fence succeeded!
-				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method succeeded. Proceeding with unfence action.\n");
-				my $say_message = get_string($conf, {key => "message_0234", variables => {
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method succeeded. Proceeding with unfence action.\n");
+				my $say_message = AN::Common::get_string($conf, {key => "message_0234", variables => {
 					method_name	=>	$method_name,
 				}});
-				print template($conf, "server.html", "fence-node-message", {
+				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
 				$fence_success = 1;
@@ -7270,24 +7273,24 @@ sub fence_node
 			else
 			{
 				# Fence failed!
-				record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method failed. Will try next method, if available.\n");
-				my $say_message = get_string($conf, {key => "message_0235", variables => {
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Fencing using the '$method_name' method failed. Will try next method, if available.\n");
+				my $say_message = AN::Common::get_string($conf, {key => "message_0235", variables => {
 					method_name	=>	$method_name,
 				}});
-				print template($conf, "server.html", "fence-node-message", {
+				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
 				next;
 			}
 			
 			# If I'm here, I can try the unfence command.
-			print template($conf, "server.html", "fence-node-unfence-header");
+			print AN::Common::template($conf, "server.html", "fence-node-unfence-header");
 			$sc = "$on_command";
 			if ($sc =~ /ssh:(.*?),(.*)$/)
 			{
 				my $node    = $1;
 				my $command = $2;
-				(my $error, $ssh_fh, $output) = remote_call($conf, {
+				(my $error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -7296,11 +7299,11 @@ sub fence_node
 					'close'		=>	1,
 					shell_call	=>	"$command",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 				my $fh = IO::Handle->new();
 				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
 				while(<$fh>)
@@ -7312,7 +7315,7 @@ sub fence_node
 			}
 			foreach my $line (@{$output})
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 				# This is how I get the fence call's exit code.
 				if ($line =~ /fence:(\d+)/)
 				{
@@ -7325,20 +7328,20 @@ sub fence_node
 				}
 				else
 				{
-					print template($conf, "server.html", "one-line-message", {
+					print AN::Common::template($conf, "server.html", "one-line-message", {
 						message	=>	$line,
 					});
 				}
 			}
-			print template($conf, "server.html", "fence-node-unfence-footer");
+			print AN::Common::template($conf, "server.html", "fence-node-unfence-footer");
 			if ($on_success)
 			{
 				# Unfence succeeded!
-				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method succeeded. Fence operation a complete success!\n");
-				my $say_message = get_string($conf, {key => "message_0236", variables => {
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method succeeded. Fence operation a complete success!\n");
+				my $say_message = AN::Common::get_string($conf, {key => "message_0236", variables => {
 					method_name	=>	$method_name,
 				}});
-				print template($conf, "server.html", "fence-node-message", {
+				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
 				$unfence_success = 1;
@@ -7352,11 +7355,11 @@ sub fence_node
 				# interface after a fence call, requiring power
 				# to be cut in order to reset the BMC. HP, I'm
 				# looking at you and your DL1** G7 line...
-				record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method failed. The core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service. If another fence method remains, it will now be tried in hopes of assisting recovery.\n");
-				my $say_message = get_string($conf, {key => "message_0237", variables => {
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unfencing using the '$method_name' method failed. The core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service. If another fence method remains, it will now be tried in hopes of assisting recovery.\n");
+				my $say_message = AN::Common::get_string($conf, {key => "message_0237", variables => {
 					method_name	=>	$method_name,
 				}});
-				print template($conf, "server.html", "fence-node-message", {
+				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
 			}
@@ -7364,21 +7367,21 @@ sub fence_node
 	}
 	else
 	{
-		my $say_title = get_string($conf, {key => "title_0069", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0069", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "fence-node-aborted-header", {
+		print AN::Common::template($conf, "server.html", "fence-node-aborted-header", {
 			title	=>	$say_title,
 		});
 		foreach my $reason (@abort_reason)
 		{
-			print template($conf, "server.html", "fence-node-abort-reason", {
+			print AN::Common::template($conf, "server.html", "fence-node-abort-reason", {
 				reason	=>	$reason,
 			});
 		}
 	}
-	print template($conf, "server.html", "fence-node-footer");
-	footer($conf);
+	print AN::Common::template($conf, "server.html", "fence-node-footer");
+	AN::Cluster::footer($conf);
 	
 	return(0);
 }
@@ -7394,21 +7397,21 @@ sub withdraw_node
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	scan_cluster($conf);
+	AN::Cluster::scan_cluster($conf);
 	my $proceed = $conf->{node}{$node}{enable_withdraw};
-	#record($conf, "$THIS_FILE ".__LINE__."; in withdraw_node(), node: [$node], proceed: [$proceed]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in withdraw_node(), node: [$node], proceed: [$proceed]\n");
 	if ($proceed)
 	{
 		# Stop rgmanager and then check it's status.
-		my $say_title = get_string($conf, {key => "title_0070", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0070", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "withdraw-node-header", {
+		print AN::Common::template($conf, "server.html", "withdraw-node-header", {
 			title	=>	$say_title,
 		});
 
 		my $rgmanager_stop = 1;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -7417,7 +7420,7 @@ sub withdraw_node
 			'close'		=>	0,
 			shell_call	=>	"/etc/init.d/rgmanager stop",
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
@@ -7427,7 +7430,7 @@ sub withdraw_node
 			{
 				$rgmanager_stop = 0;
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7436,17 +7439,17 @@ sub withdraw_node
 				$message = $line;
 				$status  = "";
 			}
-			print template($conf, "server.html", "start-server-shell-output", {
+			print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 				status	=>	$status,
 				message	=>	$message,
 			});
 		}
-		print template($conf, "server.html", "withdraw-node-close-output");
+		print AN::Common::template($conf, "server.html", "withdraw-node-close-output");
 		if ($rgmanager_stop)
 		{
-			print template($conf, "server.html", "withdraw-node-resource-manager-stopped");
+			print AN::Common::template($conf, "server.html", "withdraw-node-resource-manager-stopped");
 			my $cman_stop = 1;
-			($error, $ssh_fh, $output) = remote_call($conf, {
+			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -7455,7 +7458,7 @@ sub withdraw_node
 				'close'		=>	0,
 				shell_call	=>	"/etc/init.d/cman stop",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
 				$line =~ s/^\s+//;
@@ -7465,7 +7468,7 @@ sub withdraw_node
 				{
 					$cman_stop = 0;
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				$line = parse_text_line($conf, $line);
 				my $message = ($line =~ /^(.*)\[/)[0];
 				my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7474,19 +7477,19 @@ sub withdraw_node
 					$message = $line;
 					$status  = "";
 				}
-				print template($conf, "server.html", "start-server-shell-output", {
+				print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 					status	=>	$status,
 					message	=>	$message,
 				});
 			}
-			print template($conf, "server.html", "withdraw-node-close-output");
+			print AN::Common::template($conf, "server.html", "withdraw-node-close-output");
 
 			if (not $cman_stop)
 			{
 				# Crap...
-				print template($conf, "server.html", "withdraw-node-membership-withdrawl-failed");
+				print AN::Common::template($conf, "server.html", "withdraw-node-membership-withdrawl-failed");
 				my $cman_start = 1;
-				($error, $ssh_fh, $output) = remote_call($conf, {
+				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -7495,7 +7498,7 @@ sub withdraw_node
 					'close'		=>	1,
 					shell_call	=>	"/etc/init.d/cman start",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					$line =~ s/^\s+//;
@@ -7505,7 +7508,7 @@ sub withdraw_node
 					{
 						$cman_start = 0;
 					}
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7514,49 +7517,49 @@ sub withdraw_node
 						$message = $line;
 						$status  = "";
 					}
-					print template($conf, "server.html", "start-server-shell-output", {
+					print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 						status	=>	$status,
 						message	=>	$message,
 					});
 				}
-				print template($conf, "server.html", "withdraw-node-close-output");
+				print AN::Common::template($conf, "server.html", "withdraw-node-close-output");
 				if ($cman_start)
 				{
 					# and we're back
-					print template($conf, "server.html", "withdraw-node-membership-restarted-successfully");
+					print AN::Common::template($conf, "server.html", "withdraw-node-membership-restarted-successfully");
 					recover_rgmanager($conf, $node);
 					
 				}
 				else
 				{
 					# Failed, call support.
-					print template($conf, "server.html", "withdraw-node-membership-restarted-failed");
+					print AN::Common::template($conf, "server.html", "withdraw-node-membership-restarted-failed");
 				}
 			}
 		}
 		else
 		{
 			# Recover rgmanager
-			print template($conf, "server.html", "withdraw-node-resource-manager-failed-to-stop");
+			print AN::Common::template($conf, "server.html", "withdraw-node-resource-manager-failed-to-stop");
 			recover_rgmanager($conf, $node);
 		}
-		print template($conf, "server.html", "withdraw-node-footer");
+		print AN::Common::template($conf, "server.html", "withdraw-node-footer");
 	}
 	else
 	{
-		my $say_title = get_string($conf, {key => "title_0071", variables => {
+		my $say_title = AN::Common::get_string($conf, {key => "title_0071", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		my $say_message = get_string($conf, {key => "message_0249", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0249", variables => {
 			node_anvil_name	=>	$node_cluster_name,
 		}});
-		print template($conf, "server.html", "withdraw-node-aborted", {
+		print AN::Common::template($conf, "server.html", "withdraw-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
 	}
 	
-	footer($conf);
+	AN::Cluster::footer($conf);
 	
 	return(0);
 }
@@ -7568,9 +7571,9 @@ sub recover_rgmanager
 	my ($conf, $node) = @_;
 	
 	# Tell the user we're recovering rgmanager
-	print template($conf, "server.html", "recover-resource-manager-header");
+	print AN::Common::template($conf, "server.html", "recover-resource-manager-header");
 	my $rgmanager_start = 1;
-	my ($error, $ssh_fh, $output) = remote_call($conf, {
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
@@ -7579,7 +7582,7 @@ sub recover_rgmanager
 		'close'		=>	1,
 		shell_call	=>	"/etc/init.d/rgmanager start",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
@@ -7589,41 +7592,41 @@ sub recover_rgmanager
 		{
 			$rgmanager_start = 0;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		print template($conf, "server.html", "one-line-message", {
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		print AN::Common::template($conf, "server.html", "one-line-message", {
 			message	=>	$line,
 		});
 	}
-	print template($conf, "server.html", "recover-resource-manager-output-footer");
+	print AN::Common::template($conf, "server.html", "recover-resource-manager-output-footer");
 
 	if ($rgmanager_start)
 	{
 		my $storage_service = $conf->{node}{$node}{info}{storage_name};
-		print template($conf, "server.html", "recover-resource-manager-successful");
+		print AN::Common::template($conf, "server.html", "recover-resource-manager-successful");
 		if ($storage_service)
 		{
 			# Need to rescan the Anvil!...
 			# variables hash feeds 'message_0251'
-			print template($conf, "server.html", "recover-resource-manager-check-storage", {}, {
+			print AN::Common::template($conf, "server.html", "recover-resource-manager-check-storage", {}, {
 				storage_service	=>	$storage_service,
 			});
 			
 			# I need to sleep for ~ten seconds to give time for
 			# 'clustat' to start showing the service section again.
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rescanning the #!string!brand_0003!# in ten seconds.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rescanning the #!string!brand_0003!# in ten seconds.\n");
 			sleep 10;
-			check_node_status($conf);
+			AN::Cluster::check_node_status($conf);
 			my $storage_state = $conf->{node}{$node}{info}{storage_state};
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], storage service: [$storage_service], storage state: [$storage_state]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], storage service: [$storage_service], storage state: [$storage_state]\n");
 			if ($storage_state =~ /Failed/i) 
 			{
-				my $say_failed = get_string($conf, {key => "message_0253", variables => {
+				my $say_failed = AN::Common::get_string($conf, {key => "message_0253", variables => {
 					storage_service	=>	$storage_service,
 				}});
-				my $say_cycle = get_string($conf, {key => "message_0254", variables => {
+				my $say_cycle = AN::Common::get_string($conf, {key => "message_0254", variables => {
 					storage_service	=>	$storage_service,
 				}});
-				print template($conf, "server.html", "recover-resource-manager-cycle-storage-service", {
+				print AN::Common::template($conf, "server.html", "recover-resource-manager-cycle-storage-service", {
 					failed	=>	$say_failed,
 					cycle	=>	$say_cycle,
 				});
@@ -7632,7 +7635,7 @@ sub recover_rgmanager
 				# whatever is holding open the storage. This is
 				# fine, as the goal is to enable, not stop.
 				my $storage_stop = 1;
-				my ($error, $ssh_fh, $output) = remote_call($conf, {
+				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
@@ -7641,7 +7644,7 @@ sub recover_rgmanager
 					'close'		=>	0,
 					shell_call	=>	"$conf->{path}{clusvcadm} -d $storage_service",
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 				foreach my $line (@{$output})
 				{
 					$line =~ s/^\s+//;
@@ -7651,7 +7654,7 @@ sub recover_rgmanager
 					{
 						$storage_stop = 0;
 					}
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7660,24 +7663,24 @@ sub recover_rgmanager
 						$message = $line;
 						$status  = "";
 					}
-					print template($conf, "server.html", "start-server-shell-output", {
+					print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 						status	=>	$status,
 						message	=>	$message,
 					});
 				}
-				print template($conf, "server.html", "recover-resource-manager-close-output");
+				print AN::Common::template($conf, "server.html", "recover-resource-manager-close-output");
 
 				if ($storage_stop)
 				{
-					my $say_stopped = get_string($conf, {key => "message_0255", variables => {
+					my $say_stopped = AN::Common::get_string($conf, {key => "message_0255", variables => {
 						storage_service	=>	$storage_service,
 					}});
-					print template($conf, "server.html", "recover-resource-manager-storage-service-stopped", {
+					print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-stopped", {
 						stopped	=>	$say_stopped,
 					});
 					
 					my $storage_start = 1;
-					($error, $ssh_fh, $output) = remote_call($conf, {
+					($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 						node		=>	$node,
 						port		=>	$conf->{node}{$node}{port},
 						user		=>	"root",
@@ -7686,7 +7689,7 @@ sub recover_rgmanager
 						'close'		=>	1,
 						shell_call	=>	"$conf->{path}{clusvcadm} -e $storage_service",
 					});
-					record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 					foreach my $line (@{$output})
 					{
 						$line =~ s/^\s+//;
@@ -7696,7 +7699,7 @@ sub recover_rgmanager
 						{
 							$storage_start = 0;
 						}
-						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 						$line = parse_text_line($conf, $line);
 						my $message = ($line =~ /^(.*)\[/)[0];
 						my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7705,23 +7708,23 @@ sub recover_rgmanager
 							$message = $line;
 							$status  = "";
 						}
-						print template($conf, "server.html", "start-server-shell-output", {
+						print AN::Common::template($conf, "server.html", "start-server-shell-output", {
 							status	=>	$status,
 							message	=>	$message,
 						});
 					}
-					print template($conf, "server.html", "recover-resource-manager-close-output");
+					print AN::Common::template($conf, "server.html", "recover-resource-manager-close-output");
 					
 					if ($storage_start)
 					{
 						# Hoozah!
-						my $say_restarted = get_string($conf, {key => "message_0257", variables => {
+						my $say_restarted = AN::Common::get_string($conf, {key => "message_0257", variables => {
 							storage_service	=>	$storage_service,
 						}});
-						my $say_advice = get_string($conf, {key => "message_0259", variables => {
+						my $say_advice = AN::Common::get_string($conf, {key => "message_0259", variables => {
 							node	=>	$node,
 						}});
-						print template($conf, "server.html", "recover-resource-manager-storage-service-recovered", {
+						print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-recovered", {
 							restarted	=>	$say_restarted,
 							advice		=>	$say_advice,
 						});
@@ -7729,10 +7732,10 @@ sub recover_rgmanager
 					else
 					{
 						# We're boned.
-						my $say_failed = get_string($conf, {key => "message_0262", variables => {
+						my $say_failed = AN::Common::get_string($conf, {key => "message_0262", variables => {
 							storage_service	=>	$storage_service,
 						}});
-						print template($conf, "server.html", "recover-resource-manager-storage-service-unrecovered", {
+						print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-unrecovered", {
 							failed	=>	$say_failed,
 						});
 					}
@@ -7740,10 +7743,10 @@ sub recover_rgmanager
 				else
 				{
 					# Failed to disable.
-					my $say_failed = get_string($conf, {key => "message_0263", variables => {
+					my $say_failed = AN::Common::get_string($conf, {key => "message_0263", variables => {
 						storage_service	=>	$storage_service,
 					}});
-					print template($conf, "server.html", "recover-resource-manager-failed-to-disable", {
+					print AN::Common::template($conf, "server.html", "recover-resource-manager-failed-to-disable", {
 						failed	=>	$say_failed,
 					});
 				}
@@ -7753,10 +7756,10 @@ sub recover_rgmanager
 				# Storage service is running, recovery unneeded.
 				# TODO: Check each individual storage service
 				# and restart each if needed.
-				my $say_abort = get_string($conf, {key => "message_0264", variables => {
+				my $say_abort = AN::Common::get_string($conf, {key => "message_0264", variables => {
 					storage_service	=>	$storage_service,
 				}});
-				print template($conf, "server.html", "recover-resource-manager-abort-storage-recovery", {
+				print AN::Common::template($conf, "server.html", "recover-resource-manager-abort-storage-recovery", {
 					abort	=>	$say_abort,
 				});
 			}
@@ -7764,13 +7767,13 @@ sub recover_rgmanager
 		else
 		{
 			# Unable to identify the storage service
-			print template($conf, "server.html", "recover-resource-manager-cant-find-storage");
+			print AN::Common::template($conf, "server.html", "recover-resource-manager-cant-find-storage");
 		}
 	}
 	else
 	{
 		# Failed. :(
-		print template($conf, "server.html", "recover-resource-manager-failed");
+		print AN::Common::template($conf, "server.html", "recover-resource-manager-failed");
 	}
 	
 	return(0);
@@ -7781,14 +7784,14 @@ sub display_details
 {
 	my ($conf) = @_;
 	
-	#print template($conf, "server.html", "display-details-header");
+	#print AN::Common::template($conf, "server.html", "display-details-header");
 	# Display the status of each node's daemons
 	my $up_nodes = @{$conf->{up_nodes}};
 	
 	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
 	# calls are available. IE: enable this when the cache exists and the
 	# fence command addresses are reachable.
-	#record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 #	if ($conf->{'system'}{show_nodes})
 	if (1)
 	{
@@ -7804,7 +7807,7 @@ sub display_details
 		my $no_access_panel            = "";
 
 		# I don't show below here unless at least one node is up.
-		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
 		if ($conf->{'system'}{up_nodes} > 0)
 		{
 			# Show the user the current VM states and the control buttons.
@@ -7834,12 +7837,12 @@ sub display_details
 		else
 		{
 			# Was able to confirm the nodes are off.
-			$no_access_panel = template($conf, "server.html", "display-details-nodes-unreachable", {
+			$no_access_panel = AN::Common::template($conf, "server.html", "display-details-nodes-unreachable", {
 				message	=>	"#!string!message_0268!#",
 			});
 		}
 		
-		print template($conf, "server.html", "main-page", {
+		print AN::Common::template($conf, "server.html", "main-page", {
 			node_control_panel		=>	$node_control_panel,
 			vm_state_and_control_panel	=>	$vm_state_and_control_panel,
 			node_details_panel		=>	$node_details_panel,
@@ -7859,7 +7862,7 @@ sub display_free_resources
 {
 	my ($conf) = @_;
 	
-	my $free_resources_panel .= template($conf, "server.html", "display-details-free-resources-header");
+	my $free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-header");
 	
 	# I only show one row for CPU and RAM, but usually have two or more
 	# VGs. So the first step is to put my VG info into an array.
@@ -7875,14 +7878,14 @@ sub display_free_resources
 	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
 	{
 		# If it's not a clustered VG, I don't care about it.
-		#record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}]\n");
 		next if not $conf->{resources}{vg}{$vg}{clustered};
 		push @vg,      $vg;
 		push @vg_size, $conf->{resources}{vg}{$vg}{size};
 		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
 		push @vg_free, $conf->{resources}{vg}{$vg}{free_space};
 		push @pv_name, $conf->{resources}{vg}{$vg}{pv_name};
-		#record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], size: [$conf->{resources}{vg}{$vg}{size}], used space: [$conf->{resources}{vg}{$vg}{used_space}], free space: [$conf->{resources}{vg}{$vg}{free_space}], pv name: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg], size: [$conf->{resources}{vg}{$vg}{size}], used space: [$conf->{resources}{vg}{$vg}{used_space}], free space: [$conf->{resources}{vg}{$vg}{free_space}], pv name: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
@@ -7909,14 +7912,14 @@ sub display_free_resources
 		else
 		{
 			$allocated_ram   += $conf->{vm}{$vm}{details}{ram};
-			#record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$allocated_ram], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; allocated_ram: [$allocated_ram], vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 			$allocated_cores += $conf->{vm}{$vm}{details}{cpu_count};
 		}
 	}
 	
 	# Always knock off some RAM for the host OS.
 	
-	my $real_total_ram            =  bytes_to_hr($conf, $conf->{resources}{total_ram});
+	my $real_total_ram            =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB
 	# of total RAM. So we modulous off the difference, then subtract that
 	# plus the reserved RAM to get an even left-over amount of memory for
@@ -7925,17 +7928,17 @@ sub display_free_resources
 	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
 	my $free_ram                  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : bytes_to_hr($conf, $free_ram);
-	my $say_total_ram             =  bytes_to_hr($conf, $conf->{resources}{total_ram});
-	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : bytes_to_hr($conf, $allocated_ram);
-	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_size[0]);
-	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_used[0]);
-	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : bytes_to_hr($conf, $vg_free[0]);
+	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $free_ram);
+	my $say_total_ram             =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
+	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $allocated_ram);
+	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_size[0]);
+	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_used[0]);
+	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_free[0]);
 	my $say_vg                    =  $conf->{'system'}{clvmd_down} ? "--" : $vg[0];
 	my $say_pv_name               =  $conf->{'system'}{clvmd_down} ? "--" : $pv_name[0];
 	
 	# Show the main info.
-	$free_resources_panel .= template($conf, "server.html", "display-details-free-resources-entry", {
+	$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-entry", {
 		total_cores		=>	$conf->{resources}{total_cores},
 		total_threads		=>	$conf->{resources}{total_threads},
 		allocated_cores		=>	$allocated_cores,
@@ -7954,11 +7957,11 @@ sub display_free_resources
 	{
 		for (my $i=1; $i < @vg; $i++)
 		{
-			my $say_vg_size = bytes_to_hr($conf, $vg_size[$i]);
-			my $say_vg_used = bytes_to_hr($conf, $vg_used[$i]);
-			my $say_vg_free = bytes_to_hr($conf, $vg_free[$i]);
+			my $say_vg_size = AN::Cluster::bytes_to_hr($conf, $vg_size[$i]);
+			my $say_vg_used = AN::Cluster::bytes_to_hr($conf, $vg_used[$i]);
+			my $say_vg_free = AN::Cluster::bytes_to_hr($conf, $vg_free[$i]);
 			my $say_pv_name = $pv_name[$i];
-			$free_resources_panel .= template($conf, "server.html", "display-details-free-resources-entry-extra-storage", {
+			$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-entry-extra-storage", {
 				vg		=>	$vg[$i],
 				pv_name		=>	$pv_name[$i],
 				say_vg_size	=>	$say_vg_size,
@@ -7975,19 +7978,19 @@ sub display_free_resources
 	my $node2   = $conf->{'system'}{cluster}{node2_name};
 	#my $say_bns = "<span class=\"disabled_button\">#!string!button_0022!#</span>";
 	#my $say_mc  = "<span class=\"disabled_button\">#!string!button_0023!#</span>";
-	my $say_bns = template($conf, "common.html", "disabled-button", {
+	my $say_bns = AN::Common::template($conf, "common.html", "disabled-button", {
 		button_text	=>	"#!string!button_0022!#",
 	}, "", 1);
-	my $say_mc = template($conf, "common.html", "disabled-button", {
+	my $say_mc = AN::Common::template($conf, "common.html", "disabled-button", {
 		button_text	=>	"#!string!button_0023!#",
 	}, "", 1);
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
 		# The cluster is running, so enable the media library link.
-		$say_mc = template($conf, "common.html", "enabled-button-no-class", {
+		$say_mc = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"#!string!button_0023!#",
 			id		=>	"media_library_$conf->{cgi}{cluster}",
@@ -7997,18 +8000,18 @@ sub display_free_resources
 		# and storage space.
 		if (($enough_storage) && ($free_ram > 1073741824))
 		{
-			$say_bns = template($conf, "common.html", "enabled-button-no-class", {
+			$say_bns = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link",
 				button_text	=>	"#!string!button_0022!#",
 				id		=>	"provision",
 			}, "", 1);
 		}
 	}
-	$free_resources_panel .= template($conf, "server.html", "display-details-bottom-button-bar", {
+	$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-bottom-button-bar", {
 		say_bns	=>	$say_bns,
 		say_mc	=>	$say_mc,
 	});
-	$free_resources_panel .= template($conf, "server.html", "display-details-footer");
+	$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-footer");
 
 	return ($free_resources_panel);
 }
@@ -8017,27 +8020,27 @@ sub display_free_resources
 sub long_host_name_to_node_name
 {
 	my ($conf, $host) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in long_host_name_to_node_name(), host: [$host]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in long_host_name_to_node_name(), host: [$host]\n");
 	
 	my $cluster   = $conf->{cgi}{cluster};
 	my $node_name = "";
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 		my $short_host =  $host;
 		   $short_host =~ s/\..*$//;
 		my $short_node =  $node;
 		   $short_node =~ s/\..*$//;
-		#record($conf, "$THIS_FILE ".__LINE__."; short_host: [$short_host], short_node: [$short_node]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_host: [$short_host], short_node: [$short_node]\n");
 		if ($short_host eq $short_node)
 		{
 			$node_name = $node;
-			#record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
 			last;
 		}
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
 	return ($node_name);
 }
 
@@ -8045,11 +8048,11 @@ sub long_host_name_to_node_name
 sub node_name_to_long_host_name
 {
 	my ($conf, $host) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in node_name_to_long_host_name(), host: [$host]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in node_name_to_long_host_name(), host: [$host]\n");
 	
 	my $node_name = $conf->{node}{$host}{me}{name};
 
-	#record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node name: [$node_name]\n");
 	return ($node_name);
 }
 
@@ -8060,7 +8063,7 @@ sub display_vm_details
 	
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	my $server_details_panel = template($conf, "server.html", "display-server-details-header");
+	my $server_details_panel = AN::Common::template($conf, "server.html", "display-server-details-header");
 	
 	# Pull up the server details.
 	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
@@ -8068,8 +8071,8 @@ sub display_vm_details
 		next if $vm !~ /^vm/;
 		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $conf->{'system'}{gfs2_down} ? "#!string!symbol_0011!#" : bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+		my $say_ram = $conf->{'system'}{gfs2_down} ? "#!string!symbol_0011!#" : AN::Cluster::bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		
 		# Get the LV arrays populated.
 		my @lv_path;
@@ -8082,8 +8085,8 @@ sub display_vm_details
 		{
 			# If the first node is running, use it. Otherwise use
 			# the second node.
-			my $node1_daemons_running = check_node_daemons($conf, $node1);
-			my $node2_daemons_running = check_node_daemons($conf, $node2);
+			my $node1_daemons_running = AN::Cluster::check_node_daemons($conf, $node1);
+			my $node2_daemons_running = AN::Cluster::check_node_daemons($conf, $node2);
 			if ($node1_daemons_running)
 			{
 				$host = $node1;
@@ -8104,9 +8107,9 @@ sub display_vm_details
 		if ($host)
 		{
 			$node = long_host_name_to_node_name($conf, $host);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node]\n");
 			
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
 			foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 			{
 				#record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
@@ -8123,12 +8126,12 @@ sub display_vm_details
 				push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
 			}
 			
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 			if ($conf->{vm}{$vm}{host} ne "none")
 			{
 				$say_host  =  $conf->{vm}{$vm}{host};
 				$say_host  =~ s/\..*//;
-				$say_net_host = template($conf, "server.html", "display-server-details-network-entry", {
+				$say_net_host = AN::Common::template($conf, "server.html", "display-server-details-network-entry", {
 					host	=>	$say_host,
 					bridge	=>	$bridge[0],
 					device	=>	$device[0],
@@ -8148,7 +8151,7 @@ sub display_vm_details
 		$lv_size[0]                          = "--" if not defined $lv_size[0];
 		$type[0]                             = "--" if not defined $type[0];
 		$mac[0]                              = "--" if not defined $mac[0];
-		$server_details_panel .= template($conf, "server.html", "display-server-details-resources", {
+		$server_details_panel .= AN::Common::template($conf, "server.html", "display-server-details-resources", {
 				say_vm		=>	$say_vm,
 				cpu_count	=>	$conf->{vm}{$vm}{details}{cpu_count},
 				say_ram		=>	$say_ram,
@@ -8166,19 +8169,19 @@ sub display_vm_details
 		{
 			for (my $i=1; $loop_count > $i; $i++)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], lv_path[$i]: [$lv_path[$i]], lv_size[$i]: [$lv_size[$i]]n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], lv_path[$i]: [$lv_path[$i]], lv_size[$i]: [$lv_size[$i]]n");
 				my $say_lv_path = $lv_path[$i] ? $lv_path[$i] : "&nbsp;";
 				my $say_lv_size = $lv_size[$i] ? $lv_size[$i] : "&nbsp;";
 				my $say_network = "&nbsp;";
 				if ($bridge[$i])
 				{
 					my $say_net_host = "";
-					record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 					if ($conf->{vm}{$vm}{host} ne "none")
 					{
 						my $say_host  =  $conf->{vm}{$vm}{host};
 						$say_host  =~ s/\..*//;
-						$say_net_host = template($conf, "server.html", "display-server-details-entra-nics", {
+						$say_net_host = AN::Common::template($conf, "server.html", "display-server-details-entra-nics", {
 							say_host	=>	$say_host,
 							bridge		=>	$bridge[$i],
 							device		=>	$device[$i],
@@ -8188,7 +8191,7 @@ sub display_vm_details
 				}
 				
 				# Show extra LVs and/or networks.
-				$server_details_panel .= template($conf, "server.html", "display-server-details-entra-storage", {
+				$server_details_panel .= AN::Common::template($conf, "server.html", "display-server-details-entra-storage", {
 					say_lv_path	=>	$say_lv_path,
 					say_lv_size	=>	$say_lv_size,
 					say_network	=>	$say_network,
@@ -8196,7 +8199,7 @@ sub display_vm_details
 			}
 		}
 	}
-	$server_details_panel .= template($conf, "server.html", "display-server-details-footer");
+	$server_details_panel .= AN::Common::template($conf, "server.html", "display-server-details-footer");
 
 	return ($server_details_panel);
 }
@@ -8207,17 +8210,17 @@ sub check_node_daemons
 	my ($conf, $node) = @_;
 	if (not $node)
 	{
-		error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
+		AN::Cluster::error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_daemons(), node: [$node]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in check_node_daemons(), node: [$node]\n");
 	my $ready = 1;
 	
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman exit_code:      [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager exit_code: [$conf->{node}{$node}{daemon}{rgmanager}{exit_code}]\n");
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd exit_code:      [$conf->{node}{$node}{daemon}{drbd}{exit_code}]\n");
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd exit_code:     [$conf->{node}{$node}{daemon}{clvmd}{exit_code}]\n");
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2 exit_code:      [$conf->{node}{$node}{daemon}{gfs2}{exit_code}]\n");
-# 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], libvirtd exit_code:  [$conf->{node}{$node}{daemon}{libvirtd}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman exit_code:      [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager exit_code: [$conf->{node}{$node}{daemon}{rgmanager}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd exit_code:      [$conf->{node}{$node}{daemon}{drbd}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd exit_code:     [$conf->{node}{$node}{daemon}{clvmd}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2 exit_code:      [$conf->{node}{$node}{daemon}{gfs2}{exit_code}]\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], libvirtd exit_code:  [$conf->{node}{$node}{daemon}{libvirtd}{exit_code}]\n");
 	
 	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
 	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
@@ -8238,14 +8241,14 @@ sub check_node_readiness
 	my ($conf, $vm, $node) = @_;
 	if (not $node)
 	{
-		error($conf, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
+		AN::Cluster::error($conf, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
 	}
 
-	#record($conf, "$THIS_FILE ".__LINE__."; in check_node_readiness(); vm: [$vm], node: [$node]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in check_node_readiness(); vm: [$vm], node: [$node]\n");
 	
 	# This will get negated if something isn't ready.
 	my $ready = check_node_daemons($conf, $node);
-	#record($conf, "$THIS_FILE ".__LINE__."; 1. vm: [$vm], node: [$node], ready: [$ready]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 1. vm: [$vm], node: [$node], ready: [$ready]\n");
 	
 	# TODO: Add split-brain detection. If both nodes are 
 	# Primary/StandAlone, shut the whole cluster down.
@@ -8256,14 +8259,14 @@ sub check_node_readiness
 		# Still alive, find out what storage backs this VM and ensure
 		# that the LV is 'active' and that the DRBD resource(s) they
 		# sit on are Primary and UpToDate.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm]\n");
 		read_vm_definition($conf, $node, $vm);
 		
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
 			# Make sure the LV is active.
-			#record($conf, "$THIS_FILE ".__LINE__.";  - vm: [$vm], node: [$node], lv: [$lv]\n");
-			#record($conf, "$THIS_FILE ".__LINE__.";    - active:           [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";  - vm: [$vm], node: [$node], lv: [$lv]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";    - active:           [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active}]\n");
 			if ($conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
 			{
 				# It's active, so now check the backing storage.
@@ -8273,16 +8276,16 @@ sub check_node_readiness
 					my $cs = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{connection_state};
 					my $ro = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{role};
 					my $ds = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{disk_state};
-					#record($conf, "$THIS_FILE ".__LINE__.";    - res:              [$res]\n");
-					#record($conf, "$THIS_FILE ".__LINE__.";    - connection state: [$cs]\n");
-					#record($conf, "$THIS_FILE ".__LINE__.";    - role:             [$ro]\n");
-					#record($conf, "$THIS_FILE ".__LINE__.";    - disk state:       [$ds]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";    - res:              [$res]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";    - connection state: [$cs]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";    - role:             [$ro]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";    - disk state:       [$ds]\n");
 					
 					# I consider a node "ready" if it is UpToDate and Primary.
 					if (($ro ne "Primary") || ($ds ne "UpToDate"))
 					{
 						$ready = 0;
-						#record($conf, "$THIS_FILE ".__LINE__."; 2. ready: [$ready]\n");
+						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 2. ready: [$ready]\n");
 					}
 				}
 			}
@@ -8291,11 +8294,11 @@ sub check_node_readiness
 				# The LV is inactive.
 				# TODO: Try to change the LV to active.
 				$ready = 0;
-				#record($conf, "$THIS_FILE ".__LINE__."; 3. vm: [$vm], node: [$node], ready: [$ready]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 3. vm: [$vm], node: [$node], ready: [$ready]\n");
 			}
 		}
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; 4. vm: [$vm], node: [$node], ready: [$ready]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 4. vm: [$vm], node: [$node], ready: [$ready]\n");
 	
 	return ($ready);
 }
@@ -8306,7 +8309,7 @@ sub read_vm_definition
 	my ($conf, $node, $vm) = @_;
 	if (not $vm)
 	{
-		error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
+		AN::Cluster::error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
 	}
 	my $say_vm = $vm;
 	if ($vm =~ /vm:(.*)/)
@@ -8317,19 +8320,19 @@ sub read_vm_definition
 	{
 		$vm = "vm:$vm";
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
-	record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], XML: [$conf->{vm}{$vm}{xml}], def: [$conf->{vm}{$vm}{definition_file}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], XML: [$conf->{vm}{$vm}{xml}], def: [$conf->{vm}{$vm}{definition_file}]\n");
 	if ((not ref($conf->{vm}{$vm}{xml}) eq "ARRAY") && ($conf->{vm}{$vm}{definition_file}))
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
 		$conf->{vm}{$vm}{xml}     = [];
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -8338,14 +8341,14 @@ sub read_vm_definition
 			'close'		=>	1,
 			shell_call	=>	"cat $conf->{vm}{$vm}{definition_file}",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			push @{$conf->{vm}{$vm}{raw_xml}}, $line;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			push @{$conf->{vm}{$vm}{xml}}, $line;
 		}
 	}
@@ -8359,10 +8362,10 @@ sub read_vm_definition
 	my $current_interface_type;
 	if (not $conf->{vm}{$vm}{xml})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
 		return (0);
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; vm::$vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::$vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
 	if (not ref($conf->{vm}{$vm}{raw_xml}) eq "ARRAY")
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
@@ -8371,7 +8374,7 @@ sub read_vm_definition
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line], fill_raw_xml: [$fill_raw_xml]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line], fill_raw_xml: [$fill_raw_xml]\n");
 		push @{$conf->{vm}{$vm}{raw_xml}}, $line if $fill_raw_xml;
 		
 		# Pull out RAM amount.
@@ -8380,15 +8383,15 @@ sub read_vm_definition
 			# Record the memory, multiple by 1024 to get bytes.
 			$conf->{vm}{$vm}{details}{ram} =  $1;
 			$conf->{vm}{$vm}{details}{ram} *= 1024;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		}
 		if ($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/)
 		{
 			# Record the memory, multiple by 1024 to get bytes.
 			my $units                      =  $1;
 			my $ram                        =  $2;
-			$conf->{vm}{$vm}{details}{ram} = hr_to_bytes($conf, $ram, $units, 1);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
+			$conf->{vm}{$vm}{details}{ram} = AN::Cluster::hr_to_bytes($conf, $ram, $units, 1);
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		}
 		
 		# TODO: Support pinned cores.
@@ -8396,13 +8399,13 @@ sub read_vm_definition
 		if ($line =~ /<vcpu>(\d+)<\/vcpu>/)
 		{
 			$conf->{vm}{$vm}{details}{cpu_count} = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}]\n");
 		}
 		if ($line =~ /<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
 		{
 			my $cpu_type                         = $1;
 			$conf->{vm}{$vm}{details}{cpu_count} = $2;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}], type: [$cpu_type]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], cpu count: [$conf->{vm}{$vm}{details}{cpu_count}], type: [$cpu_type]\n");
 		}
 		
 		# Pull out network details.
@@ -8417,7 +8420,7 @@ sub read_vm_definition
 			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
 			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
 			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], bride: [$current_bridge], device: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device}], mac: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}], type: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], bride: [$current_bridge], device: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device}], mac: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}], type: [$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}]\n");
 			$current_bridge         = "";
 			$current_device         = "";
 			$current_mac_address    = "";
@@ -8427,26 +8430,26 @@ sub read_vm_definition
 		}
 		if ($in_interface)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], interface line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], interface line: [$line]\n");
 			if ($line =~ /source bridge='(.*?)'/)
 			{
 				$current_bridge = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], bridge: [$current_bridge]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], bridge: [$current_bridge]\n");
 			}
 			if ($line =~ /mac address='(.*?)'/)
 			{
 				$current_mac_address = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], mac: [$current_mac_address]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], mac: [$current_mac_address]\n");
 			}
 			if ($line =~ /target dev='(.*?)'/)
 			{
 				$current_device = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], device: [$current_device]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], device: [$current_device]\n");
 			}
 			if ($line =~ /model type='(.*?)'/)
 			{
 				$current_interface_type = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], type: [$current_interface_type]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], type: [$current_interface_type]\n");
 			}
 		}
 		
@@ -8466,7 +8469,7 @@ sub read_vm_definition
 			if ($line =~ /source dev='(.*?)'/)
 			{
 				my $lv = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], checking LV: [$lv]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], checking LV: [$lv]\n");
 				check_lv($conf, $node, $vm, $lv);
 			}
 		}
@@ -8477,13 +8480,13 @@ sub read_vm_definition
 			my ($port)   = ($line =~ / port='(\d+)'/);
 			my ($type)   = ($line =~ / type='(.*?)'/);
 			my ($listen) = ($line =~ / listen='(.*?)'/);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm] is using: [$type] and listening on: [$listen] port: [$port].\n");
 			$conf->{vm}{$vm}{graphics}{type}     = $type;
 			$conf->{vm}{$vm}{graphics}{port}     = $port;
 			$conf->{vm}{$vm}{graphics}{'listen'} = $listen;
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [".@{$conf->{vm}{$vm}{raw_xml}}." lines]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [".@{$conf->{vm}{$vm}{raw_xml}}." lines]\n");
 	
 	return (0);
 }
@@ -8493,45 +8496,45 @@ sub read_vm_definition
 sub check_lv
 {
 	my ($conf, $node, $vm, $lv) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv]\n");
 	
 	# If this node is down, just return.
 	if ($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is down, skipping LV check for: [$lv] for VM: [$vm]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is down, skipping LV check for: [$lv] for VM: [$vm]\n");
 		return(0);
 	}
 	
 	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $conf->{node}{$node}{lvm}{lv}{$lv}{active};
-	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = bytes_to_hr($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv], active: [$conf->{node}{$node}{lvm}{lv}{$lv}{active}], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$lv}{on_devices}]\n");
+	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv], active: [$conf->{node}{$node}{lvm}{lv}{$lv}{active}], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$lv}{on_devices}]\n");
 	
 	# If there is a comman in the devices, the LV spans multiple devices.
 	foreach my $device (split/,/, $conf->{node}{$node}{lvm}{lv}{$lv}{on_devices})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; device: [$device]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; device: [$device]\n");
 		# Find the resource name.
 		my $on_res;
 		foreach my $res (sort {$a cmp $b} keys %{$conf->{drbd}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; res: [$res]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; res: [$res]\n");
 			my $res_device = $conf->{drbd}{$res}{node}{$node}{device};
-			#record($conf, "$THIS_FILE ".__LINE__."; res: [$res], device: [$device], res. device: [$res_device]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; res: [$res], device: [$device], res. device: [$res_device]\n");
 			if ($device eq $res_device)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; match! Recording res as: [$res]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; match! Recording res as: [$res]\n");
 				$on_res = $res;
 				last;
 			}
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], on_res: [$on_res]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], on_res: [$on_res]\n");
 		
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $conf->{drbd}{$on_res}{node}{$node}{connection_state};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $conf->{drbd}{$on_res}{node}{$node}{role};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $conf->{drbd}{$on_res}{node}{$node}{disk_state};
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], cs: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], ro: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], ds: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], cs: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], ro: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], lv: [$lv], ds: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}]\n");
 	}
 	
 	return (0);
@@ -8546,7 +8549,7 @@ sub check_vms
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node 1: n[$node1] s[$conf->{node}{$node1}{info}{short_host_name}] l[$conf->{node}{$node1}{info}{host_name}], node 2: n[$node2] s[$conf->{node}{$node2}{info}{short_host_name}] l[$conf->{node}{$node2}{info}{host_name}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node 1: n[$node1] s[$conf->{node}{$node1}{info}{short_host_name}] l[$conf->{node}{$node1}{info}{host_name}], node 2: n[$node2] s[$conf->{node}{$node2}{info}{short_host_name}] l[$conf->{node}{$node2}{info}{host_name}]\n");
 	my $short_node1 = "$conf->{node}{$node1}{info}{short_host_name}";
 	my $short_node2 = "$conf->{node}{$node2}{info}{short_host_name}";
 	my $long_node1  = "$conf->{node}{$node1}{info}{host_name}";
@@ -8562,9 +8565,9 @@ sub check_vms
 		}
 		else
 		{
-			error($conf, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
+			AN::Cluster::error($conf, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 		
 		# This will control the buttons.
 		$conf->{vm}{$vm}{can_start}        = 0;
@@ -8577,14 +8580,14 @@ sub check_vms
 		# it. 2 == Running, 1 == Can run, 0 == Can't run.
 		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node1_ready}      = 0;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node1: [$conf->{vm}{$vm}{say_node1}], node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node1: [$conf->{vm}{$vm}{say_node1}], node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}]\n");
 		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node2_ready}      = 0;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node2: [$conf->{vm}{$vm}{say_node2}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::say_node2: [$conf->{vm}{$vm}{say_node2}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 		
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
 		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{'system'}{ignore_missing_vm}))
 		{
 			# Pull the host node and current state out of the hash.
@@ -8599,21 +8602,21 @@ sub check_vms
 					{
 						$vm_state = $conf->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
 					}
-					#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], virsh '$key': [$conf->{vm}{$vm}{node}{$node}{virsh}{$key}]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node], virsh '$key': [$conf->{vm}{$vm}{node}{$node}{virsh}{$key}]\n");
 				}
 			}
 			$conf->{vm}{$vm}{say_node1} = "--";
 			$conf->{vm}{$vm}{say_node2} = "--";
-			my $say_error = get_string($conf, {key => "message_0271", variables => {
+			my $say_error = AN::Common::get_string($conf, {key => "message_0271", variables => {
 				server	=>	$say_vm,
 				url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
 			}});
-			error($conf, "$say_error", 0);
+			AN::Cluster::error($conf, "$say_error", 0);
 			next;
 		}
 		
 		$conf->{vm}{$vm}{host} = "" if not defined $conf->{vm}{$vm}{host};
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{host}], node1 / node2 short names: [$short_node1] / [$short_node2]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{host}], node1 / node2 short names: [$short_node1] / [$short_node2]\n");
 		if ($conf->{vm}{$vm}{host} =~ /$short_node1/)
 		{
 			# Even though I know the host is ready, this function
@@ -8632,7 +8635,7 @@ sub check_vms
 			}
 			# Disable cluster withdrawl of this node.
 			$conf->{node}{$node1}{enable_withdraw} = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
 		}
 		elsif ($conf->{vm}{$vm}{host} =~ /$short_node2/)
 		{
@@ -8652,17 +8655,17 @@ sub check_vms
 			}
 			# Disable withdrawl of this node.
 			$conf->{node}{$node2}{enable_withdraw} = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1: [$node1], node2 ready: [$conf->{vm}{$vm}{node2_ready}], can migrate: [$conf->{vm}{$vm}{can_migrate}], migration target: [$conf->{vm}{$vm}{migration_target}]\n");
 		}
 		else
 		{
 			$conf->{vm}{$vm}{can_stop}      = 0;
 			($conf->{vm}{$vm}{node1_ready}) = check_node_readiness($conf, $vm, $node1);
 			($conf->{vm}{$vm}{node2_ready}) = check_node_readiness($conf, $vm, $node2);
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
 		}
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{current_host}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], current host: [$conf->{vm}{$vm}{current_host}]\n");
 		$conf->{vm}{$vm}{boot_target} = "";
 		if ($conf->{vm}{$vm}{current_host})
 		{
@@ -8671,8 +8674,8 @@ sub check_vms
 			my $node   = $conf->{vm}{$vm}{current_host};
 			my $say_vm = $vm;
 			$say_vm =~ s/^vm://;
-			#record($conf, "$THIS_FILE ".__LINE__."; Reading the XML for the VM: [$vm] which is currently running on: [$conf->{vm}{$vm}{current_host}]\n");
-			my ($error, $ssh_fh, $output) = remote_call($conf, {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading the XML for the VM: [$vm] which is currently running on: [$conf->{vm}{$vm}{current_host}]\n");
+			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
@@ -8681,41 +8684,41 @@ sub check_vms
 				'close'		=>	1,
 				shell_call	=>	"virsh dumpxml $say_vm",
 			});
-			#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				push @{$conf->{vm}{$vm}{xml}}, $line;
 			}
 		}
 		else
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node1_ready: [$conf->{vm}{$vm}{node1_ready}], node2_ready: [$conf->{vm}{$vm}{node2_ready}]\n");
 			if (($conf->{vm}{$vm}{node1_ready}) && ($conf->{vm}{$vm}{node2_ready}))
 			{
 				# I can boot on either node, so choose the 
 				# first one in the VM's failover domain.
 				$conf->{vm}{$vm}{boot_target} = find_prefered_host($conf, $vm);
 				$conf->{vm}{$vm}{can_start}   = 1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}], vm::${vm}::can_start: [$conf->{vm}{$vm}{can_start}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}], vm::${vm}::can_start: [$conf->{vm}{$vm}{can_start}]\n");
 			}
 			elsif ($conf->{vm}{$vm}{node1_ready})
 			{
 				$conf->{vm}{$vm}{boot_target} = $node1;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
 			}
 			elsif ($conf->{vm}{$vm}{node2_ready})
 			{
 				$conf->{vm}{$vm}{boot_target} = $node2;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], boot target: [$conf->{vm}{$vm}{boot_target}]\n");
 			}
 			else
 			{
 				$conf->{vm}{$vm}{can_start} = 0;
-				#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], can_start: [$conf->{vm}{$vm}{can_start}]\n");
 			}
 		}
 	}
@@ -8728,11 +8731,11 @@ sub check_vms
 sub find_prefered_host
 {
 	my ($conf, $vm) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in find_prefered_host(), vm: [$vm]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_prefered_host(), vm: [$vm]\n");
 	my $prefered_host = "";
 	
 	my $failover_domain = $conf->{vm}{$vm}{failover_domain};
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], failover_domain: [$failover_domain]\n");
 	if (not $failover_domain)
 	{
 		# Not yet defined in the cluster.
@@ -8745,11 +8748,11 @@ sub find_prefered_host
 		# I only care about the first entry, so I will
 		# exit the loop as soon as I analyze it.
 		$prefered_host = $conf->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
 		last;
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], prefered host: [$prefered_host]\n");
 	return ($prefered_host);
 }
 
@@ -8763,7 +8766,7 @@ sub set_node_names
 	my $this_cluster = $conf->{cgi}{cluster};
 	$conf->{'system'}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
 	$conf->{'system'}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
-	#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{'system'}{cluster}{node1_name}], node2: [$conf->{'system'}{cluster}{node2_name}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{'system'}{cluster}{node1_name}], node2: [$conf->{'system'}{cluster}{node2_name}]\n");
 	
 	return (0);
 }
@@ -8779,10 +8782,10 @@ sub display_vm_state_and_controls
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	#record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node1_long: [$node1_long]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], node2_long: [$node2_long]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node1_long: [$node1_long]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], node2_long: [$node2_long]\n");
 	
-	my $vm_state_and_control_panel = template($conf, "server.html", "display-server-state-and-control-header", {
+	my $vm_state_and_control_panel = AN::Common::template($conf, "server.html", "display-server-state-and-control-header", {
 		anvil			=>	$conf->{cgi}{cluster},
 		node1_short_host_name	=>	$conf->{node}{$node1}{info}{short_host_name},
 		node2_short_host_name	=>	$conf->{node}{$node2}{info}{short_host_name},
@@ -8792,14 +8795,14 @@ sub display_vm_state_and_controls
 	{
 		# Break the name out of the hash key.
 		my ($say_vm) = ($vm =~ /^vm:(.*)/);
-		#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say vm: [$say_vm]\n");
 		
 		# Use the node's short name for the buttons.
 		my $say_start_target     =  $conf->{vm}{$vm}{boot_target} ? $conf->{vm}{$vm}{boot_target} : "--";
 		$say_start_target        =~ s/\..*?$//;
 		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
 		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
-		#record($conf, "$THIS_FILE ".__LINE__."; say_start_target: [$say_start_target], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}], start_target_long: [$start_target_long]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_start_target: [$say_start_target], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}], start_target_long: [$start_target_long]\n");
 		
 		my $prefered_host        =  find_prefered_host($conf, $vm);
 		$prefered_host           =~ s/\..*$//;
@@ -8811,7 +8814,7 @@ sub display_vm_state_and_controls
 		{
 			my $on_host =  $conf->{vm}{$vm}{host};
 			   $on_host =~ s/\..*$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; on_host: [$on_host], prefered_host: [$prefered_host]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; on_host: [$on_host], prefered_host: [$prefered_host]\n");
 			if (($on_host eq $prefered_host) || ($on_host eq "none"))
 			{
 				$prefered_host = "<span class=\"highlight_good\">$prefered_host</span>";
@@ -8820,21 +8823,21 @@ sub display_vm_state_and_controls
 			{
 				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; prefered_host: [$prefered_host]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; prefered_host: [$prefered_host]\n");
 		}
 		
 		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
 		$say_migration_target    =~ s/\..*?$//;
 		#my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
-		my $migrate_button = template($conf, "common.html", "disabled-button", {
+		my $migrate_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0024!#",
 		}, "", 1);
 		if ($conf->{vm}{$vm}{can_migrate})
 		{
-			my $say_target = get_string($conf, {key => "button_0025", variables => {
+			my $say_target = AN::Common::get_string($conf, {key => "button_0025", variables => {
 				migration_target	=>	$say_migration_target,
 			}});
-			$migrate_button = template($conf, "common.html", "enabled-button-no-class", {
+			$migrate_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true",
 				button_text	=>	$say_target,
 				id		=>	"migrate_vm_$vm",
@@ -8843,22 +8846,22 @@ sub display_vm_state_and_controls
 		my $host_node        = "$conf->{vm}{$vm}{host}";
 		#my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
 		#my $force_off_button = "<span class=\"disabled_button\">#!string!button_0027!#</span>";
-		my $stop_button = template($conf, "common.html", "disabled-button", {
+		my $stop_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0033!#",
 		}, "", 1);
-		my $force_off_button = template($conf, "common.html", "disabled-button", {
+		my $force_off_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0027!#",
 		}, "", 1);
 		if ($conf->{vm}{$vm}{can_stop})
 		{
 			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
-			$stop_button      = template($conf, "common.html", "enabled-button-no-class", {
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
+			$stop_button      = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node",
 				button_text	=>	"#!string!button_0028!#",
 				id		=>	"stop_vm_$vm",
 			}, "", 1);
-			$force_off_button = template($conf, "common.html", "enabled-button", {
+			$force_off_button = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_class	=>	"highlight_dangerous",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
 				button_text	=>	"#!string!button_0027!#",
@@ -8866,31 +8869,31 @@ sub display_vm_state_and_controls
 			}, "", 1);
 		}
 		#my $start_button     = "<span class=\"disabled_button\">#!string!button_0029!#</span>";
-		my $start_button = template($conf, "common.html", "disabled-button", {
+		my $start_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0029!#",
 		}, "", 1);
 
 		if ($conf->{vm}{$vm}{boot_target})
 		{
-			$start_button = template($conf, "common.html", "enabled-button-no-class", {
+			$start_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
 				button_text	=>	"#!string!button_0029!#",
 				id		=>	"start_vm_$vm",
 			}, "", 1);
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_button:     [$start_button], vm::${vm}::boot_target: [$conf->{vm}{$vm}{boot_target}]\n");
 		
 		# I need both nodes up to delete a VM.
 		#my $say_delete_button = "<a href=\"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm\"><span class=\"highlight_dangerous\">Delete</span></a>";
 		# I need both nodes up to delete a VM.
 		#my $say_delete_button = "<span class=\"disabled_button\">#!string!button_0030!#</span>";
-		my $say_delete_button = template($conf, "common.html", "disabled-button", {
+		my $say_delete_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0030!#",
 		}, "", 1);
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], prefered_host: [$prefered_host]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::daemon::cman::exit_code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node::${node2}::daemon::cman::exit_code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], prefered_host: [$prefered_host]\n");
 		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($prefered_host !~ /--/))
 		{
-			$say_delete_button = template($conf, "common.html", "enabled-button", {
+			$say_delete_button = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_class	=>	"highlight_dangerous",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm",
 				button_text	=>	"#!string!button_0030!#",
@@ -8898,7 +8901,7 @@ sub display_vm_state_and_controls
 			}, "", 1);
 		}
 		
-		#record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__." > say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
 		if ($conf->{vm}{$vm}{node1_ready} == 2)
 		{
 			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
@@ -8915,12 +8918,12 @@ sub display_vm_state_and_controls
 		{
 			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
 		}
-		#record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__." < say_n1: [$conf->{vm}{$vm}{say_node1}], say_n2: [$conf->{vm}{$vm}{say_node2}]\n");
 		
 		# I don't want to make the VM editable until the cluster is
 		# runnong on at least one node.
 		my $dual_join   = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-		my $say_vm_link = template($conf, "common.html", "enabled-button", {
+		my $say_vm_link = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"fixed_width_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm",
 			button_text	=>	"$say_vm",
@@ -8928,13 +8931,13 @@ sub display_vm_state_and_controls
 		}, "", 1);
 		if ($dual_join)
 		{
-			my $say_vm_disabled_button = template($conf, "common.html", "disabled-button", {
+			my $say_vm_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"$say_vm",
 			}, "", 1);
 			$say_vm_link   = "$say_vm_disabled_button";
 		}
 		
-		$vm_state_and_control_panel .= template($conf, "server.html", "display-server-details-entry", {
+		$vm_state_and_control_panel .= AN::Common::template($conf, "server.html", "display-server-details-entry", {
 			vm_link			=>	$say_vm_link,
 			say_node1		=>	$conf->{vm}{$vm}{say_node1},
 			say_node2		=>	$conf->{vm}{$vm}{say_node2},
@@ -8949,7 +8952,7 @@ sub display_vm_state_and_controls
 	
 	# When enabling the "Start" button, be sure to start on the highest 
 	# priority host in the failover domain, when possible.
-	$vm_state_and_control_panel .= template($conf, "server.html", "display-server-state-and-control-footer");
+	$vm_state_and_control_panel .= AN::Common::template($conf, "server.html", "display-server-state-and-control-footer");
 	
 	return ($vm_state_and_control_panel);
 }
@@ -8964,7 +8967,7 @@ sub display_drbd_details
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
-	my $drbd_details_panel = template($conf, "server.html", "display-replicated-storage-header", {
+	my $drbd_details_panel = AN::Common::template($conf, "server.html", "display-replicated-storage-header", {
 		say_node1	=>	$say_node1,
 		say_node2	=>	$say_node2,
 	});
@@ -9064,7 +9067,7 @@ sub display_drbd_details
 		   $class_n2_ds  = "highlight_warning" if $say_n2_ds =~ /Inconsistent/;
 		   $class_n2_ds  = "highlight_warning" if $say_n2_ds eq "Outdated";
 		   $class_n2_ds  = "highlight_bad"     if $say_n2_ds eq "Diskless";
-		$drbd_details_panel .= template($conf, "server.html", "display-replicated-storage-entry", {
+		$drbd_details_panel .= AN::Common::template($conf, "server.html", "display-replicated-storage-entry", {
 			res		=>	$res,
 			say_n1_dev	=>	$say_n1_dev,
 			say_n2_dev	=>	$say_n2_dev,
@@ -9082,7 +9085,7 @@ sub display_drbd_details
 			say_n2_ds	=>	$say_n2_ds,
 		});
 	}
-	$drbd_details_panel .= template($conf, "server.html", "display-replicated-storage-footer");
+	$drbd_details_panel .= AN::Common::template($conf, "server.html", "display-replicated-storage-footer");
 	
 	return ($drbd_details_panel);
 }
@@ -9097,54 +9100,54 @@ sub display_gfs2_details
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
-	my $gfs2_details_panel = template($conf, "server.html", "display-cluster-storage-header", {
+	my $gfs2_details_panel = AN::Common::template($conf, "server.html", "display-cluster-storage-header", {
 		say_node1	=>	$say_node1,
 		say_node2	=>	$say_node2,
 	});
 
 	my $gfs2_hash;
 	my $node;
-	#record($conf, "$THIS_FILE ".__LINE__."; node1 - cman exit code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node2 - cman exit code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1 - cman exit code: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node1}{daemon}{gfs2}{exit_code}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2 - cman exit code: [$conf->{node}{$node2}{daemon}{cman}{exit_code}], gfs2 exit code: [$conf->{node}{$node2}{daemon}{gfs2}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node1}{gfs}) eq "HASH"))
 	{
 		$gfs2_hash = $conf->{node}{$node1}{gfs};
 		$node      = $node1;
-		#record($conf, "$THIS_FILE ".__LINE__."; using node1's gfs2 hash: [$gfs2_hash]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; using node1's gfs2 hash: [$gfs2_hash]\n");
 	}
 	elsif (($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node2}{gfs}) eq "HASH"))
 	{
 		$gfs2_hash = $conf->{node}{$node2}{gfs};
 		$node      = $node2;
-		#record($conf, "$THIS_FILE ".__LINE__."; using node2's gfs2 hash: [$gfs2_hash]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; using node2's gfs2 hash: [$gfs2_hash]\n");
 	}
 	else
 	{
 		# Neither node has the GFS2 partition mounted. Use the data
 		# from /etc/fstab. This is what will be stored in either node's
 		# hash. So pick a node that's online and use it.
-		#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 		if ($conf->{'system'}{up_nodes} == 1)
 		{
 			$node      = @{$conf->{up_nodes}}[0];
-			record($conf, "$THIS_FILE ".__LINE__."; Neither node has the GFS2 partition mounted.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Neither node has the GFS2 partition mounted.\n");
 			$gfs2_hash = $conf->{node}{$node}{gfs};
 		}
 		else
 		{
 			# Neither node is online at all.
-			$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-not-online");
+			$gfs2_details_panel .= AN::Common::template($conf, "server.html", "display-cluster-storage-not-online");
 		}
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; gfs2_hash: [$gfs2_hash], node1 hash: [".(ref($conf->{node}{$node1}{gfs}))."], node2 hash: [".(ref($conf->{node}{$node2}{gfs}))."]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; gfs2_hash: [$gfs2_hash], node1 hash: [".(ref($conf->{node}{$node1}{gfs}))."], node2 hash: [".(ref($conf->{node}{$node2}{gfs}))."]\n");
 	if (ref($gfs2_hash) eq "HASH")
 	{
 		foreach my $mount_point (sort {$a cmp $b} keys %{$gfs2_hash})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::gfs::${mount_point}::mounted: [$conf->{node}{$node1}{gfs}{$mount_point}{mounted}], node::${node2}::gfs::${mount_point}::mounted: [$conf->{node}{$node2}{gfs}{$mount_point}{mounted}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::gfs::${mount_point}::mounted: [$conf->{node}{$node1}{gfs}{$mount_point}{mounted}], node::${node2}::gfs::${mount_point}::mounted: [$conf->{node}{$node2}{gfs}{$mount_point}{mounted}]\n");
 			my $say_node1_mounted = $conf->{node}{$node1}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
 			my $say_node2_mounted = $conf->{node}{$node2}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
-			#record($conf, "$THIS_FILE ".__LINE__."; say_node1_mounted: [$say_node1_mounted], say_node2_mounted: [$say_node2_mounted]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node1_mounted: [$say_node1_mounted], say_node2_mounted: [$say_node2_mounted]\n");
 			my $say_size         = "--";
 			my $say_used         = "--";
 			my $say_used_percent = "--%";
@@ -9154,8 +9157,8 @@ sub display_gfs2_details
 			# the log from when a node isn't online.
 			$conf->{node}{$node1}{gfs}{$mount_point}{total_size} = "" if not defined $conf->{node}{$node1}{gfs}{$mount_point}{total_size};
 			$conf->{node}{$node2}{gfs}{$mount_point}{total_size} = "" if not defined $conf->{node}{$node2}{gfs}{$mount_point}{total_size};
-			#record($conf, "$THIS_FILE ".__LINE__."; node1 total size: [$conf->{node}{$node1}{gfs}{$mount_point}{total_size}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; node2 total size: [$conf->{node}{$node2}{gfs}{$mount_point}{total_size}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1 total size: [$conf->{node}{$node1}{gfs}{$mount_point}{total_size}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2 total size: [$conf->{node}{$node2}{gfs}{$mount_point}{total_size}]\n");
 			if ($conf->{node}{$node1}{gfs}{$mount_point}{total_size} =~ /^\d/)
 			{
 				$say_size         = $conf->{node}{$node1}{gfs}{$mount_point}{total_size};
@@ -9170,7 +9173,7 @@ sub display_gfs2_details
 				$say_used_percent = $conf->{node}{$node2}{gfs}{$mount_point}{percent_used};
 				$say_free         = $conf->{node}{$node2}{gfs}{$mount_point}{free_space};
 			}
-			$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-entry", {
+			$gfs2_details_panel .= AN::Common::template($conf, "server.html", "display-cluster-storage-entry", {
 				mount_point		=>	$mount_point,
 				say_node1_mounted	=>	$say_node1_mounted,
 				say_node2_mounted	=>	$say_node2_mounted,
@@ -9184,9 +9187,9 @@ sub display_gfs2_details
 	else
 	{
 		# No gfs2 FSes found
-		$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-no-entries-found");
+		$gfs2_details_panel .= AN::Common::template($conf, "server.html", "display-cluster-storage-no-entries-found");
 	}
-	$gfs2_details_panel .= template($conf, "server.html", "display-cluster-storage-footer");
+	$gfs2_details_panel .= AN::Common::template($conf, "server.html", "display-cluster-storage-footer");
 
 	return ($gfs2_details_panel);
 }
@@ -9228,7 +9231,7 @@ sub display_node_details
 		$i++;
 	}
 	
-	my $node_details_panel =template($conf, "server.html", "display-node-details-full", {
+	my $node_details_panel =AN::Common::template($conf, "server.html", "display-node-details-full", {
 		node1_host_name	=>	$host_name[0],
 		node2_host_name	=>	$host_name[1],
 		node1_cman	=>	$cman[0],
@@ -9269,10 +9272,10 @@ sub display_node_controls
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{'system'}{cluster}{node1_name};
 	my $node2 = $conf->{'system'}{cluster}{node2_name};
-	#record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
-	#record($conf, "$THIS_FILE ".__LINE__."; node1_long: [$node1_long], node2_long: [$node2_long]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_long: [$node1_long], node2_long: [$node2_long]\n");
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
@@ -9285,12 +9288,12 @@ sub display_node_controls
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
 		# Join button.
-		my $say_join_disabled_button = template($conf, "common.html", "disabled-button", {
+		my $say_join_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0031!#",
 		}, "", 1);
 		### TODO: See if the peer is online already and, if so, add
 		###      'confirm=true' as the join is safe.
-		my $say_join_enabled_button = template($conf, "common.html", "enabled-button", {
+		my $say_join_enabled_button = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"bold_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0031!#",
@@ -9300,10 +9303,10 @@ sub display_node_controls
 		$say_join[$i] = $say_join_disabled_button if $disable_join;
 		   
 		# Withdraw button
-		my $say_withdraw_disabled_button = template($conf, "common.html", "disabled-button", {
+		my $say_withdraw_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0032!#",
 		}, "", 1);
-		my $say_withdraw_enabled_button = template($conf, "common.html", "enabled-button-no-class", {
+		my $say_withdraw_enabled_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0032!#",
 			id		=>	"withdraw_$node",
@@ -9311,10 +9314,10 @@ sub display_node_controls
 		$say_withdraw[$i] = $conf->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
 		
 		# Shutdown button
-		my $say_shutdown_disabled_button = template($conf, "common.html", "disabled-button", {
+		my $say_shutdown_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0033!#",
 		}, "", 1);
-		my $say_shutdown_enabled_button = template($conf, "common.html", "enabled-button-no-class", {
+		my $say_shutdown_enabled_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0033!#",
 			id		=>	"poweroff_node_$node",
@@ -9322,10 +9325,10 @@ sub display_node_controls
 		$say_shutdown[$i] = $conf->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
 		
 		# Boot button
-		my $say_boot_disabled_button = template($conf, "common.html", "disabled-button", {
+		my $say_boot_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0034!#",
 		}, "", 1);
-		my $say_boot_enabled_button = template($conf, "common.html", "enabled-button", {
+		my $say_boot_enabled_button = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"bold_button",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true",
 			button_text	=>	"#!string!button_0034!#",
@@ -9335,10 +9338,10 @@ sub display_node_controls
 		
 		# Fence button
 		# If the node is already confirmed off, no need to fence.
-		my $say_fence_node_disabled_button = template($conf, "common.html", "disabled-button", {
+		my $say_fence_node_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0037!#",
 		}, "", 1);
-		my $say_fence_node_enabled_button = template($conf, "common.html", "enabled-button", {
+		my $say_fence_node_enabled_button = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"highlight_dangerous",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0037!#",
@@ -9349,15 +9352,15 @@ sub display_node_controls
 		# Dual-boot button.
 		if ($i == 0)
 		{
-			my $say_dual_boot_disabled_button = template($conf, "common.html", "disabled-button", {
+			my $say_dual_boot_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0035!#",
 			}, "", 1);
 			$say_dual_boot_disabled_button =~ s/\n$//;
 			$say_dual_boot = $say_dual_boot_disabled_button;
-			#record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
 			
 			# Dual-Join button
-			my $say_dual_join_disabled_button = template($conf, "common.html", "disabled-button", {
+			my $say_dual_join_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0036!#",
 			}, "", 1);
 			$say_dual_join_disabled_button =~ s/\n$//;
@@ -9367,17 +9370,17 @@ sub display_node_controls
 				# First row.
 				if ($dual_boot)
 				{
-					$say_dual_boot = template($conf, "common.html", "enabled-button", {
+					$say_dual_boot = AN::Common::template($conf, "common.html", "enabled-button", {
 						button_class	=>	"bold_button",
 						button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true",
 						button_text	=>	"#!string!button_0035!#",
 						id		=>	"dual_boot",
 					}, "", 1);
-					record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
 				}
 				if ($dual_join)
 				{
-					$say_dual_join = template($conf, "common.html", "enabled-button", {
+					$say_dual_join = AN::Common::template($conf, "common.html", "enabled-button", {
 						button_class	=>	"bold_button",
 						button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true",
 						button_text	=>	"#!string!button_0036!#",
@@ -9392,23 +9395,23 @@ sub display_node_controls
 		
 		# Make the node names click-able to show the hardware states.
 		$say_node_name[$i] = "$conf->{node}{$node}{info}{host_name}";
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
 		if ($conf->{node}{$node}{connected})
 		{
-			$say_node_name[$i] = template($conf, "common.html", "enabled-button-new-tab", {
+			$say_node_name[$i] = AN::Common::template($conf, "common.html", "enabled-button-new-tab", {
 				button_class	=>	"fixed_width_button",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
 				id		=>	"display_health_$node",
 			}, "", 1);
-			#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
 		}
 		$rowspan = 0;
 		$i++;
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
-	my $node_control_panel = template($conf, "server.html", "display-node-controls-full", {
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+	my $node_control_panel = AN::Common::template($conf, "server.html", "display-node-controls-full", {
 		say_node1_name		=>	$say_node_name[0],
 		say_node2_name		=>	$say_node_name[1],
 		dual_boot_button	=>	$say_dual_boot,

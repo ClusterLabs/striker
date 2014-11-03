@@ -1,5 +1,5 @@
-#!/usr/bin/perl
-#
+package AN::Cluster;
+
 # Striker - Alteeve's Niche! Cluster Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
@@ -28,10 +28,14 @@ use warnings;
 use IO::Handle;
 use Net::SSH2;
 
+use AN::Common;
+use AN::InstallManifest;
+use AN::Striker;
+
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
-my $THIS_FILE = "an-cluster.lib";
+my $THIS_FILE = "AN::Cluster.pm";
 our $VERSION  = "1.1.7";
 
 # This shows the user the local hostname and IP addresses. It also provides a
@@ -42,7 +46,7 @@ sub configure_local_system
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
-	print template($conf, "common.html", "scanning-message", {}, {
+	print AN::Common::template($conf, "common.html", "scanning-message", {}, {
 		anvil	=>	$conf->{cgi}{cluster},
 	});
 	
@@ -86,7 +90,7 @@ sub call_gather_system_info
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
 	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my $fh = IO::Handle->new();
-	open ($fh, "$shell_call 2>&1 |") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	open ($fh, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
 	binmode $fh, ":utf8:";
 	while (<$fh>)
 	{
@@ -309,7 +313,7 @@ sub sanity_check_an_conf
 			{
 				# Not sure why a user is trying to save an empty Anvil!...
 				$save = 0;
-				print template($conf, "config.html", "form-value-warning", {
+				print AN::Common::template($conf, "config.html", "form-value-warning", {
 					row	=>	"#!string!row_0004!#",
 					message	=>	"#!string!message_0004!#",
 				}); 
@@ -324,7 +328,7 @@ sub sanity_check_an_conf
 				$save = 0;
 				# The second hash passes in the variables for
 				# the 'message' string.
-				print template($conf, "config.html", "form-value-warning", {
+				print AN::Common::template($conf, "config.html", "form-value-warning", {
 					row	=>	"#!string!row_0004!#",
 					message	=>	"#!string!message_0005!#",
 				}, {
@@ -341,7 +345,7 @@ sub sanity_check_an_conf
 				if (($this_nodes_1_ip) && ($this_nodes_1_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0008!#",
 						message	=>	"#!string!message_0006!#",
 					}, {
@@ -353,7 +357,7 @@ sub sanity_check_an_conf
 				if (($this_nodes_2_ip) && ($this_nodes_2_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0009!#",
 						message	=>	"#!string!message_0006!#",
 					}, {
@@ -366,7 +370,7 @@ sub sanity_check_an_conf
 				if (($this_nodes_1_port) && (($this_nodes_1_port =~ /\D/) || ($this_nodes_1_port < 1) || ($this_nodes_1_port > 65535)))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0010!#",
 						message	=>	"#!string!message_0007!#",
 					}, {
@@ -378,7 +382,7 @@ sub sanity_check_an_conf
 				if (($this_nodes_2_port) && (($this_nodes_2_port =~ /\D/) || ($this_nodes_2_port < 1) || ($this_nodes_2_port > 65535)))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0011!#",
 						message	=>	"#!string!message_0007!#",
 					}, {
@@ -392,7 +396,7 @@ sub sanity_check_an_conf
 				if ((not $this_nodes_1_name) && (($this_nodes_1_ip) || ($this_nodes_1_port)))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0012!#",
 						message	=>	"#!string!message_0008!#",
 					}, {
@@ -403,7 +407,7 @@ sub sanity_check_an_conf
 				if ((not $this_nodes_2_name) && (($this_nodes_2_ip) || ($this_nodes_2_port)))
 				{
 					$save = 0;
-					print template($conf, "config.html", "form-value-warning", {
+					print AN::Common::template($conf, "config.html", "form-value-warning", {
 						row	=>	"#!string!row_0012!#",
 						message	=>	"#!string!message_0009!#",
 					}, {
@@ -416,14 +420,14 @@ sub sanity_check_an_conf
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	
 	# Now Sanity check the global (or Anvil! override) values.
-	print template($conf, "config.html", "sanity-check-global-header"); 
+	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
 	
 	# Make sure email addresses are.
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
 	if (($conf->{cgi}{$smtp__username_key}) && ($conf->{cgi}{$smtp__username_key} ne "#!inherit!#") && ($conf->{cgi}{$smtp__username_key} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
 	{
 		$save = 0;
-		print template($conf, "config.html", "form-value-warning", {
+		print AN::Common::template($conf, "config.html", "form-value-warning", {
 			row	=>	"#!string!row_0014!#",
 			message	=>	"#!string!message_0011!#",
 		}, {
@@ -439,7 +443,7 @@ sub sanity_check_an_conf
 			if ($email !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/)
 			{
 				$save = 0;
-				print template($conf, "config.html", "form-value-warning", {
+				print AN::Common::template($conf, "config.html", "form-value-warning", {
 					row	=>	"#!string!row_0015!#",
 					message	=>	"#!string!message_0011!#",
 				}, {
@@ -457,7 +461,7 @@ sub sanity_check_an_conf
 		if (($conf->{cgi}{$smtp__port_key} =~ /\D/) || ($conf->{cgi}{$smtp__port_key} < 1) || ($conf->{cgi}{$smtp__port_key} > 65535))
 		{
 			$save = 0;
-			print template($conf, "config.html", "form-value-warning", {
+			print AN::Common::template($conf, "config.html", "form-value-warning", {
 				row	=>	"#!string!row_0016!#",
 				message	=>	"#!string!message_0012!#",
 			});
@@ -466,9 +470,9 @@ sub sanity_check_an_conf
 	elsif (($conf->{cgi}{$smtp__server_key}) && ($conf->{cgi}{$smtp__server_key} ne "#!inherit!#"))
 	{
 		$save = 0;
-		my $say_row     = get_string($conf, {key => "row_0016"});
-		my $say_message = get_string($conf, {key => "message_0013"});
-		print template($conf, "config.html", "form-value-warning", {
+		my $say_row     = AN::Common::get_string($conf, {key => "row_0016"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0013"});
+		print AN::Common::template($conf, "config.html", "form-value-warning", {
 			row	=>	"#!string!row_0016!#",
 			message	=>	"#!string!message_0013!#",
 		});
@@ -590,7 +594,7 @@ sub write_new_an_conf
 	my ($conf, $say_date) = @_;
 	
 	# Tell the user where ready to go.
-	print template($conf, "config.html", "general-row-good", {
+	print AN::Common::template($conf, "config.html", "general-row-good", {
 		row	=>	"#!string!row_0018!#",
 		message	=>	"#!string!message_0015!#",
 	}); 
@@ -598,10 +602,10 @@ sub write_new_an_conf
 	# Start writing the config file.
 	my $an_conf = IO::Handle->new();
 	open ($an_conf, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
-	my $say_date_header = get_string($conf, {key => "text_0003", variables => {
+	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
-	my $say_text = get_string($conf, {key => "text_0001"});
+	my $say_text = AN::Common::get_string($conf, {key => "text_0001"});
 	print $an_conf "$say_date_header\n";
 	print $an_conf "$say_text\n";
 
@@ -638,7 +642,7 @@ sub write_new_an_conf
 	}
 	
 	# Write out the global values.
-	my $say_body = get_string($conf, {key => "text_0002", variables => {
+	my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
 		smtp__server			=>	$conf->{smtp}{server},
 		smtp__port			=>	$conf->{smtp}{port},
 		smtp__username			=>	$conf->{smtp}{username},
@@ -808,7 +812,7 @@ sub copy_file
 	if (not -e $destination)
 	{
 		$output =~ s/\n$//;
-		my $say_message = get_string($conf, {key => "message_0016", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0016", variables => {
 			file		=>	$source,
 			destination	=>	$destination,
 			output		=>	$output,
@@ -827,7 +831,7 @@ sub write_new_ssh_config
 	my $ssh_config = IO::Handle->new();
 	open ($ssh_config, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
 	#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [### Last updated: [$say_date]]\n");
-	my $say_date_header = get_string($conf, {key => "text_0003", variables => {
+	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
 	print $ssh_config "$say_date_header\n";
@@ -862,7 +866,7 @@ sub write_new_ssh_config
 	}
 	
 	# Print the header box that separates the main config from our 'Host ...' entries.
-	my $say_host_header = get_string($conf, {key => "text_0004"});
+	my $say_host_header = AN::Common::get_string($conf, {key => "text_0004"});
 	print $ssh_config "\n$say_host_header\n\n";
 	
 	# Now add any new entries.
@@ -890,10 +894,10 @@ sub write_new_hosts
 	# Open the file
 	my $hosts_file = IO::Handle->new();
 	open ($hosts_file, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
-	my $say_date_header = get_string($conf, {key => "text_0003", variables => {
+	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
-	my $say_host_header = get_string($conf, {key => "text_0005"});
+	my $say_host_header = AN::Common::get_string($conf, {key => "text_0005"});
 	print $hosts_file "$say_date_header\n";
 	print $hosts_file "$say_host_header\n";
 
@@ -970,25 +974,25 @@ sub save_dashboard_configure
 		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/archive/ssh_config.$date");
 		write_new_ssh_config($conf, $say_date);
 		
-		print template($conf, "config.html", "general-row-good", {
+		print AN::Common::template($conf, "config.html", "general-row-good", {
 			row	=>	"#!string!row_0019!#",
 			message	=>	"#!string!message_0017!#",
 		});
-		print template($conf, "config.html", "close-table");
+		print AN::Common::template($conf, "config.html", "close-table");
 		footer($conf);
 		exit(0);
 	}
 	else
 	{
 		# Problem
-		print template($conf, "config.html", "form-value-warning", {
+		print AN::Common::template($conf, "config.html", "form-value-warning", {
 			row	=>	"#!string!row_0020!#",
 			message	=>	"#!string!message_0018!#",
 		});
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
 	
-	print template($conf, "config.html", "close-table");
+	print AN::Common::template($conf, "config.html", "close-table");
 
 	return(0);
 }
@@ -1082,7 +1086,7 @@ sub show_anvil_config_header
 	my $this_cluster          = $conf->{cgi}{anvil};
 	my $say_this_cluster      = $this_cluster;
 	my $this_id               = defined $conf->{clusters}{$this_cluster}{id}               ? $conf->{clusters}{$this_cluster}{id}               : "new";
-	my $clear_icon            = template($conf, "common.html", "image_with_js", {
+	my $clear_icon            = AN::Common::template($conf, "common.html", "image_with_js", {
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_clear-fields_16x16.png",
 		javascript	=>	"onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\"",
 		alt_text	=>	"",
@@ -1138,7 +1142,7 @@ sub show_anvil_config_header
 		# New Anvil!
 		$say_this_cluster = "";
 		$clear_icon       = "";
-		print template($conf, "config.html", "config-header", {
+		print AN::Common::template($conf, "config.html", "config-header", {
 			title_1	=>	"#!string!title_0003!#",
 			title_2	=>	"#!string!title_0004!#",
 		});
@@ -1146,14 +1150,14 @@ sub show_anvil_config_header
 	else
 	{
 		# Existing Anvil!
-		print template($conf, "config.html", "config-header", {
+		print AN::Common::template($conf, "config.html", "config-header", {
 			title_1	=>	"#!string!title_0005!#",
 			title_2	=>	"#!string!title_0006!#",
 		});
 	}
 	
 	# Print the body of the global/overrides section.
-	print template($conf, "config.html", "anvil-variables", {
+	print AN::Common::template($conf, "config.html", "anvil-variables", {
 		anvil_id			=>	$this_id,
 		anvil				=>	$conf->{cgi}{anvil},
 		clear_icon			=>	"$clear_icon",
@@ -1203,7 +1207,7 @@ sub show_global_config_header
 {
 	my ($conf) = @_;
 	
-	print template($conf, "config.html", "config-header", {
+	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0011!#",
 		title_2	=>	"#!string!title_0012!#",
 	});
@@ -1301,7 +1305,7 @@ sub show_common_config_section
 	if ($conf->{cgi}{anvil})
 	{
 		$push_button =  "&nbsp; ";
-		$push_button .= template($conf, "common.html", "enabled-button", {
+		$push_button .= AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"bold_button",
 			button_link	=>	"?config=true&anvil=$conf->{cgi}{anvil}&task=push",
 			button_text	=>	"#!string!button_0039!#",
@@ -1311,7 +1315,7 @@ sub show_common_config_section
 	else
 	{
 		$push_button =  "&nbsp; ";
-# 		$push_button .= template($conf, "common.html", "enabled-button", {
+# 		$push_button .= AN::Common::template($conf, "common.html", "enabled-button", {
 # 			button_class	=>	"bold_button",
 # 			button_link	=>	"?config=true&task=archive",
 # 			button_text	=>	"#!string!button_0040!#",
@@ -1319,7 +1323,7 @@ sub show_common_config_section
 # 		}, "", 1);
 	}
 	
-	print template($conf, "config.html", "global-variables", {
+	print AN::Common::template($conf, "config.html", "global-variables", {
 		anvil_id			=>	$this_id,
 		smtp__server_name		=>	$smtp__server_key,
 		smtp__server_id			=>	$smtp__server_key,
@@ -1355,11 +1359,11 @@ sub show_global_anvil_list
 {
 	my ($conf) = @_;
 	
-	print template($conf, "config.html", "config-header", {
+	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0009!#",
 		title_2	=>	"#!string!title_0010!#",
 	});
-	print template($conf, "config.html", "anvil-column-header");
+	print AN::Common::template($conf, "config.html", "anvil-column-header");
 	my $ids = "";
 	foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
 	{
@@ -1372,19 +1376,19 @@ sub show_global_anvil_list
 		my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
 		if ($this_url)
 		{
-			my $image = template($conf, "common.html", "image", {
+			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
 				alt_text	=>	"",
 				id		=>	"url_icon",
 			}, "", 1);
-			$this_url = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+			$this_url = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"$this_url",
 				button_text	=>	"$image",
 				id		=>	"url_$this_cluster",
 			}, "", 1);
 		}
 		
-		print template($conf, "config.html", "anvil-column-entry", {
+		print AN::Common::template($conf, "config.html", "anvil-column-entry", {
 			anvil		=>	$this_cluster,
 			company		=>	$this_company,
 			description	=>	$this_description,
@@ -1394,7 +1398,7 @@ sub show_global_anvil_list
 ";
 	}
 
-	print template($conf, "config.html", "anvil-column-footer");
+	print AN::Common::template($conf, "config.html", "anvil-column-footer");
 	
 	return(0);
 }
@@ -1419,13 +1423,13 @@ sub push_config_to_anvil
 	if ($up == 0)
 	{
 		# Neither node is reachable or online.
-		print template($conf, "config.html", "can-not-push-config-no-access");
+		print AN::Common::template($conf, "config.html", "can-not-push-config-no-access");
 	}
 	elsif ($up == 1)
 	{
 		# Only one node online, don't update to prevent divergent
 		# configs.
-		print template($conf, "config.html", "can-not-push-config-only-one-node");
+		print AN::Common::template($conf, "config.html", "can-not-push-config-only-one-node");
 	}
 	else
 	{
@@ -1442,15 +1446,15 @@ sub push_config_to_anvil
 		$date          =~ s/ /_/;
 		$say_date      =~ s/ /, /;
 		
-		print template($conf, "config.html", "open-push-table");
+		print AN::Common::template($conf, "config.html", "open-push-table");
 		foreach my $node (@{$conf->{up_nodes}})
 		{
-			my $message = get_string($conf, {key => "message_0280", variables => {
+			my $message = AN::Common::get_string($conf, {key => "message_0280", variables => {
 					node		=>	$node,
 					source		=>	$config_file,
 					destination	=>	"$config_file.$date",
 				}});
-			print template($conf, "config.html", "open-push-entry", {
+			print AN::Common::template($conf, "config.html", "open-push-entry", {
 				row	=>	"#!string!row_0130!#",
 				message	=>	"$message",
 			});
@@ -1478,8 +1482,8 @@ sub push_config_to_anvil
 				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($config_file =~ /$line$/)
 				{
-					$line = get_string($conf, {key => "message_0283"});
-					print template($conf, "common.html", "shell-call-output", {
+					$line = AN::Common::get_string($conf, {key => "message_0283"});
+					print AN::Common::template($conf, "common.html", "shell-call-output", {
 						line	=>	$line,
 					});
 				}
@@ -1508,28 +1512,28 @@ sub push_config_to_anvil
 				record($conf, "$THIS_FILE ".__LINE__."; line:   [$line]\n");
 				if ($backup_file =~ /$line$/)
 				{
-					$line = get_string($conf, {key => "message_0284"});
+					$line = AN::Common::get_string($conf, {key => "message_0284"});
 				}
 				if ($line =~ /No such file or directory/)
 				{
-					$line = get_string($conf, {key => "message_0285"});
+					$line = AN::Common::get_string($conf, {key => "message_0285"});
 				}
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
-			print template($conf, "config.html", "close-push-entry");
+			print AN::Common::template($conf, "config.html", "close-push-entry");
 			
 			# See if I need to add the target node to the
 			# dashboard's '~/.ssh/known_hosts' file.
-			test_ssh_fingerprint($conf, $node);
+			AN::Common::test_ssh_fingerprint($conf, $node);
 			
 			# Now push the actual config file.
-			$message = get_string($conf, {key => "message_0281", variables => {
+			$message = AN::Common::get_string($conf, {key => "message_0281", variables => {
 					node		=>	$node,
 					config_file	=>	"$config_file",
 				}});
-			print template($conf, "config.html", "open-push-entry", {
+			print AN::Common::template($conf, "config.html", "open-push-entry", {
 				row	=>	"#!string!row_0131!#",
 				message	=>	"$message",
 			});
@@ -1538,7 +1542,7 @@ sub push_config_to_anvil
 			if ( -e "/usr/bin/expect" )
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
-				create_rsync_wrapper($conf, $node);
+				AN::Common::create_rsync_wrapper($conf, $node);
 				$sc = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -1549,14 +1553,14 @@ sub push_config_to_anvil
 			{
 				chomp;
 				my $line = $_;
-				print template($conf, "common.html", "shell-call-output", {
+				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
 			}
 			$fh->close;
-			print template($conf, "config.html", "close-push-entry");
+			print AN::Common::template($conf, "config.html", "close-push-entry");
 		}
-		print template($conf, "config.html", "close-table");
+		print AN::Common::template($conf, "config.html", "close-table");
 	}
 	
 	return(0);
@@ -1572,7 +1576,7 @@ sub show_archive_options
 	# First up, collect the config files and make them available for download.
 	my $backup_url = create_backup_file($conf);
 	
-	print template($conf, "config.html", "archive-menu", {
+	print AN::Common::template($conf, "config.html", "archive-menu", {
 		form_file	=>	"/cgi-bin/an-cdb",
 	});
 	
@@ -1651,14 +1655,14 @@ sub load_backup_configuration
 	record($conf, "$THIS_FILE ".__LINE__."; in_fh: [$in_fh], cgi_mimetype::file: [$conf->{cgi_mimetype}{file}]\n");
 	if (not $in_fh)
 	{
-		print template($conf, "config.html", "no-backup-file-uploaded");
+		print AN::Common::template($conf, "config.html", "no-backup-file-uploaded");
 		show_archive_options($conf);
 		return(1);
 	}
 	elsif ($conf->{cgi_mimetype}{file} ne "text/plain")
 	{
 		# The variable hash feeds 'explain_0039' and 'explain_0040'.
-		print template($conf, "config.html", "backup-file-bad-mimetype", {}, {
+		print AN::Common::template($conf, "config.html", "backup-file-bad-mimetype", {}, {
 				file		=>	$conf->{cgi}{file},
 				mimetype	=>	$conf->{cgi_mimetype}{file},
 			});
@@ -1682,7 +1686,7 @@ sub load_backup_configuration
 			{
 				# Not a valid backup file.
 				# The variable hash feeds 'explain_0039'.
-				print template($conf, "config.html", "invalid-backup-file-uploaded", {}, {
+				print AN::Common::template($conf, "config.html", "invalid-backup-file-uploaded", {}, {
 					file	=>	$conf->{cgi}{file},
 				});
 				show_archive_options($conf);
@@ -1743,7 +1747,7 @@ sub load_backup_configuration
 		open ($ssh_fh, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
 		print $ssh_fh $ssh_config;
 		$ssh_fh->close();
-		print template($conf, "config.html", "backup-file-loaded", {}, {
+		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file		=>	$conf->{cgi}{file},
 			});
 		footer($conf);
@@ -1819,21 +1823,21 @@ sub create_install_manifest
 			{
 				# OK to proceed.
 				unlink $file or die "Failed to delete: [$conf->{cgi}{'delete'}], error was: $!\n";
-				my $message = get_string($conf, { key => "message_0349", variables => {
+				my $message = AN::Common::get_string($conf, { key => "message_0349", variables => {
 					file		=>	$file,
 				}});
-				print template($conf, "config.html", "delete-manifest-success", {
+				print AN::Common::template($conf, "config.html", "delete-manifest-success", {
 					message	=>	$message,
 				});
 			}
 			else
 			{
 				# File is gone...
-				my $message = get_string($conf, { key => "message_0348", variables => {
+				my $message = AN::Common::get_string($conf, { key => "message_0348", variables => {
 					file		=>	$conf->{cgi}{'delete'},
 					manifest_dir	=>	$conf->{path}{apache_manifests_dir},
 				}});
-				print template($conf, "config.html", "delete-manifest-failure", {
+				print AN::Common::template($conf, "config.html", "delete-manifest-failure", {
 					message	=>	$message,
 				});
 			}
@@ -1841,8 +1845,8 @@ sub create_install_manifest
 		else
 		{
 			$show_form = 0;
-			my $message = get_string($conf, { key => "message_0347", variables => { file => $conf->{cgi}{'delete'} }});
-			print template($conf, "config.html", "manifest-confirm-delete", {
+			my $message = AN::Common::get_string($conf, { key => "message_0347", variables => { file => $conf->{cgi}{'delete'} }});
+			print AN::Common::template($conf, "config.html", "manifest-confirm-delete", {
 				message	=>	$message,
 				confirm	=>	"?config=true&task=create-install-manifest&delete=$conf->{cgi}{'delete'}&confirm=true",
 			});
@@ -1879,7 +1883,7 @@ sub create_install_manifest
 			if ($conf->{cgi}{'do'} eq "new")
 			{
 				# New install
-				run_new_install_manifest($conf);
+				AN::InstallManifest::run_new_install_manifest($conf);
 			}
 			else
 			{
@@ -1925,7 +1929,7 @@ sub create_install_manifest
 		}
 		
 		# Show the manifest form.
-		print template($conf, "config.html", "install-manifest-form", {
+		print AN::Common::template($conf, "config.html", "install-manifest-form", {
 			form_file			=>	"/cgi-bin/an-cdb",
 			anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
 			anvil_prefix_star		=>	$conf->{form}{anvil_prefix_star},
@@ -2443,10 +2447,10 @@ sub load_install_manifest
 	else
 	{
 		# File is gone. ;_;
-		my $message = get_string($conf, { key => "message_0350", variables => {
+		my $message = AN::Common::get_string($conf, { key => "message_0350", variables => {
 			manifest_file	=>	$manifest_file,
 		}});
-		print template($conf, "config.html", "load-manifest-failure", {
+		print AN::Common::template($conf, "config.html", "load-manifest-failure", {
 			message	=>	$message,
 		});
 	}
@@ -2459,7 +2463,7 @@ sub show_existing_install_manifests
 {
 	my ($conf) = @_;
 	
-	print template($conf, "config.html", "install-manifest-header");
+	print AN::Common::template($conf, "config.html", "install-manifest-header");
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
 	while (my $file = readdir(DIR))
@@ -2470,7 +2474,7 @@ sub show_existing_install_manifests
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
-			$conf->{manifest_file}{$file}{anvil} = get_string($conf, { key => "message_0346", variables => {
+			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
 									'time'	=>	$time,
@@ -2479,15 +2483,14 @@ sub show_existing_install_manifests
 	}
 	foreach my $file (sort {$b cmp $a} keys %{$conf->{manifest_file}})
 	{
-		print template($conf, "config.html", "install-manifest-entry", {
+		print AN::Common::template($conf, "config.html", "install-manifest-entry", {
 			description	=>	$conf->{manifest_file}{$file}{anvil},
 			load		=>	"?config=true&task=create-install-manifest&load=$file",
 			download	=>	$conf->{path}{apache_manifests_url}."/".$file,
-			run		=>	"?config=true&task=create-install-manifest&run=$file",
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
 		});
 	}
-	print template($conf, "config.html", "install-manifest-footer");
+	print AN::Common::template($conf, "config.html", "install-manifest-footer");
 	
 	return(0);
 }
@@ -2683,8 +2686,8 @@ $conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
 	print $file_handle $xml;
 	close $file_handle;
 	
-	print template($conf, "config.html", "manifest-created", {
-		message	=>	get_string($conf, {
+	print AN::Common::template($conf, "config.html", "manifest-created", {
+		message	=>	AN::Common::get_string($conf, {
 			key => "explain_0124", variables => {
 				url	=>	"$target_url",
 				file	=>	"$xml_file",
@@ -2704,7 +2707,7 @@ sub confirm_install_manifest_run
 	# Ask if we're replacing a failed node or doing a fresh install.
 	if (not $conf->{cgi}{'do'})
 	{
-		print template($conf, "config.html", "ask-new-or-replace-run-install-manifest", {
+		print AN::Common::template($conf, "config.html", "ask-new-or-replace-run-install-manifest", {
 			new_link	=>	"$conf->{'system'}{cgi_string}&do=new",
 			replace_link	=>	"$conf->{'system'}{cgi_string}&do=replace",
 		});
@@ -2749,7 +2752,7 @@ sub confirm_install_manifest_run
 			$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip} if not $conf->{cgi}{anvil_node2_current_ip};
 			$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
 			
-			print template($conf, "config.html", "confirm-new-anvil-creation", {
+			print AN::Common::template($conf, "config.html", "confirm-new-anvil-creation", {
 				form_file			=>	"/cgi-bin/an-cdb",
 				say_storage_pool_1		=>	$say_storage_pool_1,
 				say_storage_pool_2		=>	$say_storage_pool_2,
@@ -2816,7 +2819,7 @@ sub show_summary_manifest
 	my ($conf) = @_;
 	
 	# Show the manifest form.
-	print template($conf, "config.html", "install-manifest-summay", {
+	print AN::Common::template($conf, "config.html", "install-manifest-summay", {
 		form_file			=>	"/cgi-bin/an-cdb",
 		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
 		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
@@ -2886,8 +2889,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2895,8 +2898,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2906,16 +2909,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0161!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0161!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_sequence} =~ /\D/)
 	{
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0161!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0161!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2925,16 +2928,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0160!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0160!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_domain}))
 	{
 		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0160!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0160!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2944,8 +2947,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_password_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0194!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0194!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2956,16 +2959,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0162!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0162!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_network}))
 	{
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0162!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0162!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2973,16 +2976,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0162!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0162!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_subnet}))
 	{
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0162!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0162!#"}}),
 		});
 		$problem = 1;
 	}
@@ -2992,16 +2995,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0163!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0163!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_network}))
 	{
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0163!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0163!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3009,16 +3012,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0163!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0163!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_subnet}))
 	{
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0163!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0163!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3028,16 +3031,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0164!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0116", variables => { field => "#!string!row_0164!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_network}))
 	{
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0164!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0118", variables => { field => "#!string!row_0164!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3045,16 +3048,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0164!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0117", variables => { field => "#!string!row_0164!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_subnet}))
 	{
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0164!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0164!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3065,16 +3068,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0191!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0191!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_media_library_size}))
 	{
 		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0191!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0191!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3084,24 +3087,24 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0199!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0199!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_storage_pool1_size}))
 	{
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0199!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0121", variables => { field => "#!string!row_0199!#"}}),
 		});
 		$problem = 1;
 	} # Make sure the percentage is between 0 and 100.
 	elsif (($conf->{cgi}{anvil_storage_pool1_unit} eq "%") && (($conf->{cgi}{anvil_storage_pool1_size} < 0) || ($conf->{cgi}{anvil_storage_pool1_size} > 100)))
 	{
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0120", variables => { field => "#!string!row_0199!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0120", variables => { field => "#!string!row_0199!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3111,24 +3114,24 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0005!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0005!#"}}),
 		});
 		$problem = 1;
 	} # cman only allows 1-15 characters
 	elsif (length($conf->{cgi}{anvil_name}) > 15)
 	{
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0122", variables => { field => "#!string!row_0005!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0122", variables => { field => "#!string!row_0005!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_name} =~ /[^a-zA-Z0-9\-]/)
 	{
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0123", variables => { field => "#!string!row_0005!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0123", variables => { field => "#!string!row_0005!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3139,16 +3142,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0188!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0188!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_gateway}))
 	{
 		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0188!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0188!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3158,16 +3161,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_dns1_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0189!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0189!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_dns1}))
 	{
 		$conf->{form}{anvil_ifn_dns1_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0189!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0189!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3177,16 +3180,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_dns2_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0190!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0190!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_dns2}))
 	{
 		$conf->{form}{anvil_ifn_dns2_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0190!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0190!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3202,8 +3205,8 @@ sub sanity_check_manifest_answers
 		{
 			# IP set, so host name is needed.
 			$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
-			print template($conf, "config.html", "form-error", {
-				message	=>	get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
 			});
 			$problem = 1;
 		}
@@ -3216,8 +3219,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch1_name}))
 	{
 		$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0178!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0178!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3228,8 +3231,8 @@ sub sanity_check_manifest_answers
 		{
 			# Host name set, so IP is needed.
 			$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
-			print template($conf, "config.html", "form-error", {
-				message	=>	get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0179!#"}}),
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0179!#"}}),
 			});
 			$problem = 1;
 		}
@@ -3242,8 +3245,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch1_ip}))
 	{
 		$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0179!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0179!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3256,8 +3259,8 @@ sub sanity_check_manifest_answers
 		{
 			# IP set, so host name is needed.
 			$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
-			print template($conf, "config.html", "form-error", {
-				message	=>	get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0111", variables => { field => "#!string!row_0178!#"}}),
 			});
 			$problem = 1;
 		}
@@ -3270,8 +3273,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch2_name}))
 	{
 		$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0180!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0180!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3282,8 +3285,8 @@ sub sanity_check_manifest_answers
 		{
 			# Host name set, so IP is needed.
 			$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
-			print template($conf, "config.html", "form-error", {
-				message	=>	get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0181!#"}}),
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0112", variables => { field => "#!string!row_0181!#"}}),
 			});
 			$problem = 1;
 		}
@@ -3296,8 +3299,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch2_ip}))
 	{
 		$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0181!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0181!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3307,16 +3310,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_pdu1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0174!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0174!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pdu1_name}))
 	{
 		$conf->{form}{anvil_pdu1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0174!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0174!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3324,16 +3327,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_pdu1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0175!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0175!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pdu1_ip}))
 	{
 		$conf->{form}{anvil_pdu1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0175!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0175!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3343,16 +3346,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_pdu2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0176!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0176!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pdu2_name}))
 	{
 		$conf->{form}{anvil_pdu2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0176!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0176!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3360,16 +3363,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_pdu2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0177!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0177!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pdu2_ip}))
 	{
 		$conf->{form}{anvil_pdu2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0177!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0177!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3379,16 +3382,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0170!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0170!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_ups1_name}))
 	{
 		$conf->{form}{anvil_ups1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0170!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0170!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3396,16 +3399,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0171!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0171!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups1_ip}))
 	{
 		$conf->{form}{anvil_ups1_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0171!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0171!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3415,16 +3418,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0172!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0172!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_ups2_name}))
 	{
 		$conf->{form}{anvil_ups2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0172!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0172!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3432,16 +3435,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0173!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0173!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups2_ip}))
 	{
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0173!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0173!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3451,16 +3454,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0182!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0182!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_striker1_name}))
 	{
 		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0182!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0182!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3468,16 +3471,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0183!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0183!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0183!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0183!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3485,16 +3488,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0184!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0184!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0184!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0184!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3504,16 +3507,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0185!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0185!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_striker2_name}))
 	{
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0185!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0185!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3521,16 +3524,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0186!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0186!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0186!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0186!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3538,16 +3541,16 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0187!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0187!#"}}),
 		});
 		$problem = 1;
 	}
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0187!#"}}),
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0187!#"}}),
 		});
 		$problem = 1;
 	}
@@ -3559,8 +3562,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0165!#"
 			}}),
@@ -3570,8 +3573,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_node1_name}))
 	{
 		$conf->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0107", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0107", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0165!#"
 			}}),
@@ -3583,8 +3586,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0166!#"
 			}}),
@@ -3594,8 +3597,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_bcn_ip}))
 	{
 		$conf->{form}{anvil_node1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0166!#"
 			}}),
@@ -3607,8 +3610,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0168!#"
 			}}),
@@ -3618,8 +3621,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ipmi_ip}))
 	{
 		$conf->{form}{anvil_node1_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0168!#"
 			}}),
@@ -3631,8 +3634,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_sn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3642,8 +3645,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_sn_ip}))
 	{
 		$conf->{form}{anvil_node1_sn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3655,8 +3658,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3666,8 +3669,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ifn_ip}))
 	{
 		$conf->{form}{anvil_node1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3679,8 +3682,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_pdu1_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0192!#"
 			}}),
@@ -3690,8 +3693,8 @@ sub sanity_check_manifest_answers
 	elsif ($conf->{cgi}{anvil_node1_pdu1_outlet} =~ /\D/)
 	{
 		$conf->{form}{anvil_node1_pdu1_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0108", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0108", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0192!#"
 			}}),
@@ -3703,8 +3706,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_pdu2_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0193!#"
 			}}),
@@ -3714,8 +3717,8 @@ sub sanity_check_manifest_answers
 	elsif ($conf->{cgi}{anvil_node1_pdu2_outlet} =~ /\D/)
 	{
 		$conf->{form}{anvil_node1_pdu2_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0108", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0108", variables => { 
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0193!#"
 			}}),
@@ -3729,8 +3732,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0165!#"
 			}}),
@@ -3740,8 +3743,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_node2_name}))
 	{
 		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0107", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0107", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0165!#"
 			}}),
@@ -3753,8 +3756,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0166!#"
 			}}),
@@ -3764,8 +3767,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_bcn_ip}))
 	{
 		$conf->{form}{anvil_node2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0166!#"
 			}}),
@@ -3777,8 +3780,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0168!#"
 			}}),
@@ -3788,8 +3791,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ipmi_ip}))
 	{
 		$conf->{form}{anvil_node2_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0168!#"
 			}}),
@@ -3801,8 +3804,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_sn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3812,8 +3815,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_sn_ip}))
 	{
 		$conf->{form}{anvil_node2_sn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3825,8 +3828,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3836,8 +3839,8 @@ sub sanity_check_manifest_answers
 	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ifn_ip}))
 	{
 		$conf->{form}{anvil_node2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0109", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0109", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0167!#"
 			}}),
@@ -3849,8 +3852,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_pdu1_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0192!#"
 			}}),
@@ -3860,8 +3863,8 @@ sub sanity_check_manifest_answers
 	elsif ($conf->{cgi}{anvil_node2_pdu1_outlet} =~ /\D/)
 	{
 		$conf->{form}{anvil_node2_pdu1_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0108", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0108", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0192!#"
 			}}),
@@ -3873,8 +3876,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_pdu2_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0106", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0106", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0193!#"
 			}}),
@@ -3884,8 +3887,8 @@ sub sanity_check_manifest_answers
 	elsif ($conf->{cgi}{anvil_node2_pdu2_outlet} =~ /\D/)
 	{
 		$conf->{form}{anvil_node2_pdu2_outlet_star} = "#!string!symbol_0012!#";
-		print template($conf, "config.html", "form-error", {
-			message	=>	get_string($conf, {key => "explain_0108", variables => { 
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0108", variables => { 
 				node	=>	"#!string!title_0157!#",
 				field	=>	"#!string!row_0193!#"
 			}}),
@@ -3957,7 +3960,7 @@ sub is_string_ipv4_with_subnet
 			# IP is ok, not convert to dotted decimal if needed.
 			if ($subnet =~ /^\d+$/)
 			{
-				($subnet) = convert_cidr_to_dotted_decimal($conf, $subnet);
+				($subnet) = AN::Common::convert_cidr_to_dotted_decimal($conf, $subnet);
 			}
 			# Should be dotted-decimal now, check it.
 			if (not is_string_ipv4($conf, $subnet))
@@ -4050,7 +4053,7 @@ sub configure_dashboard
 	### If showing the main page, it's global settings and then the list of Anvil!s.
 	### If showing an Anvil!, it's the Anvil!'s details and then the overrides.
 
-	print template($conf, "config.html", "open-form-table", {
+	print AN::Common::template($conf, "config.html", "open-form-table", {
 		form_file	=>	"/cgi-bin/an-cdb",
 	});
 	
@@ -4080,7 +4083,7 @@ sub configure_dashboard
 		#show_global_anvil_list($conf);
 	}
 	# Close out the form.
-	print template($conf, "config.html", "close-form-table");
+	print AN::Common::template($conf, "config.html", "close-form-table");
 
 	return(0);
 }
@@ -4397,7 +4400,7 @@ sub ask_which_cluster
 {
 	my ($conf) = @_;
 	
-	print template($conf, "select-anvil.html", "open-table");
+	print AN::Common::template($conf, "select-anvil.html", "open-table");
 	
 	my $anvil_count = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
@@ -4407,7 +4410,7 @@ sub ask_which_cluster
 
 	if (not $anvil_count)
 	{
-		print template($conf, "select-anvil.html", "no-anvil-configured");
+		print AN::Common::template($conf, "select-anvil.html", "no-anvil-configured");
 	}
 	else
 	{
@@ -4417,12 +4420,12 @@ sub ask_which_cluster
 			my $say_url = "&nbsp;";
 			
 			# Create the 'Configure' link.
-			my $image = template($conf, "common.html", "image", {
+			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_edit-anvil_16x16.png",
 				alt_text	=>	"#!string!button_0044!#",
 				id		=>	"configure_icon",
 			}, "", 1);
-			my $say_configure = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+			my $say_configure = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 				button_link	=>	"?config=true&anvil=$cluster",
 				button_text	=>	$image,
 				id		=>	"configure_$cluster",
@@ -4431,18 +4434,18 @@ sub ask_which_cluster
 			# If an info link has been specified, show it.
 			if ($conf->{clusters}{$cluster}{url})
 			{
-				my $image = template($conf, "common.html", "image", {
+				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
 					alt_text	=>	"",
 				id		=>	"url_icon",
 				}, "", 1);
-				$say_url = template($conf, "common.html", "enabled-button-no-class-new-tab", {
+				$say_url = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
 					button_link	=>	"$conf->{clusters}{$cluster}{url}",
 					button_text	=>	$image,
 					id		=>	"url_$cluster",
 				}, "", 1);
 			}
-			print template($conf, "select-anvil.html", "anvil-entry", {
+			print AN::Common::template($conf, "select-anvil.html", "anvil-entry", {
 				anvil		=>	$cluster,
 				company		=>	$conf->{clusters}{$cluster}{company},
 				description	=>	$conf->{clusters}{$cluster}{description},
@@ -4452,7 +4455,7 @@ sub ask_which_cluster
 		}
 	}
 	# Print the 'Manage' button.
-	print template($conf, "select-anvil.html", "close-table");
+	print AN::Common::template($conf, "select-anvil.html", "close-table");
 	
 	return (0);
 }
@@ -4510,7 +4513,7 @@ sub error
 	my ($conf, $message, $fatal) = @_;
 	$fatal = 1 if not defined $fatal;
 	
-	print template($conf, "common.html", "error-table", {
+	print AN::Common::template($conf, "common.html", "error-table", {
 		message	=>	$message,
 	});
 	footer($conf) if $fatal;
@@ -4528,12 +4531,12 @@ sub header
 	my $say_back        = "&nbsp;";
 	my $say_refresh     = "&nbsp;";
 	
-	my $back_image = template($conf, "common.html", "image", {
+	my $back_image = AN::Common::template($conf, "common.html", "image", {
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png",
 		alt_text	=>	"#!string!button_0001!#",
 		id		=>	"back_icon",
 	}, "", 1);
-	my $refresh_image = template($conf, "common.html", "image", {
+	my $refresh_image = AN::Common::template($conf, "common.html", "image", {
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png",
 		alt_text	=>	"#!string!button_0002!#",
 		id		=>	"refresh_icon",
@@ -4547,7 +4550,7 @@ sub header
 		if ($conf->{cgi}{save})
 		{
 			$say_refresh = "";
-			$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+			$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?config=true",
 				button_text	=>	"$back_image",
 				id		=>	"back",
@@ -4558,7 +4561,7 @@ sub header
 			}
 			if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 			{
-				$say_back = template($conf, "common.html", "enabled-button-no-class", {
+				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$back_image",
 					id		=>	"back",
@@ -4567,12 +4570,12 @@ sub header
 		}
 		elsif ($conf->{cgi}{task})
 		{
-			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?config=true",
 				button_text	=>	"$refresh_image",
 				id		=>	"refresh",
 			}, "", 1);
-			$say_back = template($conf, "common.html", "enabled-button-no-class", {
+			$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?logo=true",
 				button_text	=>	"$back_image",
 				id		=>	"back",
@@ -4581,7 +4584,7 @@ sub header
 			if ($conf->{cgi}{task} eq "load_config")
 			{
 				$say_refresh = "";
-				$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$back_image",
 					id		=>	"back",
@@ -4607,7 +4610,7 @@ sub header
 						   $back_url =~ s/confirm=.*$//;
 						record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
 						record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
-						$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 							button_link	=>	"$back_url",
 							button_text	=>	"$back_image",
 							id		=>	"back",
@@ -4615,13 +4618,13 @@ sub header
 					}
 					else
 					{
-						$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 							button_link	=>	"$link",
 							button_text	=>	"$back_image",
 							id		=>	"back",
 						}, "", 1);
 					}
-					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
@@ -4629,12 +4632,12 @@ sub header
 				}
 				elsif ($conf->{cgi}{generate})
 				{
-					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"$link",
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}, "", 1);
-					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"$conf->{'system'}{cgi_string}",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
@@ -4642,12 +4645,12 @@ sub header
 				}
 				elsif ($conf->{cgi}{run})
 				{
-					$say_back    = template($conf, "common.html", "enabled-button-no-class", {
+					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}, "", 1);
-					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"$conf->{'system'}{cgi_string}",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
@@ -4655,7 +4658,7 @@ sub header
 				}
 				else
 				{
-					$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
@@ -4664,7 +4667,7 @@ sub header
 			}
 			elsif ($conf->{cgi}{anvil})
 			{
-				$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
 					button_text	=>	"$refresh_image",
 					id		=>	"refresh",
@@ -4673,19 +4676,19 @@ sub header
 		}
 		else
 		{
-			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"$conf->{'system'}{cgi_string}",
 				button_text	=>	"$refresh_image",
 				id		=>	"refresh",
 			}, "", 1);
-			$say_back = template($conf, "common.html", "enabled-button-no-class", {
+			$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?logo=true",
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}, "", 1);
 			if ($conf->{cgi}{anvil})
 			{
-				$say_back = template($conf, "common.html", "enabled-button-no-class", {
+				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 					button_link	=>	"?config=true",
 					button_text	=>	"$back_image",
 					id		=>	"back",
@@ -4695,14 +4698,14 @@ sub header
 	}
 	elsif ($conf->{cgi}{task})
 	{
-		$say_back = template($conf, "common.html", "enabled-button-no-class", {
+		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"$back_image",
 			id		=>	"back",
 		}, "", 1);
 		if ($conf->{cgi}{task} eq "manage_vm")
 		{
-			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
 				button_text	=>	"$refresh_image",
 				id		=>	"refresh",
@@ -4710,7 +4713,7 @@ sub header
 		}
 		elsif ($conf->{cgi}{task} eq "display_health")
 		{
-			$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
 				button_text	=>	"$refresh_image",
 				id		=>	"refresh",
@@ -4719,7 +4722,7 @@ sub header
 	}
 	elsif ($conf->{cgi}{logo})
 	{
-		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"?logo=true",
 			button_text	=>	"$refresh_image",
 			id		=>	"refresh",
@@ -4728,12 +4731,12 @@ sub header
 	}
 	elsif ($caller eq "an-mc")
 	{
-		$say_back = template($conf, "common.html", "enabled-button-no-class", {
+		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"/cgi-bin/an-cdb?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"$back_image",
 			id		=>	"back",
 		}, "", 1);
-		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"$conf->{'system'}{cgi_string}",
 			button_text	=>	"$refresh_image",
 			id		=>	"refresh",
@@ -4741,13 +4744,13 @@ sub header
 	}
 	else
 	{
-		$say_refresh = template($conf, "common.html", "enabled-button-no-class", {
+		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"$conf->{'system'}{cgi_string}",
 			button_text	=>	"$refresh_image",
 			id		=>	"refresh",
 		}, "", 1);
 	}
-	print template($conf, "common.html", "header", {
+	print AN::Common::template($conf, "common.html", "header", {
 		back	=>	$say_back,
 		refresh	=>	$say_refresh,
 	}); 
@@ -4850,7 +4853,7 @@ sub footer
 	return(0) if $conf->{'system'}{footer_printed}; 
 	my ($guacamole_url) = get_guacamole_link($conf, "");
 	
-	print template($conf, "common.html", "footer", {
+	print AN::Common::template($conf, "common.html", "footer", {
 		guacamole_url	=>	$guacamole_url,
 	});
 	
@@ -4935,7 +4938,7 @@ sub get_cgi_vars
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	
-	to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
+	AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
 	
 	return (0);
@@ -4967,7 +4970,7 @@ sub read_conf
 		$val =~ s/^\s+//;
 		$val =~ s/\s+$//;
 		next if (not $var);
-		_make_hash_reference($conf, $var, $val);
+		AN::Common::_make_hash_reference($conf, $var, $val);
 	}
 	$fh->close();
 	
@@ -5081,14 +5084,14 @@ sub read_files_on_shared
 				if ($local_access)
 				{
 					# Local access, but not answering.
-					$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0019", variables => {
+					$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0019", variables => {
 						node	=>	$node,
 					}});
 				}
 				else
 				{
 					# Not on the same subnet.
-					$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0020", variables => {
+					$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0020", variables => {
 						node	=>	$node,
 					}});
 				}
@@ -5098,7 +5101,7 @@ sub read_files_on_shared
 			elsif ($line =~ /host key verification failed/i)
 			{
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0034!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0021", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0021", variables => {
 					node	=>	$node,
 				}});
 				$fail = 1;
@@ -5107,7 +5110,7 @@ sub read_files_on_shared
 			elsif ($line =~ /could not resolve hostname/i)
 			{
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0035!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0022", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0022", variables => {
 					node	=>	$node,
 				}});
 				$fail = 1;
@@ -5116,7 +5119,7 @@ sub read_files_on_shared
 			elsif ($line =~ /permission denied/i)
 			{
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0036!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0023", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0023", variables => {
 					node		=>	$node,
 				}});
 				$fail = 1;
@@ -5125,7 +5128,7 @@ sub read_files_on_shared
 			elsif ($line =~ /connection refused/i)
 			{
 				$conf->{node}{$node}{info}{'state'} =  "<span class=\"highlight_bad\">#!string!row_0037!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0024", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0024", variables => {
 					node		=>	$node,
 				}});
 				$fail = 1;
@@ -5134,7 +5137,7 @@ sub read_files_on_shared
 			elsif ($line =~ /Connection timed out/i)
 			{
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0038!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0025", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0025", variables => {
 					node		=>	$node,
 				}});
 				$fail = 1;
@@ -5143,7 +5146,7 @@ sub read_files_on_shared
 			elsif ($line =~ /Network is unreachable/i)
 			{
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0039!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0026", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0026", variables => {
 					node		=>	$node,
 				}});
 				$fail = 1;
@@ -5155,7 +5158,7 @@ sub read_files_on_shared
 				# of '@@@@' is displayed, and is the entire 
 				# first line.
 				$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_bad\">#!string!row_0033!#</span>";
-				$conf->{node}{$node}{info}{note}    = get_string($conf, {key => "message_0027", variables => {
+				$conf->{node}{$node}{info}{note}    = AN::Common::get_string($conf, {key => "message_0027", variables => {
 					node		=>	$node,
 				}});
 				$fail = 1;
@@ -5215,7 +5218,7 @@ sub read_files_on_shared
 	{
 		# Open the "not connected" table
 		# Variable hash feeds into 'title_0116'
-		print template($conf, "main-page.html", "connection-error-table-header", {}, {
+		print AN::Common::template($conf, "main-page.html", "connection-error-table-header", {}, {
 			anvil	=>	$cluster,
 		});
 		
@@ -5224,17 +5227,17 @@ sub read_files_on_shared
 			# Show each node's state.
 			my $state = $conf->{node}{$node}{info}{'state'};
 			my $note  = $conf->{node}{$node}{info}{note};
-			print template($conf, "main-page.html", "connection-error-node-entry", {
+			print AN::Common::template($conf, "main-page.html", "connection-error-node-entry", {
 				node	=>	$node,
 				'state'	=>	$state,
 				note	=>	$node,
 			});
 		}
-		print template($conf, "main-page.html", "connection-error-try-again", {
+		print AN::Common::template($conf, "main-page.html", "connection-error-try-again", {
 			cgi_string	=>	$conf->{'system'}{cgi_string},
 		});
 	}
-	#print template($conf, "main-page.html", "close-table");
+	#print AN::Common::template($conf, "main-page.html", "close-table");
 	
 	return ($connected);
 }
@@ -5282,7 +5285,7 @@ sub check_nodes
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
-	print template($conf, "common.html", "scanning-message", {}, {
+	print AN::Common::template($conf, "common.html", "scanning-message", {}, {
 		anvil	=>	$conf->{cgi}{cluster},
 	});
 	
@@ -5322,14 +5325,14 @@ sub check_node_status
 		{
 			if ($conf->{clusters}{$cluster}{cache_exists})
 			{
-				print template($conf, "main-page.html", "no-access-message", {
+				print AN::Common::template($conf, "main-page.html", "no-access-message", {
 					anvil	=>	$conf->{cgi}{cluster},
 					message	=>	"#!string!message_0028!#",
 				});
 			}
 			else
 			{
-				print template($conf, "main-page.html", "no-access-message", {
+				print AN::Common::template($conf, "main-page.html", "no-access-message", {
 					anvil	=>	$conf->{cgi}{cluster},
 					message	=>	"#!string!message_0029!#",
 				});
@@ -5521,7 +5524,7 @@ sub comma
 	# Now die if either number has a non-digit character in it.
 	if (($whole =~ /\D/) || ($decimal =~ /\D/))
 	{
-		my $message = get_string($conf, {key => "message_0030", variables => {
+		my $message = AN::Common::get_string($conf, {key => "message_0030", variables => {
 			number	=>	$number,
 		}});
 		error($conf, $message, 1);
@@ -5573,7 +5576,7 @@ sub bytes_to_hr
 	# Die if either the 'time' or 'float' has a non-digit character in it.  
 	if ($hr_size =~ /\D/)
 	{
-		my $message = get_string($conf, {key => "message_0031", variables => {
+		my $message = AN::Common::get_string($conf, {key => "message_0031", variables => {
 			size	=>	$size,
 		}});
 		error($conf, $message, 1);
@@ -5585,49 +5588,49 @@ sub bytes_to_hr
 		# Yebibyte
 		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
 		$hr_size = comma($conf, $hr_size);
-		$suffix  = get_string($conf, {key => "suffix_0001"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0001"});
 	}
 	elsif ( $hr_size >= (2 ** 70) )
 	{
 		# Zebibyte
 		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
-		$suffix  = get_string($conf, {key => "suffix_0002"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0002"});
 	}
 	elsif ( $hr_size >= (2 ** 60) )
 	{
 		# Exbibyte
 		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
-		$suffix  = get_string($conf, {key => "suffix_0003"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0003"});
 	}
 	elsif ( $hr_size >= (2 ** 50) )
 	{
 		# Pebibyte
 		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
-		$suffix  = get_string($conf, {key => "suffix_0004"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0004"});
 	}
 	elsif ( $hr_size >= (2 ** 40) )
 	{
 		# Tebibyte
 		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
-		$suffix  = get_string($conf, {key => "suffix_0005"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0005"});
 	}
 	elsif ( $hr_size >= (2 ** 30) )
 	{
 		# Gibibyte
 		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
-		$suffix  = get_string($conf, {key => "suffix_0006"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0006"});
 	}
 	elsif ( $hr_size >= (2 ** 20) )
 	{
 		# Mebibyte
 		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
-		$suffix  = get_string($conf, {key => "suffix_0007"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0007"});
 	}
 	elsif ( $hr_size >= (2 ** 10) )
 	{
 		# Kibibyte
 		$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
-		$suffix  = get_string($conf, {key => "suffix_0008"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0008"});
 	}
 	else
 	{
@@ -5637,7 +5640,7 @@ sub bytes_to_hr
 		$hr_size = comma($conf, $hr_size);
 		$hr_size = 0 if $hr_size eq "";
 		#record($conf, "$THIS_FILE ".__LINE__."; << bytes_to_hr; hr_size: [$hr_size]\n");
-		$suffix  = get_string($conf, {key => "suffix_0009"});
+		$suffix  = AN::Common::get_string($conf, {key => "suffix_0009"});
 	}
 
 	# Restore the sign.
@@ -5685,7 +5688,7 @@ sub hr_to_bytes
 	if ($size !~ /\d+[\.\d+]?/)
 	{
 		# The variables will fill in the values in 'message_0029'.
-		print template($conf, "common.html", "hr_to_bytes-error", {
+		print AN::Common::template($conf, "common.html", "hr_to_bytes-error", {
 			message	=>	"#!string!message_0032!#",
 		}, {
 			size	=>	$size,
@@ -5731,7 +5734,7 @@ sub hr_to_bytes
 	{
 		# If we're here, we didn't match one of the large sizes or any
 		# of the other sizes, so die.
-		print template($conf, "common.html", "hr_to_bytes-error", {
+		print AN::Common::template($conf, "common.html", "hr_to_bytes-error", {
 			message	=>	"#!string!message_0033!#",
 		}, {
 			size	=>	$size,
@@ -6151,7 +6154,7 @@ sub gather_node_details
 			if (not $conf->{node}{$node}{info}{note})
 			{
 				# Unable to log into node.
-				$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0034", variables => {
+				$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0034", variables => {
 					node	=>	$node,
 				}});
 			}
@@ -6173,7 +6176,7 @@ sub gather_node_details
 			{
 				# Unable to log into the node or contact it's
 				# out of band management interface.
-				$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0035", variables => {
+				$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0035", variables => {
 					node	=>	$node,
 				}});
 			}
@@ -6196,7 +6199,7 @@ sub gather_node_details
 				# Unable to log into the node, can't connect to
 				# it's IPMI interface and not on the same
 				# subnet.
-				$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0036", variables => {
+				$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0036", variables => {
 					node	=>	$node,
 				}});
 			}
@@ -6216,7 +6219,7 @@ sub gather_node_details
 			}
 			if (not $conf->{node}{$node}{info}{note})
 			{
-				$conf->{node}{$node}{info}{note} = get_string($conf, {key => "message_0037", variables => {
+				$conf->{node}{$node}{info}{note} = AN::Common::get_string($conf, {key => "message_0037", variables => {
 					node	=>	$node,
 				}});
 			}
@@ -6228,7 +6231,7 @@ sub gather_node_details
 		#record($conf, "$THIS_FILE ".__LINE__."; enable power on: [$conf->{node}{$node}{enable_poweron}], task: [$conf->{cgi}{task}]\n");
 		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
-			print template($conf, "main-page.html", "node-state-table", {
+			print AN::Common::template($conf, "main-page.html", "node-state-table", {
 				'state'	=>	$conf->{node}{$node}{info}{'state'},
 				note	=>	$conf->{node}{$node}{info}{note},
 			}); 
@@ -6333,7 +6336,7 @@ sub remote_call
 	if (not $node)
 	{
 		# No node...
-		my $say_error = get_string($conf, {key => "message_0274", variables => {
+		my $say_error = AN::Common::get_string($conf, {key => "message_0274", variables => {
 				shell_call	=>	$shell_call,
 			}});
 		error($conf, "$say_error\n");
@@ -6354,14 +6357,14 @@ sub remote_call
 			record($conf, "$THIS_FILE ".__LINE__."; error: [$@]\n");
 			if ($@ =~ /Bad hostname/)
 			{
-				$error = get_string($conf, {key => "message_0038", variables => {
+				$error = AN::Common::get_string($conf, {key => "message_0038", variables => {
 					node	=>	$node,
 				}});
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			elsif ($@ =~ /Connection refused/)
 			{
-				$error = get_string($conf, {key => "message_0039", variables => {
+				$error = AN::Common::get_string($conf, {key => "message_0039", variables => {
 					node	=>	$node,
 					port	=>	$port,
 					user	=>	$user,
@@ -6370,21 +6373,21 @@ sub remote_call
 			}
 			elsif ($@ =~ /No route to host/)
 			{
-				$error = get_string($conf, {key => "message_0040", variables => {
+				$error = AN::Common::get_string($conf, {key => "message_0040", variables => {
 					node	=>	$node,
 				}});
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			elsif ($@ =~ /timeout/)
 			{
-				$error = get_string($conf, {key => "message_0041", variables => {
+				$error = AN::Common::get_string($conf, {key => "message_0041", variables => {
 					node	=>	$node,
 				}});
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			else
 			{
-				$error = get_string($conf, {key => "message_0042", variables => {
+				$error = AN::Common::get_string($conf, {key => "message_0042", variables => {
 					node	=>	$node,
 					error	=>	$@,
 				}});
@@ -6397,7 +6400,7 @@ sub remote_call
 			#record($conf, "$THIS_FILE ".__LINE__."; user: [$user], password: [$password]\n");
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
-				$error = get_string($conf, {key => "message_0043"});
+				$error = AN::Common::get_string($conf, {key => "message_0043"});
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 			else
@@ -7231,9 +7234,9 @@ sub parse_clustat
 	my $line_num   = 0;
 	
 	# Default is 'unknown'
-	my $host_name                         = get_string($conf, {key => "state_0001"});
-	my $storage_name                      = get_string($conf, {key => "state_0001"});
-	my $storage_state                     = get_string($conf, {key => "state_0001"});
+	my $host_name                         = AN::Common::get_string($conf, {key => "state_0001"});
+	my $storage_name                      = AN::Common::get_string($conf, {key => "state_0001"});
+	my $storage_state                     = AN::Common::get_string($conf, {key => "state_0001"});
 	$conf->{node}{$node}{me}{cman}        = 0;
 	$conf->{node}{$node}{me}{rgmanager}   = 0;
 	$conf->{node}{$node}{peer}{cman}      = 0;
@@ -7316,7 +7319,7 @@ sub parse_clustat
 				if (($state eq "disabled") || ($state eq "stopped"))
 				{
 					# Set host to 'none'.
-					$host = get_string($conf, {key => "state_0002"});
+					$host = AN::Common::get_string($conf, {key => "state_0002"});
 				}
 				if ($state eq "failed")
 				{
@@ -7534,7 +7537,7 @@ sub parse_cluster_conf
 			}
 			else
 			{
-				$this_node = get_peer_node($conf, $node);
+				$this_node = AN::Striker::get_peer_node($conf, $node);
 				if (not $conf->{node}{$this_node}{host_name})
 				{
 					$conf->{node}{$this_node}{info}{host_name}       = $this_host_name;
@@ -7632,7 +7635,7 @@ sub parse_cluster_conf
 	}
 	
 	# See if I got the fence details for both nodes.
-	my $peer = get_peer_node($conf, $node);
+	my $peer = AN::Striker::get_peer_node($conf, $node);
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	foreach my $this_node ($node, $peer)
 	{
@@ -7760,7 +7763,7 @@ sub parse_daemons
 		($gfs2_exit eq "0"))
 		{
 			# Uh oh...
-			my $message = get_string($conf, {key => "message_0044", variables => {
+			my $message = AN::Common::get_string($conf, {key => "message_0044", variables => {
 				node	=>	$node,
 			}});
 			error($conf, $message); 
@@ -7806,7 +7809,7 @@ sub parse_lvm_scan
 			if (lc($state) eq "inactive")
 			{
 				# The variables here pass onto 'message_0045'.
-				print template($conf, "main-page.html", "lv-inactive-error", {}, {
+				print AN::Common::template($conf, "main-page.html", "lv-inactive-error", {}, {
 					lv	=>	$lv,
 					node	=>	$node,
 				}); 
@@ -7816,7 +7819,7 @@ sub parse_lvm_scan
 			{
 				if (($conf->{resources}{lv}{$lv}{on_vg} ne $vg) || ($conf->{resources}{lv}{$lv}{size} ne $bytes))
 				{
-					my $error = get_string($conf, {key => "message_0046", variables => {
+					my $error = AN::Common::get_string($conf, {key => "message_0046", variables => {
 						lv	=>	$lv,
 						size	=>	$conf->{resources}{lv}{$lv}{size},
 						'bytes'	=>	$bytes,
@@ -8071,7 +8074,7 @@ sub check_if_on
 		# Check the power state using the peer node.
 		if (not $conf->{node}{$node}{info}{power_check_command})
 		{
-			my $error = get_string($conf, {key => "message_0047", variables => {
+			my $error = AN::Common::get_string($conf, {key => "message_0047", variables => {
 				node	=>	$node,
 				peer	=>	$peer,
 			}});
@@ -8178,7 +8181,7 @@ sub check_if_on
 		# hack I have below doesn't echo when a service isn't running.
 		$conf->{node}{$node}{enable_poweron} = 1;
 		record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Offline'.\n");
-		my $say_offline = get_string($conf, {key => "state_0004"});
+		my $say_offline = AN::Common::get_string($conf, {key => "state_0004"});
 		set_daemons($conf, $node, $say_offline, "highlight_unavailable");
 	}
 	
@@ -8231,7 +8234,7 @@ sub on_same_network
 			}
 			else
 			{
-				my $error = get_string($conf, {key => "message_0048", variables => {
+				my $error = AN::Common::get_string($conf, {key => "message_0048", variables => {
 					target_host	=>	$target_host,
 				}});
 				error($conf, $error);
@@ -8240,7 +8243,7 @@ sub on_same_network
 		elsif ($line =~ /Usage: gethostip/i)
 		{
 			#No hostname parsed out.
-			my $error = get_string($conf, {key => "message_0049"});
+			my $error = AN::Common::get_string($conf, {key => "message_0049"});
 			error($conf, $error);
 		}
 	}
@@ -8393,7 +8396,7 @@ sub write_node_cache
 	{
 		my $fh         = IO::Handle->new();
 		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
-		open ($fh, "> $cache_file") or error($conf, get_string($conf, {key => "message_0050", variables => {
+		open ($fh, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
 				uid		=>	$<,
 				error		=>	$!,
