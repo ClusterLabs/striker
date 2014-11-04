@@ -1,0 +1,332 @@
+#!/usr/bin/env perl
+
+# _Perl_
+use warnings;
+use strict;
+use 5.014;
+
+use English;
+use File::Basename;
+use FileHandle;
+
+use Getopt::Long;
+use Pod::Usage;
+use FindBin qw($Bin);
+
+# I like Const::Fast because it is fast; much faster than Readonly,
+# and it creates real variables, which you can use in strings or hash
+# keys, rather than the function calls that 'use constant'
+# produces. But for the moment, lets just use variables and pretend
+# they're constants.
+
+#use Const::Fast;
+
+# ======================================================================
+# CONSTANTS
+#
+#const my $COMMA               => q{,};
+#const my $PROG                => (fileparse( $PROGRAM_NAME ))[0];
+#const my $BRIEF               => 1;
+#const my $VERBOSE             => 2;
+#const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
+#const my $SUFFIX_QR           => qr/\.[^.]+\z/;
+
+#const my $MIN_RATE => 1;
+#const my $MAX_RATE => 600;
+
+my $COMMA               = q{,};
+my $PROG                = ( fileparse($PROGRAM_NAME) )[0];
+my $BRIEF               = 1;
+my $VERBOSE             = 2;
+my $TIMED_OUT_ALARM_MSG = 'alarm timed out';
+my $SUFFIX_QR           = qr/\.[^.]+\z/;
+my $MIN_RATE            = 1;
+my $MAX_RATE            = 600;
+
+# ======================================================================
+# Subroutines
+#
+# ......................................................................
+# process command-line arguments
+#
+sub process_args {
+
+    my $opt = {
+        rate     => 30,                        # loop repetition rate in seconds
+        agentdir => $Bin . '/agents',          # directory to scan
+        duration => 24 * 60 * 60,    # when to spawn replacement ( seconds )
+        verbose  => 0,               # print strings for no change?
+    };
+
+    GetOptions( $opt, 'rate=i', 'agentdir=s', 'ignore=s@', 'duration=i',
+        'verbose!', 'showsleep', 'man', 'help' )
+      or pod2usage(2);
+
+    pod2usage( -verbose => $BRIEF )
+      if $opt->{help};               # display brief or verbose docs.
+    pod2usage( -verbose => $VERBOSE ) if $opt->{man};
+
+    $opt->{ignore}   ||= [qw( .conf .rc .init )];   # default suffixes to ignore
+
+    $opt->{agentdir} = $Bin . '/' . substr( $opt->{agentdir}, 2 )
+      if 0 == index $opt->{agentdir}, './';
+
+    @{ $opt->{ignore} } = split ',', join ',',
+      @{ $opt->{ignore} };           # separate CSV values
+
+    verify_args($opt);
+    return $opt;
+}
+
+# ......................................................................
+# Check command line argument validity
+#
+sub verify_args {
+    my ($opt) = @_;
+
+    pod2usage(
+        -verbose => $BRIEF,
+        -message => "rate '$opt->{rate}' < $MIN_RATE"
+    ) if $opt->{rate} < $MIN_RATE;
+
+    pod2usage(
+        -verbose => $BRIEF,
+        -message => "rate '$opt->{rate}' > $MAX_RATE"
+    ) if $opt->{rate} > $MAX_RATE;
+
+    pod2usage(
+        -verbose => $BRIEF,
+        -message => "agentdir '$opt->{agentdir}' not found"
+    ) unless -e $opt->{agentdir};
+    pod2usage(
+        -verbose => $BRIEF,
+        -message => "Cannot read agentdir '$opt->{agentdir}'"
+    ) unless -r $opt->{agentdir};
+    pod2usage(
+        -verbose => $BRIEF,
+        -message => "Cannot execute agentdir '$opt->{agentdir}'"
+    ) unless -x $opt->{agentdir};
+
+    pod2usage(
+        -verbose => $BRIEF,
+        -message =>
+          "Total life '$opt->{duration}' < repetition rate $opt->{rate}"
+    ) unless $opt->{duration} > $opt->{rate};
+
+    pod2usage(
+        -verbose => $BRIEF,
+        -message =>
+          "Illegal character '/' in suffix ignore list '@{$opt->{ignore}}'"
+      )
+      if grep { m{[/]} }
+      @{ $opt->{ignore} }
+
+}
+
+# ......................................................................
+# Scan files in the directory, comparing against a persistent list
+# return list of additions and deletions. Ignore specified suffixes.
+#
+sub scan_files {
+    my ($options) = @_;
+
+    # If any suffixes are specified in $options->{ignore}, turn them
+    # into keys in a persistent hash. Use '1' as the value for the key,
+    # value is never used. only do the expansion the first time through.
+    #
+    state $ignore;
+    @{$ignore}{ @{ $options->{ignore} } } = (1) x scalar @{ $options->{ignore} }
+      if ( not $ignore ) && scalar @{ $options->{ignore} };
+
+    # Persistent list of files. Reset associated values to zero. During
+    # scan, update value to 1. At end, any file names with a value of
+    # zero have been removed, and so value has not been update.
+    #
+    state %files;
+    @files{ keys %files } = (0) x scalar keys %files;
+
+    my (@added);
+  FILE:
+    for my $file ( glob "$options->{agentdir}/*" ) {
+        my ( $name, $dir, $suffix ) = fileparse( $file, $SUFFIX_QR );
+        next FILE
+          if $suffix and exists $ignore->{$suffix};
+        my $fullname = $suffix ? $name . $suffix : $name;
+        push @added, $fullname
+          unless exists $files{$fullname};
+        $files{$fullname} = 1;    # mark as present
+    }
+
+    # detect and drop deleted files
+    my (@dropped) =
+      sort grep { 0 == $files{$_} } keys %files;    # file keys with zero value.
+    delete @files{@dropped};
+
+    @added = sort @added;
+    return ( \@added, \@dropped );
+}
+
+# ......................................................................
+# run a loop once every $options->{rate} seconds, to check $options->{agentdir}
+# for new files, ignoring files with a suffix listed in $options->{ignore}
+#
+sub run_timed_loop {
+    my ($options) = @_;
+
+    my ($start_time) = time();
+    my ($end_time)   = $start_time + $options->{duration};
+    my ($now)        = $start_time;
+
+    while ( $now < $end_time ) {    # loop until this time tomorrow
+        my ( $new, $deleted ) = scan_files($options);
+        local $LIST_SEPARATOR = $COMMA;
+
+        my ($elapsed) = time() - $now;
+	my $pending   = $options->{rate} - $elapsed;
+
+	my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : '';
+        say "$PROG @{[time]} [@$new], [@$deleted]$extra_arg."
+          if $options->{verbose}
+          or @$new
+          or @$deleted;
+
+        sleep $pending;
+        $now = time();
+    }
+}
+
+# ----------------------------------------------------------------------
+# Main code
+#
+
+sub main {
+    say "Starting $0 at @{[ scalar localtime()]}.";
+    my $options = process_args();
+
+    run_timed_loop $options;
+
+    say "Halting $0 at @{[ scalar localtime()]}.";
+}
+
+# ----------------------------------------------------------------------
+# Now invoke main()
+
+STDOUT->autoflush();
+main();
+
+# ======================================================================
+# POD
+
+__END__
+
+=head1 NAME
+
+     scan_for_agents - Check agents dir for added or removed files.
+
+=head1 SYNOPSIS
+
+     scan_for_agents [options]
+
+     Options:
+         -duration N         How long the program should run before
+                             spawning a replacement. Default value
+                             is 24 hrs, or 86400 seconds.
+         -rate     N         How often test is performed, by default
+                             every 30 seconds.
+         -agentdir <path>    Which directory to check, by default
+                             the 'agents directory next to this program.
+         -ignore   .conf,.rc Files with these suffixes will be ignored.
+         -help               Brief help message.
+         -man                Full documentation.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-rate N>
+
+How often loop is run, in seconds. Must be one or greater; larger than
+600 is considered an error.
+
+=item B<-agentdir path>
+
+Path to the directory to be scanned for additions and removals.
+
+=item B<-ignore .conf,.rc,.init>
+
+Ignore filenames with these suffixes. These additional files are meant
+to provide configuration data for the code files. A CSV list can be
+provided, or else multiple calls to the same command-line argument
+invoked, in the more verbose format:
+
+    -ignore .conf  -ignore .rc  -ignore .init
+
+By default, .conf, .rc and .init files are ignored. But the default
+list is discarded if the user specifies any -ignore options. So if you
+want to add to the default list, rather than replace it, you will need
+to include '.conf,.rc,.init' in your ignore list.
+
+=item B<duration N>
+
+How long should the program run, before spawning a fresh replacement?
+Typically 24 hours, i.e. 86400 seconds.
+
+=item B<-verbose>
+
+Output a message even if no files have been added or deleted.
+
+=item B<showsleep>
+
+Adds a component to the output string showing the duration of
+processing, and the amount of time that will be spent sleeping before
+the next iteration. =item B<-help>
+
+Print a brief help message and exits.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<scan_for_agents> is one of scanning agents for the scan-core
+program. It checks the specified directory for files that have been
+added or removed.
+
+When the program begins to run, it outputs a message, 
+
+C<Starting ./scan_for_agents at Sat Nov  1 23:53:51 2014.>
+
+to report the program being run, and the start time.
+
+Similarly when the program terminates because the run duration has
+expired, a similar message is output:
+
+C<Halting ./scan_for_agents at Sat Nov  1 23:59:46 2014.>
+
+Immediately after the start message, the first scan is performed. A
+sample output string looks like:
+
+C<scan_for_agents 1414898302 [abc,xyz,zyx], [] 0:5.>
+
+Where
+
+C<scan_for_agents> is the program name,
+
+C<1414898302> is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
+
+C<[abc,xyz,zyx]> are files added since the previous scan,
+
+C<[]> indicates no files deleted,
+
+C<0:5> indicates less than 1 second to scan the directory,
+5 seconds to sleep till the next iteration.
+
+The scan time and time to sleep are only displayed if the -showsleep
+option was specified.
+
+
+=cut
+
