@@ -313,8 +313,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
 		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
 		<key name="explain_0128"><![CDATA[Please be patient!<br /><br />Some tasks may not cause any output to be displayed for some time.<br /><br /><b>Please do not reload this page!</b>.]]></key>
-		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a while on slow Internet connections.<br />Please be patient!]]></key>
-		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a while on slow Internet connections.<br />Please be patient!]]></key>
+		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />If you think the system is hung, please log into the nodes and run:<br /><span class="code">ps aux | grep yum</span><br />If you see <span class="code">yum</span> running, then please keep waiting.]]></key>
+		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />As above, use <span class="code">ps auxf</span> as above.]]></key>
 		<key name="explain_0131"><![CDATA[]]></key>
 		<key name="explain_0132"><![CDATA[]]></key>
 		<key name="explain_0133"><![CDATA[]]></key>
