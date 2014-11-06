@@ -11,11 +11,9 @@ $("#set_secondary_values").click(function(){
 	var ifn_subnet  = $("#anvil_ifn_subnet").val();
 	
 	// If the subnet is '255.255.0.0', we'll preset the IPs.
-	var regex_cidr16      = /^255\.255\.0\.0$/i;
-	var regex_cidr24      = /^255\.255\.255\.0$/i;
-	var regex_ipv4        = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
-	var regex_two_octal   = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i;
-	var regex_three_octal = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i;
+	var regex_cidr16    = /^255\.255\.0\.0$/i;
+	var regex_ipv4      = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)$/i;
+	var regex_two_octal = /^(25[0-5]|2[0-4]\d|[01]?\d\d?)\.(25[0-5]|2[0-4]\d|[01]?\d\d?)\.*$/i;
 	
 	// Pull out the subnet root.
 	// Currently only /16 is supported.
@@ -33,10 +31,6 @@ $("#set_secondary_values").click(function(){
 	if (regex_cidr16.test(ifn_subnet))
 	{
 		ifn_root = ifn_network.replace(/\.\d+\.\d+$/, ".");
-	}
-	else if (regex_cidr24.test(ifn_subnet))
-	{
-		ifn_root = ifn_network.replace(/\.\d+$/, ".");
 	}
 	
 	// Make sure the sequence number is zero-padded if it's less than 10.
@@ -275,47 +269,4 @@ $("#set_secondary_values").click(function(){
 			$("#anvil_ifn_gateway").val(ifn_gateway);
 		}
 	}
-	else if (regex_three_octal.test(ifn_root))
-	{
-		// Node 1
-		var node1_ifn_ip = ifn_root + '.' + integer_sequence + 1;
-		    node1_ifn_ip = node1_ifn_ip.replace(/\.\./g, ".");
-		// Make sure the generated IP is sane.
-		if (regex_ipv4.test(node1_ifn_ip))
-		{
-			$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
-		}
-		
-		// Node 2
-		var node2_ifn_ip = ifn_root + '.' + integer_sequence + 2;
-		    node2_ifn_ip = node2_ifn_ip.replace(/\.\./g, ".");
-		// Make sure the generated IP is sane.
-		if (regex_ipv4.test(node2_ifn_ip))
-		{
-			$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
-		}
-		
-		// Striker Dashboards
-		var striker1_ifn_ip = ifn_root + '.4.' + 1;
-		    striker1_ifn_ip = striker1_ifn_ip.replace(/\.\./g, ".");
-		var striker2_ifn_ip = ifn_root + '.4.' + 2;
-		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
-		if (regex_ipv4.test(striker1_ifn_ip))
-		{
-			$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
-		}
-		if (regex_ipv4.test(striker2_ifn_ip))
-		{
-			$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
-		}
-		
-		// IFN Default Gateway
-		var ifn_gateway = ifn_root + '.255.254';
-		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
-		if (regex_ipv4.test(ifn_gateway))
-		{
-			$("#anvil_ifn_gateway").val(ifn_gateway);
-		}
-	}
-
 });
