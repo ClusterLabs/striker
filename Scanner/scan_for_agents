@@ -5,7 +5,9 @@ use warnings;
 use strict;
 use 5.014;
 
-use English;
+our $VERSION = 1.0;
+
+use English '-no_match_vars';
 use File::Basename;
 use FileHandle;
 
@@ -21,28 +23,38 @@ use FindBin qw($Bin);
 
 #use Const::Fast;
 
+## no critic ( ControlStructures::ProhibitPostfixControls )
+## no critic ( ProhibitMagicNumbers )
 # ======================================================================
 # CONSTANTS
 #
-#const my $COMMA               => q{,};
-#const my $PROG                => (fileparse( $PROGRAM_NAME ))[0];
 #const my $BRIEF               => 1;
-#const my $VERBOSE             => 2;
-#const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
+#const my $COMMA               => q{,};
+#const my $DOTSLASH            => q{./};
+#const my $LIFETIME            => 24 * 60 * 60;
+#const my $MAX_RATE            => 600;
+#const my $MIN_RATE            => 1;
+#const my $PROG                => (fileparse( $PROGRAM_NAME ))[0];
+#const my $REP_RATE            => 30;
+#const my $SLASH               => q{/};
 #const my $SUFFIX_QR           => qr/\.[^.]+\z/;
+#const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
+#const my $VERBOSE             => 2;
 
-#const my $MIN_RATE => 1;
-#const my $MAX_RATE => 600;
-
-my $COMMA               = q{,};
-my $PROG                = ( fileparse($PROGRAM_NAME) )[0];
 my $BRIEF               = 1;
-my $VERBOSE             = 2;
-my $TIMED_OUT_ALARM_MSG = 'alarm timed out';
-my $SUFFIX_QR           = qr/\.[^.]+\z/;
-my $MIN_RATE            = 1;
+my $COMMA               = q{,};
+my $DOTSLASH            = q{./};
+my $LIFETIME            = 24 * 60 * 60;
 my $MAX_RATE            = 600;
+my $MIN_RATE            = 1;
+my $PROG                = ( fileparse($PROGRAM_NAME) )[0];
+my $REP_RATE            = 30;
+my $SLASH               = q{/};
+my $SUFFIX_QR           = qr/\.[^.]+\z/xms;
+my $TIMED_OUT_ALARM_MSG = 'alarm timed out';
+my $VERBOSE             = 2;
 
+## use critic ( ProhibitMagicNumbers )
 # ======================================================================
 # Subroutines
 #
@@ -52,29 +64,38 @@ my $MAX_RATE            = 600;
 sub process_args {
 
     my $opt = {
-        rate     => 30,                        # loop repetition rate in seconds
-        agentdir => $Bin . '/agents',          # directory to scan
-        duration => 24 * 60 * 60,    # when to spawn replacement ( seconds )
-        verbose  => 0,               # print strings for no change?
+        rate     => $REP_RATE,           # loop repetition rate in seconds
+        agentdir => $Bin . '/agents',    # directory to scan
+        duration => $LIFETIME,           # when to spawn replacement ( seconds )
+        verbose  => 0,                   # print strings for no change?
     };
 
-    GetOptions( $opt, 'rate=i', 'agentdir=s', 'ignore=s@', 'duration=i',
-        'verbose!', 'showsleep', 'man', 'help' )
-      or pod2usage(2);
+    GetOptions(
+        $opt,         'rate=i',   'agentdir=s', 'ignore=s@',
+        'duration=i', 'verbose!', 'showsleep',  'man',
+        'help'
+    ) or pod2usage(2);
 
-    pod2usage( -verbose => $BRIEF )
-      if $opt->{help};               # display brief or verbose docs.
-    pod2usage( -verbose => $VERBOSE ) if $opt->{man};
+    pod2usage( -verbose => $BRIEF )   if $opt->{help}; # display brief docs.
+    pod2usage( -verbose => $VERBOSE ) if $opt->{man};  # verbose docs
 
-    $opt->{ignore}   ||= [qw( .conf .rc .init )];   # default suffixes to ignore
+    # User 'ignore' args would be added to defaults, rather than
+    # replacing them, so only define them here if user specified none.
+    #
+    $opt->{ignore} ||= [qw( .conf .rc .init )];
+    
+    # If agentdir is relative path './xxx', convert to fully qualified
+    # relative to location of this script.
+    #
+    $opt->{agentdir} = $Bin . $SLASH . substr( $opt->{agentdir}, 2 )
+      if 0 == index( $opt->{agentdir}, $DOTSLASH);
 
-    $opt->{agentdir} = $Bin . '/' . substr( $opt->{agentdir}, 2 )
-      if 0 == index $opt->{agentdir}, './';
-
-    @{ $opt->{ignore} } = split ',', join ',',
-      @{ $opt->{ignore} };           # separate CSV values
+    # Separate CSV values into separate arg elements.
+    #
+    @{ $opt->{ignore} } = split $COMMA, join $COMMA, @{ $opt->{ignore} };
 
     verify_args($opt);
+
     return $opt;
 }
 
@@ -111,16 +132,16 @@ sub verify_args {
         -verbose => $BRIEF,
         -message =>
           "Total life '$opt->{duration}' < repetition rate $opt->{rate}"
-    ) unless $opt->{duration} > $opt->{rate};
+    ) if $opt->{duration} <= $opt->{rate};
 
     pod2usage(
         -verbose => $BRIEF,
         -message =>
           "Illegal character '/' in suffix ignore list '@{$opt->{ignore}}'"
       )
-      if grep { m{[/]} }
-      @{ $opt->{ignore} }
+	if grep { m{[/]}xms } @{ $opt->{ignore} };
 
+    return;
 }
 
 # ......................................................................
@@ -182,17 +203,18 @@ sub run_timed_loop {
         local $LIST_SEPARATOR = $COMMA;
 
         my ($elapsed) = time() - $now;
-	my $pending   = $options->{rate} - $elapsed;
+        my $pending = $options->{rate} - $elapsed;
 
-	my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : '';
-        say "$PROG @{[time]} [@$new], [@$deleted]$extra_arg."
+        my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : q{};
+        say "$PROG @{[time]} [@{$new}], [@{$deleted}]$extra_arg."
           if $options->{verbose}
-          or @$new
-          or @$deleted;
+   	  or @{$new}
+          or @{$deleted};
 
         sleep $pending;
         $now = time();
     }
+    return;
 }
 
 # ----------------------------------------------------------------------
@@ -200,12 +222,13 @@ sub run_timed_loop {
 #
 
 sub main {
-    say "Starting $0 at @{[ scalar localtime()]}.";
+    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
     my $options = process_args();
 
     run_timed_loop $options;
 
-    say "Halting $0 at @{[ scalar localtime()]}.";
+    say "Halting $PROGRAM_NAME at @{[ scalar localtime()]}.";
+    return;
 }
 
 # ----------------------------------------------------------------------
@@ -214,6 +237,7 @@ sub main {
 STDOUT->autoflush();
 main();
 
+__END__
 # ======================================================================
 # POD
 
@@ -327,6 +351,49 @@ C<0:5> indicates less than 1 second to scan the directory,
 The scan time and time to sleep are only displayed if the -showsleep
 option was specified.
 
+=head1 LICENSE AND COPYRIGHT
+
+This program is part of Aleeve's Anvil! system, and is released under
+the GNU GPL v2+ license.
+
+=head1 BUGS AND LIMITATIONS
+
+We don't yet know of any bugs or limitations. Report problems to 
+
+    Alteeve's Niche!  -  https://alteeve.ca
+
+No warranty is provided. Do not use this software unless you are
+willing and able to take full liability for it's use. The authors take
+care to prevent unexpected side effects when using this
+program. However, no software is perfect and bugs may exist which
+could lead to hangs or crashes in the program, in your cluster and
+possibly even data loss.
+
+=begin unused
+
+=head1  INCOMPATIBILITIES
+
+There are no current incompatabilities.
+
+=head1 DEPENDENCIES
+
+=head1 CONFIGURATION
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 USAGE
+
+=end unused
+
+=head1 AUTHOR
+
+Alteeve's Niche!  -  https://alteeve.ca
+
+Tom Legrady       -  tom@alteeve.ca	November 2014
 
 =cut
 
