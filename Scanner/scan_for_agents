@@ -306,6 +306,10 @@ the next iteration. =item B<-help>
 
 Print a brief help message and exits.
 
+=item B<-help>
+
+Prints guide to command line arguments.
+
 =item B<-man>
 
 Prints the manual page and exits.
