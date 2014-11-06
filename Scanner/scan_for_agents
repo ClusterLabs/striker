@@ -76,19 +76,19 @@ sub process_args {
         'help'
     ) or pod2usage(2);
 
-    pod2usage( -verbose => $BRIEF )   if $opt->{help}; # display brief docs.
-    pod2usage( -verbose => $VERBOSE ) if $opt->{man};  # verbose docs
+    pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
+    pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
 
     # User 'ignore' args would be added to defaults, rather than
     # replacing them, so only define them here if user specified none.
     #
     $opt->{ignore} ||= [qw( .conf .rc .init )];
-    
+
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
     $opt->{agentdir} = $Bin . $SLASH . substr( $opt->{agentdir}, 2 )
-      if 0 == index( $opt->{agentdir}, $DOTSLASH);
+      if 0 == index( $opt->{agentdir}, $DOTSLASH );
 
     # Separate CSV values into separate arg elements.
     #
@@ -138,8 +138,7 @@ sub verify_args {
         -verbose => $BRIEF,
         -message =>
           "Illegal character '/' in suffix ignore list '@{$opt->{ignore}}'"
-      )
-	if grep { m{[/]}xms } @{ $opt->{ignore} };
+    ) if grep { m{[/]}xms } @{ $opt->{ignore} };
 
     return;
 }
@@ -208,7 +207,7 @@ sub run_timed_loop {
         my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : q{};
         say "$PROG @{[time]} [@{$new}], [@{$deleted}]$extra_arg."
           if $options->{verbose}
-   	  or @{$new}
+          or @{$new}
           or @{$deleted};
 
         sleep $pending;
