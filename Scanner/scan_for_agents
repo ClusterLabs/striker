@@ -179,6 +179,7 @@ sub scan_files {
     }
 
     # detect and drop deleted files
+    #
     my (@dropped) =
       sort grep { 0 == $files{$_} } keys %files;    # file keys with zero value.
     delete @files{@dropped};
@@ -205,10 +206,11 @@ sub run_timed_loop {
         my ($elapsed) = time() - $now;
         my $pending = $options->{rate} - $elapsed;
 
-        my $extra_arg = ($options->{showsleep} 
-			 ? sprintf "%7.3f:%7.3f mSec", 1000 * $elapsed, 1000 * $pending
-			 : q{}
-	    );
+        my $extra_arg = (
+            $options->{showsleep}
+            ? sprintf( "%7.3f:%7.3f mSec", 1000 * $elapsed, 1000 * $pending )
+            : q{}
+        );
         say "$PROG @{[time]} [@{$new}], [@{$deleted}]$extra_arg."
           if $options->{verbose}
           or @{$new}
