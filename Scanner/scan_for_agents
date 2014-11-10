@@ -14,6 +14,7 @@ use FileHandle;
 use Getopt::Long;
 use Pod::Usage;
 use FindBin qw($Bin);
+use Time::HiRes qw( time alarm sleep );
 
 # I like Const::Fast because it is fast; much faster than Readonly,
 # and it creates real variables, which you can use in strings or hash
