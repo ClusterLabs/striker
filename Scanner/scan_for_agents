@@ -205,7 +205,10 @@ sub run_timed_loop {
         my ($elapsed) = time() - $now;
         my $pending = $options->{rate} - $elapsed;
 
-        my $extra_arg = $options->{showsleep} ? " $elapsed:$pending" : q{};
+        my $extra_arg = ($options->{showsleep} 
+			 ? sprintf "%7.3f:%7.3f mSec", 1000 * $elapsed, 1000 * $pending
+			 : q{}
+	    );
         say "$PROG @{[time]} [@{$new}], [@{$deleted}]$extra_arg."
           if $options->{verbose}
           or @{$new}
@@ -337,20 +340,21 @@ C<Halting ./scan_for_agents at Sat Nov  1 23:59:46 2014.>
 Immediately after the start message, the first scan is performed. A
 sample output string looks like:
 
-C<scan_for_agents 1414898302 [abc,xyz,zyx], [] 0:5.>
+C<scan_for_agents 1414898302.50597 [abc,xyz,zyx], [] 0.290:29999.710 mSec.>
 
 Where
 
 C<scan_for_agents> is the program name,
 
-C<1414898302> is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
+C<1414898302.50597> is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
 
 C<[abc,xyz,zyx]> are files added since the previous scan,
 
 C<[]> indicates no files deleted,
 
-C<0:5> indicates less than 1 second to scan the directory,
-5 seconds to sleep till the next iteration.
+C<0.290:29999.710 mSec> indicates it took 0.290 milli-seconds (290
+microseconds) to scan the directory, and there are 29999.710
+milli-seconds to sleep till the next iteration.
 
 The scan time and time to sleep are only displayed if the -showsleep
 option was specified.
