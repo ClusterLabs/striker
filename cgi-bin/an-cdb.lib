@@ -2655,7 +2655,7 @@ sub vm_insert_media
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert /shared/files/$insert_media; echo virsh:\$?",
+			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?",
 		});
 		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -8188,7 +8188,7 @@ sub display_vm_details
 				}
 				
 				# Show extra LVs and/or networks.
-				$server_details_panel .= template($conf, "server.html", "display-server-details-entra-storage", {
+				$server_details_panel .= template($conf, "server.html", "display-server-details-extra-storage", {
 					say_lv_path	=>	$say_lv_path,
 					say_lv_size	=>	$say_lv_size,
 					say_network	=>	$say_network,
@@ -9402,6 +9402,13 @@ sub display_node_controls
 				id		=>	"display_health_$node",
 			}, "", 1);
 			#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
+		}
+		else
+		{
+			$say_node_name[$i] = template($conf, "common.html", "disabled-button-with-class", {
+				button_class	=>	"highlight_offline_fixed_width",
+				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
+			}, "", 1);
 		}
 		$rowspan = 0;
 		$i++;

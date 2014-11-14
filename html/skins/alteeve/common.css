@@ -130,6 +130,12 @@ td {
 	color: #13749a;
 }
 
+.highlight_ready_fixed_width {
+	color: #13749a;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
+}
+
 .highlight_ready_bold {
 	color: #13749a;
 	font-weight: bold;
@@ -198,6 +204,13 @@ td {
 .highlight_offline {
 	color: #3f3fcf;
 	font-weight: bold;
+}
+
+.highlight_offline_fixed_width {
+	color: #3f3fcf;
+	font-weight: bold;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
 }
 
 .disabled_button {
