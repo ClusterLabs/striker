@@ -48,26 +48,27 @@
 
 use strict;
 use warnings;
+use lib 'lib';
 
-my $THIS_FILE = "an-cdb";
-require "./common.lib";
-require "./an-cluster.lib";
-require "./an-cdb.lib";
-require "./install-manifest.lib";
+my $THIS_FILE = "striker";
+use AN::Common;
+use AN::Cluster;
+use AN::Striker;
+use AN::InstallManifesto;
 
 # Turn off buffering so that the pinwheel will display while waiting
 # for the SSH call(s) to complete.
 $| = 1;
 
-my ($conf) = initialize($THIS_FILE);
+my ($conf) = AN::Common::initialize($THIS_FILE);
 
-find_executables($conf);
-read_hosts($conf);
-read_ssh_config($conf);
-read_conf($conf);
+AN::Cluster::find_executables($conf);
+AN::Cluster::read_hosts($conf);
+AN::Cluster::read_ssh_config($conf);
+AN::Cluster::read_conf($conf);
 
 # I need to convert the global configuration of the clusters to the format I use here.
-convert_cluster_config($conf);
+AN::Cluster::convert_cluster_config($conf);
 
 # If there is only one cluster defined, use it. Note that I need a special
 # exception in get_cgi_vars() for this to work properly.
@@ -85,7 +86,7 @@ if ((not $conf->{cgi}{cluster}) && (not $conf->{cgi}{config}))
 }
 
 # Get the CGI variables I might be passed.
-get_cgi_vars($conf, [
+AN::Cluster::get_cgi_vars($conf, [
 	"adapter",
 	"anvil",
 	"anvil_bcn_network",
@@ -212,8 +213,8 @@ get_cgi_vars($conf, [
 if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
 {
 	my $this_id = $conf->{cgi}{anvil_id};
-	record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
-	get_cgi_vars($conf, [
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+	AN::Cluster::get_cgi_vars($conf, [
 		"cluster__${this_id}__name",
 		"cluster__${this_id}__description",
 		"cluster__${this_id}__url",
@@ -248,7 +249,7 @@ if ($conf->{cgi}{vg_list})
 		push @more_vars, "vg_$vg";
 		push @more_vars, "vg_suffix_$vg";
 	}
-	get_cgi_vars($conf, \@more_vars);
+	AN::Cluster::get_cgi_vars($conf, \@more_vars);
 }
 # Pick up the list of optical devices.
 if ($conf->{cgi}{device_keys})
@@ -261,37 +262,37 @@ if ($conf->{cgi}{device_keys})
 		my $drive = ($device =~ /media_(.*)/)[0];
 		push @more_vars, "insert_$drive";
 	}
-	get_cgi_vars($conf, \@more_vars);
+	AN::Cluster::get_cgi_vars($conf, \@more_vars);
 }
 
 # Print the header.
-header($conf);
+AN::Cluster::header($conf);
 
 # Do I have a cluster name?
 if ($conf->{cgi}{logo})
 {
 	if ($conf->{cgi}{config})
 	{
-		configure_dashboard($conf);
+		AN::Cluster::configure_dashboard($conf);
 	}
 	else
 	{
-		ask_which_cluster($conf);
+		AN::Cluster::ask_which_cluster($conf);
 	}
 }
 elsif ($conf->{cgi}{config})
 {
-	configure_dashboard($conf);
+	AN::Cluster::configure_dashboard($conf);
 }
 elsif ($conf->{cgi}{'system'})
 {
-	configure_local_system($conf);
+	AN::Cluster::configure_local_system($conf);
 }
 elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
 	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
@@ -300,10 +301,10 @@ elsif ($conf->{cgi}{cluster})
 		# reference in the 'template' call and then use the string
 		# directly in the template, but I think that's too indirect
 		# for future devs to follow initially.
-		my $say_message = get_string($conf, {key => "message_0003", variables => {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0003", variables => {
 			anvil	=>	$cluster,
 		}});
-		print template($conf, "main-page.html", "no-anvil-found", {
+		print AN::Common::template($conf, "main-page.html", "no-anvil-found", {
 			message	=>	$say_message,
 		}); 
 	}
@@ -312,23 +313,23 @@ elsif ($conf->{cgi}{cluster})
 		if ($conf->{cgi}{task})
 		{
 			$conf->{'system'}{show_refresh} = 0;
-			process_task($conf);
+			AN::Striker::process_task($conf);
 		}
 		else
 		{
 			# Set the node list.
-			#record($conf, "cluster: [$cluster], ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}]\n");
+			#AN::Cluster::record($conf, "cluster: [$cluster], ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}]\n");
 			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
-			scan_cluster($conf);
-			display_details($conf);
+			AN::Cluster::scan_cluster($conf);
+			AN::Striker::display_details($conf);
 		}
 	}
 }
 else
 {
 	# Ask the user which cluster they want to look at.
-	ask_which_cluster($conf);
+    AN::Cluster::ask_which_cluster($conf);
 }
-footer($conf);
+AN::Cluster::footer($conf);
 
 exit (0);

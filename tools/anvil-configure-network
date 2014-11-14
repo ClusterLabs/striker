@@ -1377,49 +1377,34 @@ sub print_usage
 	
 	my $help = q|
  -=] Anvil! Network Configuration
-
 DESCRIPTION
-
 This tool will remap the physical network interfaces to device names, create
 the bonded interfaces and create a bridge. It will configure the IP address,
 netmask and gateways of each as well.
-
-
 SWITCHES
-
  -b <ip_address/netmask>
 	
 	This sets the IP address and subnet to be assigned to the Back-Channel
 	Network bonded interface.
-
  -h, -?, --help
-
 	Show this dialoge and exit.
-
  -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
-
 	This sets the IP address and subnet to be assigned to the 
 	Internet-Facing Network bridge interface. Unlike -b and -s switches,
 	this switch requires a default gateway be specified after the IP
 	address via:
-
 	dg=<ip_address>
 	
 		IPv4 address of the default gateway.
-
 	Optionally, one or two DNS servers may be specified via:
 	
 	dns1=<ip_address>
 	dns2=<ip_address>
-
 		IPv4 addresses of the first and/or secondary DNS server. If
 		these are not set, dns1 will default to 8.8.8.8 and dns2 will
 		default to 8.8.4.4
-
  -p, --parse
-
 	Print output suitable for parsing by a script.
-
  -s <ip_address/netmask>
 	
 	This sets the IP address and subnet to be assigned to the Storage
@@ -1435,19 +1420,15 @@ NOTE: that all IP addresses must be IPv4 in dotted-decimal notation. The
 netmask can be in CIDR or dotted-decimal notation. Do not leave a space
 between the IP address and netmask
 
-
 EXAMPLE
 
 Normal install:
 
  ./anvil-configure-network -b 10.20.10.1/16 -s 10.10.10.1/16 \
      -i 10.255.10.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
-
                   
 SUPPORT
-
 https://alteeve.ca/w/Support
-
 							      Alteeve's Niche!
 |;
 	open (my $file_handle, ">", "/tmp/anvil-configure-network-help") or die "Couldn't write help to /tmp/, error was: $!\n";

@@ -1,4 +1,5 @@
-#!/usr/bin/perl
+package AN::InstallManifest;
+
 #
 # This contains functions related to configuring node(s) via the Install
 # Manifest tool.
@@ -7,16 +8,19 @@
 use strict;
 use warnings;
 
+use AN::Cluster;
+use AN::Common;
+
 # Set static variables.
-my $THIS_FILE = "install-manifest.lib";
+my $THIS_FILE = "AN::InstallManifest.pm";
 
 # This runs the install manifest against both nodes.
 sub run_new_install_manifest
 {
 	my ($conf) = @_;
 	
-	print template($conf, "common.html", "scanning-message");
-	print template($conf, "install-manifest.html", "new-anvil-install-header");
+	print AN::Common::template($conf, "common.html", "scanning-message");
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-header");
 	
 	# Some variables we'll need.
 	$conf->{packages}{to_install} = {
@@ -93,7 +97,7 @@ sub run_new_install_manifest
 	verify_matching_free_space($conf) or return(1);
 	
 	# If we're here, we're ready to start!
-	print template($conf, "install-manifest.html", "sanity-checks-complete");
+	print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 	
 	### TODO: Check if the OS is RHEL proper and register if needed.
 	
@@ -118,7 +122,7 @@ sub run_new_install_manifest
 		}
 	}
 	
-	print template($conf, "install-manifest.html", "new-anvil-install-footer");
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	
 	return(0);
 }
@@ -409,7 +413,7 @@ sub install_programs
 	my ($conf) = @_;
 	
 	# This could take a while
-	print template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
 		message	=>	"#!string!explain_0129!#",
 	});
 	
@@ -428,7 +432,7 @@ sub install_programs
 	if (not $node1_ok)
 	{
 		$node1_class   = "highlight_bad_bold";
-		$node1_message = get_string($conf, {key => "state_0025", variables => {
+		$node1_message = AN::Common::get_string($conf, {key => "state_0025", variables => {
 			missing	=>	$conf->{node}{$node1}{missing_rpms},
 		}});
 		$ok            = 0;
@@ -436,13 +440,13 @@ sub install_programs
 	if (not $node2_ok)
 	{
 		$node2_class   = "highlight_bad_bold";
-		$node2_message = get_string($conf, {key => "state_0025", variables => {
+		$node2_message = AN::Common::get_string($conf, {key => "state_0025", variables => {
 			missing	=>	$conf->{node}{$node2}{missing_rpms},
 		}});
 		$ok            = 0;
 	}
 
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0226!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -454,19 +458,19 @@ sub install_programs
 	{
 		if ((not $conf->{node}{$node1}{internet}) || (not $conf->{node}{$node2}{internet}))
 		{
-			print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 				message		=>	"#!string!message_0370!#",
 			});
 		}
 		elsif (($conf->{node}{$node1}{os}{brand} =~ /Red Hat/) || ($conf->{node}{$node2}{os}{brand} =~ /Red Hat/))
 		{
-			print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 				message		=>	"#!string!message_0369!#",
 			});
 		}
 		else
 		{
-			print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 				message		=>	"#!string!message_0369!#",
 			});
 		}
@@ -491,19 +495,19 @@ sub install_missing_packages
 		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
 		{
 			$conf->{packages}{to_install}{$package} = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] already installed.\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] already installed.\n");
 		}
 		else
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] needed.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] needed.\n");
 			$to_install .= "$package ";
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], to_install: [$to_install]");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], to_install: [$to_install]");
 	
 	if ($to_install)
 	{
-		my ($error, $ssh_fh, $return) = remote_call($conf, {
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
 			user		=>	"root",
@@ -512,11 +516,11 @@ sub install_missing_packages
 			'close'		=>	0,
 			shell_call	=>	"yum -y install $to_install",
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		$conf->{node}{$node}{internet} = 0;
 		foreach my $line (@{$return})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		}
 	}
 	
@@ -530,16 +534,16 @@ sub install_missing_packages
 		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
 		{
 			$conf->{packages}{to_install}{$package} = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] installed.\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] installed.\n");
 		}
 		else
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] missing.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] missing.\n");
 			$missing .= "$package ";
 		}
 	}
 	$missing =~ s/\s+$//;
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], missing: [$missing]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], missing: [$missing]\n");
 	
 	# If anything is missing, we're toast.
 	if ($missing)
@@ -599,7 +603,7 @@ sub get_installed_package_list
 	my ($conf, $node, $password) = @_;
 	
 	my $ok = 0;
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -608,7 +612,7 @@ sub get_installed_package_list
 		'close'		=>	0,
 		shell_call	=>	"yum list installed",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
 	foreach my $line (@{$return})
 	{
@@ -616,7 +620,7 @@ sub get_installed_package_list
 		next if $line =~ /^Loading mirror/;
 		next if $line =~ /^Installed Packages/;
 		next if $line =~ /^\s/;
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ /^(.*?)\.(.*?)\s+(.*?)\s+\@/)
 		{
 			my $package   = $1;
@@ -682,7 +686,7 @@ sub add_an_repo
 		$ok            = 0;
 	}
 
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0225!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -692,7 +696,7 @@ sub add_an_repo
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
 			message		=>	"#!string!message_0367!#",
 		});
 	}
@@ -705,7 +709,7 @@ sub add_an_repo_to_node
 {
 	my ($conf, $node, $password) = @_;
 	
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -714,11 +718,11 @@ sub add_an_repo_to_node
 		'close'		=>	0,
 		shell_call	=>	"if [ -e '/etc/yum.repos.d/an.repo' ]; then echo 1; else curl --silent https://alteeve.ca/repo/el6/an.repo --output /etc/yum.repos.d/an.repo; if [ -e '/etc/yum.repos.d/an.repo' ]; then yum clean all --quiet; echo 2; else echo 9; fi; fi",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	my $rc = 0;
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		$rc = $line;
 	}
 	
@@ -731,7 +735,7 @@ sub update_nodes
 	my ($conf) = @_;
 	
 	# This could take a while
-	print template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
 		message	=>	"#!string!explain_0130!#",
 	});
 	
@@ -757,7 +761,7 @@ sub update_nodes
 	{
 		$node2_message = "#!string!state_0027!#",
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0227!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -775,7 +779,7 @@ sub update_node
 {
 	my ($conf, $node, $password) = @_;
 	
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -784,22 +788,22 @@ sub update_node
 		'close'		=>	0,
 		shell_call	=>	"yum -y update",
 	});
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
 	foreach my $line (@{$return})
 	{
 		$line =~ s/\n//g;
 		$line =~ s/\r//g;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 		if ($line =~ /Installing : kernel/)
 		{
 			$conf->{node}{$node}{reboot_needed} = 1;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], reboot needed.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], reboot needed.\n");
 		}
 		if ($line =~ /Total download size/)
 		{
 			$conf->{node}{$node}{os_updated} = 1;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], packages updated.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], packages updated.\n");
 		}
 	}
 	
@@ -832,7 +836,7 @@ sub verify_internet_access
 		$node2_message = "#!string!state_0021!#",
 		$ok            = 0;
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0223!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -842,7 +846,7 @@ sub verify_internet_access
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
 			message		=>	"#!string!message_0366!#",
 		});
 	}
@@ -856,7 +860,7 @@ sub ping_website
 	my ($conf, $node, $password) = @_;
 	
 	my $ok = 0;
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -865,16 +869,16 @@ sub ping_website
 		'close'		=>	0,
 		shell_call	=>	"ping alteeve.ca -c 3 -q",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
 		{
 			my $pings_sent     = $1;
 			my $pings_received = $2;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
 			if ($pings_received > 0)
 			{
 				$ok = 1;
@@ -883,7 +887,7 @@ sub ping_website
 		}
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ok: [$ok]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ok: [$ok]\n");
 	return($ok);
 }
 
@@ -897,9 +901,9 @@ sub verify_matching_free_space
 	my ($node2_use_device, $node2_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "$node1_use_device:".bytes_to_hr($conf, $node1_free_space);
+	my $node1_message = "$node1_use_device:".AN::Cluster::bytes_to_hr($conf, $node1_free_space);
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "$node2_use_device:".bytes_to_hr($conf, $node2_free_space);
+	my $node2_message = "$node2_use_device:".AN::Cluster::bytes_to_hr($conf, $node2_free_space);
 	my $message       = "";
 	if (($node1_use_device eq "--") || ($node2_use_device eq "--"))
 	{
@@ -925,7 +929,7 @@ sub verify_matching_free_space
 		$ok            = 0;
 		$message       = "#!string!message_0365!#",
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0222!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -935,7 +939,7 @@ sub verify_matching_free_space
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 			message		=>	$message,
 		});
 	}
@@ -950,7 +954,7 @@ sub get_partition_data
 	
 	my $largest_free_space = 0;
 	my $device             = "";
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -959,14 +963,14 @@ sub get_partition_data
 		'close'		=>	0,
 		shell_call	=>	"lsblk --all --bytes --noheadings --pairs",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
 	my @disks;
 	my $name  = "";
 	my $type  = "";
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		# The order appears consistent, but I'll pull values out one at
 		# a time to be safe.
 		if ($line =~ /TYPE="(.*?)"/i)
@@ -978,7 +982,7 @@ sub get_partition_data
 			$name = $1;
 		}
 		next if $type ne "disk";
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
 		
 		push @disks, $name;
 	}
@@ -986,13 +990,13 @@ sub get_partition_data
 	# Get the details on each disk now.
 	foreach my $disk (@disks)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
 		my $shell_call = "if [ ! -e /sbin/parted ]; then yum --quiet -y install parted; echo parted installed; fi && parted /dev/$disk unit B print free";
 		if (not $conf->{node}{$node}{internet})
 		{
 			$shell_call = "if [ ! -e /sbin/parted ]; then echo parted not installed; else parted /dev/$disk unit B print free; fi";
 		}
-		my ($error, $ssh_fh, $return) = remote_call($conf, {
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
 			user		=>	"root",
@@ -1001,13 +1005,13 @@ sub get_partition_data
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], line: [$line]\n");
 			if ($line eq "parted not installed")
 			{
 				$device             = "--";
@@ -1016,7 +1020,7 @@ sub get_partition_data
 			}
 			elsif ($line eq "parted installed")
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Installed 'parted' RPM.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Installed 'parted' RPM.\n");
 			}
 			#              part  start end   size  type  - don't care about the rest.
 			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B (.*?) /)
@@ -1031,7 +1035,7 @@ sub get_partition_data
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}   = $partition_end;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}  = $partition_size;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}  = $partition_type;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition_number], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition_number], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}]\n");
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{
@@ -1043,19 +1047,19 @@ sub get_partition_data
 				$conf->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free space; start: [$conf->{node}{$node}{disk}{$disk}{free_space}{start}], end: [$conf->{node}{$node}{disk}{$disk}{free_space}{end}], size: [$conf->{node}{$node}{disk}{$disk}{free_space}{size}]\n");
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_size: [$free_space_size] > largest_free_space: [$largest_free_space]?\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free space; start: [$conf->{node}{$node}{disk}{$disk}{free_space}{start}], end: [$conf->{node}{$node}{disk}{$disk}{free_space}{end}], size: [$conf->{node}{$node}{disk}{$disk}{free_space}{size}]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_size: [$free_space_size] > largest_free_space: [$largest_free_space]?\n");
 				if ($free_space_size > $largest_free_space)
 				{
 					$device             = $disk;
 					$largest_free_space = $free_space_size;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], Yes; device: [$device], free_space_size: [$free_space_size]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], Yes; device: [$device], free_space_size: [$free_space_size]\n");
 				}
 			}
 		}
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$device], largest_free_space: [$largest_free_space]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$device], largest_free_space: [$largest_free_space]\n");
 	return($device, $largest_free_space);
 }
 
@@ -1070,22 +1074,22 @@ sub verify_node_is_not_in_a_cluster
 	my ($node2_cluster_conf) = read_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = get_string($conf, {key => "state_0019"});
+	my $node1_message = AN::Common::get_string($conf, {key => "state_0019"});
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = get_string($conf, {key => "state_0019"});
+	my $node2_message = AN::Common::get_string($conf, {key => "state_0019"});
 	if ($node1_cluster_conf)
 	{
 		$node1_class   = "highlight_bad_bold";
-		$node1_message = get_string($conf, {key => "state_0020"});
+		$node1_message = AN::Common::get_string($conf, {key => "state_0020"});
 		$ok            = 0;
 	}
 	if ($node2_cluster_conf)
 	{
 		$node2_class   = "highlight_bad_bold";
-		$node2_message = get_string($conf, {key => "state_0020"});
+		$node2_message = AN::Common::get_string($conf, {key => "state_0020"});
 		$ok            = 0;
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0221!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -1095,7 +1099,7 @@ sub verify_node_is_not_in_a_cluster
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 			message		=>	"#!string!message_0363!#",
 		});
 	}
@@ -1110,7 +1114,7 @@ sub read_cluster_conf
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I
 	# only care if the file exists at all.
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -1119,16 +1123,16 @@ sub read_cluster_conf
 		'close'		=>	0,
 		shell_call	=>	"cat /etc/cluster/cluster.conf",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
 	my $data = 0;
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		last if $line =~ /No such file or directory/;
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], data: [$data]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], data: [$data]\n");
 	return($data)
 }
 
@@ -1136,7 +1140,7 @@ sub read_cluster_conf
 sub verify_os
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
 	
 	my $ok = 1;
 	my ($node1_major_version, $node1_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -1164,7 +1168,7 @@ sub verify_os
 		$node2_message = "--" if $node2_message eq "0.0";
 		$ok            = 0;
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0220!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -1174,7 +1178,7 @@ sub verify_os
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 			message		=>	"#!string!message_0362!#",
 		});
 	}
@@ -1187,7 +1191,7 @@ sub get_node_os_version
 {
 	my ($conf, $node, $password) = @_;
 	
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -1196,14 +1200,14 @@ sub get_node_os_version
 		'close'		=>	0,
 		shell_call	=>	"cat /etc/redhat-release",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
 	my $brand = "";
 	my $major = 0;
 	my $minor = 0;
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ /^(.*?) release (\d+)\.(.*)/)
 		{
 			$brand = $1;
@@ -1221,7 +1225,7 @@ sub get_node_os_version
 		}
 		
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
 	return($major, $minor);
 }
 
@@ -1232,23 +1236,23 @@ sub check_connection
 	
 	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	record($conf, "$THIS_FILE ".__LINE__."; node1_access: [$node1_access], node2_access: [$node2_access]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_access: [$node1_access], node2_access: [$node2_access]\n");
 	
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = get_string($conf, {key => "state_0017"});
+	my $node1_message = AN::Common::get_string($conf, {key => "state_0017"});
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = get_string($conf, {key => "state_0017"});
+	my $node2_message = AN::Common::get_string($conf, {key => "state_0017"});
 	if (not $node1_access)
 	{
 		$node1_class   = "highlight_bad_bold";
-		$node1_message = get_string($conf, {key => "state_0018"});
+		$node1_message = AN::Common::get_string($conf, {key => "state_0018"});
 	}
 	if (not $node2_access)
 	{
 		$node2_class   = "highlight_bad_bold";
-		$node2_message = get_string($conf, {key => "state_0018"});
+		$node2_message = AN::Common::get_string($conf, {key => "state_0018"});
 	}
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0219!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -1259,7 +1263,7 @@ sub check_connection
 	my $access = 1;
 	if ((not $node1_access) || (not $node2_access))
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-failed", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 			message		=>	"#!string!message_0361!#",
 		});
 		$access = 0;
@@ -1274,7 +1278,7 @@ sub check_node_access
 	my ($conf, $node, $password) = @_;
 	
 	my $access = 0;
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -1284,10 +1288,10 @@ sub check_node_access
 		shell_call	=>	"echo 1",
 	});
 	$conf->{node}{$node}{ssh_fh} = $ssh_fh;
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	#foreach my $line (@{$return}) { record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n"); }
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n"); }
 	$access = $return->[0] ? $return->[0] : 0;
- 	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], access: [$access]\n");
+ 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], access: [$access]\n");
 	
 	return($access);
 }
