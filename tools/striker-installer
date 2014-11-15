@@ -181,7 +181,7 @@ my $conf = {
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
-		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.jpg",
+		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
@@ -1101,7 +1101,7 @@ PROMPT 0
 MENU RESOLUTION 1024 768
 
 # The background image
-MENU BACKGROUND pxe_splash_1024_768.jpg
+MENU BACKGROUND pxe_splash_1024_768.png
  
 # These do not need to be set. I set them here to show how you can customize or
 # localize your PXE server's dialogue.
@@ -1172,7 +1172,7 @@ LABEL generic-centos-anvil-node-basic-bios
 LABEL generic-rhel-anvil-node-basic-bios
         MENU LABEL ^$i) Anvil! M3 node - Traditional BIOS - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node using CentOS 6. Will create a
+		Installs a generic Anvil! m3 node using RHEL 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
