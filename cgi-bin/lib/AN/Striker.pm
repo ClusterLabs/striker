@@ -8085,8 +8085,8 @@ sub display_vm_details
 		{
 			# If the first node is running, use it. Otherwise use
 			# the second node.
-			my $node1_daemons_running = AN::Cluster::check_node_daemons($conf, $node1);
-			my $node2_daemons_running = AN::Cluster::check_node_daemons($conf, $node2);
+			my $node1_daemons_running = check_node_daemons($conf, $node1);
+			my $node2_daemons_running = check_node_daemons($conf, $node2);
 			if ($node1_daemons_running)
 			{
 				$host = $node1;
@@ -9408,7 +9408,7 @@ sub display_node_controls
 		}
 		else
 		{
-			$say_node_name[$i] = template($conf, "common.html", "disabled-button-with-class", {
+			$say_node_name[$i] = AN::Common::template($conf, "common.html", "disabled-button-with-class", {
 				button_class	=>	"highlight_offline_fixed_width",
 				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
 			}, "", 1);

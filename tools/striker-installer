@@ -46,6 +46,7 @@ my $THIS_FILE =  $0;
 
 use strict;
 use warnings;
+use File::Path qw(make_path);
 
 # No capes!^H^H^H^Hbuffers!
 $| = 1;
@@ -105,6 +106,7 @@ my $conf = {
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
+		umount			=>	"/bin/umount",
 		unzip			=>	"/usr/bin/unzip",
 		wget			=>	"/usr/bin/wget",
 		yum			=>	"/usr/bin/yum",
@@ -146,7 +148,9 @@ my $conf = {
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
 			tomcat6				=>	0, 
+			unzip				=>	0,
 			'vim-common'			=>	0, 
+			'vim-enhanced'			=>	0, 
 			wget				=>	0,
 			xinetd				=>	0,
 		},
@@ -182,9 +186,9 @@ my $conf = {
 		selinux_config		=>	"/etc/selinux/config",
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		striker_config		=>	"/etc/an/an.conf",
-		striker_log		=>	"/var/log/an-cdb.log",
+		striker_log		=>	"/var/log/striker.log",
 		tomcat_server		=>	"/etc/tomcat6/server.xml",
-		xinetd_tftp_config	=>	"/etc/xinted.d/tftp",
+		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
 	},
 	permissions	=>	{
 		document_root		=>	{
@@ -195,7 +199,7 @@ my $conf = {
 			recursive		=>	1,
 		},
 		striker_log		=>	{
-			path			=>	"/var/log/an-cdb.log",
+			path			=>	"/var/log/striker.log",
 			owner			=>	"apache",
 			group			=>	"apache",
 			mode			=>	"g+w",
@@ -306,11 +310,11 @@ my $conf = {
 		striker_user		=>	"admin",
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
-		tarball_dir		=>	"an-cdb-#!striker_version!#",
+		tarball_dir		=>	"striker-#!striker_version!#",
 	},
 	url		=>	{
-		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.zip",
-		striker		=>	"https://github.com/digimer/an-cdb/archive/#!striker_version!#.zip",
+		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
+		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
 	},
 	nics		=>	["bcn-link1", "ifn-link1"],
 	network		=>	{
@@ -488,6 +492,9 @@ sub configure_pxe
 {
 	my ($conf) = @_;
 	
+	# Expand these by prepending the docroot.
+	$conf->{directory}{centos_pxe_web} = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}";
+	$conf->{directory}{rhel_pxe_web}   = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}";
 	if ($conf->{switches}{p} eq "none")
 	{
 		print "PXE configuration disabled, skipping.\n";
@@ -524,10 +531,12 @@ sub configure_iso_source
 			my @subdirectories = ($conf->{directory}{centos_pxe_web}, "$conf->{directory}{centos_pxe_web}/x86_64");
 			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
 			{
+				#print "[ Debug ] - directory::centos_pxe_web: [$conf->{directory}{centos_pxe_web}], subdirectory: [$subdirectory], combined: [$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory]\n";
 				push @subdirectories, "$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory";
 			}
 			foreach my $directory (@subdirectories)
 			{
+				#print "[ Debug ] - directory: [$directory]\n";
 				if (-e $directory)
 				{
 					print "- Directory already exists: [$directory]\n";
@@ -595,19 +604,35 @@ sub configure_iso_source
 			print "- Mounting the ISO: [$local_copy]\n";
 			print "- At mount point:   [$conf->{directory}{centos_pxe_web}/x86_64/img/]\n";
 			mount_iso($conf, $local_copy, "$conf->{directory}{centos_pxe_web}/x86_64/img/");
-			$conf->{pxe}{centos}{enabled} = 1;
 			
 			# copy the isolinux directory.
 			print "- Copying isolinux boot files to TFTP.\n";
-			my $isolinux_source = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}/x86_64/img/isolinux";
+			my $isolinux_source = "$conf->{directory}{centos_pxe_web}/x86_64/img/isolinux/*";
 			my $isolinux_target = "$conf->{directory}{pxelinux_config}/$conf->{directory}{centos_tftp_boot}/x86_64/";
+			if (not -e $isolinux_target)
+			{
+				print "- Creating tftp boot target: [$isolinux_target]\n";
+				make_path($isolinux_target);
+				if (-e $isolinux_target)
+				{
+					print "- target created.\n";
+				}
+				else
+				{
+					print "[ Error ] - Failed!\n";
+				}
+			}
 			rsync_files($conf, "$isolinux_source", "$isolinux_target");
+			
+			# Unmount it now (we'll remount it as needed later)
+			unmount_iso($conf, $local_copy);
+			$conf->{pxe}{centos}{enabled} = 1;
 			
 			# Write out the kickstart files.
 			my $centos_node_ks         = generate_kickstart($conf, "centos", "node");
 			my $centos_striker_ks      = generate_kickstart($conf, "centos", "striker");
-			my $centos_node_ks_file    = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node_ks}";
-			my $centos_striker_ks_file = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker_ks}";
+			my $centos_node_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node_ks}";
+			my $centos_striker_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker_ks}";
 			
 			# Write out the files.
 			print "- Writing out CentOS node kickstart file.\n";
@@ -712,19 +737,35 @@ sub configure_iso_source
 			print "- Mounting the ISO: [$local_copy]\n";
 			print "- At mount point:   [$conf->{directory}{rhel_pxe_web}/x86_64/img/]\n";
 			mount_iso($conf, $local_copy, "$conf->{directory}{rhel_pxe_web}/x86_64/img/");
-			$conf->{pxe}{rhel}{enabled} = 1;
 			
 			# copy the isolinux directory.
 			print "- Copying isolinux boot files to TFTP.\n";
-			my $isolinux_source = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}/x86_64/img/isolinux";
+			my $isolinux_source = "$conf->{directory}{rhel_pxe_web}/x86_64/img/isolinux/*";
 			my $isolinux_target = "$conf->{directory}{pxelinux_config}/$conf->{directory}{rhel_tftp_boot}/x86_64/";
+			if (not -e $isolinux_target)
+			{
+				print "- Creating tftp boot target: [$isolinux_target]\n";
+				make_path($isolinux_target);
+				if (-e $isolinux_target)
+				{
+					print "- target created.\n";
+				}
+				else
+				{
+					print "[ Error ] - Failed!\n";
+				}
+			}
 			rsync_files($conf, "$isolinux_source", "$isolinux_target");
+			
+			# Unmount it now (we'll remount it as needed later)
+			unmount_iso($conf, $local_copy);
+			$conf->{pxe}{rhel}{enabled} = 1;
 			
 			# Write out the kickstart files.
 			my $rhel_node_ks         = generate_kickstart($conf, "rhel", "node");
 			my $rhel_striker_ks      = generate_kickstart($conf, "rhel", "striker");
-			my $rhel_node_ks_file    = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node_ks}";
-			my $rhel_striker_ks_file = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}";
+			my $rhel_node_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node_ks}";
+			my $rhel_striker_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}";
 			
 			# Write out the files.
 			print "- Writing out RHEL node kickstart file.\n";
@@ -743,6 +784,38 @@ sub configure_iso_source
 	}
 	print "- Done!\n\n";
 
+	return(0);
+}
+
+# Unmounts an ISO
+sub unmount_iso
+{
+	my ($conf, $target) = @_;
+	
+	# First make sure the target isn't already mounted.
+	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /^umount:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc == 0)
+			{
+				print "- Unmounted successfully\n";
+			}
+			elsif ($rc == 1)
+			{
+				print "- Was already unmounted!\n";
+			}
+		}
+		#print "- Output: [$line]\n";
+	}
+	close $file_handle;
+	
 	return(0);
 }
 
@@ -799,9 +872,7 @@ sub generate_kickstart
 	
 	# Common part.
 	my $kickstart = "
-# Kickstart file created by 
-# Updated:   
-
+# Generated by: [$THIS_FILE] on: [".get_date($conf)."].
 
 ### Setup values.
 # Doing a full install.
@@ -1357,8 +1428,8 @@ sub set_file_ownership_and_modes
 		#if ($selinux)
 		if (0)
 		{
-			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/an-cdb.log 
-			#[root@striker ~]# restorecon /var/log/an-cdb.log 
+			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/striker.log 
+			#[root@striker ~]# restorecon /var/log/striker.log 
 			print "  Setting selinux context to: [$selinux].\n";
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
@@ -1526,13 +1597,16 @@ sub rsync_files
 	close $file_handle;
 	
 	# Verify it copied successfully.
-	my $file = ($source =~ /^.*\/(.*)$/)[0];
-	   $file = "$destination/$file";
-	if (not -e $file)
+	if ($source !~ /\*$/)
 	{
-		print "[ Error ] - Failed to rsync: [$source]\n";
-		print "[ Error ] -              to: [$destination]\n";
-		exit(21);
+		my $file = ($source =~ /^.*\/(.*)$/)[0];
+		$file = "$destination/$file";
+		if (not -e $file)
+		{
+			print "[ Error ] - Failed to rsync: [$source]\n";
+			print "[ Error ] -              to: [$destination]\n";
+			exit(21);
+		}
 	}
 }
 
@@ -1758,7 +1832,7 @@ sub download_striker
 		print "- Downloading the developer version from github.\n";
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
-		$conf->{directory}{source} = "./an-cdb-master";
+		$conf->{directory}{source} = "./striker-master";
 	}
 	else
 	{
@@ -1785,7 +1859,7 @@ sub download_striker
 				print "- Downloading requested version from: [$conf->{url}{striker}]\n";
 				$download                  = $conf->{url}{striker};
 				$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-				$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+				$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
 			}
 		}
 		else
@@ -1794,7 +1868,7 @@ sub download_striker
 			print "- Downloading version: [$conf->{sys}{install_version}] from: [$conf->{url}{striker}]\n";
 			$download                  = $conf->{url}{striker};
 			$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-			$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+			$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
 		}
 	}
 	
@@ -2025,7 +2099,7 @@ sub configure_ssh
 	else
 	{
 		print "- Generating: [$conf->{sys}{apache_user}]'s RSA keys.\n";
-		print "[ Note ] - Please be patient! It might take time to collect entropy.\n";
+		print "- [ Note ] Please be patient! It might take time to collect entropy.\n";
 		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
@@ -2588,17 +2662,75 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 		elsif (($conf->{sys}{rhn_user}) && ($conf->{sys}{rhn_password}))
 		{
 			### TODO: Escape bash special vars in passwords.
-			print "- RHN credentials given. Attempting to register now...\n";
-			my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname} && $conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6";
+			print "- RHN credentials given. Attempting to register now.\n";
+			print "- [ Note ] Please be patient, this might take a minute...\n";
+			my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
+			#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]\n";
+			#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			my $registered = 0;
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "- Output: [$line]\n";
+				if ($line =~ /rhnreg_ks:(\d+)/)
+				{
+					my $exit_code = $1;
+					if ($exit_code == 0)
+					{
+						$registered = 1;
+						print "- Registration was successful.\n";
+					}
+					else
+					{
+						print "[ Warning ] - Registration with RHN appears to have failed!\n";
+						print "[ Warning ] - Exit code was: [$exit_code], expected '0'.\n";
+					}
+				}
+				else
+				{
+					print "- Output: [$line]\n";
+				}
 			}
 			close $file_handle;
-			print "Done.\n\n";
+			if ($registered)
+			{
+				print "- Adding 'Optional' channel...\n";
+				my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
+				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]\n";
+				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
+				#print "[ Debug ] - shell_call: [$shell_call]\n";
+				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					if ($line =~ /rhn-channel:(\d+)/)
+					{
+						my $exit_code = $1;
+						if ($exit_code == 0)
+						{
+							$registered = 1;
+							print "- 'Optional' channel added successfully.\n";
+						}
+						else
+						{
+							print "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!\n";
+							print "[ Warning ] - Exit code was: [$exit_code], expected '0'.\n";
+						}
+					}
+					else
+					{
+						print "- Output: [$line]\n";
+					}
+				}
+				close $file_handle;
+			}
+			else
+			{
+				print "[ Warning ] - Registration failed, skipping 'Optional' channel addition.\n";
+			}
 		}
 		else
 		{
@@ -2664,10 +2796,10 @@ sub install_missing_packages
 	{
 		# Install the packages, then verify they actually installed.
 		print "Installing missing packages now. Please be patient.\n";
-		#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
-		#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
-		#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
-		#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+		#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
+		#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
+		#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
+		#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		print "==============================================================================\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
@@ -2723,11 +2855,11 @@ sub update_os
 	my ($conf) = @_;
 	
 	print "Checking for OS updates.\n";
-	#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
-	#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
-	#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
-	#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
-	my $shell_call = "$conf->{executable}{yum} -y update";
+	#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
+	#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
+	#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
+	#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
+	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} -y update";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	print "==============================================================================\n";
 	while(<$file_handle>)
@@ -3445,7 +3577,7 @@ sub sanity_check_dhcp
 	}
 	if ($conf->{switches}{p} =~ /lease-end=(\d+\.\d+\.\d+\.\d+)/)
 	{
-		$conf->{switches}{lease_end} = $2;
+		$conf->{switches}{lease_end} = $1;
 	}
 	
 	if ((not $conf->{switches}{lease_start}) && (not $conf->{switches}{lease_end}))
@@ -3956,7 +4088,14 @@ SWITCHES
 
 	NOTE: This also sets the 'root' user's password on the striker
 	      appliance! 
-	
+
+ -y
+
+	Automatically answers "yes" to prompts. Specifically, this prevents
+	confirmation request for network remapping, so it should only be used
+	by scripts.
+
+
 NOTE: that all IP addresses must be IPv4 in dotted-decimal notation. The
 netmask can be in CIDR or dotted-decimal notation. Do not leave a space
 between the IP address and netmask
@@ -4186,18 +4325,25 @@ sub select_nics
 	print "- DNS1:    [$ifn_dns1]\n";
 	print "- DNS2:    [$ifn_dns2]\n\n";
 	print "Shall I proceed? [Y/n] ";
-	my $answer = <STDIN>;
-	chomp($answer);
-	if (($answer) && (lc($answer) =~ /^n/))
+	if ($conf->{switches}{y})
 	{
-		$proceed = 0;
-		print "- Ok, starting over.\n";
-		sleep 2;
-		system('clear');
+		print "\n- Auto-yes used, proceeding.\n\n";
 	}
 	else
 	{
-		print "- Thank you, I will start to work now.\n\n";
+		my $answer = <STDIN>;
+		chomp($answer);
+		if (($answer) && (lc($answer) =~ /^n/))
+		{
+			$proceed = 0;
+			print "- Ok, starting over.\n";
+			sleep 2;
+			system('clear');
+		}
+		else
+		{
+			print "- Thank you, I will start to work now.\n\n";
+		}
 	}
 
 	return($proceed);

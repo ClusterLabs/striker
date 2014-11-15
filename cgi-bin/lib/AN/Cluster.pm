@@ -5267,12 +5267,12 @@ sub scan_cluster
 	my ($conf) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
-	set_node_names ($conf);
+	AN::Striker::set_node_names ($conf);
 	check_nodes    ($conf);
 	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
 	if ($conf->{'system'}{up_nodes} > 0)
 	{
-		check_vms($conf);
+		AN::Striker::check_vms($conf);
 	}
 
 	return(0);
@@ -5310,7 +5310,7 @@ sub check_node_status
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
 		gather_node_details($conf, $node);
-		push @{$conf->{online_nodes}}, $node if check_node_daemons($conf, $node);
+		push @{$conf->{online_nodes}}, $node if AN::Striker::check_node_daemons($conf, $node);
 	}
 	
 	# If I have no nodes up, exit.

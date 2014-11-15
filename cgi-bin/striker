@@ -54,7 +54,7 @@ my $THIS_FILE = "striker";
 use AN::Common;
 use AN::Cluster;
 use AN::Striker;
-use AN::InstallManifesto;
+use AN::InstallManifest;
 
 # Turn off buffering so that the pinwheel will display while waiting
 # for the SSH call(s) to complete.

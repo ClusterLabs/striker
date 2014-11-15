@@ -1,4 +1,4 @@
-AN!CDB v1.1.6
+Striker v1.1.6
 =============
 
   This program is a "Anvil! Dashboard" designed for simple management of the
@@ -19,7 +19,7 @@ within reach of small organizations with little to no in-house IT staff.
 
 Online Documentation
 --------------------
-- https://alteeve.ca/w/AN!CDB
+- https://alteeve.ca/w/Striker
 
  
 Anvil! and Server management
