@@ -35,8 +35,6 @@
 # 19 - Failed to copy a file.
 # 20 - Failed to create a symlink.
 # 21 - Failed to rsync a file or directory.
-# 22 - Failed to find CentOS source ISO.
-# 23 - Failed to find RHEL source ISO.
 # 
 # TODO: Create an init script that deletes anything in the media directory on
 #       boot. Can't use /tmp as it's usually too small.
@@ -46,7 +44,6 @@ my $THIS_FILE =  $0;
 
 use strict;
 use warnings;
-use File::Path qw(make_path);
 
 # No capes!^H^H^H^Hbuffers!
 $| = 1;
@@ -57,28 +54,19 @@ my $conf = {
 		# 'disable' is processes.
 		# NOTE: 'haldaemon' needs to restart before 'acpid' will work,
 		#       if 'acpid' was just installed.
-		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "ntpd", "xinetd"],
+		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "ntpd"],
 		# These will be both chkconfig off'ed and stopped.
-		disable			=>	["ip6tables", "dhcpd"],
+		disable			=>	["ip6tables"],
 	},
 	directory	=>	{
+		media			=>	"/var/www/home/media",
 		apache			=>	"/etc/httpd",
-		apache_manifests	=>	"/var/www/html/manifests",
 		apache_subdirs		=>	["archive", "cache", "media", "status"],
-		centos_pxe_web		=>	"html/c6",			# Appeanded to 'document_root' + arch appended after
-		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
-		document_root		=>	"/var/www/",
 		guac_classpath		=>	"/var/lib/guacamole/classpath",
 		guac_etc		=>	"/etc/guacamole",
 		guac_lib		=>	"/var/lib/guacamole",
 		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
-		media			=>	"/var/www/home/media",
-		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
-		pxelinux_boot		=>	"/var/lib/tftpboot/boot",	# TODO: Make this and _config subdirtories of 'pxelinux'
-		pxelinux		=>	"/var/lib/tftpboot/",
-		pxe_iso_subdirs		=>	["iso", "img", "ks", "files"],	# appended to {centos,rhel}_pxe_web + arch
-		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
-		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
+		document_root		=>	"/var/www/",
 		source			=>	"",
 	},
 	executable	=>	{
@@ -94,11 +82,8 @@ my $conf = {
 		iptables		=>	"/sbin/iptables",
 		'iptables-save'		=>	"/sbin/iptables-save",
 		ln			=>	"/bin/ln",
-		mount			=>	"/bin/mount",
 		passwd			=>	"/usr/bin/passwd",
 		restorecon		=>	"/sbin/restorecon",
-		'rhn-channel'		=>	"/usr/sbin/rhn-channel",
-		rhnreg_ks		=>	"/usr/sbin/rhnreg_ks",
 		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
 		semanage		=>	"/usr/sbin/semanage",
@@ -107,8 +92,6 @@ my $conf = {
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
-		umount			=>	"/bin/umount",
-		unzip			=>	"/usr/bin/unzip",
 		wget			=>	"/usr/bin/wget",
 		yum			=>	"/usr/bin/yum",
 	},
@@ -116,44 +99,50 @@ my $conf = {
 		# These get set to '1' when their found to be installed.
 		to_install	=>	{
 			acpid				=>	0,
+			apcupsd-latest			=>	0,
+			'bridge-utils'			=>	0,
 			ccs				=>	0, 
-			'perl-YAML-Tiny'		=>	0, 
+			cman				=>	0,
+			corosync			=>	0,
 			'cyrus-sasl'			=>	0, 
-			'cyrus-sasl-plain'		=>	0,
-			dhcp				=>	0,
-			expect				=>	0, 
-			'fence-agents'			=>	0, 
-			guacd				=>	0, 
-			httpd				=>	0, 
-			libcdio				=>	0, 
-			'libguac-client-rdp'		=>	0,
-			'libguac-client-ssh'		=>	0, 
-			'libguac-client-vnc'		=>	0, 
-			man				=>	0, 
-			mlocate				=>	0, 
-			mod_ssl				=>	0,
+			'cyrus-sasl-plain'		=>	0, 
+			dmidecode			=>	0,
+			drbd				=>	0,
+			kmod-drbd			=>	0,
+			expect				=>	0,
+			'fence-agents'			=>	0,
+			freeipmi			=>	0,
+			'freeipmi-bmc-watchdog'		=>	0,
+			'freeipmi-ipmidetectd'		=>	0,
+			gd				=>	0,
+			'gfs2-utils'			=>	0,
+			gpm				=>	0,
+			libvirt				=>	0,
+			'lvm2-cluster'			=>	0,
+			man				=>	0,
+			MegaCli				=>	0,
+			mlocate				=>	0,
 			ntp				=>	0,
-			'perl-CGI'			=>	0, 
-			'perl-CPAN'			=>	0, 
-			'perl-Net-SSH2'			=>	0,
-			'perl-Net-SSLeay'		=>	0, 
-			'perl-TermReadKey'		=>	0,
-			'perl-Test-Simple'		=>	0,
-			'perl-XML-Simple'		=>	0,
-			'policycoreutils-python'	=>	0, 
-			postfix				=>	0, 
-			rsync				=>	0,
-			screen				=>	0, 
-			syslinux			=>	0, 
-			'syslinux-tftpboot'		=>	0,
+			OpenIPMI			=>	0,
+			'OpenIPMI-libs'			=>	0,
+			'OpenIPMI-tools'		=>	0,
+			'openssh-clients'		=>	0,
 			'openssl-devel'			=>	0,
-			'tftp-server'			=>	0,
-			tomcat6				=>	0, 
-			unzip				=>	0,
-			'vim-common'			=>	0, 
-			'vim-enhanced'			=>	0, 
+			perl				=>	0,	# Um...
+			'perl-Time-HiRes'		=>	0,
+			'policycoreutils-python'	=>	0,
+			postfix				=>	0,
+			'qemu-kvm'			=>	0,
+			'qemu-kvm-tools'		=>	0,
+			rgmanager			=>	0,
+			ricci				=>	0,
+			rsync				=>	0,
+			screen				=>	0,
+			syslinux			=>	0,
+			vim				=>	0,
+			'virt-install'			=>	0,
+			'virt-viewer'			=>	0,
 			wget				=>	0,
-			xinetd				=>	0,
 		},
 		# This is populated by 'get_list_of_installed_packages()' and
 		# uses the found package name as the key and sets the value to
@@ -162,164 +151,35 @@ my $conf = {
 	},
 	path		=>	{
 		an_repo			=>	"/etc/yum.repos.d/an.repo",
-		apache_config		=>	"/etc/httpd/conf/httpd.conf",
-		apache_home		=>	"/var/www/home",
-		apache_htpasswd		=>	"/var/www/home/htpasswd",
-		apache_manifest_conf	=>	"/etc/httpd/conf.d/manifest.conf",
-		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
-		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
-		guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
-		guac_noauth_config	=>	"/etc/guacamole/noauth-config.xml",
-		guac_properties		=>	"/etc/guacamole/guacamole.properties",
-		guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
-		guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
-		guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
-		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.jpg",
-		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
-		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
 		sshd_config		=>	"/etc/ssh/sshd_config",
-		striker_config		=>	"/etc/an/an.conf",
-		striker_log		=>	"/var/log/striker.log",
-		tomcat_server		=>	"/etc/tomcat6/server.xml",
-		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
-	},
-	permissions	=>	{
-		document_root		=>	{
-			path			=>	"/var/www",
-			owner			=>	"apache",
-			group			=>	"apache",
-			mode			=>	"g+w",
-			recursive		=>	1,
-		},
-		striker_log		=>	{
-			path			=>	"/var/log/striker.log",
-			owner			=>	"apache",
-			group			=>	"apache",
-			mode			=>	"g+w",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
-		striker_config_dir	=>	{
-			path			=>	"/etc/an",
-			owner			=>	"apache",
-			group			=>	"apache",
-			mode			=>	"g+w",
-			recursive		=>	1,
-		},
-		striker_config	=>	{
-			path			=>	"/etc/an/an.conf",
-			owner			=>	"apache",
-			group			=>	"apache",
-			mode			=>	"0660",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
-		ssh_config		=>	{
-			path			=>	"/etc/ssh/ssh_config",
-			owner			=>	"root",
-			group			=>	"apache",
-			mode			=>	"g+w",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
-		hosts			=>	{
-			path			=>	"/etc/hosts",
-			owner			=>	"root",
-			group			=>	"apache",
-			mode			=>	"g+w",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
-		guac_noauth_config	=>	{
-			path			=>	"/etc/guacamole/noauth-config.xml",
-			owner			=>	"root",
-			group			=>	"apache",
-			mode			=>	"0664",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
-		pxelinux		=>	{
-			path			=>	"/var/lib/tftpboot/pxelinux.cfg",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"755",
-			recursive		=>	0,
-		},
-		# The following entries must sort last to ensure the setuid
-		# doesn't get changed by a change to the parent directory.
-		z_restart_tomcat	=>	{
-			path			=>	"/var/www/tools/restart_tomcat6",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
-		z_restart_guacd	=>	{
-			path			=>	"/var/www/tools/restart_guacd",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
-		z_check_dvd		=>	{
-			path			=>	"/var/www/tools/check_dvd",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
-		z_do_dd			=>	{
-			path			=>	"/var/www/tools/do_dd",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
-		'z_call_gather-system-info'	=>	{
-			path			=>	"/var/www/tools/call_gather-system-info",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
+		striker_log		=>	"/var/log/an-cdb.log",
+		virsh_network		=>	"/etc/libvirt/qemu/networks/default.xml",
 	},
 	sys		=>	{
-		apache_group		=>	"apache",
-		apache_timeout		=>	"60000",	# This will go away with AJAX
-		apache_user		=>	"apache",
-		customer		=>	"Striker Dashboard",
-		guac_version		=>	"0.9.2",
 		hostname		=>	"",
-		is_rhel			=>	0,
 		mail_server		=>	"",
 		mail_user		=>	"",
 		mail_password		=>	"",
-		rhn_user		=>	"",
-		rhn_password		=>	"",
 		skip_hostname		=>	0,
 		skip_mail		=>	0,
 		skip_network		=>	0,
-		stable_version		=>	"1.1.6",
-		striker_user		=>	"admin",
-		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
-		tarball_dir		=>	"striker-#!striker_version!#",
 	},
-	url		=>	{
-		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
-		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
-	},
-	nics		=>	["bcn-link1", "ifn-link1"],
+	nics		=>	["bcn-link1", "bcn-link2", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2"],
 	network		=>	{
 		bcn		=>	{
+			ip		=>	"",
+			netmask		=>	"",
+		},
+		sn		=>	{
 			ip		=>	"",
 			netmask		=>	"",
 		},
@@ -331,26 +191,14 @@ my $conf = {
 			dns2		=>	"8.8.4.4",
 		},
 	},
-	pxe		=>	{
-		centos		=>	{
-			enabled		=>	0,
-			node_ks		=>	"anvil-m3-node-basic-bios_centos.ks",
-			striker_ks	=>	"striker-m3-basic-bios_centos.ks",
-			short_name	=>	"c6",
-		},
-		rhel		=>	{
-			enabled		=>	0,
-			node_ks		=>	"anvil-m3-node-basic-bios_rhel.ks",
-			striker_ks	=>	"striker-m3-basic-bios_rhel.ks",
-			short_name	=>	"rhel6",
-		}
-	},
 };
+
 
 # Make sure we're running as 'root'
 # $< == real UID, $> == effective UID
 if (($< != 0) && ($> != 0))
 {
+	print_header($conf);
 	print "[ Error ] - I am sorry, but this program must be run as the root user.\n\n";
 	exit(17);
 }
@@ -362,20 +210,6 @@ if (not $conf->{sys}{switch_count})
 	print_usage($conf);
 	exit(10);
 }
-
-system('clear');
-# Credit to Martin Allchin for this ASCII art!
-print q`
- ##############################################################################
- #   ___ _       _ _                                    The Anvil! Dashboard  #
- #  / __| |_ _ _(_) |_____ _ _                                 -=] Installer  #
- #  \__ \  _| '_| | / / -_) '_|                                               #
- #  |___/\__|_| |_|_\_\___|_|                                                 #
- #                                               https://alteeve.ca/w/Striker #
- ##############################################################################
-
-`;
-
 # This sanity-checks the passed in command line switches and returns '1' if
 # any problems were found.
 if (sanity_check_switches($conf))
@@ -465,9 +299,6 @@ sub setup_striker
 	# Copy Striker files into place
 	install_striker_files($conf);
 	
-	# Configure PXE and dhcpd stuff
-	configure_pxe($conf);
-	
 	# Set owners and file modes.
 	set_file_ownership_and_modes($conf);
 	
@@ -484,872 +315,6 @@ sub setup_striker
 	#       get scrolled off the screen.
 	# Set the root user's password.
 	set_root_password($conf);
-	
-	return(0);
-}
-
-# This configures DHCP and PXE servers.
-sub configure_pxe
-{
-	my ($conf) = @_;
-	
-	# Expand these by prepending the docroot.
-	$conf->{directory}{centos_pxe_web} = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}";
-	$conf->{directory}{rhel_pxe_web}   = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}";
-	if ($conf->{switches}{p} eq "none")
-	{
-		print "PXE configuration disabled, skipping.\n";
-	}
-	else
-	{
-		configure_dhcp($conf);
-		configure_xinetd($conf);
-		configure_iso_source($conf);
-		configure_pxe_config($conf);
-	}
-	
-	return(0);
-}
-
-# This sets up the install ISOs, if available.
-sub configure_iso_source
-{
-	my ($conf) = @_;
-	
-	print "Setting up the install ISOs for PXE installs.\n";
-	if ($conf->{switches}{'centos-iso'})
-	{
-		my $file_name  = "";
-		my $local_copy = "";
-		if ($conf->{switches}{'centos-iso'} eq "none")
-		{
-			print "- CentOS disabled, skipping.\n";
-		}
-		else
-		{
-			print "- CentOS source defined, configuring.\n";
-			# Setup the directories.
-			my @subdirectories = ($conf->{directory}{centos_pxe_web}, "$conf->{directory}{centos_pxe_web}/x86_64");
-			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
-			{
-				#print "[ Debug ] - directory::centos_pxe_web: [$conf->{directory}{centos_pxe_web}], subdirectory: [$subdirectory], combined: [$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory]\n";
-				push @subdirectories, "$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory";
-			}
-			foreach my $directory (@subdirectories)
-			{
-				#print "[ Debug ] - directory: [$directory]\n";
-				if (-e $directory)
-				{
-					print "- Directory already exists: [$directory]\n";
-				}
-				else
-				{
-					mkdir $directory or die "Failed to create the directory: [$directory], error was: $!\n";
-					print "- Created: [$directory]\n";
-				}
-			}
-			
-			# Ok, acquire it!
-			if ($conf->{switches}{'centos-iso'} =~ /:\/\//)
-			{
-				print "- CentOS ISO appears to be a URL, will attempt to download now...\n";
-				   $file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
-				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
-				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
-				print "[ Debug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-				print "==============================================================================\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					print "- Output: [$line]\n";
-				}
-				print "==============================================================================\n";
-				close $file_handle;
-				
-				# Make sure it downloaded.
-				if (-e $local_copy)
-				{
-					print "- Download successful.\n";
-				}
-				else
-				{
-					print "[ Error ] - Failed to download: [$conf->{switches}{'centos-iso'}]\n";
-					exit(22);
-				}
-			}
-			elsif (-e $conf->{switches}{'centos-iso'})
-			{
-				print "- CentOS ISO is local, will copy into place.\n";
-				$file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
-				$local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
-				if ($local_copy eq $conf->{switches}{'centos-iso'})
-				{
-					print "- Local copy already in the right place.\n";
-				}
-				else
-				{
-					print "- Copying the local ISO into the apache directory.\n";
-					rsync_files($conf, "$conf->{switches}{'centos-iso'}", "$conf->{directory}{centos_pxe_web}/x86_64/iso/");
-				}
-			}
-			else
-			{
-				print "[ Error ] - The CentOS ISO doesn't appear to be valid. Is this right?:\n";
-				print "[ Error ]   [$conf->{switches}{'centos-iso'}]\n";
-				exit(22);
-			}
-			
-			# If I'm here, we're ready to configure.
-			print "- Mounting the ISO: [$local_copy]\n";
-			print "- At mount point:   [$conf->{directory}{centos_pxe_web}/x86_64/img/]\n";
-			mount_iso($conf, $local_copy, "$conf->{directory}{centos_pxe_web}/x86_64/img/");
-			
-			# copy the isolinux directory.
-			print "- Copying isolinux boot files to TFTP.\n";
-			my $isolinux_source = "$conf->{directory}{centos_pxe_web}/x86_64/img/isolinux/*";
-			my $isolinux_target = "$conf->{directory}{pxelinux_boot}/$conf->{directory}{centos_tftp_boot}/x86_64/";
-			if (not -e $isolinux_target)
-			{
-				print "- Creating tftp boot target: [$isolinux_target]\n";
-				make_path($isolinux_target);
-				if (-e $isolinux_target)
-				{
-					print "- target created.\n";
-				}
-				else
-				{
-					print "[ Error ] - Failed!\n";
-				}
-			}
-			rsync_files($conf, "$isolinux_source", "$isolinux_target");
-			
-			# Unmount it now (we'll remount it as needed later)
-			unmount_iso($conf, $local_copy);
-			$conf->{pxe}{centos}{enabled} = 1;
-			
-			# Write out the kickstart files.
-			my $centos_node_ks         = generate_kickstart($conf, "centos", "node");
-			my $centos_striker_ks      = generate_kickstart($conf, "centos", "striker");
-			my $centos_node_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node_ks}";
-			my $centos_striker_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker_ks}";
-			
-			# Write out the files.
-			print "- Writing out CentOS node kickstart file.\n";
-			open (my $file_handle, ">", $centos_node_ks_file) or die "Failed to write: [$centos_node_ks_file], the error was: $!\n";
-			print $file_handle $centos_node_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_node_ks_file].\n\n";
-
-			print "- Writing out CentOS striker kickstart file.\n";
-			open ($file_handle, ">", $centos_striker_ks_file) or die "Failed to write: [$centos_striker_ks_file], the error was: $!\n";
-			print $file_handle $centos_striker_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_striker_ks_file].\n\n";
-			print "- CentOS PXE configuration complete.\n";
-		}
-	}
-
-	# Now RHEL
-	if ($conf->{switches}{'rhel-iso'})
-	{
-		my $file_name  = "";
-		my $local_copy = "";
-		if ($conf->{switches}{'rhel-iso'} eq "none")
-		{
-			print "- RHEL disabled, skipping.\n";
-		}
-		else
-		{
-			print "- RHEL source defined, configuring.\n";
-			# Setup the directories.
-			my @subdirectories = ($conf->{directory}{rhel_pxe_web}, "$conf->{directory}{rhel_pxe_web}/x86_64");
-			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
-			{
-				push @subdirectories, "$conf->{directory}{rhel_pxe_web}/x86_64/$subdirectory";
-			}
-			foreach my $directory (@subdirectories)
-			{
-				if (-e $directory)
-				{
-					print "- Directory already exists: [$directory]\n";
-				}
-				else
-				{
-					mkdir $directory or die "Failed to create the directory: [$directory], error was: $!\n";
-					print "- Created: [$directory]\n";
-				}
-			}
-			
-			# Ok, acquire it!
-			if ($conf->{switches}{'rhel-iso'} =~ /:\/\//)
-			{
-				print "- RHEL ISO appears to be a URL, will attempt to download now...\n";
-				   $file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
-				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
-				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
-				print "[ Debug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-				print "==============================================================================\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					print "- Output: [$line]\n";
-				}
-				print "==============================================================================\n";
-				close $file_handle;
-				
-				# Make sure it downloaded.
-				if (-e $local_copy)
-				{
-					print "- Download successful.\n";
-				}
-				else
-				{
-					print "[ Error ] - Failed to download: [$conf->{switches}{'rhel-iso'}]\n";
-					exit(22);
-				}
-			}
-			elsif (-e $conf->{switches}{'rhel-iso'})
-			{
-				print "- RHEL ISO is local, will copy into place.\n";
-				$file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
-				$local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
-				if ($local_copy eq $conf->{switches}{'rhel-iso'})
-				{
-					print "- Local copy already in the right place.\n";
-				}
-				else
-				{
-					print "- Copying the local ISO into the apache directory.\n";
-					rsync_files($conf, "$conf->{switches}{'rhel-iso'}", "$conf->{directory}{rhel_pxe_web}/x86_64/iso/");
-				}
-			}
-			else
-			{
-				print "[ Error ] - The RHEL ISO doesn't appear to be valid. Is this right?:\n";
-				print "[ Error ]   [$conf->{switches}{'rhel-iso'}]\n";
-				exit(22);
-			}
-			
-			# If I'm here, we're ready to configure.
-			print "- Mounting the ISO: [$local_copy]\n";
-			print "- At mount point:   [$conf->{directory}{rhel_pxe_web}/x86_64/img/]\n";
-			mount_iso($conf, $local_copy, "$conf->{directory}{rhel_pxe_web}/x86_64/img/");
-			
-			# copy the isolinux directory.
-			print "- Copying isolinux boot files to TFTP.\n";
-			my $isolinux_source = "$conf->{directory}{rhel_pxe_web}/x86_64/img/isolinux/*";
-			my $isolinux_target = "$conf->{directory}{pxelinux_boot}/$conf->{directory}{rhel_tftp_boot}/x86_64/";
-			if (not -e $isolinux_target)
-			{
-				print "- Creating tftp boot target: [$isolinux_target]\n";
-				make_path($isolinux_target);
-				if (-e $isolinux_target)
-				{
-					print "- target created.\n";
-				}
-				else
-				{
-					print "[ Error ] - Failed!\n";
-				}
-			}
-			rsync_files($conf, "$isolinux_source", "$isolinux_target");
-			
-			# Unmount it now (we'll remount it as needed later)
-			unmount_iso($conf, $local_copy);
-			$conf->{pxe}{rhel}{enabled} = 1;
-			
-			# Write out the kickstart files.
-			my $rhel_node_ks         = generate_kickstart($conf, "rhel", "node");
-			my $rhel_striker_ks      = generate_kickstart($conf, "rhel", "striker");
-			my $rhel_node_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node_ks}";
-			my $rhel_striker_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}";
-			
-			# Write out the files.
-			print "- Writing out RHEL node kickstart file.\n";
-			open (my $file_handle, ">", $rhel_node_ks_file) or die "Failed to write: [$rhel_node_ks_file], the error was: $!\n";
-			print $file_handle $rhel_node_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_node_ks_file].\n\n";
-
-			print "- Writing out RHEL striker kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker_ks_file) or die "Failed to write: [$rhel_striker_ks_file], the error was: $!\n";
-			print $file_handle $rhel_striker_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_striker_ks_file].\n\n";
-			print "- RHEL PXE configuration complete.\n";
-		}
-	}
-	print "- Done!\n\n";
-
-	return(0);
-}
-
-# Unmounts an ISO
-sub unmount_iso
-{
-	my ($conf, $target) = @_;
-	
-	# First make sure the target isn't already mounted.
-	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		if ($line =~ /^umount:(\d+)/)
-		{
-			my $rc = $1;
-			if ($rc == 0)
-			{
-				print "- Unmounted successfully\n";
-			}
-			elsif ($rc == 1)
-			{
-				print "- Was already unmounted!\n";
-			}
-		}
-		#print "- Output: [$line]\n";
-	}
-	close $file_handle;
-	
-	return(0);
-}
-
-# Mounts an ISO at the specified path, if not already mounted.
-sub mount_iso
-{
-	my ($conf, $source, $target) = @_;
-	
-	# First make sure the target isn't already mounted.
-	my $shell_call = "$conf->{executable}{mount} -o loop $source $target; echo \"mount:\$?\"";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		if ($line =~ /^mount:(\d+)/)
-		{
-			my $rc = $1;
-			if ($rc == 0)
-			{
-				print "- Mounted successfully\n";
-			}
-			elsif ($rc == 32)
-			{
-				print "- Was already mounted!\n";
-			}
-		}
-		#print "- Output: [$line]\n";
-	}
-	close $file_handle;
-	
-	return(0);
-}
-
-# This generates a kickstart file.
-sub generate_kickstart
-{
-	my ($conf, $os, $machine) = @_;
-	
-	my $short_os_name = $conf->{pxe}{centos}{short_name};
-	my $machine_name  = "new-node";
-	if ($os eq "rhel")
-	{
-		$short_os_name = $conf->{pxe}{rhel}{short_name};
-	}
-	if ($machine eq "striker")
-	{
-		$machine_name = "new-striker";
-	}
-	
-	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
-	   $domain_name = "localdomain" if not $domain_name;
-	
-	# Common part.
-	my $kickstart = "
-# Generated by: [$THIS_FILE] on: [".get_date($conf)."].
-
-### Setup values.
-# Doing a full install.
-install
-
-# This is the web server with the installation image.
-url --url=http://$conf->{network}{bcn}{ip}/$short_os_name/x86_64/img/
-
-# Set the language and keyboard to en_US, UTF-8. Adjust as needed.
-lang en_US.UTF-8
-keyboard us
-
-# Set the timezone to Eastern Standard/Daylight Time. To get your preferred
-# time zone, run 'tzselect'. When finished, looks for the line like:
-# - Therefore TZ='America/Toronto' will be used.
-# Take the value in \"TZ='...'\" and use it below.
-timezone --utc America/Toronto
-
-# This sets the (first) ethernet device. There is currently no way to map
-# device names to physical interfaces. For this reason, I use DHCP for install
-# and configure the network manually post-install.
-network --device eth0 --bootproto dhcp --onboot yes --hostname $machine_name.$domain_name
-
-# This is the root user's password, which is \"initial\". To change this, set the
-# password you want for a user on an existing system. Once set, look in
-# '/etc/shadow' for the line starting with the user name whom you set the
-# password for. Here is an example for the user 'digimer':
-authconfig --enableshadow --passalgo=sha512 --enablefingerprint
-rootpw --iscrypted \$6\$W8AdoMvC\$ZX87YTlVdutpsmsISVEqEkblJLPilP46PNTACN2r2MRzH2xgBOFciZgFsx7f5i07scC/fjNuR/B5Y2eOLXpz31
-
-# In a production system, you will likely want to enable a firewall and
-# SELinux. Given that this script is likely to be used while learning though,
-# I turn them both off to reduce potential problems. Please be sure to build a
-# firewall (Shorewall is good) and to re-enable SELinux as final steps before
-# going into production. This way you will be able to focus on resolving issues
-# specific to firewalling and SELinux without wondering if problems are caused
-# by the general configuration.
-firewall --service=ssh
-selinux --enforcing
-
-# Given how often I rebuild machines, I like to pre-define the initial user and
-# thus skip 'firstboot' to save time.
-firstboot --disable
-
-# Reboot after the install completes rather than waiting for the user to
-# manually reboot.
-reboot
-
-# This runs a script (below) that generates the partitioning information
-# depending on a rudamentary test for available storage devices.
-\%include /tmp/part-include
-
-# This is a very, very minimal installation. It's suitable for testing install
-# programs or for machines with the minimal attack surface area.
-\%packages
-\@core
-\@server-policy
-perl
-\%end
-
-# Tell the machine to save downloaded RPM updates (for possible distribution to
-# other machines for low-bandwidth users). It also makes sure all NICs start on
-# boot.
-\%post
-sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
-for nic in $(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT=\"yes\"/' \$nic; done
-\%end
-
-### Script to setup partitions.
-\%pre --log=/tmp/ks-preinstall.log
-
-#!/bin/sh
-
-# Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It's obviously just a basic script, and should 
-# be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
-# 1 TB... etc.
-";
-
-	if ($machine eq "node")
-	{
-		$kickstart .= "
-###############################################################################
-# Below is for 40 GiB / partitions with the balance of free space to be       #
-# configured later.                                                           #
-###############################################################################
-
-### SATA disks
-# EeeBox machine
-if grep -q sdb /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=sdb
-ignoredisk --only-use=sdb
-bootloader --location=mbr --driveorder=sdb
-
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=sdb
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=sdb
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=sdb
-
-END
-
-# /dev/sda Single drive, or hardware RAID
-elif grep -q sda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=sda
-ignoredisk --only-use=sda
-bootloader --location=mbr --driveorder=sda
-
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=sda
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=sda
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=sda
-
-END
-
-# /dev/vda KVM virtual machine
-elif grep -q vda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=vda
-ignoredisk --only-use=vda
-bootloader --location=mbr --driveorder=vda
-
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=vda
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=vda
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=vda
-
-END
-
-fi
-\%end
-";
-	}
-	elsif ($machine eq "striker")
-	{
-		# This is the storage for nodes with all remaining space.
-		$kickstart .= "
-###############################################################################
-# Below is for full disk / partitions suitable for striker dashboards and     #
-# generic VMs.                                                                #
-###############################################################################
-
-### SATA disks
-# EeeBox machine
-if grep -q sdb /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=sdb
-ignoredisk --only-use=sdb
-bootloader --location=mbr --driveorder=sdb
-
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=sdb
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=sdb
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=sdb --grow
-
-END
-
-# /dev/sda Single drive, or hardware RAID
-elif grep -q sda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=sda
-ignoredisk --only-use=sda
-bootloader --location=mbr --driveorder=sda
-
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=sda
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=sda
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=sda --grow
-
-END
-
-# /dev/vda KVM virtual machine
-elif grep -q vda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --linux --drives=vda
-ignoredisk --only-use=vda
-bootloader --location=mbr --driveorder=vda
-
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=vda
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=vda
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=vda --grow
-
-END
-
-fi
-\%end
-";
-	}
-	
-	return($kickstart);
-}
-
-# This configures the PXE server itself.
-sub configure_pxe_config
-{
-	my ($conf) = @_;
-	
-	print "Configuring PXE server configuration files.\n";
-	if (-e $conf->{path}{pxe_default_config})
-	{
-		backup_file($conf, $conf->{path}{pxe_default_config});
-	}
-	
-	my $default_config = "
-# Use the high-colour menu system.
-UI vesamenu.c32
- 
-# Time out and use the default menu option. Defined as tenths of a second.
-TIMEOUT 600
- 
-# Prompt the user. Set to '1' to automatically choose the default option. This
-# is really meant for files matched to MAC addresses.
-PROMPT 0
- 
-# Set the boot menu to be 1024x768 with a nice background image. Be careful to
-# ensure that all your user's can see this resolution! Default is 640x480.
-MENU RESOLUTION 1024 768
-
-# The background image
-MENU BACKGROUND pxe_splash_1024_768.jpg
- 
-# These do not need to be set. I set them here to show how you can customize or
-# localize your PXE server's dialogue.
-MENU TITLE    Anvil! node and Striker dashboard install server
-
-# Below, the hash (#) character is replaced with the countdown timer. The
-# '{,s}' allows for pluralizing a word and is used when the value is >= '2'.
-MENU AUTOBOOT Will boot the next device as configured in your BIOS in # second{,s}.
-MENU TABMSG   Press the <tab> key to edit the boot parameters of the highlighted option.
-MENU NOTABMSG Editing of this option is disabled.
- 
-# The following options set the various colours used in the menu. All possible
-# options are specified except for F# help options. The colour is expressed as
-# two hex characters between '00' and 'ff' for alpha, red, green and blue
-# respectively (#AARRGGBB).
-# Format is: MENU COLOR <Item> <ANSI Seq.> <foreground> <background> <shadow type>
-MENU COLOR screen      0  #80ffffff #00000000 std      # background colour not covered by the splash image
-MENU COLOR border      0  #ffffffff #ee000000 std      # The wire-frame border
-MENU COLOR title       0  #ffff3f7f #ee000000 std      # Menu title text
-MENU COLOR sel         0  #ff00dfdf #ee000000 std      # Selected menu option
-MENU COLOR hotsel      0  #ff7f7fff #ee000000 std      # The selected hotkey (set with ^ in MENU LABEL)
-MENU COLOR unsel       0  #ffffffff #ee000000 std      # Unselected menu options
-MENU COLOR hotkey      0  #ff7f7fff #ee000000 std      # Unselected hotkeys (set with ^ in MENU LABEL)
-MENU COLOR tabmsg      0  #c07f7fff #00000000 std      # Tab text
-MENU COLOR timeout_msg 0  #8000dfdf #00000000 std      # Timout text
-MENU COLOR timeout     0  #c0ff3f7f #00000000 std      # Timout counter
-MENU COLOR disabled    0  #807f7f7f #ee000000 std      # Disabled menu options, including SEPARATORs
-MENU COLOR cmdmark     0  #c000ffff #ee000000 std      # Command line marker - The '> ' on the left when editing an option
-MENU COLOR cmdline     0  #c0ffffff #ee000000 std      # Command line - The text being edited
-# Options below haven't been tested, descriptions may be lacking.
-MENU COLOR scrollbar   0  #40000000 #00000000 std      # Scroll bar
-MENU COLOR pwdborder   0  #80ffffff #20ffffff std      # Password box wire-frame border
-MENU COLOR pwdheader   0  #80ff8080 #20ffffff std      # Password box header
-MENU COLOR pwdentry    0  #80ffffff #20ffffff std      # Password entry field
-MENU COLOR help        0  #c0ffffff #00000000 std      # Help text, if set via 'TEXT HELP ... ENDTEXT'
- 
-### Now define the menu options
- 
-# I feel it is safest to return booting to the client as the first and default
-# option. This entry below will do just that.
-LABEL next
-	MENU LABEL ^1) Boot the next device as configured in your BIOS
-	MENU DEFAULT
-	localboot
-";
-	my $centos_short = $conf->{pxe}{centos}{short_name};
-	my $rhel_short   = $conf->{pxe}{rhel}{short_name};
-	my $i = 1;
-	if ($conf->{pxe}{centos}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-centos-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node - Traditional BIOS - CentOS 6
-	TEXT HELP
-		Installs a generic Anvil! m3 node using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
-	ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node_ks}
-";
-	}
-	if ($conf->{pxe}{rhel}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node - Traditional BIOS - RHEL 6
-	TEXT HELP
-		Installs a generic Anvil! m3 node using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
-	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node_ks}
-";
-	}
-	if ($conf->{pxe}{centos}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-centos-striker-basic-bios
-        MENU LABEL ^$i) Striker Dashboard - Traditional BIOS - CentOS 6
-	TEXT HELP
-		Installs a generic Striker dashboard using CentOS 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
-	ENDTEXT
-        KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker_ks}
-";
-	}
-	if ($conf->{pxe}{rhel}{enabled})
-	{
-		$i++;
-		$default_config .= "
-LABEL generic-rhel-striker-basic-bios
-        MENU LABEL ^5) Striker Dashboard - Traditional BIOS - RHEL 6
-	TEXT HELP
-		Installs a generic Striker dashboard using RHEL 6. Will create a
-		traditional /boot + MBR install for systems with traditional BIOSes.
-		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
-	ENDTEXT
-        KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}
-";
-	}
-	
-	# Write out the new one.
-	print "- Writing out dhcp daemon configuration file.\n";
-	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "Failed to write: [$conf->{path}{pxe_default_config}], the error was: $!\n";
-	print $file_handle $default_config;
-	close $file_handle;
-	
-	# Copy the PXE menu background into place.
-	print "- Copying PXE server's wallpaper into place.\n";
-	rsync_files($conf, "$conf->{path}{pxe_background_source}", "$conf->{directory}{pxelinux}/");
-	
-	print "Done.\n\n";
-	
-	return(0);
-}
-
-# Configure xinetd to enable tftp access.
-sub configure_xinetd
-{
-	my ($conf) = @_;
-	
-	print "Configuring xinetd/tftp server for PXE installs.\n";
-	if (-e $conf->{path}{xinetd_tftp_config})
-	{
-		backup_file($conf, $conf->{path}{xinetd_tftp_config});
-	}
-	
-	print "- Reading in current: [$conf->{path}{xinetd_tftp_config}]\n";
-	my $xinetd_tftp_config = "";
-	open (my $file_handle, "<", $conf->{path}{xinetd_tftp_config}) or die "Failed to read: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		
-		#print "[ Debug ] >> line: [$line]\n";
-		$line =~ s/^(\s+)disable(\s+)=.*$/${1}disable${2}= no/;
-		#print "[ Debug ] << line: [$line]\n";
-		
-		$xinetd_tftp_config .= "$line\n";
-	}
-	close $file_handle;
-	# Next, write it out.
-	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{xinetd_tftp_config}) or die "Failed to write: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
-	print $file_handle $xinetd_tftp_config;
-	close $file_handle;
-	
-	print "- Verifying the PXE config directory exists.\n";
-	if (not -e $conf->{directory}{pxelinux_config})
-	{
-		mkdir $conf->{directory}{pxelinux_config} or die "Failed to create the directory: [$conf->{directory}{pxelinux_config}], error was: $!\n";
-		print "- Created: [$conf->{directory}{pxelinux_config}]\n";
-	}
-	
-	print "- Verifying the PXE boot directory exists.\n";
-	if (not -e $conf->{directory}{pxelinux_boot})
-	{
-		mkdir $conf->{directory}{pxelinux_boot} or die "Failed to create the directory: [$conf->{directory}{pxelinux_boot}], error was: $!\n";
-		print "- Created: [$conf->{directory}{pxelinux_boot}]\n";
-	}
-	print "Done.\n\n";
-	
-	return(0);
-}
-
-# This sets up DHCP
-sub configure_dhcp
-{
-	my ($conf) = @_;
-	
-	print "Configuring DHCP server for PXE installs.\n";
-	# Backup any existing config.
-	if (-e $conf->{path}{dhcpd_conf})
-	{
-		backup_file($conf, $conf->{path}{dhcpd_conf});
-	}
-	
-	### TODO: I have no checks yet to verify that the lease range is in the
-	###       BCN subnet... Fix that.
-	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
-	   $domain_name = "localdomain" if not $domain_name;
-	my $bcn_network = "";
-	if ($conf->{network}{bcn}{netmask} eq "255.255.0.0")
-	{
-		$bcn_network =  ($conf->{network}{bcn}{ip} =~ /^(\d+\.\d+\.)/)[0];
-		$bcn_network .= "0.0";
-	}
-	if ($conf->{network}{bcn}{netmask} eq "255.255.255.0")
-	{
-		$bcn_network =  ($conf->{network}{bcn}{ip} =~ /^(\d+\.\d+\.\d+\.)/)[0];
-		$bcn_network .= "0";
-	}
-	my $dhcpd_config = "
-# Generated by: [$THIS_FILE] on: [".get_date($conf)."].
-# DHCP Daemon config for PXE-based installs of nodes and striker dashboards.
-
-### Global options
-# General domain information
-option domain-name \"$domain_name\";
-option domain-name-servers $conf->{network}{ifn}{dns1}, $conf->{network}{ifn}{dns2};
- 
-# Tell the server that it's authoritative on our network.
-authoritative;
- 
-# This controls how dynamic DNS updating is handled. In our case, we aren't
-# concerned about DDNS so we'll set it to 'none'.
-ddns-update-style none;
- 
-### Subnet options
-subnet $bcn_network netmask $conf->{network}{bcn}{netmask} {
-	# These two options tell clients where to go to get the file needed to
-	# start the boot process.
-        next-server $conf->{network}{bcn}{ip};
-        filename \"pxelinux.0\";
- 
-	# Our servers are installed on the BCN where they have no Internet
-	# access, so this value is largely meaningless. We set it to this
-	# machine for reasons.
-	option routers $conf->{network}{bcn}{ip};
- 
-	# Set our range. This can be whatever you want so long as it fits in
-	# your netmask.
-        range $conf->{switches}{lease_start} $conf->{switches}{lease_end};
- 
-	# If clients don't ask, make the lease available for the following
-	# number of seconds. If the client does ask, allow up to this number of
-	# seconds. Being that we're only handing out IPs long enough to install
-	# an OS, we can keep this quite short. One hour is more than enough.
-	default-lease-time 3600;
-	max-lease-time 3600;
-}
-\n";
-	
-	# Write out the new one.
-	print "- Writing out dhcp daemon configuration file.\n";
-	open (my $file_handle, ">", $conf->{path}{dhcpd_conf}) or die "Failed to write: [$conf->{path}{dhcpd_conf}], the error was: $!\n";
-	print $file_handle $dhcpd_config;
-	close $file_handle;
-	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1434,8 +399,8 @@ sub set_file_ownership_and_modes
 		#if ($selinux)
 		if (0)
 		{
-			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/striker.log 
-			#[root@striker ~]# restorecon /var/log/striker.log 
+			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/an-cdb.log 
+			#[root@striker ~]# restorecon /var/log/an-cdb.log 
 			print "  Setting selinux context to: [$selinux].\n";
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
@@ -1449,23 +414,6 @@ sub set_file_ownership_and_modes
 			close $file_handle;
 		}
 	}
-	
-	# Allow httpd to make outbound network connections.
-	if (0)
-	{
-		print "- Giving apache permission to create network connections.\n";
-		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
-		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			print "- Output: [$line]\n";
-		}
-		close $file_handle;
-	}
-	print "Done.\n\n";
 	
 	return(0);
 }
@@ -1603,16 +551,13 @@ sub rsync_files
 	close $file_handle;
 	
 	# Verify it copied successfully.
-	if ($source !~ /\*$/)
+	my $file = ($source =~ /^.*\/(.*)$/)[0];
+	   $file = "$destination/$file";
+	if (not -e $file)
 	{
-		my $file = ($source =~ /^.*\/(.*)$/)[0];
-		$file = "$destination/$file";
-		if (not -e $file)
-		{
-			print "[ Error ] - Failed to rsync: [$source]\n";
-			print "[ Error ]                to: [$destination]\n";
-			exit(21);
-		}
+		print "[ Error ] - Failed to rsync: [$source]\n";
+		print "[ Error ] -              to: [$destination]\n";
+		exit(21);
 	}
 }
 
@@ -1746,7 +691,7 @@ sub configure_guacamole
 		else
 		{
 			print "[ Error ] - I was unable to link: [$destination/$war_file]\n";
-			print "[ Error ]                     to: [$conf->{path}{guac_war_symlink}]\n";
+			print "[ Error ] -                   to: [$conf->{path}{guac_war_symlink}]\n";
 			exit(20);
 		}
 	}
@@ -1786,7 +731,7 @@ sub configure_guacamole
 		else
 		{
 			print "[ Error ] - I was unable to link: [$destination/$properties_file]\n";
-			print "[ Error ]                     to: [$conf->{path}{guac_properties_symlink}]\n";
+			print "[ Error ] -                   to: [$conf->{path}{guac_properties_symlink}]\n";
 			exit(20);
 		}
 	}
@@ -1818,7 +763,7 @@ sub copy_file
 	if (not -e $file)
 	{
 		print "[ Error ] - Failed to copy: [$source]\n";
-		print "[ Error ]               to: [$destination]\n";
+		print "[ Error ] -             to: [$destination]\n";
 		exit(19);
 	}
 	
@@ -1838,7 +783,7 @@ sub download_striker
 		print "- Downloading the developer version from github.\n";
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
-		$conf->{directory}{source} = "./striker-master";
+		$conf->{directory}{source} = "./an-cdb-master";
 	}
 	else
 	{
@@ -1865,7 +810,7 @@ sub download_striker
 				print "- Downloading requested version from: [$conf->{url}{striker}]\n";
 				$download                  = $conf->{url}{striker};
 				$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-				$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
+				$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
 			}
 		}
 		else
@@ -1874,7 +819,7 @@ sub download_striker
 			print "- Downloading version: [$conf->{sys}{install_version}] from: [$conf->{url}{striker}]\n";
 			$download                  = $conf->{url}{striker};
 			$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-			$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
+			$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
 		}
 	}
 	
@@ -1929,11 +874,7 @@ sub download_striker
 		{
 			my $source_dir_found = 0;
 			my $shell_call       = "$conf->{executable}{tar} -xvf $extract";
-			if ($extract =~ /\.zip$/)
-			{
-				$shell_call = "$conf->{executable}{unzip} $extract";
-			}
-			print "[ Debug ] - shell_call: [$shell_call]\n";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -1941,20 +882,11 @@ sub download_striker
 				my $line = $_;
 				if (($line =~ /^(.*?)\/$/) && (not $source_dir_found))
 				{
-					#print __LINE__."; [ Debug ] - line: [$line]\n";
 					# This overrides anything set above
 					# (though those need to be set in-case
 					# extraction wasn't needed).
-					my $source = $1;
-					#print __LINE__."; [ Debug ] - source: [$source]\n";
-					# When using 'unzip', the line as 'creating:' in it.
-					if ($line =~ /creating: (.*?\/)$/)
-					{
-						$source = $1;
-						#print __LINE__."; [ Debug ] - source: [$source]\n";
-					}
+					my $source                 = $1;
 					$conf->{directory}{source} = "./$source";
-					#print __LINE__."; [ Debug ] - directory::source: [$conf->{directory}{source}]\n";
 					$source_dir_found          = 1;
 				}
 				print "- Output: [$line]\n";
@@ -2105,7 +1037,7 @@ sub configure_ssh
 	else
 	{
 		print "- Generating: [$conf->{sys}{apache_user}]'s RSA keys.\n";
-		print "- [ Note ] Please be patient! It might take time to collect entropy.\n";
+		print "[ Note ] - Please be patient! It might take time to collect entropy.\n";
 		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
@@ -2224,8 +1156,8 @@ sub configure_selinux
 	if ($current_policy eq "disabled")
 	{
 		print "[ Warning ] - It looks like selinux was disabled.\n";
-		print "[ Warning ]   The next reboot might take longer than normal if a filesystem\n";
-		print "[ Warning ]   relabel is required.\n";
+		print "[ Warning ] - The next reboot might take longer than normal if a filesystem\n";
+		print "[ Warning ] - relabel is required.\n";
 		sleep 5;
 	}
 	elsif ($current_policy eq "enforcing")
@@ -2395,24 +1327,6 @@ sub configure_apache
 	close $file_handle;
 	print "Done.\n\n";
 	
-	# Write out the manifest.conf file
-	print "- Writing out the apache manifest configuration file.\n";
-	if (-e $conf->{path}{apache_manifest_conf})
-	{
-		print "- Apache manifest configuration file already exists.\n";
-	}
-	else
-	{
-		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "Failed to write: [$conf->{path}{apache_manifest_conf}], the error was: $!\n";
-		print $file_handle "<Directory \"/var/www/html/manifests/\">\n";
-		print $file_handle "  <FilesMatch \"\.xml\$\">\n";
-		print $file_handle "    Header set Content-Disposition attachment\n";
-		print $file_handle "  </FilesMatch>\n";
-		print $file_handle "</Directory>\n";
-		close $file_handle;
-		print "Done.\n\n";
-	}
-	
 	return(0);
 }
 
@@ -2551,17 +1465,6 @@ sub create_apache_home_directories
 		}
 	}
 	
-	# Make sure the directory that install manifests will be stored in is available.
-	if (not -e $conf->{directory}{apache_manifests})
-	{
-		print "- Creating: [$conf->{directory}{apache_manifests}].\n";
-		mkdir $conf->{directory}{apache_manifests} or die "Failed to create the directory: [$conf->{directory}{apache_manifests}], the error was: $!\n";
-	}
-	else
-	{
-		print "- Install manifests directory already exists: [$conf->{directory}{apache_manifests}].\n";
-	}
-	
 	print "- Setting ownership to: [$conf->{sys}{apache_user}:$conf->{sys}{apache_group}].\n";
 	my $apache_uid = getpwnam($conf->{sys}{apache_user}); 
 	my $apache_gid = getgrnam($conf->{sys}{apache_group});
@@ -2569,13 +1472,13 @@ sub create_apache_home_directories
 	if (not $apache_uid)
 	{
 		print "[ Error ] - Unable to get the User ID for the apache user: [$conf->{sys}{apache_user}]\n";
-		print "[ Error ]   Did apache actually install properly?\n";
+		print "[ Error ] - Did apache actually install properly?\n";
 		exit(15);
 	}
 	if (not $apache_gid)
 	{
 		print "[ Error ] - Unable to get the Group ID for the apache group: [$conf->{sys}{apache_group}]\n";
-		print "[ Error ]   Did apache actually install properly?\n";
+		print "[ Error ] - Did apache actually install properly?\n";
 		exit(16);
 	}
 	chown $apache_uid, $apache_gid, @dirs;
@@ -2595,34 +1498,23 @@ sub verify_os
 	if (not -e $conf->{path}{os_release})
 	{
 		print "[ Error ] - This does not appear to be a RHEL (based) operating system.\n";
-		print "[ Error ]   At this time, only RHEL and derivatives version 6.x are supported.\n";
+		print "[ Error ] - At this time, only RHEL and derivatives version 6.x are supported.\n";
 		exit(13);
 	}
 	
 	# Read the release file and dig out the version.
-	my $major   = -1;
-	my $minor   = -1;
-print "- We're on a RHEL (based) OS, good. Checking version.\n";
+	my $major = -1;
+	my $minor = -1;
+	print "- We're on a RHEL (based) OS, good. Checking version.\n";
 	open (my $file_handle, "<", $conf->{path}{os_release}) or die "Failed to read: [$conf->{path}{os_release}], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		if ($line =~ /release (\d+)\.(.*)/)
+		if ($line =~ /release (\d+)\.(\d+) /)
 		{
 			$major = $1;
 			$minor = $2;
-			# CentOS uses 'CentOS Linux release 7.0.1406 (Core)', 
-			# so I need to parse off the second '.' and whatever 
-			# is after it.
-			$minor =~ s/\..*$//;
-			
-			# Some have 'x.y (Final)', this strips that last bit off.
-			$minor =~ s/\ \(.*?\)$//;
-		}
-		if ($line =~ /Red Hat Enterprise Linux Server/)
-		{
-			$conf->{sys}{is_rhel} = 1;
 		}
 	}
 	close $file_handle;
@@ -2633,9 +1525,9 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 		if ($minor < 5)
 		{
 			print "[ Warning ] - This OS appears to be a little old, you are on: [$major.$minor].\n";
-			print "[ Warning ]   Upgrading to at least version 6.5 is recommended, though not\n";
-			print "[ Warning ]   strictly required. If you encounter issues, please update before\n";
-			print "[ Warning ]   before filing a bug. Thank you.\n\n";
+			print "[ Warning ] - Upgrading to at least version 6.5 is recommended, though not\n";
+			print "[ Warning ] - strictly required. If you encounter issues, please update before\n";
+			print "[ Warning ] - before filing a bug. Thank you.\n\n";
 			sleep 5;
 		}
 		else
@@ -2646,106 +1538,15 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 	elsif ($major > 6)
 	{
 		print "[ Error ] - I am sorry, but EL$major is not yet supported.\n";
-		print "[ Error ]   Please use RHEL 6.x or similar.\n";
+		print "[ Error ] - Please use RHEL 6.x or similar.\n";
 		exit(14);
 	}
 	else
 	{
 		print "[ Error ] - I am sorry, but EL$major is not supported.\n";
-		print "[ Error ]   Please use RHEL 6.x or similar.\n";
+		print "[ Error ] - Please use RHEL 6.x or similar.\n";
 		exit(14);
 	}
-	
-	# If the OS is RHEL proper, see if the OS needs to be activated and do
-	# so if the user has passed the --rhn switch.
-	if ($conf->{sys}{is_rhel})
-	{
-		print "- This OS is RHEL proper.\n";
-		if (-e $conf->{path}{rhn_file})
-		{
-			print "- The system appears to already be registered with RHN.\n";
-		}
-		elsif (($conf->{sys}{rhn_user}) && ($conf->{sys}{rhn_password}))
-		{
-			### TODO: Escape bash special vars in passwords.
-			print "- RHN credentials given. Attempting to register now.\n";
-			print "- [ Note ] Please be patient, this might take a minute...\n";
-			my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
-			#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]\n";
-			#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
-			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			my $registered = 0;
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				if ($line =~ /rhnreg_ks:(\d+)/)
-				{
-					my $exit_code = $1;
-					if ($exit_code == 0)
-					{
-						$registered = 1;
-						print "- Registration was successful.\n";
-					}
-					else
-					{
-						print "[ Warning ] - Registration with RHN appears to have failed!\n";
-						print "[ Warning ]   Exit code was: [$exit_code], expected '0'.\n";
-					}
-				}
-				else
-				{
-					print "- Output: [$line]\n";
-				}
-			}
-			close $file_handle;
-			if ($registered)
-			{
-				print "- Adding 'Optional' channel...\n";
-				my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
-				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]\n";
-				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
-				#print "[ Debug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					if ($line =~ /rhn-channel:(\d+)/)
-					{
-						my $exit_code = $1;
-						if ($exit_code == 0)
-						{
-							$registered = 1;
-							print "- 'Optional' channel added successfully.\n";
-						}
-						else
-						{
-							print "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!\n";
-							print "[ Warning ]   Exit code was: [$exit_code], expected '0'.\n";
-						}
-					}
-					else
-					{
-						print "- Output: [$line]\n";
-					}
-				}
-				close $file_handle;
-			}
-			else
-			{
-				print "[ Warning ] - Registration failed, skipping 'Optional' channel addition.\n";
-			}
-		}
-		else
-		{
-			print "[ Warning ] - This system does not appear to be registered with RHN and no RHN\n";
-			print "[ Warning ]   credentials have been given. The install will likely fail!\n";
-			sleep 2;
-		}
-	}
-	
 	print "Done.\n\n";
 	
 	return(0);
@@ -2802,10 +1603,10 @@ sub install_missing_packages
 	{
 		# Install the packages, then verify they actually installed.
 		print "Installing missing packages now. Please be patient.\n";
-		#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
-		#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
-		#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
-		#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
+		#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+		#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+		#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+		#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		print "==============================================================================\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
@@ -2840,10 +1641,10 @@ sub install_missing_packages
 		if ($missing)
 		{
 			print "[ Error ] - Not all required packages installed properly.\n";
-			print "[ Error ]   I am sorry, but this is a fatal error.\n";
-			print "[ Error ]   If you are on RHEL, is this machine registered?\n";
-			print "[ Error ]   If there was a problem accessing the repos, please check the\n";
-			print "[ Error ]   network connection and try again.\n\n";
+			print "[ Error ] - I am sorry, but this is a fatal error.\n";
+			print "[ Error ] - If you are on RHEL, is this machine registered?\n";
+			print "[ Error ] - If there was a problem accessing the repos, please check the\n";
+			print "[ Error ] - network connection and try again.\n\n";
 			exit(12);
 		}
 		else
@@ -2861,11 +1662,11 @@ sub update_os
 	my ($conf) = @_;
 	
 	print "Checking for OS updates.\n";
-	#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
-	#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
-	#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
-	#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
-	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} -y update";
+	#print "[ Note ] - Please be patient! It may appear that nothing is happening for a\n";
+	#print "[ Note ] - while. This is likely because of how buffering is handled. If you\n";
+	#print "[ Note ] - really think nothing is happening, please open a new terminal and\n";
+	#print "[ Note ] - look for activity using 'top' or 'ps aux'.\n";
+	my $shell_call = "$conf->{executable}{yum} -y update";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	print "==============================================================================\n";
 	while(<$file_handle>)
@@ -3087,7 +1888,7 @@ sub start_all_nics
 		else
 		{
 			print "[ Error ] - Unable to bring up the interface: [$nic]!\n";
-			print "[ Error ]   Please bring it up manually and try again.\n";
+			print "[ Error ] - Please bring it up manually and try again.\n";
 			exit(11);
 		}
 	}
@@ -3225,7 +2026,8 @@ sub write_udev_persistent_net
 		if (not $this_mac)
 		{
 			print "[ Error ] - There seems to be a problem.\n";
-			print "[ Error ]   Desired NIC: [$nic] doesn't have a referenced MAC address!\n";
+			print "[ Error ] - Desired NIC: [$nic] doesn't have a referenced MAC address!\n";
+			print "[ Error ] - Exiting.\n";
 			exit(1);
 		}
 		print $file_handle "# $say_nic\n";
@@ -3267,7 +2069,7 @@ sub backup_original_files
 	if (not $conf->{path}{backups})
 	{
 		print "[ Error ] - The backup directory is not defined!\n";
-		print "[ Error ]   Unable to safely proceed, exiting.\n";
+		print "[ Error ] - Unable to safely proceed, exiting.\n";
 		exit(5);
 	}
 	elsif (not -e $conf->{path}{backups})
@@ -3277,7 +2079,7 @@ sub backup_original_files
 		if (not -e $conf->{path}{backups})
 		{
 			print "[ Error ] - The backup directory was not created.\n";
-			print "[ Error ]   Unable to safely proceed, exiting.\n";
+			print "[ Error ] - Unable to safely proceed, exiting.\n";
 			exit(6);
 		}
 		else
@@ -3324,8 +2126,8 @@ sub backup_original_files
 		{
 			# Ok, the user has bigger problems
 			print "[ Error ] - The network configuration directory was not found!\n";
-			print "[ Error ]   This should not be possible.\n";
-			print "[ Error ]   Please check the internal path::network_configs value.\n";
+			print "[ Error ] - This should not be possible.\n";
+			print "[ Error ] - Please check the internal path::network_configs value.\n";
 			exit(8);
 		}
 	}
@@ -3343,7 +2145,7 @@ sub backup_file
 	if (not $file)
 	{
 		print "[ Error ] - The backup function was called, but no source file was given.\n";
-		print "[ Error ]   This is likely a program error, exiting.\n";
+		print "[ Error ] - This is likely a program error, exiting.\n";
 		exit(7);
 	}
 	
@@ -3394,54 +2196,18 @@ sub sanity_check_switches
 	elsif ((not $conf->{switches}{b}) && (not $conf->{switches}{i}))
 	{
 		print "[ Note ] - No network details given. Skipping Network config!\n";
-		my $shell_call = "$conf->{executable}{ip} addr show bcn-link1";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			if ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/(\d+) /)
-			{
-				$conf->{network}{bcn}{ip}      = $1;
-				$conf->{network}{bcn}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
-				print "[ Debug ] - BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]\n";
-			}
-		}
-		close $file_handle;
 		$conf->{sys}{skip_network} = 1;
-		if ((not $conf->{network}{bcn}{ip}) || (not $conf->{network}{bcn}{netmask}))
-		{
-			print "[ Error ] - Network configuration is disabled, but the BCN network's IP address\n";
-			print "[ Error ]   and network mask were not found. Is the device 'bcn-link1'\n";
-			print "[ Error ]   configured with an IP address?\n";
-			$bad_value = 1;
-		}
 	}
 	elsif (not $conf->{switches}{b})
 	{
 		print "[ Error ] - The IFN settings were given, but not the BCN. I am sorry but both\n";
-		print "[ Error ]   or neither network must be defined at this time.\n";
+		print "[ Error ] - or neither network must be defined at this time.\n";
 		$bad_value = 1;
 	}
 	elsif (not $conf->{switches}{i})
 	{
 		print "[ Error ] - The BCN settings were given, but not the IFN. I am sorry but both\n";
-		print "[ Error ]   or neither network must be defined at this time.\n";
-		$bad_value = 1;
-	}
-	
-	# Check the DHCP/PXE stuff
-	### TODO: Add some logic to make sure the DHCP lease range matches
-	###       either the BCN or IFN subnet
-	if ($conf->{switches}{p})
-	{
-		($bad_value) = sanity_check_dhcp($conf, $bad_value);
-	}
-	else
-	{
-		print "[ Error ] - The DHCP lease range must be defined for PXE-based installs to\n";
-		print "[ Error ]   work. Note that the DHCP server will *only* run when enabled via\n";
-		print "[ Error ]   the Striker dashboard. It will never start on boot.\n";
+		print "[ Error ] - or neither network must be defined at this time.\n";
 		$bad_value = 1;
 	}
 
@@ -3532,19 +2298,19 @@ sub sanity_check_switches
 	{
 		print "[ Note ]    - Mail server information not provided.\n";
 		print "[ Warning ] - If mail sending was not previously configured, you may encounter\n";
-		print "[ Warning ]   problems later!\n";
+		print "[ Warning ] - problems later!\n";
 		$conf->{sys}{skip_mail} = 1;
 	}
 	elsif (not $conf->{switches}{e})
 	{
 		print "[ Error ] - A mail server alone can not be specified. Please specify\n";
-		print "[ Error ]   credentials to use when logging into: [$conf->{switches}{m}].\n";
+		print "[ Error ] - credentials to use when logging into: [$conf->{switch}{m}].\n";
 		$bad_value = 1;
 	}
 	elsif (not $conf->{switches}{m})
 	{
 		print "[ Error ] - Credentials for logging into a mail server were given but the mail\n";
-		print "[ Error ]   server address itself was not.\n";
+		print "[ Error ] - server address itself was not.\n";
 		$bad_value = 1;
 	}
 	
@@ -3552,7 +2318,7 @@ sub sanity_check_switches
 	if ((not -e $conf->{path}{apache_htpasswd}) && (not $conf->{switches}{u}))
 	{
 		print "[ Error ] - No apache credentials were set, and: [$conf->{path}{apache_htpasswd}]\n";
-		print "[ Error ]   doesn't exist. This is required for Striker to work securely.\n";
+		print "[ Error ] - doesn't exist. This is required for Striker to work securely.\n";
 		$bad_value = 1;
 	}
 	elsif ($conf->{switches}{u})
@@ -3565,85 +2331,11 @@ sub sanity_check_switches
 		else
 		{
 			print "[ Error ] - The Striker user name and password were not specified correctly.\n";
-			print "[ Error ]   Please use '-u \"<user>:<password>\".\n";
+			print "[ Error ] - Please use '-u \"<user>:<password>\".\n";
 			$bad_value = 1;
 		}
 	}
-	
-	# Make sure the --rhn' switch parses, if set.
-	if ($conf->{switches}{rhn})
-	{
-		if ($conf->{switches}{rhn} =~ /user=(.*)/)
-		{
-			$conf->{sys}{rhn_user} =  $1;
-			$conf->{sys}{rhn_user} =~ s/,password=.*$//;
-		}
-		if ($conf->{switches}{rhn} =~ /password=(.*)/)
-		{
-			$conf->{sys}{rhn_password} =  $1;
-			$conf->{sys}{rhn_password} =~ s/,user=.*$//;
-		}
-	}
-	
 	print "Sanity checks complete.\n\n";
-	
-	return($bad_value);
-}
-
-# This checks the DHCP lease start and end range.
-sub sanity_check_dhcp
-{
-	my ($conf, $bad_value) = @_;
-	
-	$conf->{switches}{lease_start} = "";
-	$conf->{switches}{lease_end}   = "";
-	if ($conf->{switches}{p} =~ /lease-start=(\d+\.\d+\.\d+\.\d+)/)
-	{
-		$conf->{switches}{lease_start} = $1;
-	}
-	if ($conf->{switches}{p} =~ /lease-end=(\d+\.\d+\.\d+\.\d+)/)
-	{
-		$conf->{switches}{lease_end} = $1;
-	}
-	
-	if ((not $conf->{switches}{lease_start}) && (not $conf->{switches}{lease_end}))
-	{
-		print "[ Error ] - You need to specify the start and end IP lease range as\n";
-		print "[ Error ]   '-p lease-start=<start_ip>,lease-end=<end_ip>'\n";
-		$bad_value = 1;
-	}
-	elsif ((not $conf->{switches}{lease_start}) || (not $conf->{switches}{lease_end}))
-	{
-		print "[ Error ] - Both 'lease-start=<start_ip>,lease-end=<end_ip>' are needed with\n";
-		print "[ Error ]   the '-p' switch.\n";
-		$bad_value = 1;
-	}
-	
-	# Lastly, make sure the start and end range are in the same subnet.
-	### TODO: Make this work across all subnet/CIDR ranges
-	my $start_prefix = "";
-	my $end_prefix   = "";
-	if ($conf->{network}{bcn}{netmask} eq "255.255.0.0")
-	{
-		$start_prefix = ($conf->{switches}{lease_start} =~ /^(\d+\.\d+\.)/)[0];
-		$end_prefix   = ($conf->{switches}{lease_end}   =~ /^(\d+\.\d+\.)/)[0];
-	}
-	elsif ($conf->{network}{bcn}{netmask} eq "255.255.255.0")
-	{
-		$start_prefix = ($conf->{switches}{lease_start} =~ /^(\d+\.\d+\.\d+\.)/)[0];
-		$end_prefix   = ($conf->{switches}{lease_end}   =~ /^(\d+\.\d+\.\d+\.)/)[0];
-	}
-	if ((not $start_prefix) && (not $end_prefix))
-	{
-		print "[ Warning ] - Unable to check if the start and end IPs are in the same subnet.\n";
-	}
-	elsif ($start_prefix ne $end_prefix)
-	{
-		print "[ Error ] - The DHCP lease start: [$conf->{switches}{lease_start}] and end: [$conf->{switches}{lease_end}]\n";
-		print "[ Error ]   IPs do not appear to be in the same subnet: [xxx.xxx.xxx.xxx].\n";
-		print "[ Note ]  - Only the BCN subnet is used for DHCP.\n";
-		$bad_value = 1;
-	}
 	
 	return($bad_value);
 }
@@ -3662,13 +2354,13 @@ sub sanity_check_hostname
 		if (not $port_allowed)
 		{
 			print "[ Error ] - A port number was set for: [$hostname]\n";
-			print "[ Error ]   but it is not allowed here.\n";
+			print "[ Error ] - but it is not allowed here.\n";
 			$bad_value = 1;
 		}
 		elsif (($port < 1) || ($port > 65535))
 		{
 			print "[ Error ] - The port number: [$port] is out of range!\n";
-			print "[ Error ]   Port numbers must be between 1 and 65535.\n";
+			print "[ Error ] - Port numbers must be between 1 and 65535.\n";
 			$bad_value = 1;
 		}
 	}
@@ -3694,7 +2386,7 @@ sub sanity_check_hostname
 		if (not $name)
 		{
 			print "[ Error ] - The hostname: [$hostname] appears to have an empty element!\n";
-			print "[ Error ]   This might be a program error.\n";
+			print "[ Error ] - This might be a program error.\n";
 			$bad_value = 1;
 		}
 		if (length($name) > 255)
@@ -3705,7 +2397,7 @@ sub sanity_check_hostname
 		if ($name =~ /[^0-9a-zA-Z\-]/)
 		{
 			print "[ Error ] - The hostname: [$hostname]'s section: [$name] contains an illegal character!\n";
-			print "[ Error ]   only alpha-numeric and the '-' character are allowed\n";
+			print "[ Error ] - only alpha-numeric and the '-' character are allowed\n";
 			$bad_value = 1;
 		}
 	}
@@ -4019,130 +2711,191 @@ almost minimal EL6 install.
 
 
 SWITCHES
+    
+ -a, --anvil <sequence number>
+    
+    This is the sequence number for this Anvil! system. Single digits will be
+    zero-padded. (ie: '-a 1' will be converted to 'a01' in the host name).
 
- -b <ip_address/netmask>
-	
-	This sets the IP address and subnet to be assigned to the Back-Channel
-	Network interface.
+ -b, --bcn <ip/netmask>
+    
+    This sets the IP address and subnet to be assigned to the Back-Channel
+    Network interface. This is usually 10.20.x.y/16
+    
+ -d, --domain <domain name>
+    
+    This is the domain name to append to the host name. Generally it will be
+    the domain name of the owner of the Anvil!. If it is not specified, 
+    'localdomain' will be used.
 
- -c <customer/owner>
+ -e, --email <user:password>
+ 
+    NOTE: Skip this if you plan to configure mail via a Striker Dashboard.
 
-	This sets the name of the customer/owner of the dashboard. This is used
-	by apache at the top of the input box when asking the user for their 
-	credentials. If this is not set, "Striker Dashboard" will be used alone.
-
- --centos-iso <local path or URL>
-
-	This is the local path or URL of the ISO to download for setting up the
-	CentOS PXE server installer options. If this is set to 'none', CentOS
-	will not be configured.
-
- -d <version>
-
-	This tells the installer what version of Striker dashboard to install.
-	The default is to download the latest stable version. If set to 'git',
-	the latest version in github will be installed. You probably don't want
-	this unless you're a developer.
-
- -e <user:password>
-
-	This is the email address user and password to use when logging in to
-	the mail server. This information will be recorded in postfix's
-	/etc/postfix/relay_password file.
+    This is the email address user and password to use when logging in to
+    the mail server. This information will be recorded in postfix's
+    /etc/postfix/relay_password file.
 
  -h, -?, --help
 
-	Show this dialoge and exit.
+    Show this dialoge and exit.
 
- -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
-
-	This sets the IP address and subnet to be assigned to the 
-	Internet-Facing Network interface. Unlike -b switch, this switch
-	requires a default gateway be specified after the IP address via:
-
-	dg=<ip_address>
-	
-		IPv4 address of the default gateway.
-
-	Optionally, one or two DNS servers may be specified via:
-	
-	dns1=<ip_address>
-	dns2=<ip_address>
-
-		IPv4 addresses of the first and/or secondary DNS server. If
-		these are not set, dns1 will default to 8.8.8.8 and dns2 will
-		default to 8.8.4.4
-
- -m <mail server:port>
-
-	This sets the mail server and port to use for sending email. If no port
-	is set, 587 will be used. This information will be recorded in
-	postfix's /etc/postfix/relay_password file.
-
- -n <hostname>
-
-	This sets the host name of the Striker dashboard.
-
- -p lease-start=<start_ip>,lease-end=<end_ip>
+ --hosts </path/to/file>
  
-	This sets the DHCP range that this Striker dashboard will offer IPs on
-	for new machines being installed off of the local PXE server. If set to
-	'none', PXE will not be configured.
+    This is the 'hosts' file created by the 'anvil-setup-new' program.
+    
+ -i, --ifn <ip/netmask>,dg=<ip>[,dns1=<ip>,dns2=<ip>]
 
-	NOTE: This lease range must be in the BCN subet. We do not want to
-	      interfere with real DHCP servers on the IFN!
+    This sets the IP address and subnet to be assigned to the 
+    Internet-Facing Network interface. Unlike -b switch, this switch
+    requires a default gateway be specified after the IP address via:
 
- --rhel-iso <local path or URL>
+    dg=<ip_address>
+    
+        IPv4 address of the default gateway.
 
-	This is the local path or URL of the ISO to download for setting up the
-	Red Hat Enterprise Linux PXE server installer options. If this is set
-	to 'none', RHEL will not be configured.
+    Optionally, one or two DNS servers may be specified via:
+    
+    dns1=<ip_address>
+    dns2=<ip_address>
 
- --rhn user=foo,password=secret
+        IPv4 addresses of the first and/or secondary DNS server. If
+        these are not set, dns1 will default to 8.8.8.8 and dns2 will
+        default to 8.8.4.4
+        
+ --immediate-network
+ 
+    This will tell the installer to immediately apply the updated network
+    configuration.
+    
+    Normally, the network configuration files are updated immediately, but
+    the active configuration is not changed. 
+    
+    This is to avoid breaking installs run over an SSH session when the IP
+    addresses change. However, this may be required if the node does not have
+    Internet access. In this case, this option will update the network
+    configuration immediately, allowing the components of the installer that
+    require Internet access to work.
+    
+    NOTE: If you use this switch, be sure that you have either direct or out
+          of band access to your node! You don't want a typo to lock you out.
+ 
+ --ipmi-access <user:password>
+ 
+    This sets the defined password for the given IPMI user.
+    
+    NOTE: A user will NOT be created! The 'user' portion is used to find the
+          proper user ID number in IPMI. With that number, the given password
+          can then be set.
+ 
+ --ipmi-network <ip/netmask,dg=<ip>
+ 
+    This sets the IP address and subnet mask of the IPMI interface.
 
-	When installing on a RHEL server, these credentials can be passed to
-	add the machine to yout RHN account. If you do not pass this and if
-	your machine is not already activated, the install will fail.
+ -m, --mail <mail server:port>
+ 
+    NOTE: Skip this if you plan to configure mail via a Striker Dashboard.
 
- -u <striker user:password>
+    This sets the mail server and port to use for sending email. If no port
+    is set, 587 will be used. This information will be recorded in
+    postfix's /etc/postfix/relay_password file.
 
-	This is the user name and password to set for Striker. This will be
-	used in apache's htpasswd authentication and will be stored in the
-|;
-	$help .= "	$conf->{path}{apache_htpasswd} file.\n";
-	$help .= q|
+ -n, --node <sequence number>
 
-	NOTE: This also sets the 'root' user's password on the striker
-	      appliance! 
+    This is this node's sequence number. This will be '01' or '02'. Single 
+    digits will be zero-padded. (ie: -n 1' will be changed to 'n01' in the
+    host name).
+ 
+ --no-update
+ 
+    Is specified, the OS update will be skipped. This is not recommended, but
+    may be needed in some environments.
+ 
+ -o, --owner <prefix>
+ 
+    This is a prefix prepended to the host name. It is generally two or three
+    characters and should reflect the owner or division that owns the Anvil!
+    system.
+ 
+ --rhn <user:password>
+ 
+    If you are configuring a RHEL server, and if you have not already
+    registered the system with the Red Hat Network, you can specify your RHN
+    username and password here. 
+    
+    NOTE: The installer will attempt to enable the 'Resilient Storage' and
+          'Optional' Add-Ons. If you do not have have available entitlements,
+          the install will probably fail because the required RPMs will not
+          be installable.
 
- -y
+ -s, --sn <ip/netmask>
+    
+    This sets the IP address and subnet to be assigned to the Storage Network
+    interface. This is usually 10.10.x.y/16
+ 
+ --ssh-config </path/to/file>
+ 
+    This is a special file that will contain instructions for the installer
+    on how to configure SSH on this node. This configuration file can be
+    generated by the 'tools/anvil-setup-ssh' too.
 
-	Automatically answers "yes" to prompts. Specifically, this prevents
-	confirmation request for network remapping, so it should only be used
-	by scripts.
+ -u, --user <password>
+
+    This sets the password for both the 'root' user and for the 'ricci' user.
+    You must set this to be the same on the other node, too.
+ 
+ --ups1 <sequence>:
+ 
+ --vnc-ports <5900-xxx>
+ 
+    This sets the range of TCP ports to open in the firewall for incoming VNC
+    clients wishing to connect to your hosted servers. This range must be
+    sufficient to account for all the servers you plan to install. For
+    example, if you plan to install 20 servers, this should be '5900-5919'.
+    
+    The default is '5900-5999', allowing for up to 100 servers. Generally,
+    it is safe to choose a number well higher than you plan to install. If
+    you install too many later, you will not be able to connect via Striker
+    or other VNC-based tools like "Virtual Machine Manager" until each node's
+    firewall is updated.
+    
+    NOTE: This must start at '5900'.
+    
+    
+NETWORK NOTES
+    
+1. All IP addresses must be IPv4 in dotted-decimal notation. The netmask can
+   be in CIDR or dotted-decimal notation. Do not leave a space between the IP
+   address and netmask.
+   
+2. If the BCN, SN, IFN and/or IPMI IP address switches are not used, the
+   defaults will be determined based on the Anvil! sequence number (-a) and
+   the node sequence number (-n). For example;
+   
+   If you specified '-a 5 -n 2', the following defaults would be used:
+   
+   BCN:  10.20.50.2/16
+   IPMI: 10.20.51.2/16,  gateway: 10.20.255.254
+   SN:   10.10.50.2/16
+   IFN:  10.255.50.2/16, Gateway: 10.255.255.254, DNS: 8.8.8.8,8.8.4.4
+   
+   As you can see, the Anvil! sequence sets the third octal value and the
+   node sequence number sets the fourth octal value.
 
 
-NOTE: that all IP addresses must be IPv4 in dotted-decimal notation. The
-netmask can be in CIDR or dotted-decimal notation. Do not leave a space
-between the IP address and netmask
+EXAMPLES
 
-
-EXAMPLE
-
-Normal install, downloading ISOs from local web server:
+Normal install:
 
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
                   -m mail.alteeve.ca:587 \
                   -n an-m01.alteeve.ca \
                   -u "admin:secret password" \
-                  -p lease-start=10.20.10.200,lease-end=10.20.10.210 \
-                  --centos-iso http://10.255.255.254/c6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
-                  --rhel-iso http://10.255.255.254/rhel6/x86_64/iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
-Developer install, using local copies of ISOs:
+Developer install:
 
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
@@ -4150,19 +2903,15 @@ Developer install, using local copies of ISOs:
                   -n an-m01.alteeve.ca \
                   -d git \
                   -u "admin:secret password" \
-                  -p lease-start=10.20.10.200,lease-end=10.20.10.210 \
-                  --centos-iso ./iso/CentOS-6.6-x86_64-bin-DVD1.iso \
-                  --rhel-iso ./iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
-Install without configuring the network or PXE server:
+Install without configuring the network:
 
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
                   -m mail.alteeve.ca:587 \
                   -n an-m01.alteeve.ca \
-                  -p none \
                   -u "admin:secret password"
 
 Note: As with any bash call, you must escape '!' characters with '\!'.
@@ -4172,7 +2921,7 @@ SUPPORT
 
 https://alteeve.ca/w/Support
 
-							      Alteeve's Niche!
+                                                              Alteeve's Niche!
 |;
 	open (my $file_handle, ">", "/tmp/striker-installer-help") or die "Couldn't write help to /tmp/, error was: $!\n";
 	print $file_handle $help;
@@ -4289,7 +3038,7 @@ sub select_nics
 					$conf->{nic}{mac}{$down_links}{new_name} = $nic;
 					$conf->{nic}{name}{$nic}                 = $down_links;
 					print "- NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}]\n";
-					print "  (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
+					print "- (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
 					last;
 				}
 			}
@@ -4318,18 +3067,20 @@ sub select_nics
 		if (not $this_mac)
 		{
 			print "[ Error ] - There seems to be a problem.\n";
-			print "[ Error ]   Desired NIC: [$nic] doesn't have a referenced MAC address!\n";
+			print "[ Error ] - Desired NIC: [$nic] doesn't have a referenced MAC address!\n";
+			print "[ Error ] - Exiting.\n";
 			exit(1);
 		}
 		my $current_name = $conf->{nic}{mac}{$this_mac}{current_name};
 		if (not $current_name)
 		{
 			print "[ Error ] - There seems to be a problem.\n";
-			print "[ Error ]   Desired NIC: [$nic] doesn't have a referenced interface!\n";
+			print "[ Error ] - Desired NIC: [$nic] doesn't have a referenced interface!\n";
+			print "[ Error ] - Exiting.\n";
 			exit(2);
 		}
 		print "- Interface: [".uc($this_mac)."], currently named: [$current_name],\n";
-		print "  will be renamed to: [$nic]\n";
+		print "- will be renamed to: [$nic]\n";
 		#print "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)\n";
 	}
 	my $bcn_ip      = $conf->{network}{bcn}{ip};
@@ -4349,25 +3100,18 @@ sub select_nics
 	print "- DNS1:    [$ifn_dns1]\n";
 	print "- DNS2:    [$ifn_dns2]\n\n";
 	print "Shall I proceed? [Y/n] ";
-	if ($conf->{switches}{y})
+	my $answer = <STDIN>;
+	chomp($answer);
+	if (($answer) && (lc($answer) =~ /^n/))
 	{
-		print "\n- Auto-yes used, proceeding.\n\n";
+		$proceed = 0;
+		print "- Ok, starting over.\n";
+		sleep 2;
+		system('clear');
 	}
 	else
 	{
-		my $answer = <STDIN>;
-		chomp($answer);
-		if (($answer) && (lc($answer) =~ /^n/))
-		{
-			$proceed = 0;
-			print "- Ok, starting over.\n";
-			sleep 2;
-			system('clear');
-		}
-		else
-		{
-			print "- Thank you, I will start to work now.\n\n";
-		}
+		print "- Thank you, I will start to work now.\n\n";
 	}
 
 	return($proceed);
@@ -4458,12 +3202,71 @@ sub check_nic_states
 # 	if ((not $conf->{sys}{skip_network}) && ($nic_count != 2))
 # 	{
 # 		print "[ Error ] - Found a total of: [$nic_count] NIC(s).\n";
-# 		print "[ Error ]   Two are needed for this program to work.\n";
-# 		print "[ Error ]   Merged networks are not supported by this tool.\n";
+# 		print "[ Error ] - Two are needed for this program to work.\n";
+# 		print "[ Error ] - Merged networks are not supported by this tool.\n";
 # 		exit(4);
 # 	}
 	
 	$unplugged_macs =~ s/,$//;
 	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
 	return($unplugged_macs);
+}
+
+sub print_header
+{
+	my ($conf) = @_;
+	
+	system('clear');
+	# Credit to Martin Allchin for this ASCII art!
+	##############################################################################
+	#   ___ _       _ _                                    The Anvil! Dashboard  #
+	#  / __| |_ _ _(_) |_____ _ _                                 -=] Installer  #
+	#  \__ \  _| '_| | / / -_) '_|                                               #
+	#  |___/\__|_| |_|_\_\___|_|                                                 #
+	#                                               https://alteeve.ca/w/Striker #
+	##############################################################################
+
+	##############################################################################
+	#    _           _ _ _                        The High-Availability Platform #
+	#   / \  _ ___ _(_) | |                                        -=] Installer #
+	#  / _ \| ' \ V / | |_|                                                      #
+	# /_/ \_\_||_\_/|_|_(_)                                                      #
+	#                                                https://alteeve.ca/w/Anvil! #
+	##############################################################################
+
+	##############################################################################
+	#     _               _ _ _                   The High-Availability Platform #
+	#    / \   _ ____   _(_) | |                                   -=] Installer #
+	#   / _ \ | '_ \ \ / / | | |                                                 #
+	#  / ___ \| | | \ V /| | |_|                                                 #
+	# /_/   \_\_| |_|\_/ |_|_(_)                                                 #
+	#                                                https://alteeve.ca/w/Anvil! #
+	##############################################################################
+
+	#
+	# __/\\\\\\\\\_______________________________________/\\\\\\________/\\\____          
+	# _/\\\\\\\\\\\\\____________________________________\////\\\______/\\\\\\\__         
+	# _/\\\/////////\\\______________________________/\\\____\/\\\_____/\\\\\\\\\_        
+	# _\/\\\_______\/\\\__/\\/\\\\\\____/\\\____/\\\_\///_____\/\\\____\//\\\\\\\__       
+	#  _\/\\\\\\\\\\\\\\\_\/\\\////\\\__\//\\\__/\\\___/\\\____\/\\\_____\//\\\\\___
+	#   _\/\\\/////////\\\_\/\\\__\//\\\__\//\\\/\\\___\/\\\____\/\\\______\//\\\___
+	#    _\/\\\_______\/\\\_\/\\\___\/\\\___\//\\\\\____\/\\\____\/\\\_______\///___
+	#     _\/\\\_______\/\\\_\/\\\___\/\\\____\//\\\_____\/\\\__/\\\\\\\\\_____/\\\_
+	#      _\///________\///__\///____\///______\///______\///__\/////////_____\///_
+	#
+
+	print q`
+ __/\\\\\\\\\_______________________________________/\\\\\\________/\\\____    
+ _/\\\\\\\\\\\\\____________________________________\////\\\______/\\\\\\\__         
+ _/\\\/////////\\\______________________________/\\\____\/\\\_____/\\\\\\\\\_        
+ _\/\\\_______\/\\\__/\\/\\\\\\____/\\\____/\\\_\///_____\/\\\____\//\\\\\\\__       
+  _\/\\\\\\\\\\\\\\\_\/\\\////\\\__\//\\\__/\\\___/\\\____\/\\\_____\//\\\\\___
+   _\/\\\/////////\\\_\/\\\__\//\\\__\//\\\/\\\___\/\\\____\/\\\______\//\\\___
+    _\/\\\_______\/\\\_\/\\\___\/\\\___\//\\\\\____\/\\\____\/\\\_______\///___
+     _\/\\\_______\/\\\_\/\\\___\/\\\____\//\\\_____\/\\\__/\\\\\\\\\_____/\\\_
+      _\///________\///__\///____\///______\///______\///__\/////////_____\///_
+
+ -=] Installer                                   The High-Availability Platform
+                                                    https://alteeve.ca/w/Anvil!
+`;
 }
