@@ -918,9 +918,10 @@ selinux --enforcing
 # thus skip 'firstboot' to save time.
 firstboot --disable
 
-# Reboot after the install completes rather than waiting for the user to
-# manually reboot.
-reboot
+# We don't enable auto-reboot because we want the user to stop the DHCP server
+# on the BCN before rebooting to make sure the first boot picks up an IP from
+# the normal, Internet-connected DHCP server.
+#reboot
 
 # This runs a script (below) that generates the partitioning information
 # depending on a rudamentary test for available storage devices.
@@ -939,7 +940,7 @@ perl
 # boot.
 \%post
 sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
-for nic in $(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT=\"yes\"/' \$nic; done
+for nic in \$(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT=\"yes\"/' \$nic; done
 \%end
 
 ### Script to setup partitions.
