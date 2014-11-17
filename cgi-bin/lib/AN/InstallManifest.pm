@@ -4,6 +4,10 @@ package AN::InstallManifest;
 # This contains functions related to configuring node(s) via the Install
 # Manifest tool.
 # 
+# Note: 
+# * All remote calls set the port to '22', but this will be overridden if the
+#   node name ends in :xx
+# 
 
 use strict;
 use warnings;
@@ -110,6 +114,10 @@ sub run_new_install_manifest
 	# Update the OS on each node.
 	update_nodes($conf);
 	
+	### TODO: Break here and ask the user to confirm the storage and
+	###       network configuration before actually rewriting the network
+	###       config and partitioning the drive.
+	
 	# Configure the network
 	configure_network($conf);
 	
@@ -135,7 +143,7 @@ sub configure_network_on_node
 	my $return_code = 0;
 	
 	# First, make sure the script is downloaded and ready to run.
-	my ($error, $ssh_fh, $return) = remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
@@ -154,21 +162,21 @@ sub configure_network_on_node
 						echo failed;
 					fi;",
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	my $proceed = 0;
 	foreach my $line (@{$return})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ "ready")
 		{
 			# Downloaded (or already existed), ready to go.
-			#record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed]\n");
 			$proceed = 1;
 		}
 		elsif ($line =~ "failed")
 		{
 			# Downloaded (or already existed), ready to go.
-			#record($conf, "$THIS_FILE ".__LINE__."; Failed: [$return_code]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed: [$return_code]\n");
 			$return_code = 9;
 		}
 	}
@@ -177,7 +185,7 @@ sub configure_network_on_node
 	if ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
 	{
 		# Downloaded (or already existed), ready to go.
-		record($conf, "$THIS_FILE ".__LINE__."; SSH File handle: [$conf->{node}{$node}{ssh_fh}] for node: [$node] doesn't exist, but it should. \n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SSH File handle: [$conf->{node}{$node}{ssh_fh}] for node: [$node] doesn't exist, but it should. \n");
 		$return_code = 9;
 	}
 	else
@@ -211,7 +219,7 @@ sub configure_network_on_node
 		my $sn_ip_key  = "anvil_node".$i."_sn_ip";
 		my $ifn_ip_key = "anvil_node".$i."_ifn_ip";
 		my $shell_call = "$conf->{path}{'anvil-configure-network'} --script -b $conf->{cgi}{$bcn_ip_key}/$conf->{cgi}{anvil_bcn_subnet} -s $conf->{cgi}{$sn_ip_key}/$conf->{cgi}{anvil_sn_subnet} -i $conf->{cgi}{$ifn_ip_key}/$conf->{cgi}{anvil_ifn_subnet},dg=$conf->{cgi}{anvil_ifn_gateway},dns1=$conf->{cgi}{anvil_ifn_dns1},dns2=$conf->{cgi}{anvil_ifn_dns2}";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		
 		### TODO: Show a summary asking the user to confirm the new
 		###       assignment and re-running if needed. When the user is
@@ -230,7 +238,7 @@ sub configure_network_on_node
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow
@@ -268,7 +276,7 @@ sub configure_network_on_node
 			while ($stderr =~ s/^(.*)\n//)
 			{
 				my $line = $1;
-				record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
 				print parse_script_line($conf, "STDERR", $node, $line);
 			}
 			
@@ -277,7 +285,7 @@ sub configure_network_on_node
 		}
 		if ($stdout)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
 			foreach my $line (split/\n/, $stdout)
 			{
 				print parse_script_line($conf, "STDOUT", $node, $line);
@@ -285,7 +293,7 @@ sub configure_network_on_node
 		}
 		if ($stderr)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
 			foreach my $line (split/\n/, $stderr)
 			{
 				print parse_script_line($conf, "STDERR", $node, $line);
@@ -304,20 +312,20 @@ sub parse_script_line
 	my ($conf, $source, $node, $line) = @_;
 
 	return($line) if $line eq "";
-	record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
 	if ($line =~ /#!exit!(.*?)!#/)
 	{
 		# Program exited, reboot?
 		my $reboot = $1;
 		$conf->{node}{$node}{reboot_needed} = $reboot eq "reboot" ? 1 : 0;
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::reboot_needed: [$conf->{node}{$node}{reboot_needed}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::reboot_needed: [$conf->{node}{$node}{reboot_needed}].\n");
 		return("<br />\n");
 	}
 	elsif ($line =~ /#!string!(.*?)!#$/)
 	{
 		# Simple string
 		my $key  = $1;
-		   $line = get_string($conf, {key => "$key"});
+		   $line = AN::Common::get_string($conf, {key => "$key"});
 	}
 	elsif ($line =~ /#!string!(.*?)!#,,(.*)$/)
 	{
@@ -340,9 +348,9 @@ sub parse_script_line
 				$vars->{$variable} = $value;
 			}
 		}
-		$line = get_string($conf, {key => "$key", variables => $vars});
+		$line = AN::Common::get_string($conf, {key => "$key", variables => $vars});
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
 	$line .= "<br />\n";
 	return($line);
 }
@@ -352,11 +360,11 @@ sub configure_network
 {
 	my ($conf) = @_;
 	
-	print template($conf, "install-manifest.html", "new-anvil-install-start-network-config");
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-config");
 	my ($node1_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	print template($conf, "install-manifest.html", "new-anvil-install-network-config-node2");
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-network-config-node2");
 	my ($node2_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	print template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
 	
 	# 0 == Network was already configured, no changes made
 	# 1 == Network was reconfigured, reboot required
@@ -388,7 +396,7 @@ sub configure_network
 		$ok            = 0;
 	}
 
-	print template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0228!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -398,7 +406,7 @@ sub configure_network
 	
 	if (not $ok)
 	{
-		print template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
 			message		=>	"#!string!message_0367!#",
 		});
 	}
@@ -554,7 +562,7 @@ sub install_missing_packages
 	else
 	{
 		# Make sure the libvirtd bridge is gone.
-		my ($error, $ssh_fh, $return) = remote_call($conf, {
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
 			user		=>	"root",
@@ -576,19 +584,19 @@ sub install_missing_packages
 							echo bridge gone;
 						fi",
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		$conf->{node}{$node}{internet} = 0;
 		foreach my $line (@{$return})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 			if ($line eq "failed")
 			{
 				$ok = 0;
-				record($conf, "$THIS_FILE ".__LINE__."; Failed to delete the 'virbr0' bridge.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to delete the 'virbr0' bridge.\n");
 			}
 			elsif ($line eq "bridge gone")
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; The bridge 'virbr0' is gone.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The bridge 'virbr0' is gone.\n");
 			}
 		}
 	}

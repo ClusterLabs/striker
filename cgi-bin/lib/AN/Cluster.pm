@@ -4609,8 +4609,8 @@ sub header
 						my $back_url =  $conf->{'system'}{cgi_string};
 						   $back_url =~ s/confirm=.*?&//;
 						   $back_url =~ s/confirm=.*$//;
-						record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
-						record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
 						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 							button_link	=>	"$back_url",
 							button_text	=>	"$back_image",
@@ -4939,8 +4939,7 @@ sub get_cgi_vars
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	
-	AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
-	#record($conf, "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{'system'}{cgi_string}]\n");
+	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	
 	return (0);
 }
@@ -6343,8 +6342,26 @@ sub remote_call
 		error($conf, "$say_error\n");
 	}
 	
+	# Break out the port, if needed.
 	my $state;
 	my $error;
+	if ($node =~ /^(.*):(\d+)$/)
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], port: [$port]\n");
+		$node = $1;
+		$port = $2;
+		#record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], port: [$port]\n");
+		if (($port < 0) || ($port > 65536))
+		{
+			# Variables for 'message_0373'.
+			$error = AN::Common::get_string($conf, {key => "message_0373", variables => {
+				node	=>	"$node",
+				port	=>	"$port",
+			}});
+			record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+		}
+	}
+	
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];

@@ -543,7 +543,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="row_0215"><![CDATA[<span class="fixed_width">/etc/hosts</span> File]]></key>
 		<key name="row_0216">Ready?</key>
-		<key name="row_0217">Current IP Address</key>
+		<key name="row_0217">Current Address [:port]</key>
 		<key name="row_0218">Current root Password</key>
 		<key name="row_0219">Testing Connection</key>
 		<key name="row_0220">Checking OS Version</key>
@@ -1377,7 +1377,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0358"><![CDATA[The [<span class="fixed_width">#!variable!node!#</span>] node's ssh fingerprint conflicts with another recorded key.<br />The problem is in the file: [<span class="fixed_width">#!variable!file!#</span>] at line: [<span class="fixed_width">#!variable!line!#</span>].<br /><br />#!string!brand_0011!#]]></key>
 		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
 		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
-		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please note that both nodes must but be listening for <a href="https://alteeve.ca/w/Ssh" target="_new" class="fixed_width">ssh</a> connections on <a href="http://en.wikipedia.org/wiki/Transmission_Control_Protocol" target="_new">TCP</a> port 22.<br />Remotely installation is not supported.<br />Please go back and verify that the <i>current</i> IP addresses are entered for each node.]]></key>
+		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
 		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
 		<key name="message_0364"><![CDATA[I am sorry, but both nodes must have free space.]]></key>
@@ -1389,7 +1389,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
 		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
-		<key name="message_0373"></key>
+		<key name="message_0373"><![CDATA[Node: [#!variable!node!#] has port: [#!variable!port!#] set, which is invalid.]]></key>
 		<key name="message_0374"></key>
 		<key name="message_0375"></key>
 		<key name="message_0376"></key>
