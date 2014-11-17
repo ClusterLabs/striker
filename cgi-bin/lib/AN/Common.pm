@@ -573,9 +573,9 @@ sub initialize_conf
 			'log'			=>	"",
 		},
 		path			=>	{
-			'an-cdb_files'		=>	"/var/www/home",
-			'an-cdb_cache'		=>	"/var/www/home/cache",
-			an_conf			=>	"/etc/an/an.conf",
+			'striker_files'		=>	"/var/www/home",
+			'striker_cache'		=>	"/var/www/home/cache",
+			striker_conf		=>	"/etc/striker/striker.conf",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
@@ -595,7 +595,7 @@ sub initialize_conf
 			hostname		=>	"/bin/hostname",
 			hosts			=>	"/etc/hosts",
 			ifconfig		=>	"/sbin/ifconfig",
-			'log'			=>	"/var/log/an-cdb.log",
+			'log'			=>	"/var/log/striker.log",
 			lvdisplay		=>	"/sbin/lvdisplay",
 			ping			=>	"/usr/bin/ping",
 			restart_guacd		=>	"/var/www/tools/restart_guacd",
@@ -614,8 +614,8 @@ sub initialize_conf
 			tput			=>	"/usr/bin/tput",
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"Data/strings.xml",
-			log_file		=>	"/var/log/an-cdb.log",
-			config_file		=>	"/etc/an/an.conf",
+			log_file		=>	"/var/log/striker.log",
+			config_file		=>	"/etc/striker/striker.conf",	# TODO: Why is this here?!
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
 		},
 		args			=>	{

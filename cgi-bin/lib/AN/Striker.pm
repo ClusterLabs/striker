@@ -16,7 +16,7 @@ package AN::Striker;
 # - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.com
@@ -36,7 +36,7 @@ use AN::Common;
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
-my $THIS_FILE = "an-cdb.lib";
+my $THIS_FILE = "Striker.pm";
 
 # This takes a node name and returns the peer node.
 sub get_peer_node

@@ -2,9 +2,9 @@
 
 use strict;
 use warnings;
-require "/bin/an-usb.lib";
+require "/bin/striker-usb.lib";
 
-my $THIS_FILE = "an-usb-remove";
+my $THIS_FILE = "striker-usb-remove";
 
 # All this script does is look for mounts that have lost their backing device
 # and cleans up if found.
@@ -12,13 +12,13 @@ my $THIS_FILE = "an-usb-remove";
 
 my $conf = init_conf();
 
-logger($conf, __LINE__, "AN!USB Removal Script");
+logger($conf, __LINE__, "Striker USB Removal Script");
 read_conf($conf);
 read_syslog($conf);
 parse_syslog($conf);
 cleanup_remote($conf);
 cleanup_local($conf);
-logger($conf, __LINE__, "AN!USB Removal Script finished.");
+logger($conf, __LINE__, "Striker USB Removal Script finished.");
 
 exit(0);
 
@@ -56,7 +56,16 @@ sub cleanup_remote
 {
 	my ($conf) = @_;
 	
-	my ($stdout, $stderr, $exit) = remote_call($conf, "mount");
+	my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	"mount",
+	});
+	#my ($stdout, $stderr, $exit) = remote_call($conf, "mount");
 	
 	my $this_usb       = $conf->{this_usb};
 	my $host           = $conf->{usb}{$this_usb}{sshfs}{host};
@@ -70,7 +79,7 @@ sub cleanup_remote
 	
 	logger($conf, __LINE__, "I will clean up mounts on: [$user\@$host] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
 	
-	foreach my $line (split/\n/, $stdout)
+	foreach my $line (split/\n/, $output)
 	{
 		logger($conf, __LINE__, "mount line: [$line]");
 		if ($line =~ /^(.*?)\@(.*?):(.*?) on (.*?) type fuse.sshfs/)
@@ -83,9 +92,27 @@ sub cleanup_remote
 			if ($this_remote_mount =~ /^$remote_mount/)
 			{
 				logger($conf, __LINE__, " - This needs to be unmounted.");
-				my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $this_remote_mount");
+				my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	"fusermount -u $this_remote_mount",
+				});
+				#my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $this_remote_mount");
 				logger($conf, __LINE__, " - Should be unmounted now, removing remote mount point.");
-				($stdout, $stderr, $exit) = remote_call($conf, "rmdir $this_remote_mount");
+				($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	"rmdir $this_remote_mount",
+				});
+				#($stdout, $stderr, $exit) = remote_call($conf, "rmdir $this_remote_mount");
 			}
 		}
 	}

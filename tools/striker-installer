@@ -186,7 +186,7 @@ my $conf = {
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
 		sshd_config		=>	"/etc/ssh/sshd_config",
-		striker_config		=>	"/etc/an/an.conf",
+		striker_config		=>	"/etc/striker/striker.conf",
 		striker_log		=>	"/var/log/striker.log",
 		tomcat_server		=>	"/etc/tomcat6/server.xml",
 		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
@@ -215,7 +215,7 @@ my $conf = {
 			recursive		=>	1,
 		},
 		striker_config	=>	{
-			path			=>	"/etc/an/an.conf",
+			path			=>	"/etc/striker/striker.conf",
 			owner			=>	"apache",
 			group			=>	"apache",
 			mode			=>	"0660",
@@ -1533,7 +1533,7 @@ sub install_striker_files
 	# Update the mail settings if the user passed any.
 	if (($conf->{sys}{mail_server}) || ($conf->{sys}{mail_user}) || ($conf->{sys}{mail_password}))
 	{
-		# Update the an.conf file with the user's selected mail server
+		# Update the striker.conf file with the user's selected mail server
 		# values.
 		my $mail_server;
 		my $mail_port;

@@ -2,22 +2,16 @@
 
 use strict;
 use warnings;
-require "/bin/an-usb.lib";
+require "/bin/striker-usb.lib";
 
-my $THIS_FILE = "an-usb-insert";
-
-=pod
-rpm -Uvh http://fedora.mirror.nexicom.net/epel/6/x86_64/epel-release-6-8.noarch.rpm
-yum -y install perl-Net-SSH-Perl
-=cut 
-
+my $THIS_FILE = "striker-usb-insert";
 my $conf = init_conf();
 
-logger($conf, __LINE__, "AN!USB Insert Script started.");
+logger($conf, __LINE__, "Striker USB Insert Script started.");
 read_conf($conf);
 read_syslog($conf);
 parse_syslog($conf);
-logger($conf, __LINE__, "AN!USB Insert Script finished.");
+logger($conf, __LINE__, "Striker USB Insert Script finished.");
 
 exit(0);
 
@@ -104,6 +98,20 @@ sub parse_syslog
 	}
 }
 
+# This tries to read the UUIS of a LUKS encypted device then checks to see if
+# we have a passphrase for the UUID. If so, it tries to decrypt the device. If
+# that works, it returns the new DM device path. If it fails, it returns an
+# empty string.
+sub decrypt_luks
+{
+	my ($conf, $device) = @_;
+	
+	my $device_uuid = "";
+	
+	
+	return($device);
+}
+
 sub mount_filesystems
 {
 	my ($conf) = @_;
@@ -131,8 +139,22 @@ sub mount_filesystems
 		my $mountable = 0;
 		if ($conf->{devices}{$device}{fs} eq "crypto_LUKS")
 		{
-			logger($conf, __LINE__, "Device: [$device] has an unmountable file system: [$conf->{devices}{$device}{fs}]. Skipping it.");
-			delete $conf->{devices}{$device};
+			# We need to get the device's UUID and, if there is an
+			# entry in the config file, decrypt it and modify the
+			# $device variable with the new dm path.
+			logger($conf, __LINE__, "Device: [$device] is a LUKS encypted device. Checking if I have the passphrase.");
+			my ($new_device) = get_luks_uuid($conf, $device);
+			#: [$conf->{devices}{$device}{fs}]. Skipping it.");
+			if ($new_device)
+			{
+				# Decrypted! Copy 'device's hash to
+				# 'new_device' and then delete the old hash.
+			}
+			else
+			{
+				# Failed. ;_;
+				delete $conf->{devices}{$device};
+			}
 		}
 		else
 		{
@@ -222,20 +244,47 @@ sub mount_filesystems
 		}
 		
 		# Mount the partition on the target system.
-		my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
+		my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{'system'}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"$conf->{path}{ls} -lah $remote_mount",
+		});
+		#my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
 		my $ls_data = "";
 		
 		# If the directory doesn't exist, 'stderr' will contain the
 		# error message and 'exit' will be '2'.
-		if ($stderr =~ /No such file or directory/)
+		if ($output =~ /No such file or directory/)
 		{
 			logger($conf, __LINE__, "Remote machine: [$host] does not have the: [$remote_mount] mount point yet. Creating it.");
-			my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{mkdir} $remote_mount");
-			if (($exit == 0) && (not $stderr))
+			my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	"$conf->{path}{mkdir} $remote_mount",
+			});
+			#my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{mkdir} $remote_mount");
+			if (($exit == 0) && (not $output))
 			{
 				logger($conf, __LINE__, "Verifying that: [$remote_mount] was proprely created on: [$conf->{usb}{$this_usb}{sshfs}{host}].");
-				my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
-				if (($exit != 0) or (not $stdout))
+				my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	"$conf->{path}{ls} -lah $remote_mount",
+				});
+				#my ($stdout, $stderr, $exit) = remote_call($conf, "$conf->{path}{ls} -lah $remote_mount");
+				if (($exit != 0) or (not $output))
 				{
 					logger($conf, __LINE__, "Remote machine: [$host] appears to have failed to create: [$remote_mount]. Unable to proceed.");
 					exit(7);
@@ -243,24 +292,24 @@ sub mount_filesystems
 				else
 				{
 					logger($conf, __LINE__, "Copied STDOUT data to ls_data: [$ls_data]");
-					$ls_data = $stdout;
+					$ls_data = $ouput;
 				}
 			}
-			elsif ($stderr =~ /Permission denied/)
+			elsif ($output =~ /Permission denied/)
 			{
-				logger($conf, __LINE__, "The use: [$conf->{usb}{$this_usb}{sshfs}{user}] on: [$conf->{usb}{$this_usb}{sshfs}{host}] does not have permission to create the directory: [$remote_mount]. Unable to proceed.");
+				logger($conf, __LINE__, "The user: [$conf->{usb}{$this_usb}{sshfs}{user}] on: [$conf->{usb}{$this_usb}{sshfs}{host}] does not have permission to create the directory: [$remote_mount]. Unable to proceed.");
 				exit(5);
 			}
 			else
 			{
 				# Play it safe. Bail if it doesn't return what we expected.
-				logger($conf, __LINE__, "Unexpected return code and/or errors when trying to create: [$remote_mount] on: [$conf->{usb}{$this_usb}{sshfs}{host}] as the user: [$conf->{usb}{$this_usb}{sshfs}{user}]. Exit code was: [$exit], STDOUT was: [$stdout] and STDERR was: [$stderr]. Unable to proceed.");
+				logger($conf, __LINE__, "Unexpected return code and/or errors when trying to create: [$remote_mount] on: [$conf->{usb}{$this_usb}{sshfs}{host}] as the user: [$conf->{usb}{$this_usb}{sshfs}{user}]. Exit code was: [$exit], output was: [$output].");
 				exit(6);
 			}
 		}
-		elsif (($exit == 0) && ($stdout))
+		elsif (($exit == 0) && ($ouput))
 		{
-			$ls_data = $stdout;
+			$ls_data = $ouput;
 			logger($conf, __LINE__, "Remote machine: [$host] already has: [$remote_mount], verifying it's free.");
 		}
 		
@@ -295,15 +344,24 @@ sub mount_filesystems
 			logger($conf, __LINE__, "Ready to mount local: [$local_mount] on remote: [$host] at: [$remote_mount].");
 			#logger($conf, __LINE__, " - Remote: [$user\@$host ($password)], remote_sc: [$remote_sc ($local_password)].");
 			logger($conf, __LINE__, " - Remote: [$user\@$host], remote_sc: [$remote_sc].");
-			my ($stdout, $stderr, $exit) = remote_call($conf, "echo $local_password | $remote_sc");
-			logger($conf, __LINE__, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
+			my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
+				node		=>	$node,
+				port		=>	$conf->{node}{$node}{port},
+				user		=>	"root",
+				password	=>	$conf->{'system'}{root_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	"echo $local_password | $remote_sc",
+			});
+			#my ($stdout, $stderr, $exit) = remote_call($conf, "echo $local_password | $remote_sc");
+			logger($conf, __LINE__, "Received; output: [$output], exit code: [$exit]");
 	
-			if (($exit == 127) && ($stderr =~ /sshfs: command not found/))
+			if (($exit == 127) && ($output =~ /sshfs: command not found/))
 			{
 				logger($conf, __LINE__, "Remote machine: [$host] does not have 'sshfs' installed. Unable to proceed.");
 				exit(11);
 			}
-			elsif (($exit == 1) && ($stderr =~ /fuse: failed to exec fusermount: Permission denied/))
+			elsif (($exit == 1) && ($output =~ /fuse: failed to exec fusermount: Permission denied/))
 			{
 				logger($conf, __LINE__, "Calling: [$remote_sc] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$user' user in the 'fuse' group? If not, please run: [usermod -a -G fuse $user] on the target server and try again. Unable to proceed.");
 				exit(12);

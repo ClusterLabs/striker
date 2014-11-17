@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# AN!CDB - Alteeve's Niche! Anvil! Dashboard
+# Striker - The Anvil! Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -16,11 +16,10 @@
 # - https://alteeve.ca/w/AN!Cluster_Tutorial_2
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca
-# Madison Kelly     -  mkelly@alteeve.ca
 # 
 
 use strict;
@@ -8336,7 +8335,7 @@ sub read_conf
 	my ($conf) = @_;
 	
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{an_conf}";
+	my $sc = "$conf->{path}{striker_conf}";
 	#print "sc: [$sc]\n";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
@@ -8361,7 +8360,7 @@ sub read_conf
 	}
 	$fh->close();
 	
-	### Note: By default, 'this_cluster' is not specified in an.conf. The
+	### Note: By default, 'this_cluster' is not specified in striker.conf. The
 	###       user should simply load their cluster.conf file.
 	# If I still don't have 'this_cluster', look for 'cluster.conf'.
 	if ((not $conf->{this_cluster}) && (-e "/etc/cluster/cluster.conf"))

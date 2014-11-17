@@ -33,7 +33,7 @@ my $conf = {
 	},
 	path			=>	{
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
-		an_conf			=>	"/etc/an/an.conf",
+		striker_conf		=>	"/etc/striker/striker.conf",
 		'log'			=>	"/var/log/an-cm.log",
 		uname			=>	"/bin/uname",
 		clustat			=>	"/usr/sbin/clustat",
@@ -132,9 +132,9 @@ if (not $conf->{this_cluster})
 	# defined and cluster.conf does not yet exist.
 	$conf->{mail_data}{subject} = "Anvil! Monitor Start - Unknown Anvil!";
 	$conf->{mail_data}{body}    = "
-The AN!CM monitor has started, but no Anvil! is defined in /etc/an/an.conf
-and there is no /etc/cluster/cluster.conf file to refer to. Entering loop
-and will wait for one of these to appear.
+The AN!CM monitor has started, but no Anvil! is defined in 
+$conf->{path}{striker_conf} and there is no $conf->{path}{cluster_conf} file to
+refer to. Entering loop and will wait for one of these to appear.
 
 No action is required. The monitor will begin once this Anvil! is defined or
 detected.
@@ -167,7 +167,7 @@ while (1)
 	### NOTE: Existance check avoids closing the program if the configs get
 	###       moved temporarily.
 	read_cluster_conf($conf) if -e $conf->{path}{cluster_conf};
-	read_conf($conf)         if -e $conf->{path}{an_conf};
+	read_conf($conf)         if -e $conf->{path}{striker_conf};
 }
 
 exit(0);

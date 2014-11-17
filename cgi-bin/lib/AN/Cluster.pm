@@ -16,7 +16,7 @@ package AN::Cluster;
 # - https://alteeve.ca/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca
@@ -143,8 +143,8 @@ sub call_gather_system_info
 	return(0);
 }
 
-# This sanity-checks an.conf values before saving.
-sub sanity_check_an_conf
+# This sanity-checks striker.conf values before saving.
+sub sanity_check_striker_conf
 {
 	my ($conf, $sections) = @_;
 	
@@ -588,8 +588,8 @@ sub sanity_check_an_conf
 	return ($save);
 }
 
-# This writes out the new an.conf file.
-sub write_new_an_conf
+# This writes out the new striker.conf file.
+sub write_new_striker_conf
 {
 	my ($conf, $say_date) = @_;
 	
@@ -600,14 +600,14 @@ sub write_new_an_conf
 	}); 
 	
 	# Start writing the config file.
-	my $an_conf = IO::Handle->new();
-	open ($an_conf, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
+	my $striker_conf = IO::Handle->new();
+	open ($striker_conf, ">$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
 	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
 	my $say_text = AN::Common::get_string($conf, {key => "text_0001"});
-	print $an_conf "$say_date_header\n";
-	print $an_conf "$say_text\n";
+	print $striker_conf "$say_date_header\n";
+	print $striker_conf "$say_text\n";
 
 	# If saving the global values, check for a couple substitutions.
 	if (not $conf->{cgi}{anvil_id})
@@ -653,7 +653,7 @@ sub write_new_an_conf
 		mail_data__to			=>	$conf->{mail_data}{to},
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
 	}});
-	print $an_conf $say_body;
+	print $striker_conf $say_body;
 	
 	# Now print the individual Anvil!s 
 	foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
@@ -662,14 +662,14 @@ sub write_new_an_conf
 		next if not $conf->{cluster}{$this_id}{name};
 		
 		# Main Anvil! values, always recorded, even when blank.
-		print $an_conf "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
-		print $an_conf "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
-		print $an_conf "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
-		print $an_conf "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
-		print $an_conf "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
-		print $an_conf "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
-		print $an_conf "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
-		print $an_conf "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
+		print $striker_conf "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
+		print $striker_conf "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
+		print $striker_conf "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
+		print $striker_conf "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
+		print $striker_conf "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
+		print $striker_conf "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
+		print $striker_conf "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
+		print $striker_conf "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
 		
 		# Set any undefined values to '#!inherit!#'
 		$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
@@ -684,18 +684,18 @@ sub write_new_an_conf
 		
 		# Record this Anvil!'s overrides (or that it doesn't override,
 		# as the case may be).
-		print $an_conf "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
-		print $an_conf "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
-		print $an_conf "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
-		print $an_conf "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
-		print $an_conf "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
-		print $an_conf "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
-		print $an_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
-		print $an_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
-		print $an_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
+		print $striker_conf "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
+		print $striker_conf "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
+		print $striker_conf "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
+		print $striker_conf "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
+		print $striker_conf "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
+		print $striker_conf "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
+		print $striker_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
+		print $striker_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
+		print $striker_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
 	}
-	print $an_conf "\n";
-	$an_conf->close();
+	print $striker_conf "\n";
+	$striker_conf->close();
 	
 	return(0);
 }
@@ -952,7 +952,7 @@ sub save_dashboard_configure
 	my ($conf) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
 	
-	my ($save) = sanity_check_an_conf($conf, $conf->{cgi}{section});
+	my ($save) = sanity_check_striker_conf($conf, $conf->{cgi}{section});
 	if ($save)
 	{
 		#die "$THIS_FILE ".__LINE__."; Testing...\n";
@@ -963,8 +963,8 @@ sub save_dashboard_configure
 		$say_date      =~ s/ /, /;
 		
 		# Write out the new config file.
-		copy_file($conf, $conf->{path}{an_conf}, "$conf->{path}{home}/archive/an.conf.$date");
-		write_new_an_conf($conf, $say_date);
+		copy_file($conf, $conf->{path}{striker_conf}, "$conf->{path}{home}/archive/striker.conf.$date");
+		write_new_striker_conf($conf, $say_date);
 		
 		# Write out the 'hosts' file.
 		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/archive/hosts.$date");
@@ -1434,7 +1434,7 @@ sub push_config_to_anvil
 	else
 	{
 		# Push!
-		my $config_file = $conf->{path}{an_conf};
+		my $config_file = $conf->{path}{striker_conf};
 		if (not -r $config_file)
 		{
 			die "Failed to read local: [$config_file]\n";
@@ -1577,7 +1577,7 @@ sub show_archive_options
 	my $backup_url = create_backup_file($conf);
 	
 	print AN::Common::template($conf, "config.html", "archive-menu", {
-		form_file	=>	"/cgi-bin/an-cdb",
+		form_file	=>	"/cgi-bin/striker",
 	});
 	
 	return(0);
@@ -1595,9 +1595,9 @@ sub create_backup_file
 	   $config_data .= "<!-- Backup created ".get_date($conf, time)." -->\n\n";
 	
 	# Read the three config files and write them out to a file.
-	foreach my $file ($conf->{path}{an_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config})
+	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config})
 	{
-		# Read in /etc/an/an.conf.
+		# Read in /etc/striker/striker.conf.
 		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
 		$config_data .= "<!-- start $file -->\n";
 		my $fh = IO::Handle->new();
@@ -1644,11 +1644,11 @@ sub load_backup_configuration
 	my $in_fh = $conf->{cgi_fh}{file};
 	
 	# Some variables.
-	my $this_file  = "";
-	my $an_conf    = "";
-	my $hosts      = "";
-	my $ssh_config = "";
-	my $valid      = 0;
+	my $this_file    = "";
+	my $striker_conf = "";
+	my $hosts        = "";
+	my $ssh_config   = "";
+	my $valid        = 0;
 	
 	### NOTE: If this fails, we want to re-display the archive page.
 	# If the file handle is empty, nothing was uploaded.
@@ -1705,9 +1705,9 @@ sub load_backup_configuration
 					$this_file = $1;
 					next;
 				}
-				if ($this_file eq $conf->{path}{an_conf})
+				if ($this_file eq $conf->{path}{striker_conf})
 				{
-					$an_conf .= "$line\n";
+					$striker_conf .= "$line\n";
 				}
 				elsif ($this_file eq $conf->{path}{hosts})
 				{
@@ -1726,16 +1726,16 @@ sub load_backup_configuration
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; an.conf contents: [\n$an_conf]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; striker.conf contents: [\n$striker_conf]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; hosts contents: [\n$hosts]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; ssh_config contents: [\n$ssh_config]\n");
-	if (($an_conf) && ($hosts) && ($ssh_config))
+	if (($striker_conf) && ($hosts) && ($ssh_config))
 	{
 		### TODO: examine the contents of each file to ensure it looks sane.
 		# Looks good, write them out.
 		my $an_fh = IO::Handle->new();
-		open ($an_fh, ">$conf->{path}{an_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{an_conf}], error: $!\n";
-		print $an_fh $an_conf;
+		open ($an_fh, ">$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
+		print $an_fh $striker_conf;
 		$an_fh->close();
 		
 		my $hosts_fh = IO::Handle->new();
@@ -1930,7 +1930,7 @@ sub create_install_manifest
 		
 		# Show the manifest form.
 		print AN::Common::template($conf, "config.html", "install-manifest-form", {
-			form_file			=>	"/cgi-bin/an-cdb",
+			form_file			=>	"/cgi-bin/striker",
 			anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
 			anvil_prefix_star		=>	$conf->{form}{anvil_prefix_star},
 			anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
@@ -2487,6 +2487,7 @@ sub show_existing_install_manifests
 			description	=>	$conf->{manifest_file}{$file}{anvil},
 			load		=>	"?config=true&task=create-install-manifest&load=$file",
 			download	=>	$conf->{path}{apache_manifests_url}."/".$file,
+			run		=>	"?config=true&task=create-install-manifest&run=$file",
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
 		});
 	}
@@ -2753,7 +2754,7 @@ sub confirm_install_manifest_run
 			$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
 			
 			print AN::Common::template($conf, "config.html", "confirm-new-anvil-creation", {
-				form_file			=>	"/cgi-bin/an-cdb",
+				form_file			=>	"/cgi-bin/striker",
 				say_storage_pool_1		=>	$say_storage_pool_1,
 				say_storage_pool_2		=>	$say_storage_pool_2,
 				say_hosts_file			=>	$hosts_file,
@@ -2820,7 +2821,7 @@ sub show_summary_manifest
 	
 	# Show the manifest form.
 	print AN::Common::template($conf, "config.html", "install-manifest-summay", {
-		form_file			=>	"/cgi-bin/an-cdb",
+		form_file			=>	"/cgi-bin/striker",
 		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
 		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
 		anvil_domain			=>	$conf->{cgi}{anvil_domain},
@@ -4054,7 +4055,7 @@ sub configure_dashboard
 	### If showing an Anvil!, it's the Anvil!'s details and then the overrides.
 
 	print AN::Common::template($conf, "config.html", "open-form-table", {
-		form_file	=>	"/cgi-bin/an-cdb",
+		form_file	=>	"/cgi-bin/striker",
 	});
 	
 	# If showing an Anvil!, display it's details first.
@@ -4525,7 +4526,7 @@ sub error
 sub header
 {
 	my ($conf, $caller) = @_;
-	$caller = "an-cdb" if not $caller;
+	$caller = "striker" if not $caller;
 	
 	# Header buttons.
 	my $say_back        = "&nbsp;";
@@ -4732,7 +4733,7 @@ sub header
 	elsif ($caller eq "an-mc")
 	{
 		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"/cgi-bin/an-cdb?cluster=$conf->{cgi}{cluster}",
+			button_link	=>	"/cgi-bin/striker?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"$back_image",
 			id		=>	"back",
 		}, "", 1);
@@ -4949,15 +4950,15 @@ sub read_conf
 {
 	my ($conf) = @_;
 	
-	$conf->{raw}{an_conf} = [];
+	$conf->{raw}{striker_conf} = [];
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{an_conf}";
+	my $sc = "$conf->{path}{striker_conf}";
 	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{
 		chomp;
 		my $line = $_;
-		push @{$conf->{raw}{an_conf}}, $line;
+		push @{$conf->{raw}{striker_conf}}, $line;
 		next if not $line;
 		next if $line !~ /=/;
 		$line =~ s/^\s+//;
@@ -5975,12 +5976,12 @@ sub gather_node_details
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
 			shell_call	=>	"
-				/etc/init.d/rgmanager status; echo an-cdb:rgmanager:\$?; 
-				/etc/init.d/cman status; echo an-cdb:cman:\$?; 
-				/etc/init.d/drbd status; echo an-cdb:drbd:\$?; 
-				/etc/init.d/clvmd status; echo an-cdb:clvmd:\$?; 
-				/etc/init.d/gfs2 status; echo an-cdb:gfs2:\$?; 
-				/etc/init.d/libvirtd status; echo an-cdb:libvirtd:\$?;",
+				/etc/init.d/rgmanager status; echo striker:rgmanager:\$?; 
+				/etc/init.d/cman status; echo striker:cman:\$?; 
+				/etc/init.d/drbd status; echo striker:drbd:\$?; 
+				/etc/init.d/clvmd status; echo striker:clvmd:\$?; 
+				/etc/init.d/gfs2 status; echo striker:gfs2:\$?; 
+				/etc/init.d/libvirtd status; echo striker:libvirtd:\$?;",
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], daemons: [$daemons (".@{$daemons}." lines)]\n");
 		
@@ -6248,12 +6249,12 @@ sub get_rsa_public_key
 	record($conf, "$THIS_FILE ".__LINE__."; get_rsa_public_key()\n");
 	
 	my $rsa_public_key  = "";
-	my $rsa_public_file = "$conf->{path}{'an-cdb_files'}/.ssh/id_rsa.pub";
+	my $rsa_public_file = "$conf->{path}{'striker_files'}/.ssh/id_rsa.pub";
 	if (not -e $rsa_public_file)
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; rsa_public_file: [$rsa_public_file] doesn't exist, trying to create it now.\n");
 		
-		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'an-cdb_files'}/.ssh/id_rsa";
+		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
 		my $fh = IO::Handle->new();
 		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
@@ -7726,7 +7727,7 @@ sub parse_daemons
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		next if $line !~ /^an-cdb:/;
+		next if $line !~ /^striker:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		$exit_code = "" if not defined $exit_code;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit_code: [$exit_code]\n");
@@ -8363,7 +8364,7 @@ sub write_node_cache
 	# is down.
 	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
-	my $cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".an-cdb";
+	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
 	#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
@@ -8420,7 +8421,7 @@ sub read_node_cache
 	# Write the command to disk so that I can check the power state
 	# in the future when both nodes are offline.
 	my $cluster    = $conf->{cgi}{cluster};
-	my $cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".an-cdb";
+	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
 	if (not -e $cache_file)
 	{
@@ -8433,7 +8434,7 @@ sub read_node_cache
 		else
 		{
 			# Add the .remote suffix.
-			$cache_file = "$conf->{path}{'an-cdb_cache'}/cache_".$cluster."_".$node.".remote.an-cdb";
+			$cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".remote.striker";
 		}
 	}
 	if (-e $cache_file)

@@ -77,7 +77,7 @@ sub run_new_install_manifest
 		# similar) output.
 		MegaCli				=>	0,
 	};
-	$conf->{url}{'anvil-configure-network'}  = "https://raw.githubusercontent.com/digimer/an-cdb/master/tools/anvil-configure-network";
+	$conf->{url}{'anvil-configure-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-configure-network";
 	$conf->{path}{'anvil-configure-network'} = "/root/anvil-configure-network";
 	
 	# Make sure we can log into both nodes.

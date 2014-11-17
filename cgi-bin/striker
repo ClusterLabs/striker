@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# Striker - The Anvil! Cluster Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -16,7 +16,7 @@
 # - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca
