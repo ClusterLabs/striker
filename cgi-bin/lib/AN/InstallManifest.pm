@@ -82,7 +82,9 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 	};
 	$conf->{url}{'anvil-configure-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-configure-network";
+	$conf->{url}{'anvil-map-network'}        = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	$conf->{path}{'anvil-configure-network'} = "/root/anvil-configure-network";
+	$conf->{path}{'anvil-map-network'}       = "/root/anvil-map-network";
 	
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
@@ -100,9 +102,14 @@ sub run_new_install_manifest
 	# Make sure both nodes have the same amount of free space.
 	verify_matching_free_space($conf) or return(1);
 	
+	# Get a map of the physical network interfaces for later remapping to
+	# device names.
+	map_network($conf);
+	
 	# If we're here, we're ready to start!
 	print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 	
+	return(0);
 	### TODO: Check if the OS is RHEL proper and register if needed.
 	
 	# Add the an-repo
@@ -353,6 +360,192 @@ sub parse_script_line
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
 	$line .= "<br />\n";
 	return($line);
+}
+
+# This asks the user to unplug and then plug back in all network interfaces in
+# order to map the physical interfaces to MAC addresses.
+sub map_network
+{
+	my ($conf) = @_;
+	
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-mapping");
+	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-network-mapping-node2");
+	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-mapping-config");
+	
+	
+	return(0);
+}
+
+# This downloads and runs the 'anvil-map-network' script
+sub map_network_on_node
+{
+	my ($conf, $node, $password) = @_;
+	
+	my $return_code = 0;
+	
+	# First, make sure the script is downloaded and ready to run.
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	"if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ]; 
+					then
+						wget $conf->{url}{'anvil-map-network'} -O $conf->{path}{'anvil-map-network'};
+					fi;
+					if [ -e \"$conf->{path}{'anvil-map-network'}\" ]; 
+					then
+						chmod 755 $conf->{path}{'anvil-map-network'};
+						echo ready;
+					else
+						echo failed;
+					fi;",
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	my $proceed = 0;
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line =~ "ready")
+		{
+			# Downloaded (or already existed), ready to go.
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed]\n");
+			$proceed = 1;
+		}
+		elsif ($line =~ "failed")
+		{
+			# Downloaded (or already existed), ready to go.
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed: [$return_code]\n");
+			$return_code = 9;
+		}
+	}
+	
+	# I should need to create an sshfs handle
+	if ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
+	{
+		# Downloaded (or already existed), ready to go.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SSH File handle: [$conf->{node}{$node}{ssh_fh}] for node: [$node] doesn't exist, but it should. \n");
+		$return_code = 9;
+	}
+	else
+	{
+		# I need input from the user, so I need to call the client directly
+		my $cluster    = $conf->{cgi}{cluster};
+		my $port       = 22;
+		my $user       = "root";
+		my $ssh_fh     = $conf->{node}{$node}{ssh_fh};
+		my $close      = 0;
+		
+		### Build the shell call
+		# Figure out the hash keys to use
+		my $i;
+		if ($node eq $conf->{cgi}{anvil_node1_current_ip})
+		{
+			# Node is 1
+			$i = 1;
+		}
+		elsif ($node eq $conf->{cgi}{anvil_node2_current_ip})
+		{
+			# Node is 2
+			$i = 2;
+		}
+		else
+		{
+			# wat?
+			$return_code = 9;
+		}
+		my $bcn_ip_key = "anvil_node".$i."_bcn_ip";
+		my $sn_ip_key  = "anvil_node".$i."_sn_ip";
+		my $ifn_ip_key = "anvil_node".$i."_ifn_ip";
+		my $shell_call = "$conf->{path}{'anvil-configure-network'} --script -b $conf->{cgi}{$bcn_ip_key}/$conf->{cgi}{anvil_bcn_subnet} -s $conf->{cgi}{$sn_ip_key}/$conf->{cgi}{anvil_sn_subnet} -i $conf->{cgi}{$ifn_ip_key}/$conf->{cgi}{anvil_ifn_subnet},dg=$conf->{cgi}{anvil_ifn_gateway},dns1=$conf->{cgi}{anvil_ifn_dns1},dns2=$conf->{cgi}{anvil_ifn_dns2}";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		
+		### TODO: Show a summary asking the user to confirm the new
+		###       assignment and re-running if needed. When the user is
+		###       happy, re-invoke with the MAC addresses specified so
+		###       that the script runs without needing interaction.
+		
+		### Start the call
+		my $state;
+		my $error;
+
+		# We need to open a channel every time for 'exec' calls. We
+		# want to keep blocking off, but we need to enable it for the
+		# channel() call.
+		$ssh_fh->blocking(1);
+		my $channel = $ssh_fh->channel();
+		$ssh_fh->blocking(0);
+		
+		# Make the shell call
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		$channel->exec("$shell_call");
+		
+		# This keeps the connection open when the remote side is slow
+		# to return data, like in '/etc/init.d/rgmanager stop'.
+		my @poll = {
+			handle => $channel,
+			events => [qw/in err/],
+		};
+		
+		# We'll store the STDOUT and STDERR data here.
+		my $stdout = "";
+		my $stderr = "";
+		
+		# Not collect the data.
+		while(1)
+		{
+			$ssh_fh->poll(250, \@poll);
+			
+			# Read in anything from STDOUT
+			while($channel->read(my $chunk, 80))
+			{
+				$stdout .= $chunk;
+			}
+			while ($stdout =~ s/^(.*)\n//)
+			{
+				my $line = $1;
+				print parse_script_line($conf, "STDOUT", $node, $line);
+			}
+			
+			# Read in anything from STDERR
+			while($channel->read(my $chunk, 80, 1))
+			{
+				$stderr .= $chunk;
+			}
+			while ($stderr =~ s/^(.*)\n//)
+			{
+				my $line = $1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+				print parse_script_line($conf, "STDERR", $node, $line);
+			}
+			
+			# Exit when we get the end-of-file.
+			last if $channel->eof;
+		}
+		if ($stdout)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+			foreach my $line (split/\n/, $stdout)
+			{
+				print parse_script_line($conf, "STDOUT", $node, $line);
+			}
+		}
+		if ($stderr)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+			foreach my $line (split/\n/, $stderr)
+			{
+				print parse_script_line($conf, "STDERR", $node, $line);
+			}
+		}
+		print "</pre>\n";
+	}
+	
+	return($return_code);
 }
 
 # This configures the network.

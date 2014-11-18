@@ -587,7 +587,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		
 		<!-- Strings coming from scripts. -->
 		<key name="script_0001">Backing up some network related system files.</key>
-		<key name="script_0002"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The Back-Channel Network details were not given.]]></key>
+		<key name="script_0002">When prompted, unplug the desired network cable, wait a couple of seconds and then plug it back in.</key>
 		<key name="script_0003"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The Storage Network details were not given.]]></key>
 		<key name="script_0004"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The Internet-Facing Network details were not given.]]></key>
 		<key name="script_0005"><![CDATA[<br />Sanity checks complete.]]></key>
@@ -624,10 +624,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0036">Configuring network to enable access to #!string!brand_0003!# systems.</key>
 		<key name="script_0037"><![CDATA[Beginning NIC identification...<br />]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
-		<key name="script_0039"><![CDATA[<span class="highlight_ready">Please <b>unplug</b>, wait a moment, and then <b>plug back in</b> the interface you want to make: <b>#!variable!nic!#</b>...</span><br />]]></key>
+		<key name="script_0039"><![CDATA[Please reseat the interface you want to make: <b>#!variable!nic!#</b>... ]]></key>
 		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]]]></key>
-		<key name="script_0041"><![CDATA[NIC with MAC: [<span class="code">#!variable!mac!#</span>] will become: [<span class="code">#!variable!become!#</span>] (it is currently: [<span class="code">#!variable!is!#</span>])]]></key>
-		<key name="script_0042">Here is what you selected:</key>
+		<key name="script_0041"><![CDATA[MAC address: [<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>] identified.]]></key>
+		<key name="script_0042">Identification summary:</key>
 		<key name="script_0043"><![CDATA[[ <span class="highlight_bad">Error</span> ] - There seems to be a problem.]]></key>
 		<key name="script_0044"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced MAC address!]]></key>
 		<key name="script_0045"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Exiting.]]></key>
@@ -1008,9 +1008,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0171">Starting Configration of a new #!string!brand_0003!# on both nodes</key>
 		<key name="title_0172">Running some sanity checks...</key>
 		<key name="title_0173">Configuration Beginning</key>
-		<key name="title_0174"><![CDATA[Beginning interactive configuration of <span class="highlight_good_bold">Node 1</span>'s network]]></key>
-		<key name="title_0175"><![CDATA[Beginning interactive configuration of <span class="highlight_good_bold">Node 2</span>'s network]]></key>
-		<key name="title_0176">Resuming automated configuration of nodes</key>
+		<key name="title_0174"><![CDATA[Beginning interactive mapping of <span class="highlight_good_bold">Node 1</span>'s network interfaces.]]></key>
+		<key name="title_0175"><![CDATA[Beginning interactive mapping of <span class="highlight_good_bold">Node 2</span>'s network interfaces.]]></key>
+		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177"></key>
 		<key name="title_0178"></key>
 		<key name="title_0179"></key>

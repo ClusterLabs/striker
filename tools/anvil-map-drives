@@ -1,0 +1,175 @@
+#!/usr/bin/perl
+# 
+# This looks for hard drives on the system, checks to see if they have free
+# space (> 100 MiB) and, if so, reports the drive, it's total size and the
+# amount of free space.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+use strict;
+use warnings;
+
+# No capes!^H^H^H^Hbuffers!
+$| = 1;
+
+my $conf = {
+	debug		=>	0,
+	drives		=>	[],
+	executable	=>	{
+		ls			=>	"/usr/bin/ls",
+		parted			=>	"/usr/sbin/parted",
+	},
+	directory	=>	{
+		block_devices		=>	"/sys/block/",
+	},
+	script		=>	0,
+	min_free_space	=>	(2**30)*100,	# 100 MiB
+};
+
+# Make sure we're running as 'root'
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	# No sense translating this.
+	print "[ Error ] - I am sorry, but this program must be run as the root user.\n\n";
+	exit(3);
+}
+
+# Make sure we've got the right paths to executables.
+find_executables($conf);
+
+# Find the drives on the system.
+find_drives($conf);
+
+# Find free space
+find_free_space($conf);
+
+# Report free space
+report_free_space($conf);
+
+exit(0);
+
+# This will short through the discovered devices that had free space, vefiry
+# the free space is large enough to care about and, if so, report it.
+sub report_free_space
+{
+	my ($conf) = @_;
+	
+	foreach my $drive (sort {$a cmp $b} keys %{$conf->{drive}})
+	{
+		if ($conf->{drive}{$drive} > $conf->{min_free_space})
+		{
+			print "OK: drive=$drive,,free=$conf->{drive}{$drive}\n";
+		}
+		else
+		{
+			print "Too small: Drive: [$drive], free space: [$conf->{drive}{$drive}] (min: [$conf->{min_free_space}])\n";
+		}
+	}
+	
+	return(0);
+}
+
+# This uses parted to determine what, if any, free space remains on all
+# discovered devices.
+sub find_free_space
+{
+	my ($conf) = @_;
+	
+	foreach my $drive (sort {$a cmp $b} @{$conf->{drives}})
+	{
+		my $shell_call = "$conf->{executable}{parted} /dev/$drive unit B print free";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			# TODO: Should this cause the installer to bail?
+			# This should not return anything, but just in case...
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			if ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
+			{
+				# When there are bits of free space left from disk alignment, they'll be overwritten by the main chunk of free space at the end of the disk.
+				my $start = $1;
+				my $end   = $2;
+				my $free  = $3;
+				#print "drive: [$drive], free space: [$free bytes]\n";
+				$conf->{drive}{$drive} = $free;
+			}
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
+
+# This finds all available hard drives on the system.
+sub find_drives
+{
+	my ($conf) = @_;
+	
+	my $shell_call = "$conf->{executable}{ls} -l $conf->{directory}{block_devices}";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		# TODO: Should this cause the installer to bail?
+		# This should not return anything, but just in case...
+		chomp;
+		my $line = $_;
+		next if $line =~ /total/;
+		next if $line =~ /loop\d+/;
+		next if $line =~ /ram\d+/;
+		next if $line =~ /dm-\d+/;
+		next if $line =~ /md\d+/;	# I might actually want this later...
+		my $drive = (split/\s+/, $line)[8];
+		#print "line:  [$line]\n";
+		#print "drive: [$drive]\n";
+		push @{$conf->{drives}}, $drive;
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This looks for an executable.
+sub find_executables
+{
+	my ($conf) = @_;
+	
+	my $search = $ENV{'PATH'};
+	#print "Searching in: [$search] for programs.\n";
+	foreach my $program (keys %{$conf->{executable}})
+	{
+		#print "Seeing if: [$program] is really at: [$conf->{executable}{$program}]: ";
+		if ( -e $conf->{executable}{$program} )
+		{
+			#print "Found it.\n";
+		}
+		else
+		{
+			#print "Not found, searching for it now.\n";
+			foreach my $directory (split /:/, $search)
+			{
+				my $full_path = "$directory/$program";
+				if ( -e $full_path )
+				{
+					$conf->{executable}{$program} = $full_path;
+					#print "Found it in: [$full_path]\n";
+				}
+			}
+		}
+	}
+	
+	return (0);
+}
