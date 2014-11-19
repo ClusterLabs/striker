@@ -81,10 +81,8 @@ sub run_new_install_manifest
 		# similar) output.
 		MegaCli				=>	0,
 	};
-	$conf->{url}{'anvil-configure-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-configure-network";
-	$conf->{url}{'anvil-map-network'}        = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
-	$conf->{path}{'anvil-configure-network'} = "/root/anvil-configure-network";
-	$conf->{path}{'anvil-map-network'}       = "/root/anvil-map-network";
+	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
+	$conf->{path}{'anvil-map-network'} = "/root/anvil-map-network";
 	
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
@@ -104,12 +102,30 @@ sub run_new_install_manifest
 	
 	# Get a map of the physical network interfaces for later remapping to
 	# device names.
-	map_network($conf);
+	my ($node1_remap_required, $node2_remap_required) = map_network($conf);
+	
+	# If either/both nodes need a remap done, do it now.
+	if ($node1_remap_required)
+	{
+		my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+	}
+	if ($node2_remap_required)
+	{
+		my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
+	}
+	
+	# Now summarize and ask the user to confirm.
+	
+	
+	# Now ask the user to confirm the storage and networm mapping. If the
+	# OS is 'Red Hat Enterprise Linux Server' and it is unregistered,
+	# provide input fields for RHN registration.
+	### if (not $conf->{node}{$node1}{os}{registered})...
+	return(0);
 	
 	# If we're here, we're ready to start!
 	print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 	
-	return(0);
 	### TODO: Check if the OS is RHEL proper and register if needed.
 	
 	# Add the an-repo
@@ -147,169 +163,8 @@ sub configure_network_on_node
 {
 	my ($conf, $node, $password) = @_;
 	
-	my $return_code = 0;
 	
-	# First, make sure the script is downloaded and ready to run.
-	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	"if [ ! -e \"$conf->{path}{'anvil-configure-network'}\" ]; 
-					then
-						wget $conf->{url}{'anvil-configure-network'} -O $conf->{path}{'anvil-configure-network'};
-					fi;
-					if [ -e \"$conf->{path}{'anvil-configure-network'}\" ]; 
-					then
-						chmod 755 $conf->{path}{'anvil-configure-network'};
-						echo ready;
-					else
-						echo failed;
-					fi;",
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	my $proceed = 0;
-	foreach my $line (@{$return})
-	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
-		if ($line =~ "ready")
-		{
-			# Downloaded (or already existed), ready to go.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed]\n");
-			$proceed = 1;
-		}
-		elsif ($line =~ "failed")
-		{
-			# Downloaded (or already existed), ready to go.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed: [$return_code]\n");
-			$return_code = 9;
-		}
-	}
-	
-	# I should need to create an sshfs handle
-	if ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
-	{
-		# Downloaded (or already existed), ready to go.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SSH File handle: [$conf->{node}{$node}{ssh_fh}] for node: [$node] doesn't exist, but it should. \n");
-		$return_code = 9;
-	}
-	else
-	{
-		# I need input from the user, so I need to call the client directly
-		my $cluster    = $conf->{cgi}{cluster};
-		my $port       = 22;
-		my $user       = "root";
-		my $ssh_fh     = $conf->{node}{$node}{ssh_fh};
-		my $close      = 0;
-		
-		### Build the shell call
-		# Figure out the hash keys to use
-		my $i;
-		if ($node eq $conf->{cgi}{anvil_node1_current_ip})
-		{
-			# Node is 1
-			$i = 1;
-		}
-		elsif ($node eq $conf->{cgi}{anvil_node2_current_ip})
-		{
-			# Node is 2
-			$i = 2;
-		}
-		else
-		{
-			# wat?
-			$return_code = 9;
-		}
-		my $bcn_ip_key = "anvil_node".$i."_bcn_ip";
-		my $sn_ip_key  = "anvil_node".$i."_sn_ip";
-		my $ifn_ip_key = "anvil_node".$i."_ifn_ip";
-		my $shell_call = "$conf->{path}{'anvil-configure-network'} --script -b $conf->{cgi}{$bcn_ip_key}/$conf->{cgi}{anvil_bcn_subnet} -s $conf->{cgi}{$sn_ip_key}/$conf->{cgi}{anvil_sn_subnet} -i $conf->{cgi}{$ifn_ip_key}/$conf->{cgi}{anvil_ifn_subnet},dg=$conf->{cgi}{anvil_ifn_gateway},dns1=$conf->{cgi}{anvil_ifn_dns1},dns2=$conf->{cgi}{anvil_ifn_dns2}";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		
-		### TODO: Show a summary asking the user to confirm the new
-		###       assignment and re-running if needed. When the user is
-		###       happy, re-invoke with the MAC addresses specified so
-		###       that the script runs without needing interaction.
-		
-		### Start the call
-		my $state;
-		my $error;
-
-		# We need to open a channel every time for 'exec' calls. We
-		# want to keep blocking off, but we need to enable it for the
-		# channel() call.
-		$ssh_fh->blocking(1);
-		my $channel = $ssh_fh->channel();
-		$ssh_fh->blocking(0);
-		
-		# Make the shell call
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
-		$channel->exec("$shell_call");
-		
-		# This keeps the connection open when the remote side is slow
-		# to return data, like in '/etc/init.d/rgmanager stop'.
-		my @poll = {
-			handle => $channel,
-			events => [qw/in err/],
-		};
-		
-		# We'll store the STDOUT and STDERR data here.
-		my $stdout = "";
-		my $stderr = "";
-		
-		# Not collect the data.
-		while(1)
-		{
-			$ssh_fh->poll(250, \@poll);
-			
-			# Read in anything from STDOUT
-			while($channel->read(my $chunk, 80))
-			{
-				$stdout .= $chunk;
-			}
-			while ($stdout =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				print parse_script_line($conf, "STDOUT", $node, $line);
-			}
-			
-			# Read in anything from STDERR
-			while($channel->read(my $chunk, 80, 1))
-			{
-				$stderr .= $chunk;
-			}
-			while ($stderr =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
-				print parse_script_line($conf, "STDERR", $node, $line);
-			}
-			
-			# Exit when we get the end-of-file.
-			last if $channel->eof;
-		}
-		if ($stdout)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
-			foreach my $line (split/\n/, $stdout)
-			{
-				print parse_script_line($conf, "STDOUT", $node, $line);
-			}
-		}
-		if ($stderr)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
-			foreach my $line (split/\n/, $stderr)
-			{
-				print parse_script_line($conf, "STDERR", $node, $line);
-			}
-		}
-		print "</pre>\n";
-	}
-	
-	return($return_code);
+	return(0);
 }
 
 # This parses a line coming back from one of our shell scripts to convert
@@ -357,8 +212,9 @@ sub parse_script_line
 		}
 		$line = AN::Common::get_string($conf, {key => "$key", variables => $vars});
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
-	$line .= "<br />\n";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
+	#$line .= "<br />\n";
+	
 	return($line);
 }
 
@@ -368,21 +224,164 @@ sub map_network
 {
 	my ($conf) = @_;
 	
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-mapping");
-	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-network-mapping-node2");
-	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-mapping-config");
+	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
+	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
 	
+	# Loop through the MACs seen and see if we've got a match for all
+	# already. Of any are missing, we'll need to remap.
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
-	return(0);
+	# These will be all populated *if* the MACs seen on each node match
+	# MACs passed in fronm CGI (or loaded from manifest). If any are
+	# missing, a remap will be needed.
+	# Node 1
+	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}  = "";
+	$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}  = "";
+	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'} = "";
+	# Node 2
+	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}  = "";
+	$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}  = "";
+	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'} = "";
+	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
+	{
+		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node1_bcn_link2_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link1_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link2_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link1_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link2_mac})
+		{
+			$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'} = $mac;
+		}
+		else
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node1: [$node1]: nic: [$nic], mac: [$mac].\n");
+		}
+	}
+	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
+	{
+		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node2_bcn_link2_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link1_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link2_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link1_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'} = $mac;
+		}
+		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link2_mac})
+		{
+			$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'} = $mac;
+		}
+		else
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node2: [$node2]: nic: [$nic], mac: [$mac].\n");
+		}
+	}
+	
+	# Now determine if a remap is needed.
+	my $node1_remap_needed = 0;
+	my $node2_remap_needed = 0;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}].\n");
+	if ((not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}) || 
+	    (not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}) ||
+	    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link1'})  ||
+	    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link2'})  ||
+	    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}) ||
+	    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}))
+	{
+		$node1_remap_needed = 1;
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}].\n");
+	if ((not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}) || 
+	    (not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}) ||
+	    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link1'})  ||
+	    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link2'})  ||
+	    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}) ||
+	    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}))
+	{
+		$node2_remap_needed = 1;
+	}
+	
+	my $ok            = 1;
+	my $node1_class   = "highlight_detail";
+	my $node1_message = "#!string!state_0030!#";
+	my $node2_class   = "highlight_detail";
+	my $node2_message = "#!string!state_0030!#";
+	my $message       = "";
+	if ($node1_remap_needed)
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0031!#",
+	}
+	if ($node2_remap_needed)
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0031!#",
+	}
+
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0229!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	return($node1_remap_needed, $node2_remap_needed);
 }
 
 # This downloads and runs the 'anvil-map-network' script
 sub map_network_on_node
 {
-	my ($conf, $node, $password) = @_;
+	my ($conf, $node, $password, $remap, $say_node) = @_;
 	
+	if ($remap)
+	{
+		my $title = AN::Common::get_string($conf, {key => "title_0174", variables => {
+			node	=>	$say_node,
+		}});
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-config", {
+			title	=>	$title,
+		});
+	}
 	my $return_code = 0;
 	
 	# First, make sure the script is downloaded and ready to run.
@@ -461,13 +460,12 @@ sub map_network_on_node
 		my $bcn_ip_key = "anvil_node".$i."_bcn_ip";
 		my $sn_ip_key  = "anvil_node".$i."_sn_ip";
 		my $ifn_ip_key = "anvil_node".$i."_ifn_ip";
-		my $shell_call = "$conf->{path}{'anvil-configure-network'} --script -b $conf->{cgi}{$bcn_ip_key}/$conf->{cgi}{anvil_bcn_subnet} -s $conf->{cgi}{$sn_ip_key}/$conf->{cgi}{anvil_sn_subnet} -i $conf->{cgi}{$ifn_ip_key}/$conf->{cgi}{anvil_ifn_subnet},dg=$conf->{cgi}{anvil_ifn_gateway},dns1=$conf->{cgi}{anvil_ifn_dns1},dns2=$conf->{cgi}{anvil_ifn_dns2}";
+		my $shell_call = "$conf->{path}{'anvil-map-network'} --script --summary";
+		if ($remap)
+		{
+			$shell_call = "$conf->{path}{'anvil-map-network'} --script";
+		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		
-		### TODO: Show a summary asking the user to confirm the new
-		###       assignment and re-running if needed. When the user is
-		###       happy, re-invoke with the MAC addresses specified so
-		###       that the script runs without needing interaction.
 		
 		### Start the call
 		my $state;
@@ -508,7 +506,18 @@ sub map_network_on_node
 			while ($stdout =~ s/^(.*)\n//)
 			{
 				my $line = $1;
-				print parse_script_line($conf, "STDOUT", $node, $line);
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+				if ($line =~ /nic=(.*?),,mac=(.*)$/)
+				{
+					my $nic = $1;
+					my $mac = $2;
+					$conf->{conf}{node}{$node}{current_nic}{$nic} = $mac;
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::current_nics::$nic: [$conf->{conf}{node}{$node}{current_nic}{$nic}].\n");
+				}
+				else
+				{
+					print parse_script_line($conf, "STDOUT", $node, $line);
+				}
 			}
 			
 			# Read in anything from STDERR
@@ -519,30 +528,17 @@ sub map_network_on_node
 			while ($stderr =~ s/^(.*)\n//)
 			{
 				my $line = $1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
 				print parse_script_line($conf, "STDERR", $node, $line);
 			}
 			
 			# Exit when we get the end-of-file.
 			last if $channel->eof;
 		}
-		if ($stdout)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
-			foreach my $line (split/\n/, $stdout)
-			{
-				print parse_script_line($conf, "STDOUT", $node, $line);
-			}
-		}
-		if ($stderr)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
-			foreach my $line (split/\n/, $stderr)
-			{
-				print parse_script_line($conf, "STDERR", $node, $line);
-			}
-		}
-		print "</pre>\n";
+	}
+	if ($remap)
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
 	}
 	
 	return($return_code);
@@ -552,57 +548,6 @@ sub map_network_on_node
 sub configure_network
 {
 	my ($conf) = @_;
-	
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-config");
-	my ($node1_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-network-config-node2");
-	my ($node2_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
-	
-	# 0 == Network was already configured, no changes made
-	# 1 == Network was reconfigured, reboot required
-	# 9 == Something went wrong.
-	my $ok            = 1;
-	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "#!string!state_0028!#";
-	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "#!string!state_0028!#";
-	my $message       = "";
-	if ($node1_rc eq "1")
-	{
-		$node1_message = "#!string!state_0029!#",
-	}
-	elsif ($node1_rc eq "9")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0018!#",
-		$ok            = 0;
-	}
-	if ($node2_rc eq "1")
-	{
-		$node2_message = "#!string!state_0029!#",
-	}
-	elsif ($node2_rc eq "9")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0018!#",
-		$ok            = 0;
-	}
-
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	"#!string!row_0228!#",
-		node1_class	=>	$node1_class,
-		node1_message	=>	$node1_message,
-		node2_class	=>	$node2_class,
-		node2_message	=>	$node2_message,
-	});
-	
-	if (not $ok)
-	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message		=>	"#!string!message_0367!#",
-		});
-	}
 	
 	
 	return(0);
@@ -1097,15 +1042,49 @@ sub verify_matching_free_space
 {
 	my ($conf) = @_;
 	
+	### TODO: When the drive is partitioned, write a file out indicating
+	###       which partitions we created so that we don't error out for
+	###       lack of free space on re-runs on the program.
+	
 	my $ok = 1;
 	my ($node1_use_device, $node1_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_use_device, $node2_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
+	# Message stuff
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "$node1_use_device:".AN::Cluster::bytes_to_hr($conf, $node1_free_space);
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "$node2_use_device:".AN::Cluster::bytes_to_hr($conf, $node2_free_space);
 	my $message       = "";
+	
+	# Space needed by the media library is always a static size
+	my $media_library_size      = $conf->{cgi}{anvil_media_library_size};
+	my $media_library_unit      = $conf->{cgi}{anvil_media_library_unit};
+	my $media_library_byte_size = AN::Cluster::hr_to_bytes($conf, $media_library_size, $media_library_unit, 1);
+	my $minimum_space_needed    = $media_library_byte_size;
+	
+	my $minimum_pool_size = hr_to_bytes($conf, 8, "GiB", 1);
+	# Space needed by storage pool 1 could be a static size or a
+	# percentage. If it's a percentage, we'll need a minimum of 8 GiB free.
+	# If a static size, then we just want to make sure there is enough for
+	# the first pool. If there is 8 GiB or more extra, it will be allocated
+	# to 
+	my $storage_pool1_size      = $conf->{cgi}{anvil_storage_pool1_size};
+	my $storage_pool1_unit      = $conf->{cgi}{anvil_storage_pool1_unit};
+	my $storage_pool1_byte_size = "#!all!#";
+	if ($storage_pool1_unit eq "%")
+	{
+		# Percentage, make sure there is at least 16 GiB free (8 GiB
+		# for each pool)
+		$minimum_space_needed += ($minimum_pool_size * 2);
+	}
+	else
+	{
+		$storage_pool1_byte_size =  hr_to_bytes($conf, $storage_pool1_size, $storage_pool1_unit, 1);
+		$minimum_space_needed    += $storage_pool1_byte_size;
+	}
+	
+	# Now check things.
 	if (($node1_use_device eq "--") || ($node2_use_device eq "--"))
 	{
 		# parted not installed and no internet connection.
@@ -1129,6 +1108,15 @@ sub verify_matching_free_space
 		$node2_class   = "highlight_bad_bold";
 		$ok            = 0;
 		$message       = "#!string!message_0365!#",
+	} # I don't need to check both as unmatched sizes would have been caught above.
+	elsif ($minimum_space_needed > $node1_free_space)
+	{
+		$node1_class   = "highlight_bad_bold";
+		$node2_class   = "highlight_bad_bold";
+		$ok            = 0;
+		$message       = AN::Common::get_string($conf, {key => "message_0374", variables => {
+			size	=>	AN::Cluster::bytes_to_hr($conf, $minimum_space_needed),
+		}});
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0222!#",
@@ -1138,7 +1126,13 @@ sub verify_matching_free_space
 		node2_message	=>	$node2_message,
 	});
 	
-	if (not $ok)
+	if ($ok)
+	{
+		# Things are good, so calculate the static sizes of our pool
+		# for display in the summary/confirmation later.
+		$conf->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
+	}
+	else
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
 			message		=>	$message,
@@ -1424,9 +1418,37 @@ sub get_node_os_version
 			$conf->{node}{$node}{os}{brand}   = $brand;
 			$conf->{node}{$node}{os}{version} = "$major.$minor";
 		}
-		
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
+	
+	# If it's RHEL, see if it's registered.
+	if ($conf->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	{
+		# See if it's been registered already.
+		$conf->{node}{$node}{os}{registered} = 0;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is RHEL proper, checking to see if it has been registered already.\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	"rhn_check; echo exit:\$?",
+		});
+		foreach my $line (@{$return})
+		{
+			if ($line =~ /^exit:(\d+)$/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					$conf->{node}{$node}{os}{registered} = 1;
+				}
+			}
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is registered on RHN? [$conf->{node}{$node}{os}{registered}].\n");
+	}
 	return($major, $minor);
 }
 

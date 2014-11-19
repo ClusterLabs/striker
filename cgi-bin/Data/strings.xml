@@ -555,7 +555,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0226">Installing Programs</key>
 		<key name="row_0227">Updating OS</key>
 		<key name="row_0228">Network Configuration</key>
-		<key name="row_0229"></key>
+		<key name="row_0229">Current Network</key>
 		<key name="row_0230"></key>
 		
 		<!-- Program names -->
@@ -578,8 +578,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="device_0002">Optical Drive</key>
 		<key name="device_0003">Optical Drive ##!variable!drive_number!#</key>
 		<key name="device_0004">Virtual Machine Manager</key> <!-- ok, so this isn't a 'device' per-se, whatev'... -->
-		<key name="device_0005"></key>
-		<key name="device_0006"></key>
+		<key name="device_0005">Node 1</key>
+		<key name="device_0006">Node 2</key>
 		<key name="device_0007"></key>
 		<key name="device_0008"></key>
 		<key name="device_0009"></key>
@@ -610,7 +610,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0022"><![CDATA[Copying: [<span class="code">#!variable!file!#</span>] to: [<span class="code">#!variable!backups!#</span>]]]></key>
 		<key name="script_0023"><![CDATA[Failed to call: [<span class="code">#!variable!shell_call!#</span>], error was: <span class="code">#!variable!error!#</span>]]></key>
 		<key name="script_0024"><![CDATA[Output: [<span class="code">#!variable!line!#</span>]]]></key>
-		<key name="script_0025">Making sure all network interfaces are up.</key>
+		<key name="script_0025"><![CDATA[Making sure all network interfaces are up and running...<br />]]></key>
 		<key name="script_0026"><![CDATA[The network interface: [<span class="code">#!variable!nic!#</span>] is down. It must be started for the next stage.]]></key>
 		<key name="script_0027"><![CDATA[Checking if: [<span class="code">#!variable!file!#</span>] exists.]]></key>
 		<key name="script_0028"><![CDATA[New device, writing a skeleton config file for: [<span class="code">#!variable!file!#</span>]...]]></key>
@@ -621,12 +621,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0033"><![CDATA[The interface: [<span class="code">#!variable!nic!#</span>] is now up!<br />]]></key>
 		<key name="script_0034"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Unable to bring up the interface: [<span class="code">#!variable!nic!#</span>]!]]></key>
 		<key name="script_0035"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Please bring it up manually and try again.]]></key>
-		<key name="script_0036">Configuring network to enable access to #!string!brand_0003!# systems.</key>
-		<key name="script_0037"><![CDATA[Beginning NIC identification...<br />]]></key>
+		<key name="script_0036"><![CDATA[Configuring network to enable access to #!string!brand_0003!# systems.<br />]]></key>
+		<key name="script_0037"><![CDATA[Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
-		<key name="script_0039"><![CDATA[Please reseat the interface you want to make: <b>#!variable!nic!#</b>... ]]></key>
+		<key name="script_0039"><![CDATA[<b>#!variable!nic!#</b>: ]]></key>
 		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]]]></key>
-		<key name="script_0041"><![CDATA[MAC address: [<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>] identified.]]></key>
+		<key name="script_0041"><![CDATA[[<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>]<br />]]></key>
 		<key name="script_0042">Identification summary:</key>
 		<key name="script_0043"><![CDATA[[ <span class="highlight_bad">Error</span> ] - There seems to be a problem.]]></key>
 		<key name="script_0044"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced MAC address!]]></key>
@@ -743,8 +743,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0064"><![CDATA[#!string!brand_0010!# Link #!variable!number!#]]></key>
 		<key name="script_0065">Network already configured, skipping.</key>
 		<key name="script_0066"><![CDATA[#!variable!name!#: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0067"></key>
-		<key name="script_0068"></key>
+		<key name="script_0067">Interface summary:</key>
+		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
 		<key name="script_0069"></key>
 		<key name="script_0070"></key>
 		
@@ -822,8 +822,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0027">Already up to Date</key>
 		<key name="state_0028">Already Configured</key>
 		<key name="state_0029">Configured!</key>
-		<key name="state_0030"></key>
-		<key name="state_0031"></key>
+		<key name="state_0030">Interfaces Identified!</key>
+		<key name="state_0031">Network Remap Required</key>
 		<key name="state_0032"></key>
 		<key name="state_0033"></key>
 		<key name="state_0034"></key>
@@ -1008,8 +1008,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0171">Starting Configration of a new #!string!brand_0003!# on both nodes</key>
 		<key name="title_0172">Running some sanity checks...</key>
 		<key name="title_0173">Configuration Beginning</key>
-		<key name="title_0174"><![CDATA[Beginning interactive mapping of <span class="highlight_good_bold">Node 1</span>'s network interfaces.]]></key>
-		<key name="title_0175"><![CDATA[Beginning interactive mapping of <span class="highlight_good_bold">Node 2</span>'s network interfaces.]]></key>
+		<key name="title_0174"><![CDATA[Beginning interactive network mapping on: [<span class="highlight_good">#!variable!node!#</span>]...]]></key>
+		<key name="title_0175"><![CDATA[]]></key>
 		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177"></key>
 		<key name="title_0178"></key>
@@ -1389,8 +1389,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
 		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
-		<key name="message_0373"><![CDATA[Node: [#!variable!node!#] has port: [#!variable!port!#] set, which is invalid.]]></key>
-		<key name="message_0374"></key>
+		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
+		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.]]></key>
 		<key name="message_0375"></key>
 		<key name="message_0376"></key>
 		<key name="message_0377"></key>

@@ -600,6 +600,7 @@ sub initialize_conf
 			ping			=>	"/usr/bin/ping",
 			restart_guacd		=>	"/var/www/tools/restart_guacd",
 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
+			rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 			ssh_config		=>	"/etc/ssh/ssh_config",
 			sync			=>	"/bin/sync",
 			virsh			=>	"/usr/bin/virsh",

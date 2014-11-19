@@ -110,11 +110,11 @@ sub print_summary
 	
 	if ($conf->{script})
 	{
-		#print "#!string!script_0026!#,,nic=$nic\n" if $conf->{debug};
+		print "#!string!script_0067!#\n" if $conf->{debug};
 	}
 	else
 	{
-		print "Interface summary:\n";
+		print "Interface summary:\n" if $conf->{debug};
 	}
 	my $this_nic   = "";
 	my $shell_call = "$conf->{executable}{ip} addr";
@@ -161,13 +161,14 @@ sub start_all_nics
 {
 	my ($conf) = @_;
 	
+	# This can take a minute, so tell the user what's going on.
 	if ($conf->{script})
 	{
-		print "#!string!script_0025!#\n" if $conf->{debug};
+		print "#!string!script_0025!#\n";
 	}
 	else
 	{
-		print "Making sure all network interfaces are up.\n" if $conf->{debug};
+		print "Making sure all network interfaces are up and running.\n";
 	}
 	check_nic_states($conf);
 	foreach my $this_iface (sort {$a cmp $b} keys %{$conf->{nic}{by_name}})
@@ -758,21 +759,13 @@ sub select_nics
 
 	if ($conf->{script})
 	{
-		print "#!string!script_0036!#\n";
+		print "#!string!script_0036!#\n" if $conf->{debug};
 		print "#!string!script_0037!#\n";
 	}
 	else
 	{
-		print "-=] Mapping network to enable use in an Anvil! systems.\n\n";
-	}
-	if ($conf->{script})
-	{
-		print "#!string!script_0002!#\n";
-	}
-	else
-	{
-		print "- When prompted, unplug the desired network cable, wait a couple of seconds\n";
-		print "  and then plug it back in.\n";
+		print "-=] Configuring network to enable access to Anvil! systems.\n\n" if $conf->{debug};
+		print "Please unplug, wait a moment, and plug back in the interface you want to make:\n";
 	}
 	foreach my $nic (@{$conf->{nics}})
 	{
@@ -810,7 +803,7 @@ sub select_nics
 		}
 		else
 		{
-			print "- Reseat: [$say_nic]... ";
+			print "- $say_nic: ";
 		}
 		my $last_conflict = "";
 		while(1)
@@ -880,7 +873,7 @@ sub select_nics
 	my $proceed = 1;
 	if ($conf->{script})
 	{
-		print "#!string!script_0042!#\n";
+		print "#!string!script_0042!#\n" if $conf->{debug};
 	}
 	else
 	{
@@ -928,13 +921,23 @@ sub select_nics
 		}
 		if ($conf->{script})
 		{
-			print "#!string!script_0047!#,,mac=".uc($this_mac).",,current=$current_name,,new=$nic\n";
+			print "nic=$nic,,mac=$this_mac\n";
+			#print "#!string!script_0047!#,,mac=".uc($this_mac).",,current=$current_name,,new=$nic\n";
 		}
 		else
 		{
-			print "- Interface: [$nic] will use: [".uc($this_mac)." ($current_name)]\n";
+			print "Interface: [$nic] will use MAC: [$this_mac]\n";
+			#print "- Interface: [$nic] will use: [".uc($this_mac)." ($current_name)]\n";
 			#print "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)\n";
 		}
+	}
+	if ($conf->{script})
+	{
+		print "#!string!script_0068!#\n";
+	}
+	else
+	{
+		print "Done, thank you.\n";
 	}
 
 	return($proceed);
