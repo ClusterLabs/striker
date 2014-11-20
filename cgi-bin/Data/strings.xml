@@ -610,7 +610,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0022"><![CDATA[Copying: [<span class="code">#!variable!file!#</span>] to: [<span class="code">#!variable!backups!#</span>]]]></key>
 		<key name="script_0023"><![CDATA[Failed to call: [<span class="code">#!variable!shell_call!#</span>], error was: <span class="code">#!variable!error!#</span>]]></key>
 		<key name="script_0024"><![CDATA[Output: [<span class="code">#!variable!line!#</span>]]]></key>
-		<key name="script_0025"><![CDATA[Making sure all network interfaces are up and running...<br />]]></key>
+		<key name="script_0025"><![CDATA[Making sure all network interfaces are up and running.<br />]]></key>
 		<key name="script_0026"><![CDATA[The network interface: [<span class="code">#!variable!nic!#</span>] is down. It must be started for the next stage.]]></key>
 		<key name="script_0027"><![CDATA[Checking if: [<span class="code">#!variable!file!#</span>] exists.]]></key>
 		<key name="script_0028"><![CDATA[New device, writing a skeleton config file for: [<span class="code">#!variable!file!#</span>]...]]></key>
@@ -1381,7 +1381,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
 		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
 		<key name="message_0364"><![CDATA[I am sorry, but both nodes must have free space.]]></key>
-		<key name="message_0365"><![CDATA[I am sorry, but both nodes must have the same amount of free space.]]></key>
+		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
 		<key name="message_0367"><![CDATA[Failed to add the AN!Repo.<br />This is not strictly required, but may mean some packages will not be installed automatically.]]></key>
 		<key name="message_0368"><![CDATA[There appears to be no internet connection, and the program <span class="code">parted</span> is not installed.]]></key>

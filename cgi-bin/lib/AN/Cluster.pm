@@ -749,7 +749,7 @@ sub read_hosts
 sub read_ssh_config
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
@@ -6345,6 +6345,7 @@ sub remote_call
 	# Break out the port, if needed.
 	my $state;
 	my $error;
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 	if ($node =~ /^(.*):(\d+)$/)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], port: [$port]\n");
@@ -6359,6 +6360,19 @@ sub remote_call
 				port	=>	"$port",
 			}});
 			record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+		}
+	}
+	else
+	{
+		# In case the user is using ports in /etc/ssh/ssh_config,
+		# we'll want to check for an entry.
+		#record($conf, "$THIS_FILE ".__LINE__."; reading ssh_config...\n");
+		read_ssh_config($conf);
+		#record($conf, "$THIS_FILE ".__LINE__."; hosts::${node}::port: [$conf->{hosts}{$node}{port}]\n");
+		if ($conf->{hosts}{$node}{port})
+		{
+			$port = $conf->{hosts}{$node}{port};
+			#record($conf, "$THIS_FILE ".__LINE__."; port: [$port]\n");
 		}
 	}
 	

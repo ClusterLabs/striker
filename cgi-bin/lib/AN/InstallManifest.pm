@@ -174,7 +174,7 @@ sub parse_script_line
 	my ($conf, $source, $node, $line) = @_;
 
 	return($line) if $line eq "";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
 	if ($line =~ /#!exit!(.*?)!#/)
 	{
 		# Program exited, reboot?
@@ -341,9 +341,9 @@ sub map_network
 	}
 	
 	my $ok            = 1;
-	my $node1_class   = "highlight_detail";
+	my $node1_class   = "highlight_ready_bold";
 	my $node1_message = "#!string!state_0030!#";
-	my $node2_class   = "highlight_detail";
+	my $node2_class   = "highlight_ready_bold";
 	my $node2_message = "#!string!state_0030!#";
 	my $message       = "";
 	if ($node1_remap_needed)
@@ -465,7 +465,7 @@ sub map_network_on_node
 		{
 			$shell_call = "$conf->{path}{'anvil-map-network'} --script";
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		
 		### Start the call
 		my $state;
@@ -479,7 +479,7 @@ sub map_network_on_node
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow
@@ -1049,6 +1049,7 @@ sub verify_matching_free_space
 	my $ok = 1;
 	my ($node1_use_device, $node1_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_use_device, $node2_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_free_space: [$node1_free_space], node2_free_space: [$node2_free_space]\n");
 	
 	# Message stuff
 	my $node1_class   = "highlight_good_bold";
@@ -1058,12 +1059,21 @@ sub verify_matching_free_space
 	my $message       = "";
 	
 	# Space needed by the media library is always a static size
+	my $total_free_space = $node1_free_space;
+	if ($node2_free_space < $node1_free_space)
+	{
+		$total_free_space = $node2_free_space;
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; total_free_space: [$total_free_space]\n");
+	
 	my $media_library_size      = $conf->{cgi}{anvil_media_library_size};
 	my $media_library_unit      = $conf->{cgi}{anvil_media_library_unit};
 	my $media_library_byte_size = AN::Cluster::hr_to_bytes($conf, $media_library_size, $media_library_unit, 1);
 	my $minimum_space_needed    = $media_library_byte_size;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; media_library_byte_size: [$media_library_byte_size], minimum_space_needed: [$minimum_space_needed]\n");
 	
-	my $minimum_pool_size = hr_to_bytes($conf, 8, "GiB", 1);
+	my $minimum_pool_size = AN::Cluster::hr_to_bytes($conf, 8, "GiB", 1);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; minimum_pool_size: [$minimum_pool_size]\n");
 	# Space needed by storage pool 1 could be a static size or a
 	# percentage. If it's a percentage, we'll need a minimum of 8 GiB free.
 	# If a static size, then we just want to make sure there is enough for
@@ -1071,17 +1081,20 @@ sub verify_matching_free_space
 	# to 
 	my $storage_pool1_size      = $conf->{cgi}{anvil_storage_pool1_size};
 	my $storage_pool1_unit      = $conf->{cgi}{anvil_storage_pool1_unit};
-	my $storage_pool1_byte_size = "#!all!#";
+	my $storage_pool1_byte_size = 0;
+	my $storage_pool2_byte_size = 0;
 	if ($storage_pool1_unit eq "%")
 	{
 		# Percentage, make sure there is at least 16 GiB free (8 GiB
 		# for each pool)
 		$minimum_space_needed += ($minimum_pool_size * 2);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; minimum_space_needed: [$minimum_space_needed]\n");
 	}
 	else
 	{
-		$storage_pool1_byte_size =  hr_to_bytes($conf, $storage_pool1_size, $storage_pool1_unit, 1);
+		$storage_pool1_byte_size =  AN::Cluster::hr_to_bytes($conf, $storage_pool1_size, $storage_pool1_unit, 1);
 		$minimum_space_needed    += $storage_pool1_byte_size;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage_pool1_byte_size: [$storage_pool1_byte_size], minimum_space_needed: [$minimum_space_needed]\n");
 	}
 	
 	# Now check things.
@@ -1104,12 +1117,15 @@ sub verify_matching_free_space
 	elsif ($node1_free_space ne $node2_free_space)
 	{
 		# Free space doesn't match
-		$node1_class   = "highlight_bad_bold";
-		$node2_class   = "highlight_bad_bold";
+		$node1_class   = "highlight_warning_bold";
+		$node2_class   = "highlight_warning_bold";
 		$ok            = 0;
 		$message       = "#!string!message_0365!#",
-	} # I don't need to check both as unmatched sizes would have been caught above.
-	elsif ($minimum_space_needed > $node1_free_space)
+	}
+	
+	# Now check that we have enough space and, if so, put hard numbers to 
+	# the sizes from the install manifest.
+	if ($minimum_space_needed > $total_free_space)
 	{
 		$node1_class   = "highlight_bad_bold";
 		$node2_class   = "highlight_bad_bold";
@@ -1130,7 +1146,160 @@ sub verify_matching_free_space
 	{
 		# Things are good, so calculate the static sizes of our pool
 		# for display in the summary/confirmation later.
+		# Make sure the storage pool is an even MiB.
+		my $media_library_difference = $media_library_byte_size % 1048576;
+		if ($media_library_difference)
+		{
+			# Round up
+			my $media_library_balance   =  1048576 - $media_library_difference;
+			   $media_library_byte_size += $media_library_balance;
+		}
 		$conf->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
+		my $free_space_left = $total_free_space - $media_library_byte_size;
+		
+		# If the user has asked for a percentage, divide the free space
+		# by the percentage.
+		if ($storage_pool1_unit eq "%")
+		{
+			my $percent = $storage_pool1_size / 100;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent]\n");
+			
+			# Round up to the closest even MiB
+			my $pool1_byte_size  = $percent * $free_space_left;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool1_byte_size: [$pool1_byte_size]\n");
+			my $pool1_difference = $pool1_byte_size % 1048576;
+			if ($pool1_difference)
+			{
+				# Round up
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_difference: [$pool1_difference]\n");
+				my $pool1_balance   =  1048576 - $pool1_difference;
+				   $pool1_byte_size += $pool1_balance;
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool1_byte_size: [$pool1_byte_size]\n");
+			
+			# Round down to the closest even MiB (left over space
+			# will be unallocated on disk)
+			my $pool2_byte_size = $free_space_left - $pool1_byte_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool2_byte_size: [$pool2_byte_size]\n");
+			if ($pool2_byte_size < 0)
+			{
+				# Well then...
+				$pool2_byte_size = 0;
+			}
+			else
+			{
+				my $pool2_difference = $pool2_byte_size % 1048576;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool2_difference: [$pool1_difference]\n");
+				if ($pool2_difference)
+				{
+					# Round down
+					$pool2_byte_size -= $pool2_difference;
+				}
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool2_byte_size: [$pool2_byte_size]\n");
+			
+			# Final sanity check; Add up the three calculated sizes
+			# and make sure I'm not trying to ask for more space
+			# than is available.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; media_library_byte_size: [$media_library_byte_size] + pool1_byte_size: [$pool1_byte_size] + pool2_byte_size: [$pool2_byte_size]\n");
+			my $total_allocated = ($media_library_byte_size + $pool1_byte_size + $pool2_byte_size);
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; total_allocated: [$total_allocated], total_free_space: [$total_free_space]\n");
+			if ($total_allocated > $total_free_space)
+			{
+				my $too_much = $total_allocated - $total_free_space;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; too_much: [$too_much]\n");
+				
+				# Take the overage from pool 2, if used.
+				if ($pool2_byte_size > $too_much)
+				{
+					# Reduce!
+					$pool2_byte_size -= $too_much;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool2_byte_size: [$pool2_byte_size]\n");
+					my $pool2_difference =  $pool2_byte_size % 1048576;
+					if ($pool2_difference)
+					{
+						# Round down
+						$pool2_byte_size -= $pool2_difference;
+						if ($pool2_byte_size < 0)
+						{
+							$pool2_byte_size = 0;
+						}
+					}
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool2_byte_size: [$pool2_byte_size]\n");
+				}
+				else
+				{
+					# Take the pound of flesh from pool 1
+					$pool1_byte_size -= $too_much;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool1_byte_size: [$pool1_byte_size]\n");
+					my $pool1_difference =  $pool1_byte_size % 1048576;
+					if ($pool1_difference)
+					{
+						# Round down
+						$pool1_byte_size -= $pool1_difference;
+						if ($pool1_byte_size < 0)
+						{
+							$pool1_byte_size = 0;
+						}
+					}
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool1_byte_size: [$pool1_byte_size]\n");
+				}
+				
+				# Check again.
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; media_library_byte_size: [$media_library_byte_size] + pool1_byte_size: [$pool1_byte_size] + pool2_byte_size: [$pool2_byte_size]\n");
+				$total_allocated = ($media_library_byte_size + $pool1_byte_size + $pool2_byte_size);
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; total_allocated: [$total_allocated], total_free_space: [$total_free_space]\n");
+				if ($total_allocated > $total_free_space)
+				{
+					# OK, WTF?
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to divide free space!\n");
+					$ok = 0;
+				}
+			}
+			
+			$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size;
+			$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size}], cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size}]\n");
+		}
+		else
+		{
+			# Pool 1 is static, so simply round to an even MiB.
+			my $pool1_byte_size = $storage_pool1_byte_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool1_byte_size: [$pool1_byte_size]\n");
+			my $pool1_difference = $pool1_byte_size % 1048576;
+			if ($pool1_difference)
+			{
+				# Round up
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_difference: [$pool1_difference]\n");
+				my $pool1_balance   =  1048576 - $pool1_difference;
+				   $pool1_byte_size += $pool1_balance;
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool1_byte_size: [$pool1_byte_size]\n");
+			
+			my $pool2_byte_size = $free_space_left - $pool1_byte_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> pool2_byte_size: [$pool2_byte_size]\n");
+			if ($pool2_byte_size < 0)
+			{
+				# Well then...
+				$pool2_byte_size = 0;
+			}
+			else
+			{
+				my $pool2_difference = $pool2_byte_size % 1048576;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool2_difference: [$pool1_difference]\n");
+				if ($pool2_difference)
+				{
+					# Round down
+					$pool2_byte_size -= $pool2_difference;
+				}
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << pool2_byte_size: [$pool2_byte_size]\n");
+			
+			$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size;
+			$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size}], cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size}]\n");
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size}]\n");
 	}
 	else
 	{
@@ -1138,6 +1307,10 @@ sub verify_matching_free_space
 			message		=>	$message,
 		});
 	}
+	my $say_media_library = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size});
+	my $say_pool1         = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size});
+	my $say_pool2         = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} ($say_media_library)], cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size} ($say_pool1)], cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} ($say_pool2)]\n");
 	
 	return($ok);
 }
@@ -1419,7 +1592,7 @@ sub get_node_os_version
 			$conf->{node}{$node}{os}{version} = "$major.$minor";
 		}
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
 	
 	# If it's RHEL, see if it's registered.
 	if ($conf->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
