@@ -57,9 +57,9 @@
 		<key name="button_0050">New Install</key>	<!-- Also used as a row value -->
 		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
 		<key name="button_0052">Begin Install</key>
-		<key name="button_0053"></key>
-		<key name="button_0054"></key>
-		<key name="button_0055"></key>
+		<key name="button_0053">Install</key>
+		<key name="button_0054">Remap Network</key>
+		<key name="button_0055">Modify Manifest</key>
 		<key name="button_0056"></key>
 		<key name="button_0057"></key>
 		<key name="button_0058"></key>
@@ -315,10 +315,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0128"><![CDATA[Please be patient!<br /><br />Some tasks may not cause any output to be displayed for some time.<br /><br /><b>Please do not reload this page!</b>.]]></key>
 		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />If you think the system is hung, please log into the nodes and run:<br /><span class="code">ps aux | grep yum</span><br />If you see <span class="code">yum</span> running, then please keep waiting.]]></key>
 		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />As above, use <span class="code">ps auxf</span> as above.]]></key>
-		<key name="explain_0131"><![CDATA[]]></key>
-		<key name="explain_0132"><![CDATA[]]></key>
-		<key name="explain_0133"><![CDATA[]]></key>
-		<key name="explain_0134"><![CDATA[]]></key>
+		<key name="explain_0131"><![CDATA[Now that we've had a chance to look at your hardware, we're ready to install!]]></key>
+		<key name="explain_0132"><![CDATA[Please review the build plan below and, if you're happy, press "<span class="button_reference">#!string!button_0053!#</span>".]]></key>
+		<key name="explain_0133"><![CDATA[If the storage is OK, but you want to remap the network, press "<span class="button_reference">#!string!button_0054!#</span>".]]></key>
+		<key name="explain_0134"><![CDATA[If the storage is not OK, please edit the install manifest by pressing "<span class="button_reference">#!string!button_0055!#</span>".]]></key>
 		<key name="explain_0135"><![CDATA[]]></key>
 		<key name="explain_0136"><![CDATA[]]></key>
 		<key name="explain_0137"><![CDATA[]]></key>
@@ -556,7 +556,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0227">Updating OS</key>
 		<key name="row_0228">Network Configuration</key>
 		<key name="row_0229">Current Network</key>
-		<key name="row_0230"></key>
+		<key name="row_0230">Network Mapping</key>
+		<key name="row_0231">Partition Plan</key>
+		<key name="row_0232">Storage Pool 1</key>
+		<key name="row_0233">Storage Pool 2</key>
+		<key name="row_0234"></key>
+		<key name="row_0235"></key>
+		<key name="row_0236"></key>
+		<key name="row_0237"></key>
+		<key name="row_0238"></key>
+		<key name="row_0239"></key>
+		<key name="row_0240"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -571,7 +581,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0007">IP Address</key>
 		<key name="header_0008">Node 1</key>
 		<key name="header_0009">Node 2</key>
-		<key name="header_0010"></key>
+		<key name="header_0010">Network Interface</key>
+		<key name="header_0011">Used For</key>
+		<key name="header_0012">Allocated Space</key>
+		<key name="header_0013">Partition Size</key>
+		<key name="header_0014"></key>
+		<key name="header_0015"></key>
+		<key name="header_0016"></key>
+		<key name="header_0017"></key>
+		<key name="header_0018"></key>
+		<key name="header_0019"></key>
+		<key name="header_0020"></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -822,9 +842,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0027">Already up to Date</key>
 		<key name="state_0028">Already Configured</key>
 		<key name="state_0029">Configured!</key>
-		<key name="state_0030">Interfaces Identified!</key>
+		<key name="state_0030">Interfaces Identified</key>
 		<key name="state_0031">Network Remap Required</key>
-		<key name="state_0032"></key>
+		<key name="state_0032">Network Remap Requested</key>
 		<key name="state_0033"></key>
 		<key name="state_0034"></key>
 		<key name="state_0035"></key>
@@ -1011,7 +1031,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0174"><![CDATA[Beginning interactive network mapping on: [<span class="highlight_good">#!variable!node!#</span>]...]]></key>
 		<key name="title_0175"><![CDATA[]]></key>
 		<key name="title_0176">Done gathering information.</key>
-		<key name="title_0177"></key>
+		<key name="title_0177">Almost ready to install!</key>
 		<key name="title_0178"></key>
 		<key name="title_0179"></key>
 		<key name="title_0180"></key>
@@ -1391,7 +1411,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
 		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.]]></key>
-		<key name="message_0375"></key>
+		<key name="message_0375">Checks complete.</key>
 		<key name="message_0376"></key>
 		<key name="message_0377"></key>
 		<key name="message_0378"></key>

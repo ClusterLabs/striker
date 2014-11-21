@@ -114,14 +114,17 @@ sub run_new_install_manifest
 		my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
 	}
 	
-	# Now summarize and ask the user to confirm.
-	
-	
-	# Now ask the user to confirm the storage and networm mapping. If the
-	# OS is 'Red Hat Enterprise Linux Server' and it is unregistered,
-	# provide input fields for RHN registration.
-	### if (not $conf->{node}{$node1}{os}{registered})...
-	return(0);
+	if (not $conf->{cgi}{perform_install})
+	{
+		# Now summarize and ask the user to confirm.
+		summarize_build_plan($conf);
+		
+		# Now ask the user to confirm the storage and networm mapping. If the
+		# OS is 'Red Hat Enterprise Linux Server' and it is unregistered,
+		# provide input fields for RHN registration.
+		### if (not $conf->{node}{$node1}{os}{registered})...
+		return(0);
+	}
 	
 	# If we're here, we're ready to start!
 	print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
@@ -158,10 +161,70 @@ sub run_new_install_manifest
 	return(0);
 }
 
+# This summarizes the install plan and gives the use a chance to tweak it or
+# re-run the cable mapping.
+sub summarize_build_plan
+{
+	my ($conf) = @_;
+	
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-summary-and-confirm", {
+		form_file			=>	"/cgi-bin/striker",
+		title				=>	"#!string!title_0177!#",
+		bcn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "1" }}),
+		bcn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'},
+		bcn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'},
+		bcn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "2" }}),
+		bcn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'},
+		bcn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'},
+		sn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "1" }}),
+		sn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'},
+		sn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'},
+		sn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "2" }}),
+		sn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'},
+		sn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'},
+		ifn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "1" }}),
+		ifn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'},
+		ifn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'},
+		ifn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "2" }}),
+		ifn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'},
+		ifn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'},
+		media_library_size		=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}),
+		pool1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}),
+		pool2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}),
+		partition1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}),
+		partition2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}),
+		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",   
+		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+		anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
+		anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
+		config				=>	$conf->{cgi}{config},
+		confirm				=>	$conf->{cgi}{confirm},
+		'do'				=>	$conf->{cgi}{'do'},
+		run				=>	$conf->{cgi}{run},
+		task				=>	$conf->{cgi}{task},
+		
+	});
+	
+	return(0);
+}
+
 # This downloads and runs the 'anvil-configure-network' script
 sub configure_network_on_node
 {
 	my ($conf, $node, $password) = @_;
+	
+	
+	return(0);
+}
+
+# This configures the network.
+sub configure_network
+{
+	my ($conf) = @_;
 	
 	
 	return(0);
@@ -341,9 +404,9 @@ sub map_network
 	}
 	
 	my $ok            = 1;
-	my $node1_class   = "highlight_ready_bold";
+	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0030!#";
-	my $node2_class   = "highlight_ready_bold";
+	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0030!#";
 	my $message       = "";
 	if ($node1_remap_needed)
@@ -355,6 +418,15 @@ sub map_network
 	{
 		$node2_class   = "highlight_note_bold";
 		$node2_message = "#!string!state_0031!#",
+	}
+	if ($conf->{cgi}{remap_network})
+	{
+		$node1_class        = "highlight_note_bold";
+		$node1_message      = "#!string!state_0032!#",
+		$node2_class        = "highlight_note_bold";
+		$node2_message      = "#!string!state_0032!#",
+		$node1_remap_needed = 1;
+		$node2_remap_needed = 2;
 	}
 
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
@@ -542,15 +614,6 @@ sub map_network_on_node
 	}
 	
 	return($return_code);
-}
-
-# This configures the network.
-sub configure_network
-{
-	my ($conf) = @_;
-	
-	
-	return(0);
 }
 
 # This checks to see which, if any, packages need to be installed.
@@ -961,6 +1024,10 @@ sub verify_internet_access
 {
 	my ($conf) = @_;
 	
+	### TODO: If there is no internet access, see if there is a disk in
+	###       /dev/sr0 and, if so, mount it and if it has packages, make
+	###       sure/create a yum repo file for it. Don't abort the install.
+	
 	my ($node1_online) = ping_website($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_online) = ping_website($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
@@ -1005,6 +1072,7 @@ sub ping_website
 {
 	my ($conf, $node, $password) = @_;
 	
+	# Ya, I know 8.8.8.8 isn't a website...
 	my $ok = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -1013,7 +1081,7 @@ sub ping_website
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"ping alteeve.ca -c 3 -q",
+		shell_call	=>	"ping 8.8.8.8 -c 3 -q",
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
@@ -1033,8 +1101,112 @@ sub ping_website
 		}
 	}
 	
+	# If there is no internet connection, add a yum repo for the cdrom
+	if (not $conf->{node}{$node}{internet})
+	{
+		# Make sure the DVD repo exists.
+		create_dvd_repo($conf, $node, $password);
+	}
+	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ok: [$ok]\n");
 	return($ok);
+}
+
+# This checks to see if the DVD repo has been added to the node yet. If not,
+# and if there is a disk in the drive, it will mount sr0, check that it's got
+# RPMs and, if so, create the repo. If not, it unmounts the DVD.
+sub create_dvd_repo
+{
+	my ($conf, $node, $password) = @_;
+	
+	# A wee bit of bash in this one...
+	my $mount_name = "optical";
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	"
+if [ -e \"/dev/sr0\" ];
+then
+        echo \"DVD drive exists.\"
+        if [ -e \"/mnt/$mount_name\" ]
+        then
+                echo \"Optical drive mount point exists.\"
+        else
+                echo \"Optical drive mount point does not exist yet.\"
+                mkdir /mnt/$mount_name
+                if [ ! -e \"/mnt/$mount_name\" ]
+                then
+                        echo \"Creating mountpoint failed.\"
+                        echo \"exit:2\"
+                        exit 2
+                fi
+        fi
+        if $(mount | grep -q sr0)
+        then
+                echo \"Optical drive already mounted.\"
+        else
+                echo \"Optical drive not mounted.\"
+                mount /dev/sr0 /mnt/$mount_name
+                if ! $(mount | grep -q sr0)
+                then
+                        echo \"Mount failed.\"
+                        echo \"exit:3\"
+                        exit 3
+                fi
+        fi
+        if [ -e \"/mnt/$mount_name/Packages\" ]
+        then
+                echo \"Install media found.\"
+        else
+                echo \"Install media not found, ejecting disk.\"
+                umount /mnt/$mount_name
+                echo \"exit:4\"
+                exit 4
+        fi
+        if [ -e \"/etc/yum.repos.d/$mount_name.repo\" ]
+        then
+                echo \"Repo already exists, skipping.\"
+                echo \"exit:0\"
+                exit 0
+        else
+                echo \"Creating optical media repo.\"
+                cat > /etc/yum.repos.d/$mount_name.repo << EOF
+[$mount_name]
+baseurl=file:///mnt/$mount_name/
+enabled=1
+gpgcheck=0
+EOF
+                echo \"Cleaning repo data\"
+                yum clean all
+                echo \"exit:0\"
+                exit 0
+        fi
+else
+        echo \"No optical drive found, exiting\"
+        echo \"exit:1\"
+        exit 1
+fi
+",
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	my $return_code = -1;
+	foreach my $line (@{$return})
+	{
+		if ($line =~ /exit:(\d+)/)
+		{
+			$return_code = $1;
+		}
+		else
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		}
+	}
+	
+	return($return_code);
 }
 
 # This checks to see if both nodes have the same amount of unallocated space.
@@ -1311,6 +1483,12 @@ sub verify_matching_free_space
 	my $say_pool1         = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size});
 	my $say_pool2         = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} ($say_media_library)], cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size} ($say_pool1)], cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} ($say_pool2)]\n");
+	
+	$conf->{cgi}{anvil_storage_partition_1_byte_size} = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
+	$conf->{cgi}{anvil_storage_partition_2_byte_size} = $conf->{cgi}{anvil_storage_pool2_byte_size};
+	my $say_partition_1 = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size});
+	my $say_partition_2 = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} ($say_partition_1)], cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} ($say_partition_2)]\n");
 	
 	return($ok);
 }

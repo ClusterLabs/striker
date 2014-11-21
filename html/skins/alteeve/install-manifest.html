@@ -8,12 +8,9 @@
 	</tr>
 	<tr>
 		<td colspan="3">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan="3">
-			#!string!title_0172!#
+			<br />
+			#!string!title_0172!#<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -30,6 +27,11 @@
 <!-- end new-anvil-install-header -->
 
 <!-- start new-anvil-install-footer -->
+	<tr>
+		<td colspan="3">
+			#!string!message_0375!#
+		</td>
+	</tr>
 </table>
 <br />
 <!-- end new-anvil-install-footer -->
@@ -152,3 +154,181 @@
 		</td>
 	</tr>
 <!-- end new-anvil-install-end-network-config -->
+
+<!-- start new-anvil-install-summary-and-confirm -->
+</table>
+<br />
+<table>
+	<form action="#!replace!form_file!#" method="post" name="config">
+	<tr>
+		<td colspan="4" class="highlight_ready_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<br />
+			#!string!explain_0131!#<br />
+			 <ul>
+				<li>#!string!explain_0134!#</li>
+				<li>#!string!explain_0133!#</li>
+				<li>#!string!explain_0132!#</li>
+			</ul>
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="7" class="highlight_ready_bold">
+			#!string!row_0230!#
+		</td>
+		<td class="table_header">
+			#!string!header_0010!#
+		</td>
+		<td class="table_header">
+			#!string!header_0008!#
+		</td>
+		<td class="table_header">
+			#!string!header_0009!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!bcn_link1_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!bcn_link1_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!bcn_link1_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!bcn_link2_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!bcn_link2_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!bcn_link2_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!sn_link1_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!sn_link1_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!sn_link1_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!sn_link2_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!sn_link2_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!sn_link2_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!ifn_link1_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!ifn_link1_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!ifn_link1_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!replace!ifn_link2_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!ifn_link2_node1_mac!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!ifn_link2_node2_mac!#
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="4" class="highlight_ready_bold">
+			#!string!row_0231!#
+		</td>
+		<td class="table_header">
+			#!string!header_0011!#
+		</td>
+		<td class="table_header">
+			#!string!header_0012!#
+		</td>
+		<td class="table_header">
+			#!string!header_0013!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!row_0191!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!media_library_size!#
+		</td>
+		<td class="highlight_detail" rowspan="2">
+			#!replace!partition1_size!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!row_0232!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!pool1_size!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!row_0233!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!pool2_size!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!partition2_size!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<table class="hidden_table" width="100%">
+				<tr>
+					<td class="td_hidden_white" width="33%">
+						<a href="#!replace!edit_manifest_url!#" class="bold_button">#!string!button_0055!#</a>
+					</td>
+					<td class="td_hidden_white" width="34%">
+						<input type="submit" class="bold_button" name="remap_network" id="remap_network" value="#!string!button_0054!#" />
+					</td>
+					<td class="td_hidden_white" width="33%">
+						<input type="submit" class="bold_button" name="perform_install" id="perform_install" value="#!string!button_0053!#" />
+					</td>
+				</tr>
+			</table>
+			<input type="hidden" name="anvil_node1_current_ip" value="#!replace!anvil_node1_current_ip!#" />
+			<input type="hidden" name="anvil_node1_current_ip" value="#!replace!anvil_node1_current_ip!#" />
+			<input type="hidden" name="anvil_node1_current_password" value="#!replace!anvil_node1_current_password!#" />
+			<input type="hidden" name="anvil_node2_current_ip" value="#!replace!anvil_node2_current_ip!#" />
+			<input type="hidden" name="anvil_node2_current_password" value="#!replace!anvil_node2_current_password!#" />
+			<input type="hidden" name="config" value="#!replace!config!#" />
+			<input type="hidden" name="confirm" value="#!replace!confirm!#" />
+			<input type="hidden" name="do" value="#!replace!do!#" />
+			<input type="hidden" name="run" value="#!replace!run!#" />
+			<input type="hidden" name="task" value="#!replace!task!#" />
+			
+		</td>
+	</tr>
+	</form>
+</table>
+<br />
+<!-- end new-anvil-install-summary-and-confirm -->
