@@ -319,7 +319,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0132"><![CDATA[Please review the build plan below and, if you're happy, press "<span class="button_reference">#!string!button_0053!#</span>".]]></key>
 		<key name="explain_0133"><![CDATA[If the storage is OK, but you want to remap the network, press "<span class="button_reference">#!string!button_0054!#</span>".]]></key>
 		<key name="explain_0134"><![CDATA[If the storage is not OK, please edit the install manifest by pressing "<span class="button_reference">#!string!button_0055!#</span>".]]></key>
-		<key name="explain_0135"><![CDATA[]]></key>
+		<key name="explain_0135"><![CDATA[In order to access the Red Hat network to download packages, you must register your nodes against <a href="http://en.wikipedia.org/wiki/Red_Hat_Network" target="_new">RHN</a>.<br />You haven't yet, so you can enter your credentials below and we will register before installing packages.<br />Please note that this will consume a "<a href="http://www.sistina.com/rhel/add-ons/resilient_storage.html" target="_new">Resilient Storage</a>" and the "Optional" repository will be enabled per node.<br />If registration fails for some reason, the installer will try to proceed anyway.]]></key>
 		<key name="explain_0136"><![CDATA[]]></key>
 		<key name="explain_0137"><![CDATA[]]></key>
 		<key name="explain_0138"><![CDATA[]]></key>
@@ -560,12 +560,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0231">Partition Plan</key>
 		<key name="row_0232">Storage Pool 1</key>
 		<key name="row_0233">Storage Pool 2</key>
-		<key name="row_0234"></key>
-		<key name="row_0235"></key>
-		<key name="row_0236"></key>
-		<key name="row_0237"></key>
-		<key name="row_0238"></key>
-		<key name="row_0239"></key>
+		<key name="row_0234">OS Registration</key>
+		<key name="row_0235">Distribution Name</key>
+		<key name="row_0236">Registered?</key>
+		<key name="row_0237">RHN Credentials</key>
+		<key name="row_0238">User name</key>
+		<key name="row_0239">Password</key>
 		<key name="row_0240"></key>
 		
 		<!-- Program names -->
@@ -1412,11 +1412,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
 		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.]]></key>
 		<key name="message_0375">Checks complete.</key>
-		<key name="message_0376"></key>
-		<key name="message_0377"></key>
-		<key name="message_0378"></key>
-		<key name="message_0379"></key>
-		<key name="message_0380"></key>
+		<key name="message_0376">Not needed</key>
+		<key name="message_0377">Already registered</key>
+		<key name="message_0378">Registration needed</key>
+		<key name="message_0379">Yes, but no Internet</key>
+		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
+		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
+		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
+		<key name="message_0383"><![CDATA[I was asked to remap the network for a node I do not recognize.<br />(Sorry about that)]]></key>
+		<key name="message_0384"></key>
+		<key name="message_0385"></key>
+		<key name="message_0386"></key>
+		<key name="message_0387"></key>
+		<key name="message_0388"></key>
+		<key name="message_0389"></key>
+		<key name="message_0390"></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

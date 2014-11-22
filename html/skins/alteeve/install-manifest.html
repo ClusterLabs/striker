@@ -137,6 +137,11 @@
 	</tr>
 <!-- end new-anvil-install-be-patient-message -->
 
+<!-- start close-table -->
+</table>
+<br />
+<!-- end close-table -->
+
 <!-- start new-anvil-install-start-network-config -->
 </table>
 <br />
@@ -257,6 +262,11 @@
 		</td>
 	</tr>
 	<tr>
+		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
 		<td rowspan="4" class="highlight_ready_bold">
 			#!string!row_0231!#
 		</td>
@@ -302,6 +312,54 @@
 	</tr>
 	<tr>
 		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="3" class="highlight_ready_bold">
+			#!string!row_0234!#
+		</td>
+		<td class="table_header">
+			&nbsp;
+		</td>
+		<td class="table_header">
+			#!string!header_0008!#
+		</td>
+		<td class="table_header">
+			#!string!header_0009!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!string!row_0235!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!node1_os_name!#
+		</td>
+		<td class="highlight_detail">
+			#!replace!node2_os_name!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!string!row_0236!#
+		</td>
+		<td class="#!replace!node1_os_registered_class!#">
+			#!replace!node1_os_registered!#
+		</td>
+		<td class="#!replace!node2_os_registered_class!#">
+			#!replace!node2_os_registered!#
+		</td>
+	</tr>
+	#!replace!rhn_template!#
+	<tr>
+		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan="4">
+			<br />
 			<table class="hidden_table" width="100%">
 				<tr>
 					<td class="td_hidden_white" width="33%">
@@ -325,10 +383,42 @@
 			<input type="hidden" name="do" value="#!replace!do!#" />
 			<input type="hidden" name="run" value="#!replace!run!#" />
 			<input type="hidden" name="task" value="#!replace!task!#" />
-			
+			<br />
 		</td>
 	</tr>
 	</form>
 </table>
 <br />
 <!-- end new-anvil-install-summary-and-confirm -->
+
+<!-- start rhn-credential-form -->
+	<tr>
+		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td rowspan="3" class="highlight_ready_bold">
+			#!string!row_0237!#
+		</td>
+		<td class="" colspan="3">
+			#!string!explain_0135!#
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!string!row_0238!#:
+		</td>
+		<td colspan="2">
+			<input type="text" user="rhn_user" id="rhn_user" value="#!replace!rhn_user!#" style="width: 250px;" />
+		</td>
+	</tr>
+	<tr>
+		<td class="">
+			#!string!row_0239!#:
+		</td>
+		<td colspan="2">
+			<input type="text" name="rhn_password" id="rhn_password" value="#!replace!rhn_password!#" style="width: 250px;" />
+		</td>
+	</tr>
+<!-- end rhn-credential-form -->

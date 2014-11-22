@@ -192,6 +192,8 @@ AN::Cluster::get_cgi_vars($conf, [
 	"ram",
 	"ram_suffix",
 	"remap_network",
+	"rhn_user",
+	"rhn_password",
 	"row",
 	"run",
 	"save",

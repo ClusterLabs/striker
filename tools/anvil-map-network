@@ -33,6 +33,7 @@ my $THIS_FILE =  $0;
 
 use strict;
 use warnings;
+use File::Path qw(make_path);
 
 # No capes!^H^H^H^Hbuffers!
 $| = 1;
@@ -568,17 +569,46 @@ sub backup_file
 	$file =~ s/\/$//g;
 	$conf->{path}{backups} .= "/" if $conf->{path}{backups} !~ /\/$/;
 	
-	my $file_handle = "";
+	if (not -e $conf->{path}{backups})
+	{
+		if ($conf->{script})
+		{
+			print "#!string!script_0009!#,,backups=$conf->{path}{backups}\n" if $conf->{debug};
+			mkdir $conf->{path}{backups} or die warn "#!string!script_0011!#,,backups=$conf->{path}{backups},,error=$!\n";
+		}
+		else
+		{
+			print "- The backup directory: [$conf->{path}{backups}] doesn't exist, creating it.\n" if $conf->{debug};
+			mkdir $conf->{path}{backups} or die warn "[ Warning ] - Failed to create the directory: [$conf->{path}{backups}].\n[ Warning ] - The error was: $!\n";
+		}
+		if (not -e $conf->{path}{backups})
+		{
+			if ($conf->{script})
+			{
+				print "#!string!script_0006!#\n";
+				print "#!string!script_0007!#\n";
+			}
+			else
+			{
+				print "[ Error ] - The backup directory was not created.\n";
+				print "[ Error ] - Unable to safely proceed, exiting.\n";
+			}
+		}
+	}
+	
+	# This must be 'undef' or it will error with 'Can't use string ("") as
+	# a symbol ref while "strict refs" in use'.
+	my $file_handle = undef;
 	my $shell_call  = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
 	if ($conf->{script})
 	{
 		print "#!string!script_0022!#,,file=$file,backups=$conf->{path}{backups}\n" if $conf->{debug};
-		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, '-|', "$shell_call") || warn "#!string!script_0023!#,,shell_call=$shell_call,,error=$!\n";
 	}
 	else
 	{
 		print "- Copying: [$file] to: [$conf->{path}{backups}]\n" if $conf->{debug};
-		open ($file_handle, '-|', "$shell_call") || die "#!string!script_0023!#,,shell_call=$shell_call,,error=$!\n";
+		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	}
 	while(<$file_handle>)
 	{
@@ -799,7 +829,7 @@ sub select_nics
 		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		if ($conf->{script})
 		{
-			print "#!string!script_0039!#,,nic=$say_nic\n";
+			print "#!string!script_0039!#,,nic=$nic\n";
 		}
 		else
 		{
