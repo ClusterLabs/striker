@@ -1868,7 +1868,15 @@ sub create_install_manifest
 			else
 			{
 				# The form will redisplay after this.
-				generate_install_manifest($conf);
+				my ($target_url, $xml_file) = generate_install_manifest($conf);
+				print AN::Common::template($conf, "config.html", "manifest-created", {
+					message	=>	AN::Common::get_string($conf, {
+						key => "explain_0124", variables => {
+							url	=>	"$target_url",
+							file	=>	"$xml_file",
+						}
+					}),
+				});
 			}
 		}
 	}
@@ -2687,16 +2695,7 @@ $conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
 	print $file_handle $xml;
 	close $file_handle;
 	
-	print AN::Common::template($conf, "config.html", "manifest-created", {
-		message	=>	AN::Common::get_string($conf, {
-			key => "explain_0124", variables => {
-				url	=>	"$target_url",
-				file	=>	"$xml_file",
-			}
-		}),
-	});
-	
-	return($target_url);
+	return($target_url, $xml_file);
 }
 
 # This shows a summary of the install manifest and asks the user to choose a
@@ -4939,7 +4938,7 @@ sub get_cgi_vars
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	
-	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
+	AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	
 	return (0);
 }

@@ -320,9 +320,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0133"><![CDATA[If the storage is OK, but you want to remap the network, press "<span class="button_reference">#!string!button_0054!#</span>".]]></key>
 		<key name="explain_0134"><![CDATA[If the storage is not OK, please edit the install manifest by pressing "<span class="button_reference">#!string!button_0055!#</span>".]]></key>
 		<key name="explain_0135"><![CDATA[In order to access the Red Hat network to download packages, you must register your nodes against <a href="http://en.wikipedia.org/wiki/Red_Hat_Network" target="_new">RHN</a>.<br />You haven't yet, so you can enter your credentials below and we will register before installing packages.<br />Please note that this will consume a "<a href="http://www.sistina.com/rhel/add-ons/resilient_storage.html" target="_new">Resilient Storage</a>" and the "Optional" repository will be enabled per node.<br />If registration fails for some reason, the installer will try to proceed anyway.]]></key>
-		<key name="explain_0136"><![CDATA[]]></key>
-		<key name="explain_0137"><![CDATA[]]></key>
-		<key name="explain_0138"><![CDATA[]]></key>
+		<key name="explain_0136"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It is a copy of: [<span class="code">#!variable!old_manifest!#</span>] but with the network mapping recorded.<br />Use this new one in the future to avoid the manual network mapping step.]]></key>
+		<key name="explain_0137"><![CDATA[The install is now beginning. Sanity checks will re-run, just to be safe.<br />Configuration will begin automatically after that.<br />Now is a good time to go have a <span class="code">$drink</span>.]]></key>
+		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[]]></key>
 		<key name="explain_0140"><![CDATA[]]></key>
 		
@@ -566,7 +566,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0237">RHN Credentials</key>
 		<key name="row_0238">User name</key>
 		<key name="row_0239">Password</key>
-		<key name="row_0240"></key>
+		<key name="row_0240">Install Manifest</key>
+		<key name="row_0241">OK, Go!</key>
+		<key name="row_0242">Registration failed</key>
+		<key name="row_0243"></key>
+		<key name="row_0244"></key>
+		<key name="row_0245"></key>
+		<key name="row_0246"></key>
+		<key name="row_0247"></key>
+		<key name="row_0248"></key>
+		<key name="row_0249"></key>
+		<key name="row_0250"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -845,8 +855,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0030">Interfaces Identified</key>
 		<key name="state_0031">Network Remap Required</key>
 		<key name="state_0032">Network Remap Requested</key>
-		<key name="state_0033"></key>
-		<key name="state_0034"></key>
+		<key name="state_0033">Registered</key>
+		<key name="state_0034">Failed</key>
 		<key name="state_0035"></key>
 		<key name="state_0036"></key>
 		<key name="state_0037"></key>
@@ -1420,8 +1430,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0383"><![CDATA[I was asked to remap the network for a node I do not recognize.<br />(Sorry about that)]]></key>
-		<key name="message_0384"></key>
-		<key name="message_0385"></key>
+		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
+		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"></key>
 		<key name="message_0387"></key>
 		<key name="message_0388"></key>

@@ -210,6 +210,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"system",
 	"target",
 	"task",
+	"update_manifest",
 	"vg_list",
 	"vm",
 	"vm_ram",

@@ -84,6 +84,29 @@ sub run_new_install_manifest
 	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/root/anvil-map-network";
 	
+	if ($conf->{perform_install})
+	{
+		# OK, GO!
+		print AN::Common::template($conf, "install-manifest.html", "install-beginning");
+		if ($conf->{cgi}{update_manifest})
+		{
+			# Write the updated manifest and switch to using it.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> cgi::run: [$conf->{cgi}{run}].\n");
+			my ($target_url, $xml_file) = AN::Cluster::generate_install_manifest($conf);
+			print AN::Common::template($conf, "install-manifest.html", "manifest-created", {
+				message	=>	AN::Common::get_string($conf, {
+					key => "explain_0136", variables => {
+						url		=>	"$target_url",
+						file		=>	"$xml_file",
+						old_manifest	=>	$conf->{cgi}{run},
+					}
+				}),
+			});
+			$conf->{cgi}{run} = $xml_file;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << cgi::run: [$conf->{cgi}{run}].\n");
+		}
+	}
+	
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
 	
@@ -152,6 +175,7 @@ sub run_new_install_manifest
 		return(1);
 	}
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::perform_install: [$conf->{cgi}{perform_install}].\n");
 	if (not $conf->{cgi}{perform_install})
 	{
 		# Now summarize and ask the user to confirm.
@@ -163,38 +187,224 @@ sub run_new_install_manifest
 		### if (not $conf->{node}{$node1}{os}{registered})...
 		return(0);
 	}
-	
-	# If we're here, we're ready to start!
-	print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
-	
-	# Configure the network
-	configure_network($conf);
-	
-	# Add the an-repo
-	add_an_repo($conf);
-	
-	# Install needed RPMs.
-	install_programs($conf) or return(1);
-	
-	# Update the OS on each node.
-	update_nodes($conf);
-	
-	### TODO: Break here and ask the user to confirm the storage and
-	###       network configuration before actually rewriting the network
-	###       config and partitioning the drive.
-	
-	# If a reboot is needed, now is the time to do it.
-	foreach my $node ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip})
+	else
 	{
-		if ($conf->{node}{$node}{reboot_needed})
+		# If we're here, we're ready to start!
+		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
+		
+		# Register the nodes with RHN, if needed.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> register_with_rhn()\n");
+		register_with_rhn($conf);
+		
+		# Configure the network
+		configure_network($conf);
+		
+		return(0);
+		
+		# Add the an-repo
+		add_an_repo($conf);
+		
+		# Install needed RPMs.
+		install_programs($conf) or return(1);
+		
+		# Update the OS on each node.
+		update_nodes($conf);
+		
+		### TODO: Break here and ask the user to confirm the storage and
+		###       network configuration before actually rewriting the network
+		###       config and partitioning the drive.
+		
+		# If a reboot is needed, now is the time to do it.
+		foreach my $node ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip})
 		{
-			# Reboot...
+			if ($conf->{node}{$node}{reboot_needed})
+			{
+				# Reboot...
+			}
 		}
+		
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	}
 	
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
-	
 	return(0);
+}
+
+# This will register the nodes with RHN, if needed. Otherwise it just returns
+# without doing anything.
+sub register_with_rhn
+{
+	my ($conf) = @_;
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::rhn_user: [$conf->{cgi}{rhn_user}], cgi::rhn_password: [$conf->{cgi}{rhn_password}]\n");
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	if ((not $conf->{cgi}{rhn_user}) || (not $conf->{cgi}{rhn_password}))
+	{
+		# No sense going further
+		if ((not $conf->{node}{$node1}{os}{registered}) || (not $conf->{node}{$node2}{os}{registered}))
+		{
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				row	=>	"#!string!row_0242!#",
+				message	=>	"#!string!message_0385!#",
+			});
+			return(0);
+		}
+		return(1);
+	}
+	
+	# If I am going to register, I should warn the user of the delay.
+	if ((($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet})) ||
+	    (($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet})))
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+			message	=>	"#!string!explain_0138!#",
+		});
+	}
+	
+	my $node1_ok = 1;
+	my $node2_ok = 1;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::os::brand: [$conf->{node}{$node1}{os}{brand}], node::${node2}::os::brand: [$conf->{node}{$node2}{os}{brand}]\n");
+	if ($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	{
+		# See if it's been registered already.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::os::registered: [$conf->{node}{$node1}{os}{registered}], node::${node1}::internet: [$conf->{node}{$node1}{internet}]\n");
+		if ((not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet}))
+		{
+			# We're good.
+			($node1_ok) = register_node_with_rhn($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok]\n");
+		}
+		else
+		{
+			$node1_ok = "skip";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok]\n");
+		}
+	}
+	else
+	{
+		$node1_ok = "skip";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok]\n");
+	}
+	if ($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	{
+		# See if it's been registered already.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node2}::os::registered: [$conf->{node}{$node2}{os}{registered}], node::${node2}::internet: [$conf->{node}{$node2}{internet}]\n");
+		if ((not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet}))
+		{
+			# We're good.
+			($node2_ok) = register_node_with_rhn($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2_ok: [$node2_ok]\n");
+		}
+		else
+		{
+			$node2_ok = "skip";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2_ok: [$node2_ok]\n");
+		}
+	}
+	else
+	{
+		$node2_ok = "skip";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2_ok: [$node2_ok]\n");
+	}
+	
+	# Return if registration not needed.
+	if (($node1 eq "skip") && ($node2 eq "skip"))
+	{
+		return(1);
+	}
+	
+	my $ok            = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0033!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0033!#";
+	my $message       = "";
+	if (not $node1_ok)
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0034";
+		$ok            = 0;
+	}
+	if (not $node2_ok)
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0034";
+		$ok            = 0;
+	}
+
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0234!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	if (not $ok)
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	"#!string!message_0384!#",
+			row	=>	"#!string!state_0021!#",
+		});
+	}
+	
+	return($ok);
+}
+
+# This does the actual registration
+sub register_node_with_rhn
+{
+	my ($conf, $node, $password, $name) = @_;
+	
+	# Do the actual registration.
+	my $return_code = 1;
+	
+	### TODO: This will fail when there isn't an internet connection! We
+	###       check that, so write an rsync function to move the script
+	###       under docroot and then wget from this machine.
+	# First, make sure the script is downloaded and ready to run.
+	my $base              = 0;
+	my $resilient_storage = 0;
+	my $optional          = 0;
+	my $return_code = 1;
+	my $shell_call  =  "rhnreg_ks --username \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --force --profilename \"$name\" && ";
+	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-rs-6 && ";
+	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-optional-6 && ";
+	   $shell_call  .= "rhn-channel --list --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\"";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line =~ /rhel-x86_64-server-6/)
+		{
+			$base = 1;
+		}
+		if ($line =~ /rhel-x86_64-server-optional-6/)
+		{
+			$resilient_storage = 1;
+		}
+		if ($line =~ /rhel-x86_64-server-rs-6/)
+		{
+			$optional = 1;
+		}
+	}
+	if ((not $base) || (not $resilient_storage) || ($optional))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Registration failed; node: [$node], base: [$base], resilient_storage: [$resilient_storage], optional: [$optional]\n");
+		$return_code = 0;
+	}
+	
+	return($return_code);
 }
 
 # This summarizes the install plan and gives the use a chance to tweak it or
@@ -279,8 +489,8 @@ sub summarize_build_plan
 	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2].\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn-link1: [$conf->{conf}{node1}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node1}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node1}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node1}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node1}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node1}{$node1}{set_nic}{'ifn-link2'}]\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn-link1: [$conf->{conf}{node2}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node2}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node2}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node2}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node2}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node2}{$node2}{set_nic}{'ifn-link2'}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}]\n");
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-summary-and-confirm", {
 		form_file			=>	"/cgi-bin/striker",
 		title				=>	"#!string!title_0177!#",
@@ -307,7 +517,8 @@ sub summarize_build_plan
 		pool2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}),
 		partition1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}),
 		partition2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}),
-		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",   
+		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",
+		remap_network_url		=>	"$conf->{'system'}{cgi_string}&remap_network=true",
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
@@ -324,6 +535,7 @@ sub summarize_build_plan
 		node1_os_registered_class	=>	$say_node1_class,
 		node2_os_registered		=>	$say_node2_registered,
 		node2_os_registered_class	=>	$say_node2_class,
+		update_manifest			=>	$conf->{cgi}{update_manifest},
 		rhn_template			=>	$rhn_template,
 	});
 	
@@ -337,7 +549,19 @@ sub configure_network_on_node
 	
 	# Here we're going to write out all the network and udev configuration
 	# details per node.
+	my $udev_ruls         = "";
+	my $ifcfg_bcn_link1   = "";
+	my $ifcfg_bcn_link2   = "";
+	my $ifcfg_bcn_bond1   = "";
+	my $ifcfg_sn_link1    = "";
+	my $ifcfg_sn_link2    = "";
+	my $ifcfg_sn_bond1    = "";
+	my $ifcfg_ifn_link1   = "";
+	my $ifcfg_ifn_link2   = "";
+	my $ifcfg_ifn_bond1   = "";
+	my $ifcfg_ifn_bridge1 = "";
 	
+	#bcn-link1: [00:19:99:9c:9b:9e], bcn-link2: [00:1b:21:81:c3:35], sn-link1: [00:19:99:9c:9b:9f], sn-link2: [a0:36:9f:02:e0:04], ifn-link1: [00:1b:21:81:c3:34], ifn-link2: [a0:36:9f:02:e0:05].
 	
 	
 	print "<pre>\n";
@@ -353,8 +577,10 @@ sub configure_network
 {
 	my ($conf) = @_;
 	
-	my ($node1_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
-	my ($node2_rc) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
+	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
+	my ($node2_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
+	
+	# If this fails, bail out.
 	
 	
 	return(0);
@@ -549,6 +775,7 @@ sub map_network
 		$node2_class   = "highlight_note_bold";
 		$node2_message = "#!string!state_0031!#",
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::remap_network: [$conf->{cgi}{remap_network}]\n");
 	if ($conf->{cgi}{remap_network})
 	{
 		$node1_class        = "highlight_note_bold";
@@ -556,7 +783,7 @@ sub map_network
 		$node2_class        = "highlight_note_bold";
 		$node2_message      = "#!string!state_0032!#",
 		$node1_remap_needed = 1;
-		$node2_remap_needed = 2;
+		$node2_remap_needed = 1;
 	}
 
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
@@ -575,6 +802,7 @@ sub map_network_on_node
 {
 	my ($conf, $node, $password, $remap, $say_node) = @_;
 	
+	$conf->{cgi}{update_manifest} = 0;
 	if ($remap)
 	{
 		my $title = AN::Common::get_string($conf, {key => "title_0174", variables => {
@@ -668,6 +896,7 @@ sub map_network_on_node
 		my $shell_call = "$conf->{path}{'anvil-map-network'} --script --summary";
 		if ($remap)
 		{
+			$conf->{cgi}{update_manifest} = 1;
 			$shell_call = "$conf->{path}{'anvil-map-network'} --script";
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
@@ -1054,7 +1283,8 @@ sub add_an_repo
 	if (not $ok)
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message		=>	"#!string!message_0367!#",
+			message	=>	"#!string!message_0367!#",
+			row	=>	"#!string!state_0021!#",
 		});
 	}
 	
@@ -1208,7 +1438,8 @@ sub verify_internet_access
 	if (not $ok)
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message		=>	"#!string!message_0366!#",
+			message	=>	"#!string!message_0366!#",
+			row	=>	"#!string!state_0021!#",
 		});
 	}
 	
@@ -2012,7 +2243,7 @@ sub check_node_access
 		shell_call	=>	"echo 1",
 	});
 	$conf->{node}{$node}{ssh_fh} = $ssh_fh;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n"); }
 	$access = $return->[0] ? $return->[0] : 0;
  	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], access: [$access]\n");

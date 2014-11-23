@@ -116,7 +116,7 @@
 <!-- start new-anvil-install-warning -->
 	<tr>
 		<td class="highlight_warning_bold">
-			#!string!state_0021!#
+			#!replace!row!#
 		</td>
 		<td colspan="2">
 			<br />
@@ -366,7 +366,7 @@
 						<a href="#!replace!edit_manifest_url!#" class="bold_button">#!string!button_0055!#</a>
 					</td>
 					<td class="td_hidden_white" width="34%">
-						<input type="submit" class="bold_button" name="remap_network" id="remap_network" value="#!string!button_0054!#" />
+						<a href="#!replace!remap_network_url!#" class="bold_button">#!string!button_0054!#</a>
 					</td>
 					<td class="td_hidden_white" width="33%">
 						<input type="submit" class="bold_button" name="perform_install" id="perform_install" value="#!string!button_0053!#" />
@@ -383,6 +383,7 @@
 			<input type="hidden" name="do" value="#!replace!do!#" />
 			<input type="hidden" name="run" value="#!replace!run!#" />
 			<input type="hidden" name="task" value="#!replace!task!#" />
+			<input type="hidden" name="update_manifest" value="#!replace!update_manifest!#" />
 			<br />
 		</td>
 	</tr>
@@ -410,7 +411,7 @@
 			#!string!row_0238!#:
 		</td>
 		<td colspan="2">
-			<input type="text" user="rhn_user" id="rhn_user" value="#!replace!rhn_user!#" style="width: 250px;" />
+			<input type="text" name="rhn_user" id="rhn_user" value="#!replace!rhn_user!#" style="width: 250px;" />
 		</td>
 	</tr>
 	<tr>
@@ -418,7 +419,29 @@
 			#!string!row_0239!#:
 		</td>
 		<td colspan="2">
-			<input type="text" name="rhn_password" id="rhn_password" value="#!replace!rhn_password!#" style="width: 250px;" />
+			<input type="password" name="rhn_password" id="rhn_password" value="#!replace!rhn_password!#" style="width: 250px;" />
 		</td>
 	</tr>
 <!-- end rhn-credential-form -->
+
+<!-- start install-beginning -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0241!#
+		</td>
+		<td class="highlight_note" colspan="2">
+			#!string!explain_0137!#
+		</td>
+	</tr>
+<!-- end install-beginning -->
+
+<!-- start manifest-created -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0240!#
+		</td>
+		<td class="highlight_note" colspan="2">
+			#!replace!message!#
+		</td>
+	</tr>
+<!-- end manifest-created -->
