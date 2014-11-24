@@ -2164,6 +2164,8 @@ sub load_install_manifest
 						#print "Daemon: [$name] -> Start on Boot? [$conf->{install_manifest}{$file}{common}{daemon}{$name}{start_on_boot}]\n";
 					}
 				}
+				### This is currently not used, may not have a
+				### use-case in the future.
 				elsif ($b eq "file")
 				{
 					foreach my $c (@{$a->{$b}})
@@ -2652,40 +2654,6 @@ Striker Version: $conf->{sys}{version}
 			<rule sequence=\"10\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 5900:5999 -j ACCEPT\" />
 			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} --dport 5900:5999 -j ACCEPT\" />
 		</iptables>
-		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
-127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-
-# Anvil! $conf->{cgi}{anvil_sequence}, Node 01
-$conf->{cgi}{anvil_node1_bcn_ip}	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
-$conf->{cgi}{anvil_node1_ipmi_ip}	$node1_short_name.ipmi
-$conf->{cgi}{anvil_node1_sn_ip}	$node1_short_name.sn
-$conf->{cgi}{anvil_node1_ifn_ip}	$node1_short_name.ifn
-
-# Anvil! $conf->{cgi}{anvil_sequence}, Node 02
-$conf->{cgi}{anvil_node2_bcn_ip}	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}
-$conf->{cgi}{anvil_node2_ipmi_ip}	$node2_short_name.ipmi
-$conf->{cgi}{anvil_node2_sn_ip}	$node2_short_name.sn
-$conf->{cgi}{anvil_node2_ifn_ip}	$node2_short_name.ifn
-
-# Network switches
-$conf->{cgi}{anvil_switch1_ip}	$switch1_short_name $conf->{cgi}{anvil_switch1_name}
-$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}
-
-# Switched PDUs
-$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}
-$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}
-
-# UPSes
-$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}
-$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups1_name}
-
-# Striker dashboards
-$conf->{cgi}{anvil_striker1_bcn_ip}	$striker1_short_name.bcn $striker1_short_name $conf->{cgi}{anvil_striker1_name}
-$conf->{cgi}{anvil_striker1_ifn_ip}	$striker1_short_name.ifn
-$conf->{cgi}{anvil_striker2_bcn_ip}	$striker2_short_name.bcn $striker2_short_name $conf->{cgi}{anvil_striker2_name}
-$conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
-		</file>
 	</common>
 </config>
 ";
@@ -2743,11 +2711,6 @@ sub confirm_install_manifest_run
 				$say_storage_pool_2 = (100 - $conf->{cgi}{anvil_storage_pool1_size})." %";
 			}
 			
-			# Grab the hosts file.
-			my $manifest   = $conf->{cgi}{run};
-			my $hosts_file = $conf->{install_manifest}{$manifest}{common}{file}{'/etc/hosts'}{content};
-			   $hosts_file =~ s/\n/<br \/>/g;
-			
 			# If this is the first load, the use the current IP and
 			# password.
 			$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip} if not $conf->{cgi}{anvil_node1_current_ip};;
@@ -2759,7 +2722,6 @@ sub confirm_install_manifest_run
 				form_file			=>	"/cgi-bin/striker",
 				say_storage_pool_1		=>	$say_storage_pool_1,
 				say_storage_pool_2		=>	$say_storage_pool_2,
-				say_hosts_file			=>	$hosts_file,
 				anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 				anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
 				anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
