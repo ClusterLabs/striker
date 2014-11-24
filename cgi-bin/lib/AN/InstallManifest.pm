@@ -193,13 +193,10 @@ sub run_new_install_manifest
 		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 		
 		# Register the nodes with RHN, if needed.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> register_with_rhn()\n");
 		register_with_rhn($conf);
 		
 		# Configure the network
 		configure_network($conf);
-		
-		return(0);
 		
 		# Add the an-repo
 		add_an_repo($conf);
@@ -238,6 +235,22 @@ sub register_with_rhn
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::rhn_user: [$conf->{cgi}{rhn_user}], cgi::rhn_password: [$conf->{cgi}{rhn_password}]\n");
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	# If I am going to register, I should warn the user of the delay.
+	if ((($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet})) ||
+	    (($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet})))
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+			message	=>	"#!string!explain_0138!#",
+		});
+	}
+	
+	# If it's not RHEL, no sense going further.
+	if (($conf->{node}{$node1}{os}{brand} !~ /Red Hat Enterprise Linux Server/) && ($conf->{node}{$node2}{os}{brand} !~ /Red Hat Enterprise Linux Server/))
+	{
+		return(1);
+	}
+	
+	# No credentials? No sense going further...
 	if ((not $conf->{cgi}{rhn_user}) || (not $conf->{cgi}{rhn_password}))
 	{
 		# No sense going further
@@ -250,15 +263,6 @@ sub register_with_rhn
 			return(0);
 		}
 		return(1);
-	}
-	
-	# If I am going to register, I should warn the user of the delay.
-	if ((($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet})) ||
-	    (($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet})))
-	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-			message	=>	"#!string!explain_0138!#",
-		});
 	}
 	
 	my $node1_ok = 1;
@@ -322,13 +326,13 @@ sub register_with_rhn
 	if (not $node1_ok)
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0034";
+		$node1_message = "#!string!state_0034!#";
 		$ok            = 0;
 	}
 	if (not $node2_ok)
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0034";
+		$node2_message = "#!string!state_0034!#";
 		$ok            = 0;
 	}
 
@@ -356,9 +360,6 @@ sub register_node_with_rhn
 {
 	my ($conf, $node, $password, $name) = @_;
 	
-	# Do the actual registration.
-	my $return_code = 1;
-	
 	### TODO: This will fail when there isn't an internet connection! We
 	###       check that, so write an rsync function to move the script
 	###       under docroot and then wget from this machine.
@@ -366,7 +367,7 @@ sub register_node_with_rhn
 	my $base              = 0;
 	my $resilient_storage = 0;
 	my $optional          = 0;
-	my $return_code = 1;
+	my $return_code       = 0;
 	my $shell_call  =  "rhnreg_ks --username \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --force --profilename \"$name\" && ";
 	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-rs-6 && ";
 	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-optional-6 && ";
@@ -401,7 +402,7 @@ sub register_node_with_rhn
 	if ((not $base) || (not $resilient_storage) || ($optional))
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Registration failed; node: [$node], base: [$base], resilient_storage: [$resilient_storage], optional: [$optional]\n");
-		$return_code = 0;
+		$return_code = 1;
 	}
 	
 	return($return_code);
@@ -545,31 +546,427 @@ sub summarize_build_plan
 # This downloads and runs the 'anvil-configure-network' script
 sub configure_network_on_node
 {
-	my ($conf, $node, $password) = @_;
+	my ($conf, $node, $password, $node_number) = @_;
+	
+	# I need to make the node keys.
+	my $return_code       = 1;
+	my $name_key          = "anvil_node".$node_number."_name";
+	my $bcn_ip_key        = "anvil_node".$node_number."_bcn_ip";
+	my $bcn_link1_mac_key = "anvil_node".$node_number."_bcn_link1_mac";
+	my $bcn_link2_mac_key = "anvil_node".$node_number."_bcn_link2_mac";
+	my $sn_ip_key         = "anvil_node".$node_number."_sn_ip";
+	my $sn_link1_mac_key  = "anvil_node".$node_number."_sn_link1_mac";
+	my $sn_link2_mac_key  = "anvil_node".$node_number."_sn_link2_mac";
+	my $ifn_ip_key        = "anvil_node".$node_number."_ifn_ip";
+	my $ifn_link1_mac_key = "anvil_node".$node_number."_ifn_link1_mac";
+	my $ifn_link2_mac_key = "anvil_node".$node_number."_ifn_link2_mac";
 	
 	# Here we're going to write out all the network and udev configuration
 	# details per node.
-	my $udev_ruls         = "";
-	my $ifcfg_bcn_link1   = "";
-	my $ifcfg_bcn_link2   = "";
-	my $ifcfg_bcn_bond1   = "";
-	my $ifcfg_sn_link1    = "";
-	my $ifcfg_sn_link2    = "";
-	my $ifcfg_sn_bond1    = "";
-	my $ifcfg_ifn_link1   = "";
-	my $ifcfg_ifn_link2   = "";
-	my $ifcfg_ifn_bond1   = "";
-	my $ifcfg_ifn_bridge1 = "";
+	#$conf->{path}{nodes}{hostname};
+	my $hostname =  "NETWORKING=yes\n";
+	   $hostname .= "HOSTNAME=$conf->{cgi}{$name_key}";
 	
-	#bcn-link1: [00:19:99:9c:9b:9e], bcn-link2: [00:1b:21:81:c3:35], sn-link1: [00:19:99:9c:9b:9f], sn-link2: [a0:36:9f:02:e0:04], ifn-link1: [00:1b:21:81:c3:34], ifn-link2: [a0:36:9f:02:e0:05].
+	#$conf->{path}{nodes}{udev_net_rules};
+	my $udev_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
+	   $udev_rules .= "# Back-Channel Network, Link 1\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link1_mac_key}\", NAME=\"bcn-link1\"\n\n";
+	   $udev_rules .= "# Back-Channel Network, Link 2\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link2_mac_key}\", NAME=\"bcn-link2\"\n\n";
+	   $udev_rules .= "# Storage Network, Link 1\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link1_mac_key}\", NAME=\"sn-link1\"\n\n";
+	   $udev_rules .= "# Storage Network, Link 2\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link2_mac_key}\", NAME=\"sn-link2\"\n\n";
+	   $udev_rules .= "# Internet-Facing Network, Link 1\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn-link1\"\n\n";
+	   $udev_rules .= "# Internet-Facing Network, Link 2\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn-link2\"\n";
 	
+	### Back-Channel Network
+	#$conf->{path}{nodes}{bcn_link1_config};
+	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
+	   $ifcfg_bcn_link1 .= "DEVICE=\"bcn-link1\"\n";
+	   $ifcfg_bcn_link1 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_bcn_link1 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_bcn_link1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_bcn_link1 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_bcn_link1 .= "MASTER=\"bcn-bond1\"";
 	
-	print "<pre>\n";
+	#$conf->{path}{nodes}{bcn_link2_config};
+	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
+	   $ifcfg_bcn_link2 .= "DEVICE=\"bcn-link2\"\n";
+	   $ifcfg_bcn_link2 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_bcn_link2 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_bcn_link2 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_bcn_link2 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_bcn_link2 .= "MASTER=\"bcn-bond1\"";
 	
+	#$conf->{path}{nodes}{bcn_bond1_config};
+	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
+	   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn-bond1\"\n";
+	   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
+	   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn-link1\"\n";
+	   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{cgi}{$bcn_ip_key}\"\n";
+	   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_bcn_subnet}\"\n";
+	   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
 	
-	print "</pre>\n";
+	### Storage Network
+	#$conf->{path}{nodes}{sn_link1_config};
+	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_sn_link1 .= "# Storage Network - Link 1\n";
+	   $ifcfg_sn_link1 .= "DEVICE=\"sn-link1\"\n";
+	   $ifcfg_sn_link1 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_sn_link1 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_sn_link1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_sn_link1 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_sn_link1 .= "MASTER=\"sn-bond1\"";
 	
-	return(0);
+	#$conf->{path}{nodes}{sn_link2_config};
+	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_sn_link2 .= "# Storage Network - Link 2\n";
+	   $ifcfg_sn_link2 .= "DEVICE=\"sn-link2\"\n";
+	   $ifcfg_sn_link2 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_sn_link2 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_sn_link2 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_sn_link2 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_sn_link2 .= "MASTER=\"sn-bond1\"";
+	
+	#$conf->{path}{nodes}{sn_bond1_config};
+	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_sn_bond1 .= "# Storage Network - Bond 1\n";
+	   $ifcfg_sn_bond1 .= "DEVICE=\"sn-bond1\"\n";
+	   $ifcfg_sn_bond1 .= "BOOTPROTO=\"static\"\n";
+	   $ifcfg_sn_bond1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=sn-link1\"\n";
+	   $ifcfg_sn_bond1 .= "IPADDR=\"$conf->{cgi}{$sn_ip_key}\"\n";
+	   $ifcfg_sn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_sn_subnet}\"\n";
+	   $ifcfg_sn_bond1 .= "DEFROUTE=\"no\"";
+	
+	### Internet-Facing Network
+	#$conf->{path}{nodes}{ifn_link1_config};
+	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
+	   $ifcfg_ifn_link1 .= "DEVICE=\"ifn-link1\"\n";
+	   $ifcfg_ifn_link1 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_ifn_link1 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_ifn_link1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_ifn_link1 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_ifn_link1 .= "MASTER=\"ifn-bond1\"";
+	
+	#$conf->{path}{nodes}{ifn_link2_config};
+	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
+	   $ifcfg_ifn_link2 .= "DEVICE=\"ifn-link2\"\n";
+	   $ifcfg_ifn_link2 .= "NM_CONTROLLED=\"no\"\n";
+	   $ifcfg_ifn_link2 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_ifn_link2 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_ifn_link2 .= "SLAVE=\"yes\"\n";
+	   $ifcfg_ifn_link2 .= "MASTER=\"ifn-bond1\"";
+	
+	#$conf->{path}{nodes}{ifn_bond1_config};
+	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
+	   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn-bond1\"\n";
+	   $ifcfg_ifn_bond1 .= "BRIDGE=\"ifn-bridge1\"\n";
+	   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"none\"\n";
+	   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
+	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn-link1\"";
+	
+	#$conf->{path}{nodes}{ifn_bridge1_config};
+	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	   $ifcfg_ifn_bridge1 .= "# Internet-Facing Network - Bridge 1\n";
+	   $ifcfg_ifn_bridge1 .= "DEVICE=\"ifn-bridge1\"\n";
+	   $ifcfg_ifn_bridge1 .= "TYPE=\"Bridge\"\n";
+	   $ifcfg_ifn_bridge1 .= "BOOTPROTO=\"static\"\n";
+	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
+	   $ifcfg_ifn_bridge1 .= "NETMASK=\"$conf->{cgi}{anvil_ifn_subnet}\"\n";
+	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"$conf->{cgi}{anvil_ifn_gateway}\"\n";
+	   $ifcfg_ifn_bridge1 .= "$conf->{cgi}{anvil_ifn_dns1}\"\n";
+	   $ifcfg_ifn_bridge1 .= "$conf->{cgi}{anvil_ifn_dns2}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
+	
+	### If we bail out between here and the end of this function, the user
+	### may lose access to their machines, so BE CAREFUL! :D
+	# Delete any existing ifcfg-eth* files
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Deleting any existing ifcfg-eth* files on: [$node]\n");
+	my $shell_call = "rm -f $conf->{path}{nodes}{ifcfg_directory}/ifcfg-*";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### Start writing!
+	### Internet-Facing Network
+	# IFN Bridge 1
+	$shell_call =  "cat > $conf->{path}{nodes}{ifn_bridge1_config} << EOF\n";
+	$shell_call .= "$ifcfg_ifn_bridge1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# IFN Bond 1
+	$shell_call =  "cat > $conf->{path}{nodes}{ifn_bond1_config} << EOF\n";
+	$shell_call .= "$ifcfg_ifn_bond1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# IFN Link 1
+	$shell_call =  "cat > $conf->{path}{nodes}{ifn_link1_config} << EOF\n";
+	$shell_call .= "$ifcfg_ifn_link1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# IFN Link 2
+	$shell_call =  "cat > $conf->{path}{nodes}{ifn_link2_config} << EOF\n";
+	$shell_call .= "$ifcfg_ifn_link2\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### Storage Network
+	# SN Bond 1
+	$shell_call =  "cat > $conf->{path}{nodes}{sn_bond1_config} << EOF\n";
+	$shell_call .= "$ifcfg_sn_bond1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# SN Link 1
+	$shell_call =  "cat > $conf->{path}{nodes}{sn_link1_config} << EOF\n";
+	$shell_call .= "$ifcfg_sn_link1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# SN Link 2
+	$shell_call =  "cat > $conf->{path}{nodes}{sn_link2_config} << EOF\n";
+	$shell_call .= "$ifcfg_sn_link2\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### Back-Channel Network
+	# BCN Bond 1
+	$shell_call =  "cat > $conf->{path}{nodes}{bcn_bond1_config} << EOF\n";
+	$shell_call .= "$ifcfg_bcn_bond1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# BCN Link 1
+	$shell_call =  "cat > $conf->{path}{nodes}{bcn_link1_config} << EOF\n";
+	$shell_call .= "$ifcfg_bcn_link1\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# BCN Link 2
+	$shell_call =  "cat > $conf->{path}{nodes}{bcn_link2_config} << EOF\n";
+	$shell_call .= "$ifcfg_bcn_link2\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### Now write the udev rules file.
+	$shell_call = "cat > $conf->{path}{nodes}{udev_net_rules} << EOF\n";
+	$shell_call .= "$udev_rules\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### TODO: When replacing a node, read in the peer's hosts file and
+	###       use that instead of the install manifest contents
+	### TODO: We're not setting the ownership and mode yet!
+	###       Now we need /etc/hosts, which is a little trickier as it's
+	###       not passed as a CGI variable, so we need to grab it's 
+	###       contents directly.
+	my $manifest   = $conf->{cgi}{run};
+	my $hosts_file = $conf->{path}{nodes}{hosts};
+	my $hosts_body = $conf->{install_manifest}{$manifest}{common}{file}{$hosts_file}{content};
+	if ($hosts_body)
+	{
+		$shell_call =  "cat > $conf->{path}{nodes}{hosts} << EOF\n";
+		$shell_call .= "$hosts_body\n";
+		$shell_call .= "EOF";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	}
+	else
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Hosts file content not found! node: [$node], manifest: [$manifest], hosts_file: [$hosts_file]\n");
+	}
+	
+	### and finally, write the hostname file and set the hostname for the
+	### current session.
+	$shell_call =  "cat > $conf->{path}{nodes}{hostname} << EOF\n";
+	$shell_call .= "$hostname\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	$shell_call = "hostname $conf->{cgi}{$name_key}";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	### TODO: Add sanity checks.
+	#Done!
+	$return_code = 1;
+	
+	return($return_code);
 }
 
 # This configures the network.
@@ -577,11 +974,22 @@ sub configure_network
 {
 	my ($conf) = @_;
 	
-	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
-	my ($node2_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
+	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+	my ($node2_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 2, "#!string!device_0006!#");
 	
-	# If this fails, bail out.
-	
+	# The above functions always return '1' at this point.
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0029!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0029!#";
+	my $message       = "";
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0228!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
 	
 	return(0);
 }
@@ -947,7 +1355,7 @@ sub map_network_on_node
 					my $mac = $2;
 					$conf->{conf}{node}{$node}{current_nic}{$nic} = $mac;
 					$nics_seen++;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::current_nics::$nic: [$conf->{conf}{node}{$node}{current_nic}{$nic}].\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::current_nics::$nic: [$conf->{conf}{node}{$node}{current_nic}{$nic}].\n");
 				}
 				else
 				{
@@ -1915,7 +2323,7 @@ sub get_partition_data
 	# Get the details on each disk now.
 	foreach my $disk (@disks)
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
 		my $shell_call = "if [ ! -e /sbin/parted ]; then yum --quiet -y install parted; echo parted installed; fi && parted /dev/$disk unit B print free";
 		if (not $conf->{node}{$node}{internet})
 		{
@@ -2057,7 +2465,7 @@ sub read_cluster_conf
 		last if $line =~ /No such file or directory/;
 	}
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], data: [$data]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], data: [$data]\n");
 	return($data)
 }
 
@@ -2065,7 +2473,7 @@ sub read_cluster_conf
 sub verify_os
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
 	
 	my $ok = 1;
 	my ($node1_major_version, $node1_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -2158,7 +2566,7 @@ sub get_node_os_version
 	{
 		# See if it's been registered already.
 		$conf->{node}{$node}{os}{registered} = 0;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is RHEL proper, checking to see if it has been registered already.\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is RHEL proper, checking to see if it has been registered already.\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -2179,7 +2587,7 @@ sub get_node_os_version
 				}
 			}
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is registered on RHN? [$conf->{node}{$node}{os}{registered}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is registered on RHN? [$conf->{node}{$node}{os}{registered}].\n");
 	}
 	return($major, $minor);
 }
@@ -2243,7 +2651,7 @@ sub check_node_access
 		shell_call	=>	"echo 1",
 	});
 	$conf->{node}{$node}{ssh_fh} = $ssh_fh;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n"); }
 	$access = $return->[0] ? $return->[0] : 0;
  	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], access: [$access]\n");

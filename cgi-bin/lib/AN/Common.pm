@@ -618,6 +618,23 @@ sub initialize_conf
 			log_file		=>	"/var/log/striker.log",
 			config_file		=>	"/etc/striker/striker.conf",	# TODO: Why is this here?!
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
+			# These are files on nodes, not on the dashboard machin itself.
+			nodes			=>	{
+				hostname		=>	"/etc/sysconfig/network",
+				hosts			=>	"/etc/hosts",
+				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",
+				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link1",
+				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link2",
+				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",
+				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bond1",
+				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bridge1",
+				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link1",
+				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
+				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
+				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
+				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
+				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+			},
 		},
 		args			=>	{
 			check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",

@@ -48,6 +48,8 @@ my $conf = {
 	},
 	path		=>	{
 		backups			=>	"/root/anvil",
+		hostname		=>	"/etc/sysconfig/network",
+		hosts			=>	"/etc/hosts",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 	},
@@ -78,14 +80,16 @@ if (check_switches($conf))
 # Make sure we've got the right paths to executables.
 find_executables($conf);
 
+# Make backups. Even if we're just doing a summary, the main InstallManifest
+# module expects the backups to exist already.
+backup_original_files($conf);
+
+# If it's just a request for a summary, print what we see and exit.
 if ($conf->{switches}{summary})
 {
 	print_summary($conf);
 	exit(0);
 }
-
-# Make backups, of course.
-backup_original_files($conf);
 
 # Make sure all NICs are up. If any aren't, start them.
 start_all_nics($conf);
@@ -483,6 +487,58 @@ sub backup_original_files
 				print "- Doesn't exist, skipping.\n" if $conf->{debug};
 			}
 		}
+	}
+	
+	# This is where we set the hostname.
+	if ($conf->{script})
+	{
+		print "#!string!script_0012!#,,file=$conf->{path}{hostname}\n" if $conf->{debug};
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{hostname}]\n" if $conf->{debug};
+	}
+	if (-e "$conf->{path}{backups}/network")
+	{
+		if ($conf->{script})
+		{
+			print "#!string!script_0013!#\n" if $conf->{debug};
+		}
+		else
+		{
+			print "- Previous backup exists, skipping.\n" if $conf->{debug};
+		}
+	}
+	else
+	{
+		# Backup 'network'.
+		backup_file($conf, $conf->{path}{hostname});
+	}
+	
+	# This is where we set the hosts file.
+	if ($conf->{script})
+	{
+		print "#!string!script_0012!#,,file=$conf->{path}{hosts}\n" if $conf->{debug};
+	}
+	else
+	{
+		print "- Backing up: [$conf->{path}{hosts}]\n" if $conf->{debug};
+	}
+	if (-e "$conf->{path}{backups}/hosts")
+	{
+		if ($conf->{script})
+		{
+			print "#!string!script_0013!#\n" if $conf->{debug};
+		}
+		else
+		{
+			print "- Previous backup exists, skipping.\n" if $conf->{debug};
+		}
+	}
+	else
+	{
+		# Backup 'hosts'.
+		backup_file($conf, $conf->{path}{hosts});
 	}
 	
 	# Backup the '/etc/sysconfig/network-scripts' directory.

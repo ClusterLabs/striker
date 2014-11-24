@@ -2653,6 +2653,9 @@ Striker Version: $conf->{sys}{version}
 			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} --dport 5900:5999 -j ACCEPT\" />
 		</iptables>
 		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
 # Anvil! $conf->{cgi}{anvil_sequence}, Node 01
 $conf->{cgi}{anvil_node1_bcn_ip}	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
 $conf->{cgi}{anvil_node1_ipmi_ip}	$node1_short_name.ipmi
@@ -4021,7 +4024,7 @@ sub is_string_ipv4
 sub configure_dashboard
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
@@ -4938,7 +4941,7 @@ sub get_cgi_vars
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
 	
-	AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
+	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	
 	return (0);
 }
@@ -6381,7 +6384,7 @@ sub remote_call
 	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($node, $port, Timeout => 10))
 		{
