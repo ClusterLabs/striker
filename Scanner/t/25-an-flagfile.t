@@ -108,7 +108,7 @@ sub test_touch_pid_file {
 sub test_delete_pid_file {
     my $ff = shift;
 
-    my $num = $ff->delete_pid_file('pidfile');
+    my $num = $ff->delete_pid_file();
 
     is( $num, 1, 'deleted one file');
     ok( ! -e ($ff->full_file_path('pidfile')), 'pid file deleted' );
@@ -132,7 +132,16 @@ sub test_delete_marker_file {
     ok( ! -e $ff->full_file_path( 'some_marker'), 'pid file deleted' );
 }
 
+sub test_read_pid_file {
+    my $ff = shift;
 
+    my $fileinfo = $ff->read_pid_file();
+    ok( scalar keys %$fileinfo, 'read_pid_file returned a hash');
+
+    is( $fileinfo->{status}, 'file status ok', 'pid file contents status ok');
+    ok( $fileinfo->{age} <= 0, 'pid file is recent');
+    is_deeply( $fileinfo->{data}, $ff->data, 'pif file contents are correct');
+}
 # ----------------------------------------------------------------------
 # main
 #
@@ -144,6 +153,7 @@ sub main {
     test_accessors( $ff, $args );
 
     test_create_pid_file($ff);
+    test_read_pid_file($ff);
     test_touch_pid_file($ff) if @ARGV;
     test_delete_pid_file($ff);
 
@@ -158,6 +168,29 @@ It sleeps 60 seconds so you don't want to run it, most of the time.
 main();
 
 done_testing();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ----------------------------------------------------------------------
 # End of file.

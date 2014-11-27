@@ -10,7 +10,6 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
-use File::Basename;
 
 use Const::Fast;
 
@@ -22,15 +21,19 @@ const my @ATTRIBUTES => (qw( pidfile dir data ));
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA    => q{,};
-const my $DOT      => q{.};
-const my $DOTSLASH => q{./};
-const my $PROG     => ( fileparse($PROGRAM_NAME) )[0];
-const my $SLASH    => q{/};
+const my $COMMA        => q{,};
+const my $DOT          => q{.};
+const my $DOTSLASH     => q{./};
+const my $SLASH        => q{/};
+const my $EMPTY_STRING => q{};
+
+const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
 
 const my $PIDFILE_TAG => 'pidfile';
 
-## use critic ( ProhibitMagicNumbers )
+const my $NO_SUCH_FILE   => 'no such file';
+const my $FILE_STATUS_OK => 'file status ok';
+
 # ======================================================================
 # Subroutines
 #
@@ -103,25 +106,26 @@ sub full_file_path {
     return $filename;
 }
 
-sub create_file {
+sub _create_file {
     my $self = shift;
     my ($args) = @_;
 
-    my $filename = $self->full_file_path( $args->{tag} || '' );
+    my $filename = $self->full_file_path( $args->{tag} || $EMPTY_STRING );
 
     open my $pidfile, '>', $filename
-        or die "Could not create pidfile '$filename', $!";
-    print $pidfile $args->{data}
+        or die "Could not create pidfile '$filename', $OS_ERROR";
+    print {$pidfile} $args->{data}
         if $args->{data};
     close $pidfile
-        or die "Could not close pidfile '$filename', $!";
+        or die "Could not close pidfile '$filename', $OS_ERROR";
     return;
 }
 
 sub create_pid_file {
     my $self = shift;
 
-    $self->create_file( { data => $self->data, tag => $PIDFILE_TAG } );
+    $self->_create_file( { data => $self->data, tag => $PIDFILE_TAG } );
+    return;
 }
 
 # utime() sets the atime and mtime of a file to the specified times;
@@ -147,7 +151,8 @@ sub create_marker_file {
     my $self = shift;
     my ($tag) = @_;
 
-    $self->create_file( { tag => $tag } );
+    $self->_create_file( { tag => $tag } );
+    return;
 }
 
 # Returns true on success, false on 'could not delete';
@@ -160,17 +165,40 @@ sub delete_marker_file {
     return unlink $self->full_file_path($tag);
 }
 
+sub read_pid_file {
+    my $self = shift;
+
+    my $filename = $self->full_file_path($PIDFILE_TAG);
+    my $retval   = {};
+
+    $retval->{status} = (
+        -e $filename
+        ? $FILE_STATUS_OK
+        : $NO_SUCH_FILE
+    );
+    $retval->{age} = $SECONDS_IN_A_DAY * -M $filename;
+    
+    open my $pidfile, '<', $filename
+	or die "Could not create pidfile '$filename', $OS_ERROR";
+    $retval->{data} = join '', <$pidfile>;
+    close $pidfile;
+
+    return $retval;
+}
+
 # ----------------------------------------------------------------------
 # end of code
 1;
 __END__
 
+
+
 # ======================================================================
-# POD
+=pod
 
 =head1 NAME
 
-    AN::FlagFile - use files to identify running processes, critical events;
+    AN::FlagFile - use files to report running processes, critical events;
 
 =head1 VERSION
 
@@ -182,9 +210,19 @@ This document describes AN::FlagFile.pm version 0.0.1
     use AN::FlagFile;
 
     my $flagfile = AN::FlagFile->new({ dir      => $dir,
-                                       hostname => $hostname,
-                                       pid      => $PID
+                                       pidfile  => $filename,
+                                       data     => $data_to_store_in_pidfile,
                                      });
+
+    $flagfile->full_file_path();
+
+    $flagfile->create_pid_file();
+    $flagfile->touch_pid_file();
+    $flagfile->read_pid_file();
+    $flagfile->delete_pid_file();
+
+    $flagfile->create_marker_file();
+    $flagfile->delete_marker_file();
 
 
 =head1 DESCRIPTION
@@ -210,21 +248,62 @@ value pairs. The key list must include :
 
 The directory that is to contain the files.
 
-=item B<hostname>
+=item B<pidfile>
 
-The hostname on which the process is running
+The common component of all files created. This component is prefixed
+by 'pidfile.' or by some other user-specified tag, again with a dot
+joining it to the common component.
 
-=item B<pid>
+=item B<data>
 
-The process ID.
+The data to store in the pidfile.
 
 =back
+
+=item B<full_file_path [$tag]>
+
+Generate the full file name and path for a file, including prefixing
+the filename with the specified tag.
+
+=item B<create_pid_file>
+
+Create the file specified by full_file_path( $PIDFILE_TAG ) and
+populate it with the data passed to the constructor.
+
+=item B<touch_pid_file>
+
+Modify the mtime and atime values for the pidfile, to demonstrate the
+program is running currently.
+
+=item B<read_pid_file>
+
+Verify the file exists, and report its mtime and contents. Essential
+for cross-peer communication.
+
+=item B<delete_pid_file>
+
+Delete the file to indicate a clean shutdown.
+
+=item B<create_marker_file>
+
+Similar to creating a pidfile, except with an alternate marker
+tag. Intended for cross-peer communication.
+
+=item B<delete_marker_file>
+
+Delete the specified marker file.
 
 =back
 
 =head1 DEPENDENCIES
 
 =over 4
+
+=item B<Perl 5.10>
+
+Versions prior to Perl 5.10 are not supported. In particular, the
+'say' and 'state' features are utilized. Anything before 5.10 belongs
+in a museum, anyway.
 
 =item B<English> I<core>
 
@@ -236,9 +315,13 @@ Parses version strings.
 
 =item B<Carp> I<core since perl 5>
 
-Complain about user errors as if they occur at call point, not in the module.
+Complain about user errors as if they occur in caller, rather than in
+the module.
 
 =item B<Const::Fast>
+
+Store magic values. More powerful than the module B<constant>, much
+faster than B<Readonly>.
 
 =back
 
@@ -279,21 +362,23 @@ There are no current incompatabilities.
 
 =end unused
 
+=head1 TODO
+
+=over 4
+
+=item Allow data in marker files.
+
+=item Merge pid file and marker file implementation.
+
+=back
+
 =head1 AUTHOR
 
 Alteeve's Niche!  -  https://alteeve.ca
 
 Tom Legrady       -  tom@alteeve.ca	November 2014
 
- =cut
+=cut
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-230:	final indentation level: 1
-
-Final nesting depth of '{'s is 1
-The most recent un-matched '{' is on line 49
-49: sub _init {
-              ^
-230:	To save a full .LOG file rerun with -g
