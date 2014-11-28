@@ -14,9 +14,34 @@ use Carp;
 use Const::Fast;
 
 # ======================================================================
-# Attribures
+# Object attributes.
 #
 const my @ATTRIBUTES => (qw( pidfile dir data ));
+
+# Create an accessor routine for each attribute. The creation of the
+# accessor is simply magic, no need to understand.
+#
+# 1 - Without 'no strict refs', perl would complain about modifying
+# namespace.
+#
+# 2 - Update the namespace for this module by creating a subroutine
+# with the name of the attribute.
+#
+# 3 - 'set attribute' functionality: When the accessor is called,
+# extract the 'self' object. If there is an additional argument - the
+# accessor was invoked as $obj->attr($value) - then assign the
+# argument to the object attribute.
+#
+# 4 - 'get attribute' functionality: Return the value of the attribute.
+#
+for my $attr (@ATTRIBUTES) {
+    no strict 'refs';    # Only within this loop, allow creating subs
+    *{ __PACKAGE__ . '::' . $attr } = sub {
+        my $self = shift;
+        if (@_) { $self->{$attr} = shift; }
+        return $self->{$attr};
+        }
+}
 
 # ======================================================================
 # CONSTANTS
@@ -31,8 +56,9 @@ const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
 
 const my $PIDFILE_TAG => 'pidfile';
 
-const my $NO_SUCH_FILE   => 'no such file';
-const my $FILE_STATUS_OK => 'file status ok';
+const my $NO_SUCH_FILE      => 'no such file';
+const my $FILE_NOT_READABLE => 'FILE not readable';
+const my $FILE_STATUS_OK    => 'file status ok';
 
 # ======================================================================
 # Subroutines
@@ -71,32 +97,12 @@ sub _init {
 }
 
 # ......................................................................
-# accessor
-#
-for my $attr (@ATTRIBUTES) {
-    eval " 
-        sub $attr {
-            my \$self = shift;
-	    if ( \@_ ) {\$self->{$attr} = shift;}
-	    return \$self->{$attr};
-	}";
-}
-
-# ......................................................................
-# Private Accessors
-#
-
-# ......................................................................
-# Private Methods
-#
-
-# ......................................................................
 # Methods
 #
 # Merge path and filename into a full path.
 # If a 'marker file' tag has been provided, prefix it to the name,
 # otherwise use the string specified in $PIDFILE_TAG as the tag;
-
+#
 sub full_file_path {
     my $self = shift;
     my ($tag) = @_;
@@ -106,6 +112,10 @@ sub full_file_path {
     return $filename;
 }
 
+# ......................................................................
+# Create a file using the object's path and filename with specified tag,
+# and write out specified data.
+#
 sub _create_file {
     my $self = shift;
     my ($args) = @_;
@@ -121,6 +131,9 @@ sub _create_file {
     return;
 }
 
+# ......................................................................
+# Create a pid file and write out data.
+#
 sub create_pid_file {
     my $self = shift;
 
@@ -128,25 +141,9 @@ sub create_pid_file {
     return;
 }
 
-# utime() sets the atime and mtime of a file to the specified times;
-# using undef times uses the value of now.
+# ......................................................................
+# create a non-pid file, using argument to specify tag.
 #
-sub touch_pid_file {
-    my $self = shift;
-
-    utime undef, undef, $self->full_file_path($PIDFILE_TAG);
-    return;
-}
-
-# Returns true on success, false on 'could not delete';
-# Does not check for file existence, but will return false.
-#
-sub delete_pid_file {
-    my $self = shift;
-
-    return unlink $self->full_file_path($PIDFILE_TAG);
-}
-
 sub create_marker_file {
     my $self = shift;
     my ($tag) = @_;
@@ -155,8 +152,36 @@ sub create_marker_file {
     return;
 }
 
-# Returns true on success, false on 'could not delete';
-# Does not check for file existence, but will return false.
+# ......................................................................
+# Update atime and mtime of the pid file.
+#
+# utime() sets the atime and mtime of a file to the specified times;
+# Using undef arguments uses the current timestamp value.
+#
+sub touch_pid_file {
+    my $self = shift;
+
+    utime undef, undef, $self->full_file_path($PIDFILE_TAG);
+    return;
+}
+
+# ......................................................................
+# Delete the pid file.
+#
+# Returns true on success, false on 'could not delete'; Does not check
+# for file existence, but will return false if file did not exist.
+#
+sub delete_pid_file {
+    my $self = shift;
+
+    return unlink $self->full_file_path($PIDFILE_TAG);
+}
+
+# ......................................................................
+# Delete non-pid file
+#
+# Returns true on success, false on 'could not delete'; Does not check
+# for file existence, but will return false if file did not exist.
 #
 sub delete_marker_file {
     my $self = shift;
@@ -165,21 +190,30 @@ sub delete_marker_file {
     return unlink $self->full_file_path($tag);
 }
 
+# ......................................................................
+# Check for existence of the pid file. Return a hashref with fields:
+#
+# status - FILE_STATUS_OK if file exists and is readable
+#        - FILE_NOT_READABLE if file exists but not readable.
+#        - NO_SUCH_FILE if file does not exist.
+#
+# age    - age of the file in seconds.
+#
+# data   - the contents of the file.
+#
 sub read_pid_file {
     my $self = shift;
 
     my $filename = $self->full_file_path($PIDFILE_TAG);
     my $retval   = {};
 
-    $retval->{status} = (
-        -e $filename
-        ? $FILE_STATUS_OK
-        : $NO_SUCH_FILE
-    );
+    $retval->{status} = (   !-e $filename ? $NO_SUCH_FILE
+                          : !-r $filename ? $FILE_NOT_READABLE
+                          :                 $FILE_STATUS_OK );
     $retval->{age} = $SECONDS_IN_A_DAY * -M $filename;
-    
+
     open my $pidfile, '<', $filename
-	or die "Could not create pidfile '$filename', $OS_ERROR";
+        or die "Could not create pidfile '$filename', $OS_ERROR";
     $retval->{data} = join '', <$pidfile>;
     close $pidfile;
 
