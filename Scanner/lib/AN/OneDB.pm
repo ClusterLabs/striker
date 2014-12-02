@@ -19,8 +19,7 @@ use Const::Fast;
 # ======================================================================
 # Object attributes.
 #
-const my @ATTRIBUTES => (
-    qw( dbh path dbini sth node_table_id) );
+const my @ATTRIBUTES => (qw( dbh path dbini sth node_table_id));
 
 # Create an accessor routine for each attribute. The creation of the
 # accessor is simply magic, no need to understand.
@@ -53,13 +52,11 @@ for my $attr (@ATTRIBUTES) {
 const my $COMMA    => q{,};
 const my $DOTSLASH => q{./};
 
-const my $DB_NAME         => 'Pg';
-const my %DB_CONNECT_ARGS => (
-    AutoCommit         => 0,
-    RaiseError         => 1,
-    PrintError         => 0,
-    dbi_connect_method => undef
-);
+const my $DB_NAME => 'Pg';
+const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
+                               RaiseError         => 1,
+                               PrintError         => 0,
+                               dbi_connect_method => undef );
 
 const my $DSN_SHORT_FMT       => 'dbi:Pg:dbname=%s';
 const my $DSN_FMT             => 'dbi:Pg:dbname=%s:host=%s:port=%s';
@@ -140,7 +137,7 @@ sub _init {
     elsif ( 'HASH' eq ref $args[0] ) {
         @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
     }
-    $self->sth({});		# init hash
+    $self->sth( {} );    # init hash
     $self->connect_dbs();
     $self->_register_start();
 
@@ -156,7 +153,7 @@ sub DESTROY {
 
 sub get_sth {
     my $self = shift;
-    my ( $key ) = @_;
+    my ($key) = @_;
 
     return $self->sth->{$key} || undef;
 }
@@ -171,19 +168,20 @@ sub set_sth {
 
 sub _log_new_process {
     my $self = shift;
-    my ( @args ) = @_;
+    my (@args) = @_;
 
     my $sql = $SQL{New_Process};
-    my ( $sth, $id ) = ( $self->get_sth( $sql ));
+    my ( $sth, $id ) = ( $self->get_sth($sql) );
 
-    if ( ! $sth ) {
-	$sth = $self->set_sth( $sql, $self->dbh->prepare( $sql ));
+    if ( !$sth ) {
+        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
     }
-    my $rows = $sth->execute( @args );
+    my $rows = $sth->execute(@args);
 
     if ( 0 < $rows ) {
         $self->dbh->commit();
-        $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE, undef );
+        $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+                                          undef );
     }
     else {
         $self->dbh->rollback;
@@ -195,10 +193,10 @@ sub _halt_process {
     my $self = shift;
 
     my $sql = $SQL{Halt_Process};
-    my ( $sth ) = $self->get_sth( $sql );
+    my ($sth) = $self->get_sth($sql);
 
-    if ( ! $sth ) {
-	$sth = $self->set_sth( $sql, $self->dbh->prepare( $sql ));
+    if ( !$sth ) {
+        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
     }
     my $rows = $sth->execute( $self->node_table_id );
 
@@ -215,10 +213,10 @@ sub _start_process {
     my $self = shift;
 
     my $sql = $SQL{Start_Process};
-    my ( $sth ) = $self->get_sth( $sql );
+    my ($sth) = $self->get_sth($sql);
 
-    if ( ! $sth ) {
-	$sth = $self->set_sth( $sql, $self->dbh()->prepare( $sql ));
+    if ( !$sth ) {
+        $sth = $self->set_sth( $sql, $self->dbh()->prepare($sql) );
     }
     my $rows = $sth->execute( $self->node_table_id );
 
@@ -238,8 +236,9 @@ sub _start_process {
 sub connect_dbs {
     my $self = shift;
 
-    $self->dbh( _connect_db( $self->dbini ));
+    $self->dbh( _connect_db( $self->dbini ) );
 }
+
 # ......................................................................
 # Private Methods
 #
@@ -251,10 +250,11 @@ sub _connect_db {
                 : sprintf( $DSN_FMT,       @{$args}{qw(name host port)} ) );
     my %args = %DB_CONNECT_ARGS;    # need copy to avoid readonly error.
 
-    my $dbh = DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args )
+    my $dbh
+        = DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args )
         || die( sprintf( "Could not connect to DB %s on host %s: %s\n",
                          $args->db_name, $args->{host}, $DBI::errstr
-		) );
+                       ) );
 
     return $dbh;
 }
@@ -264,9 +264,9 @@ sub _register_start {
 
     my $hostname = AN::Unix::hostname '-short';
 
-    $self->node_table_id($self->_log_new_process( $PROG, $hostname,
-						  $PROC_STATUS_NEW ));
-    $self->_start_process( );
+    $self->node_table_id(
+                $self->_log_new_process( $PROG, $hostname, $PROC_STATUS_NEW ) );
+    $self->_start_process();
 }
 
 # ......................................................................
