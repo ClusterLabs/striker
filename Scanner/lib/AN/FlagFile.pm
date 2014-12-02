@@ -16,7 +16,7 @@ use Const::Fast;
 # ======================================================================
 # Object attributes.
 #
-const my @ATTRIBUTES => (qw( pidfile dir data ));
+const my @ATTRIBUTES => (qw( pidfile dir data old_files));
 
 # Create an accessor routine for each attribute. The creation of the
 # accessor is simply magic, no need to understand.
@@ -54,11 +54,13 @@ const my $EMPTY_STRING => q{};
 
 const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
 
-const my $PIDFILE_TAG => 'pidfile';
-
 const my $NO_SUCH_FILE      => 'no such file';
-const my $FILE_NOT_READABLE => 'FILE not readable';
+const my $FILE_NOT_READABLE => 'file not readable';
 const my $FILE_STATUS_OK    => 'file status ok';
+
+my %TAG = ( PIDFILE   => 'pidfile',
+	    MIGRATING => 'migrating',
+	    CRISIS    => 'crisis' );
 
 # ======================================================================
 # Subroutines
@@ -81,6 +83,9 @@ sub new {
 sub _init {
     my ( $self, @args ) = @_;
 
+    $self->old_files({});	# default vale is empty hash.
+    $self->data( default_data() );
+
     if ( scalar @args > 1 ) {
         for my $i ( 0 .. $#args ) {
             my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
@@ -96,12 +101,19 @@ sub _init {
     return;
 }
 
+sub default_data {
+    my $now = time;
+    return <<"EODATA";
+pid:$PID
+starttime:$now
+EODATA
+}
+
 # ......................................................................
 # Methods
 #
-# Merge path and filename into a full path.
-# If a 'marker file' tag has been provided, prefix it to the name,
-# otherwise use the string specified in $PIDFILE_TAG as the tag;
+# Merge path, and the specified prefix tag and filename into a full
+# path.
 #
 sub full_file_path {
     my $self = shift;
@@ -120,7 +132,7 @@ sub _create_file {
     my $self = shift;
     my ($args) = @_;
 
-    my $filename = $self->full_file_path( $args->{tag} || $EMPTY_STRING );
+    my $filename = $self->full_file_path( $args->{tag} );
 
     open my $pidfile, '>', $filename
         or die "Could not create pidfile '$filename', $OS_ERROR";
@@ -132,12 +144,63 @@ sub _create_file {
 }
 
 # ......................................................................
+# Report all available tags, or the test for a single tag.
+#
+# Can be invoked as $obj->get_tag($tag) ( with args $self and $tag )
+# or as AN::FlagFile->get_tag($tag) (with arg $tag). Also accept
+# AN::FlagFile->get_tag() as shorthand for AN::FlagFile::get_tag(*NAMES*)
+#
+sub get_tag {
+    my ($key) = shift;
+    $key = shift if ref $key eq __PACKAGE__;
+    $key ||= '*NAMES*';
+
+    if ( $key eq '*NAMES*' ) {
+        return [ sort keys %TAG ];
+    }
+    elsif ( exists $TAG{$key} ) {
+        return $TAG{$key};
+    }
+    else {
+        return;
+    }
+}
+
+sub add_tag {
+    shift if @_ && scalar @_ && ref $_[0] eq __PACKAGE__;
+
+    croak( __PACKAGE__ . "::add_tag() requires 2 args, key & value." )
+	unless 2 == scalar @_;
+    my ( $tag, $value ) = @_;
+    
+    $TAG{$tag} = $value;
+    return;
+}
+sub find_marker_files {
+    my $self = shift;
+    my (@markers) = @_;
+
+    if ( ! scalar @markers ) {
+	push @markers, AN::FlagFile::get_tag($_)
+	    for @{AN::FlagFile::get_tag()};
+    }
+
+    my $found = {};
+    for my $tag (@markers) {
+        my $filename = $self->full_file_path($tag);
+        $found->{$tag} = $filename if -e $filename;
+    }
+    return unless scalar keys %$found;
+    return $found;
+}
+
+# ......................................................................
 # Create a pid file and write out data.
 #
 sub create_pid_file {
     my $self = shift;
 
-    $self->_create_file( { data => $self->data, tag => $PIDFILE_TAG } );
+    $self->_create_file( { data => $self->data, tag => $TAG{PIDFILE} } );
     return;
 }
 
@@ -161,7 +224,7 @@ sub create_marker_file {
 sub touch_pid_file {
     my $self = shift;
 
-    utime undef, undef, $self->full_file_path($PIDFILE_TAG);
+    utime undef, undef, $self->full_file_path( $TAG{PIDFILE} );
     return;
 }
 
@@ -174,7 +237,7 @@ sub touch_pid_file {
 sub delete_pid_file {
     my $self = shift;
 
-    return unlink $self->full_file_path($PIDFILE_TAG);
+    return unlink $self->full_file_path( $TAG{PIDFILE} );
 }
 
 # ......................................................................
@@ -204,20 +267,82 @@ sub delete_marker_file {
 sub read_pid_file {
     my $self = shift;
 
-    my $filename = $self->full_file_path($PIDFILE_TAG);
+    local $INPUT_RECORD_SEPARATOR; # enable SLURP reading
+
+    my $filename = $self->full_file_path( $TAG{PIDFILE} );
     my $retval   = {};
 
     $retval->{status} = (   !-e $filename ? $NO_SUCH_FILE
                           : !-r $filename ? $FILE_NOT_READABLE
                           :                 $FILE_STATUS_OK );
+
+    # stop here if no file
+    #
+    return $retval if $retval->{status} eq $NO_SUCH_FILE;
+
     $retval->{age} = $SECONDS_IN_A_DAY * -M $filename;
+
+    # stop here if file not readable
+    #
+    return $retval if $retval->{status} eq $FILE_NOT_READABLE;
 
     open my $pidfile, '<', $filename
         or die "Could not create pidfile '$filename', $OS_ERROR";
-    $retval->{data} = join '', <$pidfile>;
+    $retval->{data} = <$pidfile>; # slurp
     close $pidfile;
 
     return $retval;
+}
+
+# ......................................................................
+# Determine whether pid file exists.
+#
+# A status of NO_SUCH_FILE leads to return value of false,
+# otherwise the pid file does exist.
+#
+sub old_pid_file_exists {
+    my $self = shift;
+    my ( $refresh) = @_;
+
+    if ( $refresh 
+	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
+	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    }
+    return $self->old_files()->{$TAG{PIDFILE}}{status} ne $NO_SUCH_FILE;
+}
+
+# ......................................................................
+# When was the pid file last refreshed?
+#
+# Only makes sense if invoked when a file does exist. If no 'age' key
+# is found in the hash, undef is returned.
+#
+sub old_pid_file_age {
+    my $self = shift;
+    my ( $refresh) = @_;
+
+    if ( $refresh 
+	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
+	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    }
+    return $self->old_files()->{$TAG{PIDFILE}}{age} || undef;
+}
+
+# ......................................................................
+# What are the contents of the old pid file?
+#
+# Only makes sense if invoked when a file does exist. If no 'data' key
+# is found in the hash, undef is returned.
+#
+sub old_pid_file_data {
+    my $self = shift;
+    my ( $refresh) = @_;
+
+    if ( $refresh 
+	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
+	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    }
+    return $self->old_files()->{$TAG{PIDFILE}}{data} || undef;
 }
 
 # ----------------------------------------------------------------------
@@ -301,7 +426,7 @@ the filename with the specified tag.
 
 =item B<create_pid_file>
 
-Create the file specified by full_file_path( $PIDFILE_TAG ) and
+Create the file specified by full_file_path( $TAG{PIDFILE} ) and
 populate it with the data passed to the constructor.
 
 =item B<touch_pid_file>
