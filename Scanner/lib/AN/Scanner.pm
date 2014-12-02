@@ -3,7 +3,7 @@ package AN::Scanner;
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 use version;
 our $VERSION = '0.0.1';
@@ -14,33 +14,59 @@ use Carp;
 use File::Basename;
 use FileHandle;
 use IO::Select;
-
+use Time::Local;
 use FindBin qw($Bin);
 
 use Const::Fast;
 use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
+use AN::FlagFile;
+use AN::Unix;
+use AN::DBS;
 
-## no critic ( ControlStructures::ProhibitPostfixControls )
-## no critic ( ProhibitMagicNumbers )
+# ======================================================================
+# Object attributes.
+#
+const my @ATTRIBUTES => (
+    qw( agentdir duration dbini
+        db_name port rate verbose
+        monitoragent flagfile _agents
+        dbhs max_loops_unrefreshed
+        run_until
+        ) );
+
+# Create an accessor routine for each attribute. The creation of the
+# accessor is simply magic, no need to understand.
+#
+# 1 - Without 'no strict refs', perl would complain about modifying
+# namespace.
+#
+# 2 - Update the namespace for this module by creating a subroutine
+# with the name of the attribute.
+#
+# 3 - 'set attribute' functionality: When the accessor is called,
+# extract the 'self' object. If there is an additional argument - the
+# accessor was invoked as $obj->attr($value) - then assign the
+# argument to the object attribute.
+#
+# 4 - 'get attribute' functionality: Return the value of the attribute.
+#
+for my $attr (@ATTRIBUTES) {
+    no strict 'refs';    # Only within this loop, allow creating subs
+    *{ __PACKAGE__ . '::' . $attr } = sub {
+        my $self = shift;
+        if (@_) { $self->{$attr} = shift; }
+        return $self->{$attr};
+        }
+}
+
 # ======================================================================
 # CONSTANTS
 #
 const my $COMMA    => q{,};
 const my $DOTSLASH => q{./};
-
-const my $DB_NAME         => 'Pg';
-const my %DB_CONNECT_ARGS => (
-    AutoCommit         => 0,
-    RaiseError         => 1,
-    PrintError         => 0,
-);
-
-const my $DSN_SHORT_FMT       => 'dbi:Pg:dbname=%s';
-const my $DSN_FMT             => 'dbi:Pg:dbname=%s:host=%s:port=%s';
-const my $DATASOURCES_ARG_FMT => 'port=%s;host=%s';
-const my $DEFAULT_PW          => 'alteeve';
+const my $COLON    => q{:};
 
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 const my $READ_PROC  => q{-|};
@@ -54,39 +80,19 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
-# ----------------------------------------------------------------------
-# SQL
-#
-const my %SQL => (
-    New_Process => <<"EOSQL",
+const my $MAX_LOOPS_UNREFRESHED => 10;
+const my $HOURS_IN_A_DAY        => 24;
+const my $MINUTES_IN_AN_HOUR    => 60;
+const my $SECONDS_IN_AN_MINUTE  => 60;
+const my $SECONDS_IN_A_DAY =>
+    ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_AN_MINUTE );
 
-INSERT INTO node
-( node_name, node_description, modified_user )
-values
-( ?, ?, $< )
+const my $RUN                      => 'run';
+const my $EXIT_OK                  => 'ok to exit';
+const my $OLD_PROCESS_RECENT_CRASH => 'old process crashed recently';
+const my $OLD_PROCESS_STALLED      => 'old process stalled';
+const my $OLD_PROCESS_CRASH        => 'old process crash';
 
-EOSQL
-
-    Start_Process => <<"EOSQL",
-
-UPDATE processes
-SET    status    = '$PROC_STATUS_RUNNING',
-       starttime = now()
-WHERE  id = ?
-
-EOSQL
-
-    Halt_Process => <<"EOSQL",
-
-UPDATE processes
-SET    status  = '$PROC_STATUS_HALTED',
-       stoptime = now()
-WHERE  id = ?
-
-EOSQL
-);
-
-## use critic ( ProhibitMagicNumbers )
 # ======================================================================
 # Subroutines
 #
@@ -107,7 +113,11 @@ sub new {
 #
 sub _init {
     my $self = shift;
-    my ( @args ) = @_;
+    my (@args) = @_;
+
+    # default value;
+    $self->max_loops_unrefreshed($MAX_LOOPS_UNREFRESHED);
+    $self->_agents( [] );
 
     if ( scalar @args > 1 ) {
         for my $i ( 0 .. $#args ) {
@@ -119,22 +129,21 @@ sub _init {
         @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
     }
     croak(q{Missing Scanner constructor arg 'agentdir'.})
-      unless $self->agentdir();
+        unless $self->agentdir();
     croak(q{Missing Scanner constructor arg 'rate'.})
-      unless $self->rate();
+        unless $self->rate();
 
-    $self->connect_dbs();    
-    $self->_register_start();
+    $self->dbhs( [] );
+    $self->monitoragent(
+        AN::MonitorAgent->new(
+            {  core     => $self,
+               rate     => $self->rate(),
+               agentdir => $self->agentdir(),
+               duration => $self->duration,
+               verbose  => $self->verbose(),
 
-    $self->monitorAgent( AN::MonitorAgent->new(
-        { core => $self,
-          rate => $self->rate(),
-          agentdir => $self->agentdir(),
-          duration => $self->duration,
-          verbose  => $self->verbose(),
-          
-      } ) );
-    
+            } ) );
+
     return;
 
 }
@@ -142,207 +151,44 @@ sub _init {
 sub DESTROY {
     my $self = shift;
 
-    for my $dbh ( $self->_all_dbhs ) {
-        _halt_process( $dbh, $self->_process_id( $dbh ));
+    for my $dbh ( @{ $self->dbhs } ) {
+        _halt_process($dbh);
     }
-}
-
-sub _log_new_process {
-    my ( $dbh, @args ) = @_;
-
-    my $sql = $SQL{New_Process};
-    my $id;
-
-    my $rows = $dbh->do( $sql, undef, @args );
-
-    if ( 0 < $rows ) {
-        $dbh->commit();
-        $id = $dbh->last_insert_id( undef, undef, $DB_NODE_TABLE, undef );
-    }
-    else {
-        $dbh->rollback;
-    }
-    return $id;
-}
-
-sub _halt_process {
-    my ( $dbh, $process_id ) = @_;
-
-    my $sql = $SQL{Halt_Process};
-    my $rows = $dbh->do( $sql, undef, $process_id );
-
-    if ( 0 < $rows ) {
-        $dbh->commit();
-    }
-    else {
-        $dbh->rollback;
-    }
-    return $rows;
-}
-
-sub _start_process {
-    my ( $dbh, $process_id ) = @_;
-
-    my $sql = $SQL{Start_Process};
-    my $rows = $dbh->do( $sql, undef, $process_id );
-
-    if ( 0 < $rows ) {
-        $dbh->commit();
-    }
-    else {
-        $dbh->rollback;
-    }
-    return $rows;
-}
-
-# ......................................................................
-# accessor
-#
-sub agentdir {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{agentdir} if not defined $new_value;
-
-    $self->{agentdir} = $new_value;
-    return;
-}
-
-sub duration {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{duration} if not defined $new_value;
-
-    $self->{duration} = $new_value;
-    return;
-}
-
-sub dbini {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{dbini} if not defined $new_value;
-
-    $self->{dbini} = $new_value;
-    return;
-}
-
-sub hosts {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return @{ $self->{hosts} } if not defined $new_value;
-
-    $self->{hosts} = $new_value;
-    return;
-}
-
-sub db_name {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{db_name} if not defined $new_value;
-
-    $self->{db_name} = $new_value;
-    return;
-}
-
-sub port {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{port} if not defined $new_value;
-
-    $self->{port} = $new_value;
-    return;
-}
-
-sub rate {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{rate} if not defined $new_value;
-
-    $self->{rate} = $new_value;
-    return;
-}
-
-sub verbose {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{verbose} if not defined $new_value;
-
-    $self->{verbose} = $new_value;
-    return;
-}
-
-sub monitorAgent {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{monitorAgent} if not defined $new_value;
-
-    $self->{monitorAgent} = $new_value;
-    return;
 }
 
 # ......................................................................
 # Private Accessors
 #
-sub _agents {
-    my $self = shift;
-    my ( $value ) = @_;
-    
-    return $self->{agents} unless $value;
-    $self->{agents} = $value;
-    return;    
-}
 
 sub _add_agents {
     my $self = shift;
-    my ( $value ) = @_;
+    my ($value) = @_;
 
-    push @{ $self->{agents} }, @$value;
+    push @{ $self->_agents }, @$value;
     return;
 }
 
 sub _drop_agents {
     my $self = shift;
-    my ( $value ) = @_;
+    my ($value) = @_;
 
     my $re = join '|', map { '\b' . $_ . '\b' } @$value;
-    $self->_agents( [grep { $_ !~ $re } @{ $self->_agents() } ]);
+    $self->_agents( [ grep { $_ !~ $re } @{ $self->_agents() } ] );
     return;
-}
-
-sub _dbhs {
-    my $self = shift;
-    my ( $value ) = @_;
-    
-    return $self->{dbhs} unless $value;
-    $self->{dbhs} = $value;
-    return;
-}
-
-sub _dbhs_populated {
-    my $self = shift;
-
-    return scalar @{ $self->{dbhs} };
 }
 
 sub _add_dbh {
     my $self = shift;
-    my ( $value ) = @_;
+    my ($value) = @_;
 
-    push @{ $self->{dbhs} }, $value;
+    push @{ $self->dbhs }, $value;
 }
 
 sub _all_dbhs {
     my $self = shift;
 
-    return @{ $self->{dbhs} };
+    my $dbhs = $self->dbhs;
+    return @{$dbhs};
 
 }
 
@@ -351,9 +197,9 @@ sub _process_id {
     my ( $dbh, $new_value ) = @_;
 
     die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) not enough args." )
-      if scalar @_ <= 1;
+        if scalar @_ <= 1;
     die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) too many args." )
-      if scalar @_ > 3;
+        if scalar @_ > 3;
 
     return $self->{process_id}{$dbh} if not defined $new_value;
 
@@ -365,63 +211,141 @@ sub _process_id {
 # Private Methods
 #
 
-sub _connect_db {
-    my ($args) = @_;
-
-    my $dsn = (
-        $args->{host} eq 'localhost'
-        ? sprintf( $DSN_SHORT_FMT, $args->{name} )
-        : sprintf( $DSN_FMT,       @{$args}{qw(name host port)} )
-    );
-    my %args = %DB_CONNECT_ARGS;    # need copy to avoid readonly error.
-
-    my $dbh = DBI->connect( $dsn, $args->{user}, $args->{password}, \%args )
-
-      #    my $dbh = DBI->connect( $dsn, undef, undef, \%args )
-      || die(
-        sprintf(
-            "Could not connect to DB %s on host %s: %s\n",
-            $args->db_name, $args->{host}, $DBI::errstr
-        )
-      );
-
-    return $dbh;
-}
-
-sub _register_start {
+sub old_pid_file_exists {
     my $self = shift;
 
-    my $hostname = `/bin/hostname`;
-    chomp $hostname;
+    return $self->flagfile()->old_pid_file_exists();
+}
 
-    for my $dbh ( $self->_all_dbhs ) {
-        my $process_id = _log_new_process( $dbh, $hostname, $PROG );
-        $self->_process_id( $dbh, $process_id );
-#        _start_process( $dbh, $process_id );
-    }
+sub pid_file_is_recent {
+    my $self = shift;
+
+    my $file_age = $self->flagfile()->old_pid_file_age();
+    return $file_age < $self->rate * $self->max_loops_unrefreshed;
+}
+
+# Look up whether the process id specified in the pidfile refers to
+# a running process, make sure it's the same name as we are. Otherwise
+# could be another process re-using that pid.
+#
+sub pid_file_process_is_running {
+    my $self = shift;
+
+    my (%old_pid_data) = map { my ( $k, $v ) = split ':'; $k => $v }
+        split "\n", $self->flagfile()->old_pid_file_data();
+
+    # look up by pid, output only the command file, no header line.
+    my $previous = AN::Unix::pid2process( $old_pid_data{pid} );
+
+    # If a process with the specified pid is found, it's name is in $previous.
+    # Make sure it has the right name.
+    return $previous && $previous eq $PROG;
+}
+
+# return true if less than 5 minutes until midnight, otherwise return
+# false.  In fact, the 'true' value is an arrayref containing the
+# current hour, minute and second time, to avoid a second call to
+# localtime.
+sub almost_quitting_time {
+    my $self = shift;
+
+    my ( $sec, $min, $hr ) = (localtime)[ 0, 1, 2 ];
+
+    return [ $hr, $min, $sec ]
+        if $hr == $self->quit_hr && $min > ( $self->quit_min - 5 );
+    return;
+}
+
+# Given the current seconds, minutes, hour, time remaining until
+# midnight is (60 - current minute) minutes plus (60 - current
+# seconds) seconds. Multiple the minutes by 60 to convert to seconds.
+# But we want to wake up 30 seconds beforehand, to tell old job to go
+# away. So subtract 30 from the calculation.
+sub sleep_until_quitting_time {
+    my ($now) = @_;
+
+    my $remaining = ( 60 - $now->[0] ) + ( 60 * ( 60 - $now->[1] ) ) - 30;
+    sleep $remaining;
+    return;
+}
+
+sub tell_old_job_to_quit {
+    my $self = shift;
+    my ($old_pid) = @_;
+
+    kill 'USR1', $old_pid;
+
+    $self->monitor_old_pid_for_exit($old_pid);
+    return;
 }
 
 # ......................................................................
 # Methods
 #
 
+sub ok_to_exit {
+    my $self = shift;
+    my ($status) = @_;
+
+    return $status eq $EXIT_OK;
+}
+
+sub set_alert {
+    my $self = shift;
+    my (@args) = @_;
+
+    carp "SET ALERT: ", join ',', map {"'$_'"} @args;
+}
+
+sub check_for_previous_instance {
+    my $self = shift;
+
+    my $hostname = AN::Unix::hostname('-short');
+
+    $self->flagfile( AN::FlagFile->new(
+                                        { dir     => '/tmp',
+                                          pidfile => "${hostname}-${PROG}",
+                                        } ) );
+
+    # Old process exited cleanly, take over. Return early.
+    return $RUN if !$self->old_pid_file_exists();
+
+    my ( $is_recent, $is_running )
+        = ( $self->pid_file_is_recent, $self->pid_file_process_is_running );
+
+    # Old process is running and updating pid file. Return early.
+    return $EXIT_OK
+        if $is_recent && $is_running;
+
+    # Old process exited recently without proper cleanup
+    $self->set_alert($OLD_PROCESS_RECENT_CRASH)
+        if $is_recent && !$is_running;
+
+    # Old process has stalled; running but not updating.
+    $self->set_alert($OLD_PROCESS_STALLED)
+        if !$is_recent && $is_running;
+
+    # old process exited some time ago without proper cleanup
+    $self->set_alert($OLD_PROCESS_CRASH)
+        if !$is_recent && !$is_running;
+
+    return $RUN;
+}
+
 sub connect_dbs {
     my $self = shift;
 
-    my $cfg = { path => {config_file => $self->dbini }};
-    AN::Common::read_configuration_file( $cfg );
-    my $dbini = $cfg->{db};
-    $self->dbini( $dbini );
-    $self->_dbhs( [] );
-    for my $dbN ( sort keys %$dbini ) {
-        $self->_add_dbh( _connect_db( $dbini->{$dbN} ));
-    }
+    $self->dbhs( AN::DBS->new( { path => { config_file => $self->dbini } } ) );
     return;
+}
+
+sub disconnect_dbs {
+    die "scanner::disconnect_dbs() not implemented yet.";
 }
 
 sub launch {
     my $self = shift;
-    my ( $scanner ) = @_;
+    my ($scanner) = @_;
 
     # my $fullpath = $self->agentdir() . $SLASH . $scanner;
     # croak "scanner '$fullpath' not found.\n"
@@ -438,7 +362,7 @@ sub launch {
 
 sub process {
     my $self = shift;
-    my ( $fh ) = @_;
+    my ($fh) = @_;
 
     my ($text) = <$fh>;
     print "Read '$text'.\n";
@@ -447,60 +371,141 @@ sub process {
 
 sub _launch_new_agents {
     my $self = shift;
-    my ( $new ) = @_;
+    my ($new) = @_;
 
-    for my $agent ( @$new ) {
-        system( $self->agentdir() . "/$agent &" ) == 0
-            or die "$0: Failed to launch $agent " . ($? >> 8);
+    my @new_agents;
+    for my $agent (@$new) {
+        my $pid = AN::Unix::new_bg_process( $self->agentdir() . '/' . $agent );
+        push @new_agents, { $agent => $pid };
     }
+    push @{ $self->_agents }, @new_agents;
+    return;
 }
 
 sub scan_for_agents {
     my $self = shift;
-    
-    my ( $new, $deleted ) = $self->monitorAgent()->scan_files();
+
+    my ( $new, $deleted ) = $self->monitoragent()->scan_files();
     say "scan @{[time]} [@{$new}], [@{$deleted}]."
         if $self->verbose()
         or @{$new}
         or @{$deleted};
-    if ( @$new ) {
-        $self->_launch_new_agents( $new );
-        $self->_add_agents( $new );
+
+    if (@$new) {
+        $self->_launch_new_agents($new);
+        $self->_add_agents($new);
     }
-    if ( @$deleted ) {
-        $self->_drop_agents( $new );
+    if (@$deleted) {
+        $self->_drop_agents($new);
     }
 }
 
+sub clean_up_running_agents {
+    die "scanner::clean_up_running_agents() not implemented yet.";
+}
+
+sub run {
+    my $self = shift;
+
+    # initialize.
+    #
+    $self->flagfile()->create_pid_file();
+    $self->connect_dbs();
+
+    # process until quitting time
+    #
+    $self->run_timed_loop_forever();
+
+    # clean up and exit.
+    #
+    $self->clean_up_running_agents();
+    $self->disconnect_dbs();
+    $self->flagfile()->delete_pid_file();
+}
+
+# ......................................................................
+# If the current time is between 00:00:00 and the specified quitting
+# time, quitting time is today; between quitting time and 23:59:59 + 1
+# second, quitting time is tomorrow.
+#
+# Adding 24 hours worth of seconds to the current time will result in
+# some time tomorrow. Use the day, month year from today or tomorrow,
+# as appropriate, with the quitting time hour, minute and second to
+# determine the future quitting.
+#
+# Subtract 1 loop duration and shut down at the end of the loop.
+#
+sub calculate_end_epoch {
+    my $self = shift;
+
+    my ( $sec, $min, $hour, $day, $mon, $year ) = localtime;
+    my ( $quit_hr, $quit_min, $quit_sec ) = split $COLON, $self->run_until();
+
+    my $tomorrow
+        = (    $hour > $quit_hr
+            || ( $hour == $quit_hr && $min > $quit_min )
+            || ( $hour == $quit_hr && $min == $quit_min && $sec > $quit_sec ) );
+
+    ( $day, $mon, $year )
+        = ( localtime( time() + $SECONDS_IN_A_DAY ) )[ 3, 4, 5 ]
+        if $tomorrow;
+
+    my $end_epoch
+        = timelocal( $quit_sec, $quit_min, $quit_hr, $day, $mon, $year );
+
+    $end_epoch -= $self->rate * $MAX_LOOPS_UNREFRESHED;
+
+    return $end_epoch;
+}
+
+sub print_loop_msg {
+    my ( $elapsed, $pending ) = @_;
+
+    state $loop = 1;
+    my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
+    say "$PROG loop $loop at @{[time]} $extra_arg.";
+    $loop++;
+
+    return;
+}
+
+sub process_agent_data {
+    die "scanner::process_agent_data() not implemented yet.";
+}
+
+sub new_alert_loop {
+    say "Scanner->new_alert_loop() not implemented yet.";
+}
 
 # ......................................................................
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}
 #
-
 sub run_timed_loop_forever {
     my $self = shift;
-    
+
     local $LIST_SEPARATOR = $COMMA;
 
-    my ($start_time) = time;
-    my ($end_time)   = $start_time + $self->duration();
-    my ($now)        = $start_time;
-
-    my $loop = 1;
+    my ( $start_time, $end_time ) = ( time, $self->calculate_end_epoch );
+    my ($now) = $start_time;
 
     while ( $now < $end_time ) {    # loop until this time tomorrow
                                     #        $self->read_process_all_agents();
 
+        $self->new_alert_loop();
         my ( $new, $deleted ) = $self->scan_for_agents();
+        $self->process_agent_data();
 
-        
+        $self->handle_alerts();
+
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
-        $pending = 1 if $pending < 0; # dont wait negative duration.
-        my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
-        say "$PROG loop $loop at @{[time]} $extra_arg.";
-        $loop++;
+        $pending = 1 if $pending < 0;    # dont wait negative duration.
+
+        print_loop_msg( $elapsed, $pending );
+
+        return
+            if $now + $elapsed > $end_time;  # exit before sleep if out of time.
 
         sleep $pending;
         $now = time;
@@ -634,4 +639,5 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
+## Please see file perltidy.ERR
 ## Please see file perltidy.ERR
