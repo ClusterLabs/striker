@@ -31,6 +31,27 @@ sub init_args {
 # ----------------------------------------------------------------------
 # Tests
 #
+
+sub test_tags {
+
+    my $all_tags = {PIDFILE => 'pidfile',
+		    MIGRATING => 'migrating',
+		    CRISIS => 'crisis',
+    };
+
+    my @all_keys = sort keys %$all_tags;
+
+    is_deeply( AN::FlagFile::get_tag(),
+               \@all_keys, 'tag list with implicit request' );
+    is_deeply( AN::FlagFile::get_tag('*NAMES*'),
+               \@all_keys, 'tag list with explicit request' );
+
+    for my $key ( @all_keys ) {
+	is( AN::FlagFile::get_tag( $key), $all_tags->{$key},
+	    "tag value for '$key'");
+    }
+}
+
 sub test_constructor {
     my ($args) = @_;
 
@@ -67,7 +88,7 @@ sub test_create_pid_file {
 
     $ff->create_pid_file();
 
-    my $filename = $ff->full_file_path('pidfile');
+    my $filename = $ff->full_file_path( $ff->get_tag('PIDFILE') );
 
     ok( -e $filename, 'pid file exists' );
 
@@ -84,7 +105,7 @@ sub test_touch_pid_file {
 
     my $now = time;
 
-    my $filename = $ff->full_file_path('pidfile');
+    my $filename = $ff->full_file_path( $ff->get_tag('PIDFILE') );
 
     my $before = $SECS_PER_DAY * ( -M $filename );
 
@@ -101,13 +122,35 @@ sub test_touch_pid_file {
         "file has been touched; mtime changed $delta after delay of $delay" );
 }
 
+sub test_find_marker_files {
+    my $ff =  shift;
+
+    my $files = $ff->find_marker_files();
+    is_deeply( keys %$files, ('pidfile'),
+	q{Finds pidfile but 'some_marker' is unknown'});
+    is( $files->{pidfile}, $ff->full_file_path('pidfile'),
+	'pidfile path is as expected.');
+
+    $ff->add_tag( some_marker => 'some_marker' );
+
+    $files = $ff->find_marker_files();
+    is_deeply( [keys %$files], [qw(pidfile some_marker)],
+	q{after add_tag(), finds both pidfile & 'some_marker' });
+    is( $files->{pidfile}, $ff->full_file_path('pidfile'),
+	'pidfile path is as expected.');
+    is( $files->{some_marker}, $ff->full_file_path('some_marker'),
+	'some_marker file path is as expected.');
+
+}
+
 sub test_delete_pid_file {
     my $ff = shift;
 
     my $num = $ff->delete_pid_file();
 
-    is( $num, 1, 'deleted one file' );
-    ok( !-e ( $ff->full_file_path('pidfile') ), 'pid file deleted' );
+    is( $num, 1, 'deleted one file in delete_pid_file' );
+    ok( !-e ( $ff->full_file_path( $ff->get_tag('PIDFILE') ) ),
+        'pid file deleted' );
 }
 
 sub test_create_marker_file {
@@ -121,11 +164,11 @@ sub test_create_marker_file {
 sub test_delete_marker_file {
     my $ff = shift;
 
-    my $num = $ff->delete_pid_file('some_marker');
+    my $num = $ff->delete_marker_file('some_marker');
 
-    is( $num, 1, 'deleted one file' );
+    is( $num, 1, 'deleted one file in delete_marker_file()' );
 
-    ok( !-e $ff->full_file_path('some_marker'), 'pid file deleted' );
+    ok( !-e $ff->full_file_path('some_marker'), 'marker file deleted' );
 }
 
 sub test_read_pid_file {
@@ -146,15 +189,21 @@ sub main {
 
     my $args = init_args();
 
+    test_tags();
     my $ff = test_constructor($args);
     test_accessors( $ff, $args );
 
     test_create_pid_file($ff);
     test_read_pid_file($ff);
     test_touch_pid_file($ff) if @ARGV;
-    test_delete_pid_file($ff);
 
     test_create_marker_file($ff);
+
+    test_find_marker_files($ff, $args);
+
+    test_delete_pid_file($ff);
+    test_delete_marker_file($ff);
+
 
     say "
 Run the test with any command line arg, to run the 'touch' command.
