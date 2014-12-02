@@ -1,5 +1,4 @@
-#!/home/legrady/perl5/perlbrew/perls/perl-5.20.0/bin/perl
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 # _Perl_
 use warnings;
@@ -23,31 +22,31 @@ use AN::Scanner;
 
 use Const::Fast;
 
-## no critic ( ControlStructures::ProhibitPostfixControls )
-## no critic ( ProhibitMagicNumbers )
 # ======================================================================
 # CONSTANTS
 #
-const my $BRIEF     => 1;
-const my $COMMA     => q{,};
-const my $DEFAULT_HOSTS => ['localhost'];
-const my $DEFAULT_DB_INI  => 'Config/db.ini';
-const my $DOTSLASH  => q{./};
-const my $LIFETIME  => 24 * 60 * 60;
-const my $MAX_RATE  => 600;
-const my $MIN_RATE  => 1;
-const my $PROG      => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE  => 30;
-const my $SLASH     => q{/};
-const my $SUFFIX_QR => qr{           # regex for a filename suffix
-                             [.]     # a literal dot
-                             [^.]+   # followed by non-dot characters
-                             \z      # at the end of the string
-                     }xms;
+const my $BRIEF          => 1;
+const my $COMMA          => q{,};
+const my $DEFAULT_DB_INI => 'Config/db.ini';
+const my $DOTSLASH       => q{./};
+const my $LIFETIME       => 24 * 60 * 60;
+const my $RUN_UNTIL      => '23:59:59';
+const my $MAX_RATE       => 600;
+const my $MIN_RATE       => 1;
+const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE       => 30;
+const my $SLASH          => q{/};
+const my $RUN_UNTIL_FMT_RE => qr{         # regex for 'run_until' data format
+                                 \d{1,2}  # 1 or 2 digits for hours 0-23
+                                 :	  # Literal colon
+                                 \d{2}    # 2 digits for minutes 0-59
+                                 :	  # Literal colon
+                                 \d{2}    # 2 digits for seconds 0-59
+                                 }xms;
+
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
 const my $VERBOSE             => 2;
 
-## use critic ( ProhibitMagicNumbers )
 # ======================================================================
 # Subroutines
 #
@@ -57,20 +56,16 @@ const my $VERBOSE             => 2;
 sub process_args {
 
     my $opt = {
-        rate     => $REP_RATE,        # loop repetition rate in seconds
-        agentdir => $Bin . '/agents', # directory to scan
-        duration => $LIFETIME,        # when to spawn replacement ( seconds )
-        verbose  => 0,                # print strings for no change?
-        first_scanner => 'scan_for_agents',
-        dbini    => $DEFAULT_DB_INI
+        rate          => $REP_RATE,           # loop repetition rate in seconds.
+        run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
+        agentdir      => $Bin . '/agents',    # directory to scan for agents.
+        verbose       => 0,                   # print strings for no change?
+        dbini         => $DEFAULT_DB_INI,     # DB configuration file.
     };
 
-    GetOptions(
-        $opt, 'dbini=s',
-        'rate=i',   'agentdir=s', 'first_scanner=s', 'db_name=s',
-        'duration=i', 'verbose!',   'man',
-        'help'
-    ) or pod2usage(2);
+    GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
+                'run_until=s', 'verbose!', 'man', 'help' )
+        or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
@@ -78,14 +73,18 @@ sub process_args {
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
-    $opt->{agentdir} = $Bin . $SLASH . substr $opt->{agentdir}, 2
-      if 0 == index $opt->{agentdir}, $DOTSLASH;
+    $opt->agentdir( $Bin . $SLASH . substr( $opt->{agentdir}, 2 ) )
+        if string_starts_with( $opt->{agentdir}, $DOTSLASH );
 
-    $opt->{hosts} = $DEFAULT_HOSTS unless $opt->{hosts};
-    
     verify_args($opt);
 
     return $opt;
+}
+
+sub string_starts_with {
+    my ( $string, $substring ) = @_;
+
+    return 0 == index $string, $substring;
 }
 
 # ......................................................................
@@ -94,34 +93,27 @@ sub process_args {
 sub verify_args {
     my ($opt) = @_;
 
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "rate '$opt->{rate}' < $MIN_RATE"
-    ) if $opt->{rate} < $MIN_RATE;
+    pod2usage( -verbose => $BRIEF,
+	       -message => "-run_until time '$opt->{run_until}' format dd:dd:dd" )
+	unless $opt->{run_until} =~ m{$RUN_UNTIL_FMT_RE};
 
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "rate '$opt->{rate}' > $MAX_RATE"
-    ) if $opt->{rate} > $MAX_RATE;
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$opt->{rate}' < $MIN_RATE" )
+        if $opt->{rate} < $MIN_RATE;
 
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "agentdir '$opt->{agentdir}' not found"
-    ) unless -e $opt->{agentdir};
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "Cannot read agentdir '$opt->{agentdir}'"
-    ) unless -r $opt->{agentdir};
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "Cannot execute agentdir '$opt->{agentdir}'"
-    ) unless -x $opt->{agentdir};
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$opt->{rate}' > $MAX_RATE" )
+        if $opt->{rate} > $MAX_RATE;
 
-    pod2usage(
-        -verbose => $BRIEF,
-        -message =>
-          "Total life '$opt->{duration}' < repetition rate $opt->{rate}"
-    ) if $opt->{duration} <= $opt->{rate};
+    pod2usage( -verbose => $BRIEF,
+               -message => "agentdir '$opt->{agentdir}' not found" )
+        unless -e $opt->{agentdir};
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot read agentdir '$opt->{agentdir}'" )
+        unless -r $opt->{agentdir};
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot execute agentdir '$opt->{agentdir}'" )
+        unless -x $opt->{agentdir};
 
     return;
 }
@@ -133,16 +125,22 @@ sub verify_args {
 sub main {
     say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
     my $options = process_args();
-    
-    my $scanner = AN::Scanner->new($options);
-    
-#    chdir $scanner->agentdir();
 
-    $scanner->run_timed_loop_forever();
+    my $scanner        = AN::Scanner->new($options);
+    my $old_job_status = $scanner->check_for_previous_instance();
 
-    say "Halting $PROGRAM_NAME at @{[ scalar localtime()]}.";
-    return;
+    exit 0
+        if $scanner->ok_to_exit($old_job_status);    # old job running OK
 
+    die "Unrecognized status $old_job_status in ${PROG}::main()"
+        unless $old_job_status eq 'run';
+
+    my $status = $scanner->run();
+
+    if ( $status eq 'clean shutdown' ) {
+        $scanner->shutdown();
+        exit 0;
+    }
 }
 
 # ----------------------------------------------------------------------
@@ -164,11 +162,9 @@ __END__
      scan_for_agents [options]
 
      Options:
-         -duration N         How long the program should run before
-                             spawning a replacement. Default value
-                             is 24 hrs, or 86400 seconds.
          -rate     N         How often test is performed, by default
                              every 30 seconds.
+         -run_until 23:59:59 Time at which process should make way for new instance.
          -agentdir <path>    Which directory to check, by default
                              the 'agents directory next to this program.
          -help               Brief help message.
