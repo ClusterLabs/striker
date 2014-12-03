@@ -620,6 +620,7 @@ sub initialize_conf
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
+				anvil_install_status	=>	"/root/.anvil_install_progress",
 				hostname		=>	"/etc/sysconfig/network",
 				hosts			=>	"/etc/hosts",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",

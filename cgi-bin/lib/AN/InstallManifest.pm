@@ -251,7 +251,22 @@ sub read_config_data_file
 {
 	my ($conf) = @_;
 	
-	
+# 	my $shell_call = "if [ -e \"$conf->{path}{nodes}{anvil_install_status}\" ]; then cat $conf->{path}{nodes}{anvil_install_status}; else echo 'exit:1'; fi";
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+# 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+# 		node		=>	$node,
+# 		port		=>	22,
+# 		user		=>	"root",
+# 		password	=>	$password,
+# 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+# 		'close'		=>	0,
+# 		shell_call	=>	$shell_call,
+# 	});
+# 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+# 	foreach my $line (@{$return})
+# 	{
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+# 	}
 	
 	return(0);
 }
@@ -276,6 +291,8 @@ sub configure_storage_stage1
 	# We need to make sure things line up, so step one is to read he parted
 	# data from both nodes and compare them.
 	get_parted_data_from_node($conf, $conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, );
+	
+	# NOTE: Partition Table: gpt == Don't create an extended partition
 	
 	return(0);
 }
