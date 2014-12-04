@@ -32,7 +32,7 @@ const my @ATTRIBUTES => (
     qw( agentdir duration dbini
         db_name port rate verbose
         monitoragent flagfile _agents
-        dbhs max_loops_unrefreshed
+        dbs max_loops_unrefreshed
         run_until
         ) );
 
@@ -83,15 +83,29 @@ const my $PROC_STATUS_HALTED  => 'halted';
 const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $HOURS_IN_A_DAY        => 24;
 const my $MINUTES_IN_AN_HOUR    => 60;
-const my $SECONDS_IN_AN_MINUTE  => 60;
+const my $SECONDS_IN_A_MINUTE  => 60;
 const my $SECONDS_IN_A_DAY =>
-    ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_AN_MINUTE );
+    ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_A_MINUTE );
 
 const my $RUN                      => 'run';
 const my $EXIT_OK                  => 'ok to exit';
 const my $OLD_PROCESS_RECENT_CRASH => 'old process crashed recently';
 const my $OLD_PROCESS_STALLED      => 'old process stalled';
 const my $OLD_PROCESS_CRASH        => 'old process crash';
+
+const my $METADATA_DIR => '/tmp';
+const my @NEW_AGENT_ARGS =>
+    ( '-o', 'meta-data', '-f', $METADATA_DIR, '--dbini', 'xdbinix' );
+
+const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
+                                 \A         # beginning of string
+                                 (\d{1,2})  # 1 or 2 digits for hours 0-23
+                                 :	    # Literal colon
+                                 (\d{2})    # 2 digits for minutes 0-59
+                                 :	    # Literal colon
+                                 (\d{2})    # 2 digits for seconds 0-59
+                                 \z         # end of string
+                                 }xms;
 
 # ======================================================================
 # Subroutines
@@ -133,7 +147,6 @@ sub _init {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbhs( [] );
     $self->monitoragent(
         AN::MonitorAgent->new(
             {  core     => $self,
@@ -151,11 +164,21 @@ sub _init {
 sub DESTROY {
     my $self = shift;
 
-    for my $dbh ( @{ $self->dbhs } ) {
-        _halt_process($dbh);
-    }
+    $self->dbs()->_halt_process();
 }
 
+sub run_until_data_is_valid {
+    my ( $value ) = @_;
+
+    # string must match regular expression and 
+    # numbers must fit ranges.
+    return unless $value =~ m{$RUN_UNTIL_FMT_RE};
+
+    return  ($1 >= 0 && $1 < $HOURS_IN_A_DAY
+	     && $2 >= 0 && $2 < $MINUTES_IN_AN_HOUR
+	     && $3 >= 0 && $3 < $SECONDS_IN_A_MINUTE
+	);
+}
 # ......................................................................
 # Private Accessors
 #
@@ -177,21 +200,6 @@ sub _drop_agents {
     return;
 }
 
-sub _add_dbh {
-    my $self = shift;
-    my ($value) = @_;
-
-    push @{ $self->dbhs }, $value;
-}
-
-sub _all_dbhs {
-    my $self = shift;
-
-    my $dbhs = $self->dbhs;
-    return @{$dbhs};
-
-}
-
 sub _process_id {
     my $self = shift;
     my ( $dbh, $new_value ) = @_;
@@ -210,6 +218,37 @@ sub _process_id {
 # ......................................................................
 # Private Methods
 #
+sub create_flagfile {
+    my $self = shift;
+    my ( $data ) = @_;
+
+    my $hostname = AN::Unix::hostname('-short');
+
+    my $args = { dir     => $METADATA_DIR,
+		 pidfile => "${hostname}-${PROG}",
+    };
+    $args->{data} = $data if $data; # otherwise use default.
+
+    $self->flagfile( AN::FlagFile->new( $args) );
+}
+
+sub create_pid_file {
+    my $self = shift;
+
+    $self->flagfile()->create_pid_file();
+}
+
+sub delete_pid_file {
+    my $self = shift;
+
+    $self->flagfile()->delete_pid_file();
+}
+
+sub touch_pid_file {
+    my $self = shift;
+
+    $self->flagfile()->touch_pid_file();
+}
 
 sub old_pid_file_exists {
     my $self = shift;
@@ -224,6 +263,12 @@ sub pid_file_is_recent {
     return $file_age < $self->rate * $self->max_loops_unrefreshed;
 }
 
+sub create_marker_file {
+    my $self = shift;
+    my ( $tag, $data ) = @_;
+
+    $self->flagfile()->create_marker_file($tag, $data);
+}
 # Look up whether the process id specified in the pidfile refers to
 # a running process, make sure it's the same name as we are. Otherwise
 # could be another process re-using that pid.
@@ -300,12 +345,7 @@ sub set_alert {
 sub check_for_previous_instance {
     my $self = shift;
 
-    my $hostname = AN::Unix::hostname('-short');
-
-    $self->flagfile( AN::FlagFile->new(
-                                        { dir     => '/tmp',
-                                          pidfile => "${hostname}-${PROG}",
-                                        } ) );
+    $self->create_flagfile();
 
     # Old process exited cleanly, take over. Return early.
     return $RUN if !$self->old_pid_file_exists();
@@ -335,7 +375,7 @@ sub check_for_previous_instance {
 sub connect_dbs {
     my $self = shift;
 
-    $self->dbhs( AN::DBS->new( { path => { config_file => $self->dbini } } ) );
+    $self->dbs( AN::DBS->new( {path => {config_file => $self->dbini }} ));
     return;
 }
 
@@ -373,12 +413,17 @@ sub _launch_new_agents {
     my $self = shift;
     my ($new) = @_;
 
+    state $args = [map { $_ eq 'xdbini' ? $self->dbini : $_; } @NEW_AGENT_ARGS];
+
     my @new_agents;
     for my $agent (@$new) {
-        my $pid = AN::Unix::new_bg_process( $self->agentdir() . '/' . $agent );
-        push @new_agents, { $agent => $pid };
+        my $pid = AN::Unix::new_bg_process( $self->agentdir() . '/' . $agent,
+                                            @$args );
+        $pid->{filename} = $agent;
+        push @new_agents, $pid;
     }
-    push @{ $self->_agents }, @new_agents;
+    $self->_add_agents(@new_agents);
+
     return;
 }
 
@@ -386,6 +431,7 @@ sub scan_for_agents {
     my $self = shift;
 
     my ( $new, $deleted ) = $self->monitoragent()->scan_files();
+
     say "scan @{[time]} [@{$new}], [@{$deleted}]."
         if $self->verbose()
         or @{$new}
@@ -393,7 +439,6 @@ sub scan_for_agents {
 
     if (@$new) {
         $self->_launch_new_agents($new);
-        $self->_add_agents($new);
     }
     if (@$deleted) {
         $self->_drop_agents($new);
@@ -409,8 +454,8 @@ sub run {
 
     # initialize.
     #
-    $self->flagfile()->create_pid_file();
     $self->connect_dbs();
+    $self->create_pid_file();
 
     # process until quitting time
     #
@@ -420,7 +465,7 @@ sub run {
     #
     $self->clean_up_running_agents();
     $self->disconnect_dbs();
-    $self->flagfile()->delete_pid_file();
+    $self->delete_pid_file();
 }
 
 # ......................................................................
@@ -441,10 +486,11 @@ sub calculate_end_epoch {
     my ( $sec, $min, $hour, $day, $mon, $year ) = localtime;
     my ( $quit_hr, $quit_min, $quit_sec ) = split $COLON, $self->run_until();
 
-    my $tomorrow
-        = (    $hour > $quit_hr
-            || ( $hour == $quit_hr && $min > $quit_min )
-            || ( $hour == $quit_hr && $min == $quit_min && $sec > $quit_sec ) );
+    my $tomorrow = (        $hour > $quit_hr
+                         || ( $hour == $quit_hr && $min > $quit_min )
+                         || (    $hour == $quit_hr
+                              && $min == $quit_min
+                              && $sec > $quit_sec ) );
 
     ( $day, $mon, $year )
         = ( localtime( time() + $SECONDS_IN_A_DAY ) )[ 3, 4, 5 ]
@@ -493,7 +539,7 @@ sub run_timed_loop_forever {
                                     #        $self->read_process_all_agents();
 
         $self->new_alert_loop();
-        my ( $new, $deleted ) = $self->scan_for_agents();
+        $self->scan_for_agents();
         $self->process_agent_data();
 
         $self->handle_alerts();
@@ -503,6 +549,7 @@ sub run_timed_loop_forever {
         $pending = 1 if $pending < 0;    # dont wait negative duration.
 
         print_loop_msg( $elapsed, $pending );
+        $self->touch_id_file;
 
         return
             if $now + $elapsed > $end_time;  # exit before sleep if out of time.

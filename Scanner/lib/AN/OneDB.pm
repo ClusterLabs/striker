@@ -49,7 +49,9 @@ for my $attr (@ATTRIBUTES) {
 # ======================================================================
 # CONSTANTS
 #
+const my $ASSIGN   => q{=};
 const my $COMMA    => q{,};
+const my $COLON    => q{:};
 const my $DOTSLASH => q{./};
 
 const my $DB_NAME => 'Pg';
@@ -75,6 +77,18 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
+const my $EXTRACT_NUMBER_FROM_SELF 
+    => qr{			# regex to extrac hex number from
+				# a "$self" string
+          .*                    # any string,
+	  \( 			# literal opening parenthesis
+          0x                    # 0x to indicate hex value
+          (                     # capture the hex  value
+          \w+			# any digits, letters or underscore, but really
+                                # will only see hex digits here.
+          )                     # stop capturing
+          \).*                  # closing paren, possible additional junk
+         }xms;
 # ----------------------------------------------------------------------
 # SQL
 #
@@ -273,6 +287,23 @@ sub _register_start {
 # Methods
 #
 
+sub uniq_ident {
+    my $self = shift;
+
+    my $uniq = "$self";
+    $uniq =~ s{$EXTRACT_NUMBER_FROM_SELF}{$1};
+    return $uniq
+}
+sub dump_metadata {
+    my $self = shift;
+    my ($prefix) = @_;
+
+    my $metadata = <<"EODUMP";
+${prefix}::node_table_id=@{[$self->node_table_id]}
+EODUMP
+
+    return $metadata;
+}    
 # ......................................................................
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}

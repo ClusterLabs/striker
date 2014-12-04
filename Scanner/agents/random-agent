@@ -17,8 +17,9 @@ use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
 
-use lib 'lib';
-use AN::Scanner;
+use lib '../lib';
+use lib '../cgi-bin/lib';
+use AN::Agent;
 
 use Const::Fast;
 
@@ -26,19 +27,17 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $BRIEF          => 1;
+const my $VERBOSE        => 2;
+
 const my $COMMA          => q{,};
-const my $DEFAULT_DB_INI => 'Config/db.ini';
+const my $DEFAULT_DB_INI => '../Config/db.ini';
 const my $DOTSLASH       => q{./};
-const my $LIFETIME       => 24 * 60 * 60;
 const my $RUN_UNTIL      => '23:59:59';
-const my $MAX_RATE       => 600;
-const my $MIN_RATE       => 1;
 const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
 const my $REP_RATE       => 30;
 const my $SLASH          => q{/};
-
-const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
-const my $VERBOSE             => 2;
+const my $MAX_RATE       => 600;
+const my $MIN_RATE       => 1;
 
 # ======================================================================
 # Subroutines
@@ -51,23 +50,16 @@ sub process_args {
     my $opt = {
         rate          => $REP_RATE,           # loop repetition rate in seconds.
         run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
-        agentdir      => $Bin . '/agents',    # directory to scan for agents.
-        verbose       => 0,                   # print strings for no change?
+        filepath      => '/tmp/agents',    # directory to scan for agents.
         dbini         => $DEFAULT_DB_INI,     # DB configuration file.
     };
 
-    GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
-                'run_until=s', 'verbose!', 'man', 'help' )
+    GetOptions( $opt, 'dbini=s', 'rate=i', 'filepath=s', 'dbini=s', 
+		'metadata|o=s', 'run_until=s', 'verbose!', 'man', 'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
-
-    # If agentdir is relative path './xxx', convert to fully qualified
-    # relative to location of this script.
-    #
-    $opt->agentdir( $Bin . $SLASH . substr( $opt->{agentdir}, 2 ) )
-        if string_starts_with( $opt->{agentdir}, $DOTSLASH );
 
     verify_args($opt);
 
@@ -88,7 +80,7 @@ sub verify_args {
 
     pod2usage( -verbose => $BRIEF,
 	       -message => "-run_until time '$opt->{run_until}' format dd:dd:dd" )
-	unless $opt->{run_until} =~ m{$RUN_UNTIL_FMT_RE};
+	unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
 
     pod2usage( -verbose => $BRIEF,
                -message => "rate '$opt->{rate}' < $MIN_RATE" )
@@ -98,16 +90,6 @@ sub verify_args {
                -message => "rate '$opt->{rate}' > $MAX_RATE" )
         if $opt->{rate} > $MAX_RATE;
 
-    pod2usage( -verbose => $BRIEF,
-               -message => "agentdir '$opt->{agentdir}' not found" )
-        unless -e $opt->{agentdir};
-    pod2usage( -verbose => $BRIEF,
-               -message => "Cannot read agentdir '$opt->{agentdir}'" )
-        unless -r $opt->{agentdir};
-    pod2usage( -verbose => $BRIEF,
-               -message => "Cannot execute agentdir '$opt->{agentdir}'" )
-        unless -x $opt->{agentdir};
-
     return;
 }
 
@@ -116,22 +98,15 @@ sub verify_args {
 #
 
 sub main {
-    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
     my $options = process_args();
 
-    my $scanner        = AN::Scanner->new($options);
-    my $old_job_status = $scanner->check_for_previous_instance();
+    my $agent = AN::Agent->new( $options );
+    $agent->create_flagfile();
 
-    exit 0
-        if $scanner->ok_to_exit($old_job_status);    # old job running OK
-
-    die "Unrecognized status $old_job_status in ${PROG}::main()"
-        unless $old_job_status eq 'run';
-
-    my $status = $scanner->run();
+    my $status = $agent->run();
 
     if ( $status eq 'clean shutdown' ) {
-        $scanner->shutdown();
+        $agent->shutdown();
         exit 0;
     }
 }

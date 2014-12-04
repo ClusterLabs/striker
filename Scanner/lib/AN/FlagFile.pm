@@ -60,6 +60,7 @@ const my $FILE_STATUS_OK    => 'file status ok';
 
 my %TAG = ( PIDFILE   => 'pidfile',
 	    MIGRATING => 'migrating',
+	    METADATA  => 'metadata',
 	    CRISIS    => 'crisis' );
 
 # ======================================================================
@@ -209,9 +210,12 @@ sub create_pid_file {
 #
 sub create_marker_file {
     my $self = shift;
-    my ($tag) = @_;
+    my ($tag, $data) = @_;
 
-    $self->_create_file( { tag => $tag } );
+    my $args = { tag => $tag };
+    $args->{data} = $data if defined $data;
+
+    $self->_create_file( $args );
     return;
 }
 

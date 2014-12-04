@@ -51,9 +51,11 @@ for my $attr (@ATTRIBUTES) {
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA    => q{,};
-const my $DOTSLASH => q{./};
-const my $SLASH    => q{/};
+const my $ASSIGN      => q{=};
+const my $COMMA       => q{,};
+const my $DOTSLASH    => q{./};
+const my $SLASH       => q{/};
+const my $DOUBLECOLON => q{::};
 
 # ======================================================================
 # Subroutines
@@ -129,6 +131,9 @@ sub x_process_id {
 # ......................................................................
 # Private Methods
 #
+sub is_pw_field {
+    return $_[0] eq 'password';
+}
 
 # ......................................................................
 # Methods
@@ -147,6 +152,30 @@ sub connect_dbs {
         $self->add_db( AN::OneDB->new( { dbini => $self->dbini->{$tag} } ) );
     }
 
+}
+
+sub dump_metadata {
+    my $self = shift;
+
+    my @dump;
+
+    my $dbini = $self->dbini;
+    my $dbs   = $self->dbs;
+    my $idx   = 0;
+    for my $set ( sort keys %$dbini ) {
+        my $onedbini = $dbini->{$set};
+    KEY:
+        for my $key ( sort keys %$onedbini ) {
+            next KEY
+                if is_pw_field($key);
+            push @dump,
+                $set . $DOUBLECOLON . $key . $ASSIGN . $onedbini->{$key};
+        }
+        push @dump, $dbs->[$idx]->dump_metadata( $idx + 1 );
+        $idx++;
+    }
+
+    return join "\n", @dump;
 }
 
 # ......................................................................
