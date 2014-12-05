@@ -5,7 +5,7 @@ use base 'AN::Scanner';		# inherit from AN::Scanner
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 use version;
 our $VERSION = '0.0.1';
@@ -58,7 +58,19 @@ for my $attr (@ATTRIBUTES) {
 # CONSTANTS
 #
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-const my $UNASSIGNED => 'not yet specified';
+const my $DATATABLE_NAME => 'raw_'.$PROG;
+const my $DATATABLE_SCHEMA => <<"EOSCHEMA";
+
+id        serial primary key,
+process   bigint references node(node_id),
+value     integer,
+status    status,
+timestamp timestamp with time zone    not null    default now()
+
+EOSCHEMA
+
+const my $NOT_WORDCHAR => qr{\W};
+const my $UNDERSCORE   => q{_};
 
 # ......................................................................
 #
@@ -67,18 +79,16 @@ sub _init {
     my $self = shift;
     my (@args) = @_;
     
-    $self->datatable_name( $UNASSIGNED );
-    $self->datatable_schema( $UNASSIGNED );
+    # avoid characters that DB dislikes in table name
+    #
+    my $name = $DATATABLE_NAME;
+    $name =~ s{$NOT_WORDCHAR}{$UNDERSCORE};
+    $self->datatable_name( $name );
+    
+    $self->datatable_schema( $DATATABLE_SCHEMA );
 
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
+    $self->copy_from_args_to_self( @_ );
+
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
@@ -93,11 +103,52 @@ sub dump_metadata {
 name=$PROG
 $dbs_dump
 datatable_name:@{[$self->datatable_name]}
-datatable_schema:@{[$self->datatable_schema]}
-
+datatable_schema:"@{[$self->datatable_schema]}"
 EODUMP
 
     return $metadata;
+}
+
+# delegate to DBS object
+#
+sub create_db_table {
+    my $self = shift;
+
+    $self->dbs()->create_db_table( $self->datatable_name, $self->datatable_schema );
+}
+
+sub insert_raw_record {
+    my $self = shift;
+    my ( $value, $status ) = @_;
+
+    $self->dbs()->insert_raw_record( { table   => $self->datatable_name,
+				       with_node_table_id => 'process',
+				       args => {value   => int $value,
+						status  => $status,
+				       },
+				     });
+}
+
+sub generate_random_record {
+    my $self = shift;
+    
+    state $first = 1;
+    my $value = (int rand(1000)) / 10;
+    my $status = ( $first || rand(100) > 99.0 ? 'DEBUG'
+		   : $value == 99.9           ? 'CRISIS'
+		   : $value > 99.0            ? 'WARNING'
+		   :                            'OK'
+	);
+
+    $self->insert_raw_record( $value, $status );
+    $first = 0;
+    return;
+}
+
+sub loop_core {
+    my $self = shift;
+
+    $self->generate_random_record();
 }
 
 sub run {
@@ -108,7 +159,9 @@ sub run {
     $self->connect_dbs();
     $self->create_marker_file( AN::FlagFile::get_tag('METADATA'),
                                $self->dump_metadata );
-
+    
+    die "$PROG has problems creating/using table $self->datatable_name.\n"
+	unless $self->create_db_table();
     # process until quitting time
     #
     $self->run_timed_loop_forever();

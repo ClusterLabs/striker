@@ -88,7 +88,7 @@ sub verify_args {
 
     pod2usage( -verbose => $BRIEF,
 	       -message => "-run_until time '$opt->{run_until}' format dd:dd:dd" )
-	unless $opt->{run_until} =~ m{$RUN_UNTIL_FMT_RE};
+	unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
 
     pod2usage( -verbose => $BRIEF,
                -message => "rate '$opt->{rate}' < $MIN_RATE" )

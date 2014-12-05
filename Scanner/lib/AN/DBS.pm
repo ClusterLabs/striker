@@ -160,7 +160,6 @@ sub dump_metadata {
     my @dump;
 
     my $dbini = $self->dbini;
-    my $dbs   = $self->dbs;
     my $idx   = 0;
     for my $set ( sort keys %$dbini ) {
         my $onedbini = $dbini->{$set};
@@ -171,18 +170,42 @@ sub dump_metadata {
             push @dump,
                 $set . $DOUBLECOLON . $key . $ASSIGN . $onedbini->{$key};
         }
-        push @dump, $dbs->[$idx]->dump_metadata( $idx + 1 );
+	# 0-based array de-reference, but 1-based output
+	#
+        push @dump, $self->dbs->[$idx]->dump_metadata( $idx + 1 );
         $idx++;
     }
 
     return join "\n", @dump;
 }
 
-# ......................................................................
-# run a loop once every $options->{rate} seconds, to check $options->{agentdir}
-# for new files, ignoring files with a suffix listed in $options->{ignore}
-#
+sub create_db_table {
+    my $self = shift;
+    my ( $name, $schema ) = @_;
 
+    for my $db ( @{ $self->dbs() } ) {
+	my $exists = $db->table_exists( $name );
+	if ( $exists ) {
+	    die "Table '$name' exists with schema differing from '\n$schema'"
+		unless $db->schema_matches( $name, $schema );
+	}
+	else {
+	    $db->create_table( $name, $schema );
+	}
+    }
+    return 1;
+}
+
+sub insert_raw_record {
+    my $self = shift;
+    my ( $args ) = @_;
+
+    for my $db ( @{ $self->dbs() } ) {
+	$db->insert_raw_record( $args )
+	    or carp "Problem inserting record @$args into ";
+    }
+    return;
+}
 # ----------------------------------------------------------------------
 # end of code
 1;

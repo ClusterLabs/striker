@@ -125,13 +125,9 @@ sub new {
 
 # ......................................................................
 #
-sub _init {
+sub copy_from_args_to_self {
     my $self = shift;
     my (@args) = @_;
-
-    # default value;
-    $self->max_loops_unrefreshed($MAX_LOOPS_UNREFRESHED);
-    $self->_agents( [] );
 
     if ( scalar @args > 1 ) {
         for my $i ( 0 .. $#args ) {
@@ -142,6 +138,18 @@ sub _init {
     elsif ( 'HASH' eq ref $args[0] ) {
         @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
     }
+    return;
+}
+
+sub _init {
+    my $self = shift;
+
+    # default value;
+    $self->max_loops_unrefreshed($MAX_LOOPS_UNREFRESHED);
+    $self->_agents( [] );
+
+    $self->copy_from_args_to_self( @_ );
+
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
     croak(q{Missing Scanner constructor arg 'rate'.})
@@ -523,6 +531,19 @@ sub new_alert_loop {
     say "Scanner->new_alert_loop() not implemented yet.";
 }
 
+# Things to do in the core for a scanner core object
+#
+sub loop_core {
+    my $self = shift;
+
+    $self->new_alert_loop();
+    $self->scan_for_agents();
+    $self->process_agent_data();
+    $self->handle_alerts();
+
+    $self->touch_id_file;  
+
+}
 # ......................................................................
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}
@@ -538,18 +559,14 @@ sub run_timed_loop_forever {
     while ( $now < $end_time ) {    # loop until this time tomorrow
                                     #        $self->read_process_all_agents();
 
-        $self->new_alert_loop();
-        $self->scan_for_agents();
-        $self->process_agent_data();
-
-        $self->handle_alerts();
+	$self->loop_core();
 
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
         $pending = 1 if $pending < 0;    # dont wait negative duration.
 
-        print_loop_msg( $elapsed, $pending );
-        $self->touch_id_file;
+        print_loop_msg( $elapsed, $pending )
+	    if $self->verbose;
 
         return
             if $now + $elapsed > $end_time;  # exit before sleep if out of time.

@@ -77,8 +77,7 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
-const my $EXTRACT_NUMBER_FROM_SELF 
-    => qr{			# regex to extrac hex number from
+const my $EXTRACT_NUMBER_FROM_SELF => qr{			# regex to extrac hex number from
 				# a "$self" string
           .*                    # any string,
 	  \( 			# literal opening parenthesis
@@ -89,6 +88,7 @@ const my $EXTRACT_NUMBER_FROM_SELF
           )                     # stop capturing
           \).*                  # closing paren, possible additional junk
          }xms;
+
 # ----------------------------------------------------------------------
 # SQL
 #
@@ -98,7 +98,7 @@ const my %SQL => (
 INSERT INTO node
 ( node_name, node_description, status, modified_user )
 values
-( ?, ?, ?, $< )
+(  ?, ?, ?, $< )
 
 EOSQL
 
@@ -119,7 +119,29 @@ SET    status  = '$PROC_STATUS_HALTED',
 WHERE  node_id = ?
 
 EOSQL
-                 );
+
+    Table_Exists => <<"EOSQL",
+
+SELECT EXISTS (
+    SELECT 1
+    FROM   pg_tables
+    WHERE  schemaname = 'public'
+    AND    tablename  = ?
+)
+
+EOSQL
+
+    Get_Schema => <<"EOSQL",
+
+SELECT	column_name, data_type,       udt_name,
+        is_nullable, column_default , ordinal_position
+FROM	information_schema.columns
+WHERE	table_name = ?
+ORDER BY ordinal_position
+
+EOSQL
+
+    );
 
 # ======================================================================
 # Subroutines
@@ -292,8 +314,9 @@ sub uniq_ident {
 
     my $uniq = "$self";
     $uniq =~ s{$EXTRACT_NUMBER_FROM_SELF}{$1};
-    return $uniq
+    return $uniq;
 }
+
 sub dump_metadata {
     my $self = shift;
     my ($prefix) = @_;
@@ -303,12 +326,133 @@ ${prefix}::node_table_id=@{[$self->node_table_id]}
 EODUMP
 
     return $metadata;
-}    
-# ......................................................................
-# run a loop once every $options->{rate} seconds, to check $options->{agentdir}
-# for new files, ignoring files with a suffix listed in $options->{ignore}
-#
+}
 
+sub table_exists {
+    my $self = shift;
+    my ($name) = @_;
+
+    my $exists
+        = $self->dbh()->selectall_arrayref( $SQL{Table_Exists}, undef, $name )
+        or die "Failed table_exist query for table '$name';", $DBI::errstr;
+    return $exists && $exists->[0] && $exists->[0][0];
+}
+
+sub schema_matches {
+    my $self = shift;
+    my ( $name, $ref_schema ) = @_;
+
+    # skip empty lines.
+    my @ref_schema = grep {/\w/} split "\n", $ref_schema;
+
+    my $schema =
+        $self->dbh()
+        ->selectall_hashref( $SQL{Get_Schema}, 'ordinal_position', undef,
+                             $name )
+        or die "Failed to fetch schema for table '$name';", $DBI::errstr;
+
+    for my $position ( sort keys %$schema ) {
+	my $field_spec = $schema->{$position};
+
+	# clean away commas, split into fields, and store as arrayref
+	#
+	my ($record) = $ref_schema[$position - 1];
+	$record =~  s{,}{};
+	my ($ref_spec) = [ split /\s+/, $record ];
+			   
+	
+	my $namematch = $ref_spec->[0] eq $field_spec->{column_name};
+	if ( ! $namematch ) {
+	    carp __PACKAGE__ . "::schema_matches($name), field # $position is '$field_spec->{column_name}', should be '$ref_spec->[0]'.\n";
+	    return;
+	}
+	my $typematch = ($ref_spec->[1] eq $field_spec->{data_type}
+			 or ($ref_spec->[1] eq 'serial'
+			     and $field_spec->{data_type} eq 'integer'
+			     and 0 == index $field_spec->{column_default}, 'nextval')
+			 or ($ref_spec->[1] eq 'status'
+			     and $field_spec->{udt_name} eq 'status'
+			 )
+			 or ($ref_spec->[1] eq 'timestamp'
+			     and $field_spec->{data_type} = 'timestamp with time zone'
+			 )
+	    );
+	if ( ! $typematch ) {
+	    carp __PACKAGE__ . "::schema_matches($name), field # $position '$field_spec->{column_name}' has type '$field_spec->{data_type}/$field_spec->{udt_name}/$field_spec->{column_default}' should be '@{$ref_spec}[1..-1]'.";
+		return;
+	}
+    }
+
+    return 1;
+}
+
+sub create_table {
+    my $self = shift;
+    my ( $name, $schema ) = @_;
+
+    my $sql = "CREATE TABLE $name (\n$schema\n)";
+    my $ok  = $self->dbh->do($sql);
+
+    if ($ok) {
+        $self->dbh()->commit();
+    }
+    else {
+        $self->dbh()->rollback;
+        carp "Failed to create table '$name' with schema'\n$schema'\n",
+            $DBI::errstr;
+    }
+    return $ok;
+}
+
+sub generate_insert_sql {
+    my $self = shift;
+    my ( $options ) = @_;
+
+    my $tablename    = $options->{table};
+    my $node_table_id_ref = $options->{with_node_table_id} || '';
+    my $args         = $options->{args};
+    my @fields       = sort keys %$args;
+    if ( $node_table_id_ref ) {
+	push @fields, $node_table_id_ref;
+	$args->{$node_table_id_ref} = $self->node_table_id;
+    }
+    my $fieldlist    = join ', ', @fields;
+    my $placeholders = join ', ', ('?') x scalar @fields;
+
+    my $sql = <<"EOSQL";
+INSERT INTO $tablename
+($fieldlist)
+VALUES
+($placeholders)
+EOSQL
+
+    return ($sql, \@fields, $args);
+}    
+sub insert_raw_record {
+    my $self = shift;
+
+    my ( $sql, $fields, $args ) = $self->generate_insert_sql( @_ );
+    my ( $sth, $id ) = ( $self->get_sth($sql) );
+
+    if ( !$sth ) {
+        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
+    }
+
+    # extract the hash values in the order specified by the array of
+    # key names.
+    my $rows = $sth->execute(@{$args}{@$fields});
+
+    if ( 0 < $rows ) {
+        $self->dbh->commit();
+        $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+                                          undef );
+    }
+    else {
+        $self->dbh->rollback;
+    }
+    return $id;
+
+}
 # ----------------------------------------------------------------------
 # end of code
 1;
@@ -435,4 +579,5 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
+## Please see file perltidy.ERR
 ## Please see file perltidy.ERR
