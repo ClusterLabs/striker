@@ -5258,7 +5258,7 @@ sub confirm_provision_vm
 		title			=>	$say_title,
 		name			=>	$conf->{cgi}{name},
 		select_os_variant	=>	$select_os_variant,
-		media_library_url	=>	"an-mc?cluster=$conf->{cgi}{cluster}",
+		media_library_url	=>	"mediaLibrary?cluster=$conf->{cgi}{cluster}",
 		select_install_iso	=>	$select_install_iso,
 		select_driver_iso	=>	$select_driver_iso,
 		say_max_ram		=>	$say_max_ram,
@@ -7991,7 +7991,7 @@ sub display_free_resources
 	{
 		# The cluster is running, so enable the media library link.
 		$say_mc = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
+			button_link	=>	"/cgi-bin/mediaLibrary?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"#!string!button_0023!#",
 			id		=>	"media_library_$conf->{cgi}{cluster}",
 		}, "", 1);

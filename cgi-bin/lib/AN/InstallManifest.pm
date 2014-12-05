@@ -309,7 +309,22 @@ sub configure_storage_stage1
 	# data from both nodes and compare them.
 	get_parted_data_from_node($conf, $conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, );
 	
-	# NOTE: Partition Table: gpt == Don't create an extended partition
+	# NOTE: Partition Table: gpt   == Don't create an extended partition
+	# NOTE: Partition Table: msdos == Use extended partition
+	# 
+	# (parted) print free
+	# Error: /dev/sdb: unrecognised disk label
+	# 
+	# < X GiB, use:
+	# (parted) mklabel msdos
+	# 
+	# else:
+	# (parted) mklabel gpt
+	# 
+	# 21:02 < Azer>  The sector numbers in an MBR partition table can't hold sector numbers greater than 4 billion. 4 billion times 512 bytes per sector = 2048 billion sectors = 2.2TB.
+	# 21:10 < digimer> excellent, thank you!
+	# 21:10 < digimer> so I need to know the sector size of the disk; 512, 512E or 4096
+	
 	
 	return(0);
 }
@@ -773,8 +788,8 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
 	   $ifcfg_ifn_bridge1 .= "NETMASK=\"$conf->{cgi}{anvil_ifn_subnet}\"\n";
 	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"$conf->{cgi}{anvil_ifn_gateway}\"\n";
-	   $ifcfg_ifn_bridge1 .= "$conf->{cgi}{anvil_ifn_dns1}\"\n";
-	   $ifcfg_ifn_bridge1 .= "$conf->{cgi}{anvil_ifn_dns2}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_ifn_dns1}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_ifn_dns2}\"\n";
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	
 	### TODO: When replacing a node, read in the peer's hosts file and
@@ -819,7 +834,7 @@ sub configure_network_on_node
 	   $hosts .="\n";
 	   $hosts .="# UPSes\n";
 	   $hosts .="$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}\n";
-	   $hosts .="$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups1_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups2_name}\n";
 	   $hosts .="\n";
 	   $hosts .="# Striker dashboards\n";
 	   $hosts .="$conf->{cgi}{anvil_striker1_bcn_ip}	$striker1_short_name.bcn $striker1_short_name $conf->{cgi}{anvil_striker1_name}\n";

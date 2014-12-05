@@ -957,7 +957,7 @@ sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_con
 ";
 	
 	my $os_directory = "c6";
-	my $say_os       = "CentOS"
+	my $say_os       = "CentOS";
 	if ($os eq "rhel")
 	{
 		$os_directory = "rhel6";
@@ -977,10 +977,7 @@ baseurl=http://$conf->{network}{ifn}{ip}/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
 EOF
-";
-	}
-	
-	print "
+
 \%end
 
 ### Script to setup partitions.
@@ -2911,7 +2908,9 @@ sub update_os
 	print "==============================================================================\n";
 	while(<$file_handle>)
 	{
-		print $_;
+		chomp;
+		my $line = $_;
+		print "$line\n";
 		if ($line =~ /Installing : kernel/)
 		{
 			$conf->{sys}{reboot_needed} = 1;

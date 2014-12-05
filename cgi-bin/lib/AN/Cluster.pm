@@ -4706,7 +4706,7 @@ sub header
 		}, "", 1);
 		$say_back    = "";
 	}
-	elsif ($caller eq "an-mc")
+	elsif ($caller eq "mediaLibrary")
 	{
 		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"/cgi-bin/striker?cluster=$conf->{cgi}{cluster}",
