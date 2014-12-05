@@ -652,10 +652,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0034"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Unable to bring up the interface: [<span class="code">#!variable!nic!#</span>]!]]></key>
 		<key name="script_0035"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Please bring it up manually and try again.]]></key>
 		<key name="script_0036"><![CDATA[Configuring network to enable access to #!string!brand_0003!# systems.<br />]]></key>
-		<key name="script_0037"><![CDATA[Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
+		<key name="script_0037"><![CDATA[<span class="highlight_ready_bold">Ready</span>: Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
 		<key name="script_0039"><![CDATA[<b>#!variable!nic!#</b>: ]]></key>
-		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]]]></key>
+		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]<br />]]></key>
 		<key name="script_0041"><![CDATA[[<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>]<br />]]></key>
 		<key name="script_0042">Identification summary:</key>
 		<key name="script_0043"><![CDATA[[ <span class="highlight_bad">Error</span> ] - There seems to be a problem.]]></key>
@@ -775,7 +775,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0066"><![CDATA[#!variable!name!#: [<span class="code">#!variable!file!#</span>]]]></key>
 		<key name="script_0067">Interface summary:</key>
 		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
-		<key name="script_0069"></key>
+		<key name="script_0069"><![CDATA[<span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />Please be patient and wait for the prompt before reseating the next cable.<br />]]></key>
 		<key name="script_0070"></key>
 		
 		<!-- Symbols, digits, etc. -->

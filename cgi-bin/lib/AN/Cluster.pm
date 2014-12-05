@@ -2438,17 +2438,29 @@ sub load_install_manifest
 			
 			$conf->{cgi}{$name_key}          = $node;
 			$conf->{cgi}{$bcn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{bcn}{ip};
-			$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac};
-			$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac};
 			$conf->{cgi}{$ipmi_ip_key}       = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip};
 			$conf->{cgi}{$sn_ip_key}         = $conf->{install_manifest}{$file}{node}{$node}{network}{sn}{ip};
-			$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac};
-			$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
 			$conf->{cgi}{$ifn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{ifn}{ip};
-			$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
-			$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
 			$conf->{cgi}{$pdu1_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu1_name}{port};
 			$conf->{cgi}{$pdu2_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_name}{port};
+			
+			# If the user remapped their network, we don't want to
+			# undo the results.
+			if (not $conf->{cgi}{perform_install})
+			{
+# 				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac} if not $conf->{cgi}{$bcn_link1_mac_key};
+# 				$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac} if not $conf->{cgi}{$bcn_link2_mac_key};
+# 				$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac} if not $conf->{cgi}{$sn_link1_mac_key};
+# 				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac} if not $conf->{cgi}{$sn_link2_mac_key};
+# 				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac} if not $conf->{cgi}{$ifn_link1_mac_key};
+# 				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac} if not $conf->{cgi}{$ifn_link2_mac_key};
+				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac};
+				$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac};
+				$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac};
+				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
+				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
+				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
+			}
 			
 			#print Dumper $conf->{install_manifest}{$file}{node}{$node};
 			$i++;
@@ -2551,12 +2563,12 @@ Striker Version: $conf->{sys}{version}
 			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
 		</pdu>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"--\" />
-			<interface name=\"bcn-link2\" mac=\"--\" />
-			<interface name=\"sn-link1\" mac=\"--\" />
-			<interface name=\"sn-link2\" mac=\"--\" />
-			<interface name=\"ifn-link1\" mac=\"--\" />
-			<interface name=\"ifn-link2\" mac=\"--\" />
+			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node1_bcn_link1_mac}\" />
+			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node1_bcn_link2_mac}\" />
+			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node1_sn_link1_mac}\" />
+			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node1_sn_link2_mac}\" />
+			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node1_ifn_link1_mac}\" />
+			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<node name=\"$conf->{cgi}{anvil_node2_name}\">
@@ -2574,12 +2586,12 @@ Striker Version: $conf->{sys}{version}
 			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
 		</pdu>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"--\" />
-			<interface name=\"bcn-link2\" mac=\"--\" />
-			<interface name=\"sn-link1\" mac=\"--\" />
-			<interface name=\"sn-link2\" mac=\"--\" />
-			<interface name=\"ifn-link1\" mac=\"--\" />
-			<interface name=\"ifn-link2\" mac=\"--\" />
+			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node2_bcn_link1_mac}\" />
+			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node2_bcn_link2_mac}\" />
+			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node2_sn_link1_mac}\" />
+			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node2_sn_link2_mac}\" />
+			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node2_ifn_link1_mac}\" />
+			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node2_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<common>

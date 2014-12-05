@@ -37,7 +37,8 @@ sub run_new_install_manifest
 		'cyrus-sasl'			=>	0,
 		'cyrus-sasl-plain'		=>	0,
 		dmidecode			=>	0,
-		'drbd84-utils'			=>	0,
+		#'drbd84-utils'			=>	0,
+		'drbd83-utils'			=>	0,
 		expect				=>	0,
 		'fence-agents'			=>	0,
 		freeipmi			=>	0,
@@ -47,7 +48,8 @@ sub run_new_install_manifest
 		'gfs2-utils'			=>	0,
 		gpm				=>	0,
 		ipmitool			=>	0,
-		'kmod-drbd84'			=>	0,
+		#'kmod-drbd84'			=>	0,
+		'kmod-drbd83'			=>	0,
 		libvirt				=>	0,
 		'lvm2-cluster'			=>	0,
 		man				=>	0,
@@ -80,6 +82,7 @@ sub run_new_install_manifest
 		# These should be more selectively installed based on lspci (or
 		# similar) output.
 		MegaCli				=>	0,
+		storcli				=>	0,
 	};
 	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/root/anvil-map-network";
@@ -130,15 +133,18 @@ sub run_new_install_manifest
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_remap_required: [$node1_remap_required], node2_remap_required: [$node2_remap_required].\n");
 	
 	# If either/both nodes need a remap done, do it now.
-	my $node1_rc = 0;
-	my $node2_rc = 0;
+	my $node1_rc        = 0;
+	my $node2_rc        = 0;
+	my $update_manifest = 0;
 	if ($node1_remap_required)
 	{
-		($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+		($node1_rc)      = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+		$update_manifest = 1;
 	}
 	if ($node2_remap_required)
 	{
-		($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
+		($node2_rc)      = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
+		$update_manifest = 1;
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc].\n");
 	if (($node1_rc) || ($node2_rc))
@@ -174,6 +180,17 @@ sub run_new_install_manifest
 		}
 		print AN::Common::template($conf, "install-manifest.html", "close-table");
 		return(1);
+	}
+	elsif ($update_manifest)
+	{
+		### TODO: I need a way to link the current IP of each node to
+		###       the name set in the install manifest. This should be
+		###       easy enough.
+		# Write a new install manifest and then switch to it.
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::run: [$conf->{cgi}{run}]\n");
+		#my ($target_url, $xml_file) = AN::Cluster::generate_install_manifest($conf);
+		#$conf->{cgi}{run} = $xml_file;
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::run: [$conf->{cgi}{run}]\n");
 	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::perform_install: [$conf->{cgi}{perform_install}].\n");
@@ -1186,6 +1203,12 @@ sub map_network
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = $mac;
@@ -1219,6 +1242,12 @@ sub map_network
 	{
 		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = $mac;
@@ -1408,6 +1437,7 @@ sub map_network_on_node
 		}
 		
 		my $shell_call = "$conf->{path}{'anvil-map-network'} --script --summary";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; remap: [$remap]\n");
 		if ($remap)
 		{
 			$conf->{cgi}{update_manifest} = 1;
@@ -1427,7 +1457,7 @@ sub map_network_on_node
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow

@@ -846,6 +846,7 @@ sub select_nics
 	if ($conf->{script})
 	{
 		print "#!string!script_0036!#\n" if $conf->{debug};
+		print "#!string!script_0069!#\n";
 		print "#!string!script_0037!#\n";
 	}
 	else
@@ -904,10 +905,12 @@ sub select_nics
 						if ($conf->{script})
 						{
 							print "#!string!script_0040!#,,mac=$down_links,,conflict=$conf->{nic}{mac}{$down_links}{new_name}\n";
+							print "#!string!script_0039!#,,nic=$nic\n";
 						}
 						else
 						{
 							print "- The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n";
+							print "- $say_nic: ";
 						}
 					}
 					$last_conflict = $down_links;
