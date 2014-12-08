@@ -16,6 +16,8 @@ use File::Basename;
 use FindBin qw($Bin);
 use Const::Fast;
 
+use AN::Unix;
+
 # ======================================================================
 # Object attributes.
 #
@@ -49,12 +51,9 @@ for my $attr (@ATTRIBUTES) {
 # ======================================================================
 # CONSTANTS
 #
-const my $ASSIGN   => q{=};
-const my $COMMA    => q{,};
-const my $COLON    => q{:};
-const my $DOTSLASH => q{./};
+const my $ID_FIELD         => 'id';
+const my $SCANNER_USER_NUM => 0;
 
-const my $DB_NAME => 'Pg';
 const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
                                RaiseError         => 1,
                                PrintError         => 0,
@@ -62,14 +61,8 @@ const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
 
 const my $DSN_SHORT_FMT       => 'dbi:Pg:dbname=%s';
 const my $DSN_FMT             => 'dbi:Pg:dbname=%s:host=%s:port=%s';
-const my $DATASOURCES_ARG_FMT => 'port=%s;host=%s';
-const my $DEFAULT_PW          => 'alteeve';
 
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-const my $READ_PROC  => q{-|};
-const my $WRITE_PROC => q{|-};
-const my $SLASH      => q{/};
-const my $EP_TIME_FMT => '%8.3f:%8.3f mSec';    # elapsed:pending time format
 
 const my $DB_PROCESS_TABLE => 'node';
 
@@ -77,28 +70,16 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
-const my $EXTRACT_NUMBER_FROM_SELF => qr{			# regex to extrac hex number from
-				# a "$self" string
-          .*                    # any string,
-	  \( 			# literal opening parenthesis
-          0x                    # 0x to indicate hex value
-          (                     # capture the hex  value
-          \w+			# any digits, letters or underscore, but really
-                                # will only see hex digits here.
-          )                     # stop capturing
-          \).*                  # closing paren, possible additional junk
-         }xms;
-
-# ----------------------------------------------------------------------
+# ======================================================================
 # SQL
 #
 const my %SQL => (
     New_Process => <<"EOSQL",
 
 INSERT INTO node
-( node_name, node_description, status, modified_user )
+( node_name, node_description, pid, status, modified_user )
 values
-(  ?, ?, ?, $< )
+(  ?, ?, ?, ?, ? )
 
 EOSQL
 
@@ -141,7 +122,7 @@ ORDER BY ordinal_position
 
 EOSQL
 
-    );
+                 );
 
 # ======================================================================
 # Subroutines
@@ -161,8 +142,9 @@ sub new {
 
 # ......................................................................
 #
-sub _init {
-    my ( $self, @args ) = @_;
+sub copy_from_args_to_self {
+    my $self = shift;
+    my (@args) = @_;
 
     if ( scalar @args > 1 ) {
         for my $i ( 0 .. $#args ) {
@@ -173,6 +155,16 @@ sub _init {
     elsif ( 'HASH' eq ref $args[0] ) {
         @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
     }
+    return;
+}
+
+# ......................................................................
+#
+sub _init {
+    my $self = shift;
+
+    $self->copy_from_args_to_self(@_);
+
     $self->sth( {} );    # init hash
     $self->connect_dbs();
     $self->_register_start();
@@ -187,13 +179,10 @@ sub DESTROY {
     $self->_halt_process();
 }
 
-sub get_sth {
-    my $self = shift;
-    my ($key) = @_;
-
-    return $self->sth->{$key} || undef;
-}
-
+# ......................................................................
+# Extend simple accessor to set & fetch a specific DBI sth
+# corresponding to specified key.
+#
 sub set_sth {
     my $self = shift;
     my ( $key, $value ) = @_;
@@ -202,6 +191,16 @@ sub set_sth {
     return $value;
 }
 
+sub get_sth {
+    my $self = shift;
+    my ($key) = @_;
+
+    return $self->sth->{$key} || undef;
+}
+
+# ......................................................................
+# create new node table entry for this process.
+#
 sub _log_new_process {
     my $self = shift;
     my (@args) = @_;
@@ -225,6 +224,9 @@ sub _log_new_process {
     return $id;
 }
 
+# ......................................................................
+# Mark this process's node table entry as no longer running .
+#
 sub _halt_process {
     my $self = shift;
 
@@ -245,6 +247,9 @@ sub _halt_process {
     return $rows;
 }
 
+# ......................................................................
+# mark this process's node table entry as running.
+#
 sub _start_process {
     my $self = shift;
 
@@ -263,16 +268,6 @@ sub _start_process {
         $self->dbh()->rollback;
     }
     return $rows;
-}
-
-# ......................................................................
-# Private Accessors
-#
-
-sub connect_dbs {
-    my $self = shift;
-
-    $self->dbh( _connect_db( $self->dbini ) );
 }
 
 # ......................................................................
@@ -301,20 +296,17 @@ sub _register_start {
     my $hostname = AN::Unix::hostname '-short';
 
     $self->node_table_id(
-                $self->_log_new_process( $PROG, $hostname, $PROC_STATUS_NEW ) );
+                $self->_log_new_process( $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM ) );
     $self->_start_process();
 }
 
 # ......................................................................
 # Methods
 #
-
-sub uniq_ident {
+sub connect_dbs {
     my $self = shift;
 
-    my $uniq = "$self";
-    $uniq =~ s{$EXTRACT_NUMBER_FROM_SELF}{$1};
-    return $uniq;
+    $self->dbh( _connect_db( $self->dbini ) );
 }
 
 sub dump_metadata {
@@ -325,6 +317,7 @@ sub dump_metadata {
 ${prefix}::node_table_id=@{[$self->node_table_id]}
 EODUMP
 
+    chomp $metadata;		# discard final newline.
     return $metadata;
 }
 
@@ -352,35 +345,37 @@ sub schema_matches {
         or die "Failed to fetch schema for table '$name';", $DBI::errstr;
 
     for my $position ( sort keys %$schema ) {
-	my $field_spec = $schema->{$position};
+        my $field_spec = $schema->{$position};
 
-	# clean away commas, split into fields, and store as arrayref
-	#
-	my ($record) = $ref_schema[$position - 1];
-	$record =~  s{,}{};
-	my ($ref_spec) = [ split /\s+/, $record ];
-			   
-	
-	my $namematch = $ref_spec->[0] eq $field_spec->{column_name};
-	if ( ! $namematch ) {
-	    carp __PACKAGE__ . "::schema_matches($name), field # $position is '$field_spec->{column_name}', should be '$ref_spec->[0]'.\n";
-	    return;
-	}
-	my $typematch = ($ref_spec->[1] eq $field_spec->{data_type}
-			 or ($ref_spec->[1] eq 'serial'
-			     and $field_spec->{data_type} eq 'integer'
-			     and 0 == index $field_spec->{column_default}, 'nextval')
-			 or ($ref_spec->[1] eq 'status'
-			     and $field_spec->{udt_name} eq 'status'
-			 )
-			 or ($ref_spec->[1] eq 'timestamp'
-			     and $field_spec->{data_type} = 'timestamp with time zone'
-			 )
-	    );
-	if ( ! $typematch ) {
-	    carp __PACKAGE__ . "::schema_matches($name), field # $position '$field_spec->{column_name}' has type '$field_spec->{data_type}/$field_spec->{udt_name}/$field_spec->{column_default}' should be '@{$ref_spec}[1..-1]'.";
-		return;
-	}
+        # clean away commas, split into fields, and store as arrayref
+        #
+        my ($record) = $ref_schema[ $position - 1 ];
+        $record =~ s{,}{};
+        my ($ref_spec) = [ split /\s+/, $record ];
+
+        my $namematch = $ref_spec->[0] eq $field_spec->{column_name};
+        if ( !$namematch ) {
+            carp __PACKAGE__
+                . "::schema_matches($name), field # $position is '$field_spec->{column_name}', should be '$ref_spec->[0]'.\n";
+            return;
+        }
+        my $typematch = (
+                 $ref_spec->[1] eq $field_spec->{data_type}
+                     or (     $ref_spec->[1] eq 'serial'
+                          and $field_spec->{data_type} eq 'integer'
+                          and 0 == index $field_spec->{column_default},
+                          'nextval'
+                        )
+                     or (     $ref_spec->[1] eq 'status'
+                          and $field_spec->{udt_name} eq 'status' )
+                     or ($ref_spec->[1] eq 'timestamp'
+                     and $field_spec->{data_type} = 'timestamp with time zone' )
+        );
+        if ( !$typematch ) {
+            carp __PACKAGE__
+                . "::schema_matches($name), field # $position '$field_spec->{column_name}' has type '$field_spec->{data_type}/$field_spec->{udt_name}/$field_spec->{column_default}' should be '@{$ref_spec}[1..-1]'.";
+            return;
+        }
     }
 
     return 1;
@@ -406,17 +401,17 @@ sub create_table {
 
 sub generate_insert_sql {
     my $self = shift;
-    my ( $options ) = @_;
+    my ($options) = @_;
 
-    my $tablename    = $options->{table};
+    my $tablename         = $options->{table};
     my $node_table_id_ref = $options->{with_node_table_id} || '';
-    my $args         = $options->{args};
-    my @fields       = sort keys %$args;
-    if ( $node_table_id_ref ) {
-	push @fields, $node_table_id_ref;
-	$args->{$node_table_id_ref} = $self->node_table_id;
+    my $args              = $options->{args};
+    my @fields            = sort keys %$args;
+    if ($node_table_id_ref) {
+        push @fields, $node_table_id_ref;
+        $args->{$node_table_id_ref} = $self->node_table_id;
     }
-    my $fieldlist    = join ', ', @fields;
+    my $fieldlist = join ', ', @fields;
     my $placeholders = join ', ', ('?') x scalar @fields;
 
     my $sql = <<"EOSQL";
@@ -426,12 +421,13 @@ VALUES
 ($placeholders)
 EOSQL
 
-    return ($sql, \@fields, $args);
-}    
+    return ( $sql, \@fields, $args );
+}
+
 sub insert_raw_record {
     my $self = shift;
 
-    my ( $sql, $fields, $args ) = $self->generate_insert_sql( @_ );
+    my ( $sql, $fields, $args ) = $self->generate_insert_sql(@_);
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
     if ( !$sth ) {
@@ -440,7 +436,7 @@ sub insert_raw_record {
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = $sth->execute(@{$args}{@$fields});
+    my $rows = $sth->execute( @{$args}{@$fields} );
 
     if ( 0 < $rows ) {
         $self->dbh->commit();
@@ -451,8 +447,57 @@ sub insert_raw_record {
         $self->dbh->rollback;
     }
     return $id;
+}
+
+sub generate_fetch_sql {
+    my $self = shift;
+    my ($options) = @_;
+
+    my ($db_key)      = grep { $_ ne 'schema' } keys %$options;
+    my ($db_ident)    = grep {/\b\d+\b/} keys %{ $options->{$db_key} };
+    my $db_info       = $options->{$db_key}{$db_ident};
+
+    my $tablename     = $options->{$db_key}{datatable_name};
+    my $node_table_id = $db_info->{node_table_id};
+
+    my $sql = <<"EOSQL";
+SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
+FROM $tablename
+WHERE node_id = ?
+ORDER BY timestamp desc
+limit 4;
+EOSQL
+
+    return ($sql, $node_table_id);
+}
+
+sub fetch_agent_data {
+    my $self = shift;
+
+    my ( $sql, $node_table_id ) = $self->generate_fetch_sql(@_);
+    my ( $sth, $id )            = ( $self->get_sth($sql) );
+
+    # prepare and archive sth unless it has already been done.
+    #
+    $sth ||= $self->set_sth( $sql, $self->dbh->prepare($sql) );
+
+    # extract the hash values in the order specified by the array of
+    # key names.
+    my $rows = $sth->execute( $node_table_id )
+	|| carp "No rows returns for query \n'$sql'\n";
+    my $records  = $sth->fetchall_hashref( $ID_FIELD );
+
+    if ( 0 < $rows ) {
+        $self->dbh->commit();
+    }
+    else {
+        $self->dbh->rollback;
+    }
+    return $records;
 
 }
+
+
 # ----------------------------------------------------------------------
 # end of code
 1;

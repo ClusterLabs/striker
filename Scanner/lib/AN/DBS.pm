@@ -56,6 +56,7 @@ const my $COMMA       => q{,};
 const my $DOTSLASH    => q{./};
 const my $SLASH       => q{/};
 const my $DOUBLECOLON => q{::};
+const my $DB          => q{db};
 
 # ======================================================================
 # Subroutines
@@ -163,16 +164,18 @@ sub dump_metadata {
     my $idx   = 0;
     for my $set ( sort keys %$dbini ) {
         my $onedbini = $dbini->{$set};
+        my $prefix   = $DB . $DOUBLECOLON . $set . $DOUBLECOLON;
     KEY:
         for my $key ( sort keys %$onedbini ) {
             next KEY
                 if is_pw_field($key);
-            push @dump,
-                $set . $DOUBLECOLON . $key . $ASSIGN . $onedbini->{$key};
+            push @dump, $prefix . $key . $ASSIGN . $onedbini->{$key};
         }
-	# 0-based array de-reference, but 1-based output
-	#
-        push @dump, $self->dbs->[$idx]->dump_metadata( $idx + 1 );
+
+        # 0-based array de-reference, but 1-based output
+        #
+        my $oneDB_prefix = $DB . $DOUBLECOLON . ( $idx + 1 );
+        push @dump, $self->dbs->[$idx]->dump_metadata($oneDB_prefix);
         $idx++;
     }
 
@@ -184,28 +187,43 @@ sub create_db_table {
     my ( $name, $schema ) = @_;
 
     for my $db ( @{ $self->dbs() } ) {
-	my $exists = $db->table_exists( $name );
-	if ( $exists ) {
-	    die "Table '$name' exists with schema differing from '\n$schema'"
-		unless $db->schema_matches( $name, $schema );
-	}
-	else {
-	    $db->create_table( $name, $schema );
-	}
+        my $exists = $db->table_exists($name);
+        if ($exists) {
+            die "Table '$name' exists with schema differing from '\n$schema'"
+                unless $db->schema_matches( $name, $schema );
+        }
+        else {
+            $db->create_table( $name, $schema );
+        }
     }
     return 1;
 }
 
 sub insert_raw_record {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
     for my $db ( @{ $self->dbs() } ) {
-	$db->insert_raw_record( $args )
-	    or carp "Problem inserting record @$args into ";
+        $db->insert_raw_record($args)
+            or carp "Problem inserting record @$args into ";
     }
     return;
 }
+
+sub fetch_agent_data {
+    my $self = shift;
+    my ($proc_info) = @_;
+
+    my $agent_data = [];
+    for my $db ( @{ $self->dbs() } ) {
+        push @{$agent_data},
+            { db      => $db->dbini()->{host},
+              db_type => $db->dbini()->{db_type},
+              data    => $db->fetch_agent_data($proc_info), };
+    }
+    return $agent_data;
+}
+
 # ----------------------------------------------------------------------
 # end of code
 1;

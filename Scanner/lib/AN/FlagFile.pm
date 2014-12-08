@@ -50,6 +50,7 @@ const my $COMMA        => q{,};
 const my $DOT          => q{.};
 const my $DOTSLASH     => q{./};
 const my $SLASH        => q{/};
+const my $STAR         => q{*};
 const my $EMPTY_STRING => q{};
 
 const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
@@ -118,9 +119,10 @@ EODATA
 #
 sub full_file_path {
     my $self = shift;
-    my ($tag) = @_;
+    my ($tag, $name) = @_;
 
-    my $filename = $self->dir() . $SLASH . $tag . $DOT . $self->pidfile;
+    my $name_part = $name || $self->pidfile;
+    my $filename = $self->dir() . $SLASH . $tag . $DOT . $name_part;
 
     return $filename;
 }
@@ -188,8 +190,9 @@ sub find_marker_files {
 
     my $found = {};
     for my $tag (@markers) {
-        my $filename = $self->full_file_path($tag);
-        $found->{$tag} = $filename if -e $filename;
+        my $filename = $self->full_file_path($tag, $STAR);
+	$found->{$tag} = [ glob( $filename ) ];
+#        $found->{$tag} = $filename if -e $filename;
     }
     return unless scalar keys %$found;
     return $found;

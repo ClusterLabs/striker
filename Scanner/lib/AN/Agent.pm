@@ -12,6 +12,7 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
+use Cwd;
 
 use File::Basename;
 
@@ -57,14 +58,20 @@ for my $attr (@ATTRIBUTES) {
 # ======================================================================
 # CONSTANTS
 #
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-const my $DATATABLE_NAME => 'raw_'.$PROG;
+const my $DUMP_PREFIX => q{db::};
+const my $NEWLINE => qq{\n};
+const my $SLASH   => q{/};
+
+const my $PROG    => ( fileparse($PROGRAM_NAME) )[0];
+const my $DATATABLE_NAME   => 'agent_data';
 const my $DATATABLE_SCHEMA => <<"EOSCHEMA";
 
 id        serial primary key,
-process   bigint references node(node_id),
+node_id   bigint references node(node_id),
 value     integer,
 status    status,
+msg_tag   text,
+msg_args  text,
 timestamp timestamp with time zone    not null    default now()
 
 EOSCHEMA
@@ -92,18 +99,29 @@ sub _init {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
+    $self->dbini( getcwd() . $SLASH . $self->dbini );
     return;
 }
+sub non_blank_lines {
+    my ( $str ) = @_;
 
+    # split the string into lines
+    # accept any lines which have non-blank characters
+    # join lines back together into a 'paragraph'
+    #
+    return join q{ }, grep {/\S/} split $NEWLINE, $str;
+}
 sub dump_metadata {
     my $self = shift;
 
     my $dbs_dump = $self->dbs()->dump_metadata;
+    my ($schema) = non_blank_lines $self->datatable_schema;
+
     my $metadata = <<"EODUMP";
-name=$PROG
+${DUMP_PREFIX}name=$PROG
 $dbs_dump
-datatable_name:@{[$self->datatable_name]}
-datatable_schema:"@{[$self->datatable_schema]}"
+${DUMP_PREFIX}datatable_name=@{[$self->datatable_name]}
+${DUMP_PREFIX}datatable_schema="$schema"
 EODUMP
 
     return $metadata;
@@ -121,12 +139,14 @@ sub insert_raw_record {
     my $self = shift;
     my ( $value, $status ) = @_;
 
-    $self->dbs()->insert_raw_record( { table   => $self->datatable_name,
-				       with_node_table_id => 'process',
-				       args => {value   => int $value,
-						status  => $status,
-				       },
-				     });
+    $self->dbs()->insert_raw_record(
+                                     { table => $self->datatable_name,
+                                       with_node_table_id => 'node_id',
+                                       args               => {
+                                                 value  => int $value,
+                                                 status => $status,
+                                               },
+                                     } );
 }
 
 sub generate_random_record {

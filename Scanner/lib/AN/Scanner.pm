@@ -29,12 +29,10 @@ use AN::DBS;
 # Object attributes.
 #
 const my @ATTRIBUTES => (
-    qw( agentdir duration dbini
-        db_name port rate verbose
-        monitoragent flagfile _agents
-        dbs max_loops_unrefreshed
-        run_until
-        ) );
+    qw( agentdir duration dbini db_type db_name port rate verbose 
+        monitoragent flagfile _agents dbs max_loops_unrefreshed 
+        run_until processes )
+);
 
 # Create an accessor routine for each attribute. The creation of the
 # accessor is simply magic, no need to understand.
@@ -64,18 +62,22 @@ for my $attr (@ATTRIBUTES) {
 # ======================================================================
 # CONSTANTS
 #
+const my $COLON    => q{:};
 const my $COMMA    => q{,};
 const my $DOTSLASH => q{./};
-const my $COLON    => q{:};
+const my $DOUBLE_QUOTE => q{"};
+const my $NEWLINE  => qq{\n};
+const my $SLASH    => q{/};
+const my $SPACE    => q{ };
+const my $PIPE     => q{|};
 
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 const my $READ_PROC  => q{-|};
 const my $WRITE_PROC => q{|-};
-const my $SLASH      => q{/};
+
 const my $EP_TIME_FMT => '%8.3f:%8.3f mSec';    # elapsed:pending time format
 
-const my $DB_NODE_TABLE => 'node';
-
+const my $DB_NODE_TABLE       => 'node';
 const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
@@ -83,12 +85,16 @@ const my $PROC_STATUS_HALTED  => 'halted';
 const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $HOURS_IN_A_DAY        => 24;
 const my $MINUTES_IN_AN_HOUR    => 60;
-const my $SECONDS_IN_A_MINUTE  => 60;
+const my $SECONDS_IN_A_MINUTE   => 60;
 const my $SECONDS_IN_A_DAY =>
     ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_A_MINUTE );
 
-const my $RUN                      => 'run';
-const my $EXIT_OK                  => 'ok to exit';
+const my $RUN     => 'run';
+const my $EXIT_OK => 'ok to exit';
+
+const my $NO_MSG_TAG       => 'set_alert() invoked with no message tag';
+const my $INTRO_OTHER_ARGS => 'set_alert() invoked with additional args: ';
+
 const my $OLD_PROCESS_RECENT_CRASH => 'old process crashed recently';
 const my $OLD_PROCESS_STALLED      => 'old process stalled';
 const my $OLD_PROCESS_CRASH        => 'old process crash';
@@ -146,9 +152,10 @@ sub _init {
 
     # default value;
     $self->max_loops_unrefreshed($MAX_LOOPS_UNREFRESHED);
-    $self->_agents( [] );
+    $self->_agents(   [] );
+    $self->processes( [] );
 
-    $self->copy_from_args_to_self( @_ );
+    $self->copy_from_args_to_self(@_);
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -176,35 +183,55 @@ sub DESTROY {
 }
 
 sub run_until_data_is_valid {
-    my ( $value ) = @_;
+    my ($value) = @_;
 
-    # string must match regular expression and 
+    # string must match regular expression and
     # numbers must fit ranges.
     return unless $value =~ m{$RUN_UNTIL_FMT_RE};
 
-    return  ($1 >= 0 && $1 < $HOURS_IN_A_DAY
-	     && $2 >= 0 && $2 < $MINUTES_IN_AN_HOUR
-	     && $3 >= 0 && $3 < $SECONDS_IN_A_MINUTE
-	);
+    return (    $1 >= 0
+             && $1 < $HOURS_IN_A_DAY
+             && $2 >= 0
+             && $2 < $MINUTES_IN_AN_HOUR
+             && $3 >= 0
+             && $3 < $SECONDS_IN_A_MINUTE );
 }
+
 # ......................................................................
 # Private Accessors
 #
+sub add_processes {
+    my $self = shift;
+    my (@value) = @_;
+
+    push @{ $self->processes }, @value;
+    return;
+}
+
+sub drop_processes {
+    my $self = shift;
+    my (@value) = @_;
+
+    my $re = join '|', map { '\b' . $_ . '\b' } @value;
+    $self->processes(
+                     [ grep { ( keys %$_ ) !~ $re } @{ $self->processes() } ] );
+    return;
+}
 
 sub _add_agents {
     my $self = shift;
-    my ($value) = @_;
+    my (@values) = @_;
 
-    push @{ $self->_agents }, @$value;
+    push @{ $self->_agents }, @values;
     return;
 }
 
 sub _drop_agents {
     my $self = shift;
-    my ($value) = @_;
+    my (@values) = @_;
 
-    my $re = join '|', map { '\b' . $_ . '\b' } @$value;
-    $self->_agents( [ grep { $_ !~ $re } @{ $self->_agents() } ] );
+    my $re = join '|', map { '\b' . $_ . '\b' } @values;
+    $self->_agents( [ grep { $_->{filename} !~ $re } @{ $self->_agents() } ] );
     return;
 }
 
@@ -228,16 +255,15 @@ sub _process_id {
 #
 sub create_flagfile {
     my $self = shift;
-    my ( $data ) = @_;
+    my ($data) = @_;
 
     my $hostname = AN::Unix::hostname('-short');
 
     my $args = { dir     => $METADATA_DIR,
-		 pidfile => "${hostname}-${PROG}",
-    };
-    $args->{data} = $data if $data; # otherwise use default.
+                 pidfile => "${hostname}-${PROG}", };
+    $args->{data} = $data if $data;    # otherwise use default.
 
-    $self->flagfile( AN::FlagFile->new( $args) );
+    $self->flagfile( AN::FlagFile->new($args) );
 }
 
 sub create_pid_file {
@@ -275,8 +301,9 @@ sub create_marker_file {
     my $self = shift;
     my ( $tag, $data ) = @_;
 
-    $self->flagfile()->create_marker_file($tag, $data);
+    $self->flagfile()->create_marker_file( $tag, $data );
 }
+
 # Look up whether the process id specified in the pidfile refers to
 # a running process, make sure it's the same name as we are. Otherwise
 # could be another process re-using that pid.
@@ -343,11 +370,37 @@ sub ok_to_exit {
     return $status eq $EXIT_OK;
 }
 
+sub new_alert_loop {
+    say "Scanner->new_alert_loop() not implemented yet.";
+}
+
 sub set_alert {
     my $self = shift;
-    my (@args) = @_;
+    my ($tag, $arg, @others) = @_;
 
-    carp "SET ALERT: ", join ',', map {"'$_'"} @args;
+    my $msg_fmt = $tag || $NO_MSG_TAG;
+
+    # splitting 'undef' generates warning, so use empty string if necessary.
+    #
+    $arg = '' unless defined $arg;
+    my @args = grep {/\w/} split $DOUBLE_QUOTE, $arg || '';
+
+    my $formatted  = @args ? sprintf $msg_fmt, @args
+	: $msg_fmt;
+    $formatted .= $NEWLINE . $INTRO_OTHER_ARGS . (@others)
+	if @others;
+
+    carp "SET ALERT: $formatted";
+}
+
+sub clear_alert {
+
+    carp 'clear_alert not yet implemented.';
+}
+
+sub handle_alerts {
+
+    carp 'handle_alerts not yet implemented';
 }
 
 sub check_for_previous_instance {
@@ -383,7 +436,7 @@ sub check_for_previous_instance {
 sub connect_dbs {
     my $self = shift;
 
-    $self->dbs( AN::DBS->new( {path => {config_file => $self->dbini }} ));
+    $self->dbs( AN::DBS->new( { path => { config_file => $self->dbini } } ) );
     return;
 }
 
@@ -421,18 +474,21 @@ sub _launch_new_agents {
     my $self = shift;
     my ($new) = @_;
 
-    state $args = [map { $_ eq 'xdbini' ? $self->dbini : $_; } @NEW_AGENT_ARGS];
+    local $LIST_SEPARATOR = $SPACE;
+    state $args
+        = [ map { $_ eq 'xdbinix' ? $self->dbini : $_; } @NEW_AGENT_ARGS ];
 
     my @new_agents;
     for my $agent (@$new) {
-        my $pid = AN::Unix::new_bg_process( $self->agentdir() . '/' . $agent,
-                                            @$args );
+        my @args = ( $self->agentdir() . '/' . $agent, @$args );
+        say "launching: @args." if $self->verbose;
+        my $pid = AN::Unix::new_bg_process(@args);
         $pid->{filename} = $agent;
         push @new_agents, $pid;
     }
     $self->_add_agents(@new_agents);
 
-    return;
+    return \@new_agents;
 }
 
 sub scan_for_agents {
@@ -445,12 +501,21 @@ sub scan_for_agents {
         or @{$new}
         or @{$deleted};
 
-    if (@$new) {
-        $self->_launch_new_agents($new);
-    }
+    my $retval = [];
+
+    # If there are new agents, store its data in $retval->[0]
+    # otherwise fill $retval->[0] with a false value, so that the
+    # 'deleted' data still ends up in $retval->[1]/
+    #
+    push @$retval,
+        (   @$new
+          ? $self->_launch_new_agents($new)
+          : undef );
+
     if (@$deleted) {
-        $self->_drop_agents($new);
+        push @$retval, $self->_drop_agents(@$new);
     }
+    return $retval;
 }
 
 sub clean_up_running_agents {
@@ -523,13 +588,130 @@ sub print_loop_msg {
     return;
 }
 
-sub process_agent_data {
-    die "scanner::process_agent_data() not implemented yet.";
+sub find_marker_files {
+    my $self = shift;
+
+    return $self->flagfile()->find_marker_files(@_);
 }
 
-sub new_alert_loop {
-    say "Scanner->new_alert_loop() not implemented yet.";
+sub handle_deletions {
+    my $self = shift;
+    my ($deletions) = @_;
+
+    $self->drop_processes(@$deletions)
+        if $deletions;
+    return;
 }
+
+sub parse_schema_into_hash {
+    my ( $process, $filename ) = @_;
+
+    my @lines = split $COMMA, $process->{$filename}{datatable_schema};
+    my @fields;
+    for my $line (@lines) {
+        my @words = split $SPACE, $line;
+        my %field = ( name => $words[0],
+                      type => $words[1],
+                      rest => join ' ',
+                      @words[ 2 .. $#words ] );
+        push @fields, \%field;
+    }
+    $process->{schema} = [@fields];
+    return;
+}
+
+sub handle_additions {
+    my $self = shift;
+    my ($additions) = @_;
+
+    my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
+    my $tag            = AN::FlagFile::get_tag('METADATA');
+    my $files          = $self->find_marker_files($tag);
+
+FILEPATH:
+    for my $filepath ( @{ $files->{$tag} } ) {
+        next FILEPATH unless $filepath =~ m{($new_file_regex)};
+        my $filename = $1;
+        my %cfg = ( path => { config_file => $filepath } );
+        AN::Common::read_configuration_file( \%cfg );
+
+        my $process = { $filename => $cfg{db} };
+        parse_schema_into_hash( $process, $filename );
+        $self->add_processes($process);
+    }
+    return;
+}
+
+sub handle_changes {
+    my $self = shift;
+    my ($changes) = @_;
+
+    $self->handle_additions( $changes->[0] )
+        if $changes->[0];
+
+    $self->handle_deletions( $changes->[1] )
+        if $changes->[1];
+
+    return;
+}
+
+sub fetch_agent_data {
+    my $self = shift;
+    my ($proc_info) = @_;
+
+    return $self->dbs()->fetch_agent_data($proc_info);
+}
+
+sub detect_status {
+    my $self = shift;
+    my ( $process, $db_data ) = @_;
+
+    my $db_records = $db_data->{data};
+    my $first = 1;
+    my $can_clear_alert;
+  RECORD:
+    for my $idx ( sort {$b <=> $a } keys %$db_records ) {
+	if ( $first ) {
+	    $first = 0;
+	    if( $db_records->{$idx}{status} eq 'OK' ) {
+		# Check previous record to see if there was an alert
+		# condition.
+		#
+		$can_clear_alert = 1;
+	    }
+	    else {
+		# set DEBUG / WARNING / CRISIS alert to send alerts.
+		#
+		my ( $alert_msg_tag, $alert_msg_args)
+		    = ( @{$db_records->{$idx}}{qw(msg_tag msg_args)});
+		$self->set_alert( $alert_msg_tag, $alert_msg_args );
+		last RECORD;
+	    }
+	}
+
+	if( $db_records->{$idx}{status} ne 'OK' ) {
+	    $self->clear_alert( {process => $process,
+				 record => $db_records->{$idx},
+				});
+	}
+
+    }
+    return;
+}
+
+sub process_agent_data {
+    my $self = shift;
+
+    my $status = [];
+    for my $process ( @{ $self->processes } ) {
+        my $agent_data = $self->fetch_agent_data($process);
+	for my $db_data ( @{ $agent_data } ) {
+		push $status, $self->detect_status( $process, $db_data );
+	}
+    }
+    return $status;
+}
+
 
 # Things to do in the core for a scanner core object
 #
@@ -537,13 +719,15 @@ sub loop_core {
     my $self = shift;
 
     $self->new_alert_loop();
-    $self->scan_for_agents();
+    my $changes = $self->scan_for_agents();
+    $self->handle_changes($changes) if $changes;
     $self->process_agent_data();
     $self->handle_alerts();
 
-    $self->touch_id_file;  
+    $self->touch_pid_file;
 
 }
+
 # ......................................................................
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}
@@ -559,14 +743,14 @@ sub run_timed_loop_forever {
     while ( $now < $end_time ) {    # loop until this time tomorrow
                                     #        $self->read_process_all_agents();
 
-	$self->loop_core();
+        $self->loop_core();
 
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
         $pending = 1 if $pending < 0;    # dont wait negative duration.
 
         print_loop_msg( $elapsed, $pending )
-	    if $self->verbose;
+            if $self->verbose;
 
         return
             if $now + $elapsed > $end_time;  # exit before sleep if out of time.

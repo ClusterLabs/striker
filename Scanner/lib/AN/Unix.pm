@@ -12,6 +12,7 @@ use English '-no_match_vars';
 use Carp;
 
 use File::Basename;
+use Sys::Hostname ();
 
 use FindBin qw($Bin);
 use Proc::Background;
@@ -21,12 +22,12 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $COMMA => q{,};
+const my $ESCAPED_DOT   => q{\.};
 const my $SLASH => q{/};
 const my $PROG  => ( fileparse($PROGRAM_NAME) )[0];
 
-const my $HOSTNAME          => '/bin/hostname';
-const my $HOSTNAME_SHORT    => '/bin/hostname --short';
-const my $PID2PROC_NAME     => '/bin/ps -p %s -o comm=';
+const my $SHORT_FLAG     => '-short';
+const my $PID2PROC_NAME  => '/bin/ps -p %s -o comm=';
 const my $TERMINATE_FLAG => { die_upon_destroy => 1 };
 
 # ======================================================================
@@ -38,13 +39,10 @@ const my $TERMINATE_FLAG => { die_upon_destroy => 1 };
 #
 sub hostname {
 
-    my $cmd = (   @_ && $_[0] eq '-short'
-                ? $HOSTNAME_SHORT
-                : $HOSTNAME );
+    state $hn = Sys::Hostname::hostname();
+    state $hn_short = ( split $ESCAPED_DOT, $hn )[0];
 
-    my $hn = `$cmd`;
-    chomp $hn;
-    return $hn;
+    return ( @_ && $_[0] eq $SHORT_FLAG ? $hn_short : $hn );
 }
 
 # ......................................................................
@@ -104,9 +102,10 @@ This document describes Unix.pm version 0.0.1
     my $process_name = AN::Unix::pid2process( 1 );
     say $process_name;		# prints 'systemd'
 
-    my $bd_obj       = AN::Unix::new_bg_process( '/bin/ping', 'google.com' )
-    sleep 15;
-    $bd__obj = undef;
+    {
+        my $bd_obj   = AN::Unix::new_bg_process( '/bin/ping', 'google.com' )
+        sleep 15;
+    }
     # prints several lines something like
     # 64 bytes from yyz08s09-in-f5.1e100.net (173.194.43.69): icmp_seq=1 ttl=56 time=25.8 ms
 
@@ -136,7 +135,7 @@ underlying Unix 'ps' utility.
 =item B<new_bg_process /path/to/program [arg [arg ...]]>
 
 Run the program as a background task, with optional
-arguments. Proc::Background is invoked with a terminate flage, which
+arguments. Proc::Background is invoked with a terminate flag, which
 means that when the object returned from Proc::Background is
 destroyed, the background task will go away.
 
@@ -146,21 +145,21 @@ destroyed, the background task will go away.
 
 =over 4
 
+=item B<Carp> I<core>
+
+Report errors as if they occur at call site.
+
+=item B<Const::Fast>
+
+Provides fast constants.
+
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
 
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
-
 =item B<File::Basename> I<core>
 
 Parses paths and file suffixes.
-
-=item B<Carp> I<core>
-
-Report errors as if they occur at call site.
 
 =item B<FindBin> I<core>
 
@@ -170,9 +169,9 @@ Determine which directory contains the current program.
 
 Run processes in the background.
 
-=item B<Const::Fast>
+=item B<version> I<core since 5.9.0>
 
-Provides fast constants.
+Parses version strings.
 
 =back
 
@@ -188,7 +187,7 @@ We don't yet know of any bugs or limitations. Report problems to
     Alteeve's Niche!  -  https://alteeve.ca
 
 No warranty is provided. Do not use this software unless you are
-willing and able to take full liability for it's use. The authors take
+willing and able to take full liability for its use. The authors take
 care to prevent unexpected side effects when using this
 program. However, no software is perfect and bugs may exist which
 could lead to hangs or crashes in the program, in your cluster and
@@ -215,10 +214,11 @@ There are no current incompatabilities.
 
 =head1 AUTHOR
 
-Alteeve's Niche!  -  https://alteeve.ca
+    Alteeve's Niche!  -  https://alteeve.ca
 
-Tom Legrady       -  tom@alteeve.ca	December 2014
-
+    Tom Legrady          December 2014
+    -  tom@alteeve.ca
+    -  tom@tomlegrady.com
 =cut
 
 # End of File

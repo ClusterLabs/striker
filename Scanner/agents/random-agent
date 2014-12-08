@@ -11,6 +11,7 @@ use English '-no_match_vars';
 use File::Basename;
 use FileHandle;
 
+use Cwd;
 use Getopt::Long;
 use Pod::Usage;
 use FindBin qw($Bin);
@@ -18,7 +19,9 @@ use Time::HiRes qw( time alarm sleep );
 use DBI;
 
 use lib '../lib';
+use lib 'lib';
 use lib '../cgi-bin/lib';
+use lib 'cgi-bin/lib';
 use AN::Agent;
 
 use Const::Fast;
@@ -26,18 +29,20 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
+const my $AGENT_DIR       => 'agents';
 const my $BRIEF          => 1;
-const my $VERBOSE        => 2;
-
 const my $COMMA          => q{,};
-const my $DEFAULT_DB_INI => '../Config/db.ini';
+const my $DEFAULT_DB_INI => 'Config/db.ini';
 const my $DOTSLASH       => q{./};
-const my $RUN_UNTIL      => '23:59:59';
-const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE       => 30;
-const my $SLASH          => q{/};
 const my $MAX_RATE       => 600;
 const my $MIN_RATE       => 1;
+const my $MSG_DIR        => 'MESSAGES/';
+const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE       => 30;
+const my $RUN_UNTIL      => '23:59:59';
+const my $SLASH          => q{/};
+const my $UP_ONE_DIR     => q{..};
+const my $VERBOSE        => 2;
 
 # ======================================================================
 # Subroutines
@@ -52,10 +57,12 @@ sub process_args {
         run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
         filepath      => '/tmp/agents',    # directory to scan for agents.
         dbini         => $DEFAULT_DB_INI,     # DB configuration file.
+	msg_file      => $MSG_DIR . $PROG
     };
 
-    GetOptions( $opt, 'dbini=s', 'rate=i', 'filepath=s', 'dbini=s', 
-		'metadata|o=s', 'run_until=s', 'verbose!', 'man', 'help' )
+    GetOptions( $opt,       'dbini=s',    'rate=i',       'filepath=s',
+                'dbini=s',  'msg_file=s', 'metadata|o=s', 'run_until=s',
+                'verbose!', 'man',        'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
@@ -98,6 +105,13 @@ sub verify_args {
 #
 
 sub main {
+
+    # When run manually, program starts in 'agents' dir; when run by
+    # scanner, cwd() is one level higher. Lets make things consistent.
+    #
+    chdir $UP_ONE_DIR
+	if basename( getcwd ) eq $AGENT_DIR;
+
     my $options = process_args();
 
     my $agent = AN::Agent->new( $options );
