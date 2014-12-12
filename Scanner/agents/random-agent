@@ -29,7 +29,7 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $AGENT_DIR       => 'agents';
+const my $AGENT_DIR      => 'agents';
 const my $BRIEF          => 1;
 const my $COMMA          => q{,};
 const my $DEFAULT_DB_INI => 'Config/db.ini';
