@@ -1,3 +1,4 @@
+\echo To load this file: psql -U postgres -d scanner -f create_node.sql
 \echo Drop existing instances to create new and clean
 
 DROP EXTENSION IF EXISTS plpgsql      cascade;
@@ -17,7 +18,7 @@ SET client_min_messages = warning;
 CREATE LANGUAGE plpgsql;
 
 CREATE SCHEMA history;
---ALTER SCHEMA history OWNER to alteeve;
+ALTER SCHEMA history OWNER to alteeve;
 
 \echo Create table node
 
@@ -31,7 +32,7 @@ modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
 );
 
---ALTER TABLE node OWNER TO alteeve;
+ALTER TABLE node OWNER TO alteeve;
 
 \echo Create table history.node
 
@@ -39,14 +40,14 @@ CREATE TABLE history.node (
 node_id		bigint,
 node_name	text	not null,	-- I break the short name off of the FQDN
 node_description text,
-status          text,
 pid             int,
+status          text,
 history_id	serial  primary key,
 modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
 );
 
---ALTER TABLE node OWNER TO alteeve;
+ALTER TABLE node OWNER TO alteeve;
 
 \echo Create function history_nodes to populate history.node from node
 
@@ -75,15 +76,15 @@ END;
 $$
 LANGUAGE plpgsql;
 
--- ALTER FUNCTION history_node() OWNER TO alteeve;
+ ALTER FUNCTION history_node() OWNER TO alteeve;
 
 \echo Create trigger trigger_node using function history_nodes
 
-CREATE TRIGGER trigger_node 
-AFTER INSERT OR UPDATE ON node 
-FOR EACH ROW EXECUTE PROCEDURE history_node();
+-- CREATE TRIGGER trigger_node 
+-- AFTER INSERT OR UPDATE ON node 
+-- FOR EACH ROW EXECUTE PROCEDURE history_node();
 
 
 \echo Create an enum data type for the status field.
-
 CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS' );
+
