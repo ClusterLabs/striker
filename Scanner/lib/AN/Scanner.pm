@@ -21,6 +21,7 @@ use Const::Fast;
 use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
+use AN::Alerts;
 use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
@@ -31,7 +32,7 @@ use AN::DBS;
 const my @ATTRIBUTES => (
     qw( agentdir duration dbini db_type db_name port rate verbose 
         monitoragent flagfile _agents dbs max_loops_unrefreshed 
-        run_until processes )
+        run_until processes alerts msg_dir)
 );
 
 # Create an accessor routine for each attribute. The creation of the
@@ -92,13 +93,6 @@ const my $SECONDS_IN_A_DAY =>
 const my $RUN     => 'run';
 const my $EXIT_OK => 'ok to exit';
 
-const my $NO_MSG_TAG       => 'set_alert() invoked with no message tag';
-const my $INTRO_OTHER_ARGS => 'set_alert() invoked with additional args: ';
-
-const my $OLD_PROCESS_RECENT_CRASH => 'old process crashed recently';
-const my $OLD_PROCESS_STALLED      => 'old process stalled';
-const my $OLD_PROCESS_CRASH        => 'old process crash';
-
 const my $METADATA_DIR => '/tmp';
 const my @NEW_AGENT_ARGS =>
     ( '-o', 'meta-data', '-f', $METADATA_DIR, '--dbini', 'xdbinix' );
@@ -156,6 +150,16 @@ sub _init {
     $self->processes( [] );
 
     $self->copy_from_args_to_self(@_);
+    
+    my $self_as_agent = { agents => { PID      => $PID,
+                                      filename => $PROG,
+                                      msg_dir  => $self->msg_dir,
+                                    },
+			  owner  => $self,
+    };
+    
+    $self->alerts( AN::Alerts->new($self_as_agent) );
+
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -363,6 +367,12 @@ sub tell_old_job_to_quit {
 # Methods
 #
 
+sub fetch_alert_listeners {
+    my $self = shift;
+
+    return $self->dbs()->fetch_alert_listeners();
+}
+
 sub ok_to_exit {
     my $self = shift;
     my ($status) = @_;
@@ -371,36 +381,30 @@ sub ok_to_exit {
 }
 
 sub new_alert_loop {
-    say "Scanner->new_alert_loop() not implemented yet.";
+    my $self = shift;
+
+    $self->alerts()->new_alert_loop();
+    return;
 }
 
 sub set_alert {
     my $self = shift;
-    my ($tag, $arg, @others) = @_;
 
-    my $msg_fmt = $tag || $NO_MSG_TAG;
-
-    # splitting 'undef' generates warning, so use empty string if necessary.
-    #
-    $arg = '' unless defined $arg;
-    my @args = grep {/\w/} split $DOUBLE_QUOTE, $arg || '';
-
-    my $formatted  = @args ? sprintf $msg_fmt, @args
-	: $msg_fmt;
-    $formatted .= $NEWLINE . $INTRO_OTHER_ARGS . (@others)
-	if @others;
-
-    carp "SET ALERT: $formatted";
+    $self->alerts()->set_alert( @_ );
 }
 
 sub clear_alert {
+    my $self = shift;
 
-    carp 'clear_alert not yet implemented.';
+    $self->alerts()->clear_alert( @_);
+    return;
 }
 
 sub handle_alerts {
+    my $self = shift;
 
-    carp 'handle_alerts not yet implemented';
+    $self->alerts()->handle_alerts( @_ );
+    return;
 }
 
 sub check_for_previous_instance {
@@ -419,15 +423,15 @@ sub check_for_previous_instance {
         if $is_recent && $is_running;
 
     # Old process exited recently without proper cleanup
-    $self->set_alert($OLD_PROCESS_RECENT_CRASH)
+    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_RECENT_CRASH')
         if $is_recent && !$is_running;
 
     # Old process has stalled; running but not updating.
-    $self->set_alert($OLD_PROCESS_STALLED)
+    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED')
         if !$is_recent && $is_running;
 
     # old process exited some time ago without proper cleanup
-    $self->set_alert($OLD_PROCESS_CRASH)
+    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH')
         if !$is_recent && !$is_running;
 
     return $RUN;
@@ -529,7 +533,8 @@ sub run {
     #
     $self->connect_dbs();
     $self->create_pid_file();
-
+    $self->handle_alerts();	# process any alerts from initialization stage
+    
     # process until quitting time
     #
     $self->run_timed_loop_forever();
@@ -539,6 +544,7 @@ sub run {
     $self->clean_up_running_agents();
     $self->disconnect_dbs();
     $self->delete_pid_file();
+    $self->handle_alerts();	# process any alerts from clean-up stage
 }
 
 # ......................................................................
