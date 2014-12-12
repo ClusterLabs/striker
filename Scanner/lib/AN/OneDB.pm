@@ -331,6 +331,69 @@ sub table_exists {
     return $exists && $exists->[0] && $exists->[0][0];
 }
 
+sub split_schema_row {
+    my ( $record ) = @_;
+
+    $record =~ s{,}{};
+    my ($ref_spec) = [ split /\s+/, $record ];
+
+    return $ref_spec;
+}
+
+sub field_name_matches {
+    my ( $ref, $field ) = @_;
+    
+    return $ref->[0] eq $field->{column_name};
+}
+
+sub carp_field_name_mismatch {
+    my ( $name, $position, $ref, $field) = @_;    
+
+    carp __PACKAGE__
+	. "::schema_matches($name), field # $position is '$field->{column_name}', should be '$ref->[0]'.\n";
+
+    return;
+}
+
+sub field_type_matches {
+    my ( $ref, $field ) = @_;
+
+    my $matchesP = (
+	$ref->[1] eq $field->{data_type}
+	or (     $ref->[1] eq 'serial'
+		 and $field->{data_type} eq 'integer'
+		 and 0 == index $field->{column_default},
+		 'nextval'
+	)
+	or (     $ref->[1] eq 'status'
+		 and $field->{udt_name} eq 'status' )
+	or ($ref->[1] eq 'timestamp'
+	    and $field->{data_type} = 'timestamp with time zone' )
+        );
+    
+    return $matchesP;
+}
+sub carp_field_type_mismatch {
+    my ( $name, $position, $ref, $field) = @_;
+    
+            carp __PACKAGE__
+                . "::schema_matches($name), field # $position '$field->{column_name}' has type '$field->{data_type}/$field->{udt_name}/$field->{column_default}' should be '@{$ref}[1..-1]'.";
+
+    return;
+}
+
+sub fetch_schema {
+    my $self = shift;
+    my ( $name ) = @_;
+
+    my $schema = $self->dbh()
+        ->selectall_hashref( $SQL{Get_Schema}, 'ordinal_position', undef,
+                             $name )
+        or die "Failed to fetch schema for table '$name';", $DBI::errstr;
+
+    return $schema;
+}
+
 sub schema_matches {
     my $self = shift;
     my ( $name, $ref_schema ) = @_;
@@ -338,46 +401,19 @@ sub schema_matches {
     # skip empty lines.
     my @ref_schema = grep {/\w/} split "\n", $ref_schema;
 
-    my $schema =
-        $self->dbh()
-        ->selectall_hashref( $SQL{Get_Schema}, 'ordinal_position', undef,
-                             $name )
-        or die "Failed to fetch schema for table '$name';", $DBI::errstr;
+    my $schema = $self->fetch_schema( $name );
 
     for my $position ( sort keys %$schema ) {
         my $field_spec = $schema->{$position};
-
-        # clean away commas, split into fields, and store as arrayref
-        #
-        my ($record) = $ref_schema[ $position - 1 ];
-        $record =~ s{,}{};
-        my ($ref_spec) = [ split /\s+/, $record ];
-
-        my $namematch = $ref_spec->[0] eq $field_spec->{column_name};
-        if ( !$namematch ) {
-            carp __PACKAGE__
-                . "::schema_matches($name), field # $position is '$field_spec->{column_name}', should be '$ref_spec->[0]'.\n";
-            return;
-        }
-        my $typematch = (
-                 $ref_spec->[1] eq $field_spec->{data_type}
-                     or (     $ref_spec->[1] eq 'serial'
-                          and $field_spec->{data_type} eq 'integer'
-                          and 0 == index $field_spec->{column_default},
-                          'nextval'
-                        )
-                     or (     $ref_spec->[1] eq 'status'
-                          and $field_spec->{udt_name} eq 'status' )
-                     or ($ref_spec->[1] eq 'timestamp'
-                     and $field_spec->{data_type} = 'timestamp with time zone' )
-        );
-        if ( !$typematch ) {
-            carp __PACKAGE__
-                . "::schema_matches($name), field # $position '$field_spec->{column_name}' has type '$field_spec->{data_type}/$field_spec->{udt_name}/$field_spec->{column_default}' should be '@{$ref_spec}[1..-1]'.";
-            return;
-        }
+	my $ref_spec = split_schema_row $ref_schema[ $position -1 ];
+	
+        field_name_matches( $ref_spec, $field_spec )
+	    or do{  carp_field_name_mismatch( $name, $position, $ref_spec, $field_spec ),
+		    return; };
+        field_type_matches( $ref_spec, $field_spec )
+	    or do { carp_field_type_mismatch( $name, $position, $ref_spec, $field_spec ),
+		    return; };
     }
-
     return 1;
 }
 
@@ -497,6 +533,21 @@ sub fetch_agent_data {
 
 }
 
+sub fetch_alert_listeners {
+    my $self = shift;
+
+    my $sql = <<"EOSQL";
+
+SELECT  *
+FROM    alert_listeners
+
+EOSQL
+
+    my $records = $self->dbh()->selectall_hashref( $sql, 'id' )
+	or die "Failed to fetch alert listeners.";
+
+    return $records;
+}
 
 # ----------------------------------------------------------------------
 # end of code
