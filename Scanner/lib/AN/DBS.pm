@@ -219,11 +219,26 @@ sub fetch_agent_data {
         push @{$agent_data},
             { db      => $db->dbini()->{host},
               db_type => $db->dbini()->{db_type},
-              data    => $db->fetch_agent_data($proc_info), };
+              data    => $db->fetch_agent_data($proc_info),
+	    };
     }
     return $agent_data;
 }
 
+sub fetch_alert_listeners {
+    my $self = shift;
+
+    for my $db ( @{ $self->dbs() } ) {
+        my ($listeners)
+            = { db      => $db->dbini()->{host},
+                db_type => $db->dbini()->{db_type},
+                data    => $db->fetch_alert_listeners(), };
+	return $listeners if $listeners->{data};
+    }
+    
+    return;
+}
+    
 # ----------------------------------------------------------------------
 # end of code
 1;
