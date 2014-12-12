@@ -27,7 +27,8 @@ use Const::Fast;
 #
 const my $BRIEF          => 1;
 const my $COMMA          => q{,};
-const my $DEFAULT_DB_INI => 'Config/db.ini';
+const my $DEFAULT_DB_INI => $Bin . '/Config/db.ini';
+const my $DEFAULT_MSGS   => $Bin . '/Messages/';
 const my $DOTSLASH       => q{./};
 const my $LIFETIME       => 24 * 60 * 60;
 const my $RUN_UNTIL      => '23:59:59';
@@ -49,15 +50,16 @@ const my $VERBOSE             => 2;
 sub process_args {
 
     my $opt = {
-        rate          => $REP_RATE,           # loop repetition rate in seconds.
-        run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
-        agentdir      => $Bin . '/agents',    # directory to scan for agents.
-        verbose       => 0,                   # print strings for no change?
-        dbini         => $DEFAULT_DB_INI,     # DB configuration file.
-    };
+        rate      => $REP_RATE,           # loop repetition rate in seconds.
+        run_until => $RUN_UNTIL,          # Stop this process at appointed time.
+        agentdir  => $Bin . '/agents',    # directory to scan for agents.
+        verbose   => 0,                   # print strings for no change?
+        dbini     => $DEFAULT_DB_INI,     # DB configuration file.
+	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
+              };
 
     GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
-                'run_until=s', 'verbose!', 'man', 'help' )
+		'msg_dir=s', 'run_until=s', 'verbose!', 'man', 'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
