@@ -5229,7 +5229,7 @@ sub record
 		$fh = IO::Handle->new();
 		$conf->{handles}{'log'} = $fh;
 		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".get_date($conf, time)."\n";
+		print $fh "======\nOpening Anvil! Striker log at ".get_date($conf, time)."\n";
 	}
 	print $fh $message;
 	$fh->flush;
@@ -6296,7 +6296,7 @@ sub remote_call
 {
 	my ($conf, $parameters) = @_;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	my $cluster    = $conf->{cgi}{cluster};
 	my $node       = $parameters->{node};
 	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
@@ -6305,8 +6305,8 @@ sub remote_call
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	
 	### TODO: Make this a better looking error.
 	if (not $node)
@@ -6355,7 +6355,7 @@ sub remote_call
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
-	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
@@ -6423,7 +6423,7 @@ sub remote_call
 	### collection in this section.
 	#
 	# Open a channel and make the call.
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
 		# We need to open a channel every time for 'exec' calls. We
@@ -6434,7 +6434,7 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow

@@ -4661,13 +4661,14 @@ sub provision_vm
 	{
 		$provision .= "  --video cirrus \\\\\n";
 	}
+	### TODO: Parse 'brctl show' for the bridge name.
 	if ($conf->{new_vm}{virtio}{nic})
 	{
-		$provision .= "  --network bridge=vbr2,model=virtio \\\\\n";
+		$provision .= "  --network bridge=ifn-bridge1,model=virtio \\\\\n";
 	}
 	else
 	{
-		$provision .= "  --network bridge=vbr2,model=e1000 \\\\\n";
+		$provision .= "  --network bridge=ifn-bridge1,model=e1000 \\\\\n";
 	}
 	$i = 0;
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
@@ -5172,6 +5173,7 @@ sub confirm_provision_vm
 	my $select_cpu_cores     = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
 	foreach my $storage (sort {$a cmp $b} split/,/, $conf->{cgi}{max_storage})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage: [$storage]\n");
 		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
 		my $say_max_storage          =  AN::Cluster::bytes_to_hr($conf, $space);
 		$say_max_storage             =~ s/\.(\d+)//;

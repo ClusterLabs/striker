@@ -3890,11 +3890,11 @@ sub get_current_state_lsi
 	# First up, base controller details.
 	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{data}{lsi}{new}{adapter}})
 	{
-		my $part_number    = $conf->{data}{lsi}{new}{adapter}{$adapter}{product_name};
-		my $serial_number  = $conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no};
-		my $hw_revision    = $conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no};
-		my $bbu_present    = $conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu} ? $conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu} : "--";
-		my $memory_present = $conf->{data}{lsi}{new}{adapter}{$adapter}{memory};
+		my $part_number    = $conf->{data}{lsi}{new}{adapter}{$adapter}{product_name} ? $conf->{data}{lsi}{new}{adapter}{$adapter}{product_name} : "--";
+		my $serial_number  = $conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no}    ? $conf->{data}{lsi}{new}{adapter}{$adapter}{serial_no}    : "--";
+		my $hw_revision    = $conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no}  ? $conf->{data}{lsi}{new}{adapter}{$adapter}{revision_no}  : "--";
+		my $bbu_present    = $conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu}  ? $conf->{data}{lsi}{new}{adapter}{$adapter}{hw_conf_bbu}  : "--";
+		my $memory_present = $conf->{data}{lsi}{new}{adapter}{$adapter}{memory}       ? $conf->{data}{lsi}{new}{adapter}{$adapter}{memory}       : "--";
 		my $memory_size    = $memory_present =~ /Present/i ? $conf->{data}{lsi}{new}{adapter}{$adapter}{memory_size} : "--";
 
 		# BBU Info and state
@@ -4117,6 +4117,13 @@ sub check_network
 		if ($line =~ /^(.*?) Link/i)
 		{
 			$this_dev = $1;
+			if ($this_dev eq "bcn-link1")
+			{
+				# This will prevent the program from trying to
+				# parse bond0, which shouldn't exist but does
+				# on the new network configuration...
+				$conf->{'system'}{new_style_network} = 1;
+			}
 			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev]\n");
 		}
 		if (not $this_dev)
@@ -4182,11 +4189,15 @@ sub check_network
 			$conf->{data}{network}{new}{dev}{$this_dev}{tx}{'bytes'}  = $1;
 			#record($conf, "$THIS_FILE ".__LINE__."; this_dev: [$this_dev] - tx - bytes: [$conf->{data}{network}{new}{dev}{$this_dev}{tx}{'bytes'}]\n");
 		}
+		if ($conf->{'system'}{new_style_network})
+		{
+			delete $conf->{data}{network}{new}{dev}{'bond0'};
+		}
 	}
 	$fh->close();
 	
-	# This requires that bonds be 'bondX', eth devices be 'ethX' and
-	# bridges be 'vbrX'.
+	# This now supports old-style 'bondX', 'ethX' and 'vbrX' as well as
+	# the new 'X-bond1', 'X-linkY' and 'X-bridge1' names.
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
 	{
 		# Bonds will sort first.
@@ -4346,7 +4357,7 @@ sub check_network
 				$fh->close();
 			}
 		}
-		elsif ($dev =~ /eth/)
+		elsif (($dev =~ /eth/) || ($dev =~ /link/))
 		{
 			# Read the '/etc/sysconfig/network-scripts/ifcfg-${dev}'
 			# file. This is needed because if a device was 
@@ -4403,7 +4414,7 @@ sub check_network
 				$fh->close();
 			}
 		}
-		elsif ($dev =~ /vbr/)
+		elsif (($dev =~ /vbr/) || ($dev =~ /bridge/))
 		{
 			# Read 'brctl show $dev'
 			#record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev]\n");
@@ -4872,12 +4883,14 @@ Links(s): $say_interface0
 	$conf->{data}{network}{new}{iface_in_bond} = "";
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
 	{
+		# Ignore 'bond0' when dealing with new-style network configs.
+		next if (($conf->{'system'}{new_style_network}) && ($dev eq "bond0"));
 		my $say_out = "Internet-Facing Network";
-		if ($dev =~ /bond0/i)
+		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i))
 		{
 			$say_out = "Back-Channel Network"
 		}
-		elsif ($dev =~ /bond1/i)
+		elsif (($dev eq "bond1") || ($dev =~ /sn-bond1/i))
 		{
 			$say_out = "Storage Network"
 		}
@@ -5043,7 +5056,36 @@ Links(s): $say_interface0
 		$say_second_speed      = sprintf("%-${pad_length}s", $say_second_speed);
 		$say_second_link_state = sprintf("%-${pad_length}s", $say_second_link_state);
 		
-		$body .= "
+		if ($conf->{'system'}{new_style_network})
+		{
+			if ($first_slave =~ /sn/)
+			{
+				$first_slave  = " $first_slave";
+				$second_slave = " $second_slave";
+			}
+			$body .= "
+Bond: $dev $say_line1
+                 $say_line2
+      
+    Active Slave: $active_slave using MAC: $active_mac
+    Prefer Slave: $primary_slave
+    Reselect:     $say_reselect
+    Link Check:   $say_link_check
+    MTU Size:     $mtu Bytes
+
+                 +-------------------+-------------------+
+       Slaves    |    $first_slave      |    $second_slave      |
+    +------------+-------------------+-------------------+
+    | Link:      | $say_first_link_state | $say_second_link_state |
+    | Speed:     | $say_first_speed | $say_second_speed |
+    | MAC:       | $first_mac | $second_mac |
+    | Failures:  | $first_fail_count | $second_fail_count |
+    +------------+-------------------+-------------------+
+";
+		}
+		else
+		{
+			$body .= "
 Bond: $dev $say_line1
              $say_line2
       
@@ -5062,12 +5104,13 @@ Bond: $dev $say_line1
     | Failures:  | $first_fail_count | $second_fail_count |
     +------------+-------------------+-------------------+
 ";
+		}
 	}
 
 	# This will only show information for interfaces not in a bond.
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
 	{
-		next if $dev !~ /eth/i;
+		next if (($dev !~ /eth/) && ($dev !~ /link/));
 		next if $conf->{data}{network}{new}{iface_in_bond} =~ /$dev,/;
 		my $mac   = $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
 		my $state = $conf->{data}{network}{new}{dev}{$dev}{'state'};
@@ -5541,11 +5584,11 @@ sub compare_new_and_old
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
 	{
 		my $say_out = "Internet-Facing Network";
-		if ($dev =~ /bond0/i)
+		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i))
 		{
 			$say_out = "Back-Channel Network"
 		}
-		elsif ($dev =~ /bond1/i)
+		elsif(($dev eq "bond1") || ($dev =~ /sn-bond1/i))
 		{
 			$say_out = "Storage Network"
 		}
@@ -5677,7 +5720,7 @@ sub compare_new_and_old
 	# Check network interfaces
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{dev}})
 	{
-		next if $dev !~ /eth/i;
+		next if (($dev !~ /eth/) && ($dev !~ /link/));
 		$conf->{data}{network}{old}{dev}{$dev}{hwaddr}     = "--" if not defined $conf->{data}{network}{old}{dev}{$dev}{hwaddr};
 		$conf->{data}{network}{new}{dev}{$dev}{hwaddr}     = "--" if not defined $conf->{data}{network}{new}{dev}{$dev}{hwaddr};
 		if ($conf->{data}{network}{old}{dev}{$dev}{hwaddr} ne $conf->{data}{network}{new}{dev}{$dev}{hwaddr})
@@ -7653,7 +7696,7 @@ sub copy_hash
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{dev}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; COPYING - dev: [$dev]\n");
-		if ($dev =~ /eth/)
+		if (($dev =~ /eth/) || ($dev =~ /link/))
 		{
 			foreach my $var (sort {$a cmp $b} keys %{$conf->{data}{network}{$src}{dev}{$dev}})
 			{

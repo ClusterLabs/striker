@@ -1,1 +1,6 @@
-watch "cat /proc/net/bonding/bond0 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond1 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond2 |grep -i -e current -e primary -e status -e inter"
+if [ -e '/proc/net/bonding/bcn-bond1' ];
+then
+	watch "cat /proc/net/bonding/bcn-bond1 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/sn-bond1 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/ifn-bond1 |grep -i -e current -e primary -e status -e inter"
+else
+	watch "cat /proc/net/bonding/bond0 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond1 |grep -i -e current -e primary -e status -e inter && echo && cat /proc/net/bonding/bond2 |grep -i -e current -e primary -e status -e inter"
+fi

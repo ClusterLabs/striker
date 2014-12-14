@@ -847,7 +847,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0022">Online</key>
 		<key name="state_0023">Added</key>
 		<key name="state_0024">Everything Installed</key>
-		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span>]]></key>
+		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span> on node: [#!variable!node!#].]]></key>
 		<key name="state_0026">Updated</key>
 		<key name="state_0027">Already up to Date</key>
 		<key name="state_0028">Already Configured</key>
@@ -1420,12 +1420,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
-		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.]]></key>
+		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.<br />Will try to proceed, though partitioning may fail later.]]></key>
 		<key name="message_0375">Checks complete.</key>
 		<key name="message_0376">Not needed</key>
 		<key name="message_0377">Already registered</key>
 		<key name="message_0378">Registration needed</key>
-		<key name="message_0379">Yes, but no Internet</key>
+		<key name="message_0379">No, but no Internet</key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
