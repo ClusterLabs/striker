@@ -11,76 +11,63 @@ our $VERSION = '0.0.1';
 use English '-no_match_vars';
 use Carp;
 
+use Clone 'clone';
 use File::Basename;
 use FileHandle;
 use IO::Select;
 use Time::Local;
 use FindBin qw($Bin);
+use Module::Load;
+use POSIX 'strftime';
 
 use AN::Msg_xlator;
-
+use AN::OneAlert;
 use Const::Fast;
+use Data::Dumper;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (
-    qw( agents alerts xlator owner listeners)
-);
+const my $AGENT_KEY  => 'agents';
+const my $PID_SUBKEY => 'pid';
+const my $OWNER_KEY  => 'owner';
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
+use Class::Tiny qw( agents  xlator owner listeners),
+    { alerts => sub { return {} },
+      agents => sub { return {} }, };
+
+sub BUILD {
+    my $self = shift;
+
+    for my $arg (@_) {
+        my ( $pid, $agent, $owner )
+            = (is_hash_ref($arg) && has_agents_key($arg) && has_pid_subkey($arg)
+               ? ( $arg->{$AGENT_KEY}{$PID_SUBKEY}, clone( $arg->{$AGENT_KEY} ),
+                   $arg->{$OWNER_KEY} )
+               : ( undef, undef ) );
+
+        if ( $pid && $agent ) {
+            $self->agents( {$pid => $agent } );
+	    
+            my $xlator_args = { pid => $pid, agents => { $pid => $agent } };
+            $self->xlator( AN::Msg_xlator->new($xlator_args) );
+
+            $self->owner($owner);
+            return;
         }
+    }
+    carp "Did not extract pid, agent, owner in Alerts::BUILD";
 }
 
 # ======================================================================
 # CONSTANTS
 #
-const my $COLON    => q{:};
-const my $COMMA    => q{,};
-const my $DOTSLASH => q{./};
-const my $DOUBLE_QUOTE => q{"};
-const my $NEWLINE  => qq{\n};
-const my $SLASH    => q{/};
-const my $SPACE    => q{ };
-const my $PIPE     => q{|};
 
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 
-const my $AGENT_KEY  => 'agents';
-const my $PID_SUBKEY => 'PID';
-const my $OWNER_KEY  => 'owner';
 
 const my %LEVEL => ( DEBUG   => 'DEBUG',
                      WARNING => 'WARNING',
                      CRISIS  => 'CRISIS' );
 
-const my $PID_FIELD_IDX   => 0;
-const my $LEVEL_FIELD_IDX => 1;
-const my $TAG_FIELD_IDX   => 2;
-
-const my $NO_MSG_TAG       => 'set_alert() invoked with no message tag';
-const my $INTRO_OTHER_ARGS => 'set_alert() invoked with additional args: ';
+const my $ALERT_MSG_FORMAT_STR => '%s: %s->%s (%s); %s: %s';
 
 const my $LISTENS_TO 
     => { CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1},
@@ -95,32 +82,6 @@ const my $LISTENS_TO
 # Standard constructor. In subclasses, 'inherit' this constructor, but
 # write a new _init()
 #
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub copy_from_args_to_self {
-    my $self = shift;
-    my (@args) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    return;
-}
 
 # ......................................................................
 #
@@ -139,36 +100,12 @@ sub has_pid_subkey {
     return exists $_[0]->{$AGENT_KEY}{$PID_SUBKEY}
 }
 
-sub _init {
-    my $self = shift;
 
-    # default value;
-    $self->alerts( {} );
-    $self->agents( {} );
-
-    for my $arg (@_) {
-        my ( $pid, $agent, $owner )
-            = (is_hash_ref($arg) && has_agents_key($arg) && has_pid_subkey($arg)
-               ? ( $arg->{$AGENT_KEY}{$PID_SUBKEY}, $arg->{$AGENT_KEY},
-                   $arg->{$OWNER_KEY} )
-               : ( undef, undef ) );
-
-        if ( $pid && $agent ) {
-            $self->agents()->{$pid} = $agent;
-            $self->xlator( AN::Msg_xlator->new( $pid, $agent ) );
-            $self->owner($owner);
-        }
-    }
-    
-#    $self->copy_from_args_to_self(@_);
-
-    return;
+{ no warnings;
+  sub DEBUG   {return $LEVEL{DEBUG};}
+  sub WARNING {return $LEVEL{WARNING};}
+  sub CRISIS  {return $LEVEL{CRISIS};}
 }
-
-sub DEBUG   {return $LEVEL{DEBUG};}
-sub WARNING {return $LEVEL{WARNING};}
-sub CRISIS  {return $LEVEL{CRISIS};}
-
 # ======================================================================
 # Methods
 #
@@ -182,24 +119,71 @@ sub new_alert_loop {
     return;
 }
 
+sub add_alert {
+    my $self = shift;
+    my ( $pid, $value ) = @_;
 
+    die ( "pid = $pid, value = $value, caller = @{[caller]}" )
+	unless $pid && $value;
+    $self->alerts()->{$pid} = $value;
+    return;
+}
+sub add_agent {
+    my $self = shift;
+    my ( $pid, $value ) = @_;
+
+    die ( "pid = $pid, value = $value, caller = @{[caller]}" )
+	unless $pid && $value;
+    $self->agents()->{$pid} = $value;
+    return;
+}
+
+sub delete_alert {
+    my $self = shift;
+    my ( $pid ) = @_;
+
+    delete $self->alerts()->{$pid};
+    return
+}
+sub alert_exists {
+    my $self = shift;
+    my ( $pid ) = @_;
+
+    my @keys = keys %{ $self->alerts };
+    return unless @keys;	  # No alerts have been set 
+    return grep { /$pid/ } @keys; # Alerts exist, but none for $pid
+}    
 # ......................................................................
 #
-    # my $msg_fmt = $self->xlator()->lookup_msg( $src, $tag );
+sub extract_time_and_modify_array {
+    my ($array) = @_;
 
-    # my $formatted
-    #     = $args
-    #     ? sprintf $msg_fmt, @$args
-    #     : $msg_fmt;
-    # $formatted .= $NEWLINE . $INTRO_OTHER_ARGS . (@others)
-    #     if @others;
-
+    my $timestamp;
+    for my $idx ( 0 .. @$array -1 ) {
+	my $tsh = $array->[$idx];
+	if ($tsh && 'HASH' eq ref $tsh && exists $tsh->{timestamp} ) {
+	    $timestamp = $tsh->{timestamp};
+	    delete $tsh->{timestamp};;
+	}
+	# If $tsh only contained a timestamp, remove entire element
+	# from array.
+	splice( @$array, $idx) unless scalar keys %$tsh;
+    }
+    return $timestamp || strftime '%F %T%z', localtime;
+}
 sub set_alert {
     my $self = shift;
-    my ($src, $level, $tag, $args, @others) = @_;
+    my ( $src, $level, $msg_tag, $msg_args, @others ) = @_;
 
-    $self->alerts()->{$src} = \@_;
-    
+    my $timestamp = extract_time_and_modify_array( \@others); 
+    my $args = { pid       => $src,
+                 timestamp => $timestamp,
+                 status    => $level,
+                 msg_tag   => $msg_tag,
+                 msg_args  => $msg_args,
+                 other     => \@others || '', };
+
+    $self->add_alert( $src, AN::OneAlert->new($args) );
     return;
 }
 
@@ -209,38 +193,24 @@ sub clear_alert {
     my $self = shift;
     my ( $pid ) = @_;
     
-    my @keys = keys %{ $self->alerts };
-    return unless @keys;	          # No alerts have been set 
-    return unless grep { /$pid/ } @keys;  # Alerts exist, but none for $pid
-    
-    delete $self->alerts()->{$pid};
+    return unless $self->alert_exists( $pid );
+    $self->delete_alert( $pid);
     return;
 }
  
 # ......................................................................
 #
-sub listening_at_this_level {
-    my ( $listener, $alert ) = @_;
-
-    return unless exists $LISTENS_TO->{$listener->{level}};
-    return unless exists $LISTENS_TO->{$listener->{level}}{$alert->[1]};
-    return $LISTENS_TO->{$listener->{level}}{$alert->[1]};
-}
 
 sub has_dispatcher {
     my ( $listener ) = @_;
-    return unless $listener and 'HASH' eq ref $listener;
-    return exists $listener->{dispatcher};
+
+    return $listener->dispatcher;
 }
 
 sub add_dispatcher {
-    my $self = shift;
     my ( $listener ) = @_;
 
-    my $module = 'AN::' . ucfirst lc $listener->{mode};
-    eval "use $module;";
-    die "Couldn't load module to handle @{[$listener->{mode}]}." if $@;
-    $listener->{dispatcher} = $module->new();
+    $listener->dispatcher( 'asd' );
     return;
 }
 
@@ -254,10 +224,39 @@ sub dispatch_msg {
     my $self = shift;
     my ( $listener, $msgs ) = @_;
 
-    $self->add_dispatcher( $listener ) unless has_dispatcher( $listener );
-    dispatch( $listener, $msgs );
+    $listener->add_dispatcher( ) unless $listener->has_dispatcher(  );
+    $listener->dispatch_msg( $msgs );
     return;
 }
+sub format_msg {
+    my $self = shift;
+    my ( $alert, $msg ) = @_;
+
+    my $agent = $self->agents()->{ $alert->pid };
+    my $msg_w_args
+        = $alert->msg_args
+        ? sprintf $msg, @{ $alert->msg_args }
+        : $msg;
+    my $other = join ' : ', @{ $alert->other };
+    
+    my $formatted = sprintf( $ALERT_MSG_FORMAT_STR,
+                             $alert->timestamp, $agent->{hostname},
+                             $agent->{program}, $agent->{pid},
+                             $alert->status,    $msg_w_args );
+    $formatted .= "; ($other)" if $other;
+    return $formatted;
+}
+
+sub mark_alerts_as_reported {
+    my $self = shift;
+
+    my $alerts = $self->alerts;
+    for my $key ( keys %$alerts ) {
+	$alerts->{$key}->set_handled();
+    }
+    return;
+}
+
 sub handle_alerts {
     my $self = shift;
 
@@ -269,21 +268,24 @@ sub handle_alerts {
 	unless $self->listeners();
     die( "No listeners found" ) unless $self->listeners;
 
-    my $listener_records = $self->listeners()->{data};
-    for my $listener_id ( sort keys %$listener_records ) {
+    my $all_listeners = $self->listeners();
+    for my $listener ( @$all_listeners ) {
 	my @msgs;
-	my $listener = $listener_records->{$listener_id};
 	my $lookup = { language => $listener->{language} };
       ALERT:
-	for my $key ( @alert_keys ) {
-	    my $alert = $alerts->{$key};
-	    next ALERT unless listening_at_this_level( $listener, $alert );
-	    $lookup->{key} = $alert->[2];
-	    my $msg = $self->xlator()->lookup_msg( $key, $lookup );
-	    push @msgs, $msg;   
-	}
-	$self->dispatch_msg( $listener, \@msgs )
+        for my $key (@alert_keys) {
+            my $alert = $alerts->{$key};
+            next ALERT if $alert->has_this_alert_been_reported_yet();
+            next ALERT unless $alert->listening_at_this_level($listener);
+
+            $lookup->{key} = $alert->msg_tag();
+            my $msg = $self->xlator()->lookup_msg( $key, $lookup,
+						   $self->agents->{$key} );
+            push @msgs, $self->format_msg( $alert, $msg );
+        }
+	$self->dispatch_msg( $listener, \@msgs ) if @msgs;
     }
+    $self->mark_alerts_as_reported();
     return;
 }
 
@@ -370,6 +372,10 @@ Provides access to FileHandle / IO::* attributes.
 
 Determine which directory contains the current program.
 
+=item B<Module::Load> I<core>
+
+Install modules at run-time, based on dynamic requirements.
+
 =back
 
 =head1 LICENSE AND COPYRIGHT
@@ -419,5 +425,3 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR
