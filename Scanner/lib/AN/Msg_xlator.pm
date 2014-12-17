@@ -12,7 +12,7 @@ use English '-no_match_vars';
 use Carp;
 
 use File::Basename;
-
+use File::Spec::Functions 'catdir';
 #use FileHandle;
 #use IO::Select;
 #use Time::Local;
@@ -22,136 +22,50 @@ use Const::Fast;
 
 use AN::Common;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (qw( agents ));
-
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
-}
+use Class::Tiny qw(agents msg_dir language pid program string strings );
 
 # ======================================================================
 # CONSTANTS
 #
-const my $COLON        => q{:};
 const my $COMMA        => q{,};
-const my $DOTSLASH     => q{./};
-const my $DOUBLE_QUOTE => q{"};
-const my $NEWLINE      => qq{\n};
-const my $SLASH        => q{/};
-const my $SPACE        => q{ };
-const my $PIPE         => q{|};
 
 const my $XML_SUFFIX => q{.xml};
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
-const my %METADATA => ( msg_dir  => 'msg_dir',
-                        filename => 'filename',
-                        pid      => 'pid',
-                        strings  => 'strings', );
-const my $AGENT_KEY     => 'agents';
-const my $PID_SUBKEY    => 'PID';
-const my $STRINGS_TABLE => 'strings_table';
-
-const my $NO_MSG_TAG       => 'set_alert() invoked with no message tag';
-const my $INTRO_OTHER_ARGS => 'set_alert() invoked with additional args: ';
-
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub copy_from_args_to_self {
-    my $self = shift;
-    my (@args) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    return;
-}
-
-# ......................................................................
-#
-sub _init {
-    my $self = shift;
-    my ( $pid, $agent ) = @_;
-
-    # default value;
-    $self->agents( {} );
-
-    $self->agents()->{$pid} = clone($agent) if $pid && $agent;
-
-    #    $self->copy_from_args_to_self(@_);
-
-    return;
-}
 
 # ======================================================================
 # Methods
 #
 
 sub strings_table_loaded {
-    my ($data) = @_;
+    my ( $self, $pid ) = @_;
 
-    return exists $data->{ $METADATA{strings} };
+    my $exists = exists $self->agents->{$pid}->{strings};
+
+    $self->agents->{$pid}->{strings} ||= {};
+    $self->agents->{$pid}->{string}  ||= {};
+    
+    $self->strings( $self->agents->{$pid}->{strings} );
+    $self->string( $self->agents->{$pid}->{string} );
+    return $exists;
 }
 
 sub load_strings_table {
-    my ( $self, $data ) = @_;
+    my $self = shift;
+    my ( $metadata ) = @_;
 
-    my $filename
-        = $data->{ $METADATA{msg_dir} }
-        . $data->{ $METADATA{filename} }
-        . $XML_SUFFIX;
+    my $filename = catdir( $metadata->{msg_dir},
+			   ($metadata->{program} . $XML_SUFFIX) );
 
-    AN::Common::read_strings( $data, $filename );
-    $data->{languages} = {};
-    for my $lang ( @{AN::Common::get_languages($data)} ) {	
+    AN::Common::read_strings( $self, $filename );
+    $self->language( {} );
+    for my $lang ( @{AN::Common::get_languages($self)} ) {	
 	my ($tag, $value) = split $COMMA, $lang;
-	$data->{languages}{$tag} = $value;
+	$self->language()->{$tag} = $value;
     }
     
     return;
@@ -159,15 +73,15 @@ sub load_strings_table {
 
 sub lookup_msg {
     my $self = shift;
-    my ( $src, $tag ) = @_;
+    my ( $src, $tag, $agent ) = @_;
 
-    croak "Data source '$src' is not known in @{[__PACKAGE__]}::lookup_msg"
+    $self->agents()->{$src} = $agent
         unless $src and exists $self->agents()->{$src};
     my $metadata = $self->agents()->{$src};
 
     $self->load_strings_table($metadata)
-        unless strings_table_loaded( $metadata, $PID );
-    my $xlated = AN::Common::get_string( $metadata, $tag );
+        unless $self->strings_table_loaded( $metadata, $PID );
+    my $xlated = AN::Common::get_string( $self, $tag );
     return $xlated;
 }
 
@@ -237,7 +151,7 @@ The directory where message files will be found.
 
 The name of a particular subsystem. Message strings for this program /
 subsystem will be found in the msg_dir directory in a file whose name
-is "filename" with a "/xml" suffix.
+is "filename" with a ".xml" suffix.
 
 =back
 
