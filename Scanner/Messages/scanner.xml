@@ -8,9 +8,9 @@
 		<key name="brand_0001">Alteeve's Niche!</key>
 		
 		<!-- Text messages used in config files and such. -->
-		<key name="OLD_PROCESS_RECENT_CRASH">'Old process crashed recently.'</key>
-		<key name="OLD_PROCESS_STALLED">'Old process running but stalled.'</key>
-		<key name="OLD_PROCESS_CRASH">'Old process crashed.'</key>
+		<key name="OLD_PROCESS_RECENT_CRASH">Old process crashed recently.</key>
+		<key name="OLD_PROCESS_STALLED">Old process running but stalled.</key>
+		<key name="OLD_PROCESS_CRASH">Old process crashed.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>

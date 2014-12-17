@@ -23,7 +23,6 @@ use Const::Fast;
 #
 const my $COMMA => q{,};
 const my $ESCAPED_DOT   => q{\.};
-const my $SLASH => q{/};
 const my $PROG  => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $SHORT_FLAG     => '-short';
