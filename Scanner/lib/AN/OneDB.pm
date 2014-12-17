@@ -10,6 +10,7 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
+use DBI;
 
 use File::Basename;
 
@@ -18,34 +19,15 @@ use Const::Fast;
 
 use AN::Unix;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (qw( dbh path dbini sth node_table_id));
+use Class::Tiny (qw( dbh path dbini node_table_id)), {
+    sth => sub { {} }};
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
+sub BUILD {
+    my $self = shift;
+    my ( $args ) = @_;
+
+    $self->connect_dbs();
+    $self->_register_start;
 }
 
 # ======================================================================
@@ -127,57 +109,6 @@ EOSQL
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub copy_from_args_to_self {
-    my $self = shift;
-    my (@args) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    return;
-}
-
-# ......................................................................
-#
-sub _init {
-    my $self = shift;
-
-    $self->copy_from_args_to_self(@_);
-
-    $self->sth( {} );    # init hash
-    $self->connect_dbs();
-    $self->_register_start();
-
-    return;
-
-}
-
-sub DESTROY {
-    my $self = shift;
-
-    $self->_halt_process();
-}
 
 # ......................................................................
 # Extend simple accessor to set & fetch a specific DBI sth
@@ -296,7 +227,9 @@ sub _register_start {
     my $hostname = AN::Unix::hostname '-short';
 
     $self->node_table_id(
-                $self->_log_new_process( $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM ) );
+                 $self->_log_new_process(
+                     $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM
+                                        ) );
     $self->_start_process();
 }
 
@@ -319,120 +252,6 @@ EODUMP
 
     chomp $metadata;		# discard final newline.
     return $metadata;
-}
-
-sub table_exists {
-    my $self = shift;
-    my ($name) = @_;
-
-    my $exists
-        = $self->dbh()->selectall_arrayref( $SQL{Table_Exists}, undef, $name )
-        or die "Failed table_exist query for table '$name';", $DBI::errstr;
-    return $exists && $exists->[0] && $exists->[0][0];
-}
-
-sub split_schema_row {
-    my ( $record ) = @_;
-
-    $record =~ s{,}{};
-    my ($ref_spec) = [ split /\s+/, $record ];
-
-    return $ref_spec;
-}
-
-sub field_name_matches {
-    my ( $ref, $field ) = @_;
-    
-    return $ref->[0] eq $field->{column_name};
-}
-
-sub carp_field_name_mismatch {
-    my ( $name, $position, $ref, $field) = @_;    
-
-    carp __PACKAGE__
-	. "::schema_matches($name), field # $position is '$field->{column_name}', should be '$ref->[0]'.\n";
-
-    return;
-}
-
-sub field_type_matches {
-    my ( $ref, $field ) = @_;
-
-    my $matchesP = (
-	$ref->[1] eq $field->{data_type}
-	or (     $ref->[1] eq 'serial'
-		 and $field->{data_type} eq 'integer'
-		 and 0 == index $field->{column_default},
-		 'nextval'
-	)
-	or (     $ref->[1] eq 'status'
-		 and $field->{udt_name} eq 'status' )
-	or ($ref->[1] eq 'timestamp'
-	    and $field->{data_type} = 'timestamp with time zone' )
-        );
-    
-    return $matchesP;
-}
-sub carp_field_type_mismatch {
-    my ( $name, $position, $ref, $field) = @_;
-    
-            carp __PACKAGE__
-                . "::schema_matches($name), field # $position '$field->{column_name}' has type '$field->{data_type}/$field->{udt_name}/$field->{column_default}' should be '@{$ref}[1..-1]'.";
-
-    return;
-}
-
-sub fetch_schema {
-    my $self = shift;
-    my ( $name ) = @_;
-
-    my $schema = $self->dbh()
-        ->selectall_hashref( $SQL{Get_Schema}, 'ordinal_position', undef,
-                             $name )
-        or die "Failed to fetch schema for table '$name';", $DBI::errstr;
-
-    return $schema;
-}
-
-sub schema_matches {
-    my $self = shift;
-    my ( $name, $ref_schema ) = @_;
-
-    # skip empty lines.
-    my @ref_schema = grep {/\w/} split "\n", $ref_schema;
-
-    my $schema = $self->fetch_schema( $name );
-
-    for my $position ( sort keys %$schema ) {
-        my $field_spec = $schema->{$position};
-	my $ref_spec = split_schema_row $ref_schema[ $position -1 ];
-	
-        field_name_matches( $ref_spec, $field_spec )
-	    or do{  carp_field_name_mismatch( $name, $position, $ref_spec, $field_spec ),
-		    return; };
-        field_type_matches( $ref_spec, $field_spec )
-	    or do { carp_field_type_mismatch( $name, $position, $ref_spec, $field_spec ),
-		    return; };
-    }
-    return 1;
-}
-
-sub create_table {
-    my $self = shift;
-    my ( $name, $schema ) = @_;
-
-    my $sql = "CREATE TABLE $name (\n$schema\n)";
-    my $ok  = $self->dbh->do($sql);
-
-    if ($ok) {
-        $self->dbh()->commit();
-    }
-    else {
-        $self->dbh()->rollback;
-        carp "Failed to create table '$name' with schema'\n$schema'\n",
-            $DBI::errstr;
-    }
-    return $ok;
 }
 
 sub generate_insert_sql {
@@ -489,11 +308,11 @@ sub generate_fetch_sql {
     my $self = shift;
     my ($options) = @_;
 
-    my ($db_key)      = grep { $_ ne 'schema' } keys %$options;
-    my ($db_ident)    = grep {/\b\d+\b/} keys %{ $options->{$db_key} };
-    my $db_info       = $options->{$db_key}{$db_ident};
+    my ($db_data)     = $options->{db_data};
+    my ($db_ident)    = grep {/\b\d+\b/} keys %$db_data;;
+    my $db_info       = $db_data->{$db_ident};
 
-    my $tablename     = $options->{$db_key}{datatable_name};
+    my $tablename     = $db_data->{datatable_name};
     my $node_table_id = $db_info->{node_table_id};
 
     my $sql = <<"EOSQL";
@@ -501,13 +320,13 @@ SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM $tablename
 WHERE node_id = ?
 ORDER BY timestamp desc
-limit 4;
+limit 1;
 EOSQL
 
     return ($sql, $node_table_id);
 }
 
-sub fetch_agent_data {
+sub fetch_alert_data {
     my $self = shift;
 
     my ( $sql, $node_table_id ) = $self->generate_fetch_sql(@_);
@@ -522,15 +341,15 @@ sub fetch_agent_data {
     my $rows = $sth->execute( $node_table_id )
 	|| carp "No rows returns for query \n'$sql'\n";
     my $records  = $sth->fetchall_hashref( $ID_FIELD );
-
+   
     if ( 0 < $rows ) {
         $self->dbh->commit();
     }
     else {
         $self->dbh->rollback;
     }
-    return $records;
 
+    return $records;
 }
 
 sub fetch_alert_listeners {
