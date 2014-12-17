@@ -17,9 +17,10 @@ use FileHandle;
 use IO::Select;
 use Time::Local;
 use FindBin qw($Bin);
+use List::MoreUtils;
 
 use Const::Fast;
-use Data::Dumper;
+
 use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
@@ -444,7 +445,10 @@ sub clean_up_metadata_files {
     my $prefix = AN::FlagFile::get_tag('METADATA');
     my $dir = $self->flagfile()->dir();
 
-    unlink ( glob( catdir( $dir, ($prefix . $STAR))));
+    for ( glob( catdir( $dir, ($prefix . $STAR)))) {
+	say "deleting old file $_." if $self->verbose;
+	unlink $_;
+    }
 
     return;
 }
@@ -536,38 +540,55 @@ sub handle_deletions {
     return;
 }
 
+sub wait_for_all_metadata_files {
+    my $self = shift;
+    my ($additions, $tag ) = @_;
+
+    my $N = scalar @$additions;
+    my $idx = 0;
+
+    while ($idx++ < 15) { 
+	my $files = $self->find_marker_files($tag);
+	if ( 'HASH' eq ref $files
+	     && $files->{$tag}
+	     && scalar @{ $files->{$tag} }) {
+
+	    my $N_found = 0;
+	    for my $newfile ( @{ $files->{metadata} } ) {
+		for my $addition ( @$additions ) {
+		    $N_found++ if 0 < index $newfile, $addition->{filename};
+		}
+	    }
+	    return $files if $N_found == $N;
+	}
+	sleep 1;
+    }
+    return;
+}
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
 
     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
-    my $tag            = AN::FlagFile::get_tag('METADATA');
-    my $files;
-    say "tag is $tag";
-    do { 
-	$files = $self->find_marker_files($tag);
-	say Data::Dumper->Dump( [$files], ['handle_additions()->files']);
-	sleep 1;
-    } until $files && $files->{metadata} && scalar @{$files->{metadata}};
+    my $tag = AN::FlagFile::get_tag('METADATA');
+    my $files = $self->wait_for_all_metadata_files( $additions, $tag );
 
-    
-FILEPATH:
+  FILEPATH:
     for my $filepath ( @{ $files->{$tag} } ) {
-        next FILEPATH unless $filepath =~ m{($new_file_regex)};
-        my $filename = $1;
-        my %cfg = ( path => { config_file => $filepath } );
-        AN::Common::read_configuration_file( \%cfg );
-
-        my $process = { name => $filename, db_data => $cfg{db} };
-        $self->add_processes($process);
-	my ($idx) = grep { /\b\d+\b/ } keys %{$cfg{db}};
+	next FILEPATH unless $filepath =~ m{($new_file_regex)};
+	my $filename = $1;
+	my %cfg = ( path => { config_file => $filepath } );
+	AN::Common::read_configuration_file( \%cfg );
+	
+	my $process = { name => $filename, db_data => $cfg{db} };
+	$self->add_processes($process);
+	my ($idx) = grep {/\b\d+\b/} keys %{ $cfg{db} };
 	$self->alerts()->add_agent( $cfg{db}{pid},
-				    { pid      => $cfg{db}{pid},
-				      program  => $cfg{db}{name},
-				      hostname => $cfg{db}{$idx}{host},
-				      msg_dir  => $self->msg_dir,
-				    }
-	    );
+				    {  pid      => $cfg{db}{pid},
+				       program  => $cfg{db}{name},
+				       hostname => $cfg{db}{$idx}{host},
+				       msg_dir  => $self->msg_dir,
+				    } );
     }
     return;
 }
@@ -605,18 +626,21 @@ sub detect_status {
     my $self = shift;
     my ( $process, $db_record, ) = @_;
 
+    say "db_record with status @{[$db_record->{status}]}." if $self->verbose;
     if ( $db_record->{status} eq 'OK' ) {
-	say "In Scanner::detect_status() OK for ", $process->{db_data}{pid};
+	say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
 	$self->clear_alert( $process->{db_data}{pid} );
     }
     else {
-	say "In Scanner::detect_status() @{[$db_record->{status}]} for ", $process->{db_data}{pid};
-	my @args = ( $process->{db_data}{pid},
+	my @args = ( $db_record->id,
+		     $process->{db_data}{pid},
 		     $db_record->status,
 		     $db_record->msg_tag,
 		     $db_record->msg_args,
 		     { timestamp => $db_record->timestamp},
 	    );
+	say "Setting alert '$db_record->msg_tag' from $process->{db_data}{pid}."
+	    if $self->verbose;
 	$self->set_alert( @args );
     }
 
@@ -626,8 +650,10 @@ sub detect_status {
 sub process_agent_data {
     my $self = shift;
 
+    say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
         my $agent_data = $self->fetch_alert_data($process);
+	say "agent_data has @{[scalar @$agent_data]} records." if $self->verbose;
 	$self->detect_status( $process, $agent_data->[0] );
     }
 }
@@ -661,9 +687,9 @@ sub run_timed_loop_forever {
     my ( $start_time, $end_time ) = ( time, $self->calculate_end_epoch );
     my ($now) = $start_time;
 
-    while ( $now < $end_time ) {    # loop until this time tomorrow
-                                    #        $self->read_process_all_agents();
-
+    # loop until this time tomorrow
+    #
+    while ( $now < $end_time ) {
         $self->loop_core();
 
         my ($elapsed) = time() - $now;
