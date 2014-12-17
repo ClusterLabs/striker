@@ -12,12 +12,14 @@ use English '-no_match_vars';
 use Carp;
 
 use File::Basename;
+use File::Spec::Functions 'catdir';
 use FileHandle;
 use IO::Select;
 use Time::Local;
 use FindBin qw($Bin);
 
 use Const::Fast;
+use Data::Dumper;
 use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
@@ -25,39 +27,50 @@ use AN::Alerts;
 use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
+use AN::Listener;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (
-    qw( agentdir duration dbini db_type db_name port rate verbose 
-        monitoragent flagfile _agents dbs max_loops_unrefreshed 
-        run_until processes alerts msg_dir)
-);
+const my $MAX_LOOPS_UNREFRESHED => 10;
+const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
+use Class::Tiny qw( agentdir duration dbini
+    db_type db_name port
+    rate verbose monitoragent
+    flagfile dbs run_until
+    msg_dir ), {
+    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED}, 
+    agents   => sub { [] },
+    processes => sub { [] },
+    alerts    => sub { my $self = shift;
+		       AN::Alerts->new(
+			   { agents => { pid      => $PID,
+					 program => $PROG,
+					 hostname => AN::Unix::hostname(),
+					 msg_dir  => $self->msg_dir,
+			     },
+			     owner => $self
+			   } );
+    }, };
+
+sub BUILD {
+    my $self = shift;
+    my ( $args ) = @_;
+
+    return unless ref $self eq __PACKAGE__; # skip BUILD for descendents
+    
+    croak(q{Missing Scanner constructor arg 'agentdir'.})
+	unless $self->agentdir();
+    croak(q{Missing Scanner constructor arg 'rate'.})
+	unless $self->rate();
+
+    $self->monitoragent(
+        AN::MonitorAgent->new(
+            {  core     => $self,
+               rate     => $self->rate(),
+               agentdir => $self->agentdir(),
+               duration => $self->duration,
+               verbose  => $self->verbose(),
+
+            } ) );
 }
 
 # ======================================================================
@@ -65,14 +78,10 @@ for my $attr (@ATTRIBUTES) {
 #
 const my $COLON    => q{:};
 const my $COMMA    => q{,};
-const my $DOTSLASH => q{./};
-const my $DOUBLE_QUOTE => q{"};
-const my $NEWLINE  => qq{\n};
-const my $SLASH    => q{/};
 const my $SPACE    => q{ };
+const my $STAR     => q{*};
 const my $PIPE     => q{|};
 
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 const my $READ_PROC  => q{-|};
 const my $WRITE_PROC => q{|-};
 
@@ -83,7 +92,6 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
-const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $HOURS_IN_A_DAY        => 24;
 const my $MINUTES_IN_AN_HOUR    => 60;
 const my $SECONDS_IN_A_MINUTE   => 60;
@@ -110,81 +118,6 @@ const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub copy_from_args_to_self {
-    my $self = shift;
-    my (@args) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    return;
-}
-
-sub _init {
-    my $self = shift;
-
-    # default value;
-    $self->max_loops_unrefreshed($MAX_LOOPS_UNREFRESHED);
-    $self->_agents(   [] );
-    $self->processes( [] );
-
-    $self->copy_from_args_to_self(@_);
-    
-    my $self_as_agent = { agents => { PID      => $PID,
-                                      filename => $PROG,
-                                      msg_dir  => $self->msg_dir,
-                                    },
-			  owner  => $self,
-    };
-    
-    $self->alerts( AN::Alerts->new($self_as_agent) );
-
-
-    croak(q{Missing Scanner constructor arg 'agentdir'.})
-        unless $self->agentdir();
-    croak(q{Missing Scanner constructor arg 'rate'.})
-        unless $self->rate();
-
-    $self->monitoragent(
-        AN::MonitorAgent->new(
-            {  core     => $self,
-               rate     => $self->rate(),
-               agentdir => $self->agentdir(),
-               duration => $self->duration,
-               verbose  => $self->verbose(),
-
-            } ) );
-
-    return;
-
-}
-
-sub DESTROY {
-    my $self = shift;
-
-    $self->dbs()->_halt_process();
-}
 
 sub run_until_data_is_valid {
     my ($value) = @_;
@@ -222,24 +155,24 @@ sub drop_processes {
     return;
 }
 
-sub _add_agents {
+sub add_agents {
     my $self = shift;
     my (@values) = @_;
 
-    push @{ $self->_agents }, @values;
+    push @{ $self->agents }, @values;
     return;
 }
 
-sub _drop_agents {
+sub drop_agents {
     my $self = shift;
     my (@values) = @_;
 
     my $re = join '|', map { '\b' . $_ . '\b' } @values;
-    $self->_agents( [ grep { $_->{filename} !~ $re } @{ $self->_agents() } ] );
+    $self->agents( [ grep { $_->{filename} !~ $re } @{ $self->agents() } ] );
     return;
 }
 
-sub _process_id {
+sub process_id {
     my $self = shift;
     my ( $dbh, $new_value ) = @_;
 
@@ -413,7 +346,7 @@ sub check_for_previous_instance {
     $self->create_flagfile();
 
     # Old process exited cleanly, take over. Return early.
-    return $RUN if !$self->old_pid_file_exists();
+    return $RUN if !  $self->old_pid_file_exists();
 
     my ( $is_recent, $is_running )
         = ( $self->pid_file_is_recent, $self->pid_file_process_is_running );
@@ -448,23 +381,6 @@ sub disconnect_dbs {
     die "scanner::disconnect_dbs() not implemented yet.";
 }
 
-sub launch {
-    my $self = shift;
-    my ($scanner) = @_;
-
-    # my $fullpath = $self->agentdir() . $SLASH . $scanner;
-    # croak "scanner '$fullpath' not found.\n"
-    #   unless -e $fullpath;
-    # croak "scanner '$fullpath' not executable.\n"
-    #   unless -x _;
-
-    # #    open my $fh, $READ_PROC, $fullpath
-    # open my $fh, '|-', "$fullpath --verbose --rate 3"
-    #   or croak "Could not AN::Scanner::launch( '$scanner' )";
-    # my $status = $self->_add_fh_to_list($fh);
-    return;
-}
-
 sub process {
     my $self = shift;
     my ($fh) = @_;
@@ -474,7 +390,7 @@ sub process {
     return;
 }
 
-sub _launch_new_agents {
+sub launch_new_agents {
     my $self = shift;
     my ($new) = @_;
 
@@ -484,13 +400,13 @@ sub _launch_new_agents {
 
     my @new_agents;
     for my $agent (@$new) {
-        my @args = ( $self->agentdir() . '/' . $agent, @$args );
+        my @args = ( catdir( $self->agentdir(), $agent), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
         $pid->{filename} = $agent;
         push @new_agents, $pid;
     }
-    $self->_add_agents(@new_agents);
+    $self->add_agents(@new_agents);
 
     return \@new_agents;
 }
@@ -509,19 +425,29 @@ sub scan_for_agents {
 
     # If there are new agents, store its data in $retval->[0]
     # otherwise fill $retval->[0] with a false value, so that the
-    # 'deleted' data still ends up in $retval->[1]/
+    # 'deleted' data still ends up in $retval->[1]
     #
     push @$retval,
         (   @$new
-          ? $self->_launch_new_agents($new)
+          ? $self->launch_new_agents($new)
           : undef );
 
     if (@$deleted) {
-        push @$retval, $self->_drop_agents(@$new);
+        push @$retval, $self->drop_agents(@$new);
     }
     return $retval;
 }
 
+sub clean_up_metadata_files {
+    my $self = shift;
+
+    my $prefix = AN::FlagFile::get_tag('METADATA');
+    my $dir = $self->flagfile()->dir();
+
+    unlink ( glob( catdir( $dir, ($prefix . $STAR))));
+
+    return;
+}
 sub clean_up_running_agents {
     die "scanner::clean_up_running_agents() not implemented yet.";
 }
@@ -531,6 +457,7 @@ sub run {
 
     # initialize.
     #
+    $self->clean_up_metadata_files();
     $self->connect_dbs();
     $self->create_pid_file();
     $self->handle_alerts();	# process any alerts from initialization stage
@@ -609,31 +536,21 @@ sub handle_deletions {
     return;
 }
 
-sub parse_schema_into_hash {
-    my ( $process, $filename ) = @_;
-
-    my @lines = split $COMMA, $process->{$filename}{datatable_schema};
-    my @fields;
-    for my $line (@lines) {
-        my @words = split $SPACE, $line;
-        my %field = ( name => $words[0],
-                      type => $words[1],
-                      rest => join ' ',
-                      @words[ 2 .. $#words ] );
-        push @fields, \%field;
-    }
-    $process->{schema} = [@fields];
-    return;
-}
-
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
 
     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
     my $tag            = AN::FlagFile::get_tag('METADATA');
-    my $files          = $self->find_marker_files($tag);
+    my $files;
+    say "tag is $tag";
+    do { 
+	$files = $self->find_marker_files($tag);
+	say Data::Dumper->Dump( [$files], ['handle_additions()->files']);
+	sleep 1;
+    } until $files && $files->{metadata} && scalar @{$files->{metadata}};
 
+    
 FILEPATH:
     for my $filepath ( @{ $files->{$tag} } ) {
         next FILEPATH unless $filepath =~ m{($new_file_regex)};
@@ -641,9 +558,16 @@ FILEPATH:
         my %cfg = ( path => { config_file => $filepath } );
         AN::Common::read_configuration_file( \%cfg );
 
-        my $process = { $filename => $cfg{db} };
-        parse_schema_into_hash( $process, $filename );
+        my $process = { name => $filename, db_data => $cfg{db} };
         $self->add_processes($process);
+	my ($idx) = grep { /\b\d+\b/ } keys %{$cfg{db}};
+	$self->alerts()->add_agent( $cfg{db}{pid},
+				    { pid      => $cfg{db}{pid},
+				      program  => $cfg{db}{name},
+				      hostname => $cfg{db}{$idx}{host},
+				      msg_dir  => $self->msg_dir,
+				    }
+	    );
     }
     return;
 }
@@ -661,61 +585,51 @@ sub handle_changes {
     return;
 }
 
-sub fetch_agent_data {
+sub fetch_alert_data {
     my $self = shift;
     my ($proc_info) = @_;
 
-    return $self->dbs()->fetch_agent_data($proc_info);
+    return $self->dbs()->fetch_alert_data($proc_info);
+}
+
+sub lookup_process {
+    my $self = shift;
+    my ( $node_id ) = @_;
+
+    for my $process ( $self->processes ) {
+	
+    }
 }
 
 sub detect_status {
     my $self = shift;
-    my ( $process, $db_data ) = @_;
+    my ( $process, $db_record, ) = @_;
 
-    my $db_records = $db_data->{data};
-    my $first = 1;
-    my $can_clear_alert;
-  RECORD:
-    for my $idx ( sort {$b <=> $a } keys %$db_records ) {
-	if ( $first ) {
-	    $first = 0;
-	    if( $db_records->{$idx}{status} eq 'OK' ) {
-		# Check previous record to see if there was an alert
-		# condition.
-		#
-		$can_clear_alert = 1;
-	    }
-	    else {
-		# set DEBUG / WARNING / CRISIS alert to send alerts.
-		#
-		my ( $alert_msg_tag, $alert_msg_args)
-		    = ( @{$db_records->{$idx}}{qw(msg_tag msg_args)});
-		$self->set_alert( $alert_msg_tag, $alert_msg_args );
-		last RECORD;
-	    }
-	}
-
-	if( $db_records->{$idx}{status} ne 'OK' ) {
-	    $self->clear_alert( {process => $process,
-				 record => $db_records->{$idx},
-				});
-	}
-
+    if ( $db_record->{status} eq 'OK' ) {
+	say "In Scanner::detect_status() OK for ", $process->{db_data}{pid};
+	$self->clear_alert( $process->{db_data}{pid} );
     }
+    else {
+	say "In Scanner::detect_status() @{[$db_record->{status}]} for ", $process->{db_data}{pid};
+	my @args = ( $process->{db_data}{pid},
+		     $db_record->status,
+		     $db_record->msg_tag,
+		     $db_record->msg_args,
+		     { timestamp => $db_record->timestamp},
+	    );
+	$self->set_alert( @args );
+    }
+
     return;
 }
 
 sub process_agent_data {
     my $self = shift;
 
-    my $status = [];
     for my $process ( @{ $self->processes } ) {
-        my $agent_data = $self->fetch_agent_data($process);
-	for my $db_data ( @{ $agent_data } ) {
-		push $status, $self->detect_status( $process, $db_data );
-	}
+        my $agent_data = $self->fetch_alert_data($process);
+	$self->detect_status( $process, $agent_data->[0] );
     }
-    return $status;
 }
 
 
@@ -732,6 +646,7 @@ sub loop_core {
 
     $self->touch_pid_file;
 
+    return;
 }
 
 # ......................................................................
