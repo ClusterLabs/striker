@@ -34,7 +34,7 @@ const my $RUN_UNTIL      => '23:59:59';
 const my $MAX_RATE       => 600;
 const my $MIN_RATE       => 1;
 const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE       => 30;
+const my $REP_RATE       => 15;
 const my $SLASH          => q{/};
 
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
