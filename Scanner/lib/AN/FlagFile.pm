@@ -10,48 +10,20 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
-
+use File::Spec::Functions 'catdir';
 use Const::Fast;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (qw( pidfile dir data old_files));
+use Class::Tiny qw( pidfile dir ),
+    {data => sub {default_data() },
+     old_files => sub { {} }
+     };
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
-}
 
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA        => q{,};
 const my $DOT          => q{.};
-const my $DOTSLASH     => q{./};
-const my $SLASH        => q{/};
 const my $STAR         => q{*};
-const my $EMPTY_STRING => q{};
 
 const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
 
@@ -67,41 +39,7 @@ my %TAG = ( PIDFILE   => 'pidfile',
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
 
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub _init {
-    my ( $self, @args ) = @_;
-
-    $self->old_files({});	# default vale is empty hash.
-    $self->data( default_data() );
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        my $h = $args[0];
-        for my $attr ( keys %$h ) {
-            $self->$attr( $h->{$attr} );
-        }
-    }
-    return;
-}
 
 sub default_data {
     my $now = time;
@@ -122,7 +60,7 @@ sub full_file_path {
     my ($tag, $name) = @_;
 
     my $name_part = $name || $self->pidfile;
-    my $filename = $self->dir() . $SLASH . $tag . $DOT . $name_part;
+    my $filename = catdir( $self->dir(), $tag . $DOT . $name_part);
 
     return $filename;
 }
