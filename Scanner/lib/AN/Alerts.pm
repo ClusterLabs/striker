@@ -29,9 +29,10 @@ const my $AGENT_KEY  => 'agents';
 const my $PID_SUBKEY => 'pid';
 const my $OWNER_KEY  => 'owner';
 
-use Class::Tiny qw( agents  xlator owner listeners),
+use Class::Tiny qw( xlator owner listeners),
     { alerts => sub { return {} },
-      agents => sub { return {} }, };
+      agents => sub { return {} }, 
+      handled => sub { return {} }, };
 
 sub BUILD {
     my $self = shift;
@@ -67,7 +68,7 @@ const my %LEVEL => ( DEBUG   => 'DEBUG',
                      WARNING => 'WARNING',
                      CRISIS  => 'CRISIS' );
 
-const my $ALERT_MSG_FORMAT_STR => '%s: %s->%s (%s); %s: %s';
+const my $ALERT_MSG_FORMAT_STR => 'id %s | %s: %s->%s (%s); %s: %s';
 
 const my $LISTENS_TO 
     => { CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1},
@@ -100,6 +101,20 @@ sub has_pid_subkey {
     return exists $_[0]->{$AGENT_KEY}{$PID_SUBKEY}
 }
 
+sub handled_alert {
+    my $self = shift;
+    my ($id) = @_;
+
+    return exists $self->handled()->{$id} && $self->handled()->{$id};
+}
+sub set_alert_handled {
+    my $self = shift;
+    my ($id) = @_;
+
+    $self->handled()->{$id} =1;
+    return;
+}
+
 
 { no warnings;
   sub DEBUG   {return $LEVEL{DEBUG};}
@@ -115,7 +130,7 @@ sub has_pid_subkey {
 sub new_alert_loop {
     my $self = shift;
 
-    say "Alerts::new_alert_loop() not implemented yet.";
+    say strftime( '%F %T%z', localtime);
     return;
 }
 
@@ -173,10 +188,11 @@ sub extract_time_and_modify_array {
 }
 sub set_alert {
     my $self = shift;
-    my ( $src, $level, $msg_tag, $msg_args, @others ) = @_;
+    my ( $id, $src, $level, $msg_tag, $msg_args, @others ) = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others); 
-    my $args = { pid       => $src,
+    my $args = { id        => $id,
+		 pid       => $src,
                  timestamp => $timestamp,
                  status    => $level,
                  msg_tag   => $msg_tag,
@@ -239,7 +255,7 @@ sub format_msg {
         : $msg;
     my $other = join ' : ', @{ $alert->other };
     
-    my $formatted = sprintf( $ALERT_MSG_FORMAT_STR,
+    my $formatted = sprintf( $ALERT_MSG_FORMAT_STR, $alert->{id} || 'na',
                              $alert->timestamp, $agent->{hostname},
                              $agent->{program}, $agent->{pid},
                              $alert->status,    $msg_w_args );
@@ -253,6 +269,7 @@ sub mark_alerts_as_reported {
     my $alerts = $self->alerts;
     for my $key ( keys %$alerts ) {
 	$alerts->{$key}->set_handled();
+	$self->set_alert_handled( $alerts->{$key}->{id} );
     }
     return;
 }
@@ -276,6 +293,7 @@ sub handle_alerts {
         for my $key (@alert_keys) {
             my $alert = $alerts->{$key};
             next ALERT if $alert->has_this_alert_been_reported_yet();
+	    next ALERT if $self->handled_alert( $alert->id );
             next ALERT unless $alert->listening_at_this_level($listener);
 
             $lookup->{key} = $alert->msg_tag();
