@@ -15,91 +15,37 @@ use File::Basename;
 
 use FindBin qw($Bin);
 use Const::Fast;
+use DBI;
 
+use AN::Common;
 use AN::OneDB;
+use AN::OneAlert;
+use AN::Listener;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (qw( dbs path dbini));
+use Class::Tiny qw( path dbini dbs);
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
+sub BUILD {
+    my $self = shift; 
+    $self->connect_dbs();
 }
 
 # ======================================================================
 # CONSTANTS
 #
 const my $ASSIGN      => q{=};
-const my $COMMA       => q{,};
-const my $DOTSLASH    => q{./};
-const my $SLASH       => q{/};
 const my $DOUBLECOLON => q{::};
 const my $DB          => q{db};
 
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
 
 # ......................................................................
+# Private Methods
 #
-sub _init {
-    my ( $self, @args ) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    $self->connect_dbs();
-
-    return;
-
-}
-
-sub DESTROY {
-    my $self = shift;
-
-    for my $dbh ( $self->_all_dbhs ) {
-        $self->_halt_process( $dbh, $self->_process_id($dbh) );
-    }
+sub is_pw_field {
+    return 1 <= scalar @_ 
+	&& $_[0] eq 'password';
 }
 
 sub add_db {
@@ -108,32 +54,6 @@ sub add_db {
 
     push @{ $self->dbs() }, $db;
     return;
-}
-
-# ......................................................................
-# Private Accessors
-#
-
-sub x_process_id {
-    my $self = shift;
-    my ( $dbh, $new_value ) = @_;
-
-    die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) not enough args." )
-        if scalar @_ <= 1;
-    die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) too many args." )
-        if scalar @_ > 3;
-
-    return $self->{process_id}{$dbh} if not defined $new_value;
-
-    $self->{process_id}{$dbh} = $new_value;
-    return;
-}
-
-# ......................................................................
-# Private Methods
-#
-sub is_pw_field {
-    return $_[0] eq 'password';
 }
 
 # ......................................................................
@@ -164,6 +84,7 @@ sub dump_metadata {
     my $idx   = 0;
     for my $set ( sort keys %$dbini ) {
         my $onedbini = $dbini->{$set};
+	
         my $prefix   = $DB . $DOUBLECOLON . $set . $DOUBLECOLON;
     KEY:
         for my $key ( sort keys %$onedbini ) {
@@ -182,23 +103,6 @@ sub dump_metadata {
     return join "\n", @dump;
 }
 
-sub create_db_table {
-    my $self = shift;
-    my ( $name, $schema ) = @_;
-
-    for my $db ( @{ $self->dbs() } ) {
-        my $exists = $db->table_exists($name);
-        if ($exists) {
-            die "Table '$name' exists with schema differing from '\n$schema'"
-                unless $db->schema_matches( $name, $schema );
-        }
-        else {
-            $db->create_table( $name, $schema );
-        }
-    }
-    return 1;
-}
-
 sub insert_raw_record {
     my $self = shift;
     my ($args) = @_;
@@ -210,32 +114,39 @@ sub insert_raw_record {
     return;
 }
 
-sub fetch_agent_data {
+sub fetch_alert_data {
     my $self = shift;
     my ($proc_info) = @_;
 
-    my $agent_data = [];
+    my $alerts = [];
     for my $db ( @{ $self->dbs() } ) {
-        push @{$agent_data},
-            { db      => $db->dbini()->{host},
-              db_type => $db->dbini()->{db_type},
-              data    => $db->fetch_agent_data($proc_info),
-	    };
+	my $db_data = $db->fetch_alert_data($proc_info);
+	for my $idx ( keys %$db_data ) {
+	    my $record = $db_data->{$idx};
+	    @{$record}{qw(db db_type)} = ($db->dbini()->{host},
+					  $db->dbini()->{db_type},
+		);
+	    push @$alerts,  AN::OneAlert->new($record);
+	}
     }
-    return $agent_data;
+    return $alerts;
 }
 
 sub fetch_alert_listeners {
     my $self = shift;
 
     for my $db ( @{ $self->dbs() } ) {
-        my ($listeners)
-            = { db      => $db->dbini()->{host},
-                db_type => $db->dbini()->{db_type},
-                data    => $db->fetch_alert_listeners(), };
-	return $listeners if $listeners->{data};
+        my $hlisteners = $db->fetch_alert_listeners();
+
+        my $listeners = [];
+        for my $idx ( sort keys %$hlisteners ) {
+            my $data         = $hlisteners->{$idx};
+            $data->{db}      = $db->dbini()->{host};
+            $data->{db_type} = $db->dbini()->{db_type};
+	    push @{$listeners}, AN::Listener->new($data);
+        }
+        return $listeners if @$listeners;
     }
-    
     return;
 }
     
