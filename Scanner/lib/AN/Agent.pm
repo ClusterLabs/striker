@@ -16,6 +16,7 @@ use Cwd;
 
 use File::Basename;
 
+use File::Spec::Functions 'catdir';
 use FindBin qw($Bin);
 use Const::Fast;
 
@@ -26,41 +27,13 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-# ======================================================================
-# Object attributes. - Already has attributes of a scanner, plus folling
-#
-const my @ATTRIBUTES => (qw( datatable_name datatable_schema ) );
+use Class::Tiny qw( datatable_name datatable_schema );
 
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-	my $self = shift;
-	if (@_) { $self->{$attr} = shift; }
-	return $self->{$attr};
-    }
-}
 # ======================================================================
 # CONSTANTS
 #
 const my $DUMP_PREFIX => q{db::};
 const my $NEWLINE => qq{\n};
-const my $SLASH   => q{/};
 
 const my $PROG    => ( fileparse($PROGRAM_NAME) )[0];
 const my $DATATABLE_NAME   => 'agent_data';
@@ -82,10 +55,9 @@ const my $UNDERSCORE   => q{_};
 # ......................................................................
 #
 
-sub _init {
+sub BUILD {
     my $self = shift;
-    my (@args) = @_;
-    
+
     # avoid characters that DB dislikes in table name
     #
     my $name = $DATATABLE_NAME;
@@ -94,14 +66,13 @@ sub _init {
     
     $self->datatable_schema( $DATATABLE_SCHEMA );
 
-    $self->copy_from_args_to_self( @_ );
-
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbini( getcwd() . $SLASH . $self->dbini );
+    $self->dbini( catdir( getcwd(), $self->dbini ));
     return;
 }
+
 sub non_blank_lines {
     my ( $str ) = @_;
 
@@ -119,6 +90,7 @@ sub dump_metadata {
 
     my $metadata = <<"EODUMP";
 ${DUMP_PREFIX}name=$PROG
+${DUMP_PREFIX}pid=$PID
 $dbs_dump
 ${DUMP_PREFIX}datatable_name=@{[$self->datatable_name]}
 ${DUMP_PREFIX}datatable_schema="$schema"
@@ -127,17 +99,9 @@ EODUMP
     return $metadata;
 }
 
-# delegate to DBS object
-#
-sub create_db_table {
-    my $self = shift;
-
-    $self->dbs()->create_db_table( $self->datatable_name, $self->datatable_schema );
-}
-
 sub insert_raw_record {
     my $self = shift;
-    my ( $value, $status ) = @_;
+    my ( $value, $status, $msg_tag, $msg_args ) = @_;
 
     $self->dbs()->insert_raw_record(
                                      { table => $self->datatable_name,
@@ -145,6 +109,8 @@ sub insert_raw_record {
                                        args               => {
                                                  value  => int $value,
                                                  status => $status,
+						 msg_tag => $msg_tag,
+						 msg_args => $msg_args,
                                                },
                                      } );
 }
@@ -154,13 +120,20 @@ sub generate_random_record {
     
     state $first = 1;
     my $value = (int rand(1000)) / 10;
-    my $status = ( $first || rand(100) > 99.0 ? 'DEBUG'
-		   : $value == 99.9           ? 'CRISIS'
-		   : $value > 99.0            ? 'WARNING'
+    my $status = ( $first || rand(100) > 66.0 ? 'DEBUG'
+		   : $value > 90             ? 'CRISIS'
+		   : $value > 80             ? 'WARNING'
 		   :                            'OK'
 	);
+    my $msg_tag = ($first == 1            ? "$PROG first record" 
+		   : $status eq 'DEBUG'   ? "$PROG debug msg"
+		   : $status eq 'WARNING' ? "$PROG warning msg"
+		   : $status eq 'CRISIS'  ? "$PROG crisis msg"
+		   :                       '');
+    my $msg_args = '';
 
-    $self->insert_raw_record( $value, $status );
+    say scalar localtime(), ": $PROG -> $status, $msg_tag";
+    $self->insert_raw_record( $value, $status, $msg_tag, $msg_args );
     $first = 0;
     return;
 }
@@ -180,8 +153,6 @@ sub run {
     $self->create_marker_file( AN::FlagFile::get_tag('METADATA'),
                                $self->dump_metadata );
     
-    die "$PROG has problems creating/using table $self->datatable_name.\n"
-	unless $self->create_db_table();
     # process until quitting time
     #
     $self->run_timed_loop_forever();
