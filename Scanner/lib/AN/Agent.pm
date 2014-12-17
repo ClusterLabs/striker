@@ -132,7 +132,8 @@ sub generate_random_record {
 		   :                       '');
     my $msg_args = '';
 
-    say scalar localtime(), ": $PROG -> $status, $msg_tag";
+    say scalar localtime(), ": $PROG -> $status, $msg_tag"
+	if $self->verbose;
     $self->insert_raw_record( $value, $status, $msg_tag, $msg_args );
     $first = 0;
     return;
