@@ -17,97 +17,9 @@ use IO::Select;
 use Time::Local;
 use FindBin qw($Bin);
 
-use AN::Msg_xlator;
-
 use Const::Fast;
 
-# ======================================================================
-# Object attributes.
-#
-const my @ATTRIBUTES => (
-    qw( )
-);
-
-# Create an accessor routine for each attribute. The creation of the
-# accessor is simply magic, no need to understand.
-#
-# 1 - Without 'no strict refs', perl would complain about modifying
-# namespace.
-#
-# 2 - Update the namespace for this module by creating a subroutine
-# with the name of the attribute.
-#
-# 3 - 'set attribute' functionality: When the accessor is called,
-# extract the 'self' object. If there is an additional argument - the
-# accessor was invoked as $obj->attr($value) - then assign the
-# argument to the object attribute.
-#
-# 4 - 'get attribute' functionality: Return the value of the attribute.
-#
-for my $attr (@ATTRIBUTES) {
-    no strict 'refs';    # Only within this loop, allow creating subs
-    *{ __PACKAGE__ . '::' . $attr } = sub {
-        my $self = shift;
-        if (@_) { $self->{$attr} = shift; }
-        return $self->{$attr};
-        }
-}
-
-# ======================================================================
-# CONSTANTS
-#
-const my $COLON    => q{:};
-const my $COMMA    => q{,};
-const my $DOTSLASH => q{./};
-const my $DOUBLE_QUOTE => q{"};
-const my $NEWLINE  => qq{\n};
-const my $SLASH    => q{/};
-const my $SPACE    => q{ };
-const my $PIPE     => q{|};
-
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-			  
-# ======================================================================
-# Subroutines
-#
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-    $obj->_init(@args);
-
-    return $obj;
-}
-
-# ......................................................................
-#
-sub copy_from_args_to_self {
-    my $self = shift;
-    my (@args) = @_;
-
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    return;
-}
-
-sub _init {
-    my $self = shift;
-
-
-    $self->copy_from_args_to_self(@_);
-    return;
-}
+use Class::Tiny qw( attr );
 
 # ......................................................................
 #
@@ -249,5 +161,3 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR
