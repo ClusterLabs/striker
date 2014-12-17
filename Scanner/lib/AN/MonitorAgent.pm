@@ -9,16 +9,16 @@ our $VERSION = 1.0;
 
 use English '-no_match_vars';
 use File::Basename;
+use File::Spec::Functions 'catdir';
 use FileHandle;
 
 use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
+use Pod::Usage;
 
 use Const::Fast;
 
-## no critic ( ControlStructures::ProhibitPostfixControls )
-## no critic ( ProhibitMagicNumbers )
 # ======================================================================
 # CONSTANTS
 #
@@ -32,94 +32,46 @@ const my $PROG                => (fileparse( $PROGRAM_NAME ))[0];
 const my $REP_RATE            => 30;
 const my $SLASH               => q{/};
 const my $SUFFIX_QR           => qr{         # regex to extract filename suffix
-                                       [.]   # starts with a literal dot
-                                       [^.]+ # sequence of non-dot characters
-                                       \z    # continuing until end of string
+                                    [.]   # starts with a literal dot
+                                    [^.]+ # sequence of non-dot characters
+                                    \z    # continuing until end of string
                                    }xms;
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
 const my $VERBOSE             => 2;
 
-## use critic ( ProhibitMagicNumbers )
+
+use Class::Tiny { rate     => sub { $REP_RATE; },
+                  agentdir => sub { catdir $Bin, 'agents'; },
+                  verbose  => sub { 0;},
+                  ignore   => sub { [qw( .conf .rc .init )] }, };
+
 # ======================================================================
 # Methods
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-sub new {
-    my ( $class, @args ) = @_;
-
-    my $obj = bless {}, $class;
-
-    $obj->_init(@args);
-    
-    return $obj;
-}
-
-# ......................................................................
-#
-sub _init {
+sub BUILD {
     my $self = shift;
-    my ( @args ) = @_;
+    my ( $args ) = @_;
 
-    if ( scalar @args > 1 ) {
-        for my $i ( 0 .. $#args ) {
-            my ( $k, $v ) = ( $args[$i], $args[ $i + 1 ] );
-            $self->{$k} = $v;
-        }
-    }
-    elsif ( 'HASH' eq ref $args[0] ) {
-        @{$self}{ keys %{ $args[0] } } = values %{ $args[0] };
-    }
-    
-    $self->_set_defaults();
-    $self->_verify_args();
-
-    return;
-}
-
-
-# ......................................................................
-# set values that were not set on call
-#
-sub _set_defaults {
-    my $self = shift;
-
-    # loop repetition rate in seconds.
-    #
-    $self->rate($REP_RATE)            unless  $self->rate();
-
-    # How long should one process live?
-    #
-    $self->duration( $LIFETIME )      unless  $self->duration();
-    
-    # directory to scan.
-    #
-    $self->agentdir($Bin . '/agents') unless  $self->agentdir();
-
-    # print strings for no change?
-    #
-    $self->verbose(0)                 unless  $self->verbose();
-        
-    # ignore files with these suffixes.
-    #
-    $self->ignore( [qw( .conf .rc .init )]) unless $self->ignore();
-
-    
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
-    $self->agentdir( $Bin . $SLASH . substr $self->agentdir(), 2 )
+    $self->agentdir( catdir( $Bin, substr $self->agentdir(), 2 ))
       if 0 == index $self->agentdir(), $DOTSLASH;
 
     # Separate CSV values into separate arg elements.
     #
-    $self->ignore( [ split $COMMA, join $COMMA, @{ $self->{ignore} } ]);
+    $self->ignore( [ split $COMMA, join $COMMA, @{ $self->ignore } ]);
 
+    $self->_verify_args();
+    
     return;
 }
 
+# ......................................................................
+# Standard constructor. In subclasses, 'inherit' this constructor, but
+# write a new _init()
+#
+    
 # ......................................................................
 # Check command line argument validity
 #
@@ -154,12 +106,6 @@ sub _verify_args {
     pod2usage(
         -verbose => $BRIEF,
         -message =>
-          "Total life '$self->duration()' < repetition rate $self->rate()"
-    ) if $self->duration() <= $self->rate();
-
-    pod2usage(
-        -verbose => $BRIEF,
-        -message =>
           "Illegal character '/' in suffix ignore list '$self->ignore()'"
       ) if scalar grep { m{/}xms } $self->ignore();
 
@@ -169,65 +115,6 @@ sub _verify_args {
 # ......................................................................
 # accessor
 #
-sub agentdir {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{agentdir} if not defined $new_value;
-
-    $self->{agentdir} = $new_value;
-    return;
-}
-
-sub core {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{core} if not defined $new_value;
-
-    $self->{core} = $new_value;
-    return;
-}
-
-sub rate {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{rate} if not defined $new_value;
-
-    $self->{rate} = $new_value;
-    return;
-}
-
-sub duration {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{duration} if not defined $new_value;
-
-    $self->{duration} = $new_value;
-    return;
-}
-
-sub verbose {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{verbose} if not defined $new_value;
-
-    $self->{verbose} = $new_value;
-    return;
-}
-
-sub ignore {
-    my $self = shift;
-    my ( $new_value ) = @_;
-
-    return $self->{ignore} if not defined $new_value;
-
-    $self->{ignore} = $new_value;
-    return;
-}
 
 # ......................................................................
 # Scan files in the directory, comparing against a persistent list
@@ -253,7 +140,7 @@ sub scan_files {
 
     my (@added);
   FILE:
-    for my $file ( glob $self->agentdir() . "/*" ) {
+    for my $file ( glob $self->agentdir() . '/*' ) {
         my ( $name, $dir, $suffix ) = fileparse( $file, $SUFFIX_QR );
         next FILE
           if $suffix and exists $ignore->{$suffix};
@@ -273,60 +160,6 @@ sub scan_files {
     return ( \@added, \@dropped );
 }
 
-# ......................................................................
-# run a loop once every 'rate' seconds, to check 'agentdir' for new
-# files, ignoring files with a suffix listed in 'ignore'
-#
-sub run_timed_loop {
-    my $self = shift;
-
-    my ($start_time) = time;
-    my ($end_time)   = $start_time + $self->duration();
-    my ($now)        = $start_time;
-
-    while ( $now < $end_time ) {    # loop until this time tomorrow
-        my ( $new, $deleted ) = $self->scan_files();
-        local $LIST_SEPARATOR = $COMMA;
-
-        my ($elapsed) = time - $now;
-        my $pending = $self->rate() - $elapsed;
-
-        my $extra_arg = (
-            $self->showsleep()
-            ? sprintf '%7.3f:%7.3f mSec', 1000 * $elapsed, 1000 * $pending
-            : q{}
-        );
-        say "$PROG @{[time]} [@{$new}], [@{$deleted}]$extra_arg."
-          if $self->verbose()
-          or @{$new}
-          or @{$deleted};
-
-        sleep $pending;
-        $now = time;
-    }
-    return;
-}
-
-# ----------------------------------------------------------------------
-# Main code
-#
-
-sub main {
-    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
-#    my $options = process_args();
-
-#    run_timed_loop $options;
-
-    say "Halting $PROGRAM_NAME at @{[ scalar localtime()]}.";
-    return;
-}
-
-# ----------------------------------------------------------------------
-# Now invoke main()
-
-#STDOUT->autoflush();
-#main();
-
 1;
 
 __END__
@@ -344,9 +177,6 @@ __END__
      scan_for_agents [options]
 
      Options:
-         -duration N         How long the program should run before
-                             spawning a replacement. Default value
-                             is 24 hrs, or 86400 seconds.
          -rate     N         How often test is performed, by default
                              every 30 seconds.
          -agentdir <path>    Which directory to check, by default
@@ -381,11 +211,6 @@ By default, .conf, .rc and .init files are ignored. But the default
 list is discarded if the user specifies any -ignore options. So if you
 want to add to the default list, rather than replace it, you will need
 to include '.conf,.rc,.init' in your ignore list.
-
-=item B<duration N>
-
-How long should the program run, before spawning a fresh replacement?
-Typically 24 hours, i.e. 86400 seconds.
 
 =item B<-verbose>
 
