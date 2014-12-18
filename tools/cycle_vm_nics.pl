@@ -47,15 +47,24 @@ while(<$file_handle>)
 	if ($line =~ /source bridge='(.*?)'/)
 	{
 		$this_bridge = $1;
+		#print "This bridge: [$this_bridge]\n";
+	}
+	if ($line =~ /source network='(.*?)'/)
+	{
+		$this_bridge = $1;
+		#print "This bridge: [$this_bridge]\n";
 	}
 	if ($line =~ /target dev='(vnet\d+)'/)
 	{
 		$this_device = $1;
+		#print "This device: [$this_device]\n";
 	}
 	if ($line =~ /<\/interface>/)
 	{
+		#print "This bridge: [$this_bridge], This device: [$this_device]\n";
 		if (($this_bridge) && ($this_device))
 		{
+			#print "this_bridge: [$this_bridge], bcn_bridge: [$bcn_bridge], sn_bridge: [$sn_bridge], ifn_bridge: [$ifn_bridge]\n";
 			if    ($this_bridge eq $bcn_bridge) { push @bcn_nic, $this_device; }
 			elsif ($this_bridge eq $sn_bridge)  { push @sn_nic, $this_device; }
 			elsif ($this_bridge eq $ifn_bridge) { push @ifn_nic, $this_device; }

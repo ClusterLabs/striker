@@ -2862,24 +2862,24 @@ sub sanity_check_manifest_answers
 	my $problem = 0;
 	
 	# Make sure the Anvil! prefix is valid. This is used in the generated host's file.
-	if (not $conf->{cgi}{anvil_prefix})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif ($conf->{cgi}{anvil_prefix} =~ /\W/)
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
-		});
-		$problem = 1;
-	}
+# 	if (not $conf->{cgi}{anvil_prefix})
+# 	{
+# 		# Not allowed to be blank.
+# 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+# 		print AN::Common::template($conf, "config.html", "form-error", {
+# 			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
+# 		});
+# 		$problem = 1;
+# 	}
+# 	elsif ($conf->{cgi}{anvil_prefix} =~ /\W/)
+# 	{
+# 		# Not allowed to be blank.
+# 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+# 		print AN::Common::template($conf, "config.html", "form-error", {
+# 			message	=>	AN::Common::get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
+# 		});
+# 		$problem = 1;
+# 	}
 	
 	# Make sure the sequence number is valid.
 	if (not $conf->{cgi}{anvil_sequence})

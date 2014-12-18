@@ -84,8 +84,8 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 		storcli				=>	0,
 	};
-	#$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
-	$conf->{url}{'anvil-map-network'}  = "http://10.20.255.254/anvil-map-network";
+	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
+	#$conf->{url}{'anvil-map-network'}  = "http://10.20.255.254/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/root/anvil-map-network";
 	
 	if ($conf->{perform_install})
@@ -124,6 +124,10 @@ sub run_new_install_manifest
 	# Make sure both nodes can get online. We'll try to install even
 	# without Internet access.
 	verify_internet_access($conf);
+	
+	### NOTE: I might want to move the addition of the an-repo up here.
+	# Beyond here, perl is needed.
+	verify_perl_is_installed($conf);
 	
 	# Make sure both nodes have the same amount of free space.
 	#verify_matching_free_space($conf) or return(1);
@@ -1415,7 +1419,7 @@ sub map_network_on_node
 		'close'		=>	0,
 		shell_call	=>	"if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ]; 
 					then
-						wget $conf->{url}{'anvil-map-network'} -O $conf->{path}{'anvil-map-network'};
+						curl $conf->{url}{'anvil-map-network'} > $conf->{path}{'anvil-map-network'};
 					fi;
 					if [ ! -s \"$conf->{path}{'anvil-map-network'}\" ];
 					then
@@ -1990,6 +1994,115 @@ sub update_node
 	}
 	
 	return(0);
+}
+
+# This checks to see if perl is installed on the nodes and installs it if not.
+sub verify_perl_is_installed
+{
+	my ($conf) = @_;
+	
+	my ($node1_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	
+	my $ok            = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0017!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0017!#";
+	my $message       = "";
+	if ($node1_ok eq "2")
+	{
+		# Installed
+		$node1_message = "#!string!state_0035!#",
+	}
+	elsif (not $node1_ok)
+	{
+		# Not installed/couldn't install
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0036!#",
+		$ok            = 0;
+	}
+	if ($node2_ok eq "2")
+	{
+		# Installed
+		$node2_message = "#!string!state_0035!#",
+	}
+	elsif (not $node2_ok)
+	{
+		# Not installed/couldn't install
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0036!#",
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0243!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	if (not $ok)
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	"#!string!message_0386!#",
+			row	=>	"#!string!state_0037!#",
+		});
+	}
+	
+	return($ok);
+}
+
+# This will check to see if perl is installed and, if it's not, it will try to
+# install it.
+sub verify_perl_is_installed_on_node
+{
+	my ($conf, $node, $password) = @_;
+	
+	# Set to '1' if perl was found, '0' if it wasn't found and couldn't be
+	# installed, set to '2' if installed successfully.
+	my $ok = 1;
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	"if [ -e '/usr/bin/perl' ]; 
+					then
+						echo striker:ok
+					else
+						yum -y install perl;
+						if [ -e '/usr/bin/perl' ];
+						then
+							echo striker:installed
+						else
+							echo striker:failed
+						fi
+					fi",
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line eq "striker:ok")
+		{
+			$ok = 1;
+		}
+		if ($line eq "striker:installed")
+		{
+			$ok = 2;
+		}
+		if ($line eq "striker:failed")
+		{
+			$ok = 0;
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ok: [$ok]\n");
+	return($ok);
 }
 
 # This pings alteeve.ca to check for internet access.

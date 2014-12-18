@@ -37,6 +37,8 @@
 # 21 - Failed to rsync a file or directory.
 # 22 - Failed to find CentOS source ISO.
 # 23 - Failed to find RHEL source ISO.
+# 24 - Unable to parse repo file name from path.
+# 25 - Failed to download the repository.
 # 
 # TODO: Create an init script that deletes anything in the media directory on
 #       boot. Can't use /tmp as it's usually too small.
@@ -80,12 +82,14 @@ my $conf = {
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
 		source			=>	"",
+		yum_repos		=>	"/etc/yum.repos.d",
 	},
 	executable	=>	{
 		cp			=>	"/bin/cp",
 		chkconfig		=>	"/sbin/chkconfig",
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
+		curl			=>	"/usr/bin/curl",
 		echo			=>	"/bin/echo",
 		git			=>	"/usr/bin/git",
 		htpasswd		=>	"/usr/bin/htpasswd",
@@ -316,8 +320,8 @@ my $conf = {
 		tarball_dir		=>	"striker-#!striker_version!#",
 	},
 	url		=>	{
-		#git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
-		git_master	=>	"http://10.20.255.254/master.zip",
+		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
+		#git_master	=>	"http://10.20.255.254/master.zip",
 		#git_master	=>	"http://192.168.122.1/master.zip",
 		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
 	},
@@ -391,6 +395,12 @@ if (sanity_check_switches($conf))
 # Make sure we're on EL6.x
 verify_os($conf);
 
+# Add the user's repo if specified
+if ($conf->{switches}{r})
+{
+	add_repo($conf);
+}
+
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
 if (not $conf->{sys}{skip_network})
@@ -442,6 +452,61 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# This adds a repo if it doesn't already exist.
+sub add_repo
+{
+	my ($conf) = @_;
+	
+	print "Adding custom repositories:\n";
+	print "[ Debug ] - repositories: [$conf->{switches}{r}]\n";
+	foreach my $url (split/,/, $conf->{switches}{r})
+	{
+		my $repo_file = ($url =~ /^.*\/(.*?)$/)[0];
+		print "[ Debug ] - repo_file: [$repo_file], url: [$url]\n";
+		if (not $repo_file)
+		{
+			print "[ Error ] - Unable to parse repository file from path:\n";
+			print "[ Error ]   [$url]\n";
+			exit(24);
+		}
+		
+		if (-e "$conf->{directory}{yum_repos}/$repo_file")
+		{
+			print "- Already downloaded, skipping.\n";
+			next;
+		}
+		else
+		{
+			print "- Downloading: [$url]\n";
+			my $shell_call = "$conf->{executable}{curl} $url > $conf->{directory}{yum_repos}/$repo_file && $conf->{executable}{yum} clean all";
+			print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			print "==============================================================================\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			print "==============================================================================\n";
+			close $file_handle;
+			
+			if (-e "$conf->{directory}{yum_repos}/$repo_file")
+			{
+				print "- Success!\n";
+			}
+			else
+			{
+				print "[ Error ] - It would appear that the repository download failed.\n";
+				exit(25);
+			}
+		}
+	}
+	print "Done.\n\n";
+	
+	return(0);
+}
 
 # This handles the rest of the install (everything except the network).
 sub setup_striker
@@ -4307,6 +4372,12 @@ SWITCHES
 	NOTE: This lease range must be in the BCN subet. We do not want to
 	      interfere with real DHCP servers on the IFN!
 
+ -r <repo>
+
+	This allows for a repository to be added to the system. This must be
+	either a network path (http, https or ftp). Multiple repos can be
+	specified by using comma-separated URLs.
+
  --rhel-iso <local path or URL>
 
 	This is the local path or URL of the ISO to download for setting up the
@@ -4352,6 +4423,7 @@ Normal install, downloading ISOs from local web server:
                   -n an-m01.alteeve.ca \
                   -u "admin:secret password" \
                   -p lease-start=10.20.10.200,lease-end=10.20.10.210 \
+                  -r http://10.255.255.254/repo/rhel6/local.repo \
                   --centos-iso http://10.255.255.254/c6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
                   --rhel-iso http://10.255.255.254/rhel6/x86_64/iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
