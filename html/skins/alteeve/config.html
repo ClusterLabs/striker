@@ -598,6 +598,18 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- User-defined repos -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0244!#
+		</td>
+		<td class="fixed_width">
+			#!replace!say_anvil_repos!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
 	<tr>
 		<td colspan="3">
 			&nbsp;
@@ -1117,6 +1129,15 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- Additional repositories -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0244!#
+		</td>
+		<td class="fixed_width" colspan="4">
+			#!replace!say_anvil_repositories!#
+		</td>
+	</tr>
 	<tr>
 		<td colspan="5">
 			&nbsp;
@@ -1192,6 +1213,7 @@
 						<input type="hidden" name="anvil_striker2_bcn_ip"    id="anvil_striker2_bcn_ip"    value="#!replace!anvil_striker2_bcn_ip!#" />
 						<input type="hidden" name="anvil_striker2_ifn_ip"    id="anvil_striker2_ifn_ip"    value="#!replace!anvil_striker2_ifn_ip!#" />
 						<input type="hidden" name="anvil_sequence"           id="anvil_sequence"           value="#!replace!anvil_sequence!#" />
+						<input type="hidden" name="anvil_repositories"       id="anvil_repositories"       value="#!replace!anvil_repositories!#" />
 						<input type="submit" name="do" id="do" value="#!string!button_0047!#" class="bold_button" />
 						<input type="hidden" name="config" id="config" value="true" />
 						<input type="hidden" name="generate" id="generate" value="true" />
@@ -1571,6 +1593,21 @@
 		</td>
 		<td>
 			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Determining_Storage_Pool_Sizes" target="_new">#!string!button_0003!#</a><br />
+		</td>
+	</tr>
+	<!-- Custom Repositories -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0244!#<span class="highlight_bad_star">#!replace!anvil_repositories_star!#</span>
+		</td>
+		<td>
+			<input type="text" name="anvil_repositories" id="anvil_repositories" value="#!replace!anvil_repositories!#" style="width: 200px;" />
+		</td>
+		<td style="text-align: left;">
+			#!string!explain_0139!#<br />
+		</td>
+		<td>
+			<a href="https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories" target="_new">#!string!button_0003!#</a><br />
 		</td>
 	</tr>
 	<tr>

@@ -564,7 +564,7 @@ sub initialize
 sub initialize_conf
 {
 	# Setup (sane) defaults
-	my $conf={
+	my $conf = {
 		nodes			=>	"",
 		check_using_node	=>	"",
 		up_nodes		=>	[],

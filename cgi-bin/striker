@@ -137,6 +137,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_pdu2_ip",
 	"anvil_pdu2_name",
 	"anvil_prefix",
+	"anvil_repositories",
 	"anvil_sequence",
 	"anvil_sn_network",
 	"anvil_sn_subnet",

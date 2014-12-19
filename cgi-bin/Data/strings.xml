@@ -323,8 +323,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0136"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It is a copy of: [<span class="code">#!variable!old_manifest!#</span>] but with the network mapping recorded.<br />Use this new one in the future to avoid the manual network mapping step.]]></key>
 		<key name="explain_0137"><![CDATA[The install is now beginning. Sanity checks will re-run, just to be safe.<br />Configuration will begin automatically after that.<br />Now is a good time to go have a <span class="code">$drink</span>.]]></key>
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
-		<key name="explain_0139"><![CDATA[]]></key>
-		<key name="explain_0140"><![CDATA[]]></key>
+		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
+		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
+		<key name="explain_0141"><![CDATA[]]></key>
+		<key name="explain_0142"><![CDATA[]]></key>
+		<key name="explain_0143"><![CDATA[]]></key>
+		<key name="explain_0144"><![CDATA[]]></key>
+		<key name="explain_0145"><![CDATA[]]></key>
+		<key name="explain_0146"><![CDATA[]]></key>
+		<key name="explain_0147"><![CDATA[]]></key>
+		<key name="explain_0148"><![CDATA[]]></key>
+		<key name="explain_0149"><![CDATA[]]></key>
+		<key name="explain_0150"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -570,8 +580,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0241">OK, Go!</key>
 		<key name="row_0242">Registration failed</key>
 		<key name="row_0243"><![CDATA[Checking for <span class="code">perl</span>]]></key>
-		<key name="row_0244"></key>
-		<key name="row_0245"></key>
+		<key name="row_0244">Repositories</key>
+		<key name="row_0245"><![CDATA[Repo: <span class="code">#!variable!repo!#</span>]]></key>
 		<key name="row_0246"></key>
 		<key name="row_0247"></key>
 		<key name="row_0248"></key>
@@ -860,9 +870,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0035">Installed</key>
 		<key name="state_0036">Not Installed</key>
 		<key name="state_0037">Unable to proceed</key>
-		<key name="state_0038"></key>
-		<key name="state_0039"></key>
-		<key name="state_0040"></key>
+		<key name="state_0038">Script Failure</key>
+		<key name="state_0039">Parse Error</key>
+		<key name="state_0040">Missing Repo</key>
+		<key name="state_0041"></key>
+		<key name="state_0042"></key>
+		<key name="state_0043"></key>
+		<key name="state_0044"></key>
+		<key name="state_0045"></key>
+		<key name="state_0046"></key>
+		<key name="state_0047"></key>
+		<key name="state_0048"></key>
+		<key name="state_0049"></key>
+		<key name="state_0050"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1433,7 +1453,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
-		<key name="message_0387"></key>
+		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
 		<key name="message_0388"></key>
 		<key name="message_0389"></key>
 		<key name="message_0390"></key>

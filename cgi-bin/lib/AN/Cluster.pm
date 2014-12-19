@@ -1798,6 +1798,7 @@ sub create_install_manifest
 	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
 	$conf->{form}{anvil_media_library_star}     = "";
 	$conf->{form}{anvil_storage_pool1_star}     = "";
+	$conf->{form}{anvil_repositories_star}      = "";
 	$conf->{form}{anvil_node1_name_star}        = "";
 	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
 	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
@@ -1962,6 +1963,8 @@ sub create_install_manifest
 			anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
 			anvil_storage_pool1_star	=>	$conf->{form}{anvil_storage_pool1_star},
 			say_anvil_storage_pool1_unit	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
+			anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
+			anvil_repositories_star		=>	$conf->{form}{anvil_repositories_star},
 			anvil_name			=>	$conf->{cgi}{anvil_name},
 			anvil_name_star			=>	$conf->{form}{anvil_name_star},
 			anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
@@ -2200,6 +2203,10 @@ sub load_install_manifest
 					$conf->{install_manifest}{$file}{common}{media_library}{size}  = $a->{$b}->[0]->{size};
 					$conf->{install_manifest}{$file}{common}{media_library}{units} = $a->{$b}->[0]->{units};
 				}
+				elsif ($b eq "repository")
+				{
+					$conf->{install_manifest}{$file}{common}{anvil}{repositories} = $a->{$b}->[0]->{urls};
+				}
 				elsif ($b eq "networks")
 				{
 					foreach my $c (keys %{$a->{$b}->[0]})
@@ -2334,10 +2341,11 @@ sub load_install_manifest
 		}
 		
 		# Load the common variables.
-		$conf->{cgi}{anvil_prefix}   = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
-		$conf->{cgi}{anvil_domain}   = $conf->{install_manifest}{$file}{common}{anvil}{domain};
-		$conf->{cgi}{anvil_sequence} = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
-		$conf->{cgi}{anvil_password} = $conf->{install_manifest}{$file}{common}{anvil}{password};
+		$conf->{cgi}{anvil_prefix}       = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
+		$conf->{cgi}{anvil_domain}       = $conf->{install_manifest}{$file}{common}{anvil}{domain};
+		$conf->{cgi}{anvil_sequence}     = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
+		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password};
+		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories} ? $conf->{install_manifest}{$file}{common}{anvil}{repositories} : "";
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
@@ -2608,6 +2616,7 @@ Striker Version: $conf->{sys}{version}
 				<bridge name=\"ifn-bridge1\" on=\"ifn\" />
 			</bridges>
 		</networks>
+		<repository urls=\"$conf->{cgi}{anvil_repositories}\" />
 		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
 		<storage_pool_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
 		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" />
@@ -2729,6 +2738,9 @@ sub confirm_install_manifest_run
 			$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node1_current_password};
 			$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip} if not $conf->{cgi}{anvil_node2_current_ip};
 			$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
+			my $say_repos =  $conf->{cgi}{anvil_repositories};
+			   $say_repos =~ s/,/<br \/>/;
+			   $say_repos =  "--" if not $say_repos;
 			
 			print AN::Common::template($conf, "config.html", "confirm-new-anvil-creation", {
 				form_file			=>	"/cgi-bin/striker",
@@ -2781,6 +2793,7 @@ sub confirm_install_manifest_run
 				anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
 				anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
 				anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
+				say_anvil_repos			=>	$say_repos,
 				run				=>	$conf->{cgi}{run},
 			});
 		}
@@ -2796,6 +2809,9 @@ sub show_summary_manifest
 	my ($conf) = @_;
 	
 	# Show the manifest form.
+	my $say_repos =  $conf->{cgi}{anvil_repositories};
+	   $say_repos =~ s/,/<br \/>/;
+	   $say_repos = "--" if not $say_repos;
 	print AN::Common::template($conf, "config.html", "install-manifest-summay", {
 		form_file			=>	"/cgi-bin/striker",
 		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
@@ -2848,6 +2864,8 @@ sub show_summary_manifest
 		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
 		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
 		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+		anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
+		say_anvil_repositories		=>	$say_repos,
 	});
 	
 	return(0);
@@ -3085,6 +3103,24 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
+	
+	# Check the repositor{y,ies} if passed.
+	if ($conf->{cgi}{anvil_repositories})
+	{
+		foreach my $url (split/,/, $conf->{cgi}{anvil_repositories})
+		{
+			$url =~ s/^\s+//;
+			$url =~ s/\s+$//;
+			if (not is_string_url($conf, $url))
+			{
+				$conf->{form}{anvil_repositories_star} = "#!string!symbol_0012!#";
+				print AN::Common::template($conf, "config.html", "form-error", {
+					message	=>	AN::Common::get_string($conf, {key => "explain_0140", variables => { field => "#!string!row_0244!#"}}),
+				});
+				$problem = 1;
+			}
+		}
+	}
 
 	# Check the gateway
 	if (not $conf->{cgi}{anvil_name})
@@ -3112,6 +3148,31 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
+	
+	### Convery anything with the value '--' to ''.
+	$conf->{cgi}{anvil_ifn_gateway}     = "" if $conf->{cgi}{anvil_ifn_gateway}     eq "--";
+	$conf->{cgi}{anvil_ifn_dns1}        = "" if $conf->{cgi}{anvil_ifn_dns1}        eq "--";
+	$conf->{cgi}{anvil_ifn_dns2}        = "" if $conf->{cgi}{anvil_ifn_dns1}        eq "--";
+	$conf->{cgi}{anvil_switch1_name}    = "" if $conf->{cgi}{anvil_switch1_name}    eq "--";
+	$conf->{cgi}{anvil_switch1_ip}      = "" if $conf->{cgi}{anvil_switch1_ip}      eq "--";
+	$conf->{cgi}{anvil_switch2_name}    = "" if $conf->{cgi}{anvil_switch2_name}    eq "--";
+	$conf->{cgi}{anvil_switch2_ip}      = "" if $conf->{cgi}{anvil_switch2_ip}      eq "--";
+	$conf->{cgi}{anvil_pdu1_name}       = "" if $conf->{cgi}{anvil_pdu1_name}       eq "--";
+	$conf->{cgi}{anvil_pdu1_ip}         = "" if $conf->{cgi}{anvil_pdu1_ip}         eq "--";
+	$conf->{cgi}{anvil_pdu2_name}       = "" if $conf->{cgi}{anvil_pdu2_name}       eq "--";
+	$conf->{cgi}{anvil_pdu2_ip}         = "" if $conf->{cgi}{anvil_pdu2_ip}         eq "--";
+	$conf->{cgi}{anvil_ups1_name}       = "" if $conf->{cgi}{anvil_ups1_name}       eq "--";
+	$conf->{cgi}{anvil_ups1_ip}         = "" if $conf->{cgi}{anvil_ups1_ip}         eq "--";
+	$conf->{cgi}{anvil_ups2_name}       = "" if $conf->{cgi}{anvil_ups2_name}       eq "--";
+	$conf->{cgi}{anvil_ups2_ip}         = "" if $conf->{cgi}{anvil_ups2_ip}         eq "--";
+	$conf->{cgi}{anvil_striker1_name}   = "" if $conf->{cgi}{anvil_striker1_name}   eq "--";
+	$conf->{cgi}{anvil_striker1_bcn_ip} = "" if $conf->{cgi}{anvil_striker1_bcn_ip} eq "--";
+	$conf->{cgi}{anvil_striker1_ifn_ip} = "" if $conf->{cgi}{anvil_striker1_ifn_ip} eq "--";
+	$conf->{cgi}{anvil_striker2_name}   = "" if $conf->{cgi}{anvil_striker2_name}   eq "--";
+	$conf->{cgi}{anvil_striker2_bcn_ip} = "" if $conf->{cgi}{anvil_striker2_bcn_ip} eq "--";
+	$conf->{cgi}{anvil_striker2_ifn_ip} = "" if $conf->{cgi}{anvil_striker2_ifn_ip} eq "--";
+	$conf->{cgi}{anvil_node1_ipmi_ip}   = "" if $conf->{cgi}{anvil_node1_ipmi_ip}   eq "--";
+	$conf->{cgi}{anvil_node2_ipmi_ip}   = "" if $conf->{cgi}{anvil_node2_ipmi_ip}   eq "--";
 	
 	## Check the common IFN values.
 	# Check the gateway
@@ -3874,6 +3935,65 @@ sub sanity_check_manifest_answers
 	}
 	
 	return($problem);
+}
+
+# Checks to see if the passed string is a URL or not.
+sub is_string_url
+{   
+	my ($conf, $string) = @_;
+	my $valid = 1;
+	
+	if ($string =~ /^(.*?):\/\/(.*?)\/(.*)$/)
+	{
+		my $protocol = $1;
+		my $host     = $2;
+		my $path     = $3;
+		my $port     = "";
+		#print "[ Debug ] - >> protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+		if ($protocol eq "http")
+		{
+			$port = 80;
+		}
+		elsif ($protocol eq "https")
+		{
+			$port = 443;
+		}
+		elsif ($protocol eq "ftp")
+		{
+			$port = 21;
+		}
+		else
+		{
+			# Invalid protocol
+			$valid = 0;
+		}
+		if ($host =~ /^(.*?):(\d+)$/)
+		{
+			$host = $1;
+			$port = $2;
+		}
+		if ($host =~ /^\d+\.\d+\.\d+\.\d+/)
+		{
+			if (not is_string_ipv4($conf, $host))
+			{
+				$valid = 0;
+			}
+		}
+		else
+		{
+			if (not is_domain_name($conf, $host))
+			{
+				$valid = 0;
+			}
+		}
+		#print "[ Debug ] - << protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+	}
+	else
+	{   
+		$valid = 0;
+	}
+	
+	return($valid);
 }
 
 # Check if the passed string is an unsigned floating point number. A whole
@@ -6296,7 +6416,7 @@ sub remote_call
 {
 	my ($conf, $parameters) = @_;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], system::root_password: [$conf->{'system'}{root_password}]\n");
 	my $cluster    = $conf->{cgi}{cluster};
 	my $node       = $parameters->{node};
 	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
@@ -6305,8 +6425,8 @@ sub remote_call
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
-	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
 	
 	### TODO: Make this a better looking error.
 	if (not $node)
@@ -6355,7 +6475,7 @@ sub remote_call
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
-	record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
@@ -6423,7 +6543,7 @@ sub remote_call
 	### collection in this section.
 	#
 	# Open a channel and make the call.
-	record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
 		# We need to open a channel every time for 'exec' calls. We
@@ -6434,7 +6554,7 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow
