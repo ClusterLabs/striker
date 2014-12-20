@@ -37,6 +37,9 @@ const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
 const my $REP_RATE       => 15;
 const my $SLASH          => q{/};
 
+const my $SMTP => 'mail.alteeve.ca';
+const my $FROM => 'scanner@alteeve.ca';
+
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
 const my $VERBOSE             => 2;
 
@@ -55,10 +58,13 @@ sub process_args {
         verbose   => 0,                   # print strings for no change?
         dbini     => $DEFAULT_DB_INI,     # DB configuration file.
 	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
-              };
+	from      => $FROM,
+	smtp      => $SMTP,
+};
 
     GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
-		'msg_dir=s', 'run_until=s', 'verbose!', 'man', 'help' )
+		'from=s', 'smtp=s', 'msg_dir=s', 'run_until=s', 
+		'verbose!', 'man', 'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
