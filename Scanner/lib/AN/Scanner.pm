@@ -21,7 +21,6 @@ use List::MoreUtils;
 
 use Const::Fast;
 
-use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
 use AN::Alerts;
@@ -33,14 +32,17 @@ use AN::Listener;
 const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 
+use subs 'alert_num';		# manually define accessor.
+
 use Class::Tiny qw( agentdir duration dbini
     db_type db_name port
     rate verbose monitoragent
     flagfile dbs run_until
-    msg_dir ), {
+    msg_dir smtp from ), {
     max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED}, 
-    agents   => sub { [] },
+    agents    => sub { [] },
     processes => sub { [] },
+    alert_num => sub { 'a' },
     alerts    => sub { my $self = shift;
 		       AN::Alerts->new(
 			   { agents => { pid      => $PID,
@@ -72,6 +74,12 @@ sub BUILD {
                verbose  => $self->verbose(),
 
             } ) );
+}
+
+sub alert_num {			# Return current value, increment to new value.
+    my $self = shift;
+
+    return $self->{alert_id}++;
 }
 
 # ======================================================================
@@ -304,7 +312,7 @@ sub tell_old_job_to_quit {
 sub fetch_alert_listeners {
     my $self = shift;
 
-    return $self->dbs()->fetch_alert_listeners();
+    return $self->dbs()->fetch_alert_listeners( $self );
 }
 
 sub ok_to_exit {
@@ -357,15 +365,15 @@ sub check_for_previous_instance {
         if $is_recent && $is_running;
 
     # Old process exited recently without proper cleanup
-    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_RECENT_CRASH')
+    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_RECENT_CRASH')
         if $is_recent && !$is_running;
 
     # Old process has stalled; running but not updating.
-    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED')
+    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED')
         if !$is_recent && $is_running;
 
     # old process exited some time ago without proper cleanup
-    $self->set_alert($PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH')
+    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH')
         if !$is_recent && !$is_running;
 
     return $RUN;
@@ -464,7 +472,7 @@ sub run {
     $self->clean_up_metadata_files();
     $self->connect_dbs();
     $self->create_pid_file();
-    $self->handle_alerts();	# process any alerts from initialization stage
+#    $self->handle_alerts();	# process any alerts from initialization stage
     
     # process until quitting time
     #
@@ -703,6 +711,7 @@ sub run_timed_loop_forever {
             if $now + $elapsed > $end_time;  # exit before sleep if out of time.
 
         sleep $pending;
+
         $now = time;
     }
     return;

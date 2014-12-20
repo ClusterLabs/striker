@@ -20,7 +20,6 @@ use File::Spec::Functions 'catdir';
 use FindBin qw($Bin);
 use Const::Fast;
 
-use lib 'cgi-bin/lib';
 use AN::Common;
 use AN::MonitorAgent;
 use AN::FlagFile;
