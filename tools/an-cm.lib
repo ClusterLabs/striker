@@ -6902,8 +6902,11 @@ sub compare_new_and_old
 			elsif (($old_state eq "ok") && ($new_state eq "ok"))
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Host sensor \"$say_translation\" is OK but has changed!; $new_state, $new_value.\n");
-				$debug_changes .= "\nHost Sensor \"$say_translation\" is OK but has changed!\n";
-				$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				if ($say_translation ne "iRMC request")
+				{
+					$debug_changes .= "\nHost Sensor \"$say_translation\" is OK but has changed!\n";
+					$debug_changes .= "  $old_state, $old_value\t-> $new_state, $new_value\n";
+				}
 			}
 			else
 			{

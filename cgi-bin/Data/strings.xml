@@ -873,10 +873,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0038">Script Failure</key>
 		<key name="state_0039">Parse Error</key>
 		<key name="state_0040">Missing Repo</key>
-		<key name="state_0041"></key>
-		<key name="state_0042"></key>
-		<key name="state_0043"></key>
-		<key name="state_0044"></key>
+		<key name="state_0041">Unmatched Disks</key>
+		<key name="state_0042">Partition Error</key>
+		<key name="state_0043">Partition Resized</key>
+		<key name="state_0044">DRBD Metadata Error</key>
 		<key name="state_0045"></key>
 		<key name="state_0046"></key>
 		<key name="state_0047"></key>
@@ -1454,9 +1454,20 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
 		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
-		<key name="message_0388"></key>
-		<key name="message_0389"></key>
-		<key name="message_0390"></key>
+		<key name="message_0388"><![CDATA[Unable to partition the drives on the nodes!<br />Both nodes should have matching disk configurations, but the largest disk on node 1 is: [<span class="fixed_width">#!variable!disk1!#</span>] and on node 2 it is: [<span class="fixed_width">#!variable!disk2!#</span>]]]></key>
+		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
+		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
+		<key name="message_0391"><![CDATA[I was asked to create a partition, but I had to shrink the partition's end size to make it fit.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], original end: [<span class="fixed_width">#!variable!old_end!#</span>], new end: [<span class="fixed_width">#!variable!new_end!#</span>].]]></key>
+		<key name="message_0392"><![CDATA[By my calculations, we'll need more space on node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>] than is available.<br />Needed: [<span class="fixed_width">#!variable!space_needed!#</span>] but only have: [<span class="fixed_width">#!variable!free_space!#</span>].<br />We'll try to continue and adjust the space used by the last partition to fit.]]></key>
+		<key name="message_0393"><![CDATA[There is a very odd problem with partitioning node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>].<br />The second storage pool appears to exist already, but the first one does not. Did someone manually delete it?]]></key>
+		<key name="message_0394"><![CDATA[I tried to create the DRBD meta-data on node: [<span class="fixed_width">#!variable!node!#</span>]'s partition: [<span class="fixed_width">#!variable!partition!#</span>], but it appears to have failed.]]></key>
+		<key name="message_0395"><![CDATA[]]></key>
+		<key name="message_0396"><![CDATA[]]></key>
+		<key name="message_0397"><![CDATA[]]></key>
+		<key name="message_0398"><![CDATA[]]></key>
+		<key name="message_0399"><![CDATA[]]></key>
+		<key name="message_0400"><![CDATA[]]></key>
+		<key name="message_0401"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

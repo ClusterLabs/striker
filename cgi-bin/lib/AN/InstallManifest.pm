@@ -8,6 +8,10 @@ package AN::InstallManifest;
 # * All remote calls set the port to '22', but this will be overridden if the
 #   node name ends in :xx
 # 
+# BUG:
+# - Install Manifests can be created with IFN networks not matching the per-node/
+#   striker IFN IPs assigned...
+#
 
 use strict;
 use warnings;
@@ -235,6 +239,7 @@ sub run_new_install_manifest
 		# Add user-specified repos
 		add_user_repositories($conf);
 		
+		### TODO: Merge this into the above function
 		# Add the an-repo
 		add_an_repo($conf);
 		
@@ -306,7 +311,7 @@ sub add_repo_to_node
 						echo 9;
 					fi;
 				fi";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -319,7 +324,7 @@ sub add_repo_to_node
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		foreach my $line (@{$return})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 			$rc = $line;
 		}
 	}
@@ -340,7 +345,7 @@ sub add_user_repositories
 		foreach my $url (split/,/, $conf->{cgi}{anvil_repositories})
 		{
 			my ($node1_rc, $repo_file) = add_repo_to_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $url);
-			my ($node2_rc, $repo_file) = add_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $url);
+			my ($node2_rc)             = add_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $url);
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc], repo_file: [$repo_file]\n");
 			
 			# Return codes:
@@ -465,21 +470,24 @@ sub write_config_data_file
 # This partitions the drive.
 sub create_partitions_on_node
 {
-	my ($conf, $node, $password) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partitions_on_node(); node: [$node], password: [$password]\n");
+	my ($conf, $node, $password, $disk, $pool1_size, $pool2_size) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partitions_on_node(); node: [$node], password: [$password], disk: [$disk], pool1_size: [$pool1_size], pool2_size: [$pool2_size]\n");
 	
-	foreach my $disk (sort {$a cmp $b} keys %{$conf->{node}{$node}{disk}})
+	my $ok = 1;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk]\n");
+	
+	# If the disk to use is 'Xda', skip the first three partitions
+	# as they will be for the OS.
+	my $create_extended_partition = 0;
+	my $pool1_partition_numnber   = 4;
+	my $pool2_partition_numnber   = 5;
+	if ($disk =~ /da$/)
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk]\n");
-		
 		# I need to know the label type to determine the partition numbers to
 		# use:
 		# * If it's 'msdos', I need an extended partition and then two logical
 		#   partitions. (4, 5 and 6)
 		# * If it's 'gpt', I just use two logical partition. (4 and 5).
-		my $create_extended_partition = 0;
-		my $pool1_partition_numnber   = 4;
-		my $pool2_partition_numnber   = 5;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::label: [$conf->{node}{$node}{disk}{$disk}{label}]\n");
 		if ($conf->{node}{$node}{disk}{$disk}{label} eq "msdos")
 		{
@@ -488,39 +496,313 @@ sub create_partitions_on_node
 			$pool2_partition_numnber   = 6;
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition_numnber: [$pool1_partition_numnber], pool2_partition_numnber: [$pool2_partition_numnber]\n");
-		
-		# Now, check to see if the partitions I want to use already exist. If
-		# they don't, create them. If they do, look for a DRBD signature.
-		my $create_pool1 = 1;
-		my $create_pool2 = 1;
+	}
+	else
+	{
+		$create_extended_partition = 0;
+		$pool1_partition_numnber   = 1;
+		$pool2_partition_numnber   = 2;
+	}
+	$conf->{node}{$node}{pool1_partition} = "/dev/${disk}${pool1_partition_numnber}";
+	$conf->{node}{$node}{pool2_partition} = "/dev/${disk}${pool2_partition_numnber}";
+	
+	# If there is no disk label on the disk at all, we'll need to
+	# start with 'mklabel' and we'll know for sure we need to
+	# create the partitions.
+	my $label_disk   = 0;
+	my $create_pool1 = 1;
+	my $create_pool2 = 1;
+	if (not $conf->{node}{$node}{disk}{$disk}{label})
+	{
+		$label_disk   = 1;
+		$create_pool1 = 1;
+		$create_pool2 = 1;
+	}
+	else
+	{
+		# Check to see if the partitions I want to use already
+		# exist. If they don't, create them. If they do, look
+		# for a DRBD signature.
 		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool1_partition_numnber}{start})
 		{
 			# Pool 1 exists, check for a signature.
-			$create_pool1 = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool1_partition_numnber] which I want to use for pool 1.\n");
+			$create_pool1    = 0;
 		}
 		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool2_partition_numnber}{start})
 		{
-			# Pool 1 exists, check for a signature.
-			$create_pool2 = 0;
+			# Pool 2 exists, check for a signature.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool2_partition_numnber] which I want to use for pool 2.\n");
+			$create_pool2    = 0;
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_pool1: [$create_pool1], create_pool2: [$create_pool2]\n");
-		
-		my $free_space_start = $conf->{node}{$node}{disk}{$disk}{free_space}{start};
-		my $free_space_end   = $conf->{node}{$node}{disk}{$disk}{free_space}{end};
-		my $free_space_size  = $conf->{node}{$node}{disk}{$disk}{free_space}{size};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; free_space_start: [$free_space_start], free_space_end: [$free_space_end], free_space_size: [$free_space_size]\n");
-		
-		foreach my $partition_number (sort {$a cmp $b} keys %{$conf->{node}{$node}{disk}{$disk}{partition}})
+	}
+	
+	# If I need to make an extended partition, do so now unless it already
+	# exists.
+	if ($create_extended_partition)
+	{
+		if (($conf->{node}{$node}{disk}{$disk}{partition}{4}{type}) && ($conf->{node}{$node}{disk}{$disk}{partition}{4}{type} eq "extended"))
 		{
-			my $start = $conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start};
-			my $end   = $conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end};
-			my $size  = $conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size};
-			my $type  = $conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type};
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start: [$start], end: [$end], size: [$size], type: [$type]\n");
+			# Already exists.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], extended partition already exists.\n");
+		}
+		else
+		{
+			# Create it.
+			create_partition_on_node($conf, $node, $password, $disk, "extended", "all");
 		}
 	}
 	
-	return(0);
+	# Create the pools, if needed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], create_pool1: [$create_pool1], create_pool2: [$create_pool2].\n");
+	if (($create_pool1) && ($create_pool2))
+	{
+		# Create both partitions
+		my $free_space_needed    = $pool1_size + $pool2_size;
+		my $free_space_available = $conf->{node}{$node}{disk}{$disk}{free_space}{size};
+		
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_needed: [$free_space_needed], free_space_available: [$free_space_available].\n");
+		if ($free_space_needed > $free_space_available)
+		{
+			# Why wasn't this caught earlier? Oh well, we'll shrink
+			# the last partition.
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				message	=>	AN::Common::get_string($conf, {key => "message_0392", variables => { 
+					node		=>	$node, 
+					disk		=>	$disk,
+					free_space	=>	AN::Cluster::bytes_to_hr($conf, $free_space_available)." ($free_space_available #!string!suffix_0009!#)",
+					space_needed	=>	AN::Cluster::bytes_to_hr($conf, $free_space_needed)." ($free_space_needed #!string!suffix_0009!#)",
+				}}),
+				row	=>	"#!string!state_0042!#",
+			});
+		}
+		
+		# Proceed!
+		my $type = "primary";
+		if ($create_extended_partition)
+		{
+			$type = "logical";
+		}
+		create_partition_on_node($conf, $node, $password, $disk, $type, $pool1_size);
+		create_partition_on_node($conf, $node, $password, $disk, $type, $pool2_size);
+	}
+	elsif ($create_pool1)
+	{
+		# What? How could partition 2 exist but not 1?
+		$ok = 0;
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	AN::Common::get_string($conf, {key => "message_0393", variables => { 
+				node		=>	$node, 
+				disk		=>	$disk,
+			}}),
+			row	=>	"#!string!state_0042!#",
+		});
+	}
+	elsif ($create_pool2)
+	{
+		my $free_space_available = $conf->{node}{$node}{disk}{$disk}{free_space}{size};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_available: [$free_space_available], pool2_size: [$pool2_size].\n");
+		if ($pool2_size > $free_space_available)
+		{
+			# Why wasn't this caught earlier? Oh well, we'll shrink
+			# the last partition.
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				message	=>	AN::Common::get_string($conf, {key => "message_0392", variables => { 
+					node		=>	$node, 
+					disk		=>	$disk,
+					free_space	=>	AN::Cluster::bytes_to_hr($conf, $free_space_available)." ($free_space_available #!string!suffix_0009!#)",
+					space_needed	=>	AN::Cluster::bytes_to_hr($conf, $pool2_size)." ($pool2_size #!string!suffix_0009!#)",
+				}}),
+				row	=>	"#!string!state_0042!#",
+			});
+		}
+		
+		my $type = "primary";
+		if ($create_extended_partition)
+		{
+			$type = "logical";
+		}
+		create_partition_on_node($conf, $node, $password, $disk, $type, $pool2_size);
+	}
+	else
+	{
+		# Partitions already exist, nothing to do.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], disk: [$disk], both pools \n");
+	}
+	
+	return($ok);
+}
+
+# This performs an actual partition creation
+sub create_partition_on_node
+{
+	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
+	
+	my $ok    = 1;
+	my $start = 0;
+	my $end   = 0;
+	my $size  = 0;
+	my $shell_call = "parted --machine /dev/$disk unit MiB print free";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line =~ /\d+:(\d+)MiB:(\d+)MiB:(\d+)MiB:free;/)
+		{
+			$start = $1;
+			$end   = $2;
+			$size  = $3;
+		}
+	}
+	
+	# Hard to proceed if I don't have the start and end sizes.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], start: [$start], end: [$end].\n");
+	if ((not $start) || (not $end))
+	{
+		# :(
+		$ok = 0;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], type: [$type], partition_size: [$partition_size].\n");
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	AN::Common::get_string($conf, {key => "message_0389", variables => { 
+				node		=>	$node, 
+				disk		=>	$disk,
+				type		=>	$type,
+				size		=>	AN::Cluster::bytes_to_hr($conf, $partition_size)." ($partition_size #!string!suffix_0009!#)",
+				shell_call	=>	$shell_call,
+			}}),
+			row	=>	"#!string!state_0042!#",
+		});
+	}
+	else
+	{
+		# If the size is 'all', then this is easy.
+		my $use_end = $end;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], type: [$type], partition_size: [$partition_size]\n");
+		if ($partition_size ne "all")
+		{
+			my $mib_size = sprintf("%.0f", ($partition_size /= (2 ** 20)));
+			   $use_end  = $start + $mib_size;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], use_end: [$use_end], end: [$end].\n");
+			if ($use_end > $end)
+			{
+				# Warn the user and then shrink the end.
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+					message	=>	AN::Common::get_string($conf, {key => "message_0391", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						old_end		=>	AN::Cluster::bytes_to_hr($conf, $use_end)." ($use_end #!string!suffix_0009!#)",
+						new_end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}}),
+					row	=>	"#!string!state_0043!#",
+				});
+				$use_end = $end;
+			}
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; snode: [$node], disk: [$disk], type: [$type], start: [$start MiB], end: [$end MiB]\n");
+		
+		my $shell_call = "parted -a opt /dev/$disk mkpart $type ${start}MiB ${use_end}MiB";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+			if ($line =~ /Error/)
+			{
+				$ok = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], start: [$start], end: [$end].\n");
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+					message	=>	AN::Common::get_string($conf, {key => "message_0390", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						start		=>	AN::Cluster::bytes_to_hr($conf, $start)." ($start #!string!suffix_0009!#)",
+						end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}}),
+					row	=>	"#!string!state_0042!#",
+				});
+			}
+			if ($line =~ /reboot/)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], reboot needed.\n");
+				$conf->{node}{$node}{reboot_needed} = 1;
+			}
+		}
+	}
+	
+	return($ok);
+}
+
+# This checks the disk for DRBD metadata
+sub check_for_drbd_signature
+{
+	my ($conf, $node, $password, $device) = @_;
+	
+	my $found      = 0;
+	my $shell_call = "/sbin/drbdmeta 0 v08 $device internal dump-md; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				# Found, this is what I would expect
+				$found = 1;
+			}
+			elsif ($rc eq "20")
+			{
+				# This is what I would expect if DRBD is 
+				# running... Um...
+				$found = 1;
+			}
+		}
+		if ($line =~ /Device '(.*?)' is configured!/)
+		{
+			$found = 1;
+		}
+		if ($line =~ /DRBD meta data dump/)
+		{
+			$found = 1;
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found: [$found]\n");
+	return($found);
 }
 
 # This does the first stage of the storage configuration. Specifically, create
@@ -529,16 +811,63 @@ sub configure_storage_stage1
 {
 	my ($conf) = @_;
 	
-	
+	my $ok = 1;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")], anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")], anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")]\n");
+	my $pool1_size = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
+	my $pool2_size = $conf->{cgi}{anvil_storage_pool2_byte_size};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_size: [$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")], pool2_size: [$pool2_size (".AN::Cluster::bytes_to_hr($conf, $pool2_size).")]\n");
 	
 	# We need to make sure things line up, so step one is to read he parted
 	# data from both nodes and compare them.
-	my ($node1_use_device, $node1_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_use_device, $node2_free_space) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_largest_device) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_largest_device) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_largest_device: [$node1_largest_device], node2_largest_device: [$node2_largest_device]\n");
 	
-	create_partitions_on_node($conf, $conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	create_partitions_on_node($conf, $conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	# Make sure both nodes are going to use the same device.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_largest_device: [$node1_largest_device], node2_largest_device: [$node2_largest_device].\n");
+	if ($node1_largest_device ne $node2_largest_device)
+	{
+		# wat?
+		$ok = 0;
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	AN::Common::get_string($conf, {key => "message_0388", variables => { 
+				disk1	=>	$node1_largest_device,
+				disk2	=>	$node2_largest_device,
+			}}),
+			row	=>	"#!string!state_0041!#",
+		});
+	}
+	else
+	{
+		my ($node1_ok) = create_partitions_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_largest_device, $pool1_size, $pool2_size);
+		my ($node2_ok) = create_partitions_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_largest_device, $pool1_size, $pool2_size);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok], node2_ok: [$node2_ok]\n");
+		
+		if ((not $node1_ok) || (not $node2_ok))
+		{
+			$ok = 0;
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				message	=>	AN::Common::get_string($conf, {key => "message_0388", variables => { 
+					disk1	=>	AN::Cluster::bytes_to_hr($conf, $node1_largest_device)." ($node1_largest_device #!string!suffix_0009!#)",
+					disk2	=>	AN::Cluster::bytes_to_hr($conf, $node2_largest_device)." ($node2_largest_device #!string!suffix_0009!#)",
+				}}),
+				row	=>	"#!string!state_0041!#",
+			});
+		}
+	}
+	
+	### Reboot if /dev/Xda was partitioned.
+	
+	
+	# Create the DRBD meta-data if we're still OK.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	if ($ok)
+	{
+		generate_drbd_config_files($conf);
+		
+		my ($node1_ok) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($node2_ok) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	}
 	
 	# NOTE: Partition Table: gpt   == Don't create an extended partition
 	# NOTE: Partition Table: msdos == Use extended partition
@@ -568,9 +897,262 @@ sub configure_storage_stage1
 	#    gfs2_tool sb $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/') uuid | awk '{ print $4; }' | sed -e "s/\(.*\)/UUID=\L\1\E\t\/shared\tgfs2\tdefaults,noatime,nodiratime\t0 0/" >> /etc/fstab
 	#
 	
-	return(0);
+	return($ok);
 }
 
+# This generates the DRBD config files to later be written on the nodes.
+sub generate_drbd_config_files
+{
+	my ($conf) = @_;
+	
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	
+	### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
+	###       the resync rate to 300M;
+	# Write out the config files
+	$conf->{drbd}{global_common} = "
+global {
+	usage-count no;
+	# minor-count dialog-refresh disable-ip-verification
+}
+
+common {
+	protocol C;
+
+	handlers {
+		pri-on-incon-degr \"/usr/lib/drbd/notify-pri-on-incon-degr.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
+		pri-lost-after-sb \"/usr/lib/drbd/notify-pri-lost-after-sb.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
+		local-io-error \"/usr/lib/drbd/notify-io-error.sh; /usr/lib/drbd/notify-emergency-shutdown.sh; echo o > /proc/sysrq-trigger ; halt -f\";
+		# fence-peer \"/usr/lib/drbd/crm-fence-peer.sh\";
+		# split-brain \"/usr/lib/drbd/notify-split-brain.sh root\";
+		# out-of-sync \"/usr/lib/drbd/notify-out-of-sync.sh root\";
+		# before-resync-target \"/usr/lib/drbd/snapshot-resync-target-lvm.sh -p 15 -- -c 16k\";
+		# after-resync-target /usr/lib/drbd/unsnapshot-resync-target-lvm.sh;
+		#fence-peer		\"/sbin/obliterate-peer.sh\";
+		fence-peer		\"/usr/lib/drbd/rhcs_fence\";
+	}
+
+	startup {
+		# wfc-timeout degr-wfc-timeout outdated-wfc-timeout wait-after-sb
+		become-primary-on	both;
+		wfc-timeout		300;
+		degr-wfc-timeout	120;
+		outdated-wfc-timeout    120;
+	}
+
+	disk {
+		# on-io-error fencing use-bmbv no-disk-barrier no-disk-flushes
+		# no-disk-drain no-md-flushes max-bio-bvecs
+		fencing			resource-and-stonith;
+	}
+
+	net {
+		# sndbuf-size rcvbuf-size timeout connect-int ping-int ping-timeout max-buffers
+		# max-epoch-size ko-count allow-two-primaries cram-hmac-alg shared-secret
+		# after-sb-0pri after-sb-1pri after-sb-2pri data-integrity-alg no-tcp-cork
+		allow-two-primaries;
+		after-sb-0pri		discard-zero-changes;
+		after-sb-1pri		discard-secondary;
+		after-sb-2pri		disconnect;
+	}
+
+	syncer {
+		# rate after al-extents use-rle cpu-mask verify-alg csums-alg
+		rate			30M;
+	}
+}
+";
+	
+	my $node1_pool1_partition = $conf->{node}{$node1}{pool1_partition};
+	my $node1_pool2_partition = $conf->{node}{$node1}{pool2_partition};
+	my $node2_pool1_partition = $conf->{node}{$node2}{pool1_partition};
+	my $node2_pool2_partition = $conf->{node}{$node2}{pool2_partition};
+	my $node1_sn_ip_key       = "anvil_node1_sn_ip";
+	my $node2_sn_ip_key       = "anvil_node2_sn_ip";
+	my $node1_sn_ip           = $conf->{cgi}{$node1_sn_ip_key};
+	my $node2_sn_ip           = $conf->{cgi}{$node2_sn_ip_key};
+	
+	$conf->{drbd}{r0} = "
+# This is the resource used for the shared GFS2 partition and servers designed
+# to run on node 01.
+resource r0 {
+	# This is the block device path.
+	device		/dev/drbd0;
+ 
+	# We'll use the normal internal metadisk (takes about 32MB/TB)
+	meta-disk	internal;
+ 
+	# This is the `uname -n` of the first node
+	on $conf->{cgi}{anvil_node1_name} {
+		# The 'address' has to be the IP, not a hostname. This is the
+		# node's SN (bond1) IP. The port number must be unique amoung
+		# resources.
+		address		$node1_sn_ip:7788;
+ 
+		# This is the block device backing this resource on this node.
+		disk		$node1_pool1_partition;
+	}
+	# Now the same information again for the second node.
+	on $conf->{cgi}{anvil_node2_name} {
+		address		$node2_sn_ip:7788;
+		disk		$node2_pool1_partition;
+	}
+}
+";
+
+	$conf->{drbd}{r1} = "
+# This is the resource used for the servers designed to run on node 02.
+resource r1 {
+	# This is the block device path.
+	device		/dev/drbd1;
+ 
+	# We'll use the normal internal metadisk (takes about 32MB/TB)
+	meta-disk	internal;
+ 
+	# This is the `uname -n` of the first node
+	on $conf->{cgi}{anvil_node1_name} {
+		# The 'address' has to be the IP, not a hostname. This is the
+		# node's SN (bond1) IP. The port number must be unique amoung
+		# resources.
+		address		$node1_sn_ip:7789;
+ 
+		# This is the block device backing this resource on this node.
+		disk		$node1_pool2_partition;
+	}
+	# Now the same information again for the second node.
+	on $conf->{cgi}{anvil_node2_name} {
+		address		$node2_sn_ip:7789;
+		disk		$node2_pool2_partition;
+	}
+}
+";
+
+	return ($conf->{drbd}{global_common}, $conf->{drbd}{r0}, $conf->{drbd}{r1});
+}
+
+# This does the work of creating a metadata on each DRBD backing device. It
+# checks first to see if there already is a metadata and, if so, does nothing.
+sub setup_drbd_on_node
+{
+	my ($conf, $node, $password) = @_;
+	
+	my $ok              = 1;
+	my $pool1_partition = $conf->{node}{$node}{pool1_partition};
+	my $pool2_partition = $conf->{node}{$node}{pool2_partition};
+	
+	### Write out the config files
+	# Global common file
+	my $shell_call =  "cat > $conf->{path}{nodes}{drbd_global_common} << EOF\n";
+	   $shell_call .= "$conf->{drbd}{global_common}\n";
+	   $shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# Resource 0 config
+	$shell_call =  "cat > $conf->{path}{nodes}{drbd_r0} << EOF\n";
+	$shell_call .= "$conf->{drbd}{r0}\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# Resource 1 config
+	$shell_call =  "cat > $conf->{path}{nodes}{drbd_r1} << EOF\n";
+	$shell_call .= "$conf->{drbd}{r1}\n";
+	$shell_call .= "EOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	
+	# Check if the meta-data exists already
+	my ($pool1_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool1_partition);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data found for r0? [$pool1_drbdmd_found].\n");
+	if (not $pool1_drbdmd_found)
+	{
+		# We need to create the meta-data
+		my $shell_call =  "drbdadm -- --force create-md r0";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+		my ($pool1_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool1_partition);
+		if ($pool1_drbdmd_found)
+		{
+			# Success!
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; r0 metadata created successfully.\n");
+		}
+		else
+		{
+			$ok = 0;
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				message	=>	AN::Common::get_string($conf, {key => "message_0394", variables => { 
+					node		=>	$node,
+					partition	=>	$pool1_partition,
+				}}),
+				row	=>	"#!string!state_0044!#",
+			});
+		}
+	}
+	# Now resource 1
+	my ($pool2_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool2_partition);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data found for r1? [$pool2_drbdmd_found].\n");
+	if (not $pool2_drbdmd_found)
+	{
+		# We need to create the meta-data
+		my $shell_call =  "drbdadm -- --force create-md r1";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	}
+	
+	return($ok);
+}
 
 # This will register the nodes with RHN, if needed. Otherwise it just returns
 # without doing anything.
@@ -1470,13 +2052,13 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = $mac;
@@ -1509,13 +2091,13 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = $mac;
@@ -1546,28 +2128,38 @@ sub map_network
 		}
 	}
 	
-	# Now determine if a remap is needed.
+	# Now determine if a remap is needed. If 'ifn-bridge1' exists, assume
+	# it's configured and skip.
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}].\n");
-	if ((not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}) || 
-	    (not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}) ||
-	    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link1'})  ||
-	    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link2'})  ||
-	    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}) ||
-	    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}))
+	
+	if ((exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}) && (exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}))
 	{
-		$node1_remap_needed = 1;
+		# Remap not needed, system already configured.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'ifn-bridge1' device exists on both nodes already, remap not needed.\n");
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}].\n");
-	if ((not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}) || 
-	    (not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}) ||
-	    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link1'})  ||
-	    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link2'})  ||
-	    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}) ||
-	    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}))
+	else
 	{
-		$node2_remap_needed = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}].\n");
+		if ((not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}) || 
+		    (not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}) ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link1'})  ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link2'})  ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}) ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}))
+		{
+			$node1_remap_needed = 1;
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}].\n");
+		if ((not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}) || 
+		    (not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}) ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link1'})  ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link2'})  ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}) ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}))
+		{
+			$node2_remap_needed = 1;
+		}
 	}
 	
 	my $ok            = 1;
@@ -1629,6 +2221,22 @@ sub map_network_on_node
 	###       check that, so write an rsync function to move the script
 	###       under docroot and then wget from this machine.
 	# First, make sure the script is downloaded and ready to run.
+	my $shell_call = "if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ]; 
+			then
+				curl $conf->{url}{'anvil-map-network'} > $conf->{path}{'anvil-map-network'};
+			fi;
+			if [ ! -s \"$conf->{path}{'anvil-map-network'}\" ];
+			then
+				echo failed;
+				if [ -e \"$conf->{path}{'anvil-map-network'}\" ]; 
+				then
+					rm -f $conf->{path}{'anvil-map-network'};
+				fi;
+			else
+				chmod 755 $conf->{path}{'anvil-map-network'};
+				echo ready;
+			fi";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -1636,21 +2244,7 @@ sub map_network_on_node
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ]; 
-					then
-						curl $conf->{url}{'anvil-map-network'} > $conf->{path}{'anvil-map-network'};
-					fi;
-					if [ ! -s \"$conf->{path}{'anvil-map-network'}\" ];
-					then
-						echo failed;
-						if [ -e \"$conf->{path}{'anvil-map-network'}\" ]; 
-						then
-							rm -f $conf->{path}{'anvil-map-network'};
-						fi;
-					else
-						chmod 755 $conf->{path}{'anvil-map-network'};
-						echo ready;
-					fi",
+		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
@@ -1787,6 +2381,7 @@ sub map_network_on_node
 			last if $channel->eof;
 		}
 	}
+	
 	if ($remap)
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
@@ -1907,7 +2502,7 @@ sub install_missing_packages
 			$to_install .= "$package ";
 		}
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], to_install: [$to_install]");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], to_install: [$to_install]\n");
 	
 	if ($to_install)
 	{
@@ -2841,7 +3436,7 @@ sub get_partition_data
 			$name = $1;
 		}
 		next if $type ne "disk";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
 		
 		push @disks, $name;
 	}
@@ -2863,6 +3458,7 @@ sub get_partition_data
 				else
 					parted /dev/$disk unit B print free
 				fi";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -2889,6 +3485,10 @@ sub get_partition_data
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Installed 'parted' RPM.\n");
 			}
+			elsif ($line =~ /Disk \/dev\/$disk: (\d+)B/)
+			{
+				$conf->{node}{$node}{disk}{$disk}{size} = $1;
+			}
 			elsif ($line =~ /Partition Table: (.*)/)
 			{
 				$conf->{node}{$node}{disk}{$disk}{label} = $1;
@@ -2906,7 +3506,7 @@ sub get_partition_data
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}   = $partition_end;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}  = $partition_size;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}  = $partition_type;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition_number], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition_number], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}]\n");
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{
@@ -2918,17 +3518,35 @@ sub get_partition_data
 				$conf->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free space; start: [$conf->{node}{$node}{disk}{$disk}{free_space}{start}], end: [$conf->{node}{$node}{disk}{$disk}{free_space}{end}], size: [$conf->{node}{$node}{disk}{$disk}{free_space}{size}]\n");
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_size: [$free_space_size] > largest_free_space: [$largest_free_space]?\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free space; start: [$conf->{node}{$node}{disk}{$disk}{free_space}{start}], end: [$conf->{node}{$node}{disk}{$disk}{free_space}{end}], size: [$conf->{node}{$node}{disk}{$disk}{free_space}{size}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], free_space_size: [$free_space_size] > largest_free_space: [$largest_free_space]?\n");
 				if ($free_space_size > $largest_free_space)
 				{
 					$device             = $disk;
 					$largest_free_space = $free_space_size;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], Yes; device: [$device], free_space_size: [$free_space_size]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], Yes; device: [$device], free_space_size: [$free_space_size]\n");
 				}
 			}
 		}
 	}
+	
+	### TODO: Above I used to sort by free space, but that isn't useful on
+	###       re-runs. Delete the above logic when this is known to be
+	###       working well.
+	# Find which disk is bigger
+	my $biggest_disk = "";
+	my $biggest_size = 0;
+	foreach my $disk (sort {$a cmp $b} keys %{$conf->{node}{$node}{disk}})
+	{
+		my $size = $conf->{node}{$node}{disk}{$disk}{size};
+		if ($size > $biggest_size)
+		{
+			$biggest_disk = $disk;
+			$biggest_size = $size;
+		}
+	}
+	$device             = $biggest_disk;
+	$largest_free_space = $biggest_size;
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$device], largest_free_space: [$largest_free_space]\n");
 	return($device, $largest_free_space);
@@ -3168,9 +3786,117 @@ sub check_connection
 			message		=>	"#!string!message_0361!#",
 		});
 		$access = 0;
+		
+		# Copy the tools the nodes will need into docroot and update
+		# the URLs we will tell the nodes to download from.
+		copy_tools_to_docroot($conf);
 	}
 	
 	return($access);
+}
+
+# This gets this machine's BCN ip address
+sub get_local_bcn_ip
+{
+	my ($conf) = @_;
+	
+	my $in_dev = "";
+	my $bcn_ip = "";
+	my $sc     = "$conf->{path}{ip} addr";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+		$line =~ s/\s+/ /;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+		if ($line =~ /^\d+: (.*?):/)
+		{
+			$in_dev = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
+		}
+		
+		# No sense proceeding if I'm not in a device named 'bcn'.
+		next if not $in_dev;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
+		next if $in_dev !~ /bcn/;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; still alive! line: [$line]\n");
+		
+		if ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/\d+ /)
+		{
+			$bcn_ip = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev], bcn_ip: [$bcn_ip]\n");
+			last;
+		}
+	}
+	$fh->close();
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bcn_ip: [$bcn_ip]\n");
+	return($bcn_ip);
+}
+
+# If one or both of the nodes failed to connect to the web, this function will
+# move tools to our webserver's docroot and then update paths to find the tools
+# here. The paths will use the BCN for download.
+sub copy_tools_to_docroot
+{
+	my ($conf) = @_;
+	
+	my $docroot         = $conf->{path}{docroot};
+	my $tools_directory = $conf->{path}{tools_directory};
+	my $bcn_ip          = get_local_bcn_ip($conf);
+	
+	foreach my $tool (@{$conf->{path}{tools}})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copying tool: [$tool] from: [$tools_directory] to: [$docroot]\n");
+		my $source      = "$tools_directory/$tool";
+		my $destination = "$docroot/$tool";
+		if (-e $destination)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; skipping, already exists: [$destination]\n");
+		}
+		elsif (-e $source)
+		{
+			# Copy.
+			my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
+			open (my $fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
+			while(<$fh>)
+			{
+				chomp;
+				my $line = $_;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			}
+			$fh->close();
+			if (-e $destination)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copied successfully!\n");
+				# No sense changing the URLs if I didn't find
+				# my BCN IP...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
+				if ($bcn_ip)
+				{
+					$conf->{url}{$tool} = "http://$bcn_ip/$tool";
+				}
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to copy! Will try to proceed as the nodes may have these files already.\n");
+			}
+		}
+		else
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The source file: [$source] wasn't found! Will try to proceed as the nodes may have these files already.\n");
+		}
+	}
+	
+	return(0);
 }
 
 # This does nothing more than call 'echo 1' to see if the target is reachable.

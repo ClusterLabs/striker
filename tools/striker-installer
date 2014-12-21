@@ -40,8 +40,9 @@
 # 24 - Unable to parse repo file name from path.
 # 25 - Failed to download the repository.
 # 
-# TODO: Create an init script that deletes anything in the media directory on
-#       boot. Can't use /tmp as it's usually too small.
+# TODO: - Create an init script that deletes anything in the media directory on
+#         boot. Can't use /tmp as it's usually too small.
+#       - Create a '-g' switch to install the GUI
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
