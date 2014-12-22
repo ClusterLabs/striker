@@ -325,7 +325,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
-		<key name="explain_0141"><![CDATA[]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now. If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="fixed_width">#!conf!sys::reboot_timeout!#</span> seconds to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
 		<key name="explain_0142"><![CDATA[]]></key>
 		<key name="explain_0143"><![CDATA[]]></key>
 		<key name="explain_0144"><![CDATA[]]></key>
@@ -558,7 +558,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0219">Testing Connection</key>
 		<key name="row_0220">Checking OS Version</key>
 		<key name="row_0221">Checking for Existing Config</key>
-		<key name="row_0222">Checking for Free Space</key>
+		<key name="row_0222">Checking Storage</key>
 		<key name="row_0223">Checking Internet Access</key>
 		<key name="row_0224">Note!</key>
 		<key name="row_0225"><![CDATA[Adding <span class="code">an-repo</span>]]></key>
@@ -582,9 +582,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0243"><![CDATA[Checking for <span class="code">perl</span>]]></key>
 		<key name="row_0244">Repositories</key>
 		<key name="row_0245"><![CDATA[Repo: <span class="code">#!variable!repo!#</span>]]></key>
-		<key name="row_0246"></key>
-		<key name="row_0247"></key>
-		<key name="row_0248"></key>
+		<key name="row_0246">Partitioning Pool 1</key>
+		<key name="row_0247">Rebooting</key>
+		<key name="row_0248">Partitioning Pool 2</key>
 		<key name="row_0249"></key>
 		<key name="row_0250"></key>
 		
@@ -852,7 +852,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0017">OK</key>
 		<key name="state_0018">Failed!</key>
 		<key name="state_0019">Not Found</key>
-		<key name="state_0020">Exists!</key>
+		<key name="state_0020">Exists</key>
 		<key name="state_0021">No Access</key>
 		<key name="state_0022">Online</key>
 		<key name="state_0023">Added</key>
@@ -877,12 +877,22 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0042">Partition Error</key>
 		<key name="state_0043">Partition Resized</key>
 		<key name="state_0044">DRBD Metadata Error</key>
-		<key name="state_0045"></key>
-		<key name="state_0046"></key>
-		<key name="state_0047"></key>
-		<key name="state_0048"></key>
-		<key name="state_0049"></key>
-		<key name="state_0050"></key>
+		<key name="state_0045">Created</key>
+		<key name="state_0046">Rebooted</key>
+		<key name="state_0047">Not Needed</key>
+		<key name="state_0048">Failed, but pingable</key>
+		<key name="state_0049">Failed, can't ping</key>
+		<key name="state_0050">Aborted</key>
+		<key name="state_0051">Didn't shut down</key>
+		<key name="state_0052">Storage Pool Mismatch</key>
+		<key name="state_0053">Not enough space</key>
+		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key>
+		<key name="state_0055"></key>
+		<key name="state_0056"></key>
+		<key name="state_0057"></key>
+		<key name="state_0058"></key>
+		<key name="state_0059"></key>
+		<key name="state_0060"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1430,18 +1440,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
 		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
-		<key name="message_0364"><![CDATA[I am sorry, but both nodes must have free space.]]></key>
+		<key name="message_0364"><![CDATA[]]></key>	<!-- free -->
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
 		<key name="message_0367"><![CDATA[Failed to add the AN!Repo.<br />This is not strictly required, but may mean some packages will not be installed automatically.]]></key>
-		<key name="message_0368"><![CDATA[There appears to be no internet connection, and the program <span class="code">parted</span> is not installed.]]></key>
+		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
 		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
-		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.<br />Will try to proceed, though partitioning may fail later.]]></key>
-		<key name="message_0375">Checks complete.</key>
+		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="highlight_detail">#!variable!size!#</span>] or more.<br />Will try to proceed, though partitioning may fail later.]]></key>
+		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376">Not needed</key>
 		<key name="message_0377">Already registered</key>
 		<key name="message_0378">Registration needed</key>
@@ -1461,9 +1471,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0392"><![CDATA[By my calculations, we'll need more space on node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>] than is available.<br />Needed: [<span class="fixed_width">#!variable!space_needed!#</span>] but only have: [<span class="fixed_width">#!variable!free_space!#</span>].<br />We'll try to continue and adjust the space used by the last partition to fit.]]></key>
 		<key name="message_0393"><![CDATA[There is a very odd problem with partitioning node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>].<br />The second storage pool appears to exist already, but the first one does not. Did someone manually delete it?]]></key>
 		<key name="message_0394"><![CDATA[I tried to create the DRBD meta-data on node: [<span class="fixed_width">#!variable!node!#</span>]'s partition: [<span class="fixed_width">#!variable!partition!#</span>], but it appears to have failed.]]></key>
-		<key name="message_0395"><![CDATA[]]></key>
-		<key name="message_0396"><![CDATA[]]></key>
-		<key name="message_0397"><![CDATA[]]></key>
+		<key name="message_0395"><![CDATA[I found existing partitions for storage pool one on both nodes, but they are not the same size.<br />Installation will attempt to continue, but it might fail later when trying to start DRBD.<br />Node 1: [<span class="fixed_width">#!variable!node1!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node1_device!#</span>] is <span class="fixed_width">#!variable!node1_size!#</span>] and Node 2: [<span class="fixed_width">#!variable!node2!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node2_device!#</span>] is <span class="fixed_width">#!variable!node2_size!#</span>]]]></key>
+		<key name="message_0396"><![CDATA[I wasn't able to find enough free space to create either storage pool.<br />I need at least: [<span class="fixed_width">#!variable!minimum_space!#</span>] but I only have: [<span class="fixed_width">#!variable!available_space!#</span>].]]></key>
+		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
 		<key name="message_0398"><![CDATA[]]></key>
 		<key name="message_0399"><![CDATA[]]></key>
 		<key name="message_0400"><![CDATA[]]></key>

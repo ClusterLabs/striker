@@ -669,6 +669,8 @@ sub initialize_conf
 			log_language		=>	"en_CA",
 			system_timezone		=>	"America/Toronto",
 			output			=>	"web",
+			reboot_timeout		=>	600,
+			pool1_shrunk		=>	0,
 		},
 		# Config values needed to managing strings
 		strings				=>	{

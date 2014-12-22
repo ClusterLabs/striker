@@ -6,6 +6,14 @@ package AN::MediaLibrary;
 # pushing it to a cluster's /shared/files/ directory. It also allows for 
 # connecting and disconnecting these ISOs to and from VMs.
 # 
+# BUG:
+# - Uploading fails if the SSH fingerprint isn't recorded
+# - Upload fails if /shared/files/ doesn't exist.
+# 
+# TODO:
+# - Make uploads have a progress bar.
+# - When an upload fails, do NOT clear the previous selection
+#
 
 use strict;
 use warnings;

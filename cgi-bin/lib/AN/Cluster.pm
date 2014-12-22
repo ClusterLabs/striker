@@ -5672,6 +5672,7 @@ sub bytes_to_hr
 	# Die if either the 'time' or 'float' has a non-digit character in it.  
 	if ($hr_size =~ /\D/)
 	{
+		return("--");
 		my $message = AN::Common::get_string($conf, {key => "message_0031", variables => {
 			size	=>	$size,
 		}});
@@ -6193,7 +6194,23 @@ sub gather_node_details
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"for i in \$(ls /proc/net/bonding/bond*); do echo \"start: \$i\"; cat \$i; done",
+			shell_call	=>	"if [ -e '/proc/net/bonding/ifn-bond1' ];
+						then
+							for i in \$(ls /proc/net/bonding/); 
+							do 
+								if [ \$i != 'bond0' ];
+								then
+									echo 'start: \$i';
+									cat /proc/net/bonding/\$i;
+								fi
+							done
+						else
+							for i in \$(ls /proc/net/bonding/bond*);
+							do
+								echo 'start: \$i';
+								cat \$i;
+							done;
+						fi;",
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
 		
@@ -6554,7 +6571,7 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow

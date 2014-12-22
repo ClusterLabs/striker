@@ -4974,7 +4974,8 @@ sub verify_vm_config
 				$short_vg   = $2;
 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
-			my $say_node      = $short_vg;
+			#my $say_node      = $short_vg;
+			my $say_node      = $short_node;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
