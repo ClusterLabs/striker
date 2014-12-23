@@ -222,23 +222,23 @@ sub run_new_install_manifest
 		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 		
 		# Register the nodes with RHN, if needed.
-		#register_with_rhn($conf);
+		register_with_rhn($conf);
 		
 		# Configure the network
-		#configure_network($conf);
+		configure_network($conf);
 		
 		# Add user-specified repos
-		#add_user_repositories($conf);
+		add_user_repositories($conf);
 		
 		### TODO: Merge this into the above function
 		# Add the an-repo
-		#add_an_repo($conf);
+		add_an_repo($conf);
 		
 		# Install needed RPMs.
-		#install_programs($conf) or return(1);
+		install_programs($conf) or return(1);
 		
 		# Update the OS on each node.
-		#update_nodes($conf);
+		update_nodes($conf);
 		
 		# Configure storage stage 1 (drbd, lvm config and partitioning.
 		configure_storage_stage1($conf) or return(1);
