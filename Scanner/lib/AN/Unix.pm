@@ -3,7 +3,7 @@ package AN::Unix;
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 use version;
 our $VERSION = '0.0.1';
