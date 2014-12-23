@@ -65,8 +65,10 @@ sub test_dispatch_msg {
     my ( $listener ) = @_;
 
     my @msgs = ( 'Line 1', 'This is line 2', 'Some stuff on line 3' );
-    stdout_is( sub { $listener->dispatch_msg(\@msgs) },
-               join( "\n",  @msgs ) . "\n",
+
+    my $std = ($] < 5.014 ? join '', @msgs : join "\n", @msgs);
+
+    stdout_is( sub { $listener->dispatch_msg(\@msgs) }, $std,
                'Listener::dispatch_msg() works OK.' );
     return;
 

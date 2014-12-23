@@ -38,7 +38,7 @@ my $AGENT_RECORD = { 1 => { id        => 1234,
                             timestamp => '2014-02-14 12:00:00.000000-05'
                           }, };
 
-package DBI::sth {
+package DBI::sth;
 
     sub new {
         my $class = shift;
@@ -65,9 +65,9 @@ package DBI::sth {
 	return $SCHEMA;
     }
     1;
-}				# End of package DBI::sth
+# End of package DBI::sth
 
-package DBI {
+package DBI;
 
     { no warnings;
       sub connect_cached {
@@ -111,8 +111,9 @@ package DBI {
     }
 
     1;
-}				# End of package DBI
+# End of package DBI
 
+package main;
 
 # ----------------------------------------------------------------------
 # Utility routines
