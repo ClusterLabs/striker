@@ -139,6 +139,7 @@ sub run_new_install_manifest
 	
 	# Get a map of the physical network interfaces for later remapping to
 	# device names.
+
 	my ($node1_remap_required, $node2_remap_required) = map_network($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_remap_required: [$node1_remap_required], node2_remap_required: [$node2_remap_required].\n");
 	
@@ -202,7 +203,7 @@ sub run_new_install_manifest
 		#$conf->{cgi}{run} = $xml_file;
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::run: [$conf->{cgi}{run}]\n");
 	}
-	
+
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::perform_install: [$conf->{cgi}{perform_install}].\n");
 	if (not $conf->{cgi}{perform_install})
 	{
@@ -221,23 +222,23 @@ sub run_new_install_manifest
 		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 		
 		# Register the nodes with RHN, if needed.
-		register_with_rhn($conf);
+		#register_with_rhn($conf);
 		
 		# Configure the network
-		configure_network($conf);
+		#configure_network($conf);
 		
 		# Add user-specified repos
-		add_user_repositories($conf);
+		#add_user_repositories($conf);
 		
 		### TODO: Merge this into the above function
 		# Add the an-repo
-		add_an_repo($conf);
+		#add_an_repo($conf);
 		
 		# Install needed RPMs.
-		install_programs($conf) or return(1);
+		#install_programs($conf) or return(1);
 		
 		# Update the OS on each node.
-		update_nodes($conf);
+		#update_nodes($conf);
 		
 		# Configure storage stage 1 (drbd, lvm config and partitioning.
 		configure_storage_stage1($conf) or return(1);
@@ -245,8 +246,6 @@ sub run_new_install_manifest
 		# If a reboot is needed, now is the time to do it. This will
 		# switch the CGI nodeX IPs to the new ones, too.
 		reboot_nodes($conf) or return(1);
-		
-		return(0);
 		
 		# Configure storage stage 1 (drbd, lvm config and partitioning.
 		configure_storage_stage2($conf) or return(1);
@@ -278,7 +277,7 @@ sub reboot_nodes
 	my $ok         = 1;
 	my ($node1_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_bcn_ip});
 	my $node2_rc   = 255;
-	if (not $node1_rc)
+	if ((not $node1_rc) || ($node1_rc eq "1"))
 	{
 		($node2_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_bcn_ip});
 	}
@@ -294,7 +293,12 @@ sub reboot_nodes
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0046!#";
 	# Node 1
-	if ($node1_rc eq "1")
+	if (not $node1_rc)
+	{
+		# Node rebooted, change the IP we're using for it now.
+		$conf->{cgi}{anvil_node1_current_ip} = $conf->{cgi}{anvil_node1_bcn_ip};
+	}
+	elsif ($node1_rc eq "1")
 	{
 		$node1_message = "#!string!state_0047!#",
 	}
@@ -324,7 +328,12 @@ sub reboot_nodes
 		$node2_message = "#!string!state_0050!#",
 		$ok            = 0;
 	}
-	if ($node2_rc eq "1")
+	elsif (not $node2_rc)
+	{
+		# Node rebooted, change the IP we're using for it now.
+		$conf->{cgi}{anvil_node2_current_ip} = $conf->{cgi}{anvil_node2_bcn_ip};
+	}
+	elsif ($node2_rc eq "1")
 	{
 		$node2_message = "#!string!state_0047!#",
 	}
@@ -434,6 +443,12 @@ sub do_node_reboot
 				{
 					# Woot!
 					$wait = 0;
+					if ($node ne $new_bcn_ip)
+					{
+						# Copy the hash reference to
+						# the new IP.
+						$conf->{node}{$new_bcn_ip} = $conf->{node}{$node};
+					}
 				}
 				sleep 1;
 			}
@@ -442,6 +457,10 @@ sub do_node_reboot
 			{
 				# Success!
 				$return_code = 0;
+				
+				# Rescan it's (new) partition data.
+				my ($node_disk) = get_partition_data($conf, $new_bcn_ip, $password);
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$new_bcn_ip], disk: [$node_disk]\n");
 			}
 			elsif ($rc == 1)
 			{
@@ -689,8 +708,8 @@ sub create_partitions_on_node
 	my $ok                        = 1;
 	my $partition_created         = 0;
 	my $create_extended_partition = 0;
-	my $pool1_partition_numnber   = 4;
-	my $pool2_partition_numnber   = 5;
+	my $pool1_partition   = 4;
+	my $pool2_partition   = 5;
 	if ($disk =~ /da$/)
 	{
 		# I need to know the label type to determine the partition numbers to
@@ -702,19 +721,19 @@ sub create_partitions_on_node
 		if ($conf->{node}{$node}{disk}{$disk}{label} eq "msdos")
 		{
 			$create_extended_partition = 1;
-			$pool1_partition_numnber   = 5;
-			$pool2_partition_numnber   = 6;
+			$pool1_partition   = 5;
+			$pool2_partition   = 6;
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition_numnber: [$pool1_partition_numnber], pool2_partition_numnber: [$pool2_partition_numnber]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 	}
 	else
 	{
 		$create_extended_partition = 0;
-		$pool1_partition_numnber   = 1;
-		$pool2_partition_numnber   = 2;
+		$pool1_partition   = 1;
+		$pool2_partition   = 2;
 	}
-	$conf->{node}{$node}{pool1_partition} = "/dev/${disk}${pool1_partition_numnber}";
-	$conf->{node}{$node}{pool2_partition} = "/dev/${disk}${pool2_partition_numnber}";
+	$conf->{node}{$node}{pool1}{device} = "/dev/${disk}${pool1_partition}";
+	$conf->{node}{$node}{pool2}{device} = "/dev/${disk}${pool2_partition}";
 	
 	# If there is no disk label on the disk at all, we'll need to
 	# start with 'mklabel' and we'll know for sure we need to
@@ -733,16 +752,16 @@ sub create_partitions_on_node
 		# Check to see if the partitions I want to use already
 		# exist. If they don't, create them. If they do, look
 		# for a DRBD signature.
-		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool1_partition_numnber}{start})
+		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool1_partition}{start})
 		{
 			# Pool 1 exists, check for a signature.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool1_partition_numnber] which I want to use for pool 1.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool1_partition] which I want to use for pool 1.\n");
 			$create_pool1    = 0;
 		}
-		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool2_partition_numnber}{start})
+		if (exists $conf->{node}{$node}{disk}{$disk}{partition}{$pool2_partition}{start})
 		{
 			# Pool 2 exists, check for a signature.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool2_partition_numnber] which I want to use for pool 2.\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; On node: [$node], the disk: [$disk] already has partition number: [$pool2_partition] which I want to use for pool 2.\n");
 			$create_pool2    = 0;
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_pool1: [$create_pool1], create_pool2: [$create_pool2]\n");
@@ -991,13 +1010,15 @@ sub create_partition_on_node
 	return($ok);
 }
 
-# This checks the disk for DRBD metadata
-sub check_for_drbd_signature
+# This calls 'blkid' and parses the output for the given device, if returned.
+sub check_blkid_partition
 {
 	my ($conf, $node, $password, $device) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_blkid_partition(); node: [$node], device: [$device].\n");
 	
-	my $found      = 0;
-	my $shell_call = "/sbin/drbdmeta 0 v08 $device internal dump-md; echo rc:\$?";
+	my $uuid       = "";
+	my $type       = "";
+	my $shell_call = "blkid -c /dev/null $device";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -1012,33 +1033,128 @@ sub check_for_drbd_signature
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-		if ($line =~ /rc:(\d+)/)
+		if ($line =~ /^$device: /)
 		{
-			my $rc = $1;
-			if ($rc eq "0")
-			{
-				# Found, this is what I would expect
-				$found = 1;
-			}
-			elsif ($rc eq "20")
-			{
-				# This is what I would expect if DRBD is 
-				# running... Um...
-				$found = 1;
-			}
-		}
-		if ($line =~ /Device '(.*?)' is configured!/)
-		{
-			$found = 1;
-		}
-		if ($line =~ /DRBD meta data dump/)
-		{
-			$found = 1;
+			$uuid  = ($line =~ /UUID="(.*?)"/)[0];
+			$type  = ($line =~ /TYPE="(.*?)"/)[0];
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; uuid: [$uuid], type: [$type].\n");
 		}
 	}
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found: [$found]\n");
-	return($found);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type].\n");
+	return($type);
+}
+
+# This checks the disk for DRBD metadata
+sub check_for_drbd_metadata
+{
+	my ($conf, $node, $password, $device) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_for_drbd_metadata(); node: [$node], device: [$device].\n");
+	
+	return(3) if not $device;
+	
+	### Note that the 'drbdmeta' call below is more direct, but 'blkid'
+	### will tell if another FS is on the device.
+	#my $shell_call = "/sbin/drbdmeta 0 v08 $device internal dump-md; echo rc:\$?";
+	my ($type) = check_blkid_partition($conf, $node, $password, $device);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type].\n");
+	my $return_code = 255;
+	if ($type eq "drbd")
+	{
+		# Already has meta-data, nothing else to do.
+		$return_code = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data already found on node: [$node], device: [$device].\n");
+	}
+	elsif ($type)
+	{
+		# WHAT?
+		$return_code = 4;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; A non-DRBD signature was found on node: [$node], device: [$device] or type: [$type]. Aborting!\n");
+	}
+	else
+	{
+		# Make sure there is a device at all
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking to ensure that node: [$node]'s device: [$device] exists.\n");
+		my ($disk, $partition) = ($device =~ /\/dev\/(.*?)(\d)/);
+		if ($conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
+		{
+			# It exists, so we can assume it has no DRBD metadata or
+			# anything else.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; it exists, safe to create meta-data.\n");
+			my $resource = "";
+			if ($device eq $conf->{node}{$node}{pool1}{device})
+			{
+				$resource = "r0";
+			}
+			elsif ($device eq $conf->{node}{$node}{pool2}{device})
+			{
+				$resource = "r1";
+			}
+			else
+			{
+				# The device doesn't match either resource...
+				$return_code = 5;
+			}
+			if ($resource)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]'s device: [$device] belongs to DRBD resource: [$resource].\n");
+				my $rc          = 255;         
+				my $shell_call  = "drbdadm -- --force create-md $resource; echo rc:\$?";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+					if ($line =~ /^rc:(\d+)/)
+					{
+						# 0 == Success
+						# 3 == Configuration not found.
+						$rc = $1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data creation return code: [$rc]\n");
+						if (not $rc)
+						{
+							$return_code = 0;
+						}
+						elsif ($rc eq "3")
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The requested DRBD resource: [$resource] on node: [$node] isn't configured! Creation of meta-data failed.\n");
+							$return_code = 6;
+						}
+					}
+					if ($line =~ /drbd meta data block successfully created/)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data created successfully!\n");
+						$return_code = 0;
+					}
+				}
+			}
+		}
+		else
+		{
+			# Partition wasn't found at all.
+			$return_code = 2;
+		}
+	}
+	
+	# 0 = Created
+	# 1 = Already had meta-data, nothing done
+	# 2 = Partition not found
+	# 3 = No device passed.
+	# 4 = Foreign signature found on device
+	# 5 = Device doesn't match to a DRBD resource
+	# 6 = DRBD resource not defined
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
 }
 
 # This does the first stage of the storage configuration. Specifically, it 
@@ -1291,72 +1407,223 @@ sub configure_storage_stage1
 		node2_message	=>	$node2_pool2_message,
 	});
 	
-# 	$conf->{node}{$node1}{pool1}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition_minor}{size} ? $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition_minor}{size} : 0;
-# 	$conf->{node}{$node1}{pool2}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition_minor}{size} ? $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition_minor}{size} : 0;
-# 	$conf->{node}{$node2}{pool1}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition_minor}{size} ? $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition_minor}{size} : 0;
-# 	$conf->{node}{$node2}{pool2}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition_minor}{size} ? $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition_minor}{size} : 0;
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::existing_size: [$conf->{node}{$node1}{pool1}{existing_size}], node::${node1}::pool2::existing_size: [$conf->{node}{$node1}{pool2}{existing_size}], node::${node2}::pool1::existing_size: [$conf->{node}{$node2}{pool1}{existing_size}], node::${node2}::pool2::existing_size: [$conf->{node}{$node2}{pool2}{existing_size}]\n");
-# 	
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")], anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")], anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")]\n");
-# 	my $pool1_size = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
-# 	my $pool2_size = $conf->{cgi}{anvil_storage_pool2_byte_size};
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_size: [$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")], pool2_size: [$pool2_size (".AN::Cluster::bytes_to_hr($conf, $pool2_size).")]\n");
-# 	
-# 	# We need to make sure things line up, so step one is to read he parted
-# 	# data from both nodes and compare them.
-# 	my ($node1_largest_device) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-# 	my ($node2_largest_device) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_largest_device: [$node1_largest_device], node2_largest_device: [$node2_largest_device]\n");
-# 	
-# 	# Make sure both nodes are going to use the same device.
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_largest_device: [$node1_largest_device], node2_largest_device: [$node2_largest_device].\n");
-# 	if ($node1_largest_device ne $node2_largest_device)
-# 	{
-# 		# wat?
-# 		$ok = 0;
-# 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-# 			message	=>	AN::Common::get_string($conf, {key => "message_0388", variables => { 
-# 				disk1	=>	$node1_largest_device,
-# 				disk2	=>	$node2_largest_device,
-# 			}}),
-# 			row	=>	"#!string!state_0041!#",
-# 		});
-# 	}
-# 	else
-# 	{
-# 		($node1_ok) = create_partitions_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_largest_device, $pool1_size, $pool2_size);
-# 		($node2_ok) = create_partitions_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_largest_device, $pool1_size, $pool2_size);
-# 		# 0 = Failed
-# 		# 1 = Partitions already existed
-# 		# 2 = One or more partitions were created.
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok], node2_ok: [$node2_ok]\n");
-# 		
-# 		if ((not $node1_ok) || (not $node2_ok))
-# 		{
-# 			$ok = 0;
-# 			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-# 				message	=>	AN::Common::get_string($conf, {key => "message_0388", variables => { 
-# 					disk1	=>	AN::Cluster::bytes_to_hr($conf, $node1_largest_device)." ($node1_largest_device #!string!suffix_0009!#)",
-# 					disk2	=>	AN::Cluster::bytes_to_hr($conf, $node2_largest_device)." ($node2_largest_device #!string!suffix_0009!#)",
-# 				}}),
-# 				row	=>	"#!string!state_0041!#",
-# 			});
-# 		}
-# 	}
-	
 	return($ok);
 }
 
 sub configure_storage_stage2
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage2()\n");
 	
-	# Create the DRBD meta-data if we're still OK.
-	generate_drbd_config_files($conf);
-	my $ok = 1;
-	my ($node1_ok) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_ok) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ok: [$node1_ok], node2_ok: [$node2_ok]\n");
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	# Create the DRBD config files which will be stored in:
+	# * $conf->{drbd}{global_common}
+	# * $conf->{drbd}{r0}
+	# * $conf->{drbd}{r1}
+	# If the config file(s) exist already on one of the nodes, they will be
+	# used instead.
+	my ($rc) = generate_drbd_config_files($conf);
+	# 0 = OK
+	# 1 = Failed to determine the DRBD backing device(s);
+	# 2 = Failed to determine the SN IPs.
+	
+	# Now setup DRBD on the nods.
+	my ($node1_pool1_rc, $node1_pool2_rc) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_pool1_rc, $node2_pool2_rc) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_pool1_rc: [$node1_pool1_rc], node1_pool2_rc: [$node1_pool2_rc], node2_pool1_rc: [$node2_pool1_rc], node2_pool2_rc: [$node2_pool2_rc]\n");
+	
+	# 0 = Created
+	# 1 = Already had meta-data, nothing done
+	# 2 = Partition not found
+	# 3 = No device passed.
+	# 4 = Foreign signature found on device
+	# 5 = Device doesn't match to a DRBD resource
+	# 6 = DRBD resource not defined
+
+	### Tell the user how it went
+	## Pool 1
+	my $ok            = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0045!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0045!#";
+	my $message       = "";
+	# Node 1, Pool 1
+	if ($node1_pool1_rc eq "1")
+	{
+		# Already existed
+		$node1_message = "#!string!state_0020!#";
+	}
+	elsif ($node1_pool1_rc eq "2")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool1_rc eq "3")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0056!#";
+		$ok            = 0;
+	}
+	elsif ($node1_pool1_rc eq "4")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool1_rc eq "5")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool1_rc eq "6")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0059!#";
+		$ok            = 0;
+	}
+	# Node 2, Pool 1
+	if ($node2_pool1_rc eq "1")
+	{
+		# Already existed
+		$node2_message = "#!string!state_0020!#";
+	}
+	elsif ($node2_pool1_rc eq "2")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool1_rc eq "3")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0056!#";
+		$ok            = 0;
+	}
+	elsif ($node2_pool1_rc eq "4")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool1_rc eq "5")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool1_rc eq "6")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0059!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0249!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	## Now Pool 2
+	$ok            = 1;
+	$node1_class   = "highlight_good_bold";
+	$node1_message = "#!string!state_0045!#";
+	$node2_class   = "highlight_good_bold";
+	$node2_message = "#!string!state_0045!#";
+	$message       = "";
+	# Node 1, Pool 1
+	if ($node1_pool2_rc eq "1")
+	{
+		# Already existed
+		$node1_message = "#!string!state_0020!#";
+	}
+	elsif ($node1_pool2_rc eq "2")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool2_rc eq "3")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0056!#";
+		$ok            = 0;
+	}
+	elsif ($node1_pool2_rc eq "4")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool2_rc eq "5")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node1_pool2_rc eq "6")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0059!#";
+		$ok            = 0;
+	}
+	# Node 2, Pool 1
+	if ($node2_pool2_rc eq "1")
+	{
+		# Already existed
+		$node2_message = "#!string!state_0020!#";
+	}
+	elsif ($node2_pool2_rc eq "2")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool2_rc eq "3")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0056!#";
+		$ok            = 0;
+	}
+	elsif ($node2_pool2_rc eq "4")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool2_rc eq "5")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+		$ok            = 0;
+	}
+	elsif ($node2_pool2_rc eq "6")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0059!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0250!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	if (not $ok)
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			message	=>	"#!string!message_0398!#",
+			row	=>	"#!string!state_0034!#",
+		});
+	}
+	
 	
 	# NOTE: Partition Table: gpt   == Don't create an extended partition
 	# NOTE: Partition Table: msdos == Use extended partition
@@ -1380,6 +1647,9 @@ sub configure_storage_stage2
 	# Set IPMI pw:
 	#    ipmitool user set password 2 '$password'
 	# 
+	# No-prompt mkfs.gfs2
+	#    echo y | mkfs.gfs2 -p lock_dlm -j 2 -t an-cluster-05:shared /dev/an-c05n01_vg0/shared
+	# 
 	# sed magic!
 	#    mkfs.gfs2 -p lock_dlm -j 2 -t $(cman_tool status | grep "Cluster Name" | awk '{print $3}'):shared $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/')
 	#    mount $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/') /shared
@@ -1393,13 +1663,15 @@ sub configure_storage_stage2
 sub generate_drbd_config_files
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_drbd_config_files()\n");
 	
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
 	### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
 	###       the resync rate to 300M;
-	# Write out the config files
+	# Generate the config files we'll use if we don't find existing configs
+	# on one of the servers.
 	$conf->{drbd}{global_common} = "
 global {
 	usage-count no;
@@ -1453,15 +1725,32 @@ common {
 }
 ";
 	
-	my $node1_pool1_partition = $conf->{node}{$node1}{pool1_partition};
-	my $node1_pool2_partition = $conf->{node}{$node1}{pool2_partition};
-	my $node2_pool1_partition = $conf->{node}{$node2}{pool1_partition};
-	my $node2_pool2_partition = $conf->{node}{$node2}{pool2_partition};
+	### TODO: Make sure these are updated if we use a read-in resource
+	###  file.
+	my $node1_pool1_partition = $conf->{node}{$node1}{pool1}{device};
+	my $node1_pool2_partition = $conf->{node}{$node1}{pool2}{device};
+	my $node2_pool1_partition = $conf->{node}{$node2}{pool1}{device};
+	my $node2_pool2_partition = $conf->{node}{$node2}{pool2}{device};
+	if ((not $node1_pool1_partition) ||
+	    (not $node1_pool2_partition) ||
+	    (not $node2_pool1_partition) ||
+	    (not $node2_pool2_partition))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to determine DRBD resource backing devices!; node1_pool1_partition: [$node1_pool1_partition], node1_pool2_partition: [$node1_pool2_partition], node2_pool1_partition: [$node2_pool1_partition], node2_pool2_partition: [$node2_pool2_partition]\n");
+		return(1);
+	}
+	
 	my $node1_sn_ip_key       = "anvil_node1_sn_ip";
 	my $node2_sn_ip_key       = "anvil_node2_sn_ip";
 	my $node1_sn_ip           = $conf->{cgi}{$node1_sn_ip_key};
 	my $node2_sn_ip           = $conf->{cgi}{$node2_sn_ip_key};
+	if ((not $node1_sn_ip) || (not $node2_sn_ip))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to determine Storage Network IPs!; node1_sn_ip: [$node1_sn_ip], node2_sn_ip: [$node2_sn_ip]\n");
+		return(2);
+	}
 	
+	# Still alive? Yay us!
 	$conf->{drbd}{r0} = "
 # This is the resource used for the shared GFS2 partition and servers designed
 # to run on node 01.
@@ -1516,26 +1805,80 @@ resource r1 {
 	}
 }
 ";
-
-	return ($conf->{drbd}{global_common}, $conf->{drbd}{r0}, $conf->{drbd}{r1});
+	
+	# Unlike 'read_drbd_resource_files()' which only reads the 'rX.res'
+	# files and parses their contents, this function just slurps in the
+	# data from the resource and global common configs.
+	read_drbd_config_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	read_drbd_config_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	
+	### Now push over the files I read in, if any.
+	# Global common
+	if ($conf->{node}{$node1}{drbd_file}{global_common})
+	{
+		$conf->{drbd}{global_common} = $conf->{node}{$node1}{drbd_file}{global_common};
+	}
+	elsif ($conf->{node}{$node2}{drbd_file}{global_common})
+	{
+		$conf->{drbd}{global_common} = $conf->{node}{$node2}{drbd_file}{global_common};
+	}
+	# r0.res
+	if ($conf->{node}{$node1}{drbd_file}{r0})
+	{
+		$conf->{drbd}{r0} = $conf->{node}{$node1}{drbd_file}{r0};
+	}
+	elsif ($conf->{node}{$node2}{drbd_file}{r0})
+	{
+		$conf->{drbd}{r0} = $conf->{node}{$node2}{drbd_file}{r0};
+	}
+	# r1.res
+	if ($conf->{node}{$node1}{drbd_file}{r1})
+	{
+		$conf->{drbd}{r1} = $conf->{node}{$node1}{drbd_file}{r1};
+	}
+	elsif ($conf->{node}{$node2}{drbd_file}{r1})
+	{
+		$conf->{drbd}{r1} = $conf->{node}{$node2}{drbd_file}{r1};
+	}
+	
+	return (0);
 }
 
-# This does the work of creating a metadata on each DRBD backing device. It
-# checks first to see if there already is a metadata and, if so, does nothing.
-sub setup_drbd_on_node
+# Unlike 'read_drbd_resource_files()' which only reads the 'rX.res' files and 
+# parses their contents, this function just slurps in the data from the
+# resource and global common configs.
+sub read_drbd_config_on_node
 {
 	my ($conf, $node, $password) = @_;
 	
-	my $ok              = 1;
-	my $pool1_partition = $conf->{node}{$node}{pool1_partition};
-	my $pool2_partition = $conf->{node}{$node}{pool2_partition};
-	
-	### Write out the config files
-	# Global common file
-	my $shell_call =  "cat > $conf->{path}{nodes}{drbd_global_common} << EOF\n";
-	   $shell_call .= "$conf->{drbd}{global_common}\n";
-	   $shell_call .= "EOF";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my $global_common = $conf->{path}{nodes}{drbd_global_common};
+	my $r0            = $conf->{path}{nodes}{drbd_r0};
+	my $r1            = $conf->{path}{nodes}{drbd_r1};
+	my $shell_call    = "if [ -e '$global_common' ]; 
+			then 
+				echo start:$global_common; 
+				cat $global_common; 
+				echo end:global_common.conf; 
+			else 
+				echo not_found:$global_common; 
+			fi;
+			if [ -e '$r0' ]; 
+			then 
+				echo start:$r0; 
+				cat $r0; 
+				echo end:$r0; 
+			else 
+				echo not_found:$r0; 
+			fi;
+			if [ -e '$r1' ]; 
+			then 
+				echo start:$r1; 
+				cat $r1; 
+				echo end:$r1; 
+			else 
+				echo not_found:$r1; 
+			fi;";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -1546,101 +1889,113 @@ sub setup_drbd_on_node
 		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	$conf->{node}{$node}{drbd_file}{global_common} = "";
+	$conf->{node}{$node}{drbd_file}{r0}            = "";
+	$conf->{node}{$node}{drbd_file}{r1}            = "";
+	my $in_global = 0;
+	my $in_r0     = 0;
+	my $in_r1     = 0;
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		# Detect the start and end of files.
+		if ($line eq "start:$global_common") { $in_global = 1; next; }
+		if ($line eq "end:$global_common")   { $in_global = 0; next; }
+		if ($line eq "start:$r0")            { $in_r0     = 1; next; }
+		if ($line eq "end:$r0")              { $in_r0     = 0; next; }
+		if ($line eq "start:$r1")            { $in_r1     = 1; next; }
+		if ($line eq "end:$r1")              { $in_r1     = 0; next; }
+		
+		### TODO: Make sure the storage pool devices are updated if we
+		###       use a read-in resource file.
+		# Record lines if we're in a file.
+		if ($in_global) { $conf->{node}{$node}{drbd_file}{global_common} .= "$line\n"; }
+		if ($in_r0)     { $conf->{node}{$node}{drbd_file}{r0}            .= "$line\n"; }
+		if ($in_r1)     { $conf->{node}{$node}{drbd_file}{r1}            .= "$line\n"; }
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], global_common:\n====\n$conf->{node}{$node}{drbd_file}{global_common}\n====\nr0\n====\n$conf->{node}{$node}{drbd_file}{r0}\n====\nr1\n====\n$conf->{node}{$node}{drbd_file}{r1}\n====\n");
 	
-	# Resource 0 config
-	$shell_call =  "cat > $conf->{path}{nodes}{drbd_r0} << EOF\n";
-	$shell_call .= "$conf->{drbd}{r0}\n";
-	$shell_call .= "EOF";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	return(0);
+}
+
+# This does the work of creating a metadata on each DRBD backing device. It
+# checks first to see if there already is a metadata and, if so, does nothing.
+sub setup_drbd_on_node
+{
+	my ($conf, $node, $password) = @_;
 	
-	# Resource 1 config
-	$shell_call =  "cat > $conf->{path}{nodes}{drbd_r1} << EOF\n";
-	$shell_call .= "$conf->{drbd}{r1}\n";
-	$shell_call .= "EOF";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	### Write out the config files if missing.
+	# Global common file
+	if (not $conf->{node}{$node}{drbd_file}{global_common})
+	{
+		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_global_common} << EOF\n";
+		$shell_call .= "$conf->{drbd}{global_common}\n";
+		$shell_call .= "EOF";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	}
 	
+	# r0.res
+	if (not $conf->{node}{$node}{drbd_file}{r0})
+	{
+		# Resource 0 config
+		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_r0} << EOF\n";
+		   $shell_call .= "$conf->{drbd}{r0}\n";
+		   $shell_call .= "EOF";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	}
+	
+	# r1.res
+	if (not $conf->{node}{$node}{drbd_file}{r1})
+	{
+		# Resource 0 config
+		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_r1} << EOF\n";
+		   $shell_call .= "$conf->{drbd}{r1}\n";
+		   $shell_call .= "EOF";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
+	}
+	
+	### Now setup the meta-data, if needed. Start by reading 'blkid' to see
+	### if the partitions already are drbd.
 	# Check if the meta-data exists already
-	my ($pool1_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool1_partition);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data found for r0? [$pool1_drbdmd_found].\n");
-	if (not $pool1_drbdmd_found)
-	{
-		# We need to create the meta-data
-		my $shell_call =  "drbdadm -- --force create-md r0";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	22,
-			user		=>	"root",
-			password	=>	$password,
-			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
-		my ($pool1_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool1_partition);
-		if ($pool1_drbdmd_found)
-		{
-			# Success!
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; r0 metadata created successfully.\n");
-		}
-		else
-		{
-			$ok = 0;
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-				message	=>	AN::Common::get_string($conf, {key => "message_0394", variables => { 
-					node		=>	$node,
-					partition	=>	$pool1_partition,
-				}}),
-				row	=>	"#!string!state_0044!#",
-			});
-		}
-	}
-	# Now resource 1
-	my ($pool2_drbdmd_found) = check_for_drbd_signature($conf, $node, $password, $pool2_partition);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data found for r1? [$pool2_drbdmd_found].\n");
-	if (not $pool2_drbdmd_found)
-	{
-		# We need to create the meta-data
-		my $shell_call =  "drbdadm -- --force create-md r1";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	22,
-			user		=>	"root",
-			password	=>	$password,
-			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-		foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
-	}
-	
-	return($ok);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::pool1_partition: [$conf->{node}{$node}{pool1}{partition}], node::${node}::pool2_partition: [$conf->{node}{$node}{pool2}{partition}]\n");
+	my ($pool1_rc) = check_for_drbd_metadata($conf, $node, $password, $conf->{node}{$node}{pool1}{device});
+	my ($pool2_rc) = check_for_drbd_metadata($conf, $node, $password, $conf->{node}{$node}{pool2}{device});
+
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_rc: [$pool1_rc], pool2_rc: [$pool2_rc]\n");
+	return($pool1_rc, $pool2_rc);
 }
 
 # This will register the nodes with RHN, if needed. Otherwise it just returns
@@ -3657,17 +4012,20 @@ sub calculate_storage_pool_sizes
 		elsif ($conf->{node}{$node1}{pool1}{existing_size})
 		{
 			# Node 2 isn't partitioned yet but node 1 is.
-			$pool1_size = $conf->{node}{$node1}{pool1}{existing_size};
+			$pool1_size                                 = $conf->{node}{$node1}{pool1}{existing_size};
 			$conf->{cgi}{anvil_storage_pool1_byte_size} = $conf->{node}{$node1}{pool1}{existing_size};
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_size: [$pool1_size]\n");
 		}
 		elsif ($conf->{node}{$node2}{pool1}{existing_size})
 		{
 			# Node 1 isn't partitioned yet but node 2 is.
-			$pool1_size = $conf->{node}{$node2}{pool1}{existing_size};
+			$pool1_size                                 = $conf->{node}{$node2}{pool1}{existing_size};
 			$conf->{cgi}{anvil_storage_pool1_byte_size} = $conf->{node}{$node2}{pool1}{existing_size};
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_size: [$pool1_size]\n");
 		}
+		
+		$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size}]\n");
 	}
 	else
 	{
@@ -3714,17 +4072,20 @@ sub calculate_storage_pool_sizes
 		elsif ($conf->{node}{$node1}{pool2}{existing_size})
 		{
 			# Node 2 isn't partitioned yet but node 1 is.
-			$pool2_size = $conf->{node}{$node1}{pool2}{existing_size};
+			$pool2_size                                 = $conf->{node}{$node1}{pool2}{existing_size};
 			$conf->{cgi}{anvil_storage_pool2_byte_size} = $conf->{node}{$node1}{pool2}{existing_size};
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool2_size: [$pool2_size]\n");
 		}
 		elsif ($conf->{node}{$node2}{pool2}{existing_size})
 		{
 			# Node 1 isn't partitioned yet but node 2 is.
-			$pool2_size = $conf->{node}{$node2}{pool2}{existing_size};
+			$pool2_size                                 = $conf->{node}{$node2}{pool2}{existing_size};
 			$conf->{cgi}{anvil_storage_pool2_byte_size} = $conf->{node}{$node2}{pool2}{existing_size};
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool2_size: [$pool2_size]\n");
 		}
+		
+		$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_size;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size}]\n");
 	}
 	else
 	{
@@ -3777,8 +4138,8 @@ sub calculate_storage_pool_sizes
 			if (($storage_pool1_size eq "100") && ($storage_pool1_unit eq "%"))
 			{
 				# All to pool 1.
-				$pool1_size = $smallest_free_size;
-				$pool2_size = 0;
+				$pool1_size                                 = $smallest_free_size;
+				$pool2_size                                 = 0;
 				$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
 				$conf->{cgi}{anvil_storage_pool2_byte_size} = 0;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; All to pool 1; pool1_size: [$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")]\n");
@@ -3825,6 +4186,7 @@ sub calculate_storage_pool_sizes
 				}
 				$conf->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")]\n");
+				
 				my $free_space_left = $total_free_space - $media_library_byte_size;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; free_space_left: [$free_space_left (".AN::Cluster::bytes_to_hr($conf, $free_space_left).")]\n");
 				
@@ -4037,6 +4399,7 @@ sub check_storage
 	my $node2           = $conf->{cgi}{anvil_node2_current_ip};
 	my $node1_disk_size = $conf->{node}{$node1}{disk}{$node1_disk}{size};
 	my $node2_disk_size = $conf->{node}{$node2}{disk}{$node2_disk}{size};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2], node1_disk_size: [$node1_disk_size], node2_disk_size: [$node2_disk_size]\n");
 	
 	# Now I need to know which partitions I will use for pool 1 and 2.
 	# Only then can I sanity check space needed. If one node has the
@@ -4063,6 +4426,7 @@ sub check_storage
 			row	=>	"#!string!state_0043!#",
 		});
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size}], cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size}]\n");
 	if ((not $conf->{cgi}{anvil_storage_pool1_byte_size}) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
@@ -4073,6 +4437,10 @@ sub check_storage
 	}
 	
 	# Message stuff
+	if (not $conf->{cgi}{anvil_media_library_byte_size})
+	{
+		$conf->{cgi}{anvil_media_library_byte_size} = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{anvil_media_library_size}, $conf->{cgi}{anvil_media_library_unit}, 1);
+	}
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = AN::Common::get_string($conf, {key => "state_0054", variables => {
 				pool1_device	=>	"$conf->{node}{$node1}{pool1}{disk}$conf->{node}{$node1}{pool1}{partition}",
@@ -4111,6 +4479,7 @@ sub get_storage_pool_partitions
 {
 	my ($conf) = @_;
 	
+	### TODO: Determine if I still need this function at all...
 	# First up, check for /etc/drbd.d/r{0,1}.res on both nodes.
 	my ($node1_r0_device, $node1_r1_device) = read_drbd_resource_files($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_r0_device, $node2_r1_device) = read_drbd_resource_files($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
@@ -4126,8 +4495,8 @@ sub get_storage_pool_partitions
 		
 		# Default to logical partitions.
 		my $create_extended_partition = 0;
-		my $pool1_partition_numnber   = 4;
-		my $pool2_partition_numnber   = 5;
+		my $pool1_partition           = 4;
+		my $pool2_partition           = 5;
 		if ($disk =~ /da$/)
 		{
 			# I need to know the label type to determine the 
@@ -4140,57 +4509,57 @@ sub get_storage_pool_partitions
 			if ($conf->{node}{$node}{disk}{$disk}{label} eq "msdos")
 			{
 				$create_extended_partition = 1;
-				$pool1_partition_numnber   = 5;
-				$pool2_partition_numnber   = 6;
+				$pool1_partition           = 5;
+				$pool2_partition           = 6;
 			}
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition_numnber: [$pool1_partition_numnber], pool2_partition_numnber: [$pool2_partition_numnber]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 		}
 		else
 		{
 			# I'll use the full disk, so the partition numbers will
 			# be the same regardless of the 
 			$create_extended_partition = 0;
-			$pool1_partition_numnber   = 1;
-			$pool2_partition_numnber   = 2;
+			$pool1_partition           = 1;
+			$pool2_partition           = 2;
 		}
 		$conf->{node}{$node}{pool1}{create_extended} = $create_extended_partition;
-		$conf->{node}{$node}{pool1}{partition}       = "/dev/${disk}${pool1_partition_numnber}";
-		$conf->{node}{$node}{pool2}{partition}       = "/dev/${disk}${pool2_partition_numnber}";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::pool1::partition: [$conf->{node}{$node}{pool1}{partition}], node::${node}::pool2::partition: [$conf->{node}{$node}{pool2}{partition}]\n");
+		$conf->{node}{$node}{pool1}{device}          = "/dev/${disk}${pool1_partition}";
+		$conf->{node}{$node}{pool2}{device}          = "/dev/${disk}${pool2_partition}";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::pool1::device: [$conf->{node}{$node}{pool1}{device}], node::${node}::pool2::device: [$conf->{node}{$node}{pool2}{device}]\n");
 	}
 	
 	# OK, if we found a device in DRBD, override the values from the loop.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
-	$conf->{node}{$node1}{pool1}{partition} = $node1_r0_device ? $node1_r0_device : $conf->{node}{$node1}{pool1}{partition};
-	$conf->{node}{$node1}{pool2}{partition} = $node1_r1_device ? $node1_r1_device : $conf->{node}{$node1}{pool2}{partition};
-	$conf->{node}{$node2}{pool1}{partition} = $node2_r0_device ? $node2_r0_device : $conf->{node}{$node2}{pool1}{partition};
-	$conf->{node}{$node2}{pool2}{partition} = $node2_r1_device ? $node2_r1_device : $conf->{node}{$node2}{pool2}{partition};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::partition: [$conf->{node}{$node1}{pool1}{partition}], node::${node1}::pool2::partition: [$conf->{node}{$node1}{pool2}{partition}], node::${node2}::pool1::partition: [$conf->{node}{$node2}{pool1}{partition}], node::${node2}::pool2::partition: [$conf->{node}{$node2}{pool2}{partition}]\n");
+	$conf->{node}{$node1}{pool1}{device} = $node1_r0_device ? $node1_r0_device : $conf->{node}{$node1}{pool1}{device};
+	$conf->{node}{$node1}{pool2}{device} = $node1_r1_device ? $node1_r1_device : $conf->{node}{$node1}{pool2}{device};
+	$conf->{node}{$node2}{pool1}{device} = $node2_r0_device ? $node2_r0_device : $conf->{node}{$node2}{pool1}{device};
+	$conf->{node}{$node2}{pool2}{device} = $node2_r1_device ? $node2_r1_device : $conf->{node}{$node2}{pool2}{device};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::device: [$conf->{node}{$node1}{pool1}{device}], node::${node1}::pool2::device: [$conf->{node}{$node1}{pool2}{device}], node::${node2}::pool1::device: [$conf->{node}{$node2}{pool1}{device}], node::${node2}::pool2::device: [$conf->{node}{$node2}{pool2}{device}]\n");
 	
 	# Now, if either partition exists on either node, use that size to
 	# force the other node's size.
-	my ($node1_pool1_disk, $node1_pool1_partition_minor) = ($conf->{node}{$node1}{pool1}{partition} =~ /\/dev\/(.*?)(\d)/);
-	my ($node1_pool2_disk, $node1_pool2_partition_minor) = ($conf->{node}{$node1}{pool2}{partition} =~ /\/dev\/(.*?)(\d)/);
-	my ($node2_pool1_disk, $node2_pool1_partition_minor) = ($conf->{node}{$node2}{pool1}{partition} =~ /\/dev\/(.*?)(\d)/);
-	my ($node2_pool2_disk, $node2_pool2_partition_minor) = ($conf->{node}{$node2}{pool2}{partition} =~ /\/dev\/(.*?)(\d)/);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_pool1_disk: [$node1_pool1_disk], node1_pool1_partition_minor: [$node1_pool1_partition_minor], node1_pool2_disk: [$node1_pool2_disk], node1_pool2_partition_minor: [$node1_pool2_partition_minor], node2_pool1_dis: [$node2_pool1_disk], node2_pool1_partition_minor: [$node2_pool1_partition_minor], node2_pool2_disk: [$node2_pool2_disk], node2_pool2_partition_minor: [$node2_pool2_partition_minor]\n");
+	my ($node1_pool1_disk, $node1_pool1_partition) = ($conf->{node}{$node1}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node1_pool2_disk, $node1_pool2_partition) = ($conf->{node}{$node1}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node2_pool1_disk, $node2_pool1_partition) = ($conf->{node}{$node2}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node2_pool2_disk, $node2_pool2_partition) = ($conf->{node}{$node2}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_pool1_disk: [$node1_pool1_disk], node1_pool1_partition: [$node1_pool1_partition], node1_pool2_disk: [$node1_pool2_disk], node1_pool2_partition: [$node1_pool2_partition], node2_pool1_dis: [$node2_pool1_disk], node2_pool1_partition: [$node2_pool1_partition], node2_pool2_disk: [$node2_pool2_disk], node2_pool2_partition: [$node2_pool2_partition]\n");
 	
 	$conf->{node}{$node1}{pool1}{disk}      = $node1_pool1_disk;
-	$conf->{node}{$node1}{pool1}{partition} = $node1_pool1_partition_minor;
+	$conf->{node}{$node1}{pool1}{partition} = $node1_pool1_partition;
 	$conf->{node}{$node1}{pool2}{disk}      = $node1_pool2_disk;
-	$conf->{node}{$node1}{pool2}{partition} = $node1_pool2_partition_minor;
+	$conf->{node}{$node1}{pool2}{partition} = $node1_pool2_partition;
 	$conf->{node}{$node2}{pool1}{disk}      = $node2_pool1_disk;
-	$conf->{node}{$node2}{pool1}{partition} = $node2_pool1_partition_minor;
+	$conf->{node}{$node2}{pool1}{partition} = $node2_pool1_partition;
 	$conf->{node}{$node2}{pool2}{disk}      = $node2_pool2_disk;
-	$conf->{node}{$node2}{pool2}{partition} = $node2_pool2_partition_minor;
+	$conf->{node}{$node2}{pool2}{partition} = $node2_pool2_partition;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::disk: [$conf->{node}{$node1}{pool1}{disk}], node::${node1}::pool1::partition: [$conf->{node}{$node1}{pool1}{partition}], node::${node1}::pool2::disk: [$conf->{node}{$node1}{pool2}{disk}], node::${node1}::pool2::partition: [$conf->{node}{$node1}{pool2}{partition}], node::${node2}::pool1::disk: [$conf->{node}{$node2}{pool1}{disk}], node::${node2}::pool1::partition: [$conf->{node}{$node2}{pool1}{partition}], node::${node2}::pool2::disk: [$conf->{node}{$node2}{pool2}{disk}], node::${node2}::pool2::partition: [$conf->{node}{$node2}{pool2}{partition}]\n");
 	
-	$conf->{node}{$node1}{pool1}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition_minor}{size} ? $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition_minor}{size} : 0;
-	$conf->{node}{$node1}{pool2}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition_minor}{size} ? $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition_minor}{size} : 0;
-	$conf->{node}{$node2}{pool1}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition_minor}{size} ? $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition_minor}{size} : 0;
-	$conf->{node}{$node2}{pool2}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition_minor}{size} ? $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition_minor}{size} : 0;
+	$conf->{node}{$node1}{pool1}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} : 0;
+	$conf->{node}{$node1}{pool2}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} : 0;
+	$conf->{node}{$node2}{pool1}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} ? $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} : 0;
+	$conf->{node}{$node2}{pool2}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} ? $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} : 0;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::existing_size: [$conf->{node}{$node1}{pool1}{existing_size}], node::${node1}::pool2::existing_size: [$conf->{node}{$node1}{pool2}{existing_size}], node::${node2}::pool1::existing_size: [$conf->{node}{$node2}{pool1}{existing_size}], node::${node2}::pool2::existing_size: [$conf->{node}{$node2}{pool2}{existing_size}]\n");
 	
 	return(0);
@@ -4278,10 +4647,9 @@ sub get_partition_data
 		shell_call	=>	"lsblk --all --bytes --noheadings --pairs",
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	
 	my @disks;
-	my $name  = "";
-	my $type  = "";
+	my $name = "";
+	my $type = "";
 	foreach my $line (@{$return})
 	{
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
@@ -4360,16 +4728,16 @@ sub get_partition_data
 			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B (.*)$/)
 			{
 				# Existing partitions
-				my $partition_number = $1;
-				my $partition_start  = $2;
-				my $partition_end    = $3;
-				my $partition_size   = $4;
-				my $partition_type   = $5;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start} = $partition_start;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}   = $partition_end;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}  = $partition_size;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}  = $partition_type;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition_number], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition_number}{type}]\n");
+				my $partition = $1;
+				my $partition_start = $2;
+				my $partition_end   = $3;
+				my $partition_size  = $4;
+				my $partition_type  = $5;
+				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start} = $partition_start;
+				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
+				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
+				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start}], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}]\n");
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{

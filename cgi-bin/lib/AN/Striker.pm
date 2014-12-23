@@ -4659,7 +4659,8 @@ sub provision_vm
 	# use 'cirrus'.
 	if (($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
 	{
-		$provision .= "  --video cirrus \\\\\n";
+		#$provision .= "  --video cirrus \\\\\n";
+		$provision .= "  --video vga \\\\\n";
 	}
 	### TODO: Parse 'brctl show' for the bridge name.
 	if ($conf->{new_vm}{virtio}{nic})

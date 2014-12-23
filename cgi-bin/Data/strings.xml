@@ -585,8 +585,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0246">Partitioning Pool 1</key>
 		<key name="row_0247">Rebooting</key>
 		<key name="row_0248">Partitioning Pool 2</key>
-		<key name="row_0249"></key>
-		<key name="row_0250"></key>
+		<key name="row_0249">Pool 1 Meta-data</key>
+		<key name="row_0250">Pool 2 Meta-data</key>
+		<key name="row_0251"></key>
+		<key name="row_0252"></key>
+		<key name="row_0253"></key>
+		<key name="row_0254"></key>
+		<key name="row_0255"></key>
+		<key name="row_0256"></key>
+		<key name="row_0257"></key>
+		<key name="row_0258"></key>
+		<key name="row_0259"></key>
+		<key name="row_0260"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -887,12 +897,22 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0052">Storage Pool Mismatch</key>
 		<key name="state_0053">Not enough space</key>
 		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key>
-		<key name="state_0055"></key>
-		<key name="state_0056"></key>
-		<key name="state_0057"></key>
-		<key name="state_0058"></key>
-		<key name="state_0059"></key>
+		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>]<br />Not Found.]]></key>
+		<key name="state_0056">No backing device specified</key>
+		<key name="state_0057"><![CDATA[Non-DRBD data dound<br />on [<span class="highlight_detail">#!variable!device!#</span>]]]></key>
+		<key name="state_0058"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>]<br />doesn't correspond to a DRBD resource]]></key>
+		<key name="state_0059">DRBD resource not defined</key>
 		<key name="state_0060"></key>
+		<key name="state_0061"></key>
+		<key name="state_0062"></key>
+		<key name="state_0063"></key>
+		<key name="state_0064"></key>
+		<key name="state_0065"></key>
+		<key name="state_0066"></key>
+		<key name="state_0067"></key>
+		<key name="state_0068"></key>
+		<key name="state_0069"></key>
+		<key name="state_0070"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -951,7 +971,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
 		<key name="title_0055"><![CDATA[Joining of both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>
 		<key name="title_0056"><![CDATA[Forcibly shutting down <span class="fixed_width">#!variable!server!#</span> now...]]></key>
-		<key name="title_0057"><![CDATA[Begining the process of deleting <span class="fixed_width">#!variable!server!#</span> now...]]></key>
+		<key name="title_0057"><![CDATA[Beginning the process of deleting <span class="fixed_width">#!variable!server!#</span> now...]]></key>
 		<key name="title_0058">Removing the server from the #!string!brand_0003!#'s management:</key>
 		<key name="title_0059">The server appears to still be running. I will force it off now.</key>
 		<key name="title_0060">Freeing up the server's storage now.</key>
@@ -1474,7 +1494,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0395"><![CDATA[I found existing partitions for storage pool one on both nodes, but they are not the same size.<br />Installation will attempt to continue, but it might fail later when trying to start DRBD.<br />Node 1: [<span class="fixed_width">#!variable!node1!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node1_device!#</span>] is <span class="fixed_width">#!variable!node1_size!#</span>] and Node 2: [<span class="fixed_width">#!variable!node2!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node2_device!#</span>] is <span class="fixed_width">#!variable!node2_size!#</span>]]]></key>
 		<key name="message_0396"><![CDATA[I wasn't able to find enough free space to create either storage pool.<br />I need at least: [<span class="fixed_width">#!variable!minimum_space!#</span>] but I only have: [<span class="fixed_width">#!variable!available_space!#</span>].]]></key>
 		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
-		<key name="message_0398"><![CDATA[]]></key>
+		<key name="message_0398"><![CDATA[Configuration of DRBD (the replicated storage used in the #!string!brand_0003!#) failed.<br />This is core to the system, so the install will exit here.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0399"><![CDATA[]]></key>
 		<key name="message_0400"><![CDATA[]]></key>
 		<key name="message_0401"><![CDATA[]]></key>
