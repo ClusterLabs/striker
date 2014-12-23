@@ -8,6 +8,7 @@ yum install ./perl-TermReadKey.x86_64
 yum install ./perl-DBI.x86_64
 yum install ./perl-List-MoreUtils.x86_64 
 yum install ./perl-XML-Simple.noarch
+yum install ./perl-Test-Output
 
 # ----------------------------------------------------------------------
 # Local modules
