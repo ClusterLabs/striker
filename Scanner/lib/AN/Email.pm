@@ -14,20 +14,27 @@ use English '-no_match_vars';
 use Carp;
 
 use File::Basename;
+use File::Temp 'tempfile';
 use FileHandle;
 use IO::Select;
+use Mail::Sendmail;
 use Time::Local;
 use FindBin qw($Bin);
 
 use Const::Fast;
 
-use Class::Tiny qw( attr );
+use Class::Tiny qw( owner );
+
+sub BUILD {
+
+    $MAIL::Sendmail::mailcfg{from} = 'tom@alteeve.ca';
+}
 
 # ======================================================================
 # CONSTANTS
 #
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-			  
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
+
 # ======================================================================
 # Subroutines
 #
@@ -36,9 +43,26 @@ const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 #
 sub dispatch {
     my $self = shift;
-    my ( $dispatchee ) = @_;
+    my ( $msgs, $listener ) = @_;
 
-    say "Email: $_" for @$dispatchee;
+    my $to   = $listener->contact_info;
+    my $date = scalar localtime;
+    my $msg  = join "\n", @$msgs;
+    my $subject = 'Msg from HA scanner';
+
+    my ( $fh, $file ) = tempfile();    
+    say $fh $msg;
+    close $fh;
+    
+    my $cmd = "/usr/bin/mailx -A gmail -s '$subject' $to < $file";
+    say "Emailing: $cmd";
+    if ( system $cmd ) {	# Had an error?
+	carp "ERROR sending email '$file' to 'To' containing\n'$msg'";
+    } 
+    else {
+        unlink $file;
+    }
+    return;
 }
 
 # ======================================================================
@@ -172,5 +196,6 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
+## Please see file perltidy.ERR
 ## Please see file perltidy.ERR
 ## Please see file perltidy.ERR

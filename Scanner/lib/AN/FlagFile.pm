@@ -69,7 +69,7 @@ sub full_file_path {
 # Create a file using the object's path and filename with specified tag,
 # and write out specified data.
 #
-sub _create_file {
+sub create_file {
     my $self = shift;
     my ($args) = @_;
 
@@ -142,7 +142,7 @@ sub find_marker_files {
 sub create_pid_file {
     my $self = shift;
 
-    $self->_create_file( { data => $self->data, tag => $TAG{PIDFILE} } );
+    $self->create_file( { data => $self->data, tag => $TAG{PIDFILE} } );
     return;
 }
 
@@ -156,7 +156,7 @@ sub create_marker_file {
     my $args = { tag => $tag };
     $args->{data} = $data if defined $data;
 
-    $self->_create_file( $args );
+    $self->create_file( $args );
     return;
 }
 

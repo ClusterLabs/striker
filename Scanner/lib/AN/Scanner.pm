@@ -128,6 +128,66 @@ const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
 # Subroutines
 #
 
+sub dump_module_list {
+    my ($opt) = @_;
+
+    say "Building list of modules used.";
+    my (%rpms, @norpms );
+	
+  MODULE:
+    for my $module ( sort keys %INC ) {
+	next MODULE if $module =~ m{autosplit.ix};
+	my ($coloned) = $module; 
+	$coloned =~ s{/}{::}g;
+	$coloned = substr $coloned, 0, index $coloned, '.pm';
+	
+	my $response = `/usr/bin/corelist $coloned`;
+	if ( $response =~ m{was first released with perl} ){
+	    say "$coloned is core";
+	    next MODULE ;
+	}
+	
+	my $m = "perl-${coloned}";
+	$m =~ s{::}{-}g;
+	    
+	my $cmd = <<"EOCMD";
+/usr/bin/repoquery --installed --info $m |\
+/usr/bin/grep      Source                |\
+/usr/bin/cut       -d':' -f2             |\
+/usr/bin/sed       -e 's/ //g'
+EOCMD
+	$response = `$cmd`;
+	if ( $response ) {
+	    push @{$rpms{$response}}, $module;
+	}
+	else {
+	    push @norpms, $module;
+	}
+    }
+
+    my $outfile = $Bin . '/Tools/' . $PROG . '.modules_used';
+    open my $fh, '>', $outfile;
+
+    my $N;
+    if ( $N = scalar keys %rpms ) {
+	say $fh '-' x 70, "\n$N Modules from RPMs\n\n";
+
+	for my $package ( sort keys %rpms ) {
+	    say $fh sprintf( "%25s : %s",
+			     $package, join( ', ', @{$rpms{$package}})
+		);
+	}
+    }
+    if ( $N = scalar @norpms) {
+	say $fh "\n\n", '-' x 70, "\n$N Modules not from RPMs\n";
+	say $fh join "\n", @norpms;
+    }
+    close $fh;
+    say "created $outfile";
+	
+    exit;
+}
+
 sub run_until_data_is_valid {
     my ($value) = @_;
 

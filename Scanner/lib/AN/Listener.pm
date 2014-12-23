@@ -20,7 +20,7 @@ use Module::Load qw(load);
 use Const::Fast;
 
 use Class::Tiny qw( id language level mode name updated added_by
-    contact_info db dsb_type dispatcher);
+    contact_info db db_type dispatcher owner);
 
 # ======================================================================
 # CONSTANTS
@@ -66,7 +66,7 @@ sub add_dispatcher {
     my $module = 'AN::' . ucfirst lc $self->mode;
     load $module;
     die "Couldn't load module to handle @{[$self->mode()]}." if $@;
-    $self->dispatcher( $module->new() );
+    $self->dispatcher( $module->new({ owner => $self->owner }) );
     return;
 }
 
@@ -76,7 +76,7 @@ sub dispatch_msg {
 
     $self->add_dispatcher( ) unless $self->has_dispatcher( );
 
-    $self->dispatcher()->dispatch( $msgs );
+    $self->dispatcher()->dispatch( $msgs, $self );
     return;
 }
 

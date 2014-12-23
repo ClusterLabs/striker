@@ -3,9 +3,10 @@
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 our $VERSION = 1.0;
+use autodie qw(open close);
 use English '-no_match_vars';
 use File::Basename;
 use FileHandle;
@@ -58,17 +59,21 @@ sub process_args {
         verbose   => 0,                   # print strings for no change?
         dbini     => $DEFAULT_DB_INI,     # DB configuration file.
 	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
-	from      => $FROM,
+	from      => $FROM,		  # from and smtp used for email
 	smtp      => $SMTP,
+	modules_used =>0,		  # dump list of modules used.
 };
 
     GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
-		'from=s', 'smtp=s', 'msg_dir=s', 'run_until=s', 
+		'from=s', 'smtp=s', 'msg_dir=s', 'run_until=s', 'modules_used',
 		'verbose!', 'man', 'help' )
         or pod2usage(2);
 
+    
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
+    
+    AN::Scanner::dump_module_list( $opt ) if ( $opt->{modules_used} );
 
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.

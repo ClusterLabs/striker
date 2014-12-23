@@ -3,7 +3,7 @@ package AN::OneDB;
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 use version;
 our $VERSION = '0.0.1';
@@ -27,7 +27,7 @@ sub BUILD {
     my ( $args ) = @_;
 
     $self->connect_dbs();
-    $self->_register_start;
+    $self->register_start;
 }
 
 # ======================================================================
@@ -132,7 +132,7 @@ sub get_sth {
 # ......................................................................
 # create new node table entry for this process.
 #
-sub _log_new_process {
+sub log_new_process {
     my $self = shift;
     my (@args) = @_;
 
@@ -158,7 +158,7 @@ sub _log_new_process {
 # ......................................................................
 # Mark this process's node table entry as no longer running .
 #
-sub _halt_process {
+sub halt_process {
     my $self = shift;
 
     my $sql = $SQL{Halt_Process};
@@ -181,7 +181,7 @@ sub _halt_process {
 # ......................................................................
 # mark this process's node table entry as running.
 #
-sub _start_process {
+sub start_process {
     my $self = shift;
 
     my $sql = $SQL{Start_Process};
@@ -204,7 +204,7 @@ sub _start_process {
 # ......................................................................
 # Private Methods
 #
-sub _connect_db {
+sub connect_db {
     my ($args) = @_;
 
     my $dsn = ( $args->{host} eq 'localhost'
@@ -221,16 +221,16 @@ sub _connect_db {
     return $dbh;
 }
 
-sub _register_start {
+sub register_start {
     my ($self) = @_;
 
     my $hostname = AN::Unix::hostname '-short';
 
     $self->node_table_id(
-                 $self->_log_new_process(
+                 $self->log_new_process(
                      $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM
                                         ) );
-    $self->_start_process();
+    $self->start_process();
 }
 
 # ......................................................................
@@ -239,7 +239,7 @@ sub _register_start {
 sub connect_dbs {
     my $self = shift;
 
-    $self->dbh( _connect_db( $self->dbini ) );
+    $self->dbh( connect_db( $self->dbini ) );
 }
 
 sub dump_metadata {

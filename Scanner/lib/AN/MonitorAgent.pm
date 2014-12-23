@@ -3,7 +3,7 @@ package AN::MonitorAgent;
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 our $VERSION = 1.0;
 
@@ -62,7 +62,7 @@ sub BUILD {
     #
     $self->ignore( [ split $COMMA, join $COMMA, @{ $self->ignore } ]);
 
-    $self->_verify_args();
+    $self->verify_args();
     
     return;
 }
@@ -75,7 +75,7 @@ sub BUILD {
 # ......................................................................
 # Check command line argument validity
 #
-sub _verify_args {
+sub verify_args {
     my $self = shift;
 
     local $LIST_SEPARATOR = $COMMA;
@@ -111,10 +111,6 @@ sub _verify_args {
 
     return;
 }
-
-# ......................................................................
-# accessor
-#
 
 # ......................................................................
 # Scan files in the directory, comparing against a persistent list

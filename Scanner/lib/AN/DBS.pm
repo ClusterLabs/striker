@@ -3,7 +3,7 @@ package AN::DBS;
 # _Perl_
 use warnings;
 use strict;
-use 5.014;
+use 5.010;
 
 use version;
 our $VERSION = '0.0.1';
@@ -124,7 +124,7 @@ sub fetch_alert_data {
 	for my $idx ( keys %$db_data ) {
 	    my $record = $db_data->{$idx};
 	    @{$record}{qw(db db_type)} = ($db->dbini()->{host},
-					  $db->dbini()->{db_type},
+				       $db->dbini()->{db_type},
 		);
 	    push @$alerts,  AN::OneAlert->new($record);
 	}
@@ -134,7 +134,8 @@ sub fetch_alert_data {
 
 sub fetch_alert_listeners {
     my $self = shift;
-
+    my ( $owner ) = @_;
+    
     for my $db ( @{ $self->dbs() } ) {
         my $hlisteners = $db->fetch_alert_listeners();
 
@@ -143,6 +144,7 @@ sub fetch_alert_listeners {
             my $data         = $hlisteners->{$idx};
             $data->{db}      = $db->dbini()->{host};
             $data->{db_type} = $db->dbini()->{db_type};
+	    $data->{owner}   = $owner;
 	    push @{$listeners}, AN::Listener->new($data);
         }
         return $listeners if @$listeners;
