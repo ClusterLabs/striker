@@ -19,7 +19,7 @@ my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial'},
 	       2 => { column_name => 'name', data_type => 'text'}
 };
 
-package DBI::sth {
+package DBI::sth;
 
     sub new {
         my $class = shift;
@@ -42,9 +42,9 @@ package DBI::sth {
 	return $SCHEMA;
     }
     1;
-}				# End of package DBI::sth
+# End of package DBI::sth
 
-package DBI {
+package DBI;
 
     {
 	no warnings;
@@ -88,7 +88,9 @@ package DBI {
     }
 
     1;
-}				# End of package DBI
+# End of package DBI
+
+package main;
 
 # ----------------------------------------------------------------------
 # Utility routines
