@@ -3358,7 +3358,7 @@ sub manage_vm
 		
 		# See if I need to update the XML definition file.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
-		if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
+		if (($conf->{sys}{switch_spice_to_vnc}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
 		{
 			# Rewrite the XML definition. The 'graphics' section should look like:
 			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
@@ -4656,8 +4656,9 @@ sub provision_vm
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
 	# VNC doesn't show the mouse pointer properly on the default 'qxl'
 	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
-	# use 'cirrus'.
-	if (($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
+	# use 'cirrus'. if the user has requested 'spice', then this doesn't
+	# matter.
+	if ((not $conf->{sys}{use_spice_graphics}) && ($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
 	{
 		#$provision .= "  --video cirrus \\\\\n";
 		$provision .= "  --video vga \\\\\n";
@@ -4686,8 +4687,11 @@ sub provision_vm
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	$provision .= "  --graphics vnc,listen=0.0.0.0 --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	if (not $conf->{sys}{use_spice_graphics})
+	{
+		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
+	}
+	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one

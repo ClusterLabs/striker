@@ -13,6 +13,7 @@ package AN::MediaLibrary;
 # TODO:
 # - Make uploads have a progress bar.
 # - When an upload fails, do NOT clear the previous selection
+# - Show file time-stamps
 #
 
 use strict;

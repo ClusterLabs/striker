@@ -637,6 +637,7 @@ sub initialize_conf
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link1",
 				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link2",
+				cluster_conf		=>	"/etc/cluster/cluster.conf",
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
@@ -645,6 +646,7 @@ sub initialize_conf
 				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bridge1",
 				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link1",
 				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
+				iptables		=>	"/etc/sysconfig/iptables",
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
@@ -671,6 +673,14 @@ sub initialize_conf
 			output			=>	"web",
 			reboot_timeout		=>	600,
 			pool1_shrunk		=>	0,
+			# This tells the install manifest generator how many
+			# ports to open on the IFN for incoming VNC connections
+			open_vnc_ports		=>	100,
+			switch_spice_to_vnc	=>	0,
+			# If a user wants to use spice + qxl for video in VMs,
+			# set this to '1'. NOTE: This disables web-based VNC!
+			use_spice_graphics	=>	0,
+			update_os		=>	1,
 		},
 		# Config values needed to managing strings
 		strings				=>	{

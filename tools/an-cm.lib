@@ -8003,7 +8003,7 @@ sub check_mail_config
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Writing new relay file: [$conf->{path}{postfix_relay_file}].\n");
 		open (my $file_handle, ">", $conf->{path}{postfix_relay_file}) or die "Failed to write: [$conf->{path}{postfix_relay_file}], the error was: $!\n";
-		print $file_handle "$conf->{smtp}{server}:$conf->{smtp}{port} $conf->{smtp}{username}:$conf->{smtp}{password}\n";
+		print $file_handle "[$conf->{smtp}{server}]:$conf->{smtp}{port} $conf->{smtp}{username}:$conf->{smtp}{password}\n";
 		close $file_handle;
 		
 		# Generate the binary version.
@@ -8057,6 +8057,7 @@ sub check_mail_config
 			next if $line =~ /^smtp_sasl_auth_enable =/;
 			next if $line =~ /^smtp_sasl_password_maps =/;
 			next if $line =~ /^smtp_sasl_security_options =/;
+			next if $line =~ /^smtp_tls_CAfile =/;
 			
 			if ($line =~ /#relayhost = \[an.ip.add.ress\]/)
 			{
@@ -8072,6 +8073,7 @@ sub check_mail_config
 				$postfix_main .= "smtp_sasl_auth_enable = yes\n";
 				$postfix_main .= "smtp_sasl_password_maps = hash:$conf->{path}{postfix_relay_file}\n";
 				$postfix_main .= "smtp_sasl_security_options =\n";
+				$postfix_main .= "smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt\n";
 			}
 			else
 			{

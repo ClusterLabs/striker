@@ -42,7 +42,9 @@
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
-#       - Create a '-g' switch to install the GUI
+#       - Create a '-g' switch to install the GUI (make sure this sets up
+#         'virt-manager')
+# 
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;

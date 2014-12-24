@@ -557,7 +557,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0218">Current root Password</key>
 		<key name="row_0219">Testing Connection</key>
 		<key name="row_0220">Checking OS Version</key>
-		<key name="row_0221">Checking for Existing Config</key>
+		<key name="row_0221">Configuring Cluster</key>
 		<key name="row_0222">Checking Storage</key>
 		<key name="row_0223">Checking Internet Access</key>
 		<key name="row_0224">Note!</key>
@@ -902,7 +902,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0057"><![CDATA[Non-DRBD data dound<br />on [<span class="highlight_detail">#!variable!device!#</span>]]]></key>
 		<key name="state_0058"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>]<br />doesn't correspond to a DRBD resource]]></key>
 		<key name="state_0059">DRBD resource not defined</key>
-		<key name="state_0060"></key>
+		<key name="state_0060">Disabled in Manifest</key>
 		<key name="state_0061"></key>
 		<key name="state_0062"></key>
 		<key name="state_0063"></key>
@@ -1459,7 +1459,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
-		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
+		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this in place, installation can not proceed.]]></key>
 		<key name="message_0364"><![CDATA[]]></key>	<!-- free -->
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
