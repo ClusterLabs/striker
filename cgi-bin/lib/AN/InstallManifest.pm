@@ -218,6 +218,9 @@ sub run_new_install_manifest
 		# If we're here, we're ready to start!
 		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 		
+		### TODO: Write this...
+		backup_files($conf);
+		
 		# Register the nodes with RHN, if needed.
 		register_with_rhn($conf);
 		
@@ -237,11 +240,21 @@ sub run_new_install_manifest
 		# Update the OS on each node.
 		update_nodes($conf);
 		
+		# Set passwords.
+		set_passwords($conf);
+		
 		# Configure daemons
-		configure_daemons($conf);
+		configure_daemons($conf) or return(1);
 		
 		# Write out the cluster configuration file
 		configure_cman($conf) or return(1);
+		
+		# Write out the clustered LVM configuration files
+		configure_clvmd($conf) or return(1);
+		
+		# This configures IPMI. If no IPMI is found, this will *not*
+		# fail (so that KVM-based test clusters won't die).
+		configure_ipmi($conf) or return(1);
 		
 		# Configure storage stage 1 (partitioning.
 		configure_storage_stage1($conf) or return(1);
@@ -260,6 +273,10 @@ sub run_new_install_manifest
 		# configures clvmd, sets up the PVs and VGs, creates the
 		# /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
+		
+		# Once the node is back up, we can finish stage 2 storage
+		# config (create DRBD MD, create PV/VG/LVs, format gfs2 part,
+		# etc).
 		
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	}
@@ -291,13 +308,1175 @@ sub start_cman
 	return($ok);
 }
 
+# This sets the 'root' and 'ricci' user passwords.
+sub set_passwords
+{
+	my ($conf) = @_;
+	
+	
+	
+	return(0);
+}
+
+# This creates a backup of /etc/sysconfig/network-scripts into /root/backups
+# and then creates a .anvil copy of lvm.conf and, if it exists, the DRBD and
+# cman config files
+sub backup_files
+{
+	my ($conf) = @_;
+	
+	# Stuff to do:
+	# * if [ -e '/root/backups' ]; then echo "Backups exist"; else mkdir -p /root/backups; fi
+	# * if [ -e '/etc/drbd.d' ] && [ ! -e '/root/backups/drbd.d' ]; then rsync -av /etc/drbd.d /root/backups/; else echo "DRBD backup NOT needed"; fi
+	# * if [ ! -e '/root/backups/network-scripts' ]; then rsync -av /etc/sysconfig/network-scripts /root/backups/; else echo "Network backup NOT needed"; fi
+	# * 
+	
+	
+	return(0);
+}
+
+# This configures IPMI
+sub configure_ipmi
+{
+	my ($conf) = @_;
+	
+	my $ok = 1;
+	my ($node1_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_ipmi_ip}, $conf->{cgi}{anvil_node1_ipmi_netmask}, $conf->{cgi}{anvil_node1_ipmi_password}, $conf->{cgi}{anvil_node1_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
+	my ($node2_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_ipmi_ip}, $conf->{cgi}{anvil_node2_ipmi_netmask}, $conf->{cgi}{anvil_node2_ipmi_password}, $conf->{cgi}{anvil_node2_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
+	# 0 = Configured
+	# 1 = Failed to set the IPMI user password
+	# 2 = No IPMI device found
+	# 3 = LAN channel not found
+	# 4 = User ID not found
+	# 5 = IPMI address not static
+	# 6 = IPMI IP is not correct
+	# 7 = IPMI subnet is not correct
+	
+	### Not having IPMI is not, itself fatal.
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0029!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0029!#";
+	# Node 1
+	if ($node1_rc eq "1")
+	{
+		# No IPMI device found.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0071!#",
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "2")
+	{
+		# No IPMI device found.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0019!#",
+	}
+	elsif ($node1_rc eq "3")
+	{
+		# IPMI LAN channel not found
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0066!#",
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "4")
+	{
+		# User ID not found
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0067", variables => { user => $conf->{cgi}{anvil_node1_ipmi_user} }}),
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "5")
+	{
+		# Failed to set to static IP
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0068!#",
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "6")
+	{
+		# Failed to set IP address
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0069!#",
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "7")
+	{
+		# Failed to set netmask
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0070!#",
+		$ok            = 0;
+	}
+	
+	# Node 2
+	if ($node2_rc eq "1")
+	{
+		# No IPMI device found.
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0071!#",
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "2")
+	{
+		# No IPMI device found.
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0019!#",
+	}
+	elsif ($node2_rc eq "3")
+	{
+		# IPMI LAN channel not found
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0066!#",
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "4")
+	{
+		# User ID not found
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0067", variables => { user => $conf->{cgi}{anvil_node2_ipmi_user} }}),
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "5")
+	{
+		# Failed to set to static IP
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0068!#",
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "6")
+	{
+		# Failed to set IP address
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0069!#",
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "7")
+	{
+		# Failed to set netmask
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0070!#",
+		$ok            = 0;
+	}
+	
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0253!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	
+	return($ok);
+}
+
+# This does the work of actually configuring IPMI on a node
+sub configure_ipmi_on_node
+{
+	my ($conf, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ipmi_on_node(); node: [$node], ipmi_ip: [$ipmi_ip], ipmi_netmask: [$ipmi_netmask], ipmi_password: [$ipmi_password], ipmi_user: [$ipmi_user], ipmi_gateway: [$ipmi_gateway]\n");
+	
+	my $return_code = 255;
+	# 0 = Configured
+	# 1 = Failed to set the IPMI password
+	# 2 = No IPMI device found
+	# 3 = LAN channel not found
+	# 4 = User ID not found
+	# 5 = IPMI address not static
+	# 6 = IPMI IP is not correct
+	# 7 = IPMI subnet is not correct
+	
+	# Is there an IPMI device?
+	my ($state) = get_daemon_state($conf, $node, $password, "ipmi");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; state: [$state]\n");
+	if ($state eq "7")
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI not found on node: [$node]\n");
+		$return_code = 2;
+	}
+	else
+	{
+		# If we're still alive, then it's safe to say IPMI is running.
+		# Find the LAN channel
+		my $lan_found = 0;
+		my $channel   = 0;
+		while (not $lan_found)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel]\n");
+			if ($channel > 10)
+			{
+				# Give up...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to find the IPMI LAN channel!\n");
+				$channel = "";
+				last;
+			}
+			
+			# check to see if this is the write channel
+			my $rc         = "";
+			my $shell_call = "ipmitool lan print $channel";
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /Invalid channel: /)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Wrong lan channel: [$channel]\n");
+				}
+				elsif ($line =~ "rc:0")
+				{
+					# Found it!
+					$lan_found = 1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the lan channel: [$channel]!\n");
+				}
+			}
+			
+			$channel++;
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LAN channel: [$channel]!\n");
+		
+		# Now find the admin user ID number
+		my $user_id   = "";
+		my $uid_found = 0;
+		if ($lan_found)
+		{
+			while (not $uid_found)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; user_id: [$user_id]\n");
+				if ($user_id > 10)
+				{
+					# Give up...
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to find the IPMI admin user ID!\n");
+					$user_id = "";
+					last;
+				}
+				
+				# check to see if this is the write channel
+				my $rc         = "";
+				my $shell_call = "ipmitool user list $channel";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$line =~ s/\s+/ /g;
+					if ($line =~ /^(\d+) $ipmi_user /)
+					{
+						$user_id   = $1;
+						$uid_found = 1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found user ID: [$user_id]\n");
+					}
+				}
+				$user_id++;
+			}
+			
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User: [$ipmi_user] has ID: [$user_id]!\n");
+			if ($uid_found)
+			{
+				# Set the password.
+				my $shell_call = "ipmitool user set password $user_id '$ipmi_password'";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				}
+				
+				# Test the password. If this fails with '16',
+				# try '20'.
+				my $password_ok = 0;
+				my $try_20      = 0;
+				   $shell_call  = "ipmitool user test $user_id 16 '$ipmi_password'";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /Success/i)
+					{
+						# Woo!
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], IPMI password set successfully as a 16-byte string!\n");
+					}
+					elsif ($line =~ /wrong password size/i)
+					{
+						$try_20 = 1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password is not a 16-byte string, will try 20-byte.\n");
+					}
+					elsif ($line =~ /password incorrect/i)
+					{
+						# Password didn't take. :(
+						$return_code = 1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password failed to be set properly.\n");
+					}
+				}
+				if ($try_20)
+				{
+					my $shell_call  = "ipmitool user test $user_id 20 '$ipmi_password'";
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+					my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+						node		=>	$node,
+						port		=>	22,
+						user		=>	"root",
+						password	=>	$password,
+						ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+						'close'		=>	0,
+						shell_call	=>	$shell_call,
+					});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+					foreach my $line (@{$return})
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						if ($line =~ /Success/i)
+						{
+							# Woo!
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], IPMI password set successfully as a 20-byte string!\n");
+						}
+						elsif ($line =~ /password incorrect/i)
+						{
+							# Password didn't take. :(
+							$return_code = 1;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password failed to be set properly.\n");
+						}
+					}
+				}
+			}
+		}
+		
+		# If I am missing either the channel or the user ID, we're done.
+		if (not $lan_found)
+		{
+			$return_code = 3;
+		}
+		elsif (not $uid_found)
+		{
+			$return_code = 4;
+		}
+		elsif ($return_code ne "1")
+		{
+			### Still alive!
+			# Setup the IPMI IP to static
+			my $shell_call = "ipmitool lan set $channel ipsrc static";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+			
+			# Now set the IP
+			$shell_call = "ipmitool lan set $channel ipaddr $ipmi_ip";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+			
+			# Now the netmask
+			$shell_call = "ipmitool lan set $channel netmask $ipmi_netmask";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+			
+			# If the user has specified a gateway, set it
+			if ($ipmi_gateway)
+			{
+				my $shell_call = "ipmitool lan set $channel defgw ipaddr $ipmi_gateway";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+				}
+			}
+			
+			### Now read it back.
+			# Now the netmask
+			$shell_call = "ipmitool lan print $channel";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				if ($line =~ /IP Address Source/i)
+				{
+					if ($line =~ /Static/i)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI IP is static now.\n");
+					}
+					else
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI IP is NOT static!\n");
+						$return_code = 5;
+						last;
+					}
+				}
+				if ($line =~ /IP Address/i)
+				{
+					my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
+					if ($ip eq $ipmi_ip)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI IP is now: [$ipmi_ip]\n");
+					}
+					else
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI reported IP: [$ip] doesn't match desired IP: [$ipmi_ip]!\n");
+						$return_code = 6;
+						last;
+					}
+				}
+				if ($line =~ /Subnet Mask/i)
+				{
+					my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
+					if ($ip eq $ipmi_netmask)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI subnet is now: [$ipmi_netmask]\n");
+					}
+					else
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI reported subnet: [$ip] doesn't match desired subnet: [$ipmi_netmask]!\n");
+						$return_code = 7;
+						last;
+					}
+				}
+			}
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
 # This sets nodes to start or stop on boot.
 sub configure_daemons
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons()\n");
 	
 	### TODO:
+	my ($node1_ok, $node1_messages) = configure_daemons_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_ok, $node2_messages) = configure_daemons_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
+	# If there was a problem on either node, the message will be set.
+	my $ok            = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0029!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0029!#";
+	if (not $node1_ok)
+	{
+		# Something went wrong...
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "";
+		$ok            = 0;
+		foreach my $error (split/,/, $node1_messages)
+		{
+			if ($error =~ /failed to enable:(.*)/)
+			{
+				my $daemon = $1;
+				$node1_message .= AN::Common::get_string($conf, {key => "state_0062", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to start:(.*)/)
+			{
+				my $daemon = $1;
+				$node1_message .= AN::Common::get_string($conf, {key => "state_0063", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to disable:(.*)/)
+			{
+				my $daemon = $1;
+				$node1_message .= AN::Common::get_string($conf, {key => "state_0064", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to stop:(.*)/)
+			{
+				my $daemon = $1;
+				$node1_message .= AN::Common::get_string($conf, {key => "state_0065", variables => { daemon => "$daemon" }}),
+			}
+		}
+	}
+	if (not $node2_ok)
+	{
+		# Something went wrong...
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "";
+		$ok            = 0;
+		foreach my $error (split/,/, $node2_messages)
+		{
+			if ($error =~ /failed to enable:(.*)/)
+			{
+				my $daemon = $1;
+				$node2_message .= AN::Common::get_string($conf, {key => "state_0062", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to start:(.*)/)
+			{
+				my $daemon = $1;
+				$node2_message .= AN::Common::get_string($conf, {key => "state_0063", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to disable:(.*)/)
+			{
+				my $daemon = $1;
+				$node2_message .= AN::Common::get_string($conf, {key => "state_0064", variables => { daemon => "$daemon" }}),
+			}
+			elsif ($error =~ /failed to stop:(.*)/)
+			{
+				my $daemon = $1;
+				$node2_message .= AN::Common::get_string($conf, {key => "state_0065", variables => { daemon => "$daemon" }}),
+			}
+		}
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0252!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This enables and disables daemons on boot for a node.
+sub configure_daemons_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons_on_node(); node: [$node]\n");
+	
+	my $ok     = 1;
+	my $return = "";
+	
+	# Enable daemons
+	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{enable}})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enabling daemon: [$daemon]\n");
+		
+		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
+		if (($init3 eq "1") && ($init5 eq "1"))
+		{
+			# Already enabled.
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], already enabled on boot.\n");
+		}
+		else
+		{
+			# Enable it.
+			set_chkconfig($conf, $node, $password, $daemon, "on");
+			my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
+			if (($init3 eq "1") && ($init5 eq "1"))
+			{
+				# Success
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], now enabled on boot.\n");
+			}
+			else
+			{
+				# failed. :(
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to enable daemon: [$daemon] on node: [$node]!\n");
+				$return .= "failed to enable:$daemon,";
+				$ok = 0;
+			}
+		}
+		
+		# Now check/start the daemon if needed
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok].\n");
+		if ($ok)
+		{
+			
+			my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+			if ($state eq "1")
+			{
+				# Already running.
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already running.\n");
+			}
+			elsif ($state eq "0")
+			{
+				# Enable it.
+				set_daemon_state($conf, $node, $password, $daemon, "start");
+				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+				if ($state eq "1")
+				{
+					# Now running.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] was started.\n");
+				}
+				elsif ($state eq "0")
+				{
+					# Failed to start
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start daemon: [$daemon] on node: [$node]!\n");
+					$return .= "failed to start:$daemon,";
+				}
+			}
+		}
+	}
+	
+	# Now disable daemons.
+	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{disable}})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disabling daemon: [$daemon]\n");
+		
+		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
+		if (($init3 eq "0") && ($init5 eq "0"))
+		{
+			# Already enabled.
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], already disabled on boot.\n");
+		}
+		else
+		{
+			# Enable it.
+			set_chkconfig($conf, $node, $password, $daemon, "off");
+			my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
+			if (($init3 eq "0") && ($init5 eq "0"))
+			{
+				# Success
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], now disabled on boot.\n");
+			}
+			else
+			{
+				# failed. :(
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to disable daemon: [$daemon] on node: [$node]!\n");
+				$return .= "failed to disable:$daemon,";
+				$ok = 0;
+			}
+		}
+		
+		# Now check/stop the daemon if needed
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok].\n");
+		if ($ok)
+		{
+			my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+			if ($state eq "0")
+			{
+				# Already stopped.
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already stopped.\n");
+			}
+			elsif ($state eq "0")
+			{
+				# Enable it.
+				set_daemon_state($conf, $node, $password, $daemon, "stop");
+				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+				if ($state eq "0")
+				{
+					# Now running.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] was stopped.\n");
+				}
+				elsif ($state eq "1")
+				{
+					# Failed to start
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to stop daemon: [$daemon] on node: [$node]!\n");
+					$return .= "failed to stop:$daemon,";
+				}
+			}
+		}
+	}
+	$return =~ s/,$//;
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], return: [$return]\n");
+	return($ok, $return);
+}
+
+# This starts or stops a daemon on a node.
+sub set_daemon_state
+{
+	my ($conf, $node, $password, $daemon, $state) = @_;
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] setting state: [$state]\n");
+	my $rc         = "";
+	my $shell_call = "/etc/init.d/$daemon $state; echo rc:\$?";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			$rc = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+		}
+	}
+	
+	return($rc);
+}
+
+# This checks to see if a daemon is running or not.
+sub get_daemon_state
+{
+	my ($conf, $node, $password, $daemon) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_daemon_state(); node: [$node], daemon: [$daemon]\n");
+	
+	# LSB says '0' == running. '3' == stopped
+	my $state = "";
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], checking if daemon: [$daemon] is running\n");
+	my $shell_call = "/etc/init.d/$daemon status; echo rc:\$?";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				$state = 1;
+			}
+			elsif ($rc eq "3")
+			{
+				$state = 0;
+			}
+			elsif ($rc eq "7")
+			{
+				$state = 7;
+			}
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], state: [$state]\n");
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; state: [$state]\n");
+	return($state);
+}
+
+# This calls 'chkconfig' and enables or disables the daemon on boot.
+sub set_chkconfig
+{
+	my ($conf, $node, $password, $daemon, $state) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_chkconfig(); node: [$node], daemon: [$daemon]\n");
+
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disabling daemon: [$daemon]\n");
+	my $shell_call = "chkconfig $daemon $state";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+	}
+	
+	return(0);
+}
+
+
+# This calls 'chkconfig' and return '1' or '0' based on whether the daemon is
+# set to run on boot or not
+sub get_chkconfig_data
+{
+	my ($conf, $node, $password, $daemon) = @_;
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_chkconfig_data(); node: [$node], daemon: [$daemon]\n");
+	
+	my $init3 = 255;
+	my $init5 = 255;
+
+	my $shell_call = "chkconfig --list $daemon";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line =~ /^$daemon/)
+		{
+			$init3 = ($line =~ /3:(.*?)\s/)[0];
+			$init5 = ($line =~ /5:(.*?)\s/)[0];
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
+			$init3 = $init3 eq "off" ? 0 : 1;
+			$init5 = $init5 eq "off" ? 0 : 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
+		}
+	}
+	
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return; init3: [$init3], init5: [$init5]\n");
+	return($init3, $init5);
+}
+
+# This configures clustered LVM on each node.
+sub configure_clvmd
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_clvmd()\n");
+	
+	# This will read in the existing lvm.conf on both nodes and, if either
+	# has a custom filter, preserve it and use it on the peer. If this
+	# '1', then a custom filter was found on both nodes and the do not
+	# match.
+	my $ok = 1;
+	my ($generate_rc) = generate_lvm_conf($conf);
+	# Return codes:
+	# 0 = OK
+	# 1 = Both nodes have different and custom filter lines.
+	# 2 = Read failed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_rc: [$generate_rc]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lvm.conf:\n================\n$conf->{sys}{lvm_conf}\n================\n");
+	
+	# Now we'll write out the config.
+	my $node1_rc = 255;
+	my $node2_rc = 255;
+	if (not $generate_rc)
+	{
+		($node1_rc) = write_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		($node2_rc) = write_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+	}
+	
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0026!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0026!#";
+	# Was there a conflict?
+	if ($generate_rc eq "2")
+	{
+		# Failed to read/prepare lvm.conf data.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0072!#",
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0072!#",
+		$ok            = 0;
+	}
+	elsif ($generate_rc eq "1")
+	{
+		# Duplicate, unmatched filters
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0061!#",
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0061!#",
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0251!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	return($ok);
+}
+
+# This reads in node 1's lvm.conf, makes sure it's configured for clvmd and
+# stores in.
+sub generate_lvm_conf
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_lvm_conf()\n");
+	
+	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom
+	# filter line. The rest of the config will be loaded into memory and,
+	# if one node is found to have a custom filter, it will be used to on
+	# the other node. If neither have a custom filter, then node 1's base
+	# config will be modified and loaded on both nodes.
+	my $return_code = 0;
+	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	
+	# Now decide what lvm.conf to use.
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Default filter:         [$conf->{sys}{lvm_filter}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1] filter: [$conf->{node}{$node1}{lvm_filter}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2] filter: [$conf->{node}{$node2}{lvm_filter}]\n");
+	if (($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter}) && ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter}))
+	{
+		# Both are custom, do they match?
+		if ($conf->{node}{$node1}{lvm_filter} eq $conf->{node}{$node2}{lvm_filter})
+		{
+			# We're good. We'll use node 1
+			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matching custom filters.\n");
+		}
+		else
+		{
+			# Both are custom and they don't match, time to bail out.
+			$return_code = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Different custom filters!\n");
+		}
+	}
+	elsif ($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter})
+	{
+		$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Custom filter; Using node 1's lvm.conf\n");
+	}
+	elsif ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter})
+	{
+		$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Custom filter; Using node 2's lvm.conf\n");
+	}
+	else
+	{
+		if (length($conf->{node}{$node1}{lvm_conf}) > 256)
+		{
+			# Node 1's copy seems sane, use it.
+			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Stock filter; Using node 1's lvm.conf\n");
+		}
+		elsif (length($conf->{node}{$node1}{lvm_conf}) > 256)
+		{
+			# Node 2's copy seems sane, use it.
+			$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Stock filter; Using node 2's lvm.conf\n");
+		}
+		else
+		{
+			# Neither are sane?!
+			$return_code = 2;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Neither of the read lvm.conf files appear to be sane!\n");
+		}
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; size of lvm.conf to write is: [".length($conf->{sys}{lvm_conf})."]\n");
+	
+	# Return codes:
+	# 0 = OK
+	# 1 = Both nodes have different and custom filter lines.
+	# 2 = Read failed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
+# This (re)writes the lvm.conf file on a node.
+sub write_lvm_conf_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; write_lvm_conf_on_node(); node: [$node]\n");
+	
+	my $rc = 0;
+	my $shell_call =  "cat > $conf->{path}{nodes}{lvm_conf} << EOF\n";
+	   $shell_call .= "$conf->{sys}{lvm_conf}\n";
+	   $shell_call .= "EOF";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+	}
+	
+	return($rc);
+}
+
+# This reads in the actual lvm.conf from the node, updating the config in the
+# process, storing a version suitable for clustered LVM.
+sub read_lvm_conf_on_node
+{
+	my ($conf, $node, $password) = @_;
+	
+	# Read it in
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	"if [ -e '$conf->{path}{nodes}{lvm_conf}' ]
+					then
+						cat $conf->{path}{nodes}{lvm_conf}
+					else
+						echo \"doesn't exist\"
+					fi",
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	
+	# I need to read this in two passes. The first pass looks for an
+	# existing 'filter = []' rule and, if found, uses it.
+	$conf->{node}{$node}{lvm_filter} = $conf->{sys}{lvm_filter};
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> return line: [$line]\n");
+		#$line =~ s/^\s+//;
+		#$line =~ s/\s+$//;
+		if (($line =~ /^filter = \[.*\]/) || ($line =~ /^\s+filter = \[.*\]/))
+		{
+			$conf->{node}{$node}{lvm_filter} = $line;
+			$conf->{node}{$node}{lvm_filter} =~ s/^\s+//;
+			$conf->{node}{$node}{lvm_filter} =~ s/\s+$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Custom filter found: [$conf->{node}{$node}{lvm_filter}]\n");
+		}
+	}
+	
+	# There is no default filter entry, but it is referenced as comments
+	# many times. So we'll inject it when we see the first comment and then
+	# skip any 
+	my $filter_injected = 0;
+	$conf->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
+	$conf->{node}{$node}{lvm_conf} .= "# Sorry for the lack of comments... Ran into a buffer issue with Net::SSH2 that\n";
+	$conf->{node}{$node}{lvm_conf} .= "# I wasn't able to fix in time. Fixing it is on the TODO though, and patches\n";
+	$conf->{node}{$node}{lvm_conf} .= "# are welcomed. :)\n\n";
+	foreach my $line (@{$return})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+		last if $line =~ /doesn't exist/;
+		
+		# Any line that starts with a '#' is passed on as-is.
+		if ((not $filter_injected) && ($line =~ /filter = \[/))
+		{
+			#$conf->{node}{$node}{lvm_conf} .= "$line\n";
+			$conf->{node}{$node}{lvm_conf} .= "    $conf->{node}{$node}{lvm_filter}\n";
+			$filter_injected               =  1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Filter injected: [$conf->{node}{$node}{lvm_filter}]\n");
+			next;
+		}
+		elsif (($line =~ /^filter = \[/) || ($line =~ /^\s+filter = \[/))
+		{
+			# Skip existing filter entries
+		}
+		# Test skip comments
+		elsif ((not $line) || (($line =~ /^#/) || ($line =~ /^\s+#/)) || ($line =~ /^\s+$/))
+		{
+			### TODO: Fix Net::SSH2 so that we can write out larger
+			###       files.
+			# Skip comments
+			next;
+		}
+		# Alter the locking type:
+		if (($line =~ /^locking_type = /) || ($line =~ /^\s+locking_type = /))
+		{
+			$line =~ s/locking_type = .*/locking_type = 3/;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Locking type set to 3: [$line]\n");
+		}
+		# Alter the fall-back locking
+		if (($line =~ /^fallback_to_local_locking = /) || ($line =~ /^\s+fallback_to_local_locking = /))
+		{
+			$line =~ s/fallback_to_local_locking = .*/fallback_to_local_locking = 0/;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Fallback to local locking set to 0: [$line]\n");
+		}
+		# And record.
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+		$conf->{node}{$node}{lvm_conf} .= "$line\n";
+		if ($line eq "}")
+		{
+			# Add an extra blank line to make things more readible.
+			$conf->{node}{$node}{lvm_conf} .= "\n";
+		}
+	}
 	
 	return(0);
 }
@@ -1923,7 +3102,7 @@ sub read_drbd_config_on_node
 			else 
 				echo not_found:$r1; 
 			fi;";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -1958,7 +3137,7 @@ sub read_drbd_config_on_node
 		if ($in_r0)     { $conf->{node}{$node}{drbd_file}{r0}            .= "$line\n"; }
 		if ($in_r1)     { $conf->{node}{$node}{drbd_file}{r1}            .= "$line\n"; }
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], global_common:\n====\n$conf->{node}{$node}{drbd_file}{global_common}\n====\nr0\n====\n$conf->{node}{$node}{drbd_file}{r0}\n====\nr1\n====\n$conf->{node}{$node}{drbd_file}{r1}\n====\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], global_common:\n====\n$conf->{node}{$node}{drbd_file}{global_common}\n====\nr0\n====\n$conf->{node}{$node}{drbd_file}{r0}\n====\nr1\n====\n$conf->{node}{$node}{drbd_file}{r1}\n====\n");
 	
 	return(0);
 }
@@ -4736,7 +5915,7 @@ sub read_drbd_resource_files
 		my $in_host = 0;
 		foreach my $line (@{$return})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 			if ($line eq "doesn't exist")
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], file: [$file] doesn't exist.\n");
@@ -5168,9 +6347,9 @@ sub read_cluster_conf
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"if [ -e '/etc/cluster/cluster.conf' ]
+		shell_call	=>	"if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
 					then
-						cat /etc/cluster/cluster.conf
+						cat $conf->{path}{nodes}{cluster_conf}
 					else
 						echo doesn't exist
 					fi",

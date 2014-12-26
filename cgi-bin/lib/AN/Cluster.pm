@@ -2133,16 +2133,20 @@ sub load_install_manifest
 					{
 						my $name            = $b->{name}            ? $b->{name}            : "";
 						my $ip              = $b->{ip}              ? $b->{ip}              : "";
+						my $gateway         = $b->{gateway}         ? $b->{gateway}         : "";
+						my $netmask         = $b->{netmask}         ? $b->{netmask}         : "";
 						my $user            = $b->{user}            ? $b->{user}            : "";
 						my $password        = $b->{password}        ? $b->{password}        : "";
 						my $password_script = $b->{password_script} ? $b->{password_script} : "";
 						
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{ip}              = $ip;
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{netmask}         = $netmask;
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{gateway}         = $gateway;
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{user}            = $user;
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script} = $password_script;
 						
-						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{ip}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script}]\n");
+						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script}]\n");
 					}
 					
 					my $name     = $data->{node}{$node}{$a}->[0]->{name};
@@ -2499,6 +2503,10 @@ sub load_install_manifest
 			my $bcn_link1_mac_key = "anvil_node".$i."_bcn_link1_mac";
 			my $bcn_link2_mac_key = "anvil_node".$i."_bcn_link2_mac";
 			my $ipmi_ip_key       = "anvil_node".$i."_ipmi_ip";
+			my $ipmi_netmask_key  = "anvil_node".$i."_ipmi_netmask",
+			my $ipmi_gateway_key  = "anvil_node".$i."_ipmi_gateway",
+			my $ipmi_password_key = "anvil_node".$i."_ipmi_password",
+			my $ipmi_user_key     = "anvil_node".$i."_ipmi_user",
 			my $sn_ip_key         = "anvil_node".$i."_sn_ip";
 			my $sn_link1_mac_key  = "anvil_node".$i."_sn_link1_mac";
 			my $sn_link2_mac_key  = "anvil_node".$i."_sn_link2_mac";
@@ -2510,9 +2518,25 @@ sub load_install_manifest
 			my $pdu1_name         = $conf->{cgi}{anvil_pdu1_name};
 			my $pdu2_name         = $conf->{cgi}{anvil_pdu2_name};
 			
+			# IPMI is, by default, tempremental about passwords. If
+			# the manifest doesn't specify the password to use, 
+			# we'll copy the cluster password but then strip out
+			# special characters and shorten it to 16 characters or
+			# less.
+			my $default_ipmi_pw =  $conf->{cgi}{anvil_password};
+			   $default_ipmi_pw =~ s/!//g;
+			if (length($default_ipmi_pw) > 16)
+			{
+				$default_ipmi_pw = substr($default_ipmi_pw, 0, 16);
+			}
+			
 			$conf->{cgi}{$name_key}          = $node;
 			$conf->{cgi}{$bcn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{bcn}{ip};
 			$conf->{cgi}{$ipmi_ip_key}       = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip};
+			$conf->{cgi}{$ipmi_netmask_key}  = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{netmask}  ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{netmask}  : $conf->{cgi}{anvil_bcn_subnet};
+			$conf->{cgi}{$ipmi_gateway_key}  = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{gateway}  ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{gateway}  : 0;
+			$conf->{cgi}{$ipmi_password_key} = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{password} ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{password} : $default_ipmi_pw;
+			$conf->{cgi}{$ipmi_user_key}     = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{user}     ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{user}     : "admin";
 			$conf->{cgi}{$sn_ip_key}         = $conf->{install_manifest}{$file}{node}{$node}{network}{sn}{ip};
 			$conf->{cgi}{$ifn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{ifn}{ip};
 			$conf->{cgi}{$pdu1_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu1_name}{port};
@@ -2789,7 +2813,8 @@ Striker Version: $conf->{sys}{version}
 			<ifn ip=\"$conf->{cgi}{anvil_node1_ifn_ip}\" />
 		</network>
 		<ipmi>
-			<on name=\"ipmi_n01\" />
+			<!-- Many IPMI BMCs will fail with some special characters, like '!', and with passwords over 16 characters! -->
+			<on name=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
 			<on port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" />
@@ -2815,7 +2840,7 @@ Striker Version: $conf->{sys}{version}
 			<ifn ip=\"$conf->{cgi}{anvil_node2_ifn_ip}\" />
 		</network>
 		<ipmi>
-			<on name=\"ipmi_n02\" />
+			<on name=\"ipmi_n02\" ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node2_ipmi_user}\" password=\"$conf->{cgi}{anvil_node2_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
 			<on name=\"pdu01\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" />
@@ -2823,7 +2848,7 @@ Striker Version: $conf->{sys}{version}
 		</pdu>
 		<kvm>
 			<on name=\"kvm_host\" port=\"\" />
-                </kvm>
+		</kvm>
 		<interfaces>
 			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node2_bcn_link1_mac}\" />
 			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node2_bcn_link2_mac}\" />
@@ -2874,8 +2899,8 @@ Striker Version: $conf->{sys}{version}
 			<pdu name=\"pdu02\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"fence_apc_snmp\" />
 		</pdu>
 		<ipmi>
-			<ipmi name=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" agent=\"fence_ipmilan\" />
-			<ipmi name=\"ipmi_n02\" ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" user=\"$conf->{cgi}{anvil_node2_ipmi_user}\" password=\"$conf->{cgi}{anvil_node2_ipmi_password}\" agent=\"fence_ipmilan\" />
+			<ipmi name=\"ipmi_n01\" agent=\"fence_ipmilan\" />
+			<ipmi name=\"ipmi_n02\" agent=\"fence_ipmilan\" />
 		</ipmi>
 		<kvm>
 			<kvm name=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password_script=\"\" agent=\"fence_virsh\" />
@@ -6790,7 +6815,7 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
 		$channel->exec("$shell_call");
 		
 		# This keeps the connection open when the remote side is slow

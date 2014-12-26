@@ -587,9 +587,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0248">Partitioning Pool 2</key>
 		<key name="row_0249">Pool 1 Meta-data</key>
 		<key name="row_0250">Pool 2 Meta-data</key>
-		<key name="row_0251"></key>
-		<key name="row_0252"></key>
-		<key name="row_0253"></key>
+		<key name="row_0251">Configuring Clustered LVM</key>
+		<key name="row_0252">Configure Daemons</key>
+		<key name="row_0253">Configuring IPMI</key>
 		<key name="row_0254"></key>
 		<key name="row_0255"></key>
 		<key name="row_0256"></key>
@@ -871,7 +871,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0026">Updated</key>
 		<key name="state_0027">Already up to Date</key>
 		<key name="state_0028">Already Configured</key>
-		<key name="state_0029">Configured!</key>
+		<key name="state_0029">Configured</key>
 		<key name="state_0030">Interfaces Identified</key>
 		<key name="state_0031">Network Remap Required</key>
 		<key name="state_0032">Network Remap Requested</key>
@@ -903,16 +903,26 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0058"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>]<br />doesn't correspond to a DRBD resource]]></key>
 		<key name="state_0059">DRBD resource not defined</key>
 		<key name="state_0060">Disabled in Manifest</key>
-		<key name="state_0061"></key>
-		<key name="state_0062"></key>
-		<key name="state_0063"></key>
-		<key name="state_0064"></key>
-		<key name="state_0065"></key>
-		<key name="state_0066"></key>
-		<key name="state_0067"></key>
-		<key name="state_0068"></key>
-		<key name="state_0069"></key>
-		<key name="state_0070"></key>
+		<key name="state_0061">Conflicting custom filter!</key>
+		<key name="state_0062"><![CDATA[Failed to enable: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0063"><![CDATA[Failed to start: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0064"><![CDATA[Failed to disable: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0065"><![CDATA[Failed to stop: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0066"><![CDATA[<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Finding_our_IPMI_LAN_Channel" target="_new">LAN Channel</span> not found!]]></key>
+		<key name="state_0067"><![CDATA[<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Find_the_IPMI_User_ID" target="_new">User ID</span> for: [<span class="highlight_detail">#!variable!user!#</span>] not found!]]></key>
+		<key name="state_0068">Failed to set IP to static</key>
+		<key name="state_0069">Failed to set IP address</key>
+		<key name="state_0070">Failed to set netmask</key>
+		<key name="state_0071">Failed to set IPMI password</key>
+		<key name="state_0072">Failed to read lvm.conf</key>
+		<key name="state_0073"></key>
+		<key name="state_0074"></key>
+		<key name="state_0075"></key>
+		<key name="state_0076"></key>
+		<key name="state_0077"></key>
+		<key name="state_0078"></key>
+		<key name="state_0079"></key>
+		<key name="state_0080"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>

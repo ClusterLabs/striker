@@ -647,6 +647,7 @@ sub initialize_conf
 				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link1",
 				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
 				iptables		=>	"/etc/sysconfig/iptables",
+				lvm_conf		=>	"/etc/lvm/lvm.conf",
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
@@ -661,6 +662,9 @@ sub initialize_conf
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
 			error_limit		=>	10000,
 			language		=>	"en_CA",
+			cluster_conf		=>	"",
+			lvm_conf		=>	"",
+			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
 			version			=>	"1.1.7",
@@ -681,6 +685,26 @@ sub initialize_conf
 			# set this to '1'. NOTE: This disables web-based VNC!
 			use_spice_graphics	=>	0,
 			update_os		=>	1,
+			daemons			=>	{
+				enable			=>	[
+					"gpm",
+					"ipmi",
+					"iptables",
+					"modclusterd",
+					"network",
+					"ntpd",
+					"ricci",
+				],
+				disable		=>	[
+					"clvmd",
+					"cman",
+					"drbd",
+					"gfs2",
+					"ip6tables",
+					"kdump",
+					"rgmanager",
+				],
+			},
 		},
 		# Config values needed to managing strings
 		strings				=>	{
