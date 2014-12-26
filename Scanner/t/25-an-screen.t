@@ -35,8 +35,10 @@ sub test_dispatch {
 
     my @msgs = ( 'Line 1', 'This is line 2', 'Some stuff on line 3' );
 
-    stdout_is( sub { $screen->dispatch(\@msgs) },
-               join( "\n", @msgs ) . "\n",
+    my $std = ($] < 5.014 ? join '', @msgs : join "\n", @msgs);
+
+    stdout_is( sub { $screen->dispatch(\@msgs) }, $std,
+ 
                'Screen::dispatch() works OK.' );
     return;
 }
