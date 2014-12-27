@@ -2074,7 +2074,15 @@ sub load_install_manifest
 						{
 							my $name = $c->{name};
 							my $mac  = $c->{mac};
-							$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = $mac;
+							if (($mac) && ($mac =~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i))
+							{
+								$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = $mac;
+							}
+							else
+							{
+								# Malformed MAC
+								record($conf, "$THIS_FILE ".__LINE__."; Install Manifest: [$file], Node: [$node], interface: [$name] has a malformed MAC address: [$mac], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.\n");
+							}
 						}
 					}
 				}
@@ -2124,7 +2132,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$name}{password_script} = $password_script;
 						
-						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], KVM: [$name], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$name}{password_script}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], KVM: [$name], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$name}{password_script}]\n");
 					}
 				}
 				elsif ($a eq "ipmi")
@@ -2146,7 +2154,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script} = $password_script;
 						
-						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password_script}]\n");
 					}
 					
 					my $name     = $data->{node}{$node}{$a}->[0]->{name};
@@ -2220,7 +2228,7 @@ sub load_install_manifest
 				elsif ($b eq "iptables")
 				{
 					$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports} = $a->{$b}->[0]->{vnc}->[0]->{ports};
-					record($conf, "$THIS_FILE ".__LINE__."; Firewall iptables; VNC port count: [$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; Firewall iptables; VNC port count: [$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports}]\n");
 				}
 				elsif ($b eq "media_library")
 				{
@@ -2303,8 +2311,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{pdu}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{common}{pdu}{$name}{password_script} = $password_script;
 						$conf->{install_manifest}{$file}{common}{pdu}{$name}{agent}           = $agent;
-						
-						record($conf, "$THIS_FILE ".__LINE__."; PDU: [$name], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; PDU: [$name], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{agent}]\n");
 					}
 				}
 				elsif ($b eq "kvm")
@@ -2323,8 +2330,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{kvm}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{common}{kvm}{$name}{password_script} = $password_script;
 						$conf->{install_manifest}{$file}{common}{kvm}{$name}{agent}           = $agent;
-						
-						record($conf, "$THIS_FILE ".__LINE__."; KVM: [$name], IP: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; KVM: [$name], IP: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{kvm}{$name}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ipmi")
@@ -2343,8 +2349,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password}        = $password;
 						$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password_script} = $password_script;
 						$conf->{install_manifest}{$file}{common}{ipmi}{$name}{agent}           = $agent;
-						
-						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$name], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$name], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{ip}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$name}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ssh")
@@ -2411,8 +2416,9 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_prefix}       = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
 		$conf->{cgi}{anvil_domain}       = $conf->{install_manifest}{$file}{common}{anvil}{domain};
 		$conf->{cgi}{anvil_sequence}     = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
-		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password};
+		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}     ? $conf->{install_manifest}{$file}{common}{anvil}{password}     : $conf->{sys}{default_password};
 		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories} ? $conf->{install_manifest}{$file}{common}{anvil}{repositories} : "";
+		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}        ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}        : 8191;
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
@@ -2552,6 +2558,7 @@ sub load_install_manifest
 				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
 				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
 				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
 			}
 			
 			#print Dumper $conf->{install_manifest}{$file}{node}{$node};
@@ -2606,7 +2613,7 @@ sub load_install_manifest
 							$delay_set =  1;
 						}
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
 						$j++;
 					}
 				}
@@ -2625,7 +2632,7 @@ sub load_install_manifest
 							$delay_set =  1;
 						}
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
 						$j++;
 					}
 				}
@@ -2652,11 +2659,11 @@ sub load_install_manifest
 					}
 					elsif ($password_script)
 					{
-						$string .= "password_script=\"$password_script\"";
+						$string .= "passwd_script=\"$password_script\"";
 					}
 					$string .= " />";
 					$conf->{fence}{device}{$device}{name}{$name}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
 				}
 			}
 			if ($device eq "ipmi")
@@ -2675,11 +2682,11 @@ sub load_install_manifest
 					}
 					elsif ($password_script)
 					{
-						$string .= "password_script=\"$password_script\"";
+						$string .= "passwd_script=\"$password_script\"";
 					}
 					$string .= " />";
 					$conf->{fence}{device}{$device}{name}{$name}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
 				}
 			}
 			if ($device eq "pdu")
@@ -2698,11 +2705,11 @@ sub load_install_manifest
 					}
 					elsif ($password_script)
 					{
-						$string .= "password_script=\"$password_script\"";
+						$string .= "passwd_script=\"$password_script\"";
 					}
 					$string .= " />";
 					$conf->{fence}{device}{$device}{name}{$name}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$name}{string}]\n");
 				}
 			}
 		}
@@ -2813,7 +2820,6 @@ Striker Version: $conf->{sys}{version}
 			<ifn ip=\"$conf->{cgi}{anvil_node1_ifn_ip}\" />
 		</network>
 		<ipmi>
-			<!-- Many IPMI BMCs will fail with some special characters, like '!', and with passwords over 16 characters! -->
 			<on name=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
@@ -5278,7 +5284,6 @@ sub get_cgi_vars
 		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
-	
 	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	
 	return (0);
@@ -6815,61 +6820,69 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
-		$channel->exec("$shell_call");
-		
-		# This keeps the connection open when the remote side is slow
-		# to return data, like in '/etc/init.d/rgmanager stop'.
-		my @poll = {
-			handle => $channel,
-			events => [qw/in err/],
-		};
-		
-		# We'll store the STDOUT and STDERR data here.
-		my $stdout = "";
-		my $stderr = "";
-		
-		# Not collect the data.
-		while(1)
+		if (not $channel)
 		{
-			$ssh_fh->poll(250, \@poll);
-			
-			# Read in anything from STDOUT
-			while($channel->read(my $chunk, 80))
-			{
-				$stdout .= $chunk;
-			}
-			while ($stdout =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
-				push @{$stdout_output}, $line;
-			}
-			
-			# Read in anything from STDERR
-			while($channel->read(my $chunk, 80, 1))
-			{
-				$stderr .= $chunk;
-			}
-			while ($stderr =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
-				push @{$stderr_output}, $line;
-			}
-			
-			# Exit when we get the end-of-file.
-			last if $channel->eof;
+			$error  = "Failed to establish channel to node: [$node] for shell call: [$shell_call]\n";
+			$ssh_fh = "";
 		}
-		if ($stdout)
+		else
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
-			push @{$stdout_output}, $stdout;
-		}
-		if ($stderr)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
-			push @{$stderr_output}, $stderr;
+			#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+			$channel->exec("$shell_call");
+			
+			# This keeps the connection open when the remote side is slow
+			# to return data, like in '/etc/init.d/rgmanager stop'.
+			my @poll = {
+				handle => $channel,
+				events => [qw/in err/],
+			};
+			
+			# We'll store the STDOUT and STDERR data here.
+			my $stdout = "";
+			my $stderr = "";
+			
+			# Not collect the data.
+			while(1)
+			{
+				$ssh_fh->poll(250, \@poll);
+				
+				# Read in anything from STDOUT
+				while($channel->read(my $chunk, 80))
+				{
+					$stdout .= $chunk;
+				}
+				while ($stdout =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+					push @{$stdout_output}, $line;
+				}
+				
+				# Read in anything from STDERR
+				while($channel->read(my $chunk, 80, 1))
+				{
+					$stderr .= $chunk;
+				}
+				while ($stderr =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+					push @{$stderr_output}, $line;
+				}
+				
+				# Exit when we get the end-of-file.
+				last if $channel->eof;
+			}
+			if ($stdout)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+				push @{$stdout_output}, $stdout;
+			}
+			if ($stderr)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+				push @{$stderr_output}, $stderr;
+			}
 		}
 	}
 	

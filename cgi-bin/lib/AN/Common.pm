@@ -632,6 +632,8 @@ sub initialize_conf
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
 				anvil_install_status	=>	"/root/.anvil_install_progress",
+				backups			=>	"/root/backups",
+				drbd			=>	"/etc/drbd.d",
 				hostname		=>	"/etc/sysconfig/network",
 				hosts			=>	"/etc/hosts",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",
@@ -641,6 +643,7 @@ sub initialize_conf
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
+				fstab			=>	"/etc/fstab",
 				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",
 				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bond1",
 				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bridge1",
@@ -648,6 +651,8 @@ sub initialize_conf
 				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
 				iptables		=>	"/etc/sysconfig/iptables",
 				lvm_conf		=>	"/etc/lvm/lvm.conf",
+				network_scripts		=>	"/etc/sysconfig/network-scripts",
+				shadow			=>	"/etc/shadow",
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
@@ -660,6 +665,7 @@ sub initialize_conf
 		},
 		sys			=>	{
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
+			default_password	=>	"Initial1",
 			error_limit		=>	10000,
 			language		=>	"en_CA",
 			cluster_conf		=>	"",
@@ -705,6 +711,9 @@ sub initialize_conf
 					"rgmanager",
 				],
 			},
+			# This is filled later and used to populate
+			# ~/.ssh/known_hosts on each node.
+			node_names		=>	[],
 		},
 		# Config values needed to managing strings
 		strings				=>	{

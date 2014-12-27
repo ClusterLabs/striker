@@ -41,6 +41,7 @@ $| = 1;
 my $conf = {
 	debug		=>	0,
 	executable	=>	{
+		cat			=>	"/bin/cat",
 		cp			=>	"/bin/cp",
 		ifup			=>	"/sbin/ifup",
 		ip			=>	"/sbin/ip",
@@ -121,8 +122,14 @@ sub print_summary
 	{
 		print "Interface summary:\n" if $conf->{debug};
 	}
-	my $this_nic   = "";
-	my $shell_call = "$conf->{executable}{ip} addr";
+	### If there are bonds, we can't trust the interface MAC addresses. So
+	### for each interface in a bond, check for the mac in 
+	### /proc/net/bonding/X
+	my @ip_addr_raw;
+	my @bonds;
+	my $bonds_exist = 0;
+	my $this_nic    = "";
+	my $shell_call  = "$conf->{executable}{ip} addr";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -130,16 +137,21 @@ sub print_summary
 		# This should not return anything, but just in case...
 		chomp;
 		my $line = $_;
+		push @ip_addr_raw, $line;
 		if ($line =~ /^\d+: (.*?): </)
 		{
 			$this_nic = $1;
+			if ($this_nic =~ /bond/)
+			{
+				push @bonds, $this_nic;
+			}
 		}
 		if ($line =~ /link\/ether (.*?) brd/)
 		{
 			my $mac = $1;
 			if ($this_nic)
 			{
-				print "nic=$this_nic,,mac=$mac\n";
+				$conf->{nic}{$this_nic}{mac} = $mac;
 				$this_nic = "";
 				$mac      = "";
 			}
@@ -157,6 +169,49 @@ sub print_summary
 		}
 	}
 	close $file_handle;
+	
+	# Now check for MAC addresses in bonds
+	foreach my $bond (sort {$a cmp $b} @bonds)
+	{
+		my $this_nic   = "";
+		my $shell_call = "$conf->{executable}{cat} /proc/net/bonding/$bond";
+		#print "shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			# TODO: Should this cause the installer to bail?
+			# This should not return anything, but just in case...
+			chomp;
+			my $line = $_;
+			if (not $line)
+			{
+				$this_nic = "";
+				next;
+			}
+			#print "line: [$line]\n";
+			if ($line =~ /Slave Interface: (.*)$/)
+			{
+				$this_nic = $1;
+				#print "this_nic: [$this_nic]\n";
+			}
+			#print "this_nic: [$this_nic], line: [$line]\n";
+			if (($this_nic) && ($line =~ /Permanent HW addr: (.*)$/))
+			{
+				my $mac = $1;
+				$conf->{nic}{$this_nic}{mac} = $mac;
+				#print "nic::${this_nic}mac: [$conf->{nic}{$this_nic}{mac}]\n";
+				$this_nic = "";
+				$mac      = "";
+			}
+		}
+		close $file_handle;
+	}
+	
+	foreach my $this_nic (sort {$a cmp $b} keys %{$conf->{nic}})
+	{
+		next if $conf->{nic}{$this_nic}{mac} eq "00:00:00:00:00:00";
+		print "nic=$this_nic,,mac=$conf->{nic}{$this_nic}{mac}\n";
+	}
 	
 	return(0);
 }

@@ -325,8 +325,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
-		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now. If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="fixed_width">#!conf!sys::reboot_timeout!#</span> seconds to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
-		<key name="explain_0142"><![CDATA[]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
+		<key name="explain_0142"><![CDATA[The next step will update the <span class="highlight_detail">root</span> user's password.<br />After this, if the password changed, reloading this page will fail.<br />Please <a href="#!variable!url!#">click here</a> to re-run the installer using the password set in the install manifest.]]></key>
 		<key name="explain_0143"><![CDATA[]]></key>
 		<key name="explain_0144"><![CDATA[]]></key>
 		<key name="explain_0145"><![CDATA[]]></key>
@@ -590,10 +590,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0251">Configuring Clustered LVM</key>
 		<key name="row_0252">Configure Daemons</key>
 		<key name="row_0253">Configuring IPMI</key>
-		<key name="row_0254"></key>
-		<key name="row_0255"></key>
-		<key name="row_0256"></key>
-		<key name="row_0257"></key>
+		<key name="row_0254">Backing up original files</key>
+		<key name="row_0255">Updating passwords</key>
+		<key name="row_0256">Start the cluster communication layer</key>
+		<key name="row_0257"><![CDATA[Configuring <span class="code">root</span>'s SSH]]></key>
 		<key name="row_0258"></key>
 		<key name="row_0259"></key>
 		<key name="row_0260"></key>
@@ -860,7 +860,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0015">stopped</key>
 		<key name="state_0016">n/a</key> <!-- Not applicable -->
 		<key name="state_0017">OK</key>
-		<key name="state_0018">Failed!</key>
+		<key name="state_0018">Failed</key>
 		<key name="state_0019">Not Found</key>
 		<key name="state_0020">Exists</key>
 		<key name="state_0021">No Access</key>
@@ -915,14 +915,24 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0070">Failed to set netmask</key>
 		<key name="state_0071">Failed to set IPMI password</key>
 		<key name="state_0072">Failed to read lvm.conf</key>
-		<key name="state_0073"></key>
-		<key name="state_0074"></key>
-		<key name="state_0075"></key>
-		<key name="state_0076"></key>
-		<key name="state_0077"></key>
-		<key name="state_0078"></key>
-		<key name="state_0079"></key>
-		<key name="state_0080"></key>
+		<key name="state_0073">Done</key>
+		<key name="state_0074">Failed to update the root passowrd</key>
+		<key name="state_0075">Missing MAC address</key>
+		<key name="state_0076"><![CDATA[The written [<span class="highlight_detail">#!conf!path::nodes::cluster_conf!#</span>] file failed to validate. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0077"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0006!#</a>]]></key>
+		<key name="state_0078">Already running</key>
+		<key name="state_0079">Failed to read or generate RSA key</key>
+		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>]]></key>
+		<key name="state_0081"><![CDATA[Failed to populate: <span class="highlight_detail">authorized_keys</span>]]></key>
+		<key name="state_0082"><![CDATA[Testing <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Concept.3B_Fencing" target="_new">fencing</span> failed! The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote><br />Please check your fence device(s) to ensure they've been configured properly.]]></key>
+		<key name="state_0083"></key>
+		<key name="state_0084"></key>
+		<key name="state_0085"></key>
+		<key name="state_0086"></key>
+		<key name="state_0087"></key>
+		<key name="state_0088"></key>
+		<key name="state_0089"></key>
+		<key name="state_0090"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1469,7 +1479,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
-		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this in place, installation can not proceed.]]></key>
+		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this file properly in place, installation can not proceed.]]></key>
 		<key name="message_0364"><![CDATA[]]></key>	<!-- free -->
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
