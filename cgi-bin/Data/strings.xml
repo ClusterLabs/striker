@@ -592,9 +592,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0253">Configuring IPMI</key>
 		<key name="row_0254">Backing up original files</key>
 		<key name="row_0255">Updating passwords</key>
-		<key name="row_0256">Start the cluster communication layer</key>
+		<key name="row_0256">Cluster membership first start</key>
 		<key name="row_0257"><![CDATA[Configuring <span class="code">root</span>'s SSH]]></key>
-		<key name="row_0258"></key>
+		<key name="row_0258">DRBD first start</key>
 		<key name="row_0259"></key>
 		<key name="row_0260"></key>
 		
@@ -925,12 +925,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>]]></key>
 		<key name="state_0081"><![CDATA[Failed to populate: <span class="highlight_detail">authorized_keys</span>]]></key>
 		<key name="state_0082"><![CDATA[Testing <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Concept.3B_Fencing" target="_new">fencing</span> failed! The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote><br />Please check your fence device(s) to ensure they've been configured properly.]]></key>
-		<key name="state_0083"></key>
-		<key name="state_0084"></key>
-		<key name="state_0085"></key>
-		<key name="state_0086"></key>
-		<key name="state_0087"></key>
-		<key name="state_0088"></key>
+		<key name="state_0083"><![CDATA[Failed to '<span class="highlight_detail">attach</span>' a resource. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0084"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0008!#</a>]]></key>
+		<key name="state_0085"><![CDATA[Failed to enter '<span class="highlight_detail">connect</span>' state. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0086">Entered connecting state but failed to connect</key>
+		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0088">Failed; Please see logs</key>
 		<key name="state_0089"></key>
 		<key name="state_0090"></key>
 		
@@ -1515,9 +1515,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0396"><![CDATA[I wasn't able to find enough free space to create either storage pool.<br />I need at least: [<span class="fixed_width">#!variable!minimum_space!#</span>] but I only have: [<span class="fixed_width">#!variable!available_space!#</span>].]]></key>
 		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
 		<key name="message_0398"><![CDATA[Configuration of DRBD (the replicated storage used in the #!string!brand_0003!#) failed.<br />This is core to the system, so the install will exit here.<br />#!string!brand_0011!#]]></key>
-		<key name="message_0399"><![CDATA[]]></key>
-		<key name="message_0400"><![CDATA[]]></key>
-		<key name="message_0401"><![CDATA[]]></key>
+		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
+		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
+		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
+		<key name="message_0402"><![CDATA[]]></key>
+		<key name="message_0403"><![CDATA[]]></key>
+		<key name="message_0404"><![CDATA[]]></key>
+		<key name="message_0405"><![CDATA[]]></key>
+		<key name="message_0406"><![CDATA[]]></key>
+		<key name="message_0407"><![CDATA[]]></key>
+		<key name="message_0408"><![CDATA[]]></key>
+		<key name="message_0409"><![CDATA[]]></key>
+		<key name="message_0410"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

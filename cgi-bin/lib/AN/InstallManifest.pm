@@ -300,6 +300,791 @@ sub configure_selinux
 	return($ok);
 }
 
+# This manually starts DRBD, forcing one to primary if needed, configures
+# clvmd, sets up the PVs and VGs, creates the /shared LV, creates the GFS2
+# partition and configures fstab.
+sub configure_storage_stage3
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage3()\n");
+	
+	my $return_code = 255;
+	
+	# Bring up DRBD
+	my ($drbd_ok) = drbd_first_start($conf);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drbd_ok: [$drbd_ok]\n");
+	
+	# Start clustered LVM
+	# Create PVs
+	# Create VGs
+	# Create LV for /shared
+	
+	# Create GFS2 partition
+	# Create /shared, mount partition
+	# Appeand gfs2 entry to fstab
+	# Check that /etc/init.d/gfs2 status works
+	
+	# Start rgmanager, make sure it comes up
+	# DONE!
+	
+	my $ok = 1;
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This is used by the stage-3 storage function to bring up DRBD
+sub drbd_first_start
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drbd_first_start()\n");
+	
+	my $return_code = 255;
+	
+	# Start DRBD manually and if both nodes are Inconsistent for a given resource, run;
+	# drbdadm -- --overwrite-data-of-peer primary <res>
+	# Get both to Primary/Primary
+	my ($node1_attach_rc, $node1_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_attach_rc, $node2_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_attach_rc: [$node1_attach_rc], node1_attach_message: [$node1_attach_message], node2_attach_rc: [$node2_attach_rc], node2_attach_message: [$node2_attach_message]\n");
+	# 0 == Success
+	# 1 == Failed to load kernel module
+	# 2 == One of the resources is Diskless
+	# 3 == Attach failed.
+	
+	# Ping variables
+	my $node1_ping_ok = "";
+	my $node2_ping_ok = "";
+	
+	# Connect variables
+	my $node1_connect_rc      = 255;
+	my $node1_connect_message = "";
+	my $node2_connect_rc      = 255;
+	my $node2_connect_message = "";
+	
+	# Primary variables
+	my $node1_primary_rc      = 255;
+	my $node1_primary_message = "";
+	my $node2_primary_rc      = 255;
+	my $node2_primary_message = "";
+	
+	# Time to work
+	if (($node1_attach_rc eq "0") && ($node2_attach_rc eq "0"))
+	{
+		# Make sure we can ping the peer node over the SN
+		($node1_ping_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node2_sn_ip});
+		($node2_ping_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node1_sn_ip});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ping_ok: [$node1_ping_ok], node2_ping_ok: [$node2_ping_ok]\n");
+		if (($node1_ping_ok) && ($node2_ping_ok))
+		{
+			# Both nodes have both of their resources attached and
+			# are pingable on the SN, connect them now.
+			($node1_connect_rc, $node1_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			($node2_connect_rc, $node2_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_connect_rc: [$node1_connect_rc], node1_connect_message: [$node1_connect_message], node2_connect_rc: [$node2_connect_rc], node2_connect_message: [$node2_connect_message]\n");
+			# 0 == OK
+			# 1 == Failed to connect
+			
+			# Finally, make primary
+			if ((not $node1_connect_rc) || (not $node2_connect_rc))
+			{
+				# Make sure both nodes are, indeed, connected.
+				my ($rc) = verify_drbd_resources_are_connected($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+				# 0 == OK
+				# 1 == Failed to connect
+				
+				if (not $rc)
+				{
+					# Check to see if both nodes are 
+					# 'Inconsistent'. If so, force node 1 to be
+					# primary to begin the initial sync.
+					my ($rc, $force_node1_r0, $force_node1_r1) = check_drbd_if_force_primary_is_needed($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], force_node1_r0: [$force_node1_r0], force_node1_r1: [$force_node1_r1]\n");
+					# 0 == Both resources found, safe to proceed
+					# 1 == One or both of the resources not found
+					
+					# This RC check is just a little paranoia
+					# before doing a potentially destructive call.
+					if (not $rc)
+					{
+						# Promote to primary!
+						($node1_primary_rc, $node1_primary_message) = do_drbd_primary_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $force_node1_r0, $force_node1_r1);
+						($node2_primary_rc, $node2_primary_message) = do_drbd_primary_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "0", "0");
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_primary_rc: [$node1_primary_rc], node1_primary_message: [$node1_primary_message], node2_primary_rc: [$node2_primary_rc], node2_primary_message: [$node2_primary_message]\n");
+						# 0 == OK
+						# 1 == Failed to make primary
+						if ((not $node1_primary_rc) || (not $node2_primary_rc))
+						{
+							# Woohoo!
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD promoted to 'Primary' on both nodes.\n");
+						}
+						else
+						{
+							$return_code = 5;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to promote to 'Primary'.\n");
+						}
+					}
+				}
+				else
+				{
+					$return_code = 4;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both resource failed to connect.\n");
+				}
+			}
+			else
+			{
+				$return_code = 3;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to enter connecting state.\n");
+			}
+		}
+		else
+		{
+			$return_code = 2;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to ping peer on SN.\n");
+		}
+	}
+	else
+	{
+		$return_code = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to attach.\n");
+	}
+	
+	# 0 == OK
+	# 1 == Attach failed
+	# 2 == Can't ping on SN
+	# 3 == Connect failed
+	# 4 == Both nodes entered connencted state but didn't actually connect
+	# 5 == Promotion to 'Primary' failed.
+	my $ok = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0014!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0014!#";
+	# Node messages are interleved
+	if ($return_code eq "1")
+	{
+		# Attach failed
+		if ($node1_attach_message)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = AN::Common::get_string($conf, {key => "state_0083", variables => { message => "$node1_attach_message" }});
+		}
+		if ($node2_attach_message)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = AN::Common::get_string($conf, {key => "state_0083", variables => { message => "$node2_attach_message" }});
+		}
+		if ((not $node1_attach_message) && (not $node2_attach_message))
+		{
+			# Neither node had an attach error, so set both to
+			# generic error state.
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0088!#";
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0088!#";
+		}
+		$ok = 0;
+	}
+	elsif ($return_code eq "2")
+	{
+		# Ping failed
+		if (not $node1_ping_ok)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0084!#";
+		}
+		if (not $node2_ping_ok)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0084!#";
+		}
+		if (($node1_ping_ok) && ($node2_ping_ok))
+		{
+			# Neither node had a ping error, so set both to
+			# generic error state.
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0088!#";
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0088!#";
+		}
+		$ok = 0;
+	}
+	elsif ($return_code eq "3")
+	{
+		# Connect failed
+		if ($node1_connect_message)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = AN::Common::get_string($conf, {key => "state_0085", variables => { message => "$node1_connect_message" }});
+		}
+		if ($node2_connect_message)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = AN::Common::get_string($conf, {key => "state_0085", variables => { message => "$node2_connect_message" }});
+		}
+		if ((not $node1_connect_message) && (not $node2_connect_message))
+		{
+			# Neither node had a connection error, so set both to
+			# generic error state.
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0088!#";
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0088!#";
+		}
+		$ok = 0;
+	}
+	elsif ($return_code eq "4")
+	{
+		# Entered 'Connect' state but didn't actually connect.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0086!#";
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0086!#";
+		$ok            = 0;
+	}
+	elsif ($return_code eq "5")
+	{
+		# Failed to promote.
+		if ($node1_primary_message)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = AN::Common::get_string($conf, {key => "state_0087", variables => { message => "$node1_primary_message" }});
+		}
+		if ($node2_primary_message)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = AN::Common::get_string($conf, {key => "state_0087", variables => { message => "$node2_primary_message" }});
+		}
+		if ((not $node1_primary_message) && (not $node2_primary_message))
+		{
+			# Neither node had a promotion error, so set both to
+			# generic error state.
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0088!#";
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0088!#";
+		}
+		$ok = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0258!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This connects to node 1 and checks to ensure both resource are in the
+# 'Connected' state
+sub verify_drbd_resources_are_connected
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_drbd_resources_are_connected()\n");
+	
+	# Give the previous start call a few seconds to take effect.
+	sleep 5;
+	
+	# Ok, go.
+	my $return_code  = 0;
+	my $r0_connected = 0;
+	my $r1_connected = 0;
+	my $shell_call   = "cat /proc/drbd";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^0: /)
+		{
+			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
+			if (($connected_state =~ /Connected/i) || ($connected_state =~ /Sync/i))
+			{
+				$r0_connected = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' is connected.\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' is NOT connected! The connection state is: [$connected_state].\n");
+			}
+		}
+		if ($line =~ /^1: /)
+		{
+			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
+			if (($connected_state =~ /Connected/i) || ($connected_state =~ /Sync/i))
+			{
+				$r1_connected = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' is connected.\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' is NOT connected! The connection state is: [$connected_state].\n");
+			}
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; r0_connected: [$r0_connected], r1_connected: [$r1_connected]\n");
+	if ((not $r0_connected) || (not $r1_connected))
+	{
+		$return_code = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both of the resources is not connected.\n");
+	}
+	
+	# 0 == Both resources found, safe to proceed
+	# 1 == One or both of the resources not found
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
+# This promotes the DRBD resources to Primary, forcing if needed.
+sub do_drbd_primary_on_node
+{
+	my ($conf, $node, $password, $force_r0, $force_r1) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_primary_on_node(); force_r0: [$force_r0], force_r1: [$force_r1]\n");
+	
+	# Resource 0
+	my $return_code = 0;
+	my $message     = "";
+	my $shell_call  = "drbdadm primary r0; echo rc:\$?";
+	if ($force_r0)
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r0' to 'Primary' and overwriting data on peer!\n");
+		$shell_call = "drbdadm -- --overwrite-data-of-peer primary r0; echo rc:\$?";
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				# Success!
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource 'r0' promoted to 'Primary' successfully.\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to promote resource 'r0' on node: [$node] to 'Primary'!\n");
+				$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
+				$return_code = 1;
+			}
+		}
+	}
+	
+	# Resource 1
+	$shell_call  = "drbdadm primary r1; echo rc:\$?";
+	if ($force_r0)
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r1' to 'Primary' and overwriting data on peer!\n");
+		$shell_call = "drbdadm -- --overwrite-data-of-peer primary r1; echo rc:\$?";
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				# Success!
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource 'r1' promoted to 'Primary' successfully.\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to promote resource 'r1' on node: [$node] to 'Primary'!\n");
+				$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
+				$return_code = 1;
+			}
+		}
+	}
+	
+	# If we're OK, call 'drbdadm adjust all' to make sure the requested
+	# sync rate takes effect.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	if (not $return_code)
+	{
+		my $shell_call = "drbdadm adjust all";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+	}
+	
+	# 0 == OK
+	# 1 == Failed to make primary
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], message: [$message]\n");
+	return($return_code, $message);
+}
+
+# This uses node 1 to check the Connected disk states of the resources are both
+# Inconsistent.
+sub check_drbd_if_force_primary_is_needed
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_drbd_if_force_primary_is_needed(); node: [$node]\n");
+	
+	my $return_code = 0;
+	my $found_r0    = 0;
+	my $force_r0    = 0;
+	my $force_r1    = 0;
+	my $found_r1    = 0;
+	my $shell_call  = "cat /proc/drbd";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^0: /)
+		{
+			# Resource found, check disk state, but
+			# unless it's "Diskless", we're already
+			# attached because unattached disks
+			# cause the entry
+			if ($line =~ /ds:(.*?)\/(.*?)\s/)
+			{
+				my $node1_ds = $1;
+				my $node2_ds = $2;
+				   $found_r0 = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' disk states; node1: [$node1_ds], node2: [$node2_ds]\n");
+				if (($node1_ds =~ /Inconsistent/i) && ($node2_ds =~ /Inconsistent/i))
+				{
+					$force_r0 = 1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' needs to be forced to primary.\n");
+				}
+				else
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Will NOT force 'r0' to primary.\n");
+				}
+			}
+		}
+		if ($line =~ /^1: /)
+		{
+			# Resource found, check disk state, but
+			# unless it's "Diskless", we're already
+			# attached because unattached disks
+			# cause the entry
+			if ($line =~ /ds:(.*?)\/(.*?)\s/)
+			{
+				my $node1_ds = $1;
+				my $node2_ds = $2;
+				   $found_r1 = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' disk states; node1: [$node1_ds], node2: [$node2_ds]\n");
+				if (($node1_ds =~ /Inconsistent/i) && ($node2_ds =~ /Inconsistent/i))
+				{
+					$force_r0 = 1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' needs to be forced to primary.\n");
+				}
+				else
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Will NOT force 'r1' to primary.\n");
+				}
+			}
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found_r0: [$found_r0], found_r1: [$found_r1]\n");
+	if ((not $found_r0) || (not $found_r1))
+	{
+		$return_code = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both of the resources was not found.\n");
+	}
+	
+	# 0 == Both resources found, safe to proceed
+	# 1 == One or both of the resources not found
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; force_r0: [$force_r0], force_r1: [$force_r1]\n");
+	return($return_code, $force_r0, $force_r1);
+}
+
+# This calls 'connect' of each resource on a node.
+sub do_drbd_connect_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_connect_on_node(); node: [$node]\n");
+	
+	my $message     = "";
+	my $return_code = 0;
+	foreach my $resource ("0", "1")
+	{
+		# See if the resource is already 'Connected' or 'WFConnection'
+		my $connected  = 0;
+		my $shell_call = "cat /proc/drbd";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^$resource: /)
+			{
+				# Try to connect the resource.
+				my $connection_state = ($line =~ /cs:(.*?)\//)[0];
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], connection state: [$connection_state]\n");
+				if ($connection_state =~ /StandAlone/i)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is stand-alone, will connect it.\n");
+					$connected = 0;
+				}
+				elsif ($connection_state)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is already in connection state: [$connection_state].\n");
+					$connected = 1;
+				}
+			}
+		}
+		
+		# Now connect if needed.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], connected: [$connected]\n");
+		if (not $connected)
+		{
+			my $shell_call = "drbdadm connect r$resource; echo rc:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /^rc:(\d+)/)
+				{
+					my $rc = $1;
+					if ($rc eq "0")
+					{
+						# Success!
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource] connected successfully.\n");
+					}
+					else
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to connect resource: [r$resource] on node: [$node]!\n");
+						$message .= AN::Common::get_string($conf, {key => "message_0401", variables => { resource => "r$resource", node => $node }});
+						$return_code = 1;
+					}
+				}
+			}
+		}
+	}
+	
+	# 0 == OK
+	# 1 == Failed to connect
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], message: [$message]\n");
+	return($return_code, $message);
+}
+
+# This attaches the backing devices on each node, modprobe'ing drbd if needed.
+sub do_drbd_attach_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_known_hosts_on_node(); node: [$node]\n");
+	
+	my $message     = "";
+	my $return_code = 0;
+	# First up, is the DRBD kernel module loaded?
+	my $shell_call = "if [ -e '/proc/drbd' ]; 
+			then 
+				echo 'DRBD already loaded'; 
+			else 
+				modprobe drbd; 
+				if [ -e '/proc/drbd' ]; 
+				then 
+					echo 'loaded DRBD kernel module'; 
+				else 
+					echo 'failed to load drbd' 
+				fi;
+			fi;";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /failed to load/i)
+		{
+			$return_code = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to load 'drbd' kernel module on node: [$node]\n");
+		}
+		elsif ($line =~ /already loaded/i)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] 'drbd' kernel module already loaded.\n");
+		}
+		elsif ($line =~ /loaded DRBD/i)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] 'drbd' kernel was loaded.\n");
+		}
+	}
+	
+	# If the module loaded, attach!
+	if (not $return_code)
+	{
+		foreach my $resource ("0", "1")
+		{
+			# We may not find the resource in /proc/drbd is the
+			# resource wasn't started before.
+			my $attached = 0;
+			my $shell_call = "cat /proc/drbd";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				$line =~ s/^\s+//;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /^$resource: /)
+				{
+					# Resource found, check disk state, but
+					# unless it's "Diskless", we're already
+					# attached because unattached disks
+					# cause the entry
+					my $disk_state = ($line =~ /ds:(.*?)\//)[0];
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], disk state: [$disk_state]\n");
+					if ($disk_state =~ /Diskless/i)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is diskless! This might be the sign of a failed array or disk.\n");
+						$message .= AN::Common::get_string($conf, {key => "message_0399", variables => { resource => "r$resource", node => $node }});
+						$attached = 2;
+					}
+					elsif ($disk_state)
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is already attached.\n");
+						$attached = 1;
+					}
+				}
+			}
+			
+			# Now attach if needed.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], attached: [$attached]\n");
+			if (not $attached)
+			{
+				my $shell_call = "drbdadm attach r$resource; echo rc:\$?";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /^rc:(\d+)/)
+					{
+						my $rc = $1;
+						if ($rc eq "0")
+						{
+							# Success!
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource] attached successfully.\n");
+						}
+						else
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to attach resource: [r$resource] on node: [$node]!\n");
+							$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r$resource", node => $node }});
+							$return_code = 3;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	# 0 == Success
+	# 1 == Failed to load kernel module
+	# 2 == One of the resources is Diskless
+	# 3 == Attach failed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], message: [$message]\n");
+	return($return_code, $message);
+}
+
 # This creates the root user's id_rsa keys and then populates
 # ~/.ssh/known_hosts on both nodes.
 sub configure_ssh
@@ -660,21 +1445,6 @@ sub get_node_rsa_public_key
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rsa_key: [$rsa_key]\n");
 	return($rsa_key);
-}
-
-# This manually starts DRBD, forcing one to primary if needed, configures
-# clvmd, sets up the PVs and VGs, creates the /shared LV, creates the GFS2
-# partition and configures fstab.
-sub configure_storage_stage3
-{
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage3()\n");
-	
-	my $ok = 1;
-	
-	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
-	return($ok);
 }
 
 # This checks that the nodes are ready to start cman and, if so, does so.
