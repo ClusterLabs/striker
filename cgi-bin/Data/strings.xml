@@ -595,8 +595,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0256">Cluster membership first start</key>
 		<key name="row_0257"><![CDATA[Configuring <span class="code">root</span>'s SSH]]></key>
 		<key name="row_0258">DRBD first start</key>
-		<key name="row_0259"></key>
-		<key name="row_0260"></key>
+		<key name="row_0259">Start Clustered LVM</key>
+		<key name="row_0260">Create Physical Volumes</key>
+		<key name="row_0261">Create Volume Groups</key>
+		<key name="row_0262">Create LV for cluster FS</key>
+		<key name="row_0263">Create Cluster Filesystem</key>
+		<key name="row_0264">Starting the storage service</key>
+		<key name="row_0265">Starting the hypervisor</key>
+		<key name="row_0266">Success!</key>
+		<key name="row_0267"></key>
+		<key name="row_0267"></key>
+		<key name="row_0269"></key>
+		<key name="row_0270"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -843,21 +853,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="suffix_0020"></key>
 		
 		<!-- These are 'state' messages and reflect the state of a given resource. -->
-		<key name="state_0001">unknown</key>
+		<key name="state_0001">Unknown</key>
 		<key name="state_0002">none</key> <!-- name used for a host when no node is found/available -->
 		<key name="state_0003">Running</key>
 		<key name="state_0004">Offline</key>
 		<key name="state_0005">Success</key>
 		<key name="state_0006">Not Ready</key>
-		<key name="state_0007">no disc</key>
+		<key name="state_0007">No disc</key>
 		<key name="state_0008">Error</key>
 		<key name="state_0009">Ready</key>
 		<key name="state_0010">Mounted</key>
 		<key name="state_0011">Unmounted</key>
 		<key name="state_0012">Foreign</key>
 		<key name="state_0013">Local</key>
-		<key name="state_0014">started</key>
-		<key name="state_0015">stopped</key>
+		<key name="state_0014">Started</key>
+		<key name="state_0015">Stopped</key>
 		<key name="state_0016">n/a</key> <!-- Not applicable -->
 		<key name="state_0017">OK</key>
 		<key name="state_0018">Failed</key>
@@ -876,7 +886,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0031">Network Remap Required</key>
 		<key name="state_0032">Network Remap Requested</key>
 		<key name="state_0033">Registered</key>
-		<key name="state_0034">Failed</key>
+		<key name="state_0034">Failed</key>	<!-- Duplicate of state_0018 -->
 		<key name="state_0035">Installed</key>
 		<key name="state_0036">Not Installed</key>
 		<key name="state_0037">Unable to proceed</key>
@@ -931,8 +941,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0086">Entered connecting state but failed to connect</key>
 		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
 		<key name="state_0088">Failed; Please see logs</key>
-		<key name="state_0089"></key>
-		<key name="state_0090"></key>
+		<key name="state_0089">Failed to format the logical volume as a gfs2 partition</key>
+		<key name="state_0090"><![CDATA[Failed to append '<span class="highlight_detail">/shared</span>' to '<span class="highlight_detail">/etc/fstab</span>']]></key>
+		<key name="state_0091"><![CDATA[Failed to mount '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0092"><![CDATA[GFS2 check of '<span class="highlight_detail">/shared</span>' failed]]></key>
+		<key name="state_0093"><![CDATA[Failed to create subdirectories under '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
+		<key name="state_0096">Timed out</key>
+		<key name="state_0097"></key>
+		<key name="state_0098"></key>
+		<key name="state_0099"></key>
+		<key name="state_0100"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1518,7 +1538,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
 		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
-		<key name="message_0402"><![CDATA[]]></key>
+		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step, if needed, is to <a href="?logo=true">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[]]></key>
 		<key name="message_0404"><![CDATA[]]></key>
 		<key name="message_0405"><![CDATA[]]></key>

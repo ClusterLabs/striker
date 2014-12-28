@@ -657,6 +657,7 @@ sub initialize_conf
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+				shared_subdirectories	=>	["definitions", "provision", "archive", "files"],
 			},
 		},
 		args			=>	{
@@ -682,6 +683,7 @@ sub initialize_conf
 			system_timezone		=>	"America/Toronto",
 			output			=>	"web",
 			reboot_timeout		=>	600,
+			clustat_timeout		=>	120,
 			pool1_shrunk		=>	0,
 			# This tells the install manifest generator how many
 			# ports to open on the IFN for incoming VNC connections
@@ -714,6 +716,7 @@ sub initialize_conf
 			# This is filled later and used to populate
 			# ~/.ssh/known_hosts on each node.
 			node_names		=>	[],
+			shared_fs_uuid		=>	"",
 		},
 		# Config values needed to managing strings
 		strings				=>	{

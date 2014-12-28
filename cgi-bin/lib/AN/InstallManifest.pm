@@ -279,25 +279,14 @@ sub run_new_install_manifest
 		# browser works for as long as possible.
 		set_passwords($conf) or return(1);
 		
-		# Configure selinux
-		configure_selinux($conf) or return(1);
+		# If we're not dead, it's time to celebrate!
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success");
 		
+		# Enough of that, now everyone go home.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	}
 	
 	return(0);
-}
-
-# This configures selinux (particularly on /shared to enable live migrations)
-sub configure_selinux
-{
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux()\n");
-	
-	my $ok = 1;
-	
-	
-	return($ok);
 }
 
 # This manually starts DRBD, forcing one to primary if needed, configures
@@ -308,29 +297,1358 @@ sub configure_storage_stage3
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage3()\n");
 	
-	my $return_code = 255;
+	my $ok = 1;
 	
 	# Bring up DRBD
 	my ($drbd_ok) = drbd_first_start($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drbd_ok: [$drbd_ok]\n");
 	
 	# Start clustered LVM
-	# Create PVs
-	# Create VGs
-	# Create LV for /shared
+	my $lvm_ok = 0;
+	if ($drbd_ok)
+	{
+		# This will create the /dev/drbd{0,1} PVs and create the VGs on
+		# them, if needed.
+		($lvm_ok) = setup_lvm_pv_and_vgs($conf);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lvm_ok: [$lvm_ok]\n");
+		
+		# Create GFS2 partition
+		my $gfs2_ok = 0;
+		if ($lvm_ok)
+		{
+			($gfs2_ok) = setup_gfs2($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; gfs2_ok: [$gfs2_ok]\n");
+			# Create /shared, mount partition
+			# Appeand gfs2 entry to fstab
+			# Check that /etc/init.d/gfs2 status works
+			
+			if ($gfs2_ok)
+			{
+				# Start gfs2 on both nodes, including
+				# subdirectories and SELinux contexts on
+				# /shared.
+				my ($configure_ok) = configure_gfs2($conf);
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ok: [$configure_ok]\n");
+			}
+		}
+	}
 	
-	# Create GFS2 partition
-	# Create /shared, mount partition
-	# Appeand gfs2 entry to fstab
-	# Check that /etc/init.d/gfs2 status works
-	
-	# Start rgmanager, make sure it comes up
-	# DONE!
-	
-	my $ok = 1;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	if ($ok)
+	{
+		# Start rgmanager, making sure it comes up
+		my ($node1_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($node2_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+		
+		# Go into a loop waiting for the rgmanager services to either
+		# start or fail.
+		my ($clustat_ok) = watch_clustat($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; clustat_ok: [$clustat_ok]\n");
+	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
+}
+
+# This watches clustat for up to 300 seconds for the storage and libvirt
+# services to start (or fail)
+sub watch_clustat
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watch_clustat(); node: [$node]\n");
+	
+	my $services_seen = 0;
+	my $n01_storage   = "";
+	my $n02_storage   = "";
+	my $n01_libvirtd  = "";
+	my $n02_libvirtd  = "";
+	my $abort_time    = time + $conf->{sys}{clustat_timeout};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; time: [".time."], abort_time: [$abort_time].\n");
+	until ($services_seen)
+	{
+		# Call and parse 'clustat'
+		my $shell_call = "clustat | grep service";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /service:(.*?) .*? (.*)?/)
+			{
+				my $service = $1;
+				my $state   = $2;
+				# If it's not started or failed, I am not
+				# interested in it.
+				next if (($state ne "failed") && ($state ne "started"));
+				if ($service eq "libvirtd_n01")
+				{
+					$n01_libvirtd = $state;
+				}
+				elsif ($service eq "libvirtd_n02")
+				{
+					$n02_libvirtd = $state;
+				}
+				elsif ($service eq "storage_n01")
+				{
+					$n01_storage = $state;
+				}
+				elsif ($service eq "storage_n02")
+				{
+					$n02_storage = $state;
+				}
+			}
+		}
+		
+		if (($n01_libvirtd) && ($n02_libvirtd) && ($n01_storage) && ($n02_storage))
+		{
+			# Seen them all, exit and then analyze
+			$services_seen = 1;
+			last;
+		}
+		
+		if (time > $abort_time)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Timed out waiting for clustat to show services.\n");
+			last;
+		}
+		sleep 2;
+	}
+	
+	my $ok = 1;
+	# Report on the storage as one line and then libvirtd as a second.
+	# Storage first
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0014!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0014!#";
+	# Node 1
+	if ($services_seen)
+	{
+		if ($n01_storage =~ /failed/)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0018!#";
+			$ok            = 0;
+		}
+		if ($n02_storage =~ /failed/)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0018!#";
+			$ok            = 0;
+		}
+	}
+	else
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0096!#";
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0096!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0264!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	# And now libvirtd
+	$node1_class   = "highlight_good_bold";
+	$node1_message = "#!string!state_0014!#";
+	$node2_class   = "highlight_good_bold";
+	$node2_message = "#!string!state_0014!#";
+	if ($services_seen)
+	{
+		if ($n01_libvirtd =~ /failed/)
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = "#!string!state_0018!#";
+			$ok            = 0;
+		}
+		if ($n02_libvirtd =~ /failed/)
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = "#!string!state_0018!#";
+			$ok            = 0;
+		}
+	}
+	else
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0096!#";
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0096!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0265!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This starts rgmanager on both a node
+sub start_rgmanager_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_rgmanager_on_node(); node: [$node]\n");
+	
+	my $ok = 1;
+	my $shell_call = "/etc/init.d/rgmanager start; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Started rgmanager successfully.\n");
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start rgmanager. The return code was: [$?]\n");
+				$ok = 0;
+			}
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This handles starting (and configuring) GFS2 on the nodes.
+sub configure_gfs2
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_gfs2()\n");
+	
+	my $ok = 1;
+	my ($node1_rc) = setup_gfs2_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = setup_gfs2_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+	# 0 = OK
+	# 1 = Failed to append to fstab
+	# 2 = Failed to mount
+	# 3 = GFS2 LBS status check failed.
+	# 4 = Failed to create subdirectories
+	# 5 = SELinux configuration failed.
+	# 6 = UUID for GFS2 partition not recorded
+	
+	# Report
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0029!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0029!#";
+	# Node 1
+	if ($node1_rc eq "1")
+	{
+		$node1_message = "#!string!state_0028!#";
+	}
+	elsif ($node1_rc eq "2")
+	{
+		# Failed to mount /shared
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0091!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "3")
+	{
+		# GFS2 LSB check failed
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0092!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "4")
+	{
+		# Failed to create subdirectory/ies
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0093!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "5")
+	{
+		# Failed to update SELinux context
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0094!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "6")
+	{
+		# Failed to update SELinux context
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0095!#";
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_rc eq "1")
+	{
+		$node2_message = "#!string!state_0028!#";
+	}
+	elsif ($node2_rc eq "2")
+	{
+		# Failed to mount /shared
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0091!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "3")
+	{
+		# GFS2 LSB check failed
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0092!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "4")
+	{
+		# Failed to create subdirectory/ies
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0093!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "5")
+	{
+		# Failed to update SELinux context
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0094!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "6")
+	{
+		# Failed to update SELinux context
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0095!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0259!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This will manually mount the GFS2 partition on the node, configuring
+# /etc/fstab in the process if needed.
+sub setup_gfs2_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2_on_node(); node: [$node]\n");
+	
+	# If I have the UUID, then check/set fstab
+	my $return_code = 0;
+	
+	# Make sure the '/shared' directory exists.
+	my $shell_call = "if [ -e '/shared' ];
+			then 
+				echo '/shared exists';
+			else 
+				mkdir /shared;
+				echo '/shared created'
+			fi";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+
+	# Append the gfs2 partition to /etc/fstab if needed.
+	if ($conf->{sys}{shared_fs_uuid})
+	{
+		my $append_ok    = 0;
+		my $fstab_string = "UUID=$conf->{sys}{shared_fs_uuid} /shared gfs2 defaults,noatime,nodiratime 0 0";
+		$shell_call   = "if \$(grep -q shared /etc/fstab)
+				then
+					echo 'shared exists'
+				else
+					echo \"$fstab_string\" >> /etc/fstab
+					if \$(grep -q shared /etc/fstab)
+					then
+						echo 'shared added'
+					else
+						echo 'failed to add shared'
+					fi
+				fi";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /failed to add/)
+			{
+				# Failed to append to fstab
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to append: [$fstab_string] to '/etc/fstab'.\n");
+				$return_code = 1;
+			}
+		}
+		
+		# Test mount using the 'mount' command
+		if ($return_code ne "1")
+		{
+			my $shell_call = "mount /shared; echo \$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /^rc:(\d+)/)
+				{
+					my $rc = $1;
+					if ($rc eq "0")
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfuly mounted '/shared'.\n");
+					}
+					else
+					{
+						# Failed to mount
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to mount '/shared', return code was: [$rc].\n");
+						$return_code = 2;
+					}
+				}
+			}
+			
+			# Finally, test '/etc/init.d/gfs2 status'
+			if ($return_code ne "2")
+			{
+				my $shell_call = "/etc/init.d/gfs2 status; echo \$?";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /^rc:(\d+)/)
+					{
+						my $rc = $1;
+						if ($rc eq "0")
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The GFS2 LSB script sees that '/shared' is mounted.\n");
+						}
+						else
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The GFS2 LSB script failed to see the '/shared' file system. The return code was: [$rc].\n");
+							$return_code = 3;
+						}
+					}
+				}
+			}
+		}
+		
+		# Create the subdirectories if asked
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code].\n");
+		if (not $return_code)
+		{
+			foreach my $directory (@{$conf->{path}{nodes}{shared_subdirectories}})
+			{
+				next if not $directory;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; directory: [$directory].\n");
+				my $shell_call = "if [ -e '/shared/$directory' ]
+						then
+							echo '/shared/$directory already exists'
+						else
+							mkdir /shared/$directory; echo rc:\$?
+						fi";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /^rc:(\d+)/)
+					{
+						my $rc = $1;
+						if ($rc eq "0")
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created '/shared/$directory' subdirectory.\n");
+						}
+						else
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create the '/shared/$directory' subdirectory. The return code was: [$rc].\n");
+							$return_code = 4;
+						}
+					}
+				}
+			}
+		}
+		
+		# Setup SELinux context on /shared
+		if (not $return_code)
+		{
+			my $shell_call = "context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+					if [ \$context == 'file_t' ];
+					then
+						semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
+						restorecon -r /shared
+						context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+						if [ \$context == 'virt_etc_t' ];
+						then
+							echo 'context updated'
+						else
+							echo \"context failed to update, still: \$context.\"
+						fi
+					else 
+						echo 'context ok';
+					fi";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /context updated/)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SElinux context on '/shared' updated.\n");
+				}
+				if ($line =~ /context ok/)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SElinux context on '/shared' was already ok.\n");
+				}
+				if ($line =~ /failed to update/)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to update SElinux context on '/shared'.\n");
+					$return_code = 5;
+				}
+			}
+		}
+	}
+	else
+	{
+		# Somehow got here without a UUID.
+		$return_code = 6;
+	}
+	
+	# 0 = OK
+	# 1 = Failed to append to fstab
+	# 2 = Failed to mount
+	# 3 = GFS2 LBS status check failed.
+	# 4 = Failed to create subdirectories
+	# 5 = SELinux configuration failed.
+	# 6 = UUID for GFS2 partition not recorded
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+} 
+
+# This checks for and creates the GFS2 /shared partition if necessary
+sub setup_gfs2
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2(); node: [$node]\n");
+	
+	my ($lv_ok) = create_shared_lv($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lv_ok: [$lv_ok]\n");
+	
+	# Now create the partition if the LV was OK
+	my $ok          = 1;
+	my $create_gfs2 = 1;
+	my $return_code = 0;
+	if ($lv_ok)
+	{
+		# Check if the LV already has a GFS2 FS
+		my $shell_call = "gfs2_tool sb /dev/$conf->{sys}{vg_pool1_name}/shared uuid; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /current uuid = (.*)$/)
+			{
+				# This will be useful later in the fstab stage
+				$conf->{sys}{shared_fs_uuid} = $1;
+				$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition exists on: [/dev/$conf->{sys}{vg_pool1_name}/shared] with UUID: [$conf->{sys}{shared_fs_uuid}]!\n");
+				$create_gfs2 = 0;
+			}
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					# GFS2 FS exists
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition exists!\n");
+					$create_gfs2 = 0;
+				}
+				else
+				{
+					# Doesn't appear to exist
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition doesn't exist, will create it.\n");
+					$create_gfs2 = 1;
+				}
+			}
+		}
+		
+		# Create the partition if needed.
+		if (($create_gfs2) && (not $conf->{sys}{shared_fs_uuid}))
+		{
+			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $conf->{cgi}{anvil_name}:shared /dev/$conf->{sys}{vg_pool1_name}/shared -O; echo rc:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				if ($line =~ /UUID:\s+(.*)$/)
+				{
+					# This will be useful later in the fstab stage
+					$conf->{sys}{shared_fs_uuid} = $1;
+					$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition created on: [/dev/$conf->{sys}{vg_pool1_name}/shared] with UUID: [$conf->{sys}{shared_fs_uuid}]!\n");
+					$create_gfs2 = 0;
+				}
+				if ($line =~ /^rc:(\d+)/)
+				{
+					my $rc = $1;
+					if ($rc eq "0")
+					{
+						# GFS2 FS created
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition created!\n");
+					}
+					else
+					{
+						# Format appears to have failed.
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 format of: [/dev/$conf->{sys}{vg_pool1_name}/shared] appears to have failed. The return code was: [$rc]\n");
+						$return_code = 2;
+					}
+				}
+			}
+		}
+		
+		# Back to working on both nodes.
+		
+		
+		# 0 == created
+		# 1 == Exists
+		# 2 == Format failed
+		my $ok = 1;
+		my $class   = "highlight_good_bold";
+		my $message = "#!string!state_0045!#";
+		if ($return_code == "1")
+		{
+			# Already existed
+			$message = "#!string!state_0020!#";
+		}
+		elsif ($return_code == "2")
+		{
+			# Format failed
+			$class   = "highlight_warning_bold";
+			$message = "#!string!state_0089!#";
+			$ok      = 0;
+		}
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+			row	=>	"#!string!row_0263!#",
+			class	=>	$class,
+			message	=>	$message,
+		});
+	}
+	else
+	{
+		# LV failed to create
+		$ok = 0;
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# The checks and, if needed, creates the LV for the GFS2 /shared partition
+sub create_shared_lv
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_shared_lv(); node: [$node]\n");
+	
+	my $return_code = 0;
+	my $create_lv   = 1;
+	my $shell_call  = "lvs --noheadings --separator ,; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc ne "0")
+			{
+				# pvs failed...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to check LVs. The 'lvs' call exited with return code: [$rc]\n");
+				$create_lv   = 0;
+				$return_code = 2;
+			}
+		}
+		if ($line =~ /^shared,/)
+		{
+			# Found the LV, pull out the VG
+			$conf->{sys}{vg_pool1_name} = ($line =~ /^shared,(.*?),/)[0];
+			$create_lv   = 0;
+			$return_code = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The LV for the shared GFS2 partition already exists on VG: [$conf->{sys}{vg_pool1_name}].\n");
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], create_lv: [$create_lv]\n");
+	if (($return_code ne "2") && ($create_lv))
+	{
+		# Create the LV
+		my $lv_size    =  AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size});
+		   $lv_size    =~ s/ //;
+		my $shell_call = "lvcreate -L $lv_size -n shared $conf->{sys}{vg_pool1_name}; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					# lvcreate succeeded
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully create the logical volume for the '/shared' GFS2 partition.\n");
+				}
+				else
+				{
+					# lvcreate failed
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating the logical volume for the '/shared' GFS2 partition failed. The 'lvcreate' return code was: [$rc]\n");
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	
+	# Report
+	my $ok = 1;
+	my $class   = "highlight_good_bold";
+	my $message = "#!string!state_0045!#";
+	if ($return_code == "1")
+	{
+		# Already existed
+		$message = "#!string!state_0020!#";
+	}
+	elsif ($return_code == "2")
+	{
+		# Failed to create the LV
+		$class   = "highlight_warning_bold";
+		$message = "#!string!state_0018!#";
+		$ok      = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+		row	=>	"#!string!row_0262!#",
+		class	=>	$class,
+		message	=>	$message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# The checks to see if either PV or VG needs to be created and does so if
+# needed.
+sub setup_lvm_pv_and_vgs
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_lvm_pv_and_vgs()\n");
+	
+	# Start 'clvmd' on both nodes.
+	my $return_code = 0;
+	my ($node1_rc) = start_clvmd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = start_clvmd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+	# 0 = Started
+	# 1 = Already running
+	# 2 = Failed
+	
+	my $ok            = 1;
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0014!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0014!#";
+	if ($node1_rc eq "1")
+	{
+		$node1_message = "#!string!state_0078!#";
+	}
+	elsif ($node1_rc eq "2")
+	{
+		# Failed to start clvmd
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0079!#";
+		$ok            = 0;
+	}
+	if ($node2_rc eq "1")
+	{
+		$node2_message = "#!string!state_0078!#";
+	}
+	elsif ($node2_rc eq "2")
+	{
+		# Failed to start clvmd
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0079!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0259!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	# =======
+	# Below here, we switch to displaying one status per line
+	
+	# PV messages
+	if (($node1_rc ne "2") && ($node2_rc ne "2"))
+	{
+		# Excellent, create the PVs if needed.
+		my ($pv_rc) = create_lvm_pvs($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pv_rc: [$pv_rc]\n");
+		# 0 == OK
+		# 1 == already existed
+		# 2 == Failed
+		
+		my $class   = "highlight_good_bold";
+		my $message = "#!string!state_0045!#";
+		if ($pv_rc == "1")
+		{
+			# Already existed
+			$message = "#!string!state_0020!#";
+		}
+		elsif ($pv_rc == "2")
+		{
+			# Failed create PV
+			$class   = "highlight_warning_bold";
+			$message = "#!string!state_0018!#";
+			$ok      = 0;
+		}
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+			row	=>	"#!string!row_0260!#",
+			class	=>	$class,
+			message	=>	$message,
+		});
+
+		# Now create the VGs
+		my $vg_rc = 0;
+		if ($pv_rc ne "2")
+		{
+			# Create the VGs
+			($vg_rc) = create_lvm_vgs($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vg_rc: [$vg_rc]\n");
+			# 0 == OK
+			# 1 == already existed
+			# 2 == Failed
+			
+			my $ok      = 1;
+			my $class   = "highlight_good_bold";
+			my $message = "#!string!state_0045!#";
+			if ($vg_rc == "1")
+			{
+				# Already existed
+				$message = "#!string!state_0020!#";
+			}
+			elsif ($vg_rc == "2")
+			{
+				# Failed create PV
+				$class   = "highlight_warning_bold";
+				$message = "#!string!state_0018!#";
+				$ok      = 0;
+			}
+			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+				row	=>	"#!string!row_0261!#",
+				class	=>	$class,
+				message	=>	$message,
+			});
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This creates the VGs if needed
+sub create_lvm_vgs
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_vgs(); node: [$node]\n");
+	
+	# If a VG name exists, use it. Otherwise, use the generated names
+	# below.
+	my ($node1_short_name)      = ($conf->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
+	my ($node2_short_name)      = ($conf->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
+	$conf->{sys}{vg_pool1_name} = "${node1_short_name}_vg0";
+	$conf->{sys}{vg_pool2_name} = "${node2_short_name}_vg0";
+	
+	# Check which, if any, VGs exist.
+	my $return_code = 0;
+	my $create_vg0  = 1;
+	my $create_vg1  = 1;
+	
+	# Calling 'pvs' again, but this time we're digging out the VG name
+	my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc ne "0")
+			{
+				# pvs failed...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to check which LVM PVs exist. The 'pvs' call exited with return code: [$rc]\n");
+				$create_vg0  = 0;
+				$create_vg1  = 0;
+				$return_code = 2;
+			}
+		}
+		if ($return_code ne "2")
+		{
+			if ($line =~ /\/dev\/drbd0,,/)
+			{
+				# VG on r0 doesn't exist, create it.
+				$create_vg0 = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 1 needs to be created.\n");
+			}
+			elsif ($line =~ /\/dev\/drbd0,(.*?),/)
+			{
+				# VG on r0 doesn't exist, create it.
+				$conf->{sys}{vg_pool1_name} = $1;
+				$create_vg0                 = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 1 was found, called: [$conf->{sys}{vg_pool1_name}].\n");
+			}
+			if ($line =~ /\/dev\/drbd1,,/)
+			{
+				# VG on r0 doesn't exist, create it.
+				$create_vg1 = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 2 needs to be created.\n");
+			}
+			elsif ($line =~ /\/dev\/drbd1,(.*?),/)
+			{
+				# VG on r0 doesn't exist, create it.
+				$conf->{sys}{vg_pool2_name} = $1;
+				$create_vg1                 = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 2 was found, called: [$conf->{sys}{vg_pool2_name}].\n");
+			}
+		}
+	}
+	
+	# Create the PVs if needed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_vg0: [$create_vg0], create_vg1: [$create_vg1]\n");
+	# PV for pool 1
+	if ($create_vg0)
+	{
+		my $shell_call = "vgcreate $conf->{sys}{vg_pool1_name} /dev/drbd0; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the pool 1 volume group: [$conf->{sys}{vg_pool1_name}] using the '/dev/drbd0' PV.\n");
+				}
+				else
+				{
+					# Created
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the pool 1 volume group: [$conf->{sys}{vg_pool1_name}] on the '/dev/drbd0' PVs. The 'vgcreate' call exited with return code: [$rc]\n");
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	# PV for pool 2
+	if ($create_vg1)
+	{
+		my $shell_call = "vgcreate $conf->{sys}{vg_pool2_name} /dev/drbd1; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the pool 2 volume group: [$conf->{sys}{vg_pool2_name}] using the '/dev/drbd1' PV.\n");
+				}
+				else
+				{
+					# Created
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the pool 2 volume group: [$conf->{sys}{vg_pool2_name}] on the '/dev/drbd1' PVs. The 'vgcreate' call exited with return code: [$rc]\n");
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	if (($return_code ne "2") && (not $create_vg0) && (not $create_vg1))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Both LVM VGs already existed.\n");
+		$return_code = 1;
+	}
+	
+	# 0 == OK
+	# 1 == already existed
+	# 2 == Failed
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
+# This creates the PVs if needed
+sub create_lvm_pvs
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_pvs(); node: [$node]\n");
+	
+	# Check which, if any, PVs exist.
+	my $return_code  = 0;
+	my $found_drbd0  = 0;
+	my $create_drbd0 = 1;
+	my $found_drbd1  = 0;
+	my $create_drbd1 = 1;
+	my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc ne "0")
+			{
+				# pvs failed...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to check which LVM PVs exist. The 'pvs' call exited with return code: [$rc]\n");
+				$create_drbd0 = 0;
+				$create_drbd1 = 0;
+				$return_code  = 2;
+			}
+		}
+		if ($line =~ /\/dev\/drbd0,/)
+		{
+			$found_drbd0  = 1;
+			$create_drbd0 = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The DRBD device '/dev/drbd0' is already a PV.\n");
+		}
+		if ($line =~ /\/dev\/drbd1,/)
+		{
+			$found_drbd1  = 1;
+			$create_drbd1 = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The DRBD device '/dev/drbd1' is already a PV.\n");
+		}
+	}
+	
+	# Create the PVs if needed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found_drbd0: [$found_drbd0], found_drbd1: [$found_drbd1]\n");
+	# PV for pool 1
+	if ($create_drbd0)
+	{
+		my $shell_call = "pvcreate /dev/drbd0; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the '/dev/drbd0' LVM PV.\n");
+				}
+				else
+				{
+					# Created
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the '/dev/drbd0' LVM PVs. The 'pvcreate' call exited with return code: [$rc]\n");
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	# PV for pool 2
+	if ($create_drbd1)
+	{
+		my $shell_call = "pvcreate /dev/drbd1; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the '/dev/drbd1' LVM PV.\n");
+				}
+				else
+				{
+					# Created
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the '/dev/drbd1' LVM PVs. The 'pvcreate' call exited with return code: [$rc]\n");
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	if (($found_drbd0) && ($found_drbd1))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Both LVM PVs already existed.\n");
+		$return_code = 1;
+	}
+	
+	# 0 == OK
+	# 1 == already existed
+	# 2 == Failed
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
+# This starts 'clvmd' on a node if it's not already running.
+sub start_clvmd_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_clvmd_on_node(); node: [$node]\n");
+	
+	my $return_code = 255;
+	my $shell_call  = "/etc/init.d/clvmd status &>/dev/null; 
+			if [ \$? == 3 ];
+			then 
+				/etc/init.d/clvmd start; echo rc:\$?;
+			else 
+				echo 'clvmd already running';
+			fi";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				# clvmd was started
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Started clvmd on: [$node]\n");
+				$return_code = 0;
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start clvmd on: [$node]\n");
+				$return_code = 2;
+			}
+		}
+		if ($line =~ /already running/i)
+		{
+			$return_code = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; clvmd was already running on: [$node]\n");
+		}
+	}
+	
+	# 0 = Started
+	# 1 = Already running
+	# 2 = Failed
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
 }
 
 # This is used by the stage-3 storage function to bring up DRBD
@@ -343,7 +1661,6 @@ sub drbd_first_start
 	
 	# Start DRBD manually and if both nodes are Inconsistent for a given resource, run;
 	# drbdadm -- --overwrite-data-of-peer primary <res>
-	# Get both to Primary/Primary
 	my ($node1_attach_rc, $node1_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_attach_rc, $node2_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_attach_rc: [$node1_attach_rc], node1_attach_message: [$node1_attach_message], node2_attach_rc: [$node2_attach_rc], node2_attach_message: [$node2_attach_message]\n");

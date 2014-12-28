@@ -1890,15 +1890,15 @@ sub create_install_manifest
 		{
 			# Do it.
 			$show_form = 0;
-			if ($conf->{cgi}{'do'} eq "new")
-			{
+# 			if ($conf->{cgi}{'do'} eq "new")
+# 			{
 				# New install
 				AN::InstallManifest::run_new_install_manifest($conf);
-			}
-			else
-			{
-				# Replacing a node.
-			}
+# 			}
+# 			else
+# 			{
+# 				# Replacing a node.
+# 			}
 		}
 		else
 		{
