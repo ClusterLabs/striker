@@ -31,7 +31,7 @@ rpm -ivh ./perl-Sub-Exporter-Progressive-0.001011-1.el6.noarch.rpm
 rpm -ivh ./perl-Proc-Background-1.10-1.el6.noarch.rpm
 rpm -ihv ./perl-Devel-GlobalDestruction-0.13-1.el6.noarch.rpm
 rpm -ihv ./perl-Class-Tiny-1.000-1.rhel6.noarch.rpm
-----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # SNMP components 
 #
 yum install perl-Digest-SHA1.x86_64
