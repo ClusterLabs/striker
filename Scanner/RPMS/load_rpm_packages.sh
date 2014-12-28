@@ -2,6 +2,7 @@
 # 8 Modules from RPMs
 
 
+yum install perl-Time-HiRes.x86_64
 yum install perl-Sub-Exporter.noarch
 yum install perl-Clone.x86_64 
 yum install perl-TermReadKey.x86_64 
