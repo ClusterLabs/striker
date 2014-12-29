@@ -36,7 +36,7 @@ use AN::Striker;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "AN::Cluster.pm";
-our $VERSION  = "1.1.7";
+our $VERSION  = "1.2.0 β";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.

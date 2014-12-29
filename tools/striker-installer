@@ -629,7 +629,27 @@ sub configure_iso_source
 			}
 			
 			# Ok, acquire it!
-			if ($conf->{switches}{'centos-iso'} =~ /:\/\//)
+			if ($conf->{switches}{'centos-iso'} eq "dvd")
+			{
+				print "- A RHEL ISO will be generated from the disk in the optical drive.\n";
+				my ($rc, $local_copy) = generate_iso($conf, "$conf->{directory}{centos_pxe_web}/x86_64/iso/", "centos");
+				# 0 == OK
+				# 1 == Rip failed.
+				# 2 == Wrong disk.
+				# 3 == Device not found
+				# 4 == No disc in drive
+				# 5 == Resulting image too small
+				if ($rc)
+				{
+					### Errors will already be reported.
+					exit(22);
+				}
+				else
+				{
+					# \o/
+				}
+			}
+			elsif ($conf->{switches}{'centos-iso'} =~ /:\/\//)
 			{
 				print "- CentOS ISO appears to be a URL, will attempt to download now...\n";
 				   $file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
@@ -762,7 +782,27 @@ sub configure_iso_source
 			}
 			
 			# Ok, acquire it!
-			if ($conf->{switches}{'rhel-iso'} =~ /:\/\//)
+			if ($conf->{switches}{'rhel-iso'} eq "dvd")
+			{
+				print "- A RHEL ISO will be generated from the disk in the optical drive.\n";
+				my ($rc, $local_copy) = generate_iso($conf, "$conf->{directory}{rhel_pxe_web}/x86_64/iso/", "rhel");
+				# 0 == OK
+				# 1 == Rip failed.
+				# 2 == Wrong disk.
+				# 3 == Device not found
+				# 4 == No disc in drive
+				# 5 == Resulting image too small
+				if ($rc)
+				{
+					### Errors will already be reported.
+					exit(22);
+				}
+				else
+				{
+					# \o/
+				}
+			}
+			elsif ($conf->{switches}{'rhel-iso'} =~ /:\/\//)
 			{
 				print "- RHEL ISO appears to be a URL, will attempt to download now...\n";
 				   $file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
@@ -865,6 +905,134 @@ sub configure_iso_source
 	print "- Done!\n\n";
 
 	return(0);
+}
+
+# This generates an ISO from the disc in an optical drive.
+sub generate_iso
+{
+	my ($conf, $output_directory, $distro) = @_;
+	
+	# 0 == OK
+	# 1 == Rip failed.
+	# 2 == Wrong disk.
+	# 3 == Device not found
+	# 4 == No disc in drive
+	# 5 == Resulting image too small
+	my $return_code = 0;
+	
+	# Some variables.
+	my $device      = "";
+	my $volume      = "";
+	my $file_name   = "";
+	
+	if ($distro eq "rhel")
+	{
+		print "- Generating a RHEL disk image from the DVD in the optical drive.\n";
+	}
+	elsif ($distro eq "centos")
+	{
+		print "- Generating a CentOS disk image from the DVD in the optical drive.\n";
+	}
+	# To divine the file name, and to confirm the disc is still available,
+	# I need to check the disc.
+	my $sc = "cd-info --dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
+	my $fh = IO::Handle->new();
+	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+	while(<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /CD location\s+:\s+(.*)/i)
+		{
+			$device = $1;
+		}
+		elsif ($line =~ /Volume\s+:\s+(.*)/i)
+		{
+			$volume = $1;
+		}
+		elsif ($line =~ /No medium found/i)
+		{
+			print "[ Error ] - No disc found in the optical drive.\n";
+			$return_code = 4;
+			last;
+		}
+		else
+		{
+			#print " cd-info:$line\n";
+		}
+	}
+	$fh->close;
+	
+	# Now make sure we're sane.
+	if (not $device)
+	{
+		print "[ Error ] - Unable to find an optical drive.\n";
+		$return_code = 3;
+	}
+	elsif ($volume)
+	{
+		if (($distro eq "rhel") && ($volume !~ /RHEL-6/i))
+		{
+			# Not a RHEL 6 disk.
+			$return_code = 2;
+			print "[ Error ] - Disk in drive is labelled: [$volume],\n";
+			print "[ Error ]   which does not appear to be a RHEL 6 disk.\n";
+		}
+		elsif (($distro eq "centos") && ($volume !~ /CentOS_6/))
+		{
+			# Not a CentOS 6 disk.
+			$return_code = 2;
+			print "[ Error ] - Disk in drive is labelled: [$volume],\n";
+			print "[ Error ]   which does not appear to be a CentOS 6 disk.\n";
+		}
+	}
+	
+	# Are we ready?
+	if (not $return_code)
+	{
+		# Yup!
+		print "- Creating image of optical disk.\n";
+		print "  Please be patient as this might take a few minutes.\n";
+		   $volume    =~ s/ /_/g;
+		   $file_name =  "$output_directory/$volume.iso";
+		my $iso_size  =  0;
+		my $sc        =  "dd if=$device of=$file_name bs=1M";
+		my $fh        =  IO::Handle->new();
+		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+		while(<$fh>)
+		{
+			chomp;
+			my $line =  $_;
+			if ($line =~ /^(\d+) bytes/)
+			{
+				$iso_size = $1;
+			}
+		}
+		$fh->close();
+		
+		# Make sure it's at least 50 MiB
+		if (-e $file_name)
+		{
+			if ($iso_size > 52428800)
+			{
+				# Looks good!
+				print "- Write complete!\n";
+			}
+			else
+			{
+				print "[ Error ] - Write appears to be too small.\n";
+				$return_code = 5;
+			}
+		}
+		else
+		{
+			print "[ Error ] - Write appears to have failed. The output file:\n";
+			print "[ Error ]   [$file_name] wasn't created.\n";
+			$return_code = 1;
+		}
+	}
+	
+	return($return_code, $file_name);
 }
 
 # Unmounts an ISO
@@ -4314,11 +4482,15 @@ SWITCHES
 	by apache at the top of the input box when asking the user for their 
 	credentials. If this is not set, "Striker Dashboard" will be used alone.
 
- --centos-iso <local path or URL>
+ --centos-iso <'none', 'dvd', local path or URL>
 
 	This is the local path or URL of the ISO to download for setting up the
 	CentOS PXE server installer options. If this is set to 'none', CentOS
-	will not be configured.
+	will not be configured. 
+	
+	If it is set to 'dvd', the disk in the optical drive will be converted
+	to an ISO and used. This option is very useful if you just installed
+	CentOS off of a physical DVD.
 
  -d <version>
 
@@ -4381,11 +4553,15 @@ SWITCHES
 	either a network path (http, https or ftp). Multiple repos can be
 	specified by using comma-separated URLs.
 
- --rhel-iso <local path or URL>
+ --rhel-iso <'none', 'dvd', local path or URL>
 
 	This is the local path or URL of the ISO to download for setting up the
 	Red Hat Enterprise Linux PXE server installer options. If this is set
-	to 'none', RHEL will not be configured.
+	to 'none', RHEL will not be configured. 
+	
+	If it is set to 'dvd', the disk in the optical drive will be converted
+	to an ISO and used. This option is very useful if you just installed
+	RHEL off of a physical DVD.
 
  --rhn user=foo,password=secret
 

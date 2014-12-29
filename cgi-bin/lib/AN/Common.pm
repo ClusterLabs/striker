@@ -674,7 +674,7 @@ sub initialize_conf
 			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.1.7",
+			version			=>	"1.2.0 β",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
