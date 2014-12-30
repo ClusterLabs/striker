@@ -411,6 +411,9 @@ if (not $conf->{sys}{skip_network})
 	# Make backups, of course.
 	backup_original_files($conf);
 	
+	# Freeze NetworkManager if it is running.
+	freeze_networkmanager($conf);
+	
 	# Make sure all NICs are up. If any aren't, start them.
 	start_all_nics($conf);
 	
@@ -456,17 +459,143 @@ exit(0);
 # Here be function!                                                           #
 ###############################################################################
 
+# This checks to see if NetworkManager is running and if the active interface
+# is NM_CONTROLLER="yes". If so, it sets it to 'no' and restarts NetworkManager
+sub freeze_networkmanager
+{
+	my ($conf) = @_;
+	
+	print "Checking if we need to freeze NetworkManager on the active interface.\n";
+	my $nm_running   = 0;
+	my $active_iface = "";
+	
+	my $shell_call = "/etc/init.d/NetworkManager status; echo rc:\$?";
+	#print "[ Debbug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#print "[ Debug ] - line: [$line]\n";
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				print "- NetworkManager is running, will examine interfaces.\n";
+				$nm_running = 1;
+			}
+			else
+			{
+				# '3' is stopped
+				print "- NetworkManager isn't running, freeze not needed.\n";
+			}
+		}
+	}
+	close $file_handle;
+	
+	my $freeze = {};
+	if ($nm_running)
+	{
+		# Check running interfaces for IP addresses, check their
+		# ifcfg-X file for 'NM_CONTROLLED' and see if it is 'yes'. If
+		# so, queue it up for switch to 'no'.
+		check_nic_states($conf);
+		foreach my $iface (sort {$a cmp $b} keys %{$conf->{nic}{by_name}})
+		{
+			# See if it is up already.
+			my $link_state = $conf->{nic}{by_name}{$iface}{link_state};
+			my $mac        = $conf->{nic}{by_name}{$iface}{mac};
+			my $ip         = $conf->{nic}{by_name}{$iface}{ip};
+			# Link states:
+			# 0 = Up no no link
+			# 1 = Up with link
+			# 2 = Down
+			
+			# I only care about the interface the user might be
+			# using to run the install, so if the NIC isn't up with
+			# an IP address, I can ignore it.
+			if (($link_state eq "1") && ($ip))
+			{
+				# Link is up. Check it's config file.
+				my $nm_controlled = "";
+				   $shell_call    = "cat $conf->{path}{network_configs}/ifcfg-$iface";
+				open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					#print "[ Debug ] - line: [$line]\n";
+					if ($line =~ /^NM_CONTROLLED=(.*)/)
+					{
+						$nm_controlled = $1;
+						$nm_controlled =~ s/"//;
+						$nm_controlled = lc($nm_controlled);
+						if ($nm_controlled =~ /yes/i)
+						{
+							$freeze->{$iface} = 1;
+						}
+					}
+				}
+			}
+			else
+			{
+				# These links we'll disable in NetworkManager
+				# now.
+				my $shell_call = "";
+			}
+		}
+		
+		# Now for each interface to freeze, switch 'ONBOOT' to yes,
+		# 'NM_CONTROLLED' to 'no' and then restart NetworkManager.
+		my $shell_call = "";
+		my $message    = "Freezing interfaces: ";
+		foreach my $iface (sort {$a cmp $b} keys %{$freeze})
+		{
+			my $nic_file    = "$conf->{path}{network_configs}/ifcfg-$iface";
+			   $shell_call .= "$conf->{executable}{sed} -i 's/ONBOOT=.*/ONBOOT=\"yes\"/\' $nic_file; ";
+			   $shell_call .= "$conf->{executable}{sed} -i 's/NM_CONTROLLED=.*/NM_CONTROLLED=\"no\"/\' $nic_file; ";
+			   $message    .= "$iface, ";
+		}
+		# If I had any, append the restart
+		if ($shell_call)
+		{
+			$message =~ s/, $//;
+			print "- $message\n";
+			print "- Note: Other interfaces may go down temporarily.\n";
+			$shell_call .= "/etc/init.d/NetworkManager stop; /etc/init.d/network start";
+			#print "[ Debbug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - line: [$line]\n";
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# Nothing needed to be frozen.
+			print "- No NICs needed to be frozen.\n";
+		}
+	}
+	print "Done\n\n";
+	
+	return(0);
+}
+
 # This adds a repo if it doesn't already exist.
 sub add_repo
 {
 	my ($conf) = @_;
 	
 	print "Adding custom repositories:\n";
-	print "[ Debug ] - repositories: [$conf->{switches}{r}]\n";
+	#print "[ Debug ] - repositories: [$conf->{switches}{r}]\n";
 	foreach my $url (split/,/, $conf->{switches}{r})
 	{
 		my $repo_file = ($url =~ /^.*\/(.*?)$/)[0];
-		print "[ Debug ] - repo_file: [$repo_file], url: [$url]\n";
+		#print "[ Debug ] - repo_file: [$repo_file], url: [$url]\n";
 		if (not $repo_file)
 		{
 			print "[ Error ] - Unable to parse repository file from path:\n";
@@ -483,7 +612,7 @@ sub add_repo
 		{
 			print "- Downloading: [$url]\n";
 			my $shell_call = "$conf->{executable}{curl} $url > $conf->{directory}{yum_repos}/$repo_file && $conf->{executable}{yum} clean all";
-			print "[ Debug ] - shell_call: [$shell_call]\n";
+			#print "[ Debbug ] - shell_call: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			print "==============================================================================\n";
 			while(<$file_handle>)
@@ -631,7 +760,7 @@ sub configure_iso_source
 			# Ok, acquire it!
 			if ($conf->{switches}{'centos-iso'} eq "dvd")
 			{
-				print "- A RHEL ISO will be generated from the disk in the optical drive.\n";
+				print "- A CentOS ISO will be generated from the disk in the optical drive.\n";
 				my ($rc, $local_copy) = generate_iso($conf, "$conf->{directory}{centos_pxe_web}/x86_64/iso/", "centos");
 				# 0 == OK
 				# 1 == Rip failed.
@@ -655,7 +784,7 @@ sub configure_iso_source
 				   $file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
 				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
-				print "[ Debug ] - shell_call: [$shell_call]\n";
+				#print "[ Debbug ] - shell_call: [$shell_call]\n";
 				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 				print "==============================================================================\n";
 				while(<$file_handle>)
@@ -785,7 +914,7 @@ sub configure_iso_source
 			if ($conf->{switches}{'rhel-iso'} eq "dvd")
 			{
 				print "- A RHEL ISO will be generated from the disk in the optical drive.\n";
-				my ($rc, $local_copy) = generate_iso($conf, "$conf->{directory}{rhel_pxe_web}/x86_64/iso/", "rhel");
+				(my $rc, $local_copy) = generate_iso($conf, "$conf->{directory}{rhel_pxe_web}/x86_64/iso/", "rhel");
 				# 0 == OK
 				# 1 == Rip failed.
 				# 2 == Wrong disk.
@@ -808,7 +937,7 @@ sub configure_iso_source
 				   $file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
 				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
-				print "[ Debug ] - shell_call: [$shell_call]\n";
+				#print "[ Debbug ] - shell_call: [$shell_call]\n";
 				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 				print "==============================================================================\n";
 				while(<$file_handle>)
@@ -935,10 +1064,9 @@ sub generate_iso
 	}
 	# To divine the file name, and to confirm the disc is still available,
 	# I need to check the disc.
-	my $sc = "cd-info --dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $shell_call = "cd-info --dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -961,7 +1089,7 @@ sub generate_iso
 			#print " cd-info:$line\n";
 		}
 	}
-	$fh->close;
+	close $file_handle;
 	
 	# Now make sure we're sane.
 	if (not $device)
@@ -992,43 +1120,57 @@ sub generate_iso
 	{
 		# Yup!
 		print "- Creating image of optical disk.\n";
-		print "  Please be patient as this might take a few minutes.\n";
-		   $volume    =~ s/ /_/g;
-		   $file_name =  "$output_directory/$volume.iso";
-		my $iso_size  =  0;
-		my $sc        =  "dd if=$device of=$file_name bs=1M";
-		my $fh        =  IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line =  $_;
-			if ($line =~ /^(\d+) bytes/)
-			{
-				$iso_size = $1;
-			}
-		}
-		$fh->close();
-		
-		# Make sure it's at least 50 MiB
+		$volume    =~ s/ /_/g;
+		$file_name =  "$output_directory/$volume.iso";
 		if (-e $file_name)
 		{
-			if ($iso_size > 52428800)
-			{
-				# Looks good!
-				print "- Write complete!\n";
-			}
-			else
-			{
-				print "[ Error ] - Write appears to be too small.\n";
-				$return_code = 5;
-			}
+			print "- Output file: [$file_name]\n";
+			print "  already exists, skipping ISO generation.\n";
 		}
 		else
 		{
-			print "[ Error ] - Write appears to have failed. The output file:\n";
-			print "[ Error ]   [$file_name] wasn't created.\n";
-			$return_code = 1;
+			print "  Please be patient as this might take a few minutes.\n";
+			my $iso_size   = 0;
+			my $shell_call = "dd if=$device of=$file_name bs=1M";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				#print "[ Debug ] - line: [$line]\n";
+				if ($line =~ /(\d+) bytes/)
+				{
+					$iso_size = $1;
+					#print "[ Debug ] - iso_size: [$iso_size]\n";
+				}
+			}
+			close $file_handle;
+			
+			# Make sure it's at least 50 MiB
+			if (-e $file_name)
+			{
+				#print "[ Debug ] - iso_size: [$iso_size]\n";
+				#	        3782213632
+				if ($iso_size > 52428800)
+				{
+					# Looks good!
+					print "- Output file: [$file_name]\n";
+					print "  Write complete!\n";
+				}
+				else
+				{
+					print "- Output file: [$file_name]\n";
+					print "[ Error ] - Write appears to be too small.\n";
+					$return_code = 5;
+				}
+			}
+			else
+			{
+				print "[ Error ] - Write appears to have failed. The output file:\n";
+				print "[ Error ]   [$file_name] wasn't created.\n";
+				$return_code = 1;
+			}
 		}
 	}
 	
@@ -1641,8 +1783,16 @@ sub manage_daemons
 	print "Configuring daemons to start/stop on boot and start/stop daemons.\n";
 	foreach my $daemon (@{$conf->{daemons}{disable}})
 	{
-		print "- Disabling: [$daemon] on boot and stopping it.\n";
 		my $shell_call = "$conf->{executable}{chkconfig} $daemon off && /etc/init.d/$daemon stop";
+		if ($daemon eq "NetworkManager")
+		{
+			$shell_call = "$conf->{executable}{chkconfig} $daemon off";
+			print "- Disabling: [$daemon] on boot but NOT stopping it.\n";
+		}
+		else
+		{
+			print "- Disabling: [$daemon] on boot and stopping it.\n";
+		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1658,8 +1808,17 @@ sub manage_daemons
 	}
 	foreach my $daemon (@{$conf->{daemons}{enable}})
 	{
-		print "- Enabling: [$daemon] on boot and (re)starting it.\n";
 		my $shell_call = "$conf->{executable}{chkconfig} $daemon on && /etc/init.d/$daemon restart";
+		if ($daemon eq "network")
+		{
+			# Checkconfig only
+			$shell_call = "$conf->{executable}{chkconfig} $daemon on";
+			print "- Enabling: [$daemon] on boot but NOT restarting it.\n";
+		}
+		else
+		{
+			print "- Enabling: [$daemon] on boot and (re)starting it.\n";
+		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -2211,7 +2370,7 @@ sub download_striker
 			{
 				$shell_call = "$conf->{executable}{unzip} $extract";
 			}
-			print "[ Debug ] - shell_call: [$shell_call]\n";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -3261,7 +3420,7 @@ sub configure_an_repo
 		print $file_handle "[an-repo]\n";
 		print $file_handle "name=AN! Repo for Anvil! stuff\n";
 		print $file_handle "baseurl=https://alteeve.ca/repo/el6/\n";
-		print $file_handle "enabled=0\n";
+		print $file_handle "enabled=1\n";
 		print $file_handle "gpgcheck=0\n";
 		print $file_handle "protect=1\n";
 		close $file_handle;
@@ -3846,7 +4005,7 @@ sub sanity_check_switches
 	{
 		print "[ Note ] - No network details given. Skipping Network config!\n";
 		my $shell_call = "$conf->{executable}{ip} addr show bcn-link1";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3855,7 +4014,7 @@ sub sanity_check_switches
 			{
 				$conf->{network}{bcn}{ip}      = $1;
 				$conf->{network}{bcn}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
-				print "[ Debug ] - BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]\n";
+				#print "[ Debug ] - BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]\n";
 			}
 		}
 		close $file_handle;
@@ -3948,7 +4107,7 @@ sub sanity_check_switches
 			print "\n ##############################################################################\n";
 			print " # [ Warning ] - Please do NOT use a git version in production!               #\n";
 			print " ##############################################################################\n\n";
-			sleep 5;
+			#sleep 5;
 		}
 		else
 		{
@@ -4024,15 +4183,16 @@ sub sanity_check_switches
 	# Make sure the --rhn' switch parses, if set.
 	if ($conf->{switches}{rhn})
 	{
-		if ($conf->{switches}{rhn} =~ /user=(.*)/)
+		if ($conf->{switches}{rhn} =~ /^(.*?):(.*)$/)
 		{
-			$conf->{sys}{rhn_user} =  $1;
-			$conf->{sys}{rhn_user} =~ s/,password=.*$//;
+			$conf->{sys}{rhn_user}     = $1;
+			$conf->{sys}{rhn_password} = $2;
 		}
-		if ($conf->{switches}{rhn} =~ /password=(.*)/)
+		else
 		{
-			$conf->{sys}{rhn_password} =  $1;
-			$conf->{sys}{rhn_password} =~ s/,user=.*$//;
+			print "[ Error ] - The Red Hat Network user name and password were not specified\n";
+			print "[ Error ]   correctly. Please use '--rhn \"<user>:<password>\".\n";
+			$bad_value = 1;
 		}
 	}
 	
@@ -4048,25 +4208,21 @@ sub sanity_check_dhcp
 	
 	$conf->{switches}{lease_start} = "";
 	$conf->{switches}{lease_end}   = "";
-	if ($conf->{switches}{p} =~ /lease-start=(\d+\.\d+\.\d+\.\d+)/)
+	if ($conf->{switches}{p} =~ /(\d+\.\d+\.\d+\.\d+):(\d+\.\d+\.\d+\.\d+)/)
 	{
 		$conf->{switches}{lease_start} = $1;
-	}
-	if ($conf->{switches}{p} =~ /lease-end=(\d+\.\d+\.\d+\.\d+)/)
-	{
-		$conf->{switches}{lease_end} = $1;
+		$conf->{switches}{lease_end}   = $2;
 	}
 	
 	if ((not $conf->{switches}{lease_start}) && (not $conf->{switches}{lease_end}))
 	{
 		print "[ Error ] - You need to specify the start and end IP lease range as\n";
-		print "[ Error ]   '-p lease-start=<start_ip>,lease-end=<end_ip>'\n";
+		print "[ Error ]   '-p <start_ip>:<end_ip>'\n";
 		$bad_value = 1;
 	}
 	elsif ((not $conf->{switches}{lease_start}) || (not $conf->{switches}{lease_end}))
 	{
-		print "[ Error ] - Both 'lease-start=<start_ip>,lease-end=<end_ip>' are needed with\n";
-		print "[ Error ]   the '-p' switch.\n";
+		print "[ Error ] - Both '<start_ip>:<end_ip>' are needed with the '-p' switch.\n";
 		$bad_value = 1;
 	}
 	
@@ -4538,14 +4694,14 @@ SWITCHES
 
 	This sets the host name of the Striker dashboard.
 
- -p lease-start=<start_ip>,lease-end=<end_ip>
+ -p <start_ip:end_ip>
  
 	This sets the DHCP range that this Striker dashboard will offer IPs on
 	for new machines being installed off of the local PXE server. If set to
 	'none', PXE will not be configured.
 
 	NOTE: This lease range must be in the BCN subet. We do not want to
-	      interfere with real DHCP servers on the IFN!
+	      interfere with existing DHCP servers on the IFN!
 
  -r <repo>
 
@@ -4563,13 +4719,13 @@ SWITCHES
 	to an ISO and used. This option is very useful if you just installed
 	RHEL off of a physical DVD.
 
- --rhn user=foo,password=secret
+ --rhn <user:password>
 
 	When installing on a RHEL server, these credentials can be passed to
 	add the machine to yout RHN account. If you do not pass this and if
 	your machine is not already activated, the install will fail.
 
- -u <striker user:password>
+ -u <user:password>
 
 	This is the user name and password to set for Striker. This will be
 	used in apache's htpasswd authentication and will be stored in the
@@ -4738,7 +4894,7 @@ sub select_nics
 		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		print "- Please unplug the interface you want to make:\n";
-		print "- [$say_nic]\n";
+		print "  [$say_nic]\n";
 		my $last_conflict = "";
 		while(1)
 		{
@@ -4847,6 +5003,7 @@ sub check_nic_states
 	my $this_iface      = "";
 	my $this_mac        = "";
 	my $this_link_state = "";
+	my $this_ip         = "";
 	my $shell_call = "$conf->{executable}{ip} addr";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -4878,6 +5035,10 @@ sub check_nic_states
 		$line =~ s/\s+$//;
 		if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
 		{
+			# Link states:
+			# 0 = Up no no link
+			# 1 = Up with link
+			# 2 = Down
 			$this_mac = $1;
 			#print "this_mac: [$this_mac]\n";
 			if ($this_link_state eq "DOWN")
@@ -4892,6 +5053,12 @@ sub check_nic_states
 			$conf->{nic}{mac}{$this_mac}{link_state}       = $this_link_state;
 			$conf->{nic}{by_name}{$this_iface}{link_state} = $this_link_state;
 			$conf->{nic}{by_name}{$this_iface}{mac}        = $this_mac;
+		}
+		if ($line =~ /inet (.*?)\/.*? brd/)
+		{
+			my $this_ip = $1;
+			$conf->{nic}{mac}{$this_mac}{ip}       = $this_ip;
+			$conf->{nic}{by_name}{$this_iface}{ip} = $this_ip;
 		}
 	}
 	close $file_handle;
@@ -4926,16 +5093,6 @@ sub check_nic_states
 		$conf->{nics}              = ["bcn-link1", "bcn-link2", "ifn-link1", "ifn-link2"];
 		$conf->{sys}{create_bonds} = 1;
 	}
-	
-	# If there are less than two NICs and the user is trying to configure
-	# the network, bail.
-# 	if ((not $conf->{sys}{skip_network}) && ($nic_count != 2))
-# 	{
-# 		print "[ Error ] - Found a total of: [$nic_count] NIC(s).\n";
-# 		print "[ Error ]   Two are needed for this program to work.\n";
-# 		print "[ Error ]   Merged networks are not supported by this tool.\n";
-# 		exit(4);
-# 	}
 	
 	$unplugged_macs =~ s/,$//;
 	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
