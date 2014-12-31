@@ -67,7 +67,8 @@ sub BUILD {
 
     # Reverse cache, look up mib label by oid number
     # Override with specified labels, when provided.
-    # Additionally accumulate list of oids for use in get_bulk_request.
+    # Accumulate list of oids for use in get_bulk_request.
+    # Allocate blank entries for storage of previous values.
     #
     my %prev;
     for my $target ( keys %{ $self->snmp()} ) {
@@ -86,17 +87,81 @@ sub BUILD {
 }
 
 sub eval_discrete_status {
-    my $tag = __PACKAGE__ . "eval_non_range_status() not implemented yet.";
+    my ( $tag,  $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
-    say $tag;
-    return ( 'DEBUG', $tag);
+    my ( $msg_args, $status, $newvalue ) = ( '' );
+    if ( $tag eq 'battery replace' ) {
+	$newvalue = $rec_meta->{values}{$value};
+	if ( $newvalue eq 'unneeded' ) {
+	    $status = 'OK';
+	}
+	elsif ( $newvalue eq 'needed' ) {
+	    $status = 'DEBUG';
+	    $msg_args = 'Battery requires replacement';
+	}
+	else {
+	    $status = 'DEBUG';
+	    $msg_args = "Unrecognized 'battery replace' value '$value'";
+	}
+    }
+    elsif ( $tag eq 'comms' ) {
+	$newvalue = $rec_meta->{values}{$value};
+	if ( $newvalue eq 'yes' ) {
+	    $status = 'OK';
+	}
+	elsif ( $newvalue eq 'no' ) {
+	    $status = 'DEBUG';
+	    $msg_args = 'Battery requires replacement';
+	}
+	else {
+	    $status = 'DEBUG';
+	    $msg_args = "Unrecognized 'battery replace' value '$value'";
+	}	
+    }
+    elsif ( $tag eq 'reason for last transfer' ) {
+	$newvalue = $rec_meta->{values}{$value};
+	if ( $prev_value
+	     && $prev_value ne $newvalue ) {
+	    $status = 'DEBUG';
+	    $msg_args = sprintf "reason for last transfer changed from '%s' => '%s'",
+                            $prev_value, $newvalue;
+	}
+	else {
+	    $status = 'OK';
+	}
+    }	
+    elsif ( $tag eq 'last self test date' ) {
+	if ( $prev_value
+	     && $prev_value ne $value ) {
+	    $status = 'DEBUG';
+	    $msg_args = sprintf "last self test date changed from  '%s' => '%s'",
+	    $rec_meta->{values}{$prev_value},
+	    $rec_meta->{values}{$value};
+	}
+	else {
+	    $status = 'OK'
+	}	
+    }
+    elsif ( $tag eq 'last self test result' ) {
+	if ( $value == 1 || $value == 4 ) {
+	    $status = 'OK';
+	}
+	else {
+	    $status = 'DEBUG';
+	    $msg_args = 'Last self-test result was not OK: ' . 
+                ([ undef, '', 'failed', 'invalid test' ])[$value];
+	}	
+    }
+   
+    return ( $status, $msg_args, $newvalue);
 }
 sub eval_rising_status {
-    my ( $tag,  $value, $rec_meta, $prev_status ) = @_;
+    my ( $tag,  $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
     my $h = ($rec_meta->{hysteresis} || 0) /2;
     
-    my ( $status, $msg_args );
+    my ( $msg_args, $status ) = ( '' );
+
     # 1) Previous status was OK, allow small overage before not OK
     #
     if ( $prev_status eq 'OK'
@@ -139,13 +204,14 @@ sub eval_rising_status {
 }
 
 sub eval_falling_status {
-    my ( $tag,  $value, $rec_meta, $prev_status ) = @_;
+    my ( $tag,  $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
     my $h = ($rec_meta->{hysteresis} || 0) /2;
     
     $value =~ s{(\d+).*}{$1};	# convert '43 minutes' => '43'
 
-    my ( $status, $msg_args );
+    my ( $msg_args, $status ) = ( '' );
+
     # 1) Previous status was OK, allow small underaage before not OK
     #
     if ( $prev_status eq 'OK'
@@ -184,16 +250,16 @@ sub eval_falling_status {
 	$status = 'DEBUG';
 	$msg_args = "'$tag' value '$value' outside expected ranges";
     }
-    return ( $status, $msg_args );
-
+    return ( $status, $msg_args, $value ); # store edited runtime remaining w/o 'minutes'
 }
 
 sub eval_nested_status {
-    my ( $tag,  $value, $rec_meta, $prev_status ) = @_;
+    my ( $tag,  $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
     my $h = ($rec_meta->{hysteresis} || 0) /2;
     
-    my ( $status, $msg_args );
+    my ( $msg_args, $status ) = ( '' );
+
     # 1) Previous status was OK, allow small overage before not OK
     #
     if ( $prev_status eq 'OK'
@@ -242,7 +308,7 @@ sub eval_nested_status {
 }
 
 sub eval_status {
-    my ( $tag,  $value, $rec_meta, $prev_status ) = @_;
+    my ( $tag,  $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
     return &eval_discrete_status
 	unless ( exists $rec_meta->{ok_min} ); # not range data.
@@ -260,89 +326,101 @@ sub eval_status {
 	     && $rec_meta->{warn_min} <= $rec_meta->{ok_min} );
 }
 
+sub process_all_oids {
+    my $self = shift;
+    my ( $received, $target, $metadata ) = @_;
+
+    my ( $info, $prev, $results ) = ( $self->snmp, $self->prev );
+
+    for my $oid ( keys %$received ) {
+	my $value    = $received->{$oid};
+	my $tag      = $metadata->{roid}{$oid};
+	my $rec_meta = $metadata->{$tag};
+	my $label    = $rec_meta->{label} || $tag;
+
+	my $prev_value  = $prev->{$target}{$tag}{value} || $value;
+	my $prev_status = $prev->{$target}{$tag}{status} || 'OK';
+
+	# Calculate status and message; convert numeric codes to strings.
+	#
+	my ( $status, $msg_args, $newvalue ) = eval_status( $tag, $value, $rec_meta,
+							    $prev_status, $prev_value );
+		
+	$results->{data}{$label}{value} = $newvalue || $value;
+	$results->{data}{$label}{status} = $status;
+	$results->{data}{$label}{msg_args} = $msg_args;
+
+	$prev->{$target}{$tag}{value} = $newvalue || $value;
+	$prev->{$target}{$tag}{status} = $status;
+    }
+    return $results;
+}
+
+sub snmp_connect {
+    my ( $metadata ) = @_;
+
+    my $meta;
+
+    @{$meta}{qw(name ip pw)} = @{$metadata}{qw(name ip community )};
+	
+      my ($session, $error) = Net::SNMP->session(
+	  -hostname  => $meta->{ip},
+	  -community => $meta->{pw},
+	  -version   => 'snmpv2c',
+	  );
+      if (!defined $session) {
+	  $meta->{status} = 'CRISIS';
+	  $meta->{msg_args} = 'Could not connect to Net::SNMP session: ' . $error;
+      }
+      return ($meta, $session);
+}
+
 sub query_target {
     my $self = shift;
 
-    
-    my %results;
+    my ($results, $session);
     my $info = $self->snmp;
-    my $prev = $self->prev;
-  TARGET:
+  TARGET:			# For each snmp target (1, 2, ... ) in the ini file
     for my $target ( keys %$info ) {
 	my $metadata = $info->{$target};
-	@{$results{$target}}{metadata}{qw( name ip pw)}
-	    = @{$metadata}{qw(name ip community )};
-	
-	my ($session, $error) = Net::SNMP->session(
-	    -hostname    => $results{$target}{ip},
-	    -community   => $results{$target}{pw},
-	    -version     => 'snmpv2c',
-	    );
-	if (!defined $session) {
-	    say 'ERROR: ', $error, '.';
-	    $results{$target}{data}{status} = 'CRISIS';
-	    $results{$target}{data}{args}   = 'Could not create Net::SNMP session';
-	    next TARGET;
-	}
 
-	my $received = $session->get_request(
-	    -varbindlist => $metadata->{oids},
-	    );
+	# Connect to the target, if possible.
+	#
+	( $results->{metadata}, $session ) = snmp_connect( $metadata );
+	next TARGET unless $session;
 
-	if (defined $received) {
-	    for my $oid ( keys %$received ) {
-		my $value = $received->{$oid};
-		my $tag = $metadata->{roid}{$oid};
-		my $rec_meta = $metadata->{$tag};
-		my $prev_value = $prev->{$target}{$tag}{value} || $value;
-		my $prev_status = $prev->{$target}{$tag}{status} || 'OK';
-		my $label = $rec_meta->{value} || $tag;
-
-		$results{$target}{data}{$label}{value} = $value;
-
-		my ( $status, $msg_args ) 
-		    = eval_status( $tag, $value, $rec_meta, $prev_status );
-		
-		$results{$target}{data}{$label}{status} = $status;
-		$results{$target}{data}{$label}{msg_args} = $msg_args;
-
-		$prev->{$target}{$tag}{value} = $value;
-		$prev->{$target}{$tag}{status} = $status;
-
-
-#		elsif ( $tag eq 'battery replace' ) {
-#		    if ( $rec_meta->{values}{$value} eq 'needed' ) {
-#			$results{$target}{data}{$label}{status} = 'DEBUG';
-#			$results{$target}{data}{$label}{msg_tag} = 'replace battery';
-#			$results{$target}{data}{$label}{msg_args}
-#			= sprintf "UPS '%s' at IP %s", $results{$target}{data}{name},
-#			                               $results{$target}{data}{ip};
-#		    }
-#		    else {
-#			$results{$target}{data}{$label}{status} = 'OK';
-#		    }
-	    }
-	}
-	else {
-	    say 'ERROR: ', $session->error, '.';
-	    $results{$target}{data}{status} = 'CRISIS';
-	    $results{$target}{data}{args}
-	        = 'Net::SNMP->get_bulk_request() failed: ' . $session->error;
-	    next TARGET;
-	}
+	# Fetch list of data
+	#
+	my $received = $session->get_request(-varbindlist => $metadata->{oids},);
 	$session->close;
+	
+	if ( not defined $received) {
+	    $results->{$target}{data}{status} = 'CRISIS';
+	    $results->{$target}{data}{args}
+                = 'Net::SNMP->get_bulk_request() failed: ' . $session->error;
+	    next TARGET;
+	}
 
-	say "Processes results here";
+	# Evaluate and classify data
+	#
+	$results->{$target} = $self->process_all_oids( $received, $target, $metadata );
     }
-	
-    return;
-	
+    return $results;
+}
+
+sub store_records {
+    my $self = shift;
+
+    my ( $records ) = @_;
+
+    say "store_records";
 }
 
 sub loop_core {
     my $self = shift;
 
-    $self->query_target();
+    my $results = $self->query_target;
+    $self->store_records( $results );
 
     return;
 }
