@@ -391,7 +391,7 @@ sub process_all_oids {
         # Calculate status and message; convert numeric codes to strings.
         #
         my ( $status, $msg_args, $newvalue )
-            = eval_status( $tag, $value, $rec_meta, $prev_status, $prev_value );
+            = $self->eval_status( $tag, $value, $rec_meta, $prev_status, $prev_value );
 
         $results->{data}{$label}{value}    = $newvalue || $value;
         $results->{data}{$label}{status}   = $status;
