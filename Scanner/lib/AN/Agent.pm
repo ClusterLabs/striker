@@ -103,15 +103,15 @@ sub insert_raw_record {
     my ( $value, $status, $msg_tag, $msg_args ) = @_;
 
     $self->dbs()->insert_raw_record(
-                                     { table => $self->datatable_name,
-                                       with_node_table_id => 'node_id',
-                                       args               => {
-                                                 value  => int $value,
-                                                 status => $status,
-						 msg_tag => $msg_tag,
-						 msg_args => $msg_args,
-                                               },
-                                     } );
+	{ table              => $self->datatable_name,
+	  with_node_table_id => 'node_id',
+	  args               => {
+	      value          => $value,
+	      status         => $status,
+	      msg_tag        => $msg_tag,
+	      msg_args       => $msg_args,
+	  },
+	} );
 }
 
 sub generate_random_record {

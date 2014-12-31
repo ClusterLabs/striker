@@ -19,6 +19,7 @@ use Time::HiRes qw( time alarm sleep );
 use DBI;
 
 use lib 'lib';
+use lib '../lib';
 use AN::Agent;
 
 use Const::Fast;

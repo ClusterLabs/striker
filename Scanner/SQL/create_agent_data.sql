@@ -1,3 +1,4 @@
+drop table if exists agent_data cascade;
 --
 -- PostgreSQL database dump
 --
@@ -22,7 +23,7 @@ SET default_with_oids = false;
 CREATE TABLE agent_data (
     id integer NOT NULL,
     node_id bigint,
-    value integer,
+    value text,
     status status,
     msg_tag text,
     msg_args text,
