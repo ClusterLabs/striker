@@ -1921,8 +1921,9 @@ sub create_install_manifest
 		}
 		elsif (not $conf->{cgi}{generate})
 		{
-			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = "xx"; }
-			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = "localdomain"; }
+			my ($default_prefix, $default_demain) = get_striker_prefix_and_domain($conf);
+			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = $default_prefix; }
+			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
 			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = "01"; }
 			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = "10.20.0.0"; }
 			if (not $conf->{cgi}{anvil_bcn_subnet})         { $conf->{cgi}{anvil_bcn_subnet}         = "255.255.0.0"; }
@@ -2045,6 +2046,28 @@ sub create_install_manifest
 	return(0);
 }
 
+# This parses this Striker dashboard's hostname and returns the prefix and
+# domain name.
+sub get_striker_prefix_and_domain
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
+	
+	my ($hostname) = get_hostname($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	
+	my $default_prefix = "";
+	if ($hostname =~ /^(\w+)-/)
+	{
+		$default_prefix = $1;
+		record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
+	}
+	my $default_demain = ($hostname =~ /\.(.*)$/)[0];
+	
+	record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
+	return($default_prefix, $default_demain);
+}
+
 # This reads in the passed in install manifest file name and loads it into the
 # appropriate cgi variables for use in the install manifest form.
 sub load_install_manifest
@@ -2078,7 +2101,7 @@ sub load_install_manifest
 							{
 								$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = $mac;
 							}
-							else
+							elsif ($mac)
 							{
 								# Malformed MAC
 								record($conf, "$THIS_FILE ".__LINE__."; Install Manifest: [$file], Node: [$node], interface: [$name] has a malformed MAC address: [$mac], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.\n");
@@ -2741,7 +2764,7 @@ sub show_existing_install_manifests
 {
 	my ($conf) = @_;
 	
-	print AN::Common::template($conf, "config.html", "install-manifest-header");
+	my $header_printed = 0;
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
 	while (my $file = readdir(DIR))
@@ -2749,6 +2772,11 @@ sub show_existing_install_manifests
 		next if (($file eq ".") or ($file eq ".."));
 		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+:\d+:\d+).xml/)
 		{
+			if (not $header_printed)
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-header");
+				$header_printed = 1;
+			}
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
@@ -2769,7 +2797,10 @@ sub show_existing_install_manifests
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
 		});
 	}
-	print AN::Common::template($conf, "config.html", "install-manifest-footer");
+	if ($header_printed)
+	{
+		print AN::Common::template($conf, "config.html", "install-manifest-footer");
+	}
 	
 	return(0);
 }
@@ -2890,9 +2921,10 @@ Striker Version: $conf->{sys}{version}
 		<switch>
 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" />
 ";
-	if ($conf->{cgi}{anvil_switch2_name} ne "--")
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
+	if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
 	{
-		print "			<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
+		$xml .= "\t\t\t<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
 	}
 	$xml .="
 		</switch>
@@ -2939,6 +2971,11 @@ Striker Version: $conf->{sys}{version}
 sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
+	
+	### NOTE: I don't think we need to ask the user this anymore. The 
+	###       installer is smart enough to use all the settings from an
+	###       existing node.
+	$conf->{cgi}{'do'} = "new";
 	
 	# Ask if we're replacing a failed node or doing a fresh install.
 	if (not $conf->{cgi}{'do'})
