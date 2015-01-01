@@ -21,7 +21,7 @@ use Module::Load;
 use Const::Fast;
 
 use Class::Tiny
-    qw( id msg_tag node_id status timestamp value db db_type pid ),
+    qw( id msg_tag node_id field value units status timestamp db db_type pid ),
     { msg_args => sub { [] },
       other    => sub { [] }, 
       handled  => sub { 0 },

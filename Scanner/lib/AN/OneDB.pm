@@ -27,7 +27,7 @@ sub BUILD {
     my ( $args ) = @_;
 
     $self->connect_dbs();
-    $self->register_start;
+    $self->register_start( $args->{node_args} || undef);
 }
 
 # ======================================================================
@@ -59,9 +59,9 @@ const my %SQL => (
     New_Process => <<"EOSQL",
 
 INSERT INTO node
-( node_name, node_description, pid, status, modified_user )
+( agent_name, agent_host, pid, status, modified_user, target_name, target_ip, target_type )
 values
-(  ?, ?, ?, ?, ? )
+(  ?, ?, ?, ?, ?, ?, ?, ? )
 
 EOSQL
 
@@ -222,13 +222,19 @@ sub connect_db {
 }
 
 sub register_start {
-    my ($self) = @_;
+    my $self = shift;
+
+    my ( $args ) = @_;
 
     my $hostname = AN::Unix::hostname '-short';
 
+    my ( $target_name, $target_ip, $target_type ) = ( 'ARRAY' eq ref $args ? @$args
+						      :                      ( '', '', '' )
+	);
     $self->node_table_id(
                  $self->log_new_process(
-                     $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM
+                     $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM,
+		     $target_name, $target_ip, $target_type
                                         ) );
     $self->start_process();
 }
@@ -262,7 +268,8 @@ sub generate_insert_sql {
     my $node_table_id_ref = $options->{with_node_table_id} || '';
     my $args              = $options->{args};
     my @fields            = sort keys %$args;
-    if ($node_table_id_ref) {
+    if ($node_table_id_ref 
+	&& not $args->{$node_table_id_ref}) {
         push @fields, $node_table_id_ref;
         $args->{$node_table_id_ref} = $self->node_table_id;
     }
@@ -319,8 +326,9 @@ sub generate_fetch_sql {
 SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM $tablename
 WHERE node_id = ?
+and timestamp > now() - interval '1 minute'
 ORDER BY timestamp desc
-limit 1;
+
 EOSQL
 
     return ($sql, $node_table_id);

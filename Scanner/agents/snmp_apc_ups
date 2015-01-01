@@ -66,7 +66,7 @@ sub process_args {
 
     GetOptions( $opt,       'dbini=s',    'rate=i',       'filepath=s',
                 'dbini=s',  'msg_file=s', 'metadata|o=s', 'run_until=s',
-                'snmpini=s', 'verbose!', 'man',        'help' )
+                'snmpini=s', 'verbose+', 'man',        'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
@@ -121,7 +121,9 @@ sub main {
     my $agent = AN::SNMP::APC_UPS->new( $options );
     $agent->create_flagfile();
 
-    my $status = $agent->run();
+    my @node_args = @{$agent->snmp()->{1}}{qw(name ip type)};
+
+    my $status = $agent->run( \@node_args );
 
     if ( $status eq 'clean shutdown' ) {
         $agent->shutdown();

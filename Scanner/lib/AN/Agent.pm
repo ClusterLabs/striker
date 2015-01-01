@@ -26,7 +26,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( datatable_name datatable_schema );
+use Class::Tiny qw( datatable_name alerts_table_name datatable_schema );
 
 # ======================================================================
 # CONSTANTS
@@ -36,6 +36,7 @@ const my $NEWLINE => qq{\n};
 
 const my $PROG    => ( fileparse($PROGRAM_NAME) )[0];
 const my $DATATABLE_NAME   => 'agent_data';
+const my $ALERTS_TABLE_NAME   => 'alerts';
 const my $DATATABLE_SCHEMA => <<"EOSCHEMA";
 
 id        serial primary key,
@@ -57,13 +58,9 @@ const my $UNDERSCORE   => q{_};
 sub BUILD {
     my $self = shift;
 
-    # avoid characters that DB dislikes in table name
-    #
-    my $name = $DATATABLE_NAME;
-    $name =~ s{$NOT_WORDCHAR}{$UNDERSCORE};
-    $self->datatable_name( $name );
-    
-    $self->datatable_schema( $DATATABLE_SCHEMA );
+    $self->datatable_name( $DATATABLE_NAME )        unless $self->datatable_name;
+    $self->alerts_table_name( $ALERTS_TABLE_NAME )  unless $self->alerts_table_name;
+    $self->datatable_schema( $DATATABLE_SCHEMA )    unless $self->datatable_schema;
 
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
@@ -75,9 +72,9 @@ sub BUILD {
 sub non_blank_lines {
     my ( $str ) = @_;
 
-    # split the string into lines
-    # accept any lines which have non-blank characters
-    # join lines back together into a 'paragraph'
+    # Split the string into lines, Accept any lines which have
+    # non-blank characters.  Join lines back together into a
+    # single 'paragraph'.
     #
     return join q{ }, grep {/\S/} split $NEWLINE, $str;
 }
@@ -91,7 +88,7 @@ sub dump_metadata {
 ${DUMP_PREFIX}name=$PROG
 ${DUMP_PREFIX}pid=$PID
 $dbs_dump
-${DUMP_PREFIX}datatable_name=@{[$self->datatable_name]}
+${DUMP_PREFIX}datatable_name=@{[$self->alerts_table_name]}
 ${DUMP_PREFIX}datatable_schema="$schema"
 EODUMP
 
@@ -100,18 +97,25 @@ EODUMP
 
 sub insert_raw_record {
     my $self = shift;
-    my ( $value, $status, $msg_tag, $msg_args ) = @_;
+    my ( $value, $units, $field, $status, $msg_tag, $msg_args ) = @_;
 
-    $self->dbs()->insert_raw_record(
-	{ table              => $self->datatable_name,
-	  with_node_table_id => 'node_id',
-	  args               => {
-	      value          => $value,
-	      status         => $status,
-	      msg_tag        => $msg_tag,
-	      msg_args       => $msg_args,
-	  },
-	} );
+    my $args = 	{ table              => $self->datatable_name,
+		  with_node_table_id => 'node_id',
+		  args               => {
+		      value          => $value,
+		      units          => $units,
+		      field          => $field,
+		      status         => $status,
+		      msg_tag        => $msg_tag,
+		      msg_args       => $msg_args,
+		  },
+    };
+    $self->dbs()->insert_raw_record( $args );
+
+    if ( $status ne 'OK' ) {
+	$args->{table} = $self->alerts_table_name;
+	$self->dbs()->insert_raw_record( $args );
+    }
 }
 
 sub generate_random_record {
@@ -133,7 +137,7 @@ sub generate_random_record {
 
     say scalar localtime(), ": $PROG -> $status, $msg_tag"
 	if $self->verbose;
-    $self->insert_raw_record( $value, $status, $msg_tag, $msg_args );
+    $self->insert_raw_record( $value, 'a num', 'random values', $status, $msg_tag, $msg_args );
     $first = 0;
     return;
 }
@@ -147,9 +151,11 @@ sub loop_core {
 sub run {
     my $self = shift;
 
+    my ( $node_args ) = @_;
+
     # initialize.
     #
-    $self->connect_dbs();
+    $self->connect_dbs( $node_args );
     $self->create_marker_file( AN::FlagFile::get_tag('METADATA'),
                                $self->dump_metadata );
     

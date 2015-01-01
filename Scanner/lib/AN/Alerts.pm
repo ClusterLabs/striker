@@ -188,12 +188,15 @@ sub extract_time_and_modify_array {
 }
 sub set_alert {
     my $self = shift;
-    my ( $id, $src, $level, $msg_tag, $msg_args, @others ) = @_;
+    my ( $id, $src, $field, $value, $units, $level, $msg_tag, $msg_args, @others ) = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others); 
     my $args = { id        => $id,
 		 pid       => $src,
                  timestamp => $timestamp,
+		 field     => $field,
+		 value     => $value,
+		 units     => $units, 
                  status    => $level,
                  msg_tag   => $msg_tag,
                  msg_args  => $msg_args,
@@ -251,7 +254,7 @@ sub format_msg {
     my $agent = $self->agents()->{ $alert->pid };
     my $msg_w_args
         = $alert->msg_args
-        ? sprintf $msg, @{ $alert->msg_args }
+        ? sprintf $msg, split ';', $alert->msg_args
         : $msg;
     my $other = join ' : ', @{ $alert->other };
     

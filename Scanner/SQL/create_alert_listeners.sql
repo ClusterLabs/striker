@@ -82,13 +82,14 @@ END;
 $$
 LANGUAGE plpgsql;
 
- ALTER FUNCTION history_alert_listeners() OWNER TO alteeve;
+ALTER FUNCTION history_alert_listeners() OWNER TO alteeve;
 
 \echo Create trigger trigger_alert_listeners using function history_alert_listeners
 
-CREATE TRIGGER trigger_alert_listeners 
-AFTER INSERT OR UPDATE ON alert_listeners 
-FOR EACH ROW EXECUTE PROCEDURE history_alert_listeners();
+--CREATE TRIGGER trigger_alert_listeners 
+--AFTER INSERT OR UPDATE ON alert_listeners 
+--FOR EACH ROW EXECUTE PROCEDURE history_alert_listeners();
+
 
 \echo All done!
 

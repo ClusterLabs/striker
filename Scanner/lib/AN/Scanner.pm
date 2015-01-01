@@ -441,8 +441,12 @@ sub check_for_previous_instance {
 
 sub connect_dbs {
     my $self = shift;
+    my ( $node_args ) = @_;
 
-    $self->dbs( AN::DBS->new( { path => { config_file => $self->dbini } } ) );
+    my $args = { path => { config_file => $self->dbini} };
+    $args->{node_args} = $node_args if $node_args;
+
+    $self->dbs( AN::DBS->new( $args ) );
     return;
 }
 
@@ -702,6 +706,9 @@ sub detect_status {
     else {
 	my @args = ( $db_record->id,
 		     $process->{db_data}{pid},
+		     $db_record->field,
+		     $db_record->value,
+		     $db_record->units,
 		     $db_record->status,
 		     $db_record->msg_tag,
 		     $db_record->msg_args,
@@ -720,10 +727,13 @@ sub process_agent_data {
 
     say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
-        my $agent_data = $self->fetch_alert_data($process);
-	say "agent_data has @{[scalar @$agent_data]} records." if $self->verbose;
-	$self->detect_status( $process, $agent_data->[0] );
+        my $alerts = $self->fetch_alert_data($process);
+	say "agent_data has @{[scalar @$alerts]} records." if $self->verbose;
+	for my $alert ( @$alerts ) {
+	    $self->detect_status( $process, $alert );
+	}
     }
+    return;
 }
 
 

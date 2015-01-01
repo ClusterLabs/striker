@@ -26,7 +26,11 @@ use Class::Tiny qw( path dbini dbs);
 
 sub BUILD {
     my $self = shift; 
-    $self->connect_dbs();
+    my ( $args ) = @_;
+
+    my $extra_args = exists $args->{node_args} ? $args->{node_args} : undef;
+
+    $self->connect_dbs( $extra_args );
 }
 
 # ======================================================================
@@ -63,6 +67,8 @@ sub add_db {
 sub connect_dbs {
     my $self = shift;
 
+    my ( $extra_args ) = @_;
+
     my %cfg = ( path => $self->path );
     AN::Common::read_configuration_file( \%cfg );
 
@@ -70,7 +76,10 @@ sub connect_dbs {
 
     $self->dbs( [] );
     for my $tag ( sort keys %{ $self->dbini } ) {
-        $self->add_db( AN::OneDB->new( { dbini => $self->dbini->{$tag} } ) );
+
+        $self->add_db( AN::OneDB->new( { dbini     => $self->dbini->{$tag},
+					 node_args => $extra_args
+				       } ) );
     }
 
 }
