@@ -24,9 +24,12 @@ ALTER SCHEMA history OWNER to alteeve;
 
 CREATE TABLE node (
 node_id		serial	primary key ,
-node_name	text	not null,-- I break the short name off of the FQDN
-node_description text,
+agent_name	text	not null,-- I break the short name off of the FQDN
+agent_host      text,
 pid             int,
+target_name     text,
+target_type     text,
+target_ip       text,
 status          text,
 modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
@@ -38,9 +41,12 @@ ALTER TABLE node OWNER TO alteeve;
 
 CREATE TABLE history.node (
 node_id		bigint,
-node_name	text	not null,	-- I break the short name off of the FQDN
-node_description text,
+agent_name	text	not null,	-- I break the short name off of the FQDN
+agent_host      text,
 pid             int,
+target_name     text,
+target_type     text,
+target_ip       text,
 status          text,
 history_id	serial  primary key,
 modified_user	int	not null,
@@ -59,16 +65,22 @@ BEGIN
 	SELECT INTO hist_node * FROM node WHERE node_id=new.node_id;
 	INSERT INTO history.node
 		(node_id,
-		 node_name,
-		 node_description,
+		 agent_name,
+		 agent_host,
                  pid,
+		 target_name,
+                 target_type,
+                 target_ip,
 		 status,
 		 modified_user)
 	VALUES
 		(hist_node.node_id,
-		 hist_node.node_name,
-		 hist_node.node_description,
+		 hist_node.agent_name,
+		 hist_node.agent_host,
                  hist_node.pid,
+                 hist_node.target_name,
+                 hist_node.target_type,
+                 hist_node.target_ip
 		 hist_node.status,
 		 hist_node.modified_user);
 	RETURN NULL;
