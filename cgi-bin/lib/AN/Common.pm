@@ -695,22 +695,22 @@ sub initialize_conf
 			update_os		=>	1,
 			daemons			=>	{
 				enable			=>	[
-					"gpm",
-					"ipmi",
-					"iptables",
-					"modclusterd",
-					"network",
-					"ntpd",
-					"ricci",
+					"gpm",		# LSB compliant
+					"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
+					"iptables",	# LSB compliant
+					"modclusterd",	# LSB compliant
+					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
+					"ntpd",		# LSB compliant
+					"ricci",	# LSB compliant
 				],
 				disable		=>	[
-					"clvmd",
-					"cman",
-					"drbd",
-					"gfs2",
-					"ip6tables",
-					"kdump",
-					"rgmanager",
+					"clvmd",	# Appears to be LSB compliant
+					"cman",		# 
+					"drbd",		# 
+					"gfs2",		# 
+					"ip6tables",	# 
+					"kdump",	# 
+					"rgmanager",	# 
 				],
 			},
 			# This is filled later and used to populate

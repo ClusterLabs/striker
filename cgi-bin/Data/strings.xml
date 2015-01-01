@@ -54,7 +54,7 @@
 		<key name="button_0047">Generate</key>
 		<key name="button_0048">Load</key>
 		<key name="button_0049">Run</key>
-		<key name="button_0050">New Install</key>	<!-- Also used as a row value -->
+		<key name="button_0050">Please Note</key>
 		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
 		<key name="button_0052">Begin Install</key>
 		<key name="button_0053">Install</key>
@@ -591,7 +591,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0252">Configure Daemons</key>
 		<key name="row_0253">Configuring IPMI</key>
 		<key name="row_0254">Backing up original files</key>
-		<key name="row_0255">Updating passwords</key>
+		<key name="row_0255"><![CDATA[Updating <span class="code">root</span>'s passwords]]></key>
 		<key name="row_0256">Cluster membership first start</key>
 		<key name="row_0257"><![CDATA[Configuring <span class="code">root</span>'s SSH]]></key>
 		<key name="row_0258">DRBD first start</key>
@@ -603,8 +603,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0264">Starting the storage service</key>
 		<key name="row_0265">Starting the hypervisor</key>
 		<key name="row_0266">Success!</key>
-		<key name="row_0267"></key>
-		<key name="row_0267"></key>
+		<key name="row_0267"><![CDATA[Updating <span class="code">ricci</span>'s passwords]]></key>
+		<key name="row_0268"></key>
 		<key name="row_0269"></key>
 		<key name="row_0270"></key>
 		
@@ -1487,12 +1487,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
 		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
 		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
-		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, select which node to run the installer against.]]></key>
+		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />It's data will be used to populate the other node (overriding manifest values as needed).]]></key>
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
 		<key name="message_0353">Are you replacing a node in an existing #!string!brand_0004!#?</key>
 		<key name="message_0354"><![CDATA[If so, please select "<span class="highlight_ready_bold">#!string!button_0051!#</span>" below.<br /><br />The other node must be online and reachable. It will be queried and if anything in the install manifest does not match up with what is found on the peer, the peer's values will be used.]]></key>
 		<key name="message_0355"><![CDATA[If this is a fresh install, please select "<span class="highlight_ready_bold">#!string!button_0050!#</span>" below.<br /><br />Both nodes must be available for the configuration to run. Storage will be initialized, causing <span class="highlight_warning_bold">any existing data to be lost</span>, on node 1 and fresh configuration files will be written.]]></key>
-		<key name="message_0356"><![CDATA[Both nodes will be configured, new configuration files will be written and <span class="highlight_warning_bold">any existing data will be erased</span>.]]></key>
+		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
 		<key name="message_0358"><![CDATA[The [<span class="fixed_width">#!variable!node!#</span>] node's ssh fingerprint conflicts with another recorded key.<br />The problem is in the file: [<span class="fixed_width">#!variable!file!#</span>] at line: [<span class="fixed_width">#!variable!line!#</span>].<br /><br />#!string!brand_0011!#]]></key>
 		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>

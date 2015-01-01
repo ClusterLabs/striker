@@ -243,6 +243,9 @@ sub run_new_install_manifest
 		# Configure daemons
 		configure_daemons($conf) or return(1);
 		
+		# Set the ricci password
+		set_ricci_password($conf) or return(1);
+		
 		# Write out the cluster configuration file
 		configure_cman($conf) or return(1);
 		
@@ -275,9 +278,9 @@ sub run_new_install_manifest
 		# /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
 		
-		# Set passwords as the last step to ensure reloading the
-		# browser works for as long as possible.
-		set_passwords($conf) or return(1);
+		# Set the root user's passwords as the last step to ensure
+		# reloading the browser works for as long as possible.
+		set_root_password($conf) or return(1);
 		
 		# If we're not dead, it's time to celebrate!
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success");
@@ -3183,11 +3186,65 @@ sub ping_node_from_other
 	return($success);
 }
 
-# This sets the 'root' and 'ricci' user passwords.
-sub set_passwords
+# This sets the 'ricci' user's passwords.
+sub set_ricci_password
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_passwords()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_ricci_password()\n");
+	
+	# Reloading the browser won't work after this step, so warn the user.
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
+		message	=>	AN::Common::get_string($conf, {key => "explain_0142", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
+	});
+	
+	### NOTE: For now, ricci and root passwords are set to the same thing.
+	###       This might change later, so this function is designed to
+	###       support different passwords.
+	# Set the passwords on the nodes.
+	my $ok = 1;
+	my ($node1_ricci_pw) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "ricci", $conf->{cgi}{anvil_password});
+	my ($node2_ricci_pw) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "ricci", $conf->{cgi}{anvil_password});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ricci_pw: [$node1_ricci_pw], node2_ricci_pw: [$node2_ricci_pw]\n");
+	
+	# Test the new password.
+	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_access: [$node1_access], node2_access: [$node2_access]\n");
+	
+	# If both nodes are accessible, we're golden.
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0073!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0073!#";
+	if (not $node1_access)
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0074!#",
+		$ok            = 0;
+	}
+	if (not $node2_access)
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0074!#",
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0267!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This sets the 'root' user's passwords.
+sub set_root_password
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_root_password()\n");
 	
 	# Reloading the browser won't work after this step, so warn the user.
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
@@ -3200,8 +3257,8 @@ sub set_passwords
 	# Set the passwords on the nodes.
 	my $ok = 1;
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_node1_current_password: [$conf->{cgi}{anvil_node1_current_password}], cgi::anvil_node2_current_password: [$conf->{cgi}{anvil_node2_current_password}]\n");
-	($conf->{cgi}{anvil_node1_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_password}, $conf->{cgi}{anvil_password});
-	($conf->{cgi}{anvil_node2_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_password}, $conf->{cgi}{anvil_password});
+	($conf->{cgi}{anvil_node1_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "root", $conf->{cgi}{anvil_password});
+	($conf->{cgi}{anvil_node2_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "root", $conf->{cgi}{anvil_password});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_node1_current_password: [$conf->{cgi}{anvil_node1_current_password}], cgi::anvil_node2_current_password: [$conf->{cgi}{anvil_node2_current_password}]\n");
 	
 	# Test the new password.
@@ -3242,11 +3299,11 @@ sub set_passwords
 # 'root' is changed. After this function, the next login will be a new one.
 sub set_password_on_node
 {
-	my ($conf, $node, $password, $new_ricci_pw, $new_root_pw) = @_;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_password_on_node(); node: [$node], new_ricci_pw: [$new_ricci_pw], new_root_pw: [$new_root_pw]\n");
+	my ($conf, $node, $password, $user, $new_password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_password_on_node(); node: [$node], user: [$user], new_password: [$new_password]\n");
 	
 	# Set the 'ricci' password first.
-	my $shell_call = "echo '$new_ricci_pw' | passwd ricci --stdin";
+	my $shell_call = "echo '$new_password' | passwd $user --stdin";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -3260,22 +3317,8 @@ sub set_password_on_node
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
-	# Set the 'root' password first and close the door on our way out.
-	$shell_call = "echo '$new_ricci_pw' | passwd root --stdin";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	1,
-		shell_call	=>	$shell_call,
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
-	
-	return($new_root_pw);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_password: [$new_password]\n");
+	return($new_password);
 }
 
 # This creates a backup of /etc/sysconfig/network-scripts into /root/backups
@@ -3650,8 +3693,8 @@ sub configure_ipmi_on_node
 			
 			# check to see if this is the write channel
 			my $rc         = "";
-			my $shell_call = "ipmitool lan print $channel";
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my $shell_call = "ipmitool lan print $channel; echo rc:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	22,
@@ -3661,7 +3704,7 @@ sub configure_ipmi_on_node
 				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 			foreach my $line (@{$return})
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
@@ -3676,8 +3719,7 @@ sub configure_ipmi_on_node
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the lan channel: [$channel]!\n");
 				}
 			}
-			
-			$channel++;
+			$channel++ if not $lan_found;
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LAN channel: [$channel]!\n");
 		
@@ -3722,7 +3764,7 @@ sub configure_ipmi_on_node
 						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found user ID: [$user_id]\n");
 					}
 				}
-				$user_id++;
+				$user_id++ if not $uid_found;
 			}
 			
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User: [$ipmi_user] has ID: [$user_id]!\n");
@@ -3918,10 +3960,11 @@ sub configure_ipmi_on_node
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 			foreach my $line (@{$return})
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> return line: [$line]\n");
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return line: [$line]\n");
 				if ($line =~ /IP Address Source/i)
 				{
 					if ($line =~ /Static/i)
@@ -3935,7 +3978,7 @@ sub configure_ipmi_on_node
 						last;
 					}
 				}
-				if ($line =~ /IP Address/i)
+				if ($line =~ /IP Address :/i)	# Needs the ' :' to not match 'IP Address Source'
 				{
 					my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
 					if ($ip eq $ipmi_ip)
@@ -4101,23 +4144,23 @@ sub configure_daemons_on_node
 		}
 		
 		# Now check/start the daemon if needed
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok].\n");
 		if ($ok)
 		{
 			
 			my ($state) = get_daemon_state($conf, $node, $password, $daemon);
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
 			if ($state eq "1")
 			{
 				# Already running.
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already running.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already running.\n");
 			}
 			elsif ($state eq "0")
 			{
 				# Enable it.
 				set_daemon_state($conf, $node, $password, $daemon, "start");
 				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
 				if ($state eq "1")
 				{
 					# Now running.
@@ -4136,7 +4179,7 @@ sub configure_daemons_on_node
 	# Now disable daemons.
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{disable}})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disabling daemon: [$daemon]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disabling daemon: [$daemon]\n");
 		
 		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
@@ -4205,11 +4248,11 @@ sub configure_daemons_on_node
 sub set_daemon_state
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_daemon_state(); node: [$node], daemon: [$daemon] setting state: [$state]\n");
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] setting state: [$state]\n");
 	my $rc         = "";
 	my $shell_call = "/etc/init.d/$daemon $state; echo rc:\$?";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -4230,6 +4273,7 @@ sub set_daemon_state
 		}
 	}
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
 	return($rc);
 }
 
@@ -4239,7 +4283,25 @@ sub get_daemon_state
 	my ($conf, $node, $password, $daemon) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_daemon_state(); node: [$node], daemon: [$daemon]\n");
 	
-	# LSB says '0' == running. '3' == stopped
+	# LSB says
+	# 0 == running
+	# 3 == stopped
+	# Reality;
+	# * ipmi;
+	#   0 == running
+	#   6 == stopped
+	# * network
+	#   0 == running
+	#   0 == stopped   o_O
+	# 
+	my $running_rc = 0;
+	my $stopped_rc = 3;
+	if ($daemon eq "ipmi")
+	{
+		$stopped_rc = 6;
+	}
+	
+	# This will store the state.
 	my $state = "";
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], checking if daemon: [$daemon] is running\n");
@@ -4261,17 +4323,18 @@ sub get_daemon_state
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
-			if ($rc eq "0")
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc] (stopped: [$stopped_rc], running: [$running_rc]\n");
+			if ($rc eq $running_rc)
 			{
 				$state = 1;
 			}
-			elsif ($rc eq "3")
+			elsif ($rc eq $stopped_rc)
 			{
 				$state = 0;
 			}
-			elsif ($rc eq "7")
+			else
 			{
-				$state = 7;
+				$state = "undefined:$rc";
 			}
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], state: [$state]\n");
 		}
@@ -4285,9 +4348,8 @@ sub get_daemon_state
 sub set_chkconfig
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_chkconfig(); node: [$node], daemon: [$daemon]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_chkconfig(); node: [$node], daemon: [$daemon], state: [$state]\n");
 
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disabling daemon: [$daemon]\n");
 	my $shell_call = "chkconfig $daemon $state";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -5437,7 +5499,8 @@ sub check_for_drbd_metadata
 	{
 		# Make sure there is a device at all
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking to ensure that node: [$node]'s device: [$device] exists.\n");
-		my ($disk, $partition) = ($device =~ /\/dev\/(.*?)(\d)/);
+		my ($disk, $partition) = ($device =~ /\/dev\/(\D+)(\d)/);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk], partition: [$partition]\n");
 		if ($conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
 		{
 			# It exists, so we can assume it has no DRBD metadata or
@@ -5582,7 +5645,7 @@ sub configure_storage_stage1
 			if ($rc eq "0")
 			{
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to an extended partition on node: [$node2], disk: [$node2_pool1_disk].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create an extended partition on node: [$node2], disk: [$node2_pool1_disk].\n");
 			}
 			elsif ($rc eq "2")
 			{
@@ -7467,6 +7530,7 @@ sub map_network
 		else
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node1: [$node1]: nic: [$nic], mac: [$mac].\n");
+			$conf->{conf}{node}{$node1}{unknown_nic}{$nic} = $mac;
 		}
 	}
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
@@ -7508,6 +7572,7 @@ sub map_network
 		else
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node2: [$node2]: nic: [$nic], mac: [$mac].\n");
+			$conf->{conf}{node}{$node2}{unknown_nic}{$nic} = $mac;
 		}
 	}
 	
@@ -7520,6 +7585,19 @@ sub map_network
 	{
 		# Remap not needed, system already configured.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'ifn-bridge1' device exists on both nodes already, remap not needed.\n");
+		
+		# To make the summary look better, we'll take the NICs we
+		# thought we didn't recognize and feed them into 'set_nic'.
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Recording 'unknown' NICs for node: [$node].\n");
+			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
+			{
+				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
+				$conf->{conf}{node}{$node}{set_nic}{$nic} = $mac;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], nic: [$nic], mac: [$conf->{conf}{node}{$node}{set_nic}{$nic}].\n");
+			}
+		}
 	}
 	else
 	{
