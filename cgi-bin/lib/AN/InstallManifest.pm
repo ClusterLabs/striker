@@ -11,7 +11,11 @@ package AN::InstallManifest;
 # BUG:
 # - Install Manifests can be created with IFN networks not matching the per-node/
 #   striker IFN IPs assigned...
+# 
+# TODO:
 # - Add the ability to set 'sys::use_spice_graphics'
+# - Add a hidden option to the install manifest for auto-adding RSA keys to
+#   /root/.ssh/known_hosts
 # 
 
 use strict;
@@ -333,7 +337,21 @@ sub configure_storage_stage3
 				my ($configure_ok) = configure_gfs2($conf);
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ok: [$configure_ok]\n");
 			}
+			else
+			{
+				# das failed ;_;
+				$ok = 0;
+			}
 		}
+		else
+		{
+			# Oh the huge manatee!
+			$ok = 0;
+		}
+	}
+	else
+	{
+		$ok = 0;
 	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
@@ -348,6 +366,11 @@ sub configure_storage_stage3
 		# start or fail.
 		my ($clustat_ok) = watch_clustat($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; clustat_ok: [$clustat_ok]\n");
+		if (not $clustat_ok)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more services failed to start.\n");
+			$ok = 0;
+		}
 	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
@@ -361,6 +384,15 @@ sub watch_clustat
 	my ($conf, $node, $password) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watch_clustat(); node: [$node]\n");
 	
+	# If a service comes up 'failed', we will try to restart it because, if
+	# it failed in a previous run, it will stay failed until it is disabled
+	# so this provides something of an ability to self-heal.
+	my $restarted_n01_storage  = 0;
+	my $restarted_n02_storage  = 0;
+	my $restarted_n01_libvirtd = 0;
+	my $restarted_n02_libvirtd = 0;
+	
+	# These will be set when parsing clustat output.
 	my $services_seen = 0;
 	my $n01_storage   = "";
 	my $n02_storage   = "";
@@ -395,22 +427,78 @@ sub watch_clustat
 				my $state   = $2;
 				# If it's not started or failed, I am not
 				# interested in it.
-				next if (($state ne "failed") && ($state ne "started"));
+				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started"));
 				if ($service eq "libvirtd_n01")
 				{
-					$n01_libvirtd = $state;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; service: [$service], state: [$state], restarted_n01_libvirtd: [$restarted_n01_libvirtd]\n");
+					if (($state eq "failed") && (not $restarted_n01_libvirtd))
+					{
+						$restarted_n01_libvirtd = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+					}
+					elsif (($state eq "disabled") && (not $restarted_n01_libvirtd))
+					{
+						$restarted_n01_libvirtd = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "start");
+					}
+					elsif (($state eq "started") || ($restarted_n01_libvirtd))
+					{
+						$n01_libvirtd = $state;
+					}
 				}
 				elsif ($service eq "libvirtd_n02")
 				{
-					$n02_libvirtd = $state;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; service: [$service], state: [$state], restarted_n02_libvirtd: [$restarted_n02_libvirtd]\n");
+					if (($state eq "failed") && (not $restarted_n02_libvirtd))
+					{
+						$restarted_n02_libvirtd = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+					}
+					elsif (($state eq "disabled") && (not $restarted_n02_libvirtd))
+					{
+						$restarted_n02_libvirtd = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "start");
+					}
+					elsif (($state eq "started") || ($restarted_n02_libvirtd))
+					{
+						$n02_libvirtd = $state;
+					}
 				}
 				elsif ($service eq "storage_n01")
 				{
-					$n01_storage = $state;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; service: [$service], state: [$state], restarted_n01_storage: [$restarted_n01_storage]\n");
+					if (($state eq "failed") && (not $restarted_n01_storage))
+					{
+						$restarted_n01_storage = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+					}
+					elsif (($state eq "disabled") && (not $restarted_n01_storage))
+					{
+						$restarted_n01_storage = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "start");
+					}
+					elsif (($state eq "started") || ($restarted_n01_storage))
+					{
+						$n01_storage = $state;
+					}
 				}
 				elsif ($service eq "storage_n02")
 				{
-					$n02_storage = $state;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; service: [$service], state: [$state], restarted_n02_storage: [$restarted_n02_storage]\n");
+					if (($state eq "failed") && (not $restarted_n02_storage))
+					{
+						$restarted_n02_storage = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+					}
+					elsif (($state eq "disabled") && (not $restarted_n02_storage))
+					{
+						$restarted_n02_storage = 1;
+						restart_rgmanager_service($conf, $node, $password, $service, "start");
+					}
+					elsif (($state eq "started") || ($restarted_n02_storage))
+					{
+						$n02_storage = $state;
+					}
 				}
 			}
 		}
@@ -419,6 +507,7 @@ sub watch_clustat
 		{
 			# Seen them all, exit and then analyze
 			$services_seen = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; services_seen: [$services_seen]\n");
 			last;
 		}
 		
@@ -440,13 +529,13 @@ sub watch_clustat
 	# Node 1
 	if ($services_seen)
 	{
-		if ($n01_storage =~ /failed/)
+		if (($n01_storage =~ /failed/) || ($n01_storage =~ /disabled/))
 		{
 			$node1_class   = "highlight_warning_bold";
 			$node1_message = "#!string!state_0018!#";
 			$ok            = 0;
 		}
-		if ($n02_storage =~ /failed/)
+		if (($n02_storage =~ /failed/) || ($n02_storage =~ /disabled/))
 		{
 			$node2_class   = "highlight_warning_bold";
 			$node2_message = "#!string!state_0018!#";
@@ -508,6 +597,40 @@ sub watch_clustat
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
 }
+
+# This will call disable -> enable on a given service to try and recover if
+# from a 'failed' state.
+sub restart_rgmanager_service
+{
+	my ($conf, $node, $password, $service, $do) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_rgmanager_service(); node: [$node], service: [$service], do: [$do]\n");
+	
+	# This is something of a 'hail mary' pass, so not much sanity checking
+	# is done (yet).
+	my $shell_call = "clusvcadm -d $service && sleep 2 && clusvcadm -F -e $service";
+	if ($do eq "start")
+	{
+		$shell_call = "clusvcadm -F -e $service";
+	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	
+	return(0);
+}
+
 
 # This starts rgmanager on both a node
 sub start_rgmanager_on_node
@@ -957,6 +1080,7 @@ sub setup_gfs2
 				$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition exists on: [/dev/$conf->{sys}{vg_pool1_name}/shared] with UUID: [$conf->{sys}{shared_fs_uuid}]!\n");
 				$create_gfs2 = 0;
+				$return_code = 1;
 			}
 			if ($line =~ /^rc:(\d+)/)
 			{
@@ -1464,13 +1588,16 @@ sub create_lvm_pvs
 	my ($conf, $node, $password) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_pvs(); node: [$node]\n");
 	
+	### TODO: This seems to occassionally see only the first PV despite
+	###       both existing. Unable to reproduce on the shell.
 	# Check which, if any, PVs exist.
 	my $return_code  = 0;
 	my $found_drbd0  = 0;
 	my $create_drbd0 = 1;
 	my $found_drbd1  = 0;
 	my $create_drbd1 = 1;
-	my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
+	#my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
+	my $shell_call   = "pvscan; echo rc:\$?";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -1499,13 +1626,13 @@ sub create_lvm_pvs
 				$return_code  = 2;
 			}
 		}
-		if ($line =~ /\/dev\/drbd0,/)
+		if ($line =~ /\/dev\/drbd0 /)
 		{
 			$found_drbd0  = 1;
 			$create_drbd0 = 0;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The DRBD device '/dev/drbd0' is already a PV.\n");
 		}
-		if ($line =~ /\/dev\/drbd1,/)
+		if ($line =~ /\/dev\/drbd1 /)
 		{
 			$found_drbd1  = 1;
 			$create_drbd1 = 0;
@@ -1782,6 +1909,7 @@ sub drbd_first_start
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0014!#";
 	# Node messages are interleved
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
 	if ($return_code eq "1")
 	{
 		# Attach failed
@@ -1894,6 +2022,13 @@ sub drbd_first_start
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
 	});
+	
+	# Things seem a little racy, so we'll sleep here a touch if things are
+	# OK just to be sure DRBD is really ready.
+	if ($ok)
+	{
+		sleep 5;
+	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
@@ -2362,7 +2497,8 @@ sub do_drbd_attach_on_node
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], attached: [$attached]\n");
 			if (not $attached)
 			{
-				my $shell_call = "drbdadm attach r$resource; echo rc:\$?";
+				my $no_metadata = 0;
+				my $shell_call  = "drbdadm attach r$resource; echo rc:\$?";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -2377,6 +2513,16 @@ sub do_drbd_attach_on_node
 				foreach my $line (@{$return})
 				{
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					if ($line =~ /No valid meta-data signature found/i)
+					{
+						# resource 0 == poo1 1, 1 == pool 2
+						my $pool     = $resource eq "0" ? "pool1" : "pool2";
+						my $device   = $conf->{node}{$node}{$pool}{device};
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], pool: [$pool], device: [$device] - No metadata found!\n");
+						$no_metadata = 1;
+						$return_code = 3;
+						$message .= AN::Common::get_string($conf, {key => "message_0403", variables => { device => $device, resource => "r$resource", node => $node }});
+					}
 					if ($line =~ /^rc:(\d+)/)
 					{
 						my $rc = $1;
@@ -2385,8 +2531,9 @@ sub do_drbd_attach_on_node
 							# Success!
 							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource] attached successfully.\n");
 						}
-						else
+						elsif (not $no_metadata)
 						{
+							# I skip this if '$no_metadata' is set as I've already generated a message for the user.
 							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to attach resource: [r$resource] on node: [$node]!\n");
 							$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r$resource", node => $node }});
 							$return_code = 3;
@@ -2437,9 +2584,9 @@ sub configure_ssh
 	
 	my $ok = 1;
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "#!string!state_0014!#";
+	my $node1_message = "#!string!state_0029!#";
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "#!string!state_0014!#";
+	my $node2_message = "#!string!state_0029!#";
 	# Node 1 
 	if (not $node1_rsa)
 	{
@@ -3192,11 +3339,6 @@ sub set_ricci_password
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_ricci_password()\n");
 	
-	# Reloading the browser won't work after this step, so warn the user.
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
-		message	=>	AN::Common::get_string($conf, {key => "explain_0142", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
-	});
-	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
 	###       This might change later, so this function is designed to
 	###       support different passwords.
@@ -3707,7 +3849,7 @@ sub configure_ipmi_on_node
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 			foreach my $line (@{$return})
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				if ($line =~ /Invalid channel: /)
 				{
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Wrong lan channel: [$channel]\n");
@@ -3755,7 +3897,7 @@ sub configure_ipmi_on_node
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 				foreach my $line (@{$return})
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					$line =~ s/\s+/ /g;
 					if ($line =~ /^(\d+) $ipmi_user /)
 					{
@@ -3767,7 +3909,7 @@ sub configure_ipmi_on_node
 				$user_id++ if not $uid_found;
 			}
 			
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User: [$ipmi_user] has ID: [$user_id]!\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User: [$ipmi_user] has ID: [$user_id]\n");
 			if ($uid_found)
 			{
 				# Set the password.
@@ -3960,11 +4102,11 @@ sub configure_ipmi_on_node
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 			foreach my $line (@{$return})
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> return line: [$line]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> return line: [$line]\n");
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return line: [$line]\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return line: [$line]\n");
 				if ($line =~ /IP Address Source/i)
 				{
 					if ($line =~ /Static/i)
@@ -4622,6 +4764,9 @@ sub read_lvm_conf_on_node
 		}
 	}
 	
+	### TODO: Make this smart enough to *NOT* change the lvm.conf file
+	###       unless something actually needs to be changed and, if so, use
+	###       sed to maintain the file's comments.
 	# There is no default filter entry, but it is referenced as comments
 	# many times. So we'll inject it when we see the first comment and then
 	# skip any 
@@ -4689,7 +4834,7 @@ sub reboot_nodes
 	
 	# This could take a while
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-		message	=>	"#!string!explain_0141!#",
+		message	=>	AN::Common::get_string($conf, {key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
 	});
 	
 	# I do this sequentially for now, so that if one fails, the other
@@ -4872,15 +5017,18 @@ sub do_node_reboot
 						# Copy the hash reference to
 						# the new IP.
 						$conf->{node}{$new_bcn_ip} = $conf->{node}{$node};
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; copying hash from: [$node] to: [$new_bcn_ip]\n");
 					}
 				}
 				sleep 1;
 			}
 			
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
 			if ($rc == 0)
 			{
 				# Success!
 				$return_code = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node rebooted, rescanning storage.\n");
 				
 				# Rescan it's (new) partition data.
 				my ($node_disk) = get_partition_data($conf, $new_bcn_ip, $password);
@@ -5294,6 +5442,7 @@ sub create_partitions_on_node
 		$ok = 2;
 	}
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
 }
 
@@ -5301,13 +5450,17 @@ sub create_partitions_on_node
 sub create_partition_on_node
 {
 	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partition_on_node(); node: [$node], disk: [$disk], type: [$type], partition_size: [$partition_size]\n");
 	
 	my $created = 0;
 	my $ok      = 1;
 	my $start   = 0;
 	my $end     = 0;
 	my $size    = 0;
-	my $shell_call = "parted --machine /dev/$disk unit MiB print free";
+	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition
+	###       type when called with --machine
+	#my $shell_call = "parted --machine /dev/$disk unit MiB print free";
+	my $shell_call = "parted /dev/$disk unit MiB print free";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -5321,12 +5474,17 @@ sub create_partition_on_node
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-		if ($line =~ /\d+:(\d+)MiB:(\d+)MiB:(\d+)MiB:free;/)
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], disk: [$disk], return: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return: [$line]\n");
+		if ($line =~ /(\d+)MiB (\d+)MiB (\d+)MiB Free/i)
 		{
 			$start = $1;
 			$end   = $2;
 			$size  = $3;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start: [$start], end: [$end], size: [$size]\n");
 		}
 	}
 	
@@ -5431,19 +5589,19 @@ sub create_partition_on_node
 		$ok = 2;
 	}
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
 }
 
-# This calls 'blkid' and parses the output for the given device, if returned.
-sub check_blkid_partition
+# This looks on a given device for DRBD metadata
+sub check_device_for_drbd_metadata
 {
 	my ($conf, $node, $password, $device) = @_;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_blkid_partition(); node: [$node], device: [$device].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_device_for_drbd_metadata(); node: [$node], device: [$device].\n");
 	
-	my $uuid       = "";
-	my $type       = "";
-	my $shell_call = "blkid -c /dev/null $device";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my $is_drbd    = 0;
+	my $shell_call = "drbdmeta --force 0 v08 $device internal dump-md; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -5456,16 +5614,58 @@ sub check_blkid_partition
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			# 0   == drbd md found
+			# 10  == too small for DRBD
+			# 20  == device not found
+			# 255 == device exists but has no metadata
+			if ($rc eq "0")
+			{
+				$is_drbd = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$device] has DRBD metadata.\n");
+			}
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; is_drbd: [$is_drbd].\n");
+	return($is_drbd);
+}
+
+# This calls 'blkid' and parses the output for the given device, if returned.
+sub check_blkid_partition
+{
+	my ($conf, $node, $password, $device) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_blkid_partition(); node: [$node], device: [$device].\n");
+	
+	my $uuid       = "";
+	my $type       = "";
+	my $shell_call = "blkid -c /dev/null $device";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 		if ($line =~ /^$device: /)
 		{
 			$uuid  = ($line =~ /UUID="(.*?)"/)[0];
 			$type  = ($line =~ /TYPE="(.*?)"/)[0];
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; uuid: [$uuid], type: [$type].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; uuid: [$uuid], type: [$type].\n");
 		}
 	}
 	
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type].\n");
 	return($type);
 }
 
@@ -5477,13 +5677,15 @@ sub check_for_drbd_metadata
 	
 	return(3) if not $device;
 	
-	### Note that the 'drbdmeta' call below is more direct, but 'blkid'
-	### will tell if another FS is on the device.
-	#my $shell_call = "/sbin/drbdmeta 0 v08 $device internal dump-md; echo rc:\$?";
-	my ($type) = check_blkid_partition($conf, $node, $password, $device);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type].\n");
+	# I do both checks because blkid tells me what's on the partition, but
+	# if there is something on top of DRBD, it will report that instead, so
+	# it can't be entirely trusted. If the 'blkid' returns type
+	# 'LVM2_member' but it is also 'is_drbd', then it is already setup.
+	my ($type)    = check_blkid_partition($conf, $node, $password, $device);
+	my ($is_drbd) = check_device_for_drbd_metadata($conf, $node, $password, $device);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type], is_drbd: [$is_drbd].\n");
 	my $return_code = 255;
-	if ($type eq "drbd")
+	if (($type eq "drbd") || (($type eq "LVM2_member") && ($is_drbd)))
 	{
 		# Already has meta-data, nothing else to do.
 		$return_code = 1;
@@ -5500,7 +5702,7 @@ sub check_for_drbd_metadata
 		# Make sure there is a device at all
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking to ensure that node: [$node]'s device: [$device] exists.\n");
 		my ($disk, $partition) = ($device =~ /\/dev\/(\D+)(\d)/);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk], partition: [$partition]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk], partition: [$partition], node::${node}::disk::${disk}::partition::${partition}::size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}]\n");
 		if ($conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
 		{
 			# It exists, so we can assume it has no DRBD metadata or
@@ -5525,7 +5727,7 @@ sub check_for_drbd_metadata
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]'s device: [$device] belongs to DRBD resource: [$resource].\n");
 				my $rc          = 255;         
 				my $shell_call  = "drbdadm -- --force create-md $resource; echo rc:\$?";
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
 					port		=>	22,
@@ -5587,6 +5789,7 @@ sub check_for_drbd_metadata
 sub configure_storage_stage1
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage1()\n");
 	
 	my $ok    = 1;
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -5601,14 +5804,18 @@ sub configure_storage_stage1
 	my $node2_pool1_partition = $conf->{node}{$node2}{pool1}{partition};
 	my $node2_pool2_disk      = $conf->{node}{$node2}{pool2}{disk};
 	my $node2_pool2_partition = $conf->{node}{$node2}{pool2}{partition};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_pool1_disk: [$node1_pool1_disk], node1_pool1_partition: [$node1_pool1_partition], node1_pool2_disk: [$node1_pool2_disk], node1_pool2_partition: [$node1_pool2_partition], node2_pool1_disk: [$node2_pool1_disk], node2_pool1_partition: [$node2_pool1_partition], node2_pool2_disk: [$node2_pool2_disk], node2_pool2_partition: [$node2_pool2_partition]\n");
 
-	# If an extended partition is needed, create it/them now.
+	# If an extended partition is needed on either node, create it/them
+	# now.
 	my $node1_partition_type = "primary";
 	my $node2_partition_type = "primary";
 	# Node 1 extended.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::create_extended: [$conf->{node}{$node1}{pool1}{create_extended}]\n");
 	if ($conf->{node}{$node1}{pool1}{create_extended})
 	{
 		$node1_partition_type = "logical";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::disk::${node1_pool1_disk}::partition::4::type: [$conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type}]\n");
 		if (($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type}) && ($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type} eq "extended"))
 		{
 			# Already exists.
@@ -6049,38 +6256,7 @@ sub configure_storage_stage2
 		});
 	}
 	
-	
-	# NOTE: Partition Table: gpt   == Don't create an extended partition
-	# NOTE: Partition Table: msdos == Use extended partition
-	# 
-	# (parted) print free
-	# Error: /dev/sdb: unrecognised disk label
-	# 
-	# < X GiB, use:
-	# (parted) mklabel msdos
-	# 
-	# else:
-	# (parted) mklabel gpt
-	# 
-	
-	# Set system pw:
-	#    echo '$password' | passwd $user --stdin
-	#
-	# IPMI password notes:
-	# * Stay under 16 characters
-	# * Strip off '!'
-	# Set IPMI pw:
-	#    ipmitool user set password 2 '$password'
-	# 
-	# No-prompt mkfs.gfs2
-	#    echo y | mkfs.gfs2 -p lock_dlm -j 2 -t an-cluster-05:shared /dev/an-c05n01_vg0/shared
-	# 
-	# sed magic!
-	#    mkfs.gfs2 -p lock_dlm -j 2 -t $(cman_tool status | grep "Cluster Name" | awk '{print $3}'):shared $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/')
-	#    mount $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/') /shared
-	#    gfs2_tool sb $(lvscan | grep shared | sed 's/^.*\(\/dev\/.*shared\).*/\1/') uuid | awk '{ print $4; }' | sed -e "s/\(.*\)/UUID=\L\1\E\t\/shared\tgfs2\tdefaults,noatime,nodiratime\t0 0/" >> /etc/fstab
-	#
-	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
 }
 
@@ -6314,9 +6490,18 @@ sub read_drbd_config_on_node
 		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	
+	# DRBD ships with 'global_common.conf', so we need to tell if the one
+	# we read was stock or not. If it was stock, delete it from the
+	# variable so that our generated one gets used.
+	my $generic_global_common = 1;
+	
+	# These will contain the contents of the file.
 	$conf->{node}{$node}{drbd_file}{global_common} = "";
 	$conf->{node}{$node}{drbd_file}{r0}            = "";
 	$conf->{node}{$node}{drbd_file}{r1}            = "";
+	
+	# And these tell us which file we're looking at.
 	my $in_global = 0;
 	my $in_r0     = 0;
 	my $in_r1     = 0;
@@ -6334,10 +6519,26 @@ sub read_drbd_config_on_node
 		### TODO: Make sure the storage pool devices are updated if we
 		###       use a read-in resource file.
 		# Record lines if we're in a file.
-		if ($in_global) { $conf->{node}{$node}{drbd_file}{global_common} .= "$line\n"; }
+		if ($in_global)
+		{
+			$conf->{node}{$node}{drbd_file}{global_common} .= "$line\n";
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			if (($line =~ /^fence-peer/) || ($line =~ /^allow-two-primaries/))
+			{
+				# These are not set by default, so we're _not_
+				# looking at a stock config.
+				$generic_global_common = 0;
+			}
+		}
 		if ($in_r0)     { $conf->{node}{$node}{drbd_file}{r0}            .= "$line\n"; }
 		if ($in_r1)     { $conf->{node}{$node}{drbd_file}{r1}            .= "$line\n"; }
 	}
+	
+	# Wipe out the global_common if it's generic.
+	$conf->{node}{$node}{drbd_file}{global_common} = "" if $generic_global_common;
+	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], global_common:\n====\n$conf->{node}{$node}{drbd_file}{global_common}\n====\nr0\n====\n$conf->{node}{$node}{drbd_file}{r0}\n====\nr1\n====\n$conf->{node}{$node}{drbd_file}{r1}\n====\n");
 	
 	return(0);
@@ -6354,8 +6555,8 @@ sub setup_drbd_on_node
 	if (not $conf->{node}{$node}{drbd_file}{global_common})
 	{
 		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_global_common} << EOF\n";
-		$shell_call .= "$conf->{drbd}{global_common}\n";
-		$shell_call .= "EOF";
+		   $shell_call .= "$conf->{drbd}{global_common}\n";
+		   $shell_call .= "EOF";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -7697,7 +7898,7 @@ sub map_network_on_node
 				chmod 755 $conf->{path}{'anvil-map-network'};
 				echo ready;
 			fi";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -8218,7 +8419,7 @@ sub update_nodes
 	{
 		$node1_message = "#!string!state_0060!#",
 	}
-	elsif ($conf->{node}{$node1}{os_updated})
+	elsif (not $conf->{node}{$node1}{os_updated})
 	{
 		$node1_message = "#!string!state_0027!#",
 	}
@@ -8226,7 +8427,7 @@ sub update_nodes
 	{
 		$node2_message = "#!string!state_0060!#",
 	}
-	elsif ($conf->{node}{$node2}{os_updated})
+	elsif (not $conf->{node}{$node2}{os_updated})
 	{
 		$node2_message = "#!string!state_0027!#",
 	}
@@ -8446,13 +8647,21 @@ sub verify_internet_access
 	return(1);
 }
 
-# This pings as website to check for an internet connection.
+# This pings as website to check for an internet connection. Will clean up
+# routes that conflict with the default one as well.
 sub ping_website
 {
 	my ($conf, $node, $password) = @_;
 	
-	# Ya, I know 8.8.8.8 isn't a website...
-	my $ok = 0;
+	# After installing, sometimes/often the system will come up with
+	# multiple interfaces on the same subnet, causing default route
+	# problems. So the first thing to do is look for the interface the IP
+	# we're using to connect is on, see it's subnet and see if anything
+	# else is on the same subnet. If so, delete the other interface(s) from
+	# the route table.
+	my $dg_device  = "";
+	my $shell_call = "route -n";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -8460,18 +8669,106 @@ sub ping_website
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"ping 8.8.8.8 -c 3 -q",
+		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
 	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return line: [$line]\n");
+		if ($line =~ /UG/)
+		{
+			$dg_device = ($line =~ /.* (.*?)$/)[0];
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; dg_device: [$dg_device]\n");
+		}
+		elsif ($line =~ /^(\d+\.\d+\.\d+\.\d+) .*? (\d+\.\d+\.\d+\.\d+) .*? \d+ \d+ \d+ (.*?)$/)
+		{
+			my $network   = $1;
+			my $netmask   = $2;
+			my $interface = $3;
+			$conf->{conf}{node}{$node}{routes}{interface}{$interface} = "$network/$netmask";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::routes::interface::${interface}: [$conf->{conf}{node}{$node}{routes}{interface}{$interface}]\n");
+		}
+	}
+	
+	# Now look for offending devices 
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking for conflicting routes.\n");
+	my ($dg_network, $dg_netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Default gateway is; dg_device: [$dg_device], network: [$dg_network/$dg_netmask]\n");
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{routes}{interface}})
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface], dg_device: [$dg_device]\n");
+		next if $interface eq $dg_device;
+		my ($network, $netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Conflicting route! interface: [$interface], network: [$network/$netmask]\n");
+			my $shell_call = "route del -net $network netmask $netmask dev $interface; echo rc:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			$conf->{node}{$node}{internet} = 0;
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> return line: [$line]\n");
+				if ($line =~ /^rc:(\d+)/)
+				{
+					my $rc = $1;
+					if ($rc eq "0")
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Conflicting route was deleted successfully.\n");
+					}
+					else
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Conflicting route was NOT deleted; Expected rc '0' but got: [$rc]. Internet access may be flaky\n");
+					}
+				}
+			}
+		}
+		else
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Route is OK, it is for another network.\n");
+		}
+	}
+	
+	### TODO: If a node has two interfaces up on the same subnet, determine
+	###       which matches the one we're coming in on and down the 
+	###       other(s).
+	# Ya, I know 8.8.8.8 isn't a website...
+	my $ok         = 0;
+	   $shell_call = "ping 8.8.8.8 -c 3 -q";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	$conf->{node}{$node}{internet} = 0;
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
 		{
 			my $pings_sent     = $1;
 			my $pings_received = $2;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
 			if ($pings_received > 0)
 			{
 				$ok = 1;
@@ -9274,13 +9571,13 @@ sub get_partition_data
 		'close'		=>	0,
 		shell_call	=>	"lsblk --all --bytes --noheadings --pairs",
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	my @disks;
 	my $name = "";
 	my $type = "";
 	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		# The order appears consistent, but I'll pull values out one at
 		# a time to be safe.
 		if ($line =~ /TYPE="(.*?)"/i)
@@ -9292,12 +9589,13 @@ sub get_partition_data
 			$name = $1;
 		}
 		next if $type ne "disk";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], name: [$name], type: [$type]\n");
 		
 		push @disks, $name;
 	}
 	
 	# Get the details on each disk now.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Found: [".@disks."] disks.\n");
 	foreach my $disk (@disks)
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
@@ -9314,7 +9612,7 @@ sub get_partition_data
 				else
 					parted /dev/$disk unit B print free
 				fi";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -9327,10 +9625,11 @@ sub get_partition_data
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		foreach my $line (@{$return})
 		{
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], disk: [$disk], line: [$line]\n");
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], disk: [$disk], line: [$line]\n");
 			if ($line eq "parted not installed")
 			{
 				$device = "--";
@@ -9347,20 +9646,23 @@ sub get_partition_data
 			elsif ($line =~ /Disk \/dev\/$disk: (\d+)B/)
 			{
 				$conf->{node}{$node}{disk}{$disk}{size} = $1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::size: [$conf->{node}{$node}{disk}{$disk}{size}]\n");
 			}
 			elsif ($line =~ /Partition Table: (.*)/)
 			{
 				$conf->{node}{$node}{disk}{$disk}{label} = $1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::label: [$conf->{node}{$node}{disk}{$disk}{label}]\n");
 			}
 			#              part  start end   size  type  - don't care about the rest.
 			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B (.*)$/)
 			{
 				# Existing partitions
 				my $partition = $1;
-				my $partition_start = $2;
-				my $partition_end   = $3;
-				my $partition_size  = $4;
-				my $partition_type  = $5;
+				my $partition_start =  $2;
+				my $partition_end   =  $3;
+				my $partition_size  =  $4;
+				my $partition_type  =  $5;
+				   $partition_type  =~ s/\s.*$//;	# cuts off 'extended lba' to 'extended'
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start} = $partition_start;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
@@ -9973,6 +10275,7 @@ sub copy_tools_to_docroot
 sub check_node_access
 {
 	my ($conf, $node, $password) = @_;
+ 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_node_access(); node: [$node]\n");
 	
 	my $access = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {

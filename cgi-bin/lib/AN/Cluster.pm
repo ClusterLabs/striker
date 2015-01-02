@@ -1888,15 +1888,14 @@ sub create_install_manifest
 		{
 			# Do it.
 			$show_form = 0;
-# 			if ($conf->{cgi}{'do'} eq "new")
-# 			{
-				# New install
-				AN::InstallManifest::run_new_install_manifest($conf);
-# 			}
-# 			else
-# 			{
-# 				# Replacing a node.
-# 			}
+			my ($return_code) = AN::InstallManifest::run_new_install_manifest($conf);
+			# 0 == success
+			# 1 == failed
+			if ($return_code)
+			{
+				# Something went wrong.
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer");
+			}
 		}
 		else
 		{
@@ -7065,6 +7064,17 @@ sub remote_call
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Merge; line: [$line]\n");
 		push @{$output}, $line;
+	}
+	
+	# Close the connection if requested.
+	if ($close)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
+		$ssh_fh->disconnect();
+		
+		# For good measure, blank both variables.
+		$conf->{node}{$node}{ssh_fh} = "";
+		$ssh_fh                      = "";
 	}
 	
 	$error = "" if not defined $error;
