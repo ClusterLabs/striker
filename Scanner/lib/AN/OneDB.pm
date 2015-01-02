@@ -19,7 +19,7 @@ use Const::Fast;
 
 use AN::Unix;
 
-use Class::Tiny (qw( dbh path dbini node_table_id)), {
+use Class::Tiny (qw( dbh path dbconf node_table_id)), {
     sth => sub { {} }};
 
 sub BUILD {
@@ -245,7 +245,7 @@ sub register_start {
 sub connect_dbs {
     my $self = shift;
 
-    $self->dbh( connect_db( $self->dbini ) );
+    $self->dbh( connect_db( $self->dbconf ) );
 }
 
 sub dump_metadata {

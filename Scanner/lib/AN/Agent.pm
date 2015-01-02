@@ -26,7 +26,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( datatable_name alerts_table_name datatable_schema );
+use Class::Tiny qw( datatable_name alerts_table_name datatable_schema dbconf );
 
 # ======================================================================
 # CONSTANTS
@@ -65,7 +65,7 @@ sub BUILD {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbini( catdir( getcwd(), $self->dbini ));
+    $self->dbconf( catdir( getcwd(), $self->dbconf ));
     return;
 }
 

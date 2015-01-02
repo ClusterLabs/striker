@@ -57,14 +57,14 @@ sub process_args {
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
         agentdir  => $Bin . '/agents',    # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
-        dbini     => $DEFAULT_DB_INI,     # DB configuration file.
+        dbconf    => $DEFAULT_DB_INI,     # DB configuration file.
 	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
 	from      => $FROM,		  # from and smtp used for email
 	smtp      => $SMTP,
 	modules_used =>0,		  # dump list of modules used.
 };
 
-    GetOptions( $opt, 'dbini=s', 'rate=i', 'agentdir=s', 'db_name=s',
+    GetOptions( $opt, 'dbconf=s', 'rate=i', 'agentdir=s', 'db_name=s',
 		'from=s', 'smtp=s', 'msg_dir=s', 'run_until=s', 'modules_used',
 		'verbose!', 'man', 'help' )
         or pod2usage(2);

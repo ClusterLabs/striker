@@ -20,7 +20,7 @@ use AN::Agent;
 sub init_args {
 
     return {
-	'dbini' => 'Config/db.ini',
+	'dbconf' => 'Config/db.conf',
 	'filepath' => '/tmp/agents',
 	'msg_file' => 'MESSAGES/random-agent',
 	'rate' => 30,

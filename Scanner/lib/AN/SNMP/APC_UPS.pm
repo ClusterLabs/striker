@@ -27,7 +27,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( snmp snmpini prev );
+use Class::Tiny qw( snmp snmpconf prev );
 
 # ======================================================================
 # CONSTANTS
@@ -58,9 +58,9 @@ use Class::Tiny qw( snmp snmpini prev );
 sub BUILD {
     my $self = shift;
 
-    $self->snmpini( catdir( getcwd(), $self->snmpini ) );
+    $self->snmpconf( catdir( getcwd(), $self->snmpconf ) );
 
-    my %cfg = ( path => { config_file => $self->snmpini } );
+    my %cfg = ( path => { config_file => $self->snmpconf } );
     AN::Common::read_configuration_file( \%cfg );
 
     $self->snmp( $cfg{snmp} );
@@ -90,46 +90,46 @@ sub eval_discrete_status {
     my $self = shift;
     my ( $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
     my $units = $rec_meta->{units} || '';
-    my ( $msg_tag, $msg_args, $label, $status, $newvalue ) = ('', '', '');
-    
+    my ( $msg_tag, $msg_args, $label, $status, $newvalue ) = ( '', '', '' );
+
     if ( $tag eq 'battery replace' ) {
         $newvalue = $rec_meta->{values}{$value};
         if ( $newvalue eq 'unneeded' ) {
             $status = 'OK';
         }
         elsif ( $newvalue eq 'needed' ) {
-            $status   = 'DEBUG';
+            $status  = 'DEBUG';
             $msg_tag = 'Battery requires replacement';
         }
         else {
             $status   = 'DEBUG';
             $msg_tag  = "Unrecognized value";
-	    $msg_args = $value;
+            $msg_args = $value;
         }
     }
     elsif ( $tag eq 'comms' ) {
         $newvalue = $rec_meta->{values}{$value};
-	$label = $rec_meta->{label};
+        $label    = $rec_meta->{label};
         if ( $newvalue eq 'yes' ) {
             $status = 'OK';
         }
         elsif ( $newvalue eq 'no' ) {
-            $status   = 'DEBUG';
+            $status  = 'DEBUG';
             $msg_tag = "Communication to device disconnected";
         }
         else {
             $status   = 'DEBUG';
             $msg_tag  = "Unrecognized value";
-	    $msg_args = $value;
+            $msg_args = $value;
         }
     }
     elsif ( $tag eq 'reason for last transfer' ) {
         $newvalue = $rec_meta->{values}{$value};
         if (    $prev_value
              && $prev_value ne $newvalue ) {
-            $status = 'DEBUG';
-            $msg_tag = "value changed from '%s' => '%s'";
-	    $msg_args = join ';', $prev_value, $newvalue;
+            $status   = 'DEBUG';
+            $msg_tag  = "value changed from '%s' => '%s'";
+            $msg_args = join ';', $prev_value, $newvalue;
         }
         else {
             $status = 'OK';
@@ -138,12 +138,11 @@ sub eval_discrete_status {
     elsif ( $tag eq 'last self test date' ) {
         if (    $prev_value
              && $prev_value ne $value ) {
-            $status = 'DEBUG';
-            $msg_tag = "value changed from  '%s' => '%s'";
-	    $msg_args = join( ';',
-			      $rec_meta->{values}{$prev_value},
-			      $rec_meta->{values}{$value}
-			      );
+            $status   = 'DEBUG';
+            $msg_tag  = "value changed from  '%s' => '%s'";
+            $msg_args = join( ';',
+                              $rec_meta->{values}{$prev_value},
+                              $rec_meta->{values}{$value} );
         }
         else {
             $status = 'OK';
@@ -156,12 +155,13 @@ sub eval_discrete_status {
         else {
             $status   = 'DEBUG';
             $msg_tag  = 'Last self-test result was not OK: ';
-	    $msg_args = ( [ undef, '', 'failed', 'invalid test' ] )[$value];
+            $msg_args = ( [ undef, '', 'failed', 'invalid test' ] )[$value];
         }
     }
-    $self->insert_raw_record($newvalue || $value, $units, $label || $tag, $status,
-			     $msg_tag, $msg_args);
-    return ( $status, $newvalue || $value);
+    $self->insert_raw_record( $newvalue || $value,
+                              $units, $label || $tag,
+                              $status, $msg_tag, $msg_args );
+    return ( $status, $newvalue || $value );
 }
 
 sub eval_rising_status {
@@ -171,7 +171,7 @@ sub eval_rising_status {
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
 
-    my ( $msg_tag, $msg_args, $status ) = ('', '');
+    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
 
     # 1) Previous status was OK, allow small overage before not OK
     #
@@ -193,7 +193,7 @@ sub eval_rising_status {
             && $value > $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "value '%s' in Warning range";
-	$msg_args = $value;
+        $msg_args = $value;
     }
 
     # 4) Previous status was CRISIS, require low value before WARN.
@@ -202,7 +202,7 @@ sub eval_rising_status {
             && $value <= $rec_meta->{warn_max} - $h ) {
         $status   = 'WARNING';
         $msg_tag  = "value '%s' in `Crisis range";
-	$msg_args = $value;
+        $msg_args = $value;
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -211,15 +211,16 @@ sub eval_rising_status {
             && $value > $rec_meta->{crisis_min} - $h ) {
         $status   = 'CRISIS';
         $msg_tag  = "value '%s' in Crisis range";
-	$msg_args = $value;
+        $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
         $msg_tag  = "value '%s' outside expected range";
-	$msg_args = $value;
+        $msg_args = $value;
     }
-    $self->insert_raw_record($value, $units, $tag, $status, $msg_tag, $msg_args);
-    return ( $status );
+    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
+                              $msg_args );
+    return ($status);
 }
 
 sub eval_falling_status {
@@ -231,7 +232,7 @@ sub eval_falling_status {
 
     $value =~ s{(\d+).*}{$1};    # convert '43 minutes' => '43'
 
-    my ( $msg_tag, $msg_args, $status ) = ('', '');
+    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
 
     # 1) Previous status was OK, allow small underaage before not OK
     #
@@ -253,7 +254,7 @@ sub eval_falling_status {
             && $value >= $rec_meta->{warn_min} - $h ) {
         $status   = 'WARNING';
         $msg_tag  = "value '%s' in Warning range";
-	$msg_args = $value;
+        $msg_args = $value;
     }
 
     # 4) Previous status was CRISIS, require high value before WARN.
@@ -261,8 +262,8 @@ sub eval_falling_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value >= $rec_meta->{warn_min} + $h ) {
         $status   = 'WARNING';
-	$msg_tag  = "value '%s' in Warning range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' in Warning range";
+        $msg_args = $value;
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -270,17 +271,18 @@ sub eval_falling_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value < $rec_meta->{crisis_max} + $h ) {
         $status   = 'CRISIS';
-	$msg_tag  = "value '%s' in Crisis range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' in Crisis range";
+        $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
-	$msg_tag  = "value '%s' outside expected range";
-	$msg_args = $value;
-	
+        $msg_tag  = "value '%s' outside expected range";
+        $msg_args = $value;
+
     }
-    $self->insert_raw_record($value, $units, $tag, $status, $msg_tag, $msg_args);    
-    return ( $status, $value )
+    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
+                              $msg_args );
+    return ( $status, $value );
 }
 
 sub eval_nested_status {
@@ -290,7 +292,7 @@ sub eval_nested_status {
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
 
-    my ( $msg_tag, $msg_args, $status ) = ('', '');
+    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
 
     # 1) Previous status was OK, allow small overage before not OK
     #
@@ -314,8 +316,8 @@ sub eval_nested_status {
             && $value >= $rec_meta->{warn_min} - $h
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
-	$msg_tag  = "value '%s' in Warning range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' in Warning range";
+        $msg_args = $value;
     }
 
     # 4) Previous status was CRISIS, require low value before WARN.
@@ -324,8 +326,8 @@ sub eval_nested_status {
             && $value >= $rec_meta->{warn_min} - $h
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
-	$msg_tag  = "value '%s' in Warning range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' in Warning range";
+        $msg_args = $value;
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -334,16 +336,17 @@ sub eval_nested_status {
             && $value > $rec_meta->{warn_min} - $h
             && $value < $rec_meta->{warn_min} + $h ) {
         $status   = 'CRISIS';
-	$msg_tag  = "value '%s' in Crisis range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' in Crisis range";
+        $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
-	$msg_tag  = "value '%s' outside expected range";
-	$msg_args = $value;
+        $msg_tag  = "value '%s' outside expected range";
+        $msg_args = $value;
     }
-    $self->insert_raw_record($value, $units, $tag, $status, $msg_tag, $msg_args);    
-    return ( $status );
+    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
+                              $msg_args );
+    return ($status);
 }
 
 sub eval_status {
@@ -362,7 +365,7 @@ sub eval_status {
 
     return &eval_nested_status
         if (    $rec_meta->{warn_max} >= $rec_meta->{ok_max}
-		&& $rec_meta->{warn_min} <= $rec_meta->{ok_min} );
+             && $rec_meta->{warn_min} <= $rec_meta->{ok_min} );
     return;
 }
 
@@ -373,22 +376,23 @@ sub process_all_oids {
     my ( $info, $prev ) = ( $self->snmp, $self->prev );
 
     for my $oid ( keys %$received ) {
-        my ( $value, $tag ) = ($received->{$oid},
-			       $metadata->{roid}{$oid});
+        my ( $value, $tag ) = ( $received->{$oid}, $metadata->{roid}{$oid} );
         my $rec_meta = $metadata->{$tag};
-        my $label    = $rec_meta->{label} || $tag;
+        my $label = $rec_meta->{label} || $tag;
 
-        my $prev_value  = $prev->{$target}{$tag}{value};
+        my $prev_value = $prev->{$target}{$tag}{value};
         my $prev_status = $prev->{$target}{$tag}{status} || 'OK';
 
         # Calculate status and message; convert numeric codes to strings.
         #
-	state $i = 1;
-	say Data::Dumper->Dump([$i, $tag, $value, $rec_meta, $prev_status, $prev_value])
-	    if $self->verbose && $self->verbose >= 2;
+        state $i = 1;
+        say Data::Dumper->Dump(
+                    [ $i, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
+            if $self->verbose && $self->verbose >= 2;
         $i++;
-	my ( $status, $newvalue ) = $self->eval_status( $tag, $value, $rec_meta,
-							$prev_status, $prev_value );
+        my ( $status, $newvalue )
+            = $self->eval_status( $tag, $value, $rec_meta,
+                                  $prev_status, $prev_value );
 
         $prev->{$target}{$tag}{value} = $newvalue || $value;
         $prev->{$target}{$tag}{status} = $status;
@@ -408,8 +412,9 @@ sub snmp_connect {
                               -community => $meta->{pw},
                               -version   => 'snmpv2c', );
     if ( !defined $session ) {
-	$self->insert_raw_record($meta->{name}, '', 'Net::SNMP connect', 'CRISIS',
-				 'Could not connect to Net::SNMP session', $error);
+        $self->insert_raw_record( $meta->{name}, '', 'Net::SNMP connect',
+                             'CRISIS',
+                             'Could not connect to Net::SNMP session', $error );
     }
     return ( $meta, $session );
 }
@@ -418,7 +423,7 @@ sub query_target {
     my $self = shift;
 
     my $info = $self->snmp;
-TARGET:    # For each snmp target (1, 2, ... ) in the ini file
+TARGET:    # For each snmp target (1, 2, ... ) in the config file
     for my $target ( keys %$info ) {
         my $metadata = $info->{$target};
 
@@ -433,15 +438,18 @@ TARGET:    # For each snmp target (1, 2, ... ) in the ini file
             = $session->get_request( -varbindlist => $metadata->{oids}, );
 
         if ( not defined $received ) {
-	    $self->insert_raw_record($meta_out->{name}, '', 'Net::SNMP fetch data', 'CRISIS',
-				     'Net::SNMP->get_request() failed', $session->error);
+            $self->insert_raw_record(
+                              $meta_out->{name},                 '',
+                              'Net::SNMP fetch data',            'CRISIS',
+                              'Net::SNMP->get_request() failed', $session->error
+                                    );
             next TARGET;
         }
         $session->close;
-	
+
         # Evaluate and classify data
         #
-	$self->process_all_oids( $received, $target, $metadata );
+        $self->process_all_oids( $received, $target, $metadata );
     }
     return;
 }

@@ -34,7 +34,7 @@ const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 
 use subs 'alert_num';		# manually define accessor.
 
-use Class::Tiny qw( agentdir duration dbini
+use Class::Tiny qw( agentdir duration dbconf
     db_type db_name port
     rate verbose monitoragent
     flagfile dbs run_until
@@ -112,7 +112,7 @@ const my $EXIT_OK => 'ok to exit';
 
 const my $METADATA_DIR => '/tmp';
 const my @NEW_AGENT_ARGS =>
-    ( '-o', 'meta-data', '-f', $METADATA_DIR, '--dbini', 'xdbinix' );
+    ( '-o', 'meta-data', '-f', $METADATA_DIR, '--dbconf', 'xdbconfx' );
 
 const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
                                  \A         # beginning of string
@@ -446,7 +446,7 @@ sub connect_dbs {
     my $self = shift;
     my ( $node_args ) = @_;
 
-    my $args = { path => { config_file => $self->dbini} };
+    my $args = { path => { config_file => $self->dbconf} };
     $args->{node_args} = $node_args if $node_args;
 
     $self->dbs( AN::DBS->new( $args ) );
@@ -472,7 +472,7 @@ sub launch_new_agents {
 
     local $LIST_SEPARATOR = $SPACE;
     state $args
-        = [ map { $_ eq 'xdbinix' ? $self->dbini : $_; } @NEW_AGENT_ARGS ];
+        = [ map { $_ eq 'xdbconfx' ? $self->dbconf : $_; } @NEW_AGENT_ARGS ];
 
     my @new_agents;
     for my $agent (@$new) {

@@ -54,12 +54,12 @@ sub process_args {
         rate          => $REP_RATE,           # loop repetition rate in seconds.
         run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
         filepath      => '/tmp/agents',    # directory to scan for agents.
-        dbini         => $DEFAULT_DB_INI,     # DB configuration file.
+        dbconf        => $DEFAULT_DB_INI,     # DB configuration file.
 	msg_file      => $MSG_DIR . $PROG
     };
 
-    GetOptions( $opt,       'dbini=s',    'rate=i',       'filepath=s',
-                'dbini=s',  'msg_file=s', 'metadata|o=s', 'run_until=s',
+    GetOptions( $opt,       'rate=i',       'filepath=s',
+                'dbconf=s',  'msg_file=s', 'metadata|o=s', 'run_until=s',
                 'verbose!', 'man',        'help' )
         or pod2usage(2);
 

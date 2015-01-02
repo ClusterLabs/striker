@@ -97,15 +97,15 @@ package main;
 #
 sub init_args {
 
-    my $dbini = { dbini => { 'db_type'  => 'Pg',
-                             'host'     => 'localhost',
-                             'name'     => 'scanner',
-                             'password' => 'alteeve',
-                             'port'     => 5432,
-                             'user'     => 'alteeve',
-                           }, };
+    my $dbconf = { dbconf => { 'db_type'  => 'Pg',
+			       'host'     => 'localhost',
+			       'name'     => 'scanner',
+			       'password' => 'alteeve',
+			       'port'     => 5432,
+			       'user'     => 'alteeve',
+		   }, };
 
-    return ($dbini);
+    return ($dbconf);
 }
 
 # ----------------------------------------------------------------------
@@ -118,7 +118,7 @@ sub test_constructor {
     my $onedb = AN::OneDB->new($args);
     isa_ok( $onedb,        'AN::OneDB', 'object ISA OneDB object' );
     isa_ok( $onedb->{dbh}, 'DBI',       'dbh ISA DBI object' );
-    is_deeply( $onedb->{dbini}, $args->{dbini}, 'dbini attributes OK' );
+    is_deeply( $onedb->{dbconf}, $args->{dbconf}, 'dbconf attributes OK' );
     for my $sql ( keys %{ $onedb->sth } ) {
 
         # skip initial blank line
@@ -210,7 +210,8 @@ sub test_generate_fetch_sql {
 
     my ($sql, $id) = $onedb->generate_fetch_sql($args );
     $sql =~ s{\s+}{ }g;
-    my $std_sql = 'SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? ORDER BY timestamp desc limit 1; ';
+    $sql =~ s{\s\z}{};
+    my $std_sql = q{SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? and timestamp > now() - interval '1 minute' ORDER BY timestamp asc};
 
     is( $sql, $std_sql, 'generate_fetch_sql() sql OK');
     is( $id, 1, 'generate_fetch_sql() node_table_id OK');

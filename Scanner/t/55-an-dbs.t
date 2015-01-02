@@ -119,7 +119,7 @@ package main;
 # Utility routines
 #
 
-sub std_dbini {
+sub std_dbconf {
 
     return { 1 => {'db_type' => 'Pg',
 		   'host' => 'localhost',
@@ -151,14 +151,14 @@ sub alert_args {
 
 sub test_constructor {
 
-    my $path = catdir( $Bin, '../Config/db.ini' );
+    my $path = catdir( $Bin, '../Config/db.conf' );
     my $config_file = { config_file => $path };
 
     my $dbs = AN::DBS->new( { path => $config_file } );
     isa_ok( $dbs, 'AN::DBS', 'DBS object' );
 
     is_deeply( $dbs->path, $config_file, 'DBS obj has right config path.');
-    is_deeply( $dbs->dbini, std_dbini(), 'DBS obj has right config data.');
+    is_deeply( $dbs->dbconf, std_dbconf(), 'DBS obj has right config data.');
 
     my $onedb = $dbs->dbs->[0];
     isa_ok( $onedb, 'AN::OneDB', q{DBS object's dbs attribute'});

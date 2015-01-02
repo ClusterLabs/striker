@@ -22,7 +22,7 @@ use AN::OneDB;
 use AN::OneAlert;
 use AN::Listener;
 
-use Class::Tiny qw( path dbini dbs);
+use Class::Tiny qw( path dbconf dbs);
 
 sub BUILD {
     my $self = shift; 
@@ -72,12 +72,12 @@ sub connect_dbs {
     my %cfg = ( path => $self->path );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->dbini( $cfg{db} );
+    $self->dbconf( $cfg{db} );
 
     $self->dbs( [] );
-    for my $tag ( sort keys %{ $self->dbini } ) {
+    for my $tag ( sort keys %{ $self->dbconf } ) {
 
-        $self->add_db( AN::OneDB->new( { dbini     => $self->dbini->{$tag},
+        $self->add_db( AN::OneDB->new( { dbconf     => $self->dbconf->{$tag},
 					 node_args => $extra_args
 				       } ) );
     }
@@ -89,17 +89,17 @@ sub dump_metadata {
 
     my @dump;
 
-    my $dbini = $self->dbini;
+    my $dbconf = $self->dbconf;
     my $idx   = 0;
-    for my $set ( sort keys %$dbini ) {
-        my $onedbini = $dbini->{$set};
+    for my $set ( sort keys %$dbconf ) {
+        my $onedbconf = $dbconf->{$set};
 	
         my $prefix   = $DB . $DOUBLECOLON . $set . $DOUBLECOLON;
     KEY:
-        for my $key ( sort keys %$onedbini ) {
+        for my $key ( sort keys %$onedbconf ) {
             next KEY
                 if is_pw_field($key);
-            push @dump, $prefix . $key . $ASSIGN . $onedbini->{$key};
+            push @dump, $prefix . $key . $ASSIGN . $onedbconf->{$key};
         }
 
         # 0-based array de-reference, but 1-based output
@@ -132,8 +132,8 @@ sub fetch_alert_data {
 	my $db_data = $db->fetch_alert_data($proc_info);
 	for my $idx ( keys %$db_data ) {
 	    my $record = $db_data->{$idx};
-	    @{$record}{qw(db db_type)} = ($db->dbini()->{host},
-				       $db->dbini()->{db_type},
+	    @{$record}{qw(db db_type)} = ($db->dbconf()->{host},
+				       $db->dbconf()->{db_type},
 		);
 	    push @$alerts,  AN::OneAlert->new($record);
 	}
@@ -151,8 +151,8 @@ sub fetch_alert_listeners {
         my $listeners = [];
         for my $idx ( sort keys %$hlisteners ) {
             my $data         = $hlisteners->{$idx};
-            $data->{db}      = $db->dbini()->{host};
-            $data->{db_type} = $db->dbini()->{db_type};
+            $data->{db}      = $db->dbconf()->{host};
+            $data->{db_type} = $db->dbconf()->{db_type};
 	    $data->{owner}   = $owner;
 	    push @{$listeners}, AN::Listener->new($data);
         }
