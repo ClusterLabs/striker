@@ -61,7 +61,6 @@ sub process_args {
 	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
 	from      => $FROM,		  # from and smtp used for email
 	smtp      => $SMTP,
-	modules_used =>0,		  # dump list of modules used.
 };
 
     GetOptions( $opt, 'dbconf=s', 'rate=i', 'agentdir=s', 'db_name=s',
@@ -73,8 +72,6 @@ sub process_args {
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
     
-    AN::Scanner::dump_module_list( $opt ) if ( $opt->{modules_used} );
-
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #

@@ -30,7 +30,7 @@ use Const::Fast;
 const my $AGENT_DIR      => 'agents';
 const my $BRIEF          => 1;
 const my $COMMA          => q{,};
-const my $DEFAULT_DB_INI => 'Config/db.ini';
+const my $DEFAULT_DB_INI => 'Config/db.conf';
 const my $DOTSLASH       => q{./};
 const my $MAX_RATE       => 600;
 const my $MIN_RATE       => 1;

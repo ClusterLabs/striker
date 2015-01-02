@@ -81,15 +81,10 @@ sub non_blank_lines {
 sub dump_metadata {
     my $self = shift;
 
-    my $dbs_dump = $self->dbs()->dump_metadata;
-    my ($schema) = non_blank_lines $self->datatable_schema;
-
     my $metadata = <<"EODUMP";
 ${DUMP_PREFIX}name=$PROG
 ${DUMP_PREFIX}pid=$PID
-$dbs_dump
 ${DUMP_PREFIX}datatable_name=@{[$self->alerts_table_name]}
-${DUMP_PREFIX}datatable_schema="$schema"
 EODUMP
 
     return $metadata;

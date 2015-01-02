@@ -84,34 +84,6 @@ sub connect_dbs {
 
 }
 
-sub dump_metadata {
-    my $self = shift;
-
-    my @dump;
-
-    my $dbconf = $self->dbconf;
-    my $idx   = 0;
-    for my $set ( sort keys %$dbconf ) {
-        my $onedbconf = $dbconf->{$set};
-	
-        my $prefix   = $DB . $DOUBLECOLON . $set . $DOUBLECOLON;
-    KEY:
-        for my $key ( sort keys %$onedbconf ) {
-            next KEY
-                if is_pw_field($key);
-            push @dump, $prefix . $key . $ASSIGN . $onedbconf->{$key};
-        }
-
-        # 0-based array de-reference, but 1-based output
-        #
-        my $oneDB_prefix = $DB . $DOUBLECOLON . ( $idx + 1 );
-        push @dump, $self->dbs->[$idx]->dump_metadata($oneDB_prefix);
-        $idx++;
-    }
-
-    return join "\n", @dump;
-}
-
 sub insert_raw_record {
     my $self = shift;
     my ($args) = @_;

@@ -197,29 +197,6 @@ sub test_connect_dbs {
     # tested implicitly by constructor
 }
 
-sub test_dump_metadata {
-    my $dbs = shift;
-
-    my $dump = $dbs->dump_metadata();
-
-    $dump =~ s{(db::1::node_table_id=)\d+}{$1};
-    
-    my $std = <<'EODUMP';
-db::1::db_type=Pg
-db::1::host=localhost
-db::1::name=scanner
-db::1::port=5432
-db::1::user=alteeve
-db::1::node_table_id=
-EODUMP
-
-    chomp $std;
-
-    is($dump, $std, 'DBS->dump_metadata OK');
-    
-    return;
-}
-
 sub test_insert_raw_record {
     my $dbs = shift;
 
@@ -292,8 +269,7 @@ sub main {
     # test_connect_dbs( $dbs );
     
     test_is_pw_field( $dbs );
-    test_dump_metadata( $dbs ); 
-   test_insert_raw_record( $dbs );
+    test_insert_raw_record( $dbs );
     test_fetch_alert_data( $dbs );
     test_fetch_alert_listeners ( $dbs );
     
