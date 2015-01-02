@@ -425,15 +425,18 @@ sub check_for_previous_instance {
         if $is_recent && $is_running;
 
     # Old process exited recently without proper cleanup
-    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_RECENT_CRASH')
+    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
+		     'OLD_PROCESS_RECENT_CRASH', '')
         if $is_recent && !$is_running;
 
     # Old process has stalled; running but not updating.
-    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED')
+    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
+		     'OLD_PROCESS_STALLED', '')
         if !$is_recent && $is_running;
 
     # old process exited some time ago without proper cleanup
-    $self->set_alert($self->alert_num(), $PID, AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH')
+    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
+		     'OLD_PROCESS_CRASH', '')
         if !$is_recent && !$is_running;
 
     return $RUN;

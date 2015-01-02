@@ -103,15 +103,25 @@ sub has_pid_subkey {
 
 sub handled_alert {
     my $self = shift;
-    my ($id) = @_;
+    my ($key1, $key2) = @_;
 
-    return exists $self->handled()->{$id} && $self->handled()->{$id};
+    return ( exists $self->handled()->{$key1}
+	     && exists $self->handled()->{$key1}{$key2}
+	     && $self->handled()->{$key1}{$key2}
+	);
 }
 sub set_alert_handled {
     my $self = shift;
-    my ($id) = @_;
+    my ($key1, $key2) = @_;
 
-    $self->handled()->{$id} =1;
+    $self->handled()->{$key1}{$key2} = 1;
+    return;
+}
+sub clear_alert_handled {
+    my $self = shift;
+    my ($key1, $key2) = @_;
+
+    $self->handled()->{$key1}{$key2} = 0;
     return;
 }
 
@@ -136,11 +146,24 @@ sub new_alert_loop {
 
 sub add_alert {
     my $self = shift;
-    my ( $pid, $value ) = @_;
+    my ( $key1, $key2, $value ) = @_;
+    
+    $key2 ||= '+';
 
-    die ( "pid = $pid, value = $value, caller = @{[caller]}" )
-	unless $pid && $value;
-    $self->alerts()->{$pid} = $value;
+    die ( "key1 = $key1, key2 = $key2, value = $value, caller = @{[caller]}" )
+	unless $key1 && $value;    
+
+    my $old = $self->alerts()->{$key1}{$key2};
+
+    return if ( $old		# return if duplicate.
+		&& $value->timestamp eq $old->timestamp
+	);
+    return if ( $old		# return if no change.    
+		&& $value->status eq $old->status
+		&& $value->msg_tag eq $old->msg_tag
+	);
+    $self->alerts()->{$key1}{$key2} = $value;
+    $self->clear_alert_handled( $key1, $key2 );
     return;
 }
 sub add_agent {
@@ -155,18 +178,28 @@ sub add_agent {
 
 sub delete_alert {
     my $self = shift;
-    my ( $pid ) = @_;
+    my ( $key1, $key2 ) = @_;
 
-    delete $self->alerts()->{$pid};
+    if ( $key2 ) {
+	delete $self->alerts()->{$key1}{$key2};
+	delete $self->alerts()->{$key1}
+            unless scalar keys %{$self->alerts()->{$key1}}; # last element
+    }
+    else {
+	delete $self->alerts()->{$key1};
+    }   
+
     return
 }
 sub alert_exists {
     my $self = shift;
-    my ( $pid ) = @_;
+    my ( $key1, $key2 ) = @_;
 
     my @keys = keys %{ $self->alerts };
-    return unless @keys;	  # No alerts have been set 
-    return grep { /$pid/ } @keys; # Alerts exist, but none for $pid
+    return unless @keys;	            # No alerts have been set 
+    my @for_key1 =  grep { /$key1/ } @keys; # Alerts exist
+    return unless @for_key1;		    # But none for key1
+    return grep { /$key2/ } @for_key1;      # Figure out if any for key2
 }    
 # ......................................................................
 #
@@ -200,9 +233,9 @@ sub set_alert {
                  status    => $level,
                  msg_tag   => $msg_tag,
                  msg_args  => $msg_args,
-                 other     => \@others || '', };
-
-    $self->add_alert( $src, AN::OneAlert->new($args) );
+                 other     => \@others || '', 
+    };
+    $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
 }
 
@@ -210,10 +243,11 @@ sub set_alert {
 #
 sub clear_alert {
     my $self = shift;
-    my ( $pid ) = @_;
+    my ( $key1, $key2 ) = @_;
     
-    return unless $self->alert_exists( $pid );
-    $self->delete_alert( $pid);
+    $key2 ||= '+';
+    return unless $self->alert_exists( $key1, $key2 );
+    $self->delete_alert( $key1, $key2);
     return;
 }
  
@@ -256,7 +290,7 @@ sub format_msg {
         = $alert->msg_args
         ? sprintf $msg, split ';', $alert->msg_args
         : $msg;
-    my $other = join ' : ', @{ $alert->other };
+    my $other = join ' : ', @{ $alert->other }, @{$alert}{qw(field value units)};
     
     my $formatted = sprintf( $ALERT_MSG_FORMAT_STR, $alert->{id} || 'na',
                              $alert->timestamp, $agent->{hostname},
@@ -270,9 +304,11 @@ sub mark_alerts_as_reported {
     my $self = shift;
 
     my $alerts = $self->alerts;
-    for my $key ( keys %$alerts ) {
-	$alerts->{$key}->set_handled();
-	$self->set_alert_handled( $alerts->{$key}->{id} );
+    for my $key1 ( keys %$alerts ) {
+	for my $key2 ( keys %{$alerts->{$key1} } ) {
+	    $alerts->{$key1}{$key2}->set_handled();
+	    $self->set_alert_handled( $key1, $key2 );
+	}
     }
     return;
 }
@@ -281,7 +317,7 @@ sub handle_alerts {
     my $self = shift;
 
     my $alerts = $self->alerts;
-    my @alert_keys = keys %{ $alerts };
+    my @alert_keys = sort keys %{ $alerts };
     return unless @alert_keys;
 	
     $self->listeners( $self->owner()->fetch_alert_listeners())
@@ -294,16 +330,18 @@ sub handle_alerts {
 	my $lookup = { language => $listener->{language} };
       ALERT:
         for my $key (@alert_keys) {
-            my $alert = $alerts->{$key};
-            next ALERT if $alert->has_this_alert_been_reported_yet();
-	    next ALERT if $self->handled_alert( $alert->id );
-            next ALERT unless $alert->listening_at_this_level($listener);
+	    for my $subkey ( keys %{$alerts->{$key}}) {
+		my $alert = $alerts->{$key}{$subkey};
+		next ALERT if $alert->has_this_alert_been_reported_yet();
+		next ALERT if $self->handled_alert( $key, $subkey );
+		next ALERT unless $alert->listening_at_this_level($listener);
 
-            $lookup->{key} = $alert->msg_tag();
-            my $msg = $self->xlator()->lookup_msg( $key, $lookup,
-						   $self->agents->{$key} );
-            push @msgs, $self->format_msg( $alert, $msg );
-        }
+		$lookup->{key} = $alert->msg_tag();
+		my $msg = $self->xlator()->lookup_msg( $key, $lookup,
+						       $self->agents->{$key} );
+		push @msgs, $self->format_msg( $alert, $msg );
+	    }
+	}
 	$self->dispatch_msg( $listener, \@msgs ) if @msgs;
     }
     $self->mark_alerts_as_reported();

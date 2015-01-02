@@ -327,7 +327,7 @@ SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM $tablename
 WHERE node_id = ?
 and timestamp > now() - interval '1 minute'
-ORDER BY timestamp desc
+ORDER BY timestamp asc
 
 EOSQL
 

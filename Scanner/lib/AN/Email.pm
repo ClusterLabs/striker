@@ -61,7 +61,8 @@ sub send_msg {
 	  :                      die __PACKAGE__ . q{can't find 'mailx'.}
 	); 
 
-    my $cmd = "$MAILX -A gmail -s '$subject' $to < $file";
+#    my $cmd = "$MAILX -A gmail -s '$subject' $to < $file";
+    my $cmd = "$MAILX -s '$subject' $to < $file";
     say "Emailing: $cmd";
 
     return  system $cmd;
