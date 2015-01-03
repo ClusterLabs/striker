@@ -13,6 +13,7 @@ use Carp;
 
 use File::Basename;
 use File::Spec::Functions 'catdir';
+
 #use FileHandle;
 #use IO::Select;
 #use Time::Local;
@@ -27,7 +28,7 @@ use Class::Tiny qw(agents msg_dir language pid program string strings );
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA        => q{,};
+const my $COMMA => q{,};
 
 const my $XML_SUFFIX => q{.xml};
 
@@ -48,7 +49,7 @@ sub strings_table_loaded {
 
     $self->agents->{$pid}->{strings} ||= {};
     $self->agents->{$pid}->{string}  ||= {};
-    
+
     $self->strings( $self->agents->{$pid}->{strings} );
     $self->string( $self->agents->{$pid}->{string} );
     return $exists;
@@ -56,18 +57,18 @@ sub strings_table_loaded {
 
 sub load_strings_table {
     my $self = shift;
-    my ( $metadata ) = @_;
+    my ($metadata) = @_;
 
     my $filename = catdir( $metadata->{msg_dir},
-			   ($metadata->{program} . $XML_SUFFIX) );
+                           ( $metadata->{program} . $XML_SUFFIX ) );
 
     AN::Common::read_strings( $self, $filename );
     $self->language( {} );
-    for my $lang ( @{AN::Common::get_languages($self)} ) {	
-	my ($tag, $value) = split $COMMA, $lang;
-	$self->language()->{$tag} = $value;
+    for my $lang ( @{ AN::Common::get_languages($self) } ) {
+        my ( $tag, $value ) = split $COMMA, $lang;
+        $self->language()->{$tag} = $value;
     }
-    
+
     return;
 }
 

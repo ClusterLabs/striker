@@ -26,7 +26,7 @@ use Class::Tiny qw( id language level mode name updated added_by
 # CONSTANTS
 #
 
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $AGENT_KEY  => 'agents';
 const my $PID_SUBKEY => 'PID';
@@ -38,12 +38,12 @@ const my %LEVEL => ( DEBUG   => 'DEBUG',
 
 const my $ALERT_MSG_FORMAT_STR => '%s: %s->%s (%s); %s: %s';
 
-const my $LISTENS_TO 
-    => { CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1},
-	 WARNING => { OK => 0, DEBUG => 0, WARNING => 1, CRISIS => 1},
-	 DEBUG   => { OK => 0, DEBUG => 1, WARNING => 1, CRISIS => 1},	 
-};
-			  
+const my $LISTENS_TO => {
+                  CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1 },
+                  WARNING => { OK => 0, DEBUG => 0, WARNING => 1, CRISIS => 1 },
+                  DEBUG   => { OK => 0, DEBUG => 1, WARNING => 1, CRISIS => 1 },
+                        };
+
 # ======================================================================
 # Subroutines
 #
@@ -66,20 +66,19 @@ sub add_dispatcher {
     my $module = 'AN::' . ucfirst lc $self->mode;
     load $module;
     die "Couldn't load module to handle @{[$self->mode()]}." if $@;
-    $self->dispatcher( $module->new({ owner => $self->owner }) );
+    $self->dispatcher( $module->new( { owner => $self->owner } ) );
     return;
 }
 
 sub dispatch_msg {
     my $self = shift;
-    my ( $msgs ) = @_;
+    my ($msgs) = @_;
 
-    $self->add_dispatcher( ) unless $self->has_dispatcher( );
+    $self->add_dispatcher() unless $self->has_dispatcher();
 
     $self->dispatcher()->dispatch( $msgs, $self );
     return;
 }
-
 
 # ======================================================================
 # end of code

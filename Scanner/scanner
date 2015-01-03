@@ -25,18 +25,18 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $BRIEF          => 1;
-const my $COMMA          => q{,};
+const my $BRIEF           => 1;
+const my $COMMA           => q{,};
 const my $DEFAULT_DB_CONF => $Bin . '/Config/db.conf';
-const my $DEFAULT_MSGS   => $Bin . '/Messages/';
-const my $DOTSLASH       => q{./};
-const my $LIFETIME       => 24 * 60 * 60;
-const my $RUN_UNTIL      => '23:59:59';
-const my $MAX_RATE       => 600;
-const my $MIN_RATE       => 1;
-const my $PROG           => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE       => 15;
-const my $SLASH          => q{/};
+const my $DEFAULT_MSGS    => $Bin . '/Messages/';
+const my $DOTSLASH        => q{./};
+const my $LIFETIME        => 24 * 60 * 60;
+const my $RUN_UNTIL       => '23:59:59';
+const my $MAX_RATE        => 600;
+const my $MIN_RATE        => 1;
+const my $PROG            => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE        => 15;
+const my $SLASH           => q{/};
 
 const my $SMTP => 'mail.alteeve.ca';
 const my $FROM => 'scanner@alteeve.ca';
@@ -57,21 +57,20 @@ sub process_args {
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
         agentdir  => $Bin . '/agents',    # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
-        dbconf    => $DEFAULT_DB_CONF,     # DB configuration file.
-	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
-	from      => $FROM,		  # from and smtp used for email
-	smtp      => $SMTP,
-};
+        dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
+        msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
+        from      => $FROM,               # from and smtp used for email
+        smtp      => $SMTP, };
 
-    GetOptions( $opt, 'dbconf=s', 'rate=i', 'agentdir=s', 'db_name=s',
-		'from=s', 'smtp=s', 'msg_dir=s', 'run_until=s', 'modules_used',
-		'verbose!', 'man', 'help' )
+    GetOptions( $opt,          'dbconf=s',     'rate=i',   'agentdir=s',
+                'db_name=s',   'from=s',       'smtp=s',   'msg_dir=s',
+                'run_until=s', 'modules_used', 'verbose!', 'man',
+                'help' )
         or pod2usage(2);
 
-    
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
-    
+
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
@@ -96,8 +95,9 @@ sub verify_args {
     my ($opt) = @_;
 
     pod2usage( -verbose => $BRIEF,
-	       -message => "-run_until time '$opt->{run_until}' format dd:dd:dd" )
-	unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
+               -message => "-run_until time '$opt->{run_until}' format dd:dd:dd"
+             )
+        unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
 
     pod2usage( -verbose => $BRIEF,
                -message => "rate '$opt->{rate}' < $MIN_RATE" )

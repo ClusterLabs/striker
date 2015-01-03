@@ -13,7 +13,6 @@ use English '-no_match_vars';
 
 use AN::Screen;
 
-
 # ----------------------------------------------------------------------
 # Utility routines
 #
@@ -30,13 +29,11 @@ sub test_constructor {
     return $screen;
 }
 
-
 # ----------------------------------------------------------------------
 # main
 #
 sub main {
     my $screen = test_constructor();
-
 
 }
 

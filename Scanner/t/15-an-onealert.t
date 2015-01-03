@@ -13,36 +13,35 @@ use English '-no_match_vars';
 
 use AN::OneAlert;
 
-
 # ----------------------------------------------------------------------
 # Utility routines
 #
 sub init_args {
 
-    return { 'level' => 'DEBUG',
-	     'msg_args' => undef,
-	     'msg_tag' => 'OLD_PROCESS_CRASH',
-	     'other' => [],
-	     'pid' => 13991,
-	     'timestamp' => 'Sat Dec 13 19:11:11 2014',
-    };
+    return { 'level'     => 'DEBUG',
+             'msg_args'  => undef,
+             'msg_tag'   => 'OLD_PROCESS_CRASH',
+             'other'     => [],
+             'pid'       => 13991,
+             'timestamp' => 'Sat Dec 13 19:11:11 2014', };
 
 }
+
 # ----------------------------------------------------------------------
 # Tests
 #
 
 sub test_constructor {
-    my $args = init_args();
+    my $args     = init_args();
     my $onealert = AN::OneAlert->new($args);
     isa_ok( $onealert, 'AN::OneAlert', 'object ISA OneAlert object' );
 
     return $onealert;
 }
 
-sub  test_levels {
+sub test_levels {
     my $onealert = shift;
-    
+
     is( $onealert->OK,      'OK',      'OK string OK' );
     is( $onealert->DEBUG,   'DEBUG',   'DEBUG string OK' );
     is( $onealert->WARNING, 'WARNING', 'WARNING string OK' );
@@ -61,10 +60,10 @@ sub test_listening_at_this_level {
               };
 
     my $listener = { level => '' };
-    for ( 'OK', 'DEBUG', 'WARNING', 'CRISIS' ){
-	$onealert->status($_);
+    for ( 'OK', 'DEBUG', 'WARNING', 'CRISIS' ) {
+        $onealert->status($_);
         for ( 'OK', 'DEBUG', 'WARNING', 'CRISIS' ) {
-	    $listener->{level} = $_;
+            $listener->{level} = $_;
             my $accept = $std->{ $listener->{level} }{ $onealert->status() };
             is( $onealert->listening_at_this_level($listener), $accept,
                       "Listener level $listener->{level}\t"
@@ -73,6 +72,7 @@ sub test_listening_at_this_level {
         }
     }
 }
+
 sub test_has_this_alert_been_reported_yet {
     my $onealert = shift;
     my ($pass) = @_;
@@ -85,20 +85,18 @@ sub test_has_this_alert_been_reported_yet {
     is( $onealert->has_this_alert_been_reported_yet() || 0,
         $expected[$pass], $string[$pass] );
 }
-    
+
 sub test_set_handled {
     my $onealert = shift;
 
     $onealert->set_handled();
 }
-    
+
 sub test_clear_handled {
     my $onealert = shift;
 
     $onealert->clear_handled();
 }
-    
-
 
 # ----------------------------------------------------------------------
 # main
@@ -106,13 +104,13 @@ sub test_clear_handled {
 sub main {
     my $onealert = test_constructor();
 
-    test_levels( $onealert );
+    test_levels($onealert);
     test_has_this_alert_been_reported_yet( $onealert, 1 );
-    test_set_handled( $onealert );
+    test_set_handled($onealert);
     test_has_this_alert_been_reported_yet( $onealert, 2 );
-    test_clear_handled( $onealert );
+    test_clear_handled($onealert);
     test_has_this_alert_been_reported_yet( $onealert, 3 );
-    test_listening_at_this_level( $onealert );
+    test_listening_at_this_level($onealert);
 
 }
 

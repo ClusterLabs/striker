@@ -5,7 +5,6 @@ use warnings;
 use strict;
 use 5.010;
 
-
 use FindBin '$Bin';
 use lib "$Bin/../lib";
 use lib "$Bin/../cgi-bin/lib";
@@ -15,79 +14,81 @@ use English '-no_match_vars';
 
 use AN::OneDB;
 
-my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial'},
-	       2 => { column_name => 'name', data_type => 'text'}
-};
+my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial' },
+               2 => { column_name => 'name',    data_type => 'text' } };
 
 package DBI::sth;
 
-    sub new {
-        my $class = shift;
-        my ($sql) = @_;
+sub new {
+    my $class = shift;
+    my ($sql) = @_;
 
-        return bless { sql => $sql }, $class;
-    }
+    return bless { sql => $sql }, $class;
+}
 
-    sub execute {
-        my $self = shift;
-        push @{ $self->{execute} }, \@_;
-        return 1 if 0 <= index $self->{sql}, 'INSERT INTO';
-	return 1 if 0 <= index $self->{sql}, 'SELECT *,';
-    }
+sub execute {
+    my $self = shift;
+    push @{ $self->{execute} }, \@_;
+    return 1 if 0 <= index $self->{sql}, 'INSERT INTO';
+    return 1 if 0 <= index $self->{sql}, 'SELECT *,';
+}
 
-    sub fetchall_hashref {
-	my $self = shift;
+sub fetchall_hashref {
+    my $self = shift;
 
-	push @{ $self->{fetch_all_hashref} }, \@_;
-	return $SCHEMA;
-    }
-    1;
+    push @{ $self->{fetch_all_hashref} }, \@_;
+    return $SCHEMA;
+}
+1;
+
 # End of package DBI::sth
 
 package DBI;
 
-    {
-	no warnings;
-	sub connect_cached {
-	    my $class = shift;
-	    my (@args) = @_;
-	    
-	    return bless { args => \@args }, $class;
-	}
+{
+    no warnings;
+
+    sub connect_cached {
+        my $class = shift;
+        my (@args) = @_;
+
+        return bless { args => \@args }, $class;
     }
+}
 
-    sub prepare {
-        my $self = shift;
-        my ($sql) = @_;
+sub prepare {
+    my $self = shift;
+    my ($sql) = @_;
 
-        my $sth = DBI::sth->new($sql);
-        push @{ $self->{prepare} }, $sth;
-        return $sth;
-    }
+    my $sth = DBI::sth->new($sql);
+    push @{ $self->{prepare} }, $sth;
+    return $sth;
+}
 
-    sub commit { say "commit"; return 1; }
-    sub rollback { say "rollback", return 1 }
+sub commit { say "commit"; return 1; }
+sub rollback { say "rollback", return 1 }
 
-    sub last_insert_id {
-        state $id = 1;
-        return $id++;
-    }
+sub last_insert_id {
+    state $id = 1;
+    return $id++;
+}
 
-    sub selectall_arrayref {
-        my $self = shift;
+sub selectall_arrayref {
+    my $self = shift;
 
-        $self->{selectall_arrayref} = \@_;
-	return [ [1] ];
-    }
+    $self->{selectall_arrayref} = \@_;
+    return [ [1] ];
+}
 
-    sub selectall_hashref {
-        my $self = shift;
+sub selectall_hashref {
+    my $self = shift;
 
-        $self->{selectall_hashref} = \@_;
-	return $SCHEMA;
-    }
+    $self->{selectall_hashref} = \@_;
+    return $SCHEMA;
+}
 
-    1;
+1;
+
 # End of package DBI
 
 package main;
@@ -98,12 +99,12 @@ package main;
 sub init_args {
 
     my $dbconf = { dbconf => { 'db_type'  => 'Pg',
-			       'host'     => 'localhost',
-			       'name'     => 'scanner',
-			       'password' => 'alteeve',
-			       'port'     => 5432,
-			       'user'     => 'alteeve',
-		   }, };
+                               'host'     => 'localhost',
+                               'name'     => 'scanner',
+                               'password' => 'alteeve',
+                               'port'     => 5432,
+                               'user'     => 'alteeve',
+                             }, };
 
     return ($dbconf);
 }
@@ -174,10 +175,9 @@ EOSQL
     $std_sql =~ s{\s+}{ }g;
 
     my $std_fields = [qw(another field)];
-    my $std_values = {'another' => 'more',
-		      'field' => 'value',
-                     };
-    is( $sql,    $std_sql,    'generate_insert_sql() sql OK' );
+    my $std_values = { 'another' => 'more',
+                       'field'   => 'value', };
+    is( $sql, $std_sql, 'generate_insert_sql() sql OK' );
     is_deeply( $fields, $std_fields, 'generate_insert_sql() fields OK' );
     is_deeply( $values, $std_values, 'generate_insert_sql() args OK' );
 
@@ -194,39 +194,36 @@ sub test_insert_raw_record {
                            another => 'more'
                          }, };
 
-    my $status = $onedb->insert_raw_record( $args );
-    is( $status, 2, 'insert_raw_record() OK');
+    my $status = $onedb->insert_raw_record($args);
+    is( $status, 2, 'insert_raw_record() OK' );
     return;
 }
 
 sub test_generate_fetch_sql {
     my $onedb = shift;
 
-    my $args = { db_data => { 1 => {node_table_id => 1,
-			      },
-			      datatable_name => 'tablename',
-		 },
-    };
+    my $args = { db_data => { 1              => { node_table_id => 1, },
+                              datatable_name => 'tablename',
+                            }, };
 
-    my ($sql, $id) = $onedb->generate_fetch_sql($args );
+    my ( $sql, $id ) = $onedb->generate_fetch_sql($args);
     $sql =~ s{\s+}{ }g;
     $sql =~ s{\s\z}{};
-    my $std_sql = q{SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? and timestamp > now() - interval '1 minute' ORDER BY timestamp asc};
+    my $std_sql
+        = q{SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? and timestamp > now() - interval '1 minute' ORDER BY timestamp asc};
 
-    is( $sql, $std_sql, 'generate_fetch_sql() sql OK');
-    is( $id, 1, 'generate_fetch_sql() node_table_id OK');
+    is( $sql, $std_sql, 'generate_fetch_sql() sql OK' );
+    is( $id,  1,        'generate_fetch_sql() node_table_id OK' );
     return;
 }
 
 sub test_fetch_alert_data {
     my $onedb = shift;
 
-    my $args = { db_data => { 1 => {node_table_id => 1,
-			      },
-			      datatable_name => 'tablename',
-		 },
-    };
-    my $records = $onedb->fetch_alert_data( $args );
+    my $args = { db_data => { 1              => { node_table_id => 1, },
+                              datatable_name => 'tablename',
+                            }, };
+    my $records = $onedb->fetch_alert_data($args);
     is_deeply( $records, $SCHEMA, 'fetch_alert_data() OK' );
     return;
 }
@@ -238,7 +235,6 @@ sub test_fetch_alert_listeners {
 
     is_deeply( $records, $SCHEMA, 'fetch_alert_listeners() OK' );
 
-    
     return;
 }
 

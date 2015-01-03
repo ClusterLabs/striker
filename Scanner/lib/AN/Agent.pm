@@ -72,9 +72,9 @@ sub non_blank_lines {
 sub dump_metadata {
     my $self = shift;
 
-    my @node_ids = $self->dbs()->node_id($DUMP_PREFIX, $SEPARATOR);
+    my @node_ids = $self->dbs()->node_id( $DUMP_PREFIX, $SEPARATOR );
     my $node_ids_str = join "\n", @node_ids;
-   
+
     my $metadata = <<"EODUMP";
 ${DUMP_PREFIX}name=$PROG
 ${DUMP_PREFIX}pid=$PID

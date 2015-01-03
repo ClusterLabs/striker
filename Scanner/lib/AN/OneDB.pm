@@ -19,15 +19,15 @@ use Const::Fast;
 
 use AN::Unix;
 
-use Class::Tiny (qw( dbh path dbconf node_table_id)), {
-    sth => sub { {} }};
+use Class::Tiny (qw( dbh path dbconf node_table_id)), { sth => sub { {} }
+                                                      };
 
 sub BUILD {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
     $self->connect_dbs();
-    $self->register_start( $args->{node_args} || undef);
+    $self->register_start( $args->{node_args} || undef );
 }
 
 # ======================================================================
@@ -41,10 +41,10 @@ const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
                                PrintError         => 0,
                                dbi_connect_method => undef );
 
-const my $DSN_SHORT_FMT       => 'dbi:Pg:dbname=%s';
-const my $DSN_FMT             => 'dbi:Pg:dbname=%s:host=%s:port=%s';
+const my $DSN_SHORT_FMT => 'dbi:Pg:dbname=%s';
+const my $DSN_FMT       => 'dbi:Pg:dbname=%s:host=%s:port=%s';
 
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $DB_PROCESS_TABLE => 'node';
 
@@ -224,18 +224,19 @@ sub connect_db {
 sub register_start {
     my $self = shift;
 
-    my ( $args ) = @_;
+    my ($args) = @_;
 
     my $hostname = AN::Unix::hostname '-short';
 
-    my ( $target_name, $target_ip, $target_type ) = ( 'ARRAY' eq ref $args ? @$args
-						      :                      ( '', '', '' )
-	);
-    $self->node_table_id(
-                 $self->log_new_process(
-                     $PROG, $hostname, $PID, $PROC_STATUS_NEW, $SCANNER_USER_NUM,
-		     $target_name, $target_ip, $target_type
-                                        ) );
+    my ( $target_name, $target_ip, $target_type )
+        = ( 'ARRAY' eq ref $args
+            ? @$args
+            : ( '', '', '' ) );
+    $self->node_table_id( $self->log_new_process(
+                              $PROG,            $hostname,         $PID,
+                              $PROC_STATUS_NEW, $SCANNER_USER_NUM, $target_name,
+                              $target_ip,       $target_type
+                                                ) );
     $self->start_process();
 }
 
@@ -256,7 +257,7 @@ sub dump_metadata {
 ${prefix}::node_table_id=@{[$self->node_table_id]}
 EODUMP
 
-    chomp $metadata;		# discard final newline.
+    chomp $metadata;    # discard final newline.
     return $metadata;
 }
 
@@ -268,8 +269,8 @@ sub generate_insert_sql {
     my $node_table_id_ref = $options->{with_node_table_id} || '';
     my $args              = $options->{args};
     my @fields            = sort keys %$args;
-    if ($node_table_id_ref 
-	&& not $args->{$node_table_id_ref}) {
+    if ( $node_table_id_ref
+         && not $args->{$node_table_id_ref} ) {
         push @fields, $node_table_id_ref;
         $args->{$node_table_id_ref} = $self->node_table_id;
     }
@@ -315,9 +316,9 @@ sub generate_fetch_sql {
     my $self = shift;
     my ($options) = @_;
 
-    my ($db_data)     = $options->{db_data};
-    my ($db_ident)    = grep {/\b\d+\b/} keys %$db_data;;
-    my $db_info       = $db_data->{$db_ident};
+    my ($db_data)  = $options->{db_data};
+    my ($db_ident) = grep {/\b\d+\b/} keys %$db_data;
+    my $db_info    = $db_data->{$db_ident};
 
     my $tablename     = $db_data->{datatable_name};
     my $node_table_id = $db_info->{node_table_id};
@@ -331,7 +332,7 @@ ORDER BY timestamp asc
 
 EOSQL
 
-    return ($sql, $node_table_id);
+    return ( $sql, $node_table_id );
 }
 
 sub fetch_alert_data {
@@ -346,10 +347,10 @@ sub fetch_alert_data {
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = $sth->execute( $node_table_id )
-	|| carp "No rows returns for query \n'$sql'\n";
-    my $records  = $sth->fetchall_hashref( $ID_FIELD );
-   
+    my $rows = $sth->execute($node_table_id)
+        || carp "No rows returns for query \n'$sql'\n";
+    my $records = $sth->fetchall_hashref($ID_FIELD);
+
     if ( 0 < $rows ) {
         $self->dbh->commit();
     }
@@ -371,7 +372,7 @@ FROM    alert_listeners
 EOSQL
 
     my $records = $self->dbh()->selectall_hashref( $sql, 'id' )
-	or die "Failed to fetch alert listeners.";
+        or die "Failed to fetch alert listeners.";
 
     return $records;
 }

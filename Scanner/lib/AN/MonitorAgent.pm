@@ -22,16 +22,16 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $BRIEF               => 1;
-const my $COMMA               => q{,};
-const my $DOTSLASH            => q{./};
-const my $LIFETIME            => 24 * 60 * 60;
-const my $MAX_RATE            => 600;
-const my $MIN_RATE            => 1;
-const my $PROG                => (fileparse( $PROGRAM_NAME ))[0];
-const my $REP_RATE            => 30;
-const my $SLASH               => q{/};
-const my $SUFFIX_QR           => qr{         # regex to extract filename suffix
+const my $BRIEF     => 1;
+const my $COMMA     => q{,};
+const my $DOTSLASH  => q{./};
+const my $LIFETIME  => 24 * 60 * 60;
+const my $MAX_RATE  => 600;
+const my $MIN_RATE  => 1;
+const my $PROG      => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE  => 30;
+const my $SLASH     => q{/};
+const my $SUFFIX_QR => qr{         # regex to extract filename suffix
                                     [.]   # starts with a literal dot
                                     [^.]+ # sequence of non-dot characters
                                     \z    # continuing until end of string
@@ -39,10 +39,9 @@ const my $SUFFIX_QR           => qr{         # regex to extract filename suffix
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
 const my $VERBOSE             => 2;
 
-
 use Class::Tiny { rate     => sub { $REP_RATE; },
                   agentdir => sub { catdir $Bin, 'agents'; },
-                  verbose  => sub { 0;},
+                  verbose  => sub { 0; },
                   ignore   => sub { [qw( .conf .rc .init )] }, };
 
 # ======================================================================
@@ -50,20 +49,20 @@ use Class::Tiny { rate     => sub { $REP_RATE; },
 #
 sub BUILD {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
-    $self->agentdir( catdir( $Bin, substr $self->agentdir(), 2 ))
-      if 0 == index $self->agentdir(), $DOTSLASH;
+    $self->agentdir( catdir( $Bin, substr $self->agentdir(), 2 ) )
+        if 0 == index $self->agentdir(), $DOTSLASH;
 
     # Separate CSV values into separate arg elements.
     #
-    $self->ignore( [ split $COMMA, join $COMMA, @{ $self->ignore } ]);
+    $self->ignore( [ split $COMMA, join $COMMA, @{ $self->ignore } ] );
 
     $self->verify_args();
-    
+
     return;
 }
 
@@ -71,7 +70,7 @@ sub BUILD {
 # Standard constructor. In subclasses, 'inherit' this constructor, but
 # write a new _init()
 #
-    
+
 # ......................................................................
 # Check command line argument validity
 #
@@ -79,35 +78,31 @@ sub verify_args {
     my $self = shift;
 
     local $LIST_SEPARATOR = $COMMA;
-    
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "rate '$self->rate()' < $MIN_RATE"
-    ) if $self->rate() < $MIN_RATE;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$self->rate()' < $MIN_RATE" )
+        if $self->rate() < $MIN_RATE;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$self->rate()' > $MAX_RATE" )
+        if $self->rate() > $MAX_RATE;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "agentdir '$self->agentdir()' not found" )
+        unless -e $self->agentdir();
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot read agentdir '$self->agentdir()'" )
+        unless -r $self->agentdir();
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot execute agentdir '$self->agentdir()'" )
+        unless -x $self->agentdir();
 
     pod2usage(
-        -verbose => $BRIEF,
-        -message => "rate '$self->rate()' > $MAX_RATE"
-    ) if $self->rate() > $MAX_RATE;
-
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "agentdir '$self->agentdir()' not found"
-    ) unless -e $self->agentdir();
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "Cannot read agentdir '$self->agentdir()'"
-    ) unless -r $self->agentdir();
-    pod2usage(
-        -verbose => $BRIEF,
-        -message => "Cannot execute agentdir '$self->agentdir()'"
-    ) unless -x $self->agentdir();
-
-    pod2usage(
-        -verbose => $BRIEF,
-        -message =>
-          "Illegal character '/' in suffix ignore list '$self->ignore()'"
-      ) if scalar grep { m{/}xms } $self->ignore();
+             -verbose => $BRIEF,
+             -message =>
+                 "Illegal character '/' in suffix ignore list '$self->ignore()'"
+             )
+        if scalar grep {m{/}xms} $self->ignore();
 
     return;
 }
@@ -124,8 +119,8 @@ sub scan_files {
     # value is never used. only do the expansion the first time through.
     #
     state $ignore;
-    @{$ignore}{ @{$self->ignore()} } = (1) x scalar @{ $self->ignore() }
-      if ( not $ignore ) && scalar @{ $self->ignore() };
+    @{$ignore}{ @{ $self->ignore() } } = (1) x scalar @{ $self->ignore() }
+        if ( not $ignore ) && scalar @{ $self->ignore() };
 
     # Persistent list of files. Reset associated values to zero. During
     # scan, update value to 1. At end, any file names with a value of
@@ -135,21 +130,22 @@ sub scan_files {
     @files{ keys %files } = (0) x scalar keys %files;
 
     my (@added);
-  FILE:
+FILE:
     for my $file ( glob $self->agentdir() . '/*' ) {
         my ( $name, $dir, $suffix ) = fileparse( $file, $SUFFIX_QR );
         next FILE
-          if $suffix and exists $ignore->{$suffix};
+            if $suffix and exists $ignore->{$suffix};
         my $fullname = $suffix ? $name . $suffix : $name;
         push @added, $fullname
-          unless exists $files{$fullname};
+            unless exists $files{$fullname};
         $files{$fullname} = 1;    # mark as present
     }
 
     # detect and drop deleted files
     #
-    my (@dropped) =
-      sort grep { 0 == $files{$_} } keys %files;    # file keys with zero value.
+    my (@dropped)
+        = sort grep { 0 == $files{$_} }
+        keys %files;    # file keys with zero value.
     delete @files{@dropped};
 
     @added = sort @added;

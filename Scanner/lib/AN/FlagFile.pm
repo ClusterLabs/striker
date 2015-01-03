@@ -13,17 +13,15 @@ use Carp;
 use File::Spec::Functions 'catdir';
 use Const::Fast;
 
-use Class::Tiny qw( pidfile dir ),
-    {data => sub {default_data() },
-     old_files => sub { {} }
-     };
-
+use Class::Tiny qw( pidfile dir ), { data      => sub { default_data() },
+                                     old_files => sub { {} }
+                                   };
 
 # ======================================================================
 # CONSTANTS
 #
-const my $DOT          => q{.};
-const my $STAR         => q{*};
+const my $DOT  => q{.};
+const my $STAR => q{*};
 
 const my $SECONDS_IN_A_DAY => 24 * 60 * 60;
 
@@ -32,14 +30,13 @@ const my $FILE_NOT_READABLE => 'file not readable';
 const my $FILE_STATUS_OK    => 'file status ok';
 
 my %TAG = ( PIDFILE   => 'pidfile',
-	    MIGRATING => 'migrating',
-	    METADATA  => 'metadata',
-	    CRISIS    => 'crisis' );
+            MIGRATING => 'migrating',
+            METADATA  => 'metadata',
+            CRISIS    => 'crisis' );
 
 # ======================================================================
 # Subroutines
 #
-
 
 sub default_data {
     my $now = time;
@@ -57,10 +54,10 @@ EODATA
 #
 sub full_file_path {
     my $self = shift;
-    my ($tag, $name) = @_;
+    my ( $tag, $name ) = @_;
 
     my $name_part = $name || $self->pidfile;
-    my $filename = catdir( $self->dir(), $tag . $DOT . $name_part);
+    my $filename = catdir( $self->dir(), $tag . $DOT . $name_part );
 
     return $filename;
 }
@@ -111,26 +108,28 @@ sub add_tag {
     shift if @_ && scalar @_ && ref $_[0] eq __PACKAGE__;
 
     croak( __PACKAGE__ . "::add_tag() requires 2 args, key & value." )
-	unless 2 == scalar @_;
+        unless 2 == scalar @_;
     my ( $tag, $value ) = @_;
-    
+
     $TAG{$tag} = $value;
     return;
 }
+
 sub find_marker_files {
     my $self = shift;
     my (@markers) = @_;
 
-    if ( ! scalar @markers ) {
-	push @markers, AN::FlagFile::get_tag($_)
-	    for @{AN::FlagFile::get_tag()};
+    if ( !scalar @markers ) {
+        push @markers, AN::FlagFile::get_tag($_)
+            for @{ AN::FlagFile::get_tag() };
     }
 
     my $found = {};
     for my $tag (@markers) {
-        my $filename = $self->full_file_path($tag, $STAR);
-	$found->{$tag} = [ glob( $filename ) ];
-#        $found->{$tag} = $filename if -e $filename;
+        my $filename = $self->full_file_path( $tag, $STAR );
+        $found->{$tag} = [ glob($filename) ];
+
+        #        $found->{$tag} = $filename if -e $filename;
     }
     return unless scalar keys %$found;
     return $found;
@@ -151,12 +150,12 @@ sub create_pid_file {
 #
 sub create_marker_file {
     my $self = shift;
-    my ($tag, $data) = @_;
+    my ( $tag, $data ) = @_;
 
     my $args = { tag => $tag };
     $args->{data} = $data if defined $data;
 
-    $self->create_file( $args );
+    $self->create_file($args);
     return;
 }
 
@@ -212,7 +211,7 @@ sub delete_marker_file {
 sub read_pid_file {
     my $self = shift;
 
-    local $INPUT_RECORD_SEPARATOR; # enable SLURP reading
+    local $INPUT_RECORD_SEPARATOR;    # enable SLURP reading
 
     my $filename = $self->full_file_path( $TAG{PIDFILE} );
     my $retval   = {};
@@ -233,7 +232,7 @@ sub read_pid_file {
 
     open my $pidfile, '<', $filename
         or die "Could not create pidfile '$filename', $OS_ERROR";
-    $retval->{data} = <$pidfile>; # slurp
+    $retval->{data} = <$pidfile>;    # slurp
     close $pidfile;
 
     return $retval;
@@ -247,13 +246,13 @@ sub read_pid_file {
 #
 sub old_pid_file_exists {
     my $self = shift;
-    my ( $refresh) = @_;
+    my ($refresh) = @_;
 
-    if ( $refresh 
-	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
-	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    if ( $refresh
+         || !$self->old_files()->{ $TAG{PIDFILE} } ) {
+        $self->old_files()->{ $TAG{PIDFILE} } = $self->read_pid_file();
     }
-    return $self->old_files()->{$TAG{PIDFILE}}{status} ne $NO_SUCH_FILE;
+    return $self->old_files()->{ $TAG{PIDFILE} }{status} ne $NO_SUCH_FILE;
 }
 
 # ......................................................................
@@ -264,13 +263,13 @@ sub old_pid_file_exists {
 #
 sub old_pid_file_age {
     my $self = shift;
-    my ( $refresh) = @_;
+    my ($refresh) = @_;
 
-    if ( $refresh 
-	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
-	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    if ( $refresh
+         || !$self->old_files()->{ $TAG{PIDFILE} } ) {
+        $self->old_files()->{ $TAG{PIDFILE} } = $self->read_pid_file();
     }
-    return $self->old_files()->{$TAG{PIDFILE}}{age} || undef;
+    return $self->old_files()->{ $TAG{PIDFILE} }{age} || undef;
 }
 
 # ......................................................................
@@ -281,13 +280,13 @@ sub old_pid_file_age {
 #
 sub old_pid_file_data {
     my $self = shift;
-    my ( $refresh) = @_;
+    my ($refresh) = @_;
 
-    if ( $refresh 
-	 || ! $self->old_files()->{$TAG{PIDFILE}} ) {
-	$self->old_files()->{$TAG{PIDFILE}} = $self->read_pid_file();
+    if ( $refresh
+         || !$self->old_files()->{ $TAG{PIDFILE} } ) {
+        $self->old_files()->{ $TAG{PIDFILE} } = $self->read_pid_file();
     }
-    return $self->old_files()->{$TAG{PIDFILE}}{data} || undef;
+    return $self->old_files()->{ $TAG{PIDFILE} }{data} || undef;
 }
 
 # ----------------------------------------------------------------------

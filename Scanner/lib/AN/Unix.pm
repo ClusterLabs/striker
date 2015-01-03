@@ -21,9 +21,9 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA => q{,};
-const my $ESCAPED_DOT   => q{\.};
-const my $PROG  => ( fileparse($PROGRAM_NAME) )[0];
+const my $COMMA       => q{,};
+const my $ESCAPED_DOT => q{\.};
+const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $SHORT_FLAG     => '-short';
 const my $PID2PROC_NAME  => '/bin/ps -p %s -o comm=';
@@ -62,12 +62,12 @@ sub pid2process {
 # Proc::Background goes away, the bg job is killed.
 #
 sub new_bg_process {
-    my ($process, @args) = @_;
-    
-    my $bg_obj = ( @args 
-		   ? Proc::Background->new( $TERMINATE_FLAG, $process )
-		   :  Proc::Background->new( $TERMINATE_FLAG, $process, @args )
-		   );
+    my ( $process, @args ) = @_;
+
+    my $bg_obj = ( @args
+                   ? Proc::Background->new( $TERMINATE_FLAG, $process )
+                   : Proc::Background->new( $TERMINATE_FLAG, $process, @args )
+                 );
     my $bg_pid = $bg_obj->pid;
     return { process => $bg_obj, pid => $bg_pid };
 }

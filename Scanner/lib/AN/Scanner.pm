@@ -30,40 +30,41 @@ use AN::DBS;
 use AN::Listener;
 
 const my $MAX_LOOPS_UNREFRESHED => 10;
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
 
-use subs 'alert_num';		# manually define accessor.
+use subs 'alert_num';    # manually define accessor.
 
 use Class::Tiny qw( agentdir duration dbconf
     db_type db_name port
     rate verbose monitoragent
     flagfile dbs run_until
     msg_dir smtp from ), {
-    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED}, 
-    agents    => sub { [] },
-    processes => sub { [] },
-    alert_num => sub { 'a' },
-    alerts    => sub { my $self = shift;
-		       AN::Alerts->new(
-			   { agents => { pid      => $PID,
-					 program => $PROG,
-					 hostname => AN::Unix::hostname(),
-					 msg_dir  => $self->msg_dir,
-			     },
-			     owner => $self
-			   } );
+    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
+    agents                => sub { [] },
+    processes             => sub { [] },
+    alert_num             => sub {'a'},
+    alerts                => sub {
+        my $self = shift;
+        AN::Alerts->new(
+                         { agents => { pid      => $PID,
+                                       program  => $PROG,
+                                       hostname => AN::Unix::hostname(),
+                                       msg_dir  => $self->msg_dir,
+                                     },
+                           owner => $self
+                         } );
     }, };
 
 sub BUILD {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
-    return unless ref $self eq __PACKAGE__; # skip BUILD for descendents
-    
+    return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
+
     croak(q{Missing Scanner constructor arg 'agentdir'.})
-	unless $self->agentdir();
+        unless $self->agentdir();
     croak(q{Missing Scanner constructor arg 'rate'.})
-	unless $self->rate();
+        unless $self->rate();
 
     $self->monitoragent(
         AN::MonitorAgent->new(
@@ -76,7 +77,7 @@ sub BUILD {
             } ) );
 }
 
-sub alert_num {			# Return current value, increment to new value.
+sub alert_num {    # Return current value, increment to new value.
     my $self = shift;
 
     return $self->{alert_id}++;
@@ -85,11 +86,11 @@ sub alert_num {			# Return current value, increment to new value.
 # ======================================================================
 # CONSTANTS
 #
-const my $COLON    => q{:};
-const my $COMMA    => q{,};
-const my $SPACE    => q{ };
-const my $STAR     => q{*};
-const my $PIPE     => q{|};
+const my $COLON => q{:};
+const my $COMMA => q{,};
+const my $SPACE => q{ };
+const my $STAR  => q{*};
+const my $PIPE  => q{|};
 
 const my $READ_PROC  => q{-|};
 const my $WRITE_PROC => q{|-};
@@ -101,9 +102,9 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
-const my $HOURS_IN_A_DAY        => 24;
-const my $MINUTES_IN_AN_HOUR    => 60;
-const my $SECONDS_IN_A_MINUTE   => 60;
+const my $HOURS_IN_A_DAY      => 24;
+const my $MINUTES_IN_AN_HOUR  => 60;
+const my $SECONDS_IN_A_MINUTE => 60;
 const my $SECONDS_IN_A_DAY =>
     ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_A_MINUTE );
 
@@ -312,7 +313,7 @@ sub tell_old_job_to_quit {
 sub fetch_alert_listeners {
     my $self = shift;
 
-    return $self->dbs()->fetch_alert_listeners( $self );
+    return $self->dbs()->fetch_alert_listeners($self);
 }
 
 sub ok_to_exit {
@@ -332,20 +333,20 @@ sub new_alert_loop {
 sub set_alert {
     my $self = shift;
 
-    $self->alerts()->set_alert( @_ );
+    $self->alerts()->set_alert(@_);
 }
 
 sub clear_alert {
     my $self = shift;
 
-    $self->alerts()->clear_alert( @_);
+    $self->alerts()->clear_alert(@_);
     return;
 }
 
 sub handle_alerts {
     my $self = shift;
 
-    $self->alerts()->handle_alerts( @_ );
+    $self->alerts()->handle_alerts(@_);
     return;
 }
 
@@ -355,7 +356,7 @@ sub check_for_previous_instance {
     $self->create_flagfile();
 
     # Old process exited cleanly, take over. Return early.
-    return $RUN if !  $self->old_pid_file_exists();
+    return $RUN if !$self->old_pid_file_exists();
 
     my ( $is_recent, $is_running )
         = ( $self->pid_file_is_recent, $self->pid_file_process_is_running );
@@ -365,18 +366,19 @@ sub check_for_previous_instance {
         if $is_recent && $is_running;
 
     # Old process exited recently without proper cleanup
-    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
-		     'OLD_PROCESS_RECENT_CRASH', '')
+    $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
+                      '', '', AN::Alerts::DEBUG(),
+                      'OLD_PROCESS_RECENT_CRASH', '' )
         if $is_recent && !$is_running;
 
     # Old process has stalled; running but not updating.
-    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
-		     'OLD_PROCESS_STALLED', '')
+    $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
+                      '', '', AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED', '' )
         if !$is_recent && $is_running;
 
     # old process exited some time ago without proper cleanup
-    $self->set_alert($self->alert_num(), $PID, 'pidfile check', '', '', AN::Alerts::DEBUG(),
-		     'OLD_PROCESS_CRASH', '')
+    $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
+                      '', '', AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH', '' )
         if !$is_recent && !$is_running;
 
     return $RUN;
@@ -384,12 +386,12 @@ sub check_for_previous_instance {
 
 sub connect_dbs {
     my $self = shift;
-    my ( $node_args ) = @_;
+    my ($node_args) = @_;
 
-    my $args = { path => { config_file => $self->dbconf} };
+    my $args = { path => { config_file => $self->dbconf } };
     $args->{node_args} = $node_args if $node_args;
 
-    $self->dbs( AN::DBS->new( $args ) );
+    $self->dbs( AN::DBS->new($args) );
     return;
 }
 
@@ -416,7 +418,7 @@ sub launch_new_agents {
 
     my @new_agents;
     for my $agent (@$new) {
-        my @args = ( catdir( $self->agentdir(), $agent), @$args );
+        my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
         $pid->{filename} = $agent;
@@ -458,15 +460,16 @@ sub clean_up_metadata_files {
     my $self = shift;
 
     my $prefix = AN::FlagFile::get_tag('METADATA');
-    my $dir = $self->flagfile()->dir();
+    my $dir    = $self->flagfile()->dir();
 
-    for ( glob( catdir( $dir, ($prefix . $STAR)))) {
-	say "deleting old file $_." if $self->verbose;
-	unlink $_;
+    for ( glob( catdir( $dir, ( $prefix . $STAR ) ) ) ) {
+        say "deleting old file $_." if $self->verbose;
+        unlink $_;
     }
 
     return;
 }
+
 sub clean_up_running_agents {
     die "scanner::clean_up_running_agents() not implemented yet.";
 }
@@ -479,8 +482,9 @@ sub run {
     $self->clean_up_metadata_files();
     $self->connect_dbs();
     $self->create_pid_file();
-#    $self->handle_alerts();	# process any alerts from initialization stage
-    
+
+    #    $self->handle_alerts();	# process any alerts from initialization stage
+
     # process until quitting time
     #
     $self->run_timed_loop_forever();
@@ -490,7 +494,7 @@ sub run {
     $self->clean_up_running_agents();
     $self->disconnect_dbs();
     $self->delete_pid_file();
-    $self->handle_alerts();	# process any alerts from clean-up stage
+    $self->handle_alerts();    # process any alerts from clean-up stage
 }
 
 # ......................................................................
@@ -557,52 +561,53 @@ sub handle_deletions {
 
 sub wait_for_all_metadata_files {
     my $self = shift;
-    my ($additions, $tag ) = @_;
+    my ( $additions, $tag ) = @_;
 
-    my $N = scalar @$additions;
+    my $N   = scalar @$additions;
     my $idx = 0;
 
-    while ($idx++ < 15) { 
-	my $files = $self->find_marker_files($tag);
-	if ( 'HASH' eq ref $files
-	     && $files->{$tag}
-	     && scalar @{ $files->{$tag} }) {
+    while ( $idx++ < 15 ) {
+        my $files = $self->find_marker_files($tag);
+        if (    'HASH' eq ref $files
+             && $files->{$tag}
+             && scalar @{ $files->{$tag} } ) {
 
-	    my $N_found = 0;
-	    for my $newfile ( @{ $files->{metadata} } ) {
-		for my $addition ( @$additions ) {
-		    $N_found++ if 0 < index $newfile, $addition->{filename};
-		}
-	    }
-	    return $files if $N_found == $N;
-	}
-	sleep 1;
+            my $N_found = 0;
+            for my $newfile ( @{ $files->{metadata} } ) {
+                for my $addition (@$additions) {
+                    $N_found++ if 0 < index $newfile, $addition->{filename};
+                }
+            }
+            return $files if $N_found == $N;
+        }
+        sleep 1;
     }
     return;
 }
+
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
 
     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
-    my $tag = AN::FlagFile::get_tag('METADATA');
-    my $files = $self->wait_for_all_metadata_files( $additions, $tag );
+    my $tag            = AN::FlagFile::get_tag('METADATA');
+    my $files          = $self->wait_for_all_metadata_files( $additions, $tag );
 
-  FILEPATH:
+FILEPATH:
     for my $filepath ( @{ $files->{$tag} } ) {
-	next FILEPATH unless $filepath =~ m{($new_file_regex)};
-	my $filename = $1;
-	my %cfg = ( path => { config_file => $filepath } );
-	AN::Common::read_configuration_file( \%cfg );
-	
-	my $process = { name => $filename, db_data => $cfg{db} };
-	$self->add_processes($process);
-	$self->alerts()->add_agent( $cfg{db}{pid},
-				    {  pid      => $cfg{db}{pid},
-				       program  => $cfg{db}{name},
-				       hostname => $cfg{db}{hostname},
-				       msg_dir  => $self->msg_dir,
-				    } );
+        next FILEPATH unless $filepath =~ m{($new_file_regex)};
+        my $filename = $1;
+        my %cfg = ( path => { config_file => $filepath } );
+        AN::Common::read_configuration_file( \%cfg );
+
+        my $process = { name => $filename, db_data => $cfg{db} };
+        $self->add_processes($process);
+        $self->alerts()->add_agent( $cfg{db}{pid},
+                                    {  pid      => $cfg{db}{pid},
+                                       program  => $cfg{db}{name},
+                                       hostname => $cfg{db}{hostname},
+                                       msg_dir  => $self->msg_dir,
+                                    } );
     }
     return;
 }
@@ -629,10 +634,10 @@ sub fetch_alert_data {
 
 sub lookup_process {
     my $self = shift;
-    my ( $node_id ) = @_;
+    my ($node_id) = @_;
 
     for my $process ( $self->processes ) {
-	
+
     }
 }
 
@@ -642,23 +647,22 @@ sub detect_status {
 
     say "db_record with status @{[$db_record->{status}]}." if $self->verbose;
     if ( $db_record->{status} eq 'OK' ) {
-	say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
-	$self->clear_alert( $process->{db_data}{pid} );
+        say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
+        $self->clear_alert( $process->{db_data}{pid} );
     }
     else {
-	my @args = ( $db_record->id,
-		     $process->{db_data}{pid},
-		     $db_record->field,
-		     $db_record->value,
-		     $db_record->units,
-		     $db_record->status,
-		     $db_record->msg_tag,
-		     $db_record->msg_args,
-		     { timestamp => $db_record->timestamp},
-	    );
-	say "Setting alert '$db_record->msg_tag' from $process->{db_data}{pid}."
-	    if $self->verbose;
-	$self->set_alert( @args );
+        my @args = ( $db_record->id,
+                     $process->{db_data}{pid},
+                     $db_record->field,
+                     $db_record->value,
+                     $db_record->units,
+                     $db_record->status,
+                     $db_record->msg_tag,
+                     $db_record->msg_args,
+                     { timestamp => $db_record->timestamp }, );
+        say "Setting alert '$db_record->msg_tag' from $process->{db_data}{pid}."
+            if $self->verbose;
+        $self->set_alert(@args);
     }
 
     return;
@@ -670,14 +674,13 @@ sub process_agent_data {
     say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
         my $alerts = $self->fetch_alert_data($process);
-	say "agent_data has @{[scalar @$alerts]} records." if $self->verbose;
-	for my $alert ( @$alerts ) {
-	    $self->detect_status( $process, $alert );
-	}
+        say "agent_data has @{[scalar @$alerts]} records." if $self->verbose;
+        for my $alert (@$alerts) {
+            $self->detect_status( $process, $alert );
+        }
     }
     return;
 }
-
 
 # Things to do in the core for a scanner core object
 #

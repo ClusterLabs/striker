@@ -96,7 +96,7 @@ sub node_id {
             . ( $idx + 1 )
             . $separator
             . 'node_table_id='
-	    . $dbs->[$idx]{node_table_id};
+            . $dbs->[$idx]{node_table_id};
     }
     return @ids;
 }

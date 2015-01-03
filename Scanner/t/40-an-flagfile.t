@@ -34,22 +34,21 @@ sub init_args {
 
 sub test_tags {
 
-    my $all_tags = {PIDFILE => 'pidfile',
-		    METADATA  => 'metadata',
-		    MIGRATING => 'migrating',
-		    CRISIS => 'crisis',
-    };
+    my $all_tags = { PIDFILE   => 'pidfile',
+                     METADATA  => 'metadata',
+                     MIGRATING => 'migrating',
+                     CRISIS    => 'crisis', };
 
     my @all_keys = sort keys %$all_tags;
 
-    is_deeply( AN::FlagFile::get_tag(),
-               \@all_keys, 'tag list with implicit request' );
+    is_deeply( AN::FlagFile::get_tag(), \@all_keys,
+               'tag list with implicit request' );
     is_deeply( AN::FlagFile::get_tag('*NAMES*'),
                \@all_keys, 'tag list with explicit request' );
 
-    for my $key ( @all_keys ) {
-	is( AN::FlagFile::get_tag( $key), $all_tags->{$key},
-	    "tag value for '$key'");
+    for my $key (@all_keys) {
+        is( AN::FlagFile::get_tag($key),
+            $all_tags->{$key}, "tag value for '$key'" );
     }
 }
 
@@ -87,14 +86,15 @@ sub test_accessors {
 sub test_create_pid_file {
     my $ff = shift;
 
-    is( $ff->old_pid_file_exists(), '',
-	"old_pid_file_exists() reports no file prior to create()" );    
+    is( $ff->old_pid_file_exists(),
+        '', "old_pid_file_exists() reports no file prior to create()" );
     $ff->create_pid_file();
 
     my $filename = $ff->full_file_path( $ff->get_tag('PIDFILE') );
 
     ok( -e $filename, 'pid file exists' );
-    ok( $ff->old_pid_file_exists('refresh'), "old_pid_file_exists() detects file" );
+    ok( $ff->old_pid_file_exists('refresh'),
+        "old_pid_file_exists() detects file" );
 
     open my $pidfile, '<', $filename
         or die "Could not open pidfile '$filename', $!.";
@@ -114,8 +114,7 @@ sub test_touch_pid_file {
     my $reported_age = $ff->old_pid_file_age('refresh');
     my $before = $SECS_PER_DAY * ( -M $filename );
 
-    is( $reported_age, $before,
-        'old_pid_file_age() matches' );
+    is( $reported_age, $before, 'old_pid_file_age() matches' );
 
     my $delay = 60;
     say "Sleeping $delay seconds.";
@@ -125,33 +124,40 @@ sub test_touch_pid_file {
     my $pre_touch = $ff->old_pid_file_age('refresh');
     $ff->touch_pid_file;
 
-    my $post_touch = $ff->old_pid_file_age('refresh');   
+    my $post_touch = $ff->old_pid_file_age('refresh');
     my $after = $SECS_PER_DAY * ( -M $filename );
 
     my $delta = abs( $after - $before );
     ok( $delta >= ( $delay * 0.90 ),
         "file has been touched; mtime changed $delta after delay of $delay" );
-    is( $pre_touch - $delay, $post_touch, "old_pid_file_age() changes by $delay");
+    is( $pre_touch - $delay,
+        $post_touch, "old_pid_file_age() changes by $delay" );
 }
 
 sub test_find_marker_files {
-    my $ff =  shift;
+    my $ff = shift;
 
     my $files = $ff->find_marker_files();
-    is_deeply( [sort keys %$files], [qw( crisis metadata migrating pidfile )],
-	q{Finds pidfile but 'some_marker' not found due to unknown tag'});
-    is( $files->{pidfile}[0], $ff->full_file_path('pidfile'),
-	'pidfile path is as expected.');
+    is_deeply( [ sort keys %$files ],
+               [qw( crisis metadata migrating pidfile )],
+               q{Finds pidfile but 'some_marker' not found due to unknown tag'}
+             );
+    is( $files->{pidfile}[0],
+        $ff->full_file_path('pidfile'),
+        'pidfile path is as expected.' );
 
     $ff->add_tag( some_marker => 'some_marker' );
 
     $files = $ff->find_marker_files();
-    is_deeply( [sort keys %$files], [qw( crisis metadata migrating pidfile some_marker)],
-	q{after add_tag(), finds both pidfile & 'some_marker' });
-    is( $files->{pidfile}[0], $ff->full_file_path('pidfile'),
-	'pidfile path is as expected.');
-    is( $files->{some_marker}[0], $ff->full_file_path('some_marker'),
-	'some_marker file path is as expected.');
+    is_deeply( [ sort keys %$files ],
+               [qw( crisis metadata migrating pidfile some_marker)],
+               q{after add_tag(), finds both pidfile & 'some_marker' } );
+    is( $files->{pidfile}[0],
+        $ff->full_file_path('pidfile'),
+        'pidfile path is as expected.' );
+    is( $files->{some_marker}[0],
+        $ff->full_file_path('some_marker'),
+        'some_marker file path is as expected.' );
 
 }
 
@@ -193,7 +199,8 @@ sub test_read_pid_file {
     ok( $fileinfo->{age} <= 0, 'pid file is recent' );
     is_deeply( $fileinfo->{data}, $ff->data, 'pif file contents are correct' );
 
-    is_deeply( $fileinfo->{data}, $ff->old_pid_file_data(),
+    is_deeply( $fileinfo->{data},
+               $ff->old_pid_file_data(),
                "old_pid_file_data() gets data" );
 }
 
@@ -214,11 +221,10 @@ sub main {
 
     test_create_marker_file($ff);
 
-    test_find_marker_files($ff, $args);
+    test_find_marker_files( $ff, $args );
 
     test_delete_pid_file($ff);
     test_delete_marker_file($ff);
-
 
     say "
 Run the test with any command line arg, to run the 'touch' command.

@@ -13,7 +13,6 @@ use English '-no_match_vars';
 
 use AN::Email;
 
-
 # ----------------------------------------------------------------------
 # Utility routines
 #
@@ -33,22 +32,23 @@ sub test_dispatch {
     my $email = shift;
 
     my @msgs = ( 'Line 1', 'This is line 2', 'Some stuff on line 3' );
-    
-    stdout_is( sub { $email->dispatch(\@msgs) },
-	       join( '', map { "Email: $_\n" }  @msgs ),
-	       'Email::dispatch() works OK.' );
+
+    stdout_is( sub { $email->dispatch( \@msgs ) },
+               join( '', map {"Email: $_\n"} @msgs ),
+               'Email::dispatch() works OK.' );
     return;
 }
+
 # ----------------------------------------------------------------------
 # main
 #
 sub main {
     my $email = test_constructor();
 
-  SKIP: {
-      skip "Figure out a way to mock up 'mailx'", 1;
-     
-      test_dispatch($email);
+SKIP: {
+        skip "Figure out a way to mock up 'mailx'", 1;
+
+        test_dispatch($email);
     }
 }
 

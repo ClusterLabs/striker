@@ -32,7 +32,7 @@ sub BUILD {
 # ======================================================================
 # CONSTANTS
 #
-const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG   => ( fileparse($PROGRAM_NAME) )[0];
 const my $USRBIN => '/usr/bin/mailx';
 const my $BIN    => '/bin/mailx';
 
@@ -43,9 +43,9 @@ const my $BIN    => '/bin/mailx';
 # ......................................................................
 #
 sub write_to_temp {
-    my ( $msgs ) = @_;
+    my ($msgs) = @_;
 
-    my ( $fh, $file ) = tempfile();    
+    my ( $fh, $file ) = tempfile();
     say $fh join "\n", @$msgs;
     close $fh;
 
@@ -55,18 +55,17 @@ sub write_to_temp {
 sub send_msg {
     my ( $file, $to, $subject ) = @_;
 
-    state $MAILX =
-	(   -e $USRBIN && -x _ ? $USRBIN
-	  : -e $BIN    && -x _ ? $BIN
-	  :                      die __PACKAGE__ . q{can't find 'mailx'.}
-	); 
+    state $MAILX = (   -e $USRBIN && -x _ ? $USRBIN
+                     : -e $BIN    && -x _ ? $BIN
+                     :   die __PACKAGE__ . q{can't find 'mailx'.} );
 
-#    my $cmd = "$MAILX -A gmail -s '$subject' $to < $file";
+    #    my $cmd = "$MAILX -A gmail -s '$subject' $to < $file";
     my $cmd = "$MAILX -s '$subject' $to < $file";
     say "Emailing: $cmd";
 
-    return  system $cmd;
+    return system $cmd;
 }
+
 sub dispatch {
     my $self = shift;
     my ( $msgs, $listener ) = @_;
@@ -75,10 +74,10 @@ sub dispatch {
     my $subject = 'Msg from HA scanner';
 
     my $file = write_to_temp $msgs;
-    
-    if ( 0 == send_msg $file, $to, $subject  ) {	# Had an error?
-		carp "ERROR sending email '$file' to '$to' containing\n'@$msgs'";
-    } 
+
+    if ( 0 == send_msg $file, $to, $subject ) {    # Had an error?
+        carp "ERROR sending email '$file' to '$to' containing\n'@$msgs'";
+    }
     else {
         unlink $file;
     }

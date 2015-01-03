@@ -25,7 +25,7 @@ use Class::Tiny qw( attr );
 #
 sub dispatch {
     my $self = shift;
-    my ( $dispatchee ) = @_;
+    my ($dispatchee) = @_;
 
     say for @$dispatchee;
 }

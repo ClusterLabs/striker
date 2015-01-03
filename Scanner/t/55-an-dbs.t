@@ -15,15 +15,14 @@ use English '-no_match_vars';
 
 use AN::DBS;
 
-
 my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial' },
                2 => { column_name => 'name',    data_type => 'text' } };
 
 my $LISTENERS = { 2 => { id           => 2,
-			 db_type      => 'Pg',
+                         db_type      => 'Pg',
                          name         => 'screen',
-                         mode         => 'SCREEN',			 
-			 contact_info => '',
+                         mode         => 'SCREEN',
+                         contact_info => '',
                          language     => 'en_CA',
                          added_by     => 0,
                          updated      => '2014-02-14 12:00:00.000000-05'
@@ -40,77 +39,82 @@ my $AGENT_RECORD = { 1 => { id        => 1234,
 
 package DBI::sth;
 
-    sub new {
-        my $class = shift;
-        my ($sql) = @_;
+sub new {
+    my $class = shift;
+    my ($sql) = @_;
 
-        return bless { sql => $sql }, $class;
-    }
+    return bless { sql => $sql }, $class;
+}
 
-    sub execute {
-        my $self = shift;
-        push @{ $self->{execute} }, \@_;
-        return 1 if 0 <= index $self->{sql}, 'INSERT INTO';
-	return 1 if 0 <= index $self->{sql}, 'SELECT *,';
+sub execute {
+    my $self = shift;
+    push @{ $self->{execute} }, \@_;
+    return 1 if 0 <= index $self->{sql}, 'INSERT INTO';
+    return 1 if 0 <= index $self->{sql}, 'SELECT *,';
 
-    }
-    
-    sub fetchall_hashref {
-	my $self = shift;
+}
 
-	push @{ $self->{fetch_all_hashref} }, \@_;
-	return $AGENT_RECORD if 0 <= index $self->{sql}, 'SELECT *,'
-	    and 70 == index $self->{sql}, 'FROM agent_data';
+sub fetchall_hashref {
+    my $self = shift;
 
-	return $SCHEMA;
-    }
-    1;
+    push @{ $self->{fetch_all_hashref} }, \@_;
+    return $AGENT_RECORD
+        if 0 <= index $self->{sql}, 'SELECT *,'
+        and 70 == index $self->{sql}, 'FROM agent_data';
+
+    return $SCHEMA;
+}
+1;
+
 # End of package DBI::sth
 
 package DBI;
 
-    { no warnings;
-      sub connect_cached {
-	  my $class = shift;
-	  my (@args) = @_;
+{
+    no warnings;
 
-	  return bless { args => \@args }, $class;
-      }
+    sub connect_cached {
+        my $class = shift;
+        my (@args) = @_;
+
+        return bless { args => \@args }, $class;
     }
+}
 
-    sub prepare {
-        my $self = shift;
-        my ($sql) = @_;
+sub prepare {
+    my $self = shift;
+    my ($sql) = @_;
 
-        my $sth = DBI::sth->new($sql);
-        push @{ $self->{prepare} }, $sth;
-        return $sth;
-    }
+    my $sth = DBI::sth->new($sql);
+    push @{ $self->{prepare} }, $sth;
+    return $sth;
+}
 
-    sub commit { say "commit"; return 1; }
-    sub rollback { say "rollback", return 1 }
+sub commit { say "commit"; return 1; }
+sub rollback { say "rollback", return 1 }
 
-    sub last_insert_id {
-        state $id = 1;
-        return $id++;
-    }
+sub last_insert_id {
+    state $id = 1;
+    return $id++;
+}
 
-    sub selectall_arrayref {
-        my $self = shift;
+sub selectall_arrayref {
+    my $self = shift;
 
-        $self->{selectall_arrayref} = \@_;
-	return [ [1] ];
-    }
+    $self->{selectall_arrayref} = \@_;
+    return [ [1] ];
+}
 
-    sub selectall_hashref {
-        my $self = shift;
+sub selectall_hashref {
+    my $self = shift;
 
-        $self->{selectall_hashref} = \@_;
-	return $LISTENERS if 0 < index $_[0], 'alert_listeners';
-	return $SCHEMA;
-    }
+    $self->{selectall_hashref} = \@_;
+    return $LISTENERS if 0 < index $_[0], 'alert_listeners';
+    return $SCHEMA;
+}
 
-    1;
+1;
+
 # End of package DBI
 
 package main;
@@ -121,30 +125,29 @@ package main;
 
 sub std_dbconf {
 
-    return { 1 => {'db_type' => 'Pg',
-		   'host' => 'localhost',
-		   'name' => 'scanner',
-		   'password' => 'alteeve',
-		   'port' => 5432,
-		   'user' => 'alteeve',
-	     }
-    };
+    return { 1 => { 'db_type'  => 'Pg',
+                    'host'     => 'localhost',
+                    'name'     => 'scanner',
+                    'password' => 'alteeve',
+                    'port'     => 5432,
+                    'user'     => 'alteeve',
+                  } };
 }
 
 sub alert_args {
 
-    return { name => 'some scanner agent',
-	     db_data => { 1 => { db_type => 'Pg',
-				 host => 'localhost',
-				 name => 'some scanner agent',
-				 port => 5432,
-				 user => 'alteeve',
-				 node_table_id => 13,
-			  },
-			  datatable_name => 'agent_data',
-	     }
-    };
+    return { name    => 'some scanner agent',
+             db_data => { 1 => { db_type       => 'Pg',
+                                 host          => 'localhost',
+                                 name          => 'some scanner agent',
+                                 port          => 5432,
+                                 user          => 'alteeve',
+                                 node_table_id => 13,
+                               },
+                          datatable_name => 'agent_data',
+                        } };
 }
+
 # ----------------------------------------------------------------------
 # Tests
 #
@@ -157,30 +160,27 @@ sub test_constructor {
     my $dbs = AN::DBS->new( { path => $config_file } );
     isa_ok( $dbs, 'AN::DBS', 'DBS object' );
 
-    is_deeply( $dbs->path, $config_file, 'DBS obj has right config path.');
-    is_deeply( $dbs->dbconf, std_dbconf(), 'DBS obj has right config data.');
+    is_deeply( $dbs->path,   $config_file, 'DBS obj has right config path.' );
+    is_deeply( $dbs->dbconf, std_dbconf(), 'DBS obj has right config data.' );
 
     my $onedb = $dbs->dbs->[0];
-    isa_ok( $onedb, 'AN::OneDB', q{DBS object's dbs attribute'});
-    
+    isa_ok( $onedb, 'AN::OneDB', q{DBS object's dbs attribute'} );
+
     return $dbs;
 }
-
 
 sub test_is_pw_field {
     my $dbs = shift;
 
-    is( AN::DBS::is_pw_field( 'password' ), 1,
-	q{is_pw_field matches 'password'} );
+    is( AN::DBS::is_pw_field('password'), 1,
+        q{is_pw_field matches 'password'} );
 
-    isnt( AN::DBS::is_pw_field( 'wrong' ), 1,
-	q{is_pw_field detects mismatch} );
+    isnt( AN::DBS::is_pw_field('wrong'), 1, q{is_pw_field detects mismatch} );
 
-    isnt( AN::DBS::is_pw_field( '' ), 1,
-	q{is_pw_field detects erronous empty string} );
+    isnt( AN::DBS::is_pw_field(''),
+          1, q{is_pw_field detects erronous empty string} );
 
-    isnt( AN::DBS::is_pw_field( ), 1,
-	q{is_pw_field detects erronous no args} );
+    isnt( AN::DBS::is_pw_field(), 1, q{is_pw_field detects erronous no args} );
 
     return;
 }
@@ -200,24 +200,24 @@ sub test_connect_dbs {
 sub test_insert_raw_record {
     my $dbs = shift;
 
-    my $args = { table => 'node',
-		 with_node_table_id => 'node_table_id',
-		 args => { node_name => 'testing',
-			   node_description => 'server',
-			   pid  => 123,
-		 }
-    };
-    $dbs->insert_raw_record( $args );
+    my $args = { table              => 'node',
+                 with_node_table_id => 'node_table_id',
+                 args               => {
+                           node_name        => 'testing',
+                           node_description => 'server',
+                           pid              => 123,
+                         } };
+    $dbs->insert_raw_record($args);
 
-  SQL:
+SQL:
     for my $sql ( keys %{ $dbs->dbs->[0]->sth } ) {
-	next SQL unless 0 <= index $sql, 'INSERT INTO';
-	next SQL unless 0 <= index $sql, 'node_table_id';
-	
-	my $sth = $dbs->dbs->[0]->sth->{$sql};
+        next SQL unless 0 <= index $sql, 'INSERT INTO';
+        next SQL unless 0 <= index $sql, 'node_table_id';
 
-	my $std = ['server', 'testing', 123, 1 ];
-	is_deeply( $sth->{execute}[0], $std, 'sth has right execute args' );
+        my $sth = $dbs->dbs->[0]->sth->{$sql};
+
+        my $std = [ 'server', 'testing', 123, 1 ];
+        is_deeply( $sth->{execute}[0], $std, 'sth has right execute args' );
     }
     return;
 }
@@ -231,12 +231,12 @@ sub test_fetch_alert_data {
 
     my $record = $records->[0];
     isa_ok( $record, 'AN::OneAlert',
-	    'fetch_alert_data() returns array of OneAlerts');
+            'fetch_alert_data() returns array of OneAlerts' );
 
     my $std = $AGENT_RECORD->{1};
-    @{$std}{qw(db_type db)} = ('Pg', 'localhost');
-    is_deeply( $record, $std, 'fetch_alert_data() OK');
-    
+    @{$std}{qw(db_type db)} = ( 'Pg', 'localhost' );
+    is_deeply( $record, $std, 'fetch_alert_data() OK' );
+
     return;
 }
 
@@ -246,16 +246,14 @@ sub test_fetch_alert_listeners {
     my $listener = $dbs->fetch_alert_listeners();
 
     isa_ok( $listener->[0], 'AN::Listener',
-	    'fetch_alert_listeners() returns object');
+            'fetch_alert_listeners() returns object' );
 
     my $std = bless $LISTENERS->{2}, 'AN::Listener';
-    
-    is_deeply( $listener->[0], $std,
-	       'fetch_alert_listeners() attributes OK' );
+
+    is_deeply( $listener->[0], $std, 'fetch_alert_listeners() attributes OK' );
 
     return;
 }
-
 
 # ----------------------------------------------------------------------
 # main
@@ -267,12 +265,12 @@ sub main {
     #
     # test_add_db( $dbs );
     # test_connect_dbs( $dbs );
-    
-    test_is_pw_field( $dbs );
-    test_insert_raw_record( $dbs );
-    test_fetch_alert_data( $dbs );
-    test_fetch_alert_listeners ( $dbs );
-    
+
+    test_is_pw_field($dbs);
+    test_insert_raw_record($dbs);
+    test_fetch_alert_data($dbs);
+    test_fetch_alert_listeners($dbs);
+
 }
 
 main();

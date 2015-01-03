@@ -32,25 +32,6 @@ use Class::Tiny qw( snmp snmpconf prev );
 # ======================================================================
 # CONSTANTS
 #
-#const my $DUMP_PREFIX => q{db::};
-#const my $NEWLINE     => qq{\n};
-
-#const my $PROG             => ( fileparse($PROGRAM_NAME) )[0];
-#const my $DATATABLE_NAME   => 'agent_data';
-#const my $DATATABLE_SCHEMA => <<"EOSCHEMA";
-#
-#id        serial primary key,
-#node_id   bigint references node(node_id),
-#value     integer,
-#status    status,
-#msg_tag   text,
-#msg_args  text,
-#timestamp timestamp with time zone    not null    default now()
-#
-#EOSCHEMA
-#
-#const my $NOT_WORDCHAR => qr{\W};
-#const my $UNDERSCORE   => q{_};
 
 # ......................................................................
 #
@@ -439,9 +420,9 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
 
         if ( not defined $received ) {
             $self->insert_raw_record(
-                              $meta_out->{name},                 '',
-                              'Net::SNMP fetch data',            'CRISIS',
-                              'Net-SNMP->get_request failed', $session->error
+                                 $meta_out->{name},              '',
+                                 'Net::SNMP fetch data',         'CRISIS',
+                                 'Net-SNMP->get_request failed', $session->error
                                     );
             next TARGET;
         }

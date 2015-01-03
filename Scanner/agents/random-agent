@@ -51,16 +51,15 @@ const my $VERBOSE        => 2;
 sub process_args {
 
     my $opt = {
-        rate          => $REP_RATE,           # loop repetition rate in seconds.
-        run_until     => $RUN_UNTIL,          # Stop this process at appointed time.
-        filepath      => '/tmp/agents',    # directory to scan for agents.
-        dbconf        => $DEFAULT_DB_INI,     # DB configuration file.
-	msg_file      => $MSG_DIR . $PROG
-    };
+         rate      => $REP_RATE,          # loop repetition rate in seconds.
+         run_until => $RUN_UNTIL,         # Stop this process at appointed time.
+         filepath  => '/tmp/agents',      # directory to scan for agents.
+         dbconf    => $DEFAULT_DB_INI,    # DB configuration file.
+         msg_file  => $MSG_DIR . $PROG };
 
-    GetOptions( $opt,       'rate=i',       'filepath=s',
-                'dbconf=s',  'msg_file=s', 'metadata|o=s', 'run_until=s',
-                'verbose!', 'man',        'help' )
+    GetOptions( $opt,         'rate=i',       'filepath=s',  'dbconf=s',
+                'msg_file=s', 'metadata|o=s', 'run_until=s', 'verbose!',
+                'man',        'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
@@ -84,8 +83,9 @@ sub verify_args {
     my ($opt) = @_;
 
     pod2usage( -verbose => $BRIEF,
-	       -message => "-run_until time '$opt->{run_until}' format dd:dd:dd" )
-	unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
+               -message => "-run_until time '$opt->{run_until}' format dd:dd:dd"
+             )
+        unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
 
     pod2usage( -verbose => $BRIEF,
                -message => "rate '$opt->{rate}' < $MIN_RATE" )
@@ -108,11 +108,11 @@ sub main {
     # scanner, cwd() is one level higher. Lets make things consistent.
     #
     chdir $UP_ONE_DIR
-	if basename( getcwd ) eq $AGENT_DIR;
+        if basename(getcwd) eq $AGENT_DIR;
 
     my $options = process_args();
 
-    my $agent = AN::Agent->new( $options );
+    my $agent = AN::Agent->new($options);
     $agent->create_flagfile();
 
     my $status = $agent->run();

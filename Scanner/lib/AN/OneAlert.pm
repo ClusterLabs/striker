@@ -23,36 +23,35 @@ use Const::Fast;
 use Class::Tiny
     qw( id msg_tag node_id field value units status timestamp db db_type pid ),
     { msg_args => sub { [] },
-      other    => sub { [] }, 
-      handled  => sub { 0 },
-    };
+      other    => sub { [] },
+      handled  => sub {0}, };
 
 # ======================================================================
 # CONSTANTS
 #
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my %LEVEL => ( OK      => 'OK',
                      DEBUG   => 'DEBUG',
                      WARNING => 'WARNING',
                      CRISIS  => 'CRISIS' );
 
-const my $LISTENS_TO 
-    => { CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1},
-	 WARNING => { OK => 0, DEBUG => 0, WARNING => 1, CRISIS => 1},
-	 DEBUG   => { OK => 0, DEBUG => 1, WARNING => 1, CRISIS => 1},
-	 OK      => { OK => 1, DEBUG => 1, WARNING => 1, CRISIS => 1},	 
-};
-			  
+const my $LISTENS_TO => {
+                  CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1 },
+                  WARNING => { OK => 0, DEBUG => 0, WARNING => 1, CRISIS => 1 },
+                  DEBUG   => { OK => 0, DEBUG => 1, WARNING => 1, CRISIS => 1 },
+                  OK      => { OK => 1, DEBUG => 1, WARNING => 1, CRISIS => 1 },
+                        };
+
 # ======================================================================
 # Subroutines
 #
 # ......................................................................
 
-sub OK      {return $LEVEL{OK};}
-sub DEBUG   {return $LEVEL{DEBUG};}
-sub WARNING {return $LEVEL{WARNING};}
-sub CRISIS  {return $LEVEL{CRISIS};}
+sub OK      { return $LEVEL{OK}; }
+sub DEBUG   { return $LEVEL{DEBUG}; }
+sub WARNING { return $LEVEL{WARNING}; }
+sub CRISIS  { return $LEVEL{CRISIS}; }
 
 # ======================================================================
 # Methods
@@ -62,15 +61,15 @@ sub CRISIS  {return $LEVEL{CRISIS};}
 #
 sub listening_at_this_level {
     my $self = shift;
-    my ( $listener ) = @_;
+    my ($listener) = @_;
 
-    return unless exists $LISTENS_TO->{$listener->{level}};
-    return unless exists $LISTENS_TO->{$listener->{level}}{$self->status};
-    return $LISTENS_TO->{$listener->{level}}{$self->status};
+    return unless exists $LISTENS_TO->{ $listener->{level} };
+    return unless exists $LISTENS_TO->{ $listener->{level} }{ $self->status };
+    return $LISTENS_TO->{ $listener->{level} }{ $self->status };
 }
 
 sub has_this_alert_been_reported_yet {
-    my $self  = shift;
+    my $self = shift;
 
     return $self->handled;
 }
