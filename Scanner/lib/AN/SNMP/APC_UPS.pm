@@ -80,7 +80,7 @@ sub eval_discrete_status {
         }
         elsif ( $newvalue eq 'needed' ) {
             $status  = 'DEBUG';
-            $msg_tag = 'Battery requires replacement';
+            $msg_tag = 'Replace battery';
         }
         else {
             $status   = 'DEBUG';
@@ -96,7 +96,7 @@ sub eval_discrete_status {
         }
         elsif ( $newvalue eq 'no' ) {
             $status  = 'DEBUG';
-            $msg_tag = "Communication to device disconnected";
+            $msg_tag = "Communication disconnected";
         }
         else {
             $status   = 'DEBUG';
@@ -109,7 +109,7 @@ sub eval_discrete_status {
         if (    $prev_value
              && $prev_value ne $newvalue ) {
             $status   = 'DEBUG';
-            $msg_tag  = "value changed from '%s' => '%s'";
+            $msg_tag  = "value changed";
             $msg_args = join ';', $prev_value, $newvalue;
         }
         else {
@@ -120,7 +120,7 @@ sub eval_discrete_status {
         if (    $prev_value
              && $prev_value ne $value ) {
             $status   = 'DEBUG';
-            $msg_tag  = "value changed from  '%s' => '%s'";
+            $msg_tag  = "value changed";
             $msg_args = join( ';',
                               $rec_meta->{values}{$prev_value},
                               $rec_meta->{values}{$value} );
@@ -135,7 +135,7 @@ sub eval_discrete_status {
         }
         else {
             $status   = 'DEBUG';
-            $msg_tag  = 'Last self-test result was not OK: ';
+            $msg_tag  = 'Self-test not OK: ';
             $msg_args = ( [ undef, '', 'failed', 'invalid test' ] )[$value];
         }
     }
@@ -173,7 +173,7 @@ sub eval_rising_status {
     elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
             && $value > $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in Warning range";
+        $msg_tag  = "Value warning";
         $msg_args = $value;
     }
 
@@ -182,7 +182,7 @@ sub eval_rising_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value <= $rec_meta->{warn_max} - $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in `Crisis range";
+        $msg_tag  = "Value crisis";
         $msg_args = $value;
     }
 
@@ -191,12 +191,12 @@ sub eval_rising_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value > $rec_meta->{crisis_min} - $h ) {
         $status   = 'CRISIS';
-        $msg_tag  = "value '%s' in Crisis range";
+        $msg_tag  = "Value crisis";
         $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
-        $msg_tag  = "value '%s' outside expected range";
+        $msg_tag  = "Unexpected value";
         $msg_args = $value;
     }
     $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
@@ -234,7 +234,7 @@ sub eval_falling_status {
     elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
             && $value >= $rec_meta->{warn_min} - $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in Warning range";
+        $msg_tag  = "Value warning";
         $msg_args = $value;
     }
 
@@ -243,7 +243,7 @@ sub eval_falling_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value >= $rec_meta->{warn_min} + $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in Warning range";
+        $msg_tag  = "Value warning";
         $msg_args = $value;
     }
 
@@ -252,12 +252,12 @@ sub eval_falling_status {
     elsif (    $prev_status eq 'CRISIS'
             && $value < $rec_meta->{crisis_max} + $h ) {
         $status   = 'CRISIS';
-        $msg_tag  = "value '%s' in Crisis range";
+        $msg_tag  = "Value crisis";
         $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
-        $msg_tag  = "value '%s' outside expected range";
+        $msg_tag  = "Unexpected value";
         $msg_args = $value;
 
     }
@@ -297,7 +297,7 @@ sub eval_nested_status {
             && $value >= $rec_meta->{warn_min} - $h
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in Warning range";
+        $msg_tag  = "Value warning";
         $msg_args = $value;
     }
 
@@ -307,7 +307,7 @@ sub eval_nested_status {
             && $value >= $rec_meta->{warn_min} - $h
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
-        $msg_tag  = "value '%s' in Warning range";
+        $msg_tag  = "Value warning";
         $msg_args = $value;
     }
 
@@ -317,12 +317,12 @@ sub eval_nested_status {
             && $value > $rec_meta->{warn_min} - $h
             && $value < $rec_meta->{warn_min} + $h ) {
         $status   = 'CRISIS';
-        $msg_tag  = "value '%s' in Crisis range";
+        $msg_tag  = "Value crisis";
         $msg_args = $value;
     }
     else {
         $status   = 'DEBUG';
-        $msg_tag  = "value '%s' outside expected range";
+        $msg_tag  = "Unexpected value";
         $msg_args = $value;
     }
     $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
@@ -395,7 +395,7 @@ sub snmp_connect {
     if ( !defined $session ) {
         $self->insert_raw_record( $meta->{name}, '', 'Net::SNMP connect',
                              'CRISIS',
-                             'Could not connect to Net::SNMP session', $error );
+                             'Net-SNMP connect failed', $error );
     }
     return ( $meta, $session );
 }
@@ -422,7 +422,7 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             $self->insert_raw_record(
                                  $meta_out->{name},              '',
                                  'Net::SNMP fetch data',         'CRISIS',
-                                 'Net-SNMP->get_request failed', $session->error
+                                 'Net-SNMP->get_request() failed', $session->error
                                     );
             next TARGET;
         }

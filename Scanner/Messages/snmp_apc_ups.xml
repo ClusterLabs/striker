@@ -8,16 +8,16 @@
 		<key name="brand_0001">Alteeve's Niche!</key>
 		
 		<!-- Text messages used in config files and such. -->
-		<key name="Battery requires replacement">Battery requires replacement</key>
+		<key name="Replace battery">Battery requires replacement</key>
 		<key name="Unrecognized value">Unrecognized value</key>
-		<key name="Communication to device disconnected">Communication to device disconnected</key>
-		<key name="value changed from '%s' => '%s'">value changed from '%s' => '%s'</key>
-		<key name="Last self-test result was not OK: ">Last self-test result was not OK: </key>
-		<key name="value '%s' in Warning range">value '%s' in Warning range</key>
-		<key name="value '%s' in Crisis range">value '%s' in Crisis range</key>
-		<key name="value '%s' outside expected range">value '%s' outside expected range</key>
-		<key name="Could not connect to Net-SNMP session">Could not connect to Net::SNMP session</key>
-		<key name="Net-SNMP->get_request failed">Net::SNMP->get_request() failed</key>
+		<key name="Communication disconnected">Communication to device disconnected</key>
+		<key name="Value changed">value changed from '%s' => '%s'</key>
+		<key name="Self-test not OK: ">Last self-test result was not OK: </key>
+		<key name="Value Warning">value '%s' in Warning range</key>
+		<key name="Value Crisis">value '%s' in Crisis range</key>
+		<key name="Unexpected value">value '%s' outside expected range</key>
+		<key name="Net-SNMP connect failed">Could not connect to Net::SNMP session</key>
+		<key name="Net-SNMP->get_request() failed">Net::SNMP->get_request() failed</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>
