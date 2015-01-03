@@ -25,12 +25,12 @@ use AN::Listener;
 use Class::Tiny qw( path dbconf dbs);
 
 sub BUILD {
-    my $self = shift; 
-    my ( $args ) = @_;
+    my $self = shift;
+    my ($args) = @_;
 
     my $extra_args = exists $args->{node_args} ? $args->{node_args} : undef;
 
-    $self->connect_dbs( $extra_args );
+    $self->connect_dbs($extra_args);
 }
 
 # ======================================================================
@@ -48,8 +48,8 @@ const my $DB          => q{db};
 # Private Methods
 #
 sub is_pw_field {
-    return 1 <= scalar @_ 
-	&& $_[0] eq 'password';
+    return 1 <= scalar @_
+        && $_[0] eq 'password';
 }
 
 sub add_db {
@@ -67,7 +67,7 @@ sub add_db {
 sub connect_dbs {
     my $self = shift;
 
-    my ( $extra_args ) = @_;
+    my ($extra_args) = @_;
 
     my %cfg = ( path => $self->path );
     AN::Common::read_configuration_file( \%cfg );
@@ -77,11 +77,28 @@ sub connect_dbs {
     $self->dbs( [] );
     for my $tag ( sort keys %{ $self->dbconf } ) {
 
-        $self->add_db( AN::OneDB->new( { dbconf     => $self->dbconf->{$tag},
-					 node_args => $extra_args
-				       } ) );
+        $self->add_db( AN::OneDB->new(
+                                       { dbconf    => $self->dbconf->{$tag},
+                                         node_args => $extra_args
+                                       } ) );
     }
 
+}
+
+sub node_id {
+    my $self = shift;
+    my ( $prefix, $separator ) = @_;
+
+    my ( $dbs, @ids ) = ( $self->dbs() );
+    for my $idx ( 0 .. $#{$dbs} ) {
+        push @ids,
+              $prefix
+            . ( $idx + 1 )
+            . $separator
+            . 'node_table_id='
+	    . $dbs->[$idx]{node_table_id};
+    }
+    return @ids;
 }
 
 sub insert_raw_record {
@@ -101,38 +118,37 @@ sub fetch_alert_data {
 
     my $alerts = [];
     for my $db ( @{ $self->dbs() } ) {
-	my $db_data = $db->fetch_alert_data($proc_info);
-	for my $idx ( keys %$db_data ) {
-	    my $record = $db_data->{$idx};
-	    @{$record}{qw(db db_type)} = ($db->dbconf()->{host},
-				       $db->dbconf()->{db_type},
-		);
-	    push @$alerts,  AN::OneAlert->new($record);
-	}
+        my $db_data = $db->fetch_alert_data($proc_info);
+        for my $idx ( keys %$db_data ) {
+            my $record = $db_data->{$idx};
+            @{$record}{qw(db db_type)}
+                = ( $db->dbconf()->{host}, $db->dbconf()->{db_type}, );
+            push @$alerts, AN::OneAlert->new($record);
+        }
     }
     return $alerts;
 }
 
 sub fetch_alert_listeners {
     my $self = shift;
-    my ( $owner ) = @_;
-    
+    my ($owner) = @_;
+
     for my $db ( @{ $self->dbs() } ) {
         my $hlisteners = $db->fetch_alert_listeners();
 
         my $listeners = [];
         for my $idx ( sort keys %$hlisteners ) {
-            my $data         = $hlisteners->{$idx};
+            my $data = $hlisteners->{$idx};
             $data->{db}      = $db->dbconf()->{host};
             $data->{db_type} = $db->dbconf()->{db_type};
-	    $data->{owner}   = $owner;
-	    push @{$listeners}, AN::Listener->new($data);
+            $data->{owner}   = $owner;
+            push @{$listeners}, AN::Listener->new($data);
         }
         return $listeners if @$listeners;
     }
     return;
 }
-    
+
 # ----------------------------------------------------------------------
 # end of code
 1;

@@ -441,7 +441,7 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             $self->insert_raw_record(
                               $meta_out->{name},                 '',
                               'Net::SNMP fetch data',            'CRISIS',
-                              'Net::SNMP->get_request() failed', $session->error
+                              'Net-SNMP->get_request failed', $session->error
                                     );
             next TARGET;
         }

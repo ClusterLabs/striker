@@ -27,7 +27,7 @@ use Const::Fast;
 #
 const my $BRIEF          => 1;
 const my $COMMA          => q{,};
-const my $DEFAULT_DB_INI => $Bin . '/Config/db.ini';
+const my $DEFAULT_DB_CONF => $Bin . '/Config/db.conf';
 const my $DEFAULT_MSGS   => $Bin . '/Messages/';
 const my $DOTSLASH       => q{./};
 const my $LIFETIME       => 24 * 60 * 60;
@@ -57,7 +57,7 @@ sub process_args {
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
         agentdir  => $Bin . '/agents',    # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
-        dbconf    => $DEFAULT_DB_INI,     # DB configuration file.
+        dbconf    => $DEFAULT_DB_CONF,     # DB configuration file.
 	msg_dir   => $DEFAULT_MSGS,	  # Where message strings XML lives.
 	from      => $FROM,		  # from and smtp used for email
 	smtp      => $SMTP,

@@ -597,11 +597,10 @@ sub handle_additions {
 	
 	my $process = { name => $filename, db_data => $cfg{db} };
 	$self->add_processes($process);
-	my ($idx) = grep {/\b\d+\b/} keys %{ $cfg{db} };
 	$self->alerts()->add_agent( $cfg{db}{pid},
 				    {  pid      => $cfg{db}{pid},
 				       program  => $cfg{db}{name},
-				       hostname => $cfg{db}{$idx}{host},
+				       hostname => $cfg{db}{hostname},
 				       msg_dir  => $self->msg_dir,
 				    } );
     }
