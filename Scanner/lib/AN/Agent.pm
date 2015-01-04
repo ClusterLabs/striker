@@ -117,29 +117,23 @@ sub generate_random_record {
     say scalar localtime(), ": $PROG -> $status, $msg_tag"
         if $self->verbose;
 
+    my $args = {value    => $value,
+		units    => 'a num',
+		field    => 'random values',
+		status   => $status,
+		msg_tag  => $msg_tag,
+		msg_args => $msg_args,
+    };
     $self->insert_raw_record( { table              => $self->datatable_name,
 				with_node_table_id => 'node_id',
-				args               => {
-				    value    => $value,
-				    units    => 'a num',
-				    field    => 'random values',
-				    status   => $status,
-				    msg_tag  => $msg_tag,
-				    msg_args => $msg_args,
-				}, };
+				args               => $args });
 			      
-    $self->insert_raw_record( { table              => $self->alerts_table_name;
+    $self->insert_raw_record( { table              => $self->alerts_table_name,
 				with_node_table_id => 'node_id',
-				args               => {
-				    value    => $value,
-				    units    => 'a num',
-				    field    => 'random values',
-				    status   => $status,
-				    msg_tag  => $msg_tag,
-				    msg_args => $msg_args,
-				}, 
-			      } if $status ne 'OK'
-
+				args               => $args,
+			      }
+	) if $status ne 'OK';
+			      
     $first = 0;
     return;
 }

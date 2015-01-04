@@ -39,7 +39,8 @@ use Class::Tiny qw( snmpconf snmp prev );
 sub BUILD {
     my $self = shift;
 
-    $self->snmpconf( catdir( path_to_configuration_files(), $self->snmpconf ) );
+    $self->snmpconf( catdir( $self->path_to_configuration_files(),
+			     $self->snmpconf ) );
 
     my %cfg = ( path => { config_file => $self->snmpconf } );
     AN::Common::read_configuration_file( \%cfg );
@@ -140,7 +141,7 @@ sub eval_discrete_status {
     }
     my $args = { table              => $self->datatable_name,
 		 with_node_table_id => 'node_id',
-		 args               => {<
+		 args               => {
 		     value    => $newvalue || $value,
 		     units    => $units,
 		     field    => $label || $tag,
@@ -152,7 +153,7 @@ sub eval_discrete_status {
     $self->insert_raw_record( $args );
 
     if ( $status ne 'OK' ) {
-	$args->table = $self->alert_table_name;
+	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
     return ( $status, $newvalue || $value );
@@ -226,7 +227,7 @@ sub eval_rising_status {
     $self->insert_raw_record( $args );
 
     if ( $status ne 'OK' ) {
-	$args->table = $self->alert_table_name;
+	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
 
@@ -304,7 +305,7 @@ sub eval_falling_status {
     $self->insert_raw_record( $args );
 
     if ( $status ne 'OK' ) {
-	$args->table = $self->alert_table_name;
+	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
     return ( $status, $value );
@@ -383,7 +384,7 @@ sub eval_nested_status {
     $self->insert_raw_record( $args );
 
     if ( $status ne 'OK' ) {
-	$args->table = $self->alert_table_name;
+	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
     return ($status);
@@ -462,15 +463,13 @@ sub snmp_connect {
 			 field    => 'Net::SNMP connect',
 			 status   => 'CRISIS',
 			 msg_tag  => 'Net-SNMP connect failed',
-			 msg_args => "errormsg=$error",
+			 msg_args => "errormsg=" . $error,
 		     }, };
 
 	$self->insert_raw_record( $args );
 
-	if ( $status ne 'OK' ) {
-	    $args->table = $self->alert_table_name;
-	    $self->insert_raw_record( $args );
-	}
+	$args->{table} = $self->alerts_table_name;
+	$self->insert_raw_record( $args );
     }
     
     return ( $meta, $session );
@@ -498,20 +497,19 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
 	    my $args = { table              => $self->datatable_name,
 			 with_node_table_id => 'node_id',
 			 args               => {
-			     value    => $meta->{name},
+			     value    => $meta_out->{name},
 			     units    => '',
 			     field    => 'Net::SNMP fetch data',
 			     status   => 'CRISIS',
 			     msg_tag  => 'Net-SNMP->get_request() failed',
-			     msg_args => "errormsg=$session->error",
+			     msg_args => "errormsg=" . $session->error,
 			 }, };
 	    
 	    $self->insert_raw_record( $args );
 	    
-	    if ( $status ne 'OK' ) {
-		$args->table = $self->alert_table_name;
-		$self->insert_raw_record( $args );
-	    }
+	    $args->{table} = $self->alerts_table_name;
+	    $self->insert_raw_record( $args );
+
             next TARGET;
         }
         $session->close;
