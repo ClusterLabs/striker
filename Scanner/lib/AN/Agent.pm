@@ -45,6 +45,11 @@ const my $UNDERSCORE        => q{_};
 # ......................................................................
 #
 
+sub path_to_configuration_files {
+
+    return getcwd();
+}
+
 sub BUILD {
     my $self = shift;
 
@@ -55,7 +60,7 @@ sub BUILD {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbconf( catdir( getcwd(), $self->dbconf ) );
+    $self->dbconf( catdir( path_to_configuration_files(), $self->dbconf ) );
     return;
 }
 
@@ -88,24 +93,9 @@ EODUMP
 
 sub insert_raw_record {
     my $self = shift;
-    my ( $value, $units, $field, $status, $msg_tag, $msg_args ) = @_;
+    my ( $args ) = @_;
 
-    my $args = { table              => $self->datatable_name,
-                 with_node_table_id => 'node_id',
-                 args               => {
-                           value    => $value,
-                           units    => $units,
-                           field    => $field,
-                           status   => $status,
-                           msg_tag  => $msg_tag,
-                           msg_args => $msg_args,
-                         }, };
     $self->dbs()->insert_raw_record($args);
-
-    if ( $status ne 'OK' ) {
-        $args->{table} = $self->alerts_table_name;
-        $self->dbs()->insert_raw_record($args);
-    }
 }
 
 sub generate_random_record {
@@ -126,8 +116,30 @@ sub generate_random_record {
 
     say scalar localtime(), ": $PROG -> $status, $msg_tag"
         if $self->verbose;
-    $self->insert_raw_record( $value, 'a num', 'random values',
-                              $status, $msg_tag, $msg_args );
+
+    $self->insert_raw_record( { table              => $self->datatable_name,
+				with_node_table_id => 'node_id',
+				args               => {
+				    value    => $value,
+				    units    => 'a num',
+				    field    => 'random values',
+				    status   => $status,
+				    msg_tag  => $msg_tag,
+				    msg_args => $msg_args,
+				}, };
+			      
+    $self->insert_raw_record( { table              => $self->alerts_table_name;
+				with_node_table_id => 'node_id',
+				args               => {
+				    value    => $value,
+				    units    => 'a num',
+				    field    => 'random values',
+				    status   => $status,
+				    msg_tag  => $msg_tag,
+				    msg_args => $msg_args,
+				}, 
+			      } if $status ne 'OK'
+
     $first = 0;
     return;
 }

@@ -1,0 +1,299 @@
+       Writing a Scanner Agent by Extending Existing Perl Code
+
+       Structure
+       ---------
+
+Creating a new agent involves writing some perl code, as well as some
+configuration files, but much of the work is already done for you. I
+will describe the file structure as it exists before it is installed
+on the system, because, frankly, I haven't written the delivery
+script, yet. Anyway, you need to create / modify files in the
+undelivered file hierarchy.
+
+Everything lives under .../Striker/Scanner/.
+
+The 'scanner' file is the only file that lives directly under the
+'scanner' directory. It launches any agents it find, and handles the
+delivery of alerts.
+
+The 'agents' directory contains agents. 'random-agent' is a program
+that generates random numbers, and is intended to demonstrate the
+system. It has no purpose in a production system, but may be useful
+during configuration and testing. 'snmp_apc_ups' is an agent to
+connect to APC UPSes using SNMP.
+
+The 'Config' directory contains configuration files. 'db.conf' needs
+to be accessed by every program which will connect to the databases. A
+new agent will presumably have its own configuration file, feel free
+to have multiple files, if necessary.
+
+The 'Docs' directory contains this file, and possibility other
+informative docummentation files.
+
+All Perl modules live under the 'lib' directory.
+
+The 'Messages' directory contains XML files mapping a specified
+language and concise message to extended message strings in multiple
+languages.
+
+The 'MIB' folder contains the SNMP MIB file containing specifications
+for SNMP devices. Currently it contains APC's 'powernet412.mib.txt'
+file.
+
+The 'RPMS' directory contains Perl modules which are pre-requisistes for
+the Scanner system but are not easily available for RedHat EL6.
+
+The 'SQL' directory contains SQL to create the various tables required
+for the scanner system.
+
+Any tests for the modules should go in the 't' directory.
+
+----------------------------------------------------------------------
+
+	The Command-LIne Program
+	------------------------
+
+Make a copy of the 'anmp_apc_ups' file, giving it a name appropriate
+to your target. I named my program to reflect the communication
+infrastructure ( SNMP ), the company providing the supported target
+device ( APC - Amemrican Power Corporation ) and the category of
+device ( UPS ).
+
+'snm_apc_ups' uses the AN::SNMP::APC_UPS module. You will write a
+module which inherits from AN::SNMP_APC_UPS. You will have the benefit
+of the class methods already provided in AN::SNMP::APC_UPS and its
+parent class AN::Agent, and its parent AN::SCanner. You will simply
+need to implement a few additional routines to provide the unique
+functionality for your target, and to replace a few of the provided
+routines.
+
+You will need to decide what to name your module. I used
+'AN::SNMP::APC_UPS', similar to the program name. In terms of the
+physical module file, the double-colons ('::') are interpreted as
+subdirectories under the 'lib' directory, so 'AN::SNMP::APC_UPS
+represents a file name 'APC_UPS.pm' located in the 'lib/AN/SNMP'
+directory. When you have chose a name, replace the existing line 24,
+'use AN::Agent', with the name of your module, e.g. 'use
+AN::SNMP::APC_UPS'.
+
+In the 'CONSTANTS' section, at line 32, replace the name of the
+snmp_apc_ups configuration file with the name of your configuration
+file.
+
+If you want to pass additional information to your class obect, you
+can add new entries int he $opt set of default values, and provide
+command line options to be able to set alternate values in the
+'process_args' subroutine, lines 54-75. But more likely, configuration
+will be through the configuration file.
+
+In your 'main' routine, at line 119, change the name of class being
+instanciated, to use the name of your module. Use the CLASSNAME->new()
+style, the once-popular 'new CLASSNAME' can lead to errors in some
+cases and is considered unsafe.
+
+One thing worth noting in the main() routines is that when the agent
+is invoked from the scanner core program, the current directory will
+be that of the scanner. When we invoke the agent on its own, the
+current directory will be the AGENTS directory. main() changes up one
+directory to reach the scanner core directory, so remaining processing
+is the same. This may need alternate behaviour after installation, if
+the relationshipo of directories is different.
+
+Update the POD to represent your program.
+
+----------------------------------------------------------------------
+
+	The Module
+	----------
+
+Go to 'lib/AN/SNMP/' and make a copy of the 'APC_UPS.pm' file. If you
+are creating another agent which communicates using SNMP, place your
+file under teh SNMP directory. Otherwise, create a directory for your
+interface, or simply place your module directly under 'lib'AN'. Of
+yourse your package name will have to modify or drop the 'SNMP'
+component, if you are placing your file in a different directory.
+
+Change the name in line one to reflect your package, and then alter
+line 3 to subclass from 'AN::SNMP::APC_UPS ...
+
+     use base 'AN::SNMP::APC_UPS;
+
+If you are not using SNMP, remove the reference to the Net::SNMP
+module at line 22, and instead invoke any modules your system requires.
+
+At line 30, Class::Tiny defines the attributes of your
+class. 'AN::SNMP::APC_UPS' inherits the attributes associated with
+'AN::Agent', which is its base class, as well as adding three new
+ones:
+
+	* 'snmpconf',
+	* 'snmp',
+	* 'prev'.
+
+'snmpconf' is the name of the configuration file, including the
+'Config' subdirectory it is in.
+
+'snmp' will store the contents of the configuration file.
+
+'prev' will contain values from the previous iteration of the
+processing loop, so we can compare new values from the target with
+older ones.
+
+You will want to alter these to something relevant to your target, and
+may possibly need more attributes. If you simply convert the names to
+equivalents directly suited to your target, global search-and-replace
+can simplify the change ... just be careful that 'snmp' is a subset of
+'snmpconf.
+
+Class::Tiny will provide accessor functions to make it possible to get
+and set these values. If you invoke '$obj->snmpconf()', the existing
+value will be returned to your program; '$obj->snmpconf( $newvalue )'
+will store a new value.
+
+It is far better to use the accessors to get and set values, than to
+directly dig into the objects innards each time you want to reference
+an attribute - that makes it possible to alter the implementation
+without modifying the user code. As well, it makes it easier to
+inherit behaviour.
+
+In some cases, more sophisticated processing is required that merely
+setting and getting a value. In such a case, I recommend writing an
+higher-level accessor routine, so that the 'dirty work' is localized,
+and ordinary code can have a clean and simple view of how everything
+works. For additional information about Class::Tiny, you can look at
+the other modules, such as 'An::DBS', or read the Class::Tiny
+documentation by the command: 'perldoc Class:Tiny'.
+
+When we invoke CLASSNAME->new( $hashref ), Class::Tiny populates
+object attributes from hash keys with the same name. Any additional
+hashref fields are ignored. It then invokes the BUILD subroutine, if
+we have provided one. This is an opportunity to do any iniitialization
+which is more complicated than merely copying values. 
+
+
+The first step in the BUILD routine is to canonicalize the path to a
+fully-specified path. Since the path_to_configuration_files() routine
+wil be inherited by your class, you don't have to worry about the
+difference between uninstalled and installed file hierarchies; it will
+have been handled for you.
+
+The the data is read from the confriguration file, and stored in the
+'snmp' attribute.
+
+Finally, some post-processing is performed on the configuration data,
+and the 'prev' attribute is configured.  If your code needs alternate
+ways to reference configuration data, say a value => key reverse
+mapping, you don't want to process this over and over each time the
+processing routine is called. Neither do you want to have it in the
+configuration file. Storing both k => v and v => k requires humans to
+do computer work, and invites errors. BUILD() is the approriate time
+to generate the derived values.
+
+    The Main Loop
+    -------------
+
+Back in the program, snmp_apc_ups, we have a 'main() routine. It fixes
+the current directory, processes command line a rguments, creates an
+object, runs the agent, and finally handles a shutdown. The 'run()'
+routine provided by the Scanner module does some preparation which is
+not approrpriate for agents, so the Agent module replaces that run(0
+with it's own version. This is suitable for all descendents. It
+prepares the databases, creates a marker file to communicate with the
+scanner, and then enteres an (almost) infinite loop, which is provided
+by Scanner. The important aspect of that routine is that it invokes a
+routine, loop_core().
+
+Each module can re-implement loop_core(), to carry out whatever tasks
+it requires. When the tasks are done, the infinite loop will handle
+waiting the appropriate time to run again, and if in --verbose mode,
+will print out some loop information.
+
+Looking at AN::SNMP::APC_UPS::loop_core(), we see that all it does is
+call one routine, to query the target and process the received
+information. If all you do is invoke a routine called 'quary_target,
+you can re-use the inherited loop_core(), you don't have to write
+anything. Or if it makes more sense, you can call one or more routiens
+with whatever names you prefer.
+
+query_target() will need your own implementation, unless you are
+accessing an SNMP target.  In the current case, we loop over all the
+targets. There are only two UPSes, but there could conceivably by
+numerous instances of some target. 0, 1, or many, we handle all of
+them, one by one. For each target, create an SNMP connection, and send
+a request for all the data items we require. Failures are handled at
+this point, otherwise the received data is passed on to a processing
+routine.
+
+You will want to have your own equivalent to the processing routine.
+In this case, we iterate over the received data, fetch some relevant
+metadata from the config file, as well as the previous iterationj's
+value and status, and pass those into a routine, eval_status().
+
+There are four different cases to handle in the SNMP data, as
+indicated by the Configuration file information.
+
+      1) OK values are less than WARNING values which are less than
+      CRISIS vuales. 'temperature' is a typical such variable. These
+      are passed on the eval_rising_status().
+         
+      2) OK values are greater than WARNING values which are greater
+      than CRISIS values. An example is 'battery life
+      remaining'. These are passed on the eval_falling_status().
+
+      3) Values are nested, OK in the middle, wrapped in WARNING
+      ranges, while very high or very low values represent a
+      CRISIS. These are passed on the eval_nested_status().
+
+      4) Returned values are not continuous vales, but rather
+      discretely encoded situations, i.e., an enum. For example,
+      'battery replace' returns a '1' if replacement is not need, or a
+      two if it is needed. These are passed on the
+      eval_discrete_status().
+
+You can probably use the eval_status() inherited from the parent
+class, if the configuration files uses 'ok_min', 'ok_max', 'warn_min'
+and 'warn_max' variables. Otherwise it should be simple to come up
+with a variation. The current implementation uses a trick: invoking a
+routine with an & prefix, and not supplying any arguments, re-uses the
+existing @_. The same arguments are passed on as are received, so
+invoking them this way saves redundancy.
+
+The crucuial activity in each of the four eval routiens is to figure
+out what status a current situation represents. Note that I look at
+the previous status to add or subtract a small hysteresis to the
+boundary. This prevents noise when a variable hovers just near the
+boundary. Only when a more significant movement is made does the
+status trigger to a new state.
+
+The return values from the subroutines are the newly-determined
+status, and the current value, to be stored back in the processing
+routine in the 'prev' attribute. The status is calculated, so it
+obviously needs to be passed back. The value can be modified in the
+routines, so it needs to be passed back in those casses, otherwise the
+value from the target is used. In particular, the 'discrete' values
+are stored as 'unneeded', or 'needed', rather than as '1' or '2'. As
+well, one value is received as '43 minutes : 00:00', which is
+simplified to '43'.
+
+The final action of the eval routiens is to store the information in
+the database. AN::Agent::insert_raw_record handles this for us, we
+just need to tell it the name of the table, the name of the field with
+a foreign key into the nodes table, and the args, a hash of field
+names and their values. It is up to the user to call
+AN::Agent::insert_raw_record once to store every record into the
+agent's own data table, as well as to store data into the 'alerts'
+table if the status is not OK, or if the status has just returned to
+'OK' from not 'OK'. For snmp_apc_ups, the agent data table has the ame
+structure as the alerts table, so I re-use the same arguments,
+changing only the table name. Other agents may need a more complicated
+behaviour.
+
+The msg tags you define in the Messages directory may have variable
+slots to be filled in with specific values. The $msg_args field is the
+way to fill in these slots. Use the variable name in the expanded
+string, followed by an equal sig and the associated value. Multiple
+values are joined by semi-colons. Example:
+
+       "prevvalue=$prev_value;value=$value";
+
+And the scanner will fill them in. 

@@ -27,7 +27,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( snmp snmpconf prev );
+use Class::Tiny qw( snmpconf snmp prev );
 
 # ======================================================================
 # CONSTANTS
@@ -39,7 +39,7 @@ use Class::Tiny qw( snmp snmpconf prev );
 sub BUILD {
     my $self = shift;
 
-    $self->snmpconf( catdir( getcwd(), $self->snmpconf ) );
+    $self->snmpconf( catdir( path_to_configuration_files(), $self->snmpconf ) );
 
     my %cfg = ( path => { config_file => $self->snmpconf } );
     AN::Common::read_configuration_file( \%cfg );
@@ -85,7 +85,7 @@ sub eval_discrete_status {
         else {
             $status   = 'DEBUG';
             $msg_tag  = "Unrecognized value";
-            $msg_args = $value;
+            $msg_args = "value=$value";
         }
     }
     elsif ( $tag eq 'comms' ) {
@@ -101,7 +101,7 @@ sub eval_discrete_status {
         else {
             $status   = 'DEBUG';
             $msg_tag  = "Unrecognized value";
-            $msg_args = $value;
+            $msg_args = "value=$value";
         }
     }
     elsif ( $tag eq 'reason for last transfer' ) {
@@ -110,7 +110,7 @@ sub eval_discrete_status {
              && $prev_value ne $newvalue ) {
             $status   = 'DEBUG';
             $msg_tag  = "value changed";
-            $msg_args = join ';', $prev_value, $newvalue;
+            $msg_args = "prevvalue=$prev_value;value=$newvalue";
         }
         else {
             $status = 'OK';
@@ -121,9 +121,8 @@ sub eval_discrete_status {
              && $prev_value ne $value ) {
             $status   = 'DEBUG';
             $msg_tag  = "value changed";
-            $msg_args = join( ';',
-                              $rec_meta->{values}{$prev_value},
-                              $rec_meta->{values}{$value} );
+            $msg_args = join( ';', "prevvalue=$rec_meta->{values}{$prev_value}",
+			      "value=$rec_meta->{values}{$value}");
         }
         else {
             $status = 'OK';
@@ -139,9 +138,23 @@ sub eval_discrete_status {
             $msg_args = ( [ undef, '', 'failed', 'invalid test' ] )[$value];
         }
     }
-    $self->insert_raw_record( $newvalue || $value,
-                              $units, $label || $tag,
-                              $status, $msg_tag, $msg_args );
+    my $args = { table              => $self->datatable_name,
+		 with_node_table_id => 'node_id',
+		 args               => {<
+		     value    => $newvalue || $value,
+		     units    => $units,
+		     field    => $label || $tag,
+		     status   => $status,
+		     msg_tag  => $msg_tag,
+		     msg_args => $msg_args,
+		 }, };
+
+    $self->insert_raw_record( $args );
+
+    if ( $status ne 'OK' ) {
+	$args->table = $self->alert_table_name;
+	$self->insert_raw_record( $args );
+    }
     return ( $status, $newvalue || $value );
 }
 
@@ -174,7 +187,7 @@ sub eval_rising_status {
             && $value > $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 4) Previous status was CRISIS, require low value before WARN.
@@ -183,7 +196,7 @@ sub eval_rising_status {
             && $value <= $rec_meta->{warn_max} - $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value crisis";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -192,15 +205,31 @@ sub eval_rising_status {
             && $value > $rec_meta->{crisis_min} - $h ) {
         $status   = 'CRISIS';
         $msg_tag  = "Value crisis";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
     else {
         $status   = 'DEBUG';
         $msg_tag  = "Unexpected value";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
-    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
-                              $msg_args );
+    my $args = { table              => $self->datatable_name,
+		 with_node_table_id => 'node_id',
+		 args               => {
+		     value    => $value,
+		     units    => $units,
+		     field    => $tag,
+		     status   => $status,
+		     msg_tag  => $msg_tag,
+		     msg_args => $msg_args,
+		 }, };
+
+    $self->insert_raw_record( $args );
+
+    if ( $status ne 'OK' ) {
+	$args->table = $self->alert_table_name;
+	$self->insert_raw_record( $args );
+    }
+
     return ($status);
 }
 
@@ -235,7 +264,7 @@ sub eval_falling_status {
             && $value >= $rec_meta->{warn_min} - $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 4) Previous status was CRISIS, require high value before WARN.
@@ -244,7 +273,7 @@ sub eval_falling_status {
             && $value >= $rec_meta->{warn_min} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -253,16 +282,31 @@ sub eval_falling_status {
             && $value < $rec_meta->{crisis_max} + $h ) {
         $status   = 'CRISIS';
         $msg_tag  = "Value crisis";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
     else {
         $status   = 'DEBUG';
         $msg_tag  = "Unexpected value";
-        $msg_args = $value;
+        $msg_args = "value=$value";
 
     }
-    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
-                              $msg_args );
+    my $args = { table              => $self->datatable_name,
+		 with_node_table_id => 'node_id',
+		 args               => {
+		     value    => $value,
+		     units    => $units,
+		     field    => $tag,
+		     status   => $status,
+		     msg_tag  => $msg_tag,
+		     msg_args => $msg_args,
+		 }, };
+
+    $self->insert_raw_record( $args );
+
+    if ( $status ne 'OK' ) {
+	$args->table = $self->alert_table_name;
+	$self->insert_raw_record( $args );
+    }
     return ( $status, $value );
 }
 
@@ -298,7 +342,7 @@ sub eval_nested_status {
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 4) Previous status was CRISIS, require low value before WARN.
@@ -308,7 +352,7 @@ sub eval_nested_status {
             && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
 
     # 5) Previous status was CRISIS, keep in CRISIS
@@ -318,21 +362,38 @@ sub eval_nested_status {
             && $value < $rec_meta->{warn_min} + $h ) {
         $status   = 'CRISIS';
         $msg_tag  = "Value crisis";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
     else {
         $status   = 'DEBUG';
         $msg_tag  = "Unexpected value";
-        $msg_args = $value;
+        $msg_args = "value=$value";
     }
-    $self->insert_raw_record( $value, $units, $tag, $status, $msg_tag,
-                              $msg_args );
+    my $args = { table              => $self->datatable_name,
+		 with_node_table_id => 'node_id',
+		 args               => {
+		     value    => $value,
+		     units    => $units,
+		     field    => $tag,
+		     status   => $status,
+		     msg_tag  => $msg_tag,
+		     msg_args => $msg_args,
+		 }, };
+
+    $self->insert_raw_record( $args );
+
+    if ( $status ne 'OK' ) {
+	$args->table = $self->alert_table_name;
+	$self->insert_raw_record( $args );
+    }
     return ($status);
 }
 
 sub eval_status {
-    my ( $self, $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+#    my ( $self, $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
 
+    my ( $rec_meta ) = $_[3];
+	
     return &eval_discrete_status
         unless ( exists $rec_meta->{ok_min} );    # not range data.
 
@@ -393,10 +454,25 @@ sub snmp_connect {
                               -community => $meta->{pw},
                               -version   => 'snmpv2c', );
     if ( !defined $session ) {
-        $self->insert_raw_record( $meta->{name}, '', 'Net::SNMP connect',
-                             'CRISIS',
-                             'Net-SNMP connect failed', $error );
+	my $args = { table              => $self->datatable_name,
+		     with_node_table_id => 'node_id',
+		     args               => {
+			 value    => $meta->{name},
+			 units    => '',
+			 field    => 'Net::SNMP connect',
+			 status   => 'CRISIS',
+			 msg_tag  => 'Net-SNMP connect failed',
+			 msg_args => "errormsg=$error",
+		     }, };
+
+	$self->insert_raw_record( $args );
+
+	if ( $status ne 'OK' ) {
+	    $args->table = $self->alert_table_name;
+	    $self->insert_raw_record( $args );
+	}
     }
+    
     return ( $meta, $session );
 }
 
@@ -419,11 +495,23 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             = $session->get_request( -varbindlist => $metadata->{oids}, );
 
         if ( not defined $received ) {
-            $self->insert_raw_record(
-                                 $meta_out->{name},              '',
-                                 'Net::SNMP fetch data',         'CRISIS',
-                                 'Net-SNMP->get_request() failed', $session->error
-                                    );
+	    my $args = { table              => $self->datatable_name,
+			 with_node_table_id => 'node_id',
+			 args               => {
+			     value    => $meta->{name},
+			     units    => '',
+			     field    => 'Net::SNMP fetch data',
+			     status   => 'CRISIS',
+			     msg_tag  => 'Net-SNMP->get_request() failed',
+			     msg_args => "errormsg=$session->error",
+			 }, };
+	    
+	    $self->insert_raw_record( $args );
+	    
+	    if ( $status ne 'OK' ) {
+		$args->table = $self->alert_table_name;
+		$self->insert_raw_record( $args );
+	    }
             next TARGET;
         }
         $session->close;

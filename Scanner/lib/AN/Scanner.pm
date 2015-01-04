@@ -702,7 +702,7 @@ sub loop_core {
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}
 #
-sub run_timed_loop_forever {
+sub run_timed_loop_forever{
     my $self = shift;
 
     local $LIST_SEPARATOR = $COMMA;
