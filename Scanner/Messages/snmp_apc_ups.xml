@@ -11,11 +11,11 @@
 		<key name="Replace battery">Battery requires replacement</key>
 		<key name="Unrecognized value">Unrecognized value</key>
 		<key name="Communication disconnected">Communication to device disconnected</key>
-		<key name="Value changed">value changed from '#!variable!prevvalue!#<' => '#!variable!value!#<'</key>
+		<key name="Value changed">value changed from '#!variable!prevvalue!#' => '#!variable!value!#'</key>
 		<key name="Self-test not OK: ">Last self-test result was not OK: </key>
-		<key name="Value Warning">value '#!variable!value!#<' in Warning range</key>
-		<key name="Value Crisis">value '#!variable!value!#<' in Crisis range</key>
-		<key name="Unexpected value">value '#!variable!value!#<' outside expected range</key>
+		<key name="Value warning">value '#!variable!value!#' in Warning range</key>
+		<key name="Value crisis">value '#!variable!value!#' in Crisis range</key>
+		<key name="Unexpected value">value '#!variable!value!#' outside expected range</key>
 		<key name="Net-SNMP connect failed">Could not connect to Net::SNMP session</key>
 		<key name="Net-SNMP->get_request() failed">Net::SNMP->get_request() failed</key>
 		

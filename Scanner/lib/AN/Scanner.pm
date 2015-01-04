@@ -34,11 +34,11 @@ const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
 
 use subs 'alert_num';    # manually define accessor.
 
-use Class::Tiny qw( agentdir duration dbconf
-    db_type db_name port
-    rate verbose monitoragent
-    flagfile dbs run_until
-    msg_dir smtp from ), {
+use Class::Tiny qw( agentdir    db_name      db_type  dbconf
+                    dbs         duration     flagfile from 
+                    max_retries monitoragent msg_dir  port
+                    rate        run_until    smtp     verbose
+                  ), {
     max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
     agents                => sub { [] },
     processes             => sub { [] },
