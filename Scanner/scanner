@@ -32,6 +32,7 @@ const my $DEFAULT_MSGS    => $Bin . '/Messages/';
 const my $DOTSLASH        => q{./};
 const my $LIFETIME        => 24 * 60 * 60;
 const my $RUN_UNTIL       => '23:59:59';
+const my $MAX_RETRIES     => 10;
 const my $MAX_RATE        => 600;
 const my $MIN_RATE        => 1;
 const my $PROG            => ( fileparse($PROGRAM_NAME) )[0];
@@ -60,12 +61,14 @@ sub process_args {
         dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
         msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
         from      => $FROM,               # from and smtp used for email
-        smtp      => $SMTP, };
+        smtp      => $SMTP,
+        max_retries => $MAX_RETRIES,      # How many times to loop on AN::Common routiens
+    };
 
     GetOptions( $opt,          'dbconf=s',     'rate=i',   'agentdir=s',
                 'db_name=s',   'from=s',       'smtp=s',   'msg_dir=s',
-                'run_until=s', 'modules_used', 'verbose!', 'man',
-                'help' )
+                'run_until=s', 'verbose!', 'max_retries=s',
+		'man', 'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.

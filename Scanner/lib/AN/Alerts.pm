@@ -47,7 +47,10 @@ sub BUILD {
         if ( $pid && $agent ) {
             $self->agents( { $pid => $agent } );
 
-            my $xlator_args = { pid => $pid, agents => { $pid => $agent } };
+            my $xlator_args = { pid    => $pid,
+				agents => { $pid => $agent } ,
+				sys    => { error_limit => $self->owner()->max_retries() },
+	    };
             $self->xlator( AN::Msg_xlator->new($xlator_args) );
 
             $self->owner($owner);
@@ -347,9 +350,15 @@ sub handle_alerts {
                 next ALERT unless $alert->listening_at_this_level($listener);
 
                 $lookup->{key} = $alert->msg_tag();
+		if ( $alert->msg_args() && length $alert->msg_args() ) {
+		    map { my ($k, $v) = split '=';
+			  $lookup->{variables}{$k} = $v;
+		        } split ';', $alert->msg_args();
+		}
+		
                 my $msg = $self->xlator()
                     ->lookup_msg( $key, $lookup, $self->agents->{$key} );
-                push @msgs, $self->format_msg( $alert, $msg );
+		push @msgs, $self->format_msg( $alert, $msg );
             }
         }
         $self->dispatch_msg( $listener, \@msgs ) if @msgs;
