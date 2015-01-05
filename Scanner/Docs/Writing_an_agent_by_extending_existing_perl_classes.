@@ -78,7 +78,7 @@ AN::SNMP::APC_UPS'.
 
 In the 'CONSTANTS' section, at line 32, replace the name of the
 snmp_apc_ups configuration file with the name of your configuration
-file.
+file. As well, provide the name for your data table.
 
 If you want to pass additional information to your class obect, you
 can add new entries int he $opt set of default values, and provide

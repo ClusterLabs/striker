@@ -30,6 +30,7 @@ use Const::Fast;
 #
 const my $DEFAULT_DB_CONFIG   => 'Config/db.conf';
 const my $DEFAULT_SNMP_CONFIG => 'Config/snmp_apc_ups.conf';
+const my $DATATABLE_NAME      => 'snmp_apc_ups';
 
 const my $AGENT_DIR  => 'agents';
 const my $BRIEF      => 1;
@@ -59,11 +60,13 @@ sub process_args {
         filepath  => '/tmp/agents',       # directory to scan for agents.
         dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
         snmpconf => $DEFAULT_SNMP_CONFIG, # SNMP configuration file.
-        msg_file => $MSG_DIR . $PROG };
+        msg_file => $MSG_DIR . $PROG,
+	datatable_name => $DATATABLE_NAME,
+    };
 
     GetOptions( $opt,         'rate=i',       'filepath=s',  'dbconf=s',
                 'msg_file=s', 'metadata|o=s', 'run_until=s', 'snmpconf=s',
-                'verbose+',   'man',          'help' )
+                'datatable_name=s', 'verbose+',   'man',          'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.

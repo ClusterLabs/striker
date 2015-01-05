@@ -46,7 +46,7 @@ added_by        int,
 updated         timestamp with time zone        not null default now()
 );
 
-ALTER TABLE alert_listeners OWNER TO alteeve;
+ALTER TABLE history.alert_listeners OWNER TO alteeve;
 
 \echo Create function history_nodes to populate history.alert_listeners from alert_listeners
 

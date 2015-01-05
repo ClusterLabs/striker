@@ -32,13 +32,13 @@ use Class::Tiny qw( snmpconf snmp prev );
 # ======================================================================
 # CONSTANTS
 #
-
+const my $DATATABLE_NAME    => 'snmp_apc_ups';
 # ......................................................................
 #
 
 sub BUILD {
     my $self = shift;
-
+    
     $self->snmpconf( catdir( $self->path_to_configuration_files(),
 			     $self->snmpconf ) );
 

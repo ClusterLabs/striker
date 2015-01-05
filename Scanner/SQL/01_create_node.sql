@@ -53,7 +53,7 @@ modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
 );
 
-ALTER TABLE node OWNER TO alteeve;
+ALTER TABLE history.node OWNER TO alteeve;
 
 \echo Create function history_nodes to populate history.node from node
 
@@ -80,7 +80,7 @@ BEGIN
                  hist_node.pid,
                  hist_node.target_name,
                  hist_node.target_type,
-                 hist_node.target_ip
+                 hist_node.target_ip,
 		 hist_node.status,
 		 hist_node.modified_user);
 	RETURN NULL;
@@ -92,9 +92,9 @@ LANGUAGE plpgsql;
 
 \echo Create trigger trigger_node using function history_nodes
 
--- CREATE TRIGGER trigger_node 
--- AFTER INSERT OR UPDATE ON node 
--- FOR EACH ROW EXECUTE PROCEDURE history_node();
+CREATE TRIGGER trigger_node 
+       AFTER INSERT OR UPDATE ON node 
+       FOR EACH ROW EXECUTE PROCEDURE history_node();
 
 
 \echo Create an enum data type for the status field.
