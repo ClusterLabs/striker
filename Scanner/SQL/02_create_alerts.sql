@@ -23,6 +23,9 @@ SET default_with_oids = false;
 CREATE TABLE alerts (
     id integer NOT NULL,
     node_id bigint,
+    target_name text,
+    target_type text,
+    target_extra text,
     field text,
     value text,
     units text,
