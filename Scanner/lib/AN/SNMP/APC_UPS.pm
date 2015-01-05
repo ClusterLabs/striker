@@ -152,7 +152,9 @@ sub eval_discrete_status {
 
     $self->insert_raw_record( $args );
 
-    if ( $status ne 'OK' ) {
+    if ( $status ne 'OK'
+	|| ( $status eq 'OK'
+	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
@@ -226,7 +228,9 @@ sub eval_rising_status {
 
     $self->insert_raw_record( $args );
 
-    if ( $status ne 'OK' ) {
+    if ( $status ne 'OK'
+	|| ( $status eq 'OK'
+	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
@@ -304,7 +308,9 @@ sub eval_falling_status {
 
     $self->insert_raw_record( $args );
 
-    if ( $status ne 'OK' ) {
+    if ( $status ne 'OK'
+	|| ( $status eq 'OK'
+	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
@@ -383,7 +389,9 @@ sub eval_nested_status {
 
     $self->insert_raw_record( $args );
 
-    if ( $status ne 'OK' ) {
+    if ( $status ne 'OK'
+	|| ( $status eq 'OK'
+	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
 	$self->insert_raw_record( $args );
     }
