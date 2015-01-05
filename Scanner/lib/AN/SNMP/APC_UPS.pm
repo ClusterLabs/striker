@@ -36,22 +36,68 @@ const my $DATATABLE_NAME    => 'snmp_apc_ups';
 # ......................................................................
 #
 
-sub BUILD {
+sub read_configuration_file {
     my $self = shift;
-    
+
     $self->snmpconf( catdir( $self->path_to_configuration_files(),
 			     $self->snmpconf ) );
 
     my %cfg = ( path => { config_file => $self->snmpconf } );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->snmp( $cfg{snmp} );
+    $self->snmp( $cfg{snmp} );    
+}
+sub deep_copy {
+    my $self = shift;
+    my ( $source, @targets ) = @_;
 
-    # Reverse cache, look up mib label by oid number
-    # Override with specified labels, when provided.
-    # Accumulate list of oids for use in get_bulk_request.
-    # Allocate blank entries for storage of previous values.
+    
+    for my $key ( sort keys %$source ) {
+      TARGET:
+	for my $target ( @targets ) {
+	    if ( exists $target->{$key} ) {
+		if ( ! ref $target->{$key} ) { # it's a scalar leaf
+		    next TARGET;	       # ignore global value
+		}
+		elsif ( 'HASH' eq ref $target->{$key} ) {
+		    $self->deep_copy( $source->{$key},
+				      map { $_->{$key} } @targets
+			);
+		}
+	    }
+	    else {
+		$target->{$key} = $source->{$key};
+	    }
+	}
+    }
+    return;
+}
+sub normalize_global_and_local_config_data {
+    my $self = shift;
+ 
+    my $snmp = $self->snmp;
+    return unless ( exists $snmp->{global}
+		    || exists $snmp->{default}
+	);
+    my @targets = grep { /\A\d+\z/ } keys %$snmp;
+
+    # Recursively copy global / default values to local
+    # areas, unless they are already specified.
     #
+    for my $tag ( qw( global local ) ) {
+	$self->deep_copy( $snmp->{$tag}, @{$snmp}{@targets} );
+	delete $snmp->{$tag};
+    }
+}
+
+# Reverse cache, look up mib label by oid number Override with
+# specified labels, when provided.  Accumulate list of oids for use in
+# get_bulk_request.  Allocate blank entries for storage of previous
+# values.
+#
+sub prep_reverse_cache_and_prev_values {
+    my $self = shift;
+
     my %prev;
     for my $target ( keys %{ $self->snmp() } ) {
         my $dataset = $self->snmp()->{$target};
@@ -65,6 +111,16 @@ sub BUILD {
         $dataset->{oids} = \@oids;
     }
     $self->prev( \%prev );
+
+}
+
+sub BUILD {
+    my $self = shift;
+    
+    $self->read_configuration_file;
+    $self->normalize_global_and_local_config_data;
+    $self->prep_reverse_cache_and_prev_values;
+    
     return;
 }
 
