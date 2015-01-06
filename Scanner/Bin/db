@@ -15,8 +15,15 @@ FIELDS='*'
 WHERE=''
 
 function usage() {
+
+if [ -n $1 ]; then
+    echo "
+You passed an unfamiliar argument, '$1'
+"
+fi
+
 echo "
-USAGE: $0 [-f field [-f field2]] [ -M maxnum ] [ -n node_id ]
+USAGE: $0 [-f field [-f field2]] [ -m maxnum ] [ -n node_id ]
           [ -p pid ] [ -t tablename ] [-v]
 
 Where
@@ -26,13 +33,16 @@ Where
         pid       : used in the where clause
         tablename : the table to read from
         v         : display the resulting SQL query before running it
+
+Note : instead of -f field -f value -f units, it is also possible to type -f 'field, value, units'.
+You are spared the repeated -f, but have to use quotes and provide your own commas.
 "
 exit 1
 }
 
-while getopts ":f:N:n:p:t:v" opt; do
+while getopts ":f:m:n:p:t:v" opt; do
     case $opt in
-      N) MAXN=$OPTARG
+      m) MAXN=$OPTARG
          ;;
       n) if [ -z $WHERE ]; then
             WHERE="where node_id = $OPTARG"
@@ -61,7 +71,7 @@ while getopts ":f:N:n:p:t:v" opt; do
          ;;
       v) VERBOSE=1
          ;;
-      *) usage
+      *) usage $OPTARG
          ;;
     esac
 done

@@ -16,6 +16,7 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
+CREATE LANGUAGE plpgsql;
 --
 -- Name: agent_data; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
 --
@@ -77,6 +78,64 @@ ALTER TABLE ONLY agent_data
 
 ALTER TABLE ONLY agent_data
     ADD CONSTRAINT agent_data_node_id_fkey FOREIGN KEY (node_id) REFERENCES node(node_id);
+
+
+\echo Create table history.agent_data
+
+CREATE TABLE history.agent_data (
+    id 	     integer NOT NULL,
+    node_id  bigint,
+    field    text,
+    value    text,
+    units    text,
+    status   status,
+    msg_tag  text,
+    msg_args text,
+    "timestamp"	timestamp with time zone	not null	default now()
+);
+
+ALTER TABLE history.agent_data OWNER TO alteeve;
+
+\echo Create function history_agent_data to populate history.agent_data from agent_data
+
+CREATE FUNCTION history_agent_data() RETURNS trigger
+AS $$
+DECLARE
+	hist_agent_data RECORD;
+BEGIN
+	SELECT INTO hist_agent_data * FROM node WHERE node_id=new.node_id;
+	INSERT INTO history.agent_data
+		(id,
+		 node_id,	
+    		 field,
+		 value,
+		 units,
+		 status,
+		 msg_tag,
+		 msg_args,
+	         timestamp_id,
+	)
+	VALUES
+		(hist_agent_data.id,
+		 hist_agent_data.node_id_,
+		 hist_agent_data.field,
+                 hist_agent_data.value,
+                 hist_agent_data.units,
+                 hist_agent_data.status,
+                 hist_agent_data.msg_tag,
+		 hist_agent_data.msg_args);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+
+ ALTER FUNCTION history_agent_data() OWNER TO alteeve;
+
+\echo Create trigger trigger_agent_data using function history_agent_data
+
+CREATE TRIGGER trigger_agent_data
+       AFTER INSERT OR UPDATE ON agent_data
+       FOR EACH ROW EXECUTE PROCEDURE history_agent_data();
 
 
 --

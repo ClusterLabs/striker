@@ -720,13 +720,11 @@ sub run_timed_loop_forever{
 
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
-        $pending = 1 if $pending < 0;    # dont wait negative duration.
 
         print_loop_msg( $elapsed, $pending )
             if $self->verbose;
 
-        return
-            if $now + $elapsed > $end_time;  # exit before sleep if out of time.
+	return if $pending < 0;    # dont wait negative duration.
 
         sleep $pending;
 
