@@ -32,7 +32,7 @@ const my $DEFAULT_DB_CONFIG   => 'Config/db.conf';
 const my $DEFAULT_SNMP_CONFIG => 'Config/snmp_apc_ups.conf';
 const my $DATATABLE_NAME      => 'snmp_apc_ups';
 
-const my $AGENT_DIR  => 'agents';
+const my $AGENT_DIR  => 'Agents';
 const my $BRIEF      => 1;
 const my $COMMA      => q{,};
 const my $DOTSLASH   => q{./};
