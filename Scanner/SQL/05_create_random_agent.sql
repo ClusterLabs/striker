@@ -1,10 +1,14 @@
+
+drop trigger if exists trigger_agent_data on agent_data cascade;
 drop table if exists agent_data cascade;
+drop table if exists history.agent_data cascade;
+drop function if exists history_agent_data() cascade;
 --
 -- PostgreSQL database dump
 --
 
 SET statement_timeout = 0;
-SET lock_timeout = 0;
+--SET lock_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET check_function_bodies = false;
@@ -16,7 +20,6 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
-CREATE LANGUAGE plpgsql;
 --
 -- Name: agent_data; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
 --
@@ -103,7 +106,7 @@ AS $$
 DECLARE
 	hist_agent_data RECORD;
 BEGIN
-	SELECT INTO hist_agent_data * FROM node WHERE node_id=new.node_id;
+	SELECT INTO hist_agent_data * FROM node WHERE id=new.id;
 	INSERT INTO history.agent_data
 		(id,
 		 node_id,	
@@ -117,7 +120,7 @@ BEGIN
 	)
 	VALUES
 		(hist_agent_data.id,
-		 hist_agent_data.node_id_,
+		 hist_agent_data.node_id,
 		 hist_agent_data.field,
                  hist_agent_data.value,
                  hist_agent_data.units,

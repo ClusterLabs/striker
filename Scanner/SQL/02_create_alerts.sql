@@ -1,10 +1,14 @@
+drop trigger if exists trigger_alerts on alerts cascade;
 drop table if exists alerts cascade;
+drop table if exists history.alerts cascade;
+drop function if exists history_alerts() cascade;
+
 --
 -- PostgreSQL database dump
 --
 
 SET statement_timeout = 0;
-SET lock_timeout = 0;
+--SET lock_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET check_function_bodies = false;
@@ -86,17 +90,19 @@ ALTER TABLE ONLY alerts
 \echo Create table history.alerts
 
 CREATE TABLE history.alerts (
+id              integer,
 node_id		bigint,
-agent_name	text	not null,	-- I break the short name off of the FQDN
-agent_host      text,
-pid             int,
-target_name     text,
+target_name	text,
 target_type     text,
-target_ip       text,
-status          text,
-history_id	serial  primary key,
-modified_user	int	not null,
-modified_date	timestamp with time zone	not null	default now()
+target_extra	text,
+field 		text,
+value 		text,
+units 		text,
+status 		status,
+msg_tag 	text,
+msg_args 	text,
+"timestamp" 	timestamp with time zone	not null	default now(),
+history_id      serial primary key
 );
 
 ALTER TABLE history.alerts OWNER TO alteeve;
@@ -110,25 +116,31 @@ DECLARE
 BEGIN
 	SELECT INTO hist_alerts * FROM alerts WHERE node_id=new.node_id;
 	INSERT INTO history.alerts
-		(node_id,
-		 agent_name,
-		 agent_host,
-                 pid,
-		 target_name,
-                 target_type,
-                 target_ip,
-		 status,
-		 modified_user)
+		(id,
+		node_id,
+		target_name,
+		target_type,
+		target_extra,
+		field,
+		value,
+		units,
+		status,
+		msg_tag,
+		msg_args
+		)
 	VALUES
-		(hist_alerts.node_id,
-		 hist_alerts.agent_name,
-		 hist_alerts.agent_host,
-                 hist_alerts.pid,
-                 hist_alerts.target_name,
+		(hist_alerts.id,
+		 hist_alerts.node_id,
+		 hist_alerts.target_name,
                  hist_alerts.target_type,
-                 hist_alerts.target_ip,
+                 hist_alerts.target_extra,
+                 hist_alerts.field,
+                 hist_alerts.value,
+		 hist_alerts.units,
 		 hist_alerts.status,
-		 hist_alerts.modified_user);
+		 hist_alerts.msg_tag,
+		 hist_alerts.msg_args
+		 );
 	RETURN NULL;
 END;
 $$
