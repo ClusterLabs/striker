@@ -5,5 +5,3 @@
 # Ignore backup  files.
 *bak
 
-# Ignore the compiled 'ipmi', needs to be locally compiled on target.
-ipmi
