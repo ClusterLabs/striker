@@ -66,11 +66,12 @@ sub BUILD {
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
+const my $ALERT_MSG_FORMAT_STR => 'id %s | %s: %s->%s (%s);%s %s: %s';
+const my $TARGET_INFO_FMT      => ' ( %s %s %s )'; # leading space is needed.
+
 const my %LEVEL => ( DEBUG   => 'DEBUG',
                      WARNING => 'WARNING',
                      CRISIS  => 'CRISIS' );
-
-const my $ALERT_MSG_FORMAT_STR => 'id %s | %s: %s->%s (%s); %s: %s';
 
 const my $LISTENS_TO => {
                   CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1 },
@@ -231,7 +232,8 @@ sub extract_time_and_modify_array {
 sub set_alert {
     my $self = shift;
     my ( $id,    $src,     $field,    $value, $units,
-         $level, $msg_tag, $msg_args, @others )
+         $level, $msg_tag, $msg_args, $target_name,
+	 $target_type, $target_extra, @others )
         = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others );
@@ -244,6 +246,9 @@ sub set_alert {
                  status    => $level,
                  msg_tag   => $msg_tag,
                  msg_args  => $msg_args,
+		 target_name => $target_name,
+		 target_type => $target_type,
+		 target_extra => $target_extra,
                  other     => \@others || '', };
     $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
@@ -304,11 +309,15 @@ sub format_msg {
     my $other = join ' : ', @{ $alert->other },
         @{$alert}{qw(field value units)};
 
+    my $target_info = ( $alert->{target_type} ? sprintf $TARGET_INFO_FMT, ($alert->{target_type},
+									   $alert->{target_name},
+									   $alert->{target_extra})
+			:                       '');
     my $formatted = sprintf( $ALERT_MSG_FORMAT_STR,
                              $alert->{id} || 'na', $alert->timestamp,
-                             $agent->{hostname}, $agent->{program},
-                             $agent->{pid},      $alert->status,
-                             $msg_w_args );
+                             $agent->{hostname},   $agent->{program},
+			     $agent->{pid},        $target_info,
+			     $alert->status,       $msg_w_args );
     $formatted .= "; ($other)" if $other;
     return $formatted;
 }

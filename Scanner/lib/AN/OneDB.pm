@@ -10,6 +10,7 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
+use Data::Dumper;
 use DBI;
 
 use File::Basename;
@@ -296,6 +297,8 @@ sub insert_raw_record {
     if ( !$sth ) {
         $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
     }
+
+    say Dumper ( [$sql, $fields, $args] ) if grep { /\binsert_raw_record\b/ } $ENV{VERBOSE};
 
     # extract the hash values in the order specified by the array of
     # key names.

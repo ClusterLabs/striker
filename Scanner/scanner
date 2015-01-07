@@ -56,7 +56,7 @@ sub process_args {
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
-        agentdir  => $Bin . '/agents',    # directory to scan for agents.
+        agentdir  => $Bin . '/Agents',    # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
         dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
         msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.

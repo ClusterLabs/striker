@@ -1,10 +1,14 @@
+drop trigger if exists trigger_alerts on alerts cascade;
 drop table if exists alerts cascade;
+drop table if exists history.alerts cascade;
+drop function if exists history_alerts() cascade;
+
 --
 -- PostgreSQL database dump
 --
 
 SET statement_timeout = 0;
-SET lock_timeout = 0;
+--SET lock_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET check_function_bodies = false;
@@ -80,6 +84,76 @@ ALTER TABLE ONLY alerts
 
 ALTER TABLE ONLY alerts
     ADD CONSTRAINT alerts_node_id_fkey FOREIGN KEY (node_id) REFERENCES node(node_id);
+
+
+
+\echo Create table history.alerts
+
+CREATE TABLE history.alerts (
+id              integer,
+node_id		bigint,
+target_name	text,
+target_type     text,
+target_extra	text,
+field 		text,
+value 		text,
+units 		text,
+status 		status,
+msg_tag 	text,
+msg_args 	text,
+"timestamp" 	timestamp with time zone	not null	default now(),
+history_id      serial primary key
+);
+
+ALTER TABLE history.alerts OWNER TO alteeve;
+
+\echo Create function history_alerts to populate history.alerts from alerts
+
+CREATE FUNCTION history_alerts() RETURNS trigger
+AS $$
+DECLARE
+	hist_alerts RECORD;
+BEGIN
+	SELECT INTO hist_alerts * FROM alerts WHERE node_id=new.node_id;
+	INSERT INTO history.alerts
+		(id,
+		node_id,
+		target_name,
+		target_type,
+		target_extra,
+		field,
+		value,
+		units,
+		status,
+		msg_tag,
+		msg_args
+		)
+	VALUES
+		(hist_alerts.id,
+		 hist_alerts.node_id,
+		 hist_alerts.target_name,
+                 hist_alerts.target_type,
+                 hist_alerts.target_extra,
+                 hist_alerts.field,
+                 hist_alerts.value,
+		 hist_alerts.units,
+		 hist_alerts.status,
+		 hist_alerts.msg_tag,
+		 hist_alerts.msg_args
+		 );
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+
+ ALTER FUNCTION history_alerts() OWNER TO alteeve;
+
+\echo Create trigger trigger_alerts using function history_alerts
+
+CREATE TRIGGER trigger_alerts 
+       AFTER INSERT OR UPDATE ON alerts 
+       FOR EACH ROW EXECUTE PROCEDURE history_alerts();
+
 
 
 --

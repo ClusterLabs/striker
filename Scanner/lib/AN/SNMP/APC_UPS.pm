@@ -126,7 +126,7 @@ sub BUILD {
 
 sub eval_discrete_status {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata ) = @_;
     my $units = $rec_meta->{units} || '';
     my ( $msg_tag, $msg_args, $label, $status, $newvalue ) = ( '', '', '' );
 
@@ -212,6 +212,9 @@ sub eval_discrete_status {
 	|| ( $status eq 'OK'
 	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
+	$args->{args}{target_name} = $metadata->{name};
+	$args->{args}{target_type} = $metadata->{type};
+	$args->{args}{target_extra} = $metadata->{ip};
 	$self->insert_raw_record( $args );
     }
     return ( $status, $newvalue || $value );
@@ -219,7 +222,7 @@ sub eval_discrete_status {
 
 sub eval_rising_status {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata ) = @_;
 
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
@@ -288,6 +291,9 @@ sub eval_rising_status {
 	|| ( $status eq 'OK'
 	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
+	$args->{args}{target_name} = $metadata->{name};
+	$args->{args}{target_type} = $metadata->{type};
+	$args->{args}{target_extra} = $metadata->{ip};
 	$self->insert_raw_record( $args );
     }
 
@@ -296,7 +302,7 @@ sub eval_rising_status {
 
 sub eval_falling_status {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata ) = @_;
 
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
@@ -368,6 +374,9 @@ sub eval_falling_status {
 	|| ( $status eq 'OK'
 	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
+	$args->{args}{target_name} = $metadata->{name};
+	$args->{args}{target_type} = $metadata->{type};
+	$args->{args}{target_extra} = $metadata->{ip};
 	$self->insert_raw_record( $args );
     }
     return ( $status, $value );
@@ -375,7 +384,7 @@ sub eval_falling_status {
 
 sub eval_nested_status {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata ) = @_;
 
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
@@ -449,13 +458,16 @@ sub eval_nested_status {
 	|| ( $status eq 'OK'
 	     && $prev_status ne 'OK' )) {
 	$args->{table} = $self->alerts_table_name;
+	$args->{args}{target_name} = $metadata->{name};
+	$args->{args}{target_type} = $metadata->{type};
+	$args->{args}{target_extra} = $metadata->{ip};
 	$self->insert_raw_record( $args );
     }
     return ($status);
 }
 
 sub eval_status {
-#    my ( $self, $tag, $value, $rec_meta, $prev_status, $prev_value ) = @_;
+#    my ( $self, $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata ) = @_;
 
     my ( $rec_meta ) = $_[3];
 	
@@ -499,7 +511,7 @@ sub process_all_oids {
         $i++;
         my ( $status, $newvalue )
             = $self->eval_status( $tag, $value, $rec_meta,
-                                  $prev_status, $prev_value );
+                                  $prev_status, $prev_value, $metadata );
 
         $prev->{$target}{$tag}{value} = $newvalue || $value;
         $prev->{$target}{$tag}{status} = $status;
@@ -512,7 +524,7 @@ sub snmp_connect {
 
     my $meta;
 
-    @{$meta}{qw(name ip pw)} = @{$metadata}{qw(name ip community )};
+    @{$meta}{qw(name ip pw type)} = @{$metadata}{qw(name ip community type)};
 
     my ( $session, $error )
         = Net::SNMP->session( -hostname  => $meta->{ip},
@@ -522,6 +534,9 @@ sub snmp_connect {
 	my $args = { table              => $self->datatable_name,
 		     with_node_table_id => 'node_id',
 		     args               => {
+			 target_name => $meta->{name},
+			 target_type => $meta->{type},
+			 target_extra => $meta->{ip},
 			 value    => $meta->{name},
 			 units    => '',
 			 field    => 'Net::SNMP connect',
@@ -561,6 +576,9 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
 	    my $args = { table              => $self->datatable_name,
 			 with_node_table_id => 'node_id',
 			 args               => {
+			     target_name => $meta_out->{name},
+			     target_type => $meta_out->{type},
+			     target_extra => $meta_out->{ip},
 			     value    => $meta_out->{name},
 			     units    => '',
 			     field    => 'Net::SNMP fetch data',

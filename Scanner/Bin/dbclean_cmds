@@ -1,0 +1,5 @@
+delete from alerts;
+delete from snmp_apc_ups;
+delete from agent_data;
+delete from node;
+
