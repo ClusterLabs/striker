@@ -19,6 +19,7 @@ use File::Basename;
 use File::Spec::Functions 'catdir';
 use FindBin qw($Bin);
 use Const::Fast;
+use Time::HiRes qw(time alarm sleep);
 
 use AN::Common;
 use AN::MonitorAgent;

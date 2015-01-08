@@ -11,23 +11,23 @@ our $VERSION = '0.0.1';
 use English '-no_match_vars';
 use Carp;
 
+use Const::Fast;
 use File::Basename;
 use File::Spec::Functions 'catdir';
 use FileHandle;
-use IO::Select;
-use Time::Local;
 use FindBin qw($Bin);
+use IO::Select;
 use List::MoreUtils;
+use Time::HiRes qw( time alarm sleep);
+use Time::Local;
 
-use Const::Fast;
-
-use AN::Common;
-use AN::MonitorAgent;
 use AN::Alerts;
-use AN::FlagFile;
-use AN::Unix;
+use AN::Common;
 use AN::DBS;
+use AN::FlagFile;
 use AN::Listener;
+use AN::MonitorAgent;
+use AN::Unix;
 
 const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
@@ -75,6 +75,7 @@ sub BUILD {
                verbose  => $self->verbose(),
 
             } ) );
+    $ENV{VERBOSE} = '' unless defined $ENV{VERBOSE};
 }
 
 sub alert_num {    # Return current value, increment to new value.
@@ -711,7 +712,7 @@ sub run_timed_loop_forever{
     local $LIST_SEPARATOR = $COMMA;
 
     my ( $start_time, $end_time ) = ( time, $self->calculate_end_epoch );
-    my ($now) = $start_time;
+    my ($now) = time;
 
     # loop until this time tomorrow
     #
