@@ -15,6 +15,8 @@ use English '-no_match_vars';
 
 use AN::DBS;
 
+$ENV{VERBOSE} = '';
+
 my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial' },
                2 => { column_name => 'name',    data_type => 'text' } };
 
@@ -126,7 +128,7 @@ package main;
 sub std_dbconf {
 
     return { 1 => { 'db_type'  => 'Pg',
-                    'host'     => 'localhost',
+                    'host'     => '10.255.4.251',
                     'name'     => 'scanner',
                     'password' => 'alteeve',
                     'port'     => 5432,
@@ -138,7 +140,7 @@ sub alert_args {
 
     return { name    => 'some scanner agent',
              db_data => { 1 => { db_type       => 'Pg',
-                                 host          => 'localhost',
+                                 host          => '10.255.4.251',
                                  name          => 'some scanner agent',
                                  port          => 5432,
                                  user          => 'alteeve',
@@ -234,7 +236,7 @@ sub test_fetch_alert_data {
             'fetch_alert_data() returns array of OneAlerts' );
 
     my $std = $AGENT_RECORD->{1};
-    @{$std}{qw(db_type db)} = ( 'Pg', 'localhost' );
+    @{$std}{qw(db_type db)} = ( 'Pg', '10.255.4.251' );
     is_deeply( $record, $std, 'fetch_alert_data() OK' );
 
     return;

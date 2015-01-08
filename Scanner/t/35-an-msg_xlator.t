@@ -1,5 +1,16 @@
 #!/usr/bin/env perl
 
+package owner;
+   sub new {
+     return bless { class => 'owner' }, 'owner';
+   }
+
+   sub max_retries {
+     return 10;
+   }
+
+package main;
+
 # _Perl_
 use warnings;
 use strict;
@@ -24,6 +35,7 @@ sub init_args {
 
     my $args = { pid     => $$,
                  program => '20-an-msg_xlator',
+		 owner   => owner->new(),
                  msg_dir => $Bin . q{/}, };
 
     my $file = $args->{msg_dir} . $args->{program} . '.xml';
@@ -75,15 +87,14 @@ sub test_constructor {
                        msg_dir  => $Bin,
                      },
 
-           #				  owner => $self,
+	   owner => owner->new(),
         } );
 
     my $xlator = $alert->xlator;
     isa_ok( $xlator, 'AN::Msg_xlator', 'object ISA Msg_xlator' );
 
-    my @attributes = sort Class::Tiny->get_all_attributes_for('AN::Msg_xlator');
     is_deeply( [ sort keys %$xlator ],
-               [ 'agents', 'pid' ],
+               [qw( agents pid sys ) ],
                'object has expected attributes' );
 
     return ( $alert, $xlator );
