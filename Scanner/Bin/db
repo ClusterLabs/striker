@@ -1,18 +1,56 @@
 #!/bin/bash
 # Carry out queries on scanner database
 
-#  node_id |  agent_name  | agent_host |  pid  | target_name | target_type |  target_ip  
-# status  | modified_user |         modified_date 
+# ---------------------------------------------------------------------- 
 
 #set -x 
 
+# ---------------------------------------------------------------------- 
+# Use the blank version on the same host where the DB is running.
+# The second version for remote hosts.
+#
+HOST=''
+HOST='-h an-m01'
+
+# The user account with which to connect to DB
+#
+USER=alteeve
+
+# The DB to access.
+#
+DB=scanner
+
+# ...................................................................... 
+
+# (-m) How many records to fetch?
+#
 MAXN=10
+
+# (-n) Fetch records with specified foreign key 
+#
 NODE_ID=''
+
+# How to sort records
+#
 ORDER_BY='modified_date'
+
+# (-t) Which table to access.
+#
 TABLE_NAME='node'
+
+# (-p) Fetch records with this pid
+#
 PID=''
+
+# (_-f) list of fields to fetch.
+#
 FIELDS='*'
+
+# Where clause; assembled using pid or node_id or both.
+#
 WHERE=''
+
+# ---------------------------------------------------------------------- 
 
 function usage() {
 
@@ -39,6 +77,7 @@ You are spared the repeated -f, but have to use quotes and provide your own comm
 "
 exit 1
 }
+# ---------------------------------------------------------------------- 
 
 while getopts ":f:m:n:p:t:v" opt; do
     case $opt in
@@ -76,11 +115,15 @@ while getopts ":f:m:n:p:t:v" opt; do
     esac
 done
 
+# : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : 
+
 CMD="select $FIELDS from $TABLE_NAME $WHERE order by $ORDER_BY desc limit $MAXN"
 
 if [ $VERBOSE ]; then
     echo "$CMD"
 else 
-    /usr/bin/psql -U 'alteeve' -d 'scanner' -c "$CMD"
+    /usr/bin/psql $HOST -U $USER -d $DB -c "$CMD"
 fi
 
+# ----------------------------------------------------------------------
+# end of file.
