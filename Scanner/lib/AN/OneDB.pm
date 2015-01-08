@@ -43,7 +43,7 @@ const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
                                dbi_connect_method => undef );
 
 const my $DSN_SHORT_FMT => 'dbi:Pg:dbname=%s';
-const my $DSN_FMT       => 'dbi:Pg:dbname=%s:host=%s:port=%s';
+const my $DSN_FMT       => 'dbi:Pg:dbname=%s;host=%s;port=%s';
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
@@ -298,7 +298,8 @@ sub insert_raw_record {
         $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
     }
 
-    say Dumper ( [$sql, $fields, $args] ) if grep { /\binsert_raw_record\b/ } $ENV{VERBOSE};
+    say Dumper ( [$sql, $fields, $args] )
+	if grep { /\binsert_raw_record\b/ } $ENV{VERBOSE};
 
     # extract the hash values in the order specified by the array of
     # key names.
@@ -506,5 +507,3 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR
