@@ -25,13 +25,14 @@ SET default_with_oids = false;
 --
 
 CREATE TABLE snmp_apc_ups (
-    id integer NOT NULL,
-    node_id bigint,
-    field text,
-    value text,
-    units text,
-    status status,
-    msg_tag text,
+    id       integer NOT NULL,
+    node_id  bigint,
+    target   text,
+    field    text,
+    value    text,
+    units    text,
+    status   status,
+    msg_tag  text,
     msg_args text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -89,6 +90,7 @@ CREATE TABLE history.snmp_apc_ups (
     history_id serial primary key,
     id integer NOT NULL,
     node_id bigint,
+    target   text,
     field text,
     value text,
     units text,
@@ -111,6 +113,7 @@ BEGIN
 	INSERT INTO history.snmp_apc_ups
 		(id,
                  node_id,
+		 target,
 		 field,
 		 value,
                  units,
@@ -122,6 +125,7 @@ BEGIN
 	VALUES
 		(hist_rec.id,
 		 hist_rec.node_id,
+		 hist_rec.target,
 		 hist_rec.field,
 		 hist_rec.value,
                  hist_rec.units,
