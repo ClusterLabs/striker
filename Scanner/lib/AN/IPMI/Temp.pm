@@ -65,7 +65,7 @@ sub eval_discrete_status {
     my $self = shift;
     my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
 
-    say Dumper( [\@_] );
+    say 'eval_discrete_status() invoked for unknown sensor: ', Dumper( [\@_] );
 }
 
 sub eval_rising_status {
