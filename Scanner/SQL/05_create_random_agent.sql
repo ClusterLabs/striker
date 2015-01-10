@@ -86,6 +86,7 @@ ALTER TABLE ONLY agent_data
 \echo Create table history.agent_data
 
 CREATE TABLE history.agent_data (
+    history_id serial primary key,
     id 	     integer NOT NULL,
     node_id  bigint,
     field    text,
@@ -106,7 +107,7 @@ AS $$
 DECLARE
 	hist_agent_data RECORD;
 BEGIN
-	SELECT INTO hist_agent_data * FROM node WHERE id=new.id;
+	SELECT INTO hist_agent_data * FROM node WHERE node_id=new.node_id;
 	INSERT INTO history.agent_data
 		(id,
 		 node_id,	
@@ -136,9 +137,9 @@ LANGUAGE plpgsql;
 
 \echo Create trigger trigger_agent_data using function history_agent_data
 
-CREATE TRIGGER trigger_agent_data
-       AFTER INSERT OR UPDATE ON agent_data
-       FOR EACH ROW EXECUTE PROCEDURE history_agent_data();
+--CREATE TRIGGER trigger_agent_data
+--       AFTER INSERT OR UPDATE ON agent_data
+--       FOR EACH ROW EXECUTE PROCEDURE history_agent_data();
 
 
 --

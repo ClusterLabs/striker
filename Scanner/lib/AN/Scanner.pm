@@ -61,6 +61,8 @@ sub BUILD {
 
     return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
 
+    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
     croak(q{Missing Scanner constructor arg 'rate'.})
