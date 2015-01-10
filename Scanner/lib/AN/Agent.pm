@@ -54,6 +54,8 @@ sub path_to_configuration_files {
 sub BUILD {
     my $self = shift;
 
+    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+
     $self->datatable_name($DATATABLE_NAME) unless $self->datatable_name;
     $self->alerts_table_name($ALERTS_TABLE_NAME)
         unless $self->alerts_table_name;
