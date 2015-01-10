@@ -169,7 +169,7 @@ sub add_alert {
              && $value->msg_tag eq $old->msg_tag );
     $self->alerts()->{$key1}{$key2} = $value;
     $self->clear_alert_handled( $key1, $key2 );
-    return;
+    return 1;
 }
 
 sub add_agent {
@@ -180,6 +180,14 @@ sub add_agent {
         unless $pid && $value;
     $self->agents()->{$pid} = $value;
     return;
+}
+
+sub  fetch_agent {
+    my $self = shift;
+    my ( $key ) = @_;
+
+    return unless $self->agents()->{$key};
+    return $self->agents()->{$key};
 }
 
 sub delete_alert {
@@ -202,11 +210,15 @@ sub alert_exists {
     my $self = shift;
     my ( $key1, $key2 ) = @_;
 
-    my @keys = keys %{ $self->alerts };
-    return unless @keys;    # No alerts have been set
-    my @for_key1 = grep {/$key1/} @keys;    # Alerts exist
-    return unless @for_key1;                # But none for key1
-    return grep {/$key2/} @for_key1;        # Figure out if any for key2
+    return unless $key1;	# Can't query if no key1
+
+    $key2 ||= '+';	
+
+    my $alerts = $self->alerts;
+
+    return unless keys %$alerts;            # No alerts have been set
+    return unless exists  $alerts->{$key1}; # Alerts exist, any for key1?
+    return  exists $alerts->{$key1}{$key2}; # Figure out if any for key2
 }
 
 # ......................................................................
@@ -220,11 +232,11 @@ sub extract_time_and_modify_array {
         if ( $tsh && 'HASH' eq ref $tsh && exists $tsh->{timestamp} ) {
             $timestamp = $tsh->{timestamp};
             delete $tsh->{timestamp};
-        }
 
-        # If $tsh only contained a timestamp, remove entire element
-        # from array.
-        splice( @$array, $idx ) unless scalar keys %$tsh;
+	    # If $tsh only contained a timestamp, remove entire element
+	    # from array.
+	    splice( @$array, $idx ) unless scalar keys %$tsh;
+        }
     }
     return $timestamp || strftime '%F %T%z', localtime;
 }
@@ -237,6 +249,7 @@ sub set_alert {
         = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others );
+
     my $args = { id        => $id,
                  pid       => $src,
                  timestamp => $timestamp,
@@ -249,7 +262,8 @@ sub set_alert {
 		 target_name => $target_name,
 		 target_type => $target_type,
 		 target_extra => $target_extra,
-                 other     => \@others || '', };
+                 other     => ( @others? \@others : '' ),
+    };
     $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
 }
@@ -272,12 +286,14 @@ sub clear_alert {
 sub has_dispatcher {
     my ($listener) = @_;
 
+    die("Alerts::has_dispatcher() was invoked by " . caller() );
     return $listener->dispatcher;
 }
 
 sub add_dispatcher {
     my ($listener) = @_;
 
+    die("Alerts::add_dispatcher() was invoked by " . caller() );
     $listener->dispatcher('asd');
     return;
 }
@@ -285,6 +301,7 @@ sub add_dispatcher {
 sub dispatch {
     my ( $listener, $msgs ) = @_;
 
+    die("Alerts::dispatch() was invoked by " . caller() );
     $listener->{dispatcher}->dispatch($msgs);
 }
 
@@ -302,22 +319,22 @@ sub format_msg {
     my ( $alert, $msg ) = @_;
 
     my $agent = $self->agents()->{ $alert->pid };
-    my $msg_w_args
-        = $alert->msg_args
-        ? sprintf $msg, split ';', $alert->msg_args
-        : $msg;
-    my $other = join ' : ', @{ $alert->other },
-        @{$alert}{qw(field value units)};
 
-    my $target_info = ( $alert->{target_type} ? sprintf $TARGET_INFO_FMT, ($alert->{target_type},
-									   $alert->{target_name},
-									   $alert->{target_extra})
-			:                       '');
+    my $other_array =  'ARRAY' eq ref $alert->other ? @{ $alert->other }
+                    :                                 q{};
+    my $other = join ' : ',
+                    grep {/\S/}  $other_array, @{$alert}{qw(field value units)};
+
+    my $target_info
+	= ( $alert->{target_type}
+	    ? sprintf( $TARGET_INFO_FMT,
+		       (@{$alert}{qw(target_type target_name target_extra)}))
+	    : '');
     my $formatted = sprintf( $ALERT_MSG_FORMAT_STR,
                              $alert->{id} || 'na', $alert->timestamp,
                              $agent->{hostname},   $agent->{program},
 			     $agent->{pid},        $target_info,
-			     $alert->status,       $msg_w_args );
+			     $alert->status,       $msg );
     $formatted .= "; ($other)" if $other;
     return $formatted;
 }
