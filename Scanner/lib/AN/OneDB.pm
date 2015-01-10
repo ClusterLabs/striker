@@ -299,7 +299,7 @@ sub insert_raw_record {
     }
 
     say Dumper ( [$sql, $fields, $args] )
-	if grep { /\binsert_raw_record\b/ } $ENV{VERBOSE};
+	if grep { /\binsert_raw_record\b/ } ($ENV{VERBOSE} || '');
 
     # extract the hash values in the order specified by the array of
     # key names.
