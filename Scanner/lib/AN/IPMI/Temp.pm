@@ -52,9 +52,12 @@ sub read_configuration_file {
 
 sub BUILD {
     my $self = shift;
-    
+
+    return unless ref $self eq __PACKAGE__;
+
+    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+
     $self->read_configuration_file;
-    $ENV{VERBOSE} = '' unless defined $ENV{VERBOSE};
     return;
 }
 
@@ -395,7 +398,7 @@ sub process_all_ipmi {
         #
         say Data::Dumper->Dump([ $i++, $tag, $value, $rec_meta,
 				 $prev_status, $prev_value, uc $rawstatus ] )
-	    if $verbose;
+	    if grep {/process_all_ipmi/ } ($ENV{VERBOSE} || 0);
 
 	my ( $status, $newvalue ) = $self->eval_status( $tag, $value, $rec_meta,
 							$prev_status, $prev_value,
