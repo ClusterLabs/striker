@@ -117,7 +117,11 @@ sub prep_reverse_cache_and_prev_values {
 
 sub BUILD {
     my $self = shift;
-    
+
+    # Don't run for sub-classes.
+    #
+    return unless ref $self eq __PACKAGE__;
+
     $self->read_configuration_file;
     $self->normalize_global_and_local_config_data;
     $self->prep_reverse_cache_and_prev_values;
@@ -508,7 +512,7 @@ sub process_all_oids {
         state $i = 1;
         say Data::Dumper->Dump(
                     [ $i, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
-            if $self->verbose && $self->verbose >= 2;
+            if grep {/grocess_all_opids/} ($ENV{VERBOSE} || 0);
         $i++;
         my ( $status, $newvalue )
             = $self->eval_status( $tag, $value, $rec_meta,
