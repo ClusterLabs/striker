@@ -86,8 +86,8 @@ sub test_accessors {
 sub test_create_pid_file {
     my $ff = shift;
 
-    is( $ff->old_pid_file_exists(),
-        '', "old_pid_file_exists() reports no file prior to create()" );
+    is( $ff->old_pid_file_exists(), '',
+	"old_pid_file_exists() reports no file prior to create()" );
     $ff->create_pid_file();
 
     my $filename = $ff->full_file_path( $ff->get_tag('PIDFILE') );
