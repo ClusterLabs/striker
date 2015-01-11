@@ -136,7 +136,7 @@ sub eval_discrete_status {
     my ( $msg_tag, $msg_args, $label, $status, $newvalue ) = ( '', '', '' );
 
     if ( $tag eq 'battery replace' ) {
-        $newvalue = $rec_meta->{values}{$value};
+        $newvalue = $rec_meta->{values}{$value} || '';
         if ( $newvalue eq 'unneeded' ) {
             $status = 'OK';
         }
@@ -151,7 +151,7 @@ sub eval_discrete_status {
         }
     }
     elsif ( $tag eq 'comms' ) {
-        $newvalue = $rec_meta->{values}{$value};
+        $newvalue = $rec_meta->{values}{$value} || '';
         $label    = $rec_meta->{label};
         if ( $newvalue eq 'yes' ) {
             $status = 'OK';
@@ -167,7 +167,7 @@ sub eval_discrete_status {
         }
     }
     elsif ( $tag eq 'reason for last transfer' ) {
-        $newvalue = $rec_meta->{values}{$value};
+        $newvalue = $rec_meta->{values}{$value} || '';
         if (    $prev_value
              && $prev_value ne $newvalue ) {
             $status   = 'DEBUG';
@@ -183,8 +183,7 @@ sub eval_discrete_status {
              && $prev_value ne $value ) {
             $status   = 'DEBUG';
             $msg_tag  = "value changed";
-            $msg_args = join( ';', "prevvalue=$rec_meta->{values}{$prev_value}",
-			      "value=$rec_meta->{values}{$value}");
+            $msg_args = "prevvalue=$prev_value;value=$value";
         }
         else {
             $status = 'OK';
@@ -248,25 +247,34 @@ sub eval_rising_status {
         $status = 'OK';
     }
 
-    # 3) Previous status was WARN, allow small overage before CRISIS
+    # 3) Previous status was OK or WARN, allow small overage before CRISIS
     #
     elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value > $rec_meta->{warn_max} + $h ) {
+            && $value <= $rec_meta->{warn_max} + $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
         $msg_args = "value=$value";
     }
 
-    # 4) Previous status was CRISIS, require low value before WARN.
+    # 4) Previous status was OK or WARN, now changed to CRISIS
     #
-    elsif (    $prev_status eq 'CRISIS'
-            && $value <= $rec_meta->{warn_max} - $h ) {
-        $status   = 'WARNING';
+    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
+            && $value > $rec_meta->{warn_max} + $h ) {
+        $status   = 'CRISIS';
         $msg_tag  = "Value crisis";
         $msg_args = "value=$value";
     }
 
-    # 5) Previous status was CRISIS, keep in CRISIS
+    # 5) Previous status was CRISIS, require low value before WARN.
+    #
+    elsif (    $prev_status eq 'CRISIS'
+            && $value <= $rec_meta->{warn_max} - $h ) {
+        $status   = 'WARNING';
+        $msg_tag  = "Value warning";
+        $msg_args = "value=$value";
+    }
+
+    # 6) Previous status was CRISIS, keep in CRISIS
     #
     elsif (    $prev_status eq 'CRISIS'
             && $value > $rec_meta->{crisis_min} - $h ) {
@@ -312,7 +320,7 @@ sub eval_falling_status {
     my $units = $rec_meta->{units} || '';
     my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
 
-    $value =~ s{(\d+).*}{$1};    # convert '43 minutes' => '43'
+    $value =~ s{([\d+.]+).*}{$1};    # convert '43 minutes' => '43'
 
     my ( $msg_tag, $msg_args, $status ) = ( '', '' );
 
@@ -330,7 +338,7 @@ sub eval_falling_status {
         $status = 'OK';
     }
 
-    # 3) Previous status was WARN, allow small underage before CRISIS
+    # 3) Previous status was OK or WARN, allow small underage before CRISIS
     #
     elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
             && $value >= $rec_meta->{warn_min} - $h ) {
@@ -338,6 +346,15 @@ sub eval_falling_status {
         $msg_tag  = "Value warning";
         $msg_args = "value=$value";
     }
+    # 4) Previous status was OK or WARN, go to CRISIS
+    #
+    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
+            && $value < $rec_meta->{warn_min} - $h ) {
+        $status   = 'CRISIS';
+        $msg_tag  = "Value crisis";
+        $msg_args = "value=$value";
+    }
+
 
     # 4) Previous status was CRISIS, require high value before WARN.
     #
@@ -421,22 +438,34 @@ sub eval_nested_status {
         $msg_tag  = "Value warning";
         $msg_args = "value=$value";
     }
+    
+    # 4) Previous status was WARN, now CRISIS
+    #
+    elsif (    ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
+            && ( $value < $rec_meta->{warn_min} - $h
+		|| $value > $rec_meta->{warn_max} + $h 
+	       )) {
+        $status   = 'CRISIS';
+        $msg_tag  = "Value crisis";
+        $msg_args = "value=$value";
+    }
 
-    # 4) Previous status was CRISIS, require low value before WARN.
+    # 5) Previous status was CRISIS, require strong move before WARN.
     #
     elsif (    $prev_status eq 'CRISIS'
-            && $value >= $rec_meta->{warn_min} - $h
-            && $value <= $rec_meta->{warn_max} + $h ) {
+            && $value >= $rec_meta->{warn_min} + $h
+            && $value <= $rec_meta->{warn_max} - $h ) {
         $status   = 'WARNING';
         $msg_tag  = "Value warning";
         $msg_args = "value=$value";
     }
 
-    # 5) Previous status was CRISIS, keep in CRISIS
+    # 6) Previous status was CRISIS, keep in CRISIS
     #
     elsif (    $prev_status eq 'CRISIS'
-            && $value > $rec_meta->{warn_min} - $h
-            && $value < $rec_meta->{warn_min} + $h ) {
+            && ( $value < $rec_meta->{warn_min} + $h
+		 || $value > $rec_meta->{warn_max} - $h
+	       )) {
         $status   = 'CRISIS';
         $msg_tag  = "Value crisis";
         $msg_args = "value=$value";
