@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#set -x
+
 echo 'Removing *.~ edit files'
 
 find . -type f -name '*~' -print -exec rm {} \;
@@ -7,4 +9,12 @@ find . -type f -name '*~' -print -exec rm {} \;
 echo 'Removing #*# edit files'
 
 find . -type f -name '\#*\#' -print -exec rm {} \;
+
+PATH=`pwd`
+DIRNAME=`/usr/bin/basename $PATH` 
+
+if [ 'Scanner' = $DIRNAME ] ; then
+    echo "Removing $DIRNAME/db.conf"
+    /usr/bin/rm -f db.conf
+fi
 
