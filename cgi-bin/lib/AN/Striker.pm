@@ -3358,7 +3358,7 @@ sub manage_vm
 		
 		# See if I need to update the XML definition file.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
-		if (($conf->{sys}{switch_spice_to_vnc}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
+		if ((not $conf->{sys}{use_spice_graphics}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
 		{
 			# Rewrite the XML definition. The 'graphics' section should look like:
 			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>

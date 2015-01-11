@@ -688,7 +688,6 @@ sub initialize_conf
 			# This tells the install manifest generator how many
 			# ports to open on the IFN for incoming VNC connections
 			open_vnc_ports		=>	100,
-			switch_spice_to_vnc	=>	0,
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
 			use_spice_graphics	=>	0,

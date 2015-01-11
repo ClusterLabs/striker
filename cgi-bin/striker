@@ -171,6 +171,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_ups1_name",
 	"anvil_ups2_ip",
 	"anvil_ups2_name",
+	"anvil_use_spice_graphics",
 	"boot_device",
 	"change",
 	"cluster",

@@ -16,6 +16,7 @@ package AN::InstallManifest;
 # - Add the ability to set 'sys::use_spice_graphics'
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
 #   /root/.ssh/known_hosts
+# - Make the map NIC removal prompt order configurable.
 # 
 
 use strict;
@@ -286,7 +287,33 @@ sub run_new_install_manifest
 		# reloading the browser works for as long as possible.
 		set_root_password($conf) or return(1);
 		
-		# If we're not dead, it's time to celebrate!
+		### If we're not dead, it's time to celebrate!
+		# Is this Anvil! already in the config file?
+		my ($anvil_configured) = check_config_for_anvil($conf);
+		
+		# Has the global settings been set?
+		my ($global_set) = check_global_settings($conf);
+		
+		# Now decide how to show the 'success' message(s).
+		if (($global_set) && ($anvil_configured))
+		{
+			# Nothing to do
+		}
+		elsif ($global_set)
+		{
+			# Global has been configured, but this Anvil! isn't,
+			# so just present the 'add anvil' button
+		}
+		elsif ($anvil_configured)
+		{
+			# This is odd... the user has the anvil already
+			# configured but not the global values.
+		}
+		else
+		{
+			# Anvil already exists, nothing to do.
+		}
+		
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success");
 		
 		# Enough of that, now everyone go home.
@@ -294,6 +321,59 @@ sub run_new_install_manifest
 	}
 	
 	return(0);
+}
+
+# Check to see if the created Anvil! is in the configuration yet.
+sub check_config_for_anvil
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
+	
+	my $anvil_configured = 0;
+	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], clusters::${cluster}::name: [$conf->{clusters}{$cluster}{name}]\n");
+		if ($conf->{cgi}{anvil_name} eq $conf->{clusters}{$cluster}{name})
+		{
+			$anvil_configured = 1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Match!\n");
+			last;
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_configured: [$anvil_configured]\n");
+	return($anvil_configured);
+}
+
+# Check to see if the global settings have been setup.
+sub check_global_settings
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_global_settings()\n");
+	
+	my $global_set = 1;
+	
+	# Pull out the current config.
+	my $smtp__server              = $conf->{smtp}{server}; 			# mail.alteeve.ca
+	my $smtp__port                = $conf->{smtp}{port};			# 587
+	my $smtp__username            = $conf->{smtp}{username};		# example@alteeve.ca
+	my $smtp__password            = $conf->{smtp}{password};		# Initial1
+	my $smtp__security            = $conf->{smtp}{security};		# STARTTLS
+	my $smtp__encrypt_pass        = $conf->{smtp}{encrypt_pass};		# 1
+	my $smtp__helo_domain         = $conf->{smtp}{helo_domain};		# example.com
+	my $mail_data__to             = $conf->{mail_data}{to};			# you@example.com
+	my $mail_data__sending_domain = $conf->{mail_data}{sending_domain};	# example.com
+	
+	# TODO: Make this smarter... For now, just check the SMTP username to
+	# see if it is default.
+	if ($smtp__username eq "example\@alteeve.ca")
+	{
+		# Not configured yet.
+		$global_set = 0;
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	return($global_set);
 }
 
 # This manually starts DRBD, forcing one to primary if needed, configures
@@ -777,7 +857,7 @@ sub configure_gfs2
 		$ok            = 0;
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	"#!string!row_0259!#",
+		row		=>	"#!string!row_0268!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
@@ -4462,6 +4542,12 @@ sub get_daemon_state
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		if ($line =~ /No such file or directory/i)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; daemon not installed, pretending it is off.\n");
+			$state = 0;
+			last;
+		}
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -8378,7 +8464,19 @@ sub add_an_repo_to_node
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"if [ -e '/etc/yum.repos.d/an.repo' ]; then echo 1; else curl --silent https://alteeve.ca/repo/el6/an.repo --output /etc/yum.repos.d/an.repo; if [ -e '/etc/yum.repos.d/an.repo' ]; then yum clean all --quiet; echo 2; else echo 9; fi; fi",
+		shell_call	=>	"if [ -e '/etc/yum.repos.d/an.repo' ];
+					then 
+						echo 1; 
+					else 
+						curl --silent https://alteeve.ca/repo/el6/an.repo --output /etc/yum.repos.d/an.repo; 
+						if [ -e '/etc/yum.repos.d/an.repo' ]; 
+						then 
+							yum clean all --quiet; 
+							echo 2; 
+						else 
+							echo 9; 
+						fi; 
+					fi",
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	my $rc = 0;

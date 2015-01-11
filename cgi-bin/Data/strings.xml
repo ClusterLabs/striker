@@ -137,6 +137,13 @@ mail_data::to				=	#!variable!mail_data__to!#
 # smtp::server in most cases.
 mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 
+# When set to '1', this forces the use of 'spice' graphics in newly provisioned
+# servers. This also disables automatic convertion of 'spice' based servers to
+# VNC. This prevents the in-browser remote server viewer from working, but
+# allows for higher resolutions on some guest desktops, like RHEL 6.
+sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
+
+
 ### Per-#!string!brand_0004!# Configurations
 
 # This defines each #!string!brand_0004!#. If you want to defined multiple #!string!brand_0004!#s in #!string!brand_0002!#,
@@ -277,7 +284,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0089"><![CDATA[This is the host name for the second <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard, if you have one.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
 		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
 		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">dafault gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
+		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">default gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file. It must be 15 <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters or less.<br />Generally it will be in the format "<span class="code">&lt;prefix&gt;-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
@@ -605,7 +612,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0265">Starting the hypervisor</key>
 		<key name="row_0266">Success!</key>
 		<key name="row_0267"><![CDATA[Updating cluster password]]></key>
-		<key name="row_0268"></key>
+		<key name="row_0268">Configure FS Table</key>
 		<key name="row_0269"></key>
 		<key name="row_0270"></key>
 		
@@ -1541,7 +1548,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step, if needed, is to <a href="?logo=true">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
-		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md r#!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
+		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
 		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0405"><![CDATA[]]></key>
 		<key name="message_0406"><![CDATA[]]></key>

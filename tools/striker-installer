@@ -39,11 +39,14 @@
 # 23 - Failed to find RHEL source ISO.
 # 24 - Unable to parse repo file name from path.
 # 25 - Failed to download the repository.
+# 26 - BCN not specified or found and DHCP server config requested.
+# 27 - BCN not specified and IP not defined in ifcfg file.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
 #       - Create a '-g' switch to install the GUI (make sure this sets up
-#         'virt-manager')
+#         'virt-manager'). Install 'virt-manager'
+#       - Add a firefox desktop icon when the GUI is installed for http://localhost
 # 
 
 my $THIS_FILE =  $0;
@@ -162,6 +165,23 @@ my $conf = {
 			wget				=>	0,
 			xinetd				=>	0,
 		},
+		ipmi_packages	=>	{
+			freeipmi			=>	0,
+			'freeipmi-bmc-watchdog'		=>	0,
+			'freeipmi-ipmidetectd'		=>	0,
+			ipmitool			=>	0,
+			OpenIPMI			=>	0,
+			'OpenIPMI-libs'			=>	0,
+		},
+		gui_groups	=>	{
+			'basic-desktop'			=>	0,
+			fonts				=>	0,
+			x11				=>	0,
+		},
+		gui_packages	=>	{
+			firefox				=>	0,
+			'virt-manager'			=>	0,
+		},
 		# This is populated by 'get_list_of_installed_packages()' and
 		# uses the found package name as the key and sets the value to
 		# '1'.
@@ -215,7 +235,7 @@ my $conf = {
 			selinux			=>	"httpd_sys_content_t",
 		},
 		striker_config_dir	=>	{
-			path			=>	"/etc/an",
+			path			=>	"/etc/striker",
 			owner			=>	"apache",
 			group			=>	"apache",
 			mode			=>	"g+w",
@@ -306,6 +326,11 @@ my $conf = {
 		customer		=>	"Striker Dashboard",
 		guac_version		=>	"0.9.2",
 		hostname		=>	"",
+		ipmi_gateway		=>	"",
+		ipmi_ip			=>	"",
+		ipmi_netmask		=>	"",
+		ipmi_password		=>	"",
+		ipmi_user		=>	"",
 		is_rhel			=>	0,
 		mail_server		=>	"",
 		mail_user		=>	"",
@@ -346,14 +371,18 @@ my $conf = {
 	pxe		=>	{
 		centos		=>	{
 			enabled		=>	0,
-			node_ks		=>	"anvil-m3-node-basic-bios_centos.ks",
-			striker_ks	=>	"striker-m3-basic-bios_centos.ks",
+			node1_ks	=>	"anvil-m3-node1-basic-bios_centos.ks",
+			node2_ks	=>	"anvil-m3-node2-basic-bios_centos.ks",
+			striker1_ks	=>	"striker1-m3-basic-bios_centos.ks",
+			striker2_ks	=>	"striker2-m3-basic-bios_centos.ks",
 			short_name	=>	"c6",
 		},
 		rhel		=>	{
 			enabled		=>	0,
-			node_ks		=>	"anvil-m3-node-basic-bios_rhel.ks",
-			striker_ks	=>	"striker-m3-basic-bios_rhel.ks",
+			node1_ks	=>	"anvil-m3-node1-basic-bios_rhel.ks",
+			node2_ks	=>	"anvil-m3-node1-basic-bios_rhel.ks",
+			striker1_ks	=>	"striker1-m3-basic-bios_rhel.ks",
+			striker2_ks	=>	"striker2-m3-basic-bios_rhel.ks",
 			short_name	=>	"rhel6",
 		}
 	},
@@ -469,7 +498,13 @@ sub freeze_networkmanager
 	my $nm_running   = 0;
 	my $active_iface = "";
 	
-	my $shell_call = "/etc/init.d/NetworkManager status; echo rc:\$?";
+	my $shell_call = "if [ -e '/etc/init.d/NetworkManager' ];
+			then
+				/etc/init.d/NetworkManager status;
+				echo rc:\$?
+			else
+				echo rc:1
+			fi";
 	#print "[ Debbug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -681,7 +716,10 @@ sub setup_striker
 	
 	# (Re)start daemons.
 	manage_daemons($conf);
-
+	
+	# Configure IPMI
+	configure_ipmi($conf);
+	
 	# Make sure that selinux is enabled. This runs after the main installer so that
 	# we can ensure any files we created or installed have the right
 	# labels/contexts.
@@ -692,6 +730,438 @@ sub setup_striker
 	#       get scrolled off the screen.
 	# Set the root user's password.
 	set_root_password($conf);
+	
+	return(0);
+}
+
+# If the user has requested IPMI be configured, do so.
+sub configure_ipmi
+{
+	my ($conf) = @_;
+	
+	if ((not $conf->{sys}{ipmi_user}) && (not $conf->{sys}{ipmi_ip}))
+	{
+		# The user hasn't asked for IPMI, so we're out.
+		return(0);
+	}
+	
+	# Ok, still alive. We now need to install the packages for IPMI.
+	my $ipmi_ok = 1;
+	
+	print "Configuring IPMI:\n";
+	my $to_install = "";
+	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{ipmi_packages}})
+	{
+		#print "[ Debug ] - packages::installed::$package: [$conf->{packages}{installed}{$package}]\n";
+		if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+		{
+			$conf->{packages}{ipmi_packages}{$package} = 1;
+			print "- IPMI Package: [$package] already installed.\n";
+		}
+		else
+		{
+			print "- Package: [$package] needs to be installed.\n";
+			$to_install .= "$package ";
+		}
+	}
+	
+	# Install anything needed.
+	if ($to_install)
+	{
+		# Install the packages, then verify they actually installed.
+		print "- Installing IPMI packages now. Please be patient.\n";
+		#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
+		#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
+		#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
+		#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
+		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		print "==============================================================================\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		print "==============================================================================\n";
+		close $file_handle;
+		print "- Done.\n";
+		
+		# Verify that everything is installed.
+		sleep 5;
+		get_list_of_installed_packages($conf);
+		print "- Verifying that everything is installed now.\n";
+		my $missing = 0;
+		foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{ipmi_packages}})
+		{
+			# Watch for autovivication...
+			if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+			{
+				$conf->{packages}{ipmi_packages}{$package} = 1;
+				print "- Package: [$package] installed.\n";
+			}
+			else
+			{
+				print "[ Error ] - IPMI Package: [$package] failed to install!\n";
+				$missing = 1;
+			}
+		}
+		# If anything is missing, fail.
+		if ($missing)
+		{
+			print "[ Error ] - Not all required packages for IPMI installed properly.\n";
+			print "[ Error ]   The install will continue, but please note that IPMI has not been\n";
+			print "[ Error ]   configured.\n";
+			$ipmi_ok = 0;
+		}
+		else
+		{
+			print "- All required packages are now installed.\n\n";
+		}
+	}
+	else
+	{
+		print "- All required packages already installed.\n";
+	}
+	
+	# Start the ipmi daemon and check that the IPMI device is found.
+	if ($ipmi_ok)
+	{
+		my $shell_call = "if [ ! -e '/dev/ipmi0' ]; 
+				then 
+					/etc/init.d/ipmi start; 
+					if [ ! -e '/dev/ipmi0' ]; 
+					then 
+						echo 'Failed to start IPMI'; 
+						echo 'rc:2'
+					else 
+						echo 'IPMI started successfully.'; 
+						echo 'rc:0'
+					fi; 
+				else 
+					echo 'IPMI already running.'; 
+					echo 'rc:1'
+				fi";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					print "- IPMI daemon started successfully.\n";
+				}
+				elsif ($rc eq "1")
+				{
+					print "- IPMI daemon was already running.\n";
+				}
+				elsif ($rc eq "2")
+				{
+					print "[ Error ] - IPMI daemon failed to start.\n";
+					$ipmi_ok = 0;
+				}
+			}
+			else
+			{
+				#print "[ Debug ] - output: [$line]\n";
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Configure IPMI.
+	my $channel       = 0;
+	my $channel_found = 0;
+	if ($ipmi_ok)
+	{
+		print "- Seaching for IPMI LAN channel:\n";
+		while (not $channel_found)
+		{
+			#print "[ Debug ] - channel: [$channel]\n";
+			if ($channel > 20)
+			{
+				# Give up...
+				print "[ Error ] - Failed to find the IPMI LAN channel! Giving up.\n";
+				$ipmi_ok = 0;
+				return($ipmi_ok);
+			}
+			
+			# check to see if this is the write channel
+			my $rc         = "";
+			my $shell_call = "ipmitool lan print $channel 2>&1; echo rc:\$?";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - line: [$line]\n";
+				if ($line =~ /Invalid channel: /)
+				{
+					#print "[ Debug ] - Wrong LAN channel: [$channel]\n";
+				}
+				elsif ($line =~ "rc:0")
+				{
+					# Found it!
+					$channel_found = 1;
+					print "- Found the LAN channel: [$channel]!\n";
+				}
+			}
+			close $file_handle;
+			$channel++ if not $channel_found;
+		}
+		#print "[ Debug ] - LAN channel: [$channel]\n";
+	}
+	
+	# Now find the requested user ID number.
+	my $user_id       = 0;
+	my $user_id_found = 0;
+	if (($conf->{sys}{ipmi_user}) && ($ipmi_ok))
+	{
+		print "- Searching for the user ID for: [$conf->{sys}{ipmi_user}]\n";
+		while (not $user_id_found)
+		{
+			#print "[ Debug ] - user_id: [$user_id]\n";
+			if ($user_id > 20)
+			{
+				# Give up...
+				print "[ Warning ] - Failed to find the IPMI admin user ID for: [$conf->{sys}{ipmi_user}].\n";
+				$user_id = 0;
+				last;
+			}
+			
+			# check to see if this is the write channel
+			my $rc         = "";
+			my $ipmi_user  = $conf->{sys}{ipmi_user};
+			my $shell_call = "ipmitool user list $channel 2>&1";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $filehandle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			while (<$filehandle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - line: [$line]\n";
+				$line =~ s/\s+/ /g;
+				if ($line =~ /^(\d+) $ipmi_user /)
+				{
+					$user_id       = $1;
+					$user_id_found = 1;
+					#print "[ Debug ] - Found the user ID: [$user_id]\n";
+				}
+			}
+			$user_id++ if not $user_id_found;
+		}
+		# Set the password.
+		print "- Setting the password for: [$conf->{sys}{ipmi_user} ($user_id)]:\n";
+		
+		# Set the password.
+		my $shell_call = "ipmitool user set password $user_id '$conf->{sys}{ipmi_password}'";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - line: [$line]\n";
+		}
+		close $file_handle;
+		
+		if ($ipmi_ok)
+		{
+			# Test the password. If this fails with '16', try '20'.
+			my $password_ok = 0;
+			my $try_20      = 0;
+			my $shell_call  = "ipmitool user test $user_id 16 '$conf->{sys}{ipmi_password}'";
+			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - line: [$line]\n";
+				if ($line =~ /Success/i)
+				{
+					# Woo!
+					print "- IPMI password for: [$conf->{sys}{ipmi_user}] set successfully as a 16-byte string!\n";
+				}
+				elsif ($line =~ /wrong password size/i)
+				{
+					$try_20 = 1;
+					#print "[ Debug ] - IPMI password is not a 16-byte string, will try 20-byte.\n";
+				}
+				elsif ($line =~ /password incorrect/i)
+				{
+					# Password didn't take. :(
+					print "[ Error ] - IPMI password failed to be set properly.\n";
+					$ipmi_ok = 0;
+				}
+			}
+			close $file_handle;
+			
+			if ($try_20)
+			{
+				my $shell_call = "ipmitool user test $user_id 20 '$conf->{sys}{ipmi_password}'";
+				#print "[ Debug ] - shell_call: [$shell_call]\n";
+				open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+				while (<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					#print "[ Debug ] - line: [$line]\n";
+					if ($line =~ /Success/i)
+					{
+						# Woo!
+						print "- IPMI password for: [$conf->{sys}{ipmi_user}] set successfully as a 20-byte string!\n";
+					}
+					elsif ($line =~ /password incorrect/i)
+					{
+						# Password didn't take. :(
+						print "[ Error ] - IPMI password failed to be set properly.\n";
+						$ipmi_ok = 0;
+					}
+				}
+				close $file_handle;
+			}
+		}
+	}
+	
+	# Set the IPMI address if requested.
+	if (($conf->{sys}{ipmi_ip}) && ($ipmi_ok))
+	{
+		# Setup the IPMI IP to static
+		my $shell_call = "ipmitool lan set $channel ipsrc static";
+		#print "[ Debug ] shell_call: [$shell_call]\n";
+		open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - return line: [$line]\n";
+		}
+		close $file_handle;
+		
+		# Now set the IP
+		$shell_call = "ipmitool lan set $channel ipaddr $conf->{sys}{ipmi_ip}";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - return line: [$line]\n";
+		}
+		close $file_handle;
+		
+		# Now the netmask
+		$shell_call = "ipmitool lan set $channel netmask $conf->{sys}{ipmi_netmask}";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - return line: [$line]\n";
+		}
+		
+		# If the user has specified a gateway, set it
+		if ($conf->{sys}{ipmi_gateway})
+		{
+			my $shell_call = "ipmitool lan set $channel defgw ipaddr $conf->{sys}{ipmi_gateway}";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - return line: [$line]\n";
+			}
+			close $file_handle;
+		}
+		
+		### Now read it back.
+		# Now the netmask
+		$shell_call = "ipmitool lan print $channel";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - >> return line: [$line]\n";
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			#print "[ Debug ] - << return line: [$line]\n";
+			if ($line =~ /IP Address Source/i)
+			{
+				if ($line =~ /Static/i)
+				{
+					print "- IPMI IP is static now.\n";
+				}
+				else
+				{
+					print "[ Error ] - IPMI IP is NOT static!\n";
+					$ipmi_ok = 0;
+				}
+			}
+			if ($line =~ /IP Address :/i)	# Needs the ' :' to not match 'IP Address Source'
+			{
+				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
+				if ($ip eq $conf->{sys}{ipmi_ip})
+				{
+					print "- IPMI IP is now: [$conf->{sys}{ipmi_ip}]\n";
+				}
+				else
+				{
+					print "[ Error ] - IPMI reported IP: [$ip] doesn't match desired IP: [$conf->{sys}{ipmi_ip}]!\n";
+					$ipmi_ok = 0;
+				}
+			}
+			if ($line =~ /Subnet Mask/i)
+			{
+				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
+				if ($ip eq $conf->{sys}{ipmi_netmask})
+				{
+					print "- IPMI subnet is now: [$conf->{sys}{ipmi_netmask}]\n";
+				}
+				else
+				{
+					print "[ Error ] - IPMI reported subnet: [$ip] doesn't match desired subnet: [$conf->{sys}{ipmi_netmask}]!\n";
+					$ipmi_ok = 0;
+				}
+			}
+			if (($line =~ /Default Gateway IP/i) && ($conf->{sys}{ipmi_gateway}))
+			{
+				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
+				if ($ip eq $conf->{sys}{ipmi_gateway})
+				{
+					print "- IPMI gateway is now: [$conf->{sys}{ipmi_gateway}]\n";
+				}
+				else
+				{
+					print "[ Error ] - IPMI reported gateway: [$ip] doesn't match desired gateway: [$conf->{sys}{ipmi_gateway}]!\n";
+					$ipmi_ok = 0;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	if ($ipmi_ok)
+	{
+		print "Done.\n\n";
+	}
+	else
+	{
+		print "\n##############################################################################\n";
+		print "# [ Error ] - IPMI configuration failed. Please configure IPMI manually!     #\n";
+		print "# [ Error ] - Install will attempt to continue.                              #\n";
+		print "##############################################################################\n\n";
+		sleep 10;
+	}
 	
 	return(0);
 }
@@ -858,23 +1328,39 @@ sub configure_iso_source
 			$conf->{pxe}{centos}{enabled} = 1;
 			
 			# Write out the kickstart files.
-			my $centos_node_ks         = generate_kickstart($conf, "centos", "node");
-			my $centos_striker_ks      = generate_kickstart($conf, "centos", "striker");
-			my $centos_node_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node_ks}";
-			my $centos_striker_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker_ks}";
+			my $centos_node1_ks         = generate_kickstart($conf, "centos", "node", 1);
+			my $centos_node2_ks         = generate_kickstart($conf, "centos", "node", 2);
+			my $centos_striker1_ks      = generate_kickstart($conf, "centos", "striker", 1);
+			my $centos_striker2_ks      = generate_kickstart($conf, "centos", "striker", 2);
+			my $centos_node1_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node1_ks}";
+			my $centos_node2_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node2_ks}";
+			my $centos_striker1_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker1_ks}";
+			my $centos_striker2_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker2_ks}";
 			
 			# Write out the files.
-			print "- Writing out CentOS node kickstart file.\n";
-			open (my $file_handle, ">", $centos_node_ks_file) or die "Failed to write: [$centos_node_ks_file], the error was: $!\n";
-			print $file_handle $centos_node_ks;
+			print "- Writing out CentOS node 1 kickstart file.\n";
+			open (my $file_handle, ">", $centos_node1_ks_file) or die "Failed to write: [$centos_node1_ks_file], the error was: $!\n";
+			print $file_handle $centos_node1_ks;
 			close $file_handle;
-			print "- Wrote: [$centos_node_ks_file].\n\n";
+			print "- Wrote: [$centos_node1_ks_file].\n";
+			
+			print "- Writing out CentOS node 2 kickstart file.\n";
+			open ($file_handle, ">", $centos_node2_ks_file) or die "Failed to write: [$centos_node2_ks_file], the error was: $!\n";
+			print $file_handle $centos_node2_ks;
+			close $file_handle;
+			print "- Wrote: [$centos_node2_ks_file].\n";
 
-			print "- Writing out CentOS striker kickstart file.\n";
-			open ($file_handle, ">", $centos_striker_ks_file) or die "Failed to write: [$centos_striker_ks_file], the error was: $!\n";
-			print $file_handle $centos_striker_ks;
+			print "- Writing out CentOS striker 1 kickstart file.\n";
+			open ($file_handle, ">", $centos_striker1_ks_file) or die "Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
+			print $file_handle $centos_striker1_ks;
 			close $file_handle;
-			print "- Wrote: [$centos_striker_ks_file].\n\n";
+			print "- Wrote: [$centos_striker1_ks_file].\n";
+
+			print "- Writing out CentOS striker 2 kickstart file.\n";
+			open ($file_handle, ">", $centos_striker2_ks_file) or die "Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
+			print $file_handle $centos_striker2_ks;
+			close $file_handle;
+			print "- Wrote: [$centos_striker2_ks_file].\n";
 			print "- CentOS PXE configuration complete.\n";
 		}
 	}
@@ -1011,27 +1497,43 @@ sub configure_iso_source
 			$conf->{pxe}{rhel}{enabled} = 1;
 			
 			# Write out the kickstart files.
-			my $rhel_node_ks         = generate_kickstart($conf, "rhel", "node");
-			my $rhel_striker_ks      = generate_kickstart($conf, "rhel", "striker");
-			my $rhel_node_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node_ks}";
-			my $rhel_striker_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}";
+			my $rhel_node1_ks         = generate_kickstart($conf, "rhel", "node", 1);
+			my $rhel_node2_ks         = generate_kickstart($conf, "rhel", "node", 2);
+			my $rhel_striker1_ks      = generate_kickstart($conf, "rhel", "striker", 1);
+			my $rhel_striker2_ks      = generate_kickstart($conf, "rhel", "striker", 2);
+			my $rhel_node1_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node1_ks}";
+			my $rhel_node2_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node2_ks}";
+			my $rhel_striker1_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker1_ks}";
+			my $rhel_striker2_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker2_ks}";
 			
 			# Write out the files.
-			print "- Writing out RHEL node kickstart file.\n";
-			open (my $file_handle, ">", $rhel_node_ks_file) or die "Failed to write: [$rhel_node_ks_file], the error was: $!\n";
-			print $file_handle $rhel_node_ks;
+			print "- Writing out CentOS node 1 kickstart file.\n";
+			open (my $file_handle, ">", $rhel_node1_ks_file) or die "Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
+			print $file_handle $rhel_node1_ks;
 			close $file_handle;
-			print "- Wrote: [$rhel_node_ks_file].\n\n";
+			print "- Wrote: [$rhel_node1_ks_file].\n";
+			
+			print "- Writing out CentOS node 2 kickstart file.\n";
+			open ($file_handle, ">", $rhel_node2_ks_file) or die "Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
+			print $file_handle $rhel_node2_ks;
+			close $file_handle;
+			print "- Wrote: [$rhel_node2_ks_file].\n";
 
-			print "- Writing out RHEL striker kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker_ks_file) or die "Failed to write: [$rhel_striker_ks_file], the error was: $!\n";
-			print $file_handle $rhel_striker_ks;
+			print "- Writing out CentOS striker 1 kickstart file.\n";
+			open ($file_handle, ">", $rhel_striker1_ks_file) or die "Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
+			print $file_handle $rhel_striker1_ks;
 			close $file_handle;
-			print "- Wrote: [$rhel_striker_ks_file].\n\n";
+			print "- Wrote: [$rhel_striker1_ks_file].\n";
+
+			print "- Writing out CentOS striker 2 kickstart file.\n";
+			open ($file_handle, ">", $rhel_striker2_ks_file) or die "Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
+			print $file_handle $rhel_striker2_ks;
+			close $file_handle;
+			print "- Wrote: [$rhel_striker2_ks_file].\n";
 			print "- RHEL PXE configuration complete.\n";
 		}
 	}
-	print "- Done!\n\n";
+	print "Done!\n\n";
 
 	return(0);
 }
@@ -1230,7 +1732,7 @@ sub mount_iso
 				mount $target;
 				echo mount:$?; 
 			fi";
-	print "[ Debug ] - shell_call: [$shell_call]\n";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1271,17 +1773,17 @@ sub mount_iso
 # This generates a kickstart file.
 sub generate_kickstart
 {
-	my ($conf, $os, $machine) = @_;
+	my ($conf, $os, $machine, $number) = @_;
 	
 	my $short_os_name = $conf->{pxe}{centos}{short_name};
-	my $machine_name  = "new-node";
+	my $machine_name  = "new-node0$number";
 	if ($os eq "rhel")
 	{
 		$short_os_name = $conf->{pxe}{rhel}{short_name};
 	}
 	if ($machine eq "striker")
 	{
-		$machine_name = "new-striker";
+		$machine_name = "new-striker0$number";
 	}
 	
 	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
@@ -1313,10 +1815,10 @@ timezone --utc America/Toronto
 # and configure the network manually post-install.
 network --device eth0 --bootproto dhcp --onboot yes --hostname $machine_name.$domain_name
 
-# This is the root user's password, which is \"initial\". To change this, set the
-# password you want for a user on an existing system. Once set, look in
+# This is the root user's password, which is \"Initial1\". To change this, set
+# the password you want for a user on an existing system. Once set, look in
 # '/etc/shadow' for the line starting with the user name whom you set the
-# password for. Here is an example for the user 'digimer':
+# password for.
 authconfig --enableshadow --passalgo=sha512 --enablefingerprint
 rootpw --iscrypted \$6\$W8AdoMvC\$ZX87YTlVdutpsmsISVEqEkblJLPilP46PNTACN2r2MRzH2xgBOFciZgFsx7f5i07scC/fjNuR/B5Y2eOLXpz31
 
@@ -1328,8 +1830,17 @@ rootpw --iscrypted \$6\$W8AdoMvC\$ZX87YTlVdutpsmsISVEqEkblJLPilP46PNTACN2r2MRzH2
 # specific to firewalling and SELinux without wondering if problems are caused
 # by the general configuration.
 firewall --service=ssh
-selinux --enforcing
-
+";
+	if ($machine eq "striker")
+	{
+		$kickstart .= "selinux --permissive\n";
+	}
+	else
+	{
+		$kickstart .= "selinux --enforcing\n";
+	}
+	$kickstart .= "
+	
 # Given how often I rebuild machines, I like to pre-define the initial user and
 # thus skip 'firstboot' to save time.
 firstboot --disable
@@ -1606,15 +2117,27 @@ LABEL next
 	{
 		$i++;
 		$default_config .= "
-LABEL generic-centos-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node - Traditional BIOS - CentOS 6
+LABEL generic-centos-anvil-node1-basic-bios
+        MENU LABEL ^$i) Anvil! M3 node 01 - Traditional BIOS - CentOS 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node using CentOS 6. Will create a
+		Installs a generic Anvil! m3 node 01 using CentOS 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node1_ks}
+";
+		$i++;
+		$default_config .= "
+LABEL generic-centos-anvil-node2-basic-bios
+        MENU LABEL ^$i) Anvil! M3 node 02 - Traditional BIOS - CentOS 6
+	TEXT HELP
+		Installs a generic Anvil! m3 node 02 using CentOS 6. Will create a
+		traditional /boot + MBR install for systems with traditional BIOSes.
+		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
+	ENDTEXT
+        KERNEL boot/$centos_short/x86_64/vmlinuz
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{node2_ks}
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -1622,14 +2145,26 @@ LABEL generic-centos-anvil-node-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node - Traditional BIOS - RHEL 6
+        MENU LABEL ^$i) Anvil! M3 node 01 - Traditional BIOS - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node using RHEL 6. Will create a
+		Installs a generic Anvil! m3 node 01 using RHEL 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node1_ks}
+";
+		$i++;
+		$default_config .= "
+LABEL generic-rhel-anvil-node-basic-bios
+        MENU LABEL ^$i) Anvil! M3 node 02 - Traditional BIOS - RHEL 6
+	TEXT HELP
+		Installs a generic Anvil! m3 node 02 using RHEL 6. Will create a
+		traditional /boot + MBR install for systems with traditional BIOSes.
+		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
+	ENDTEXT
+        KERNEL boot/$rhel_short/x86_64/vmlinuz
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{node2_ks}
 ";
 	}
 	if ($conf->{pxe}{centos}{enabled})
@@ -1637,14 +2172,26 @@ LABEL generic-rhel-anvil-node-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-centos-striker-basic-bios
-        MENU LABEL ^$i) Striker Dashboard - Traditional BIOS - CentOS 6
+        MENU LABEL ^$i) Striker 01 Dashboard - Traditional BIOS - CentOS 6
 	TEXT HELP
-		Installs a generic Striker dashboard using CentOS 6. Will create a
+		Installs a generic Striker 01 dashboard using CentOS 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$centos_short/x86_64/vmlinuz
-        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker_ks}
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker1_ks}
+";
+		$i++;
+		$default_config .= "
+LABEL generic-centos-striker-basic-bios
+        MENU LABEL ^$i) Striker 02 Dashboard - Traditional BIOS - CentOS 6
+	TEXT HELP
+		Installs a generic Striker 02 dashboard using CentOS 6. Will create a
+		traditional /boot + MBR install for systems with traditional BIOSes.
+		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+	ENDTEXT
+        KERNEL boot/$centos_short/x86_64/vmlinuz
+        APPEND initrd=boot/$centos_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$centos_short/x86_64/ks/$conf->{pxe}{centos}{striker2_ks}
 ";
 	}
 	if ($conf->{pxe}{rhel}{enabled})
@@ -1652,14 +2199,26 @@ LABEL generic-centos-striker-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-striker-basic-bios
-        MENU LABEL ^$i) Striker Dashboard - Traditional BIOS - RHEL 6
+        MENU LABEL ^$i) Striker 01 Dashboard - Traditional BIOS - RHEL 6
 	TEXT HELP
-		Installs a generic Striker dashboard using RHEL 6. Will create a
+		Installs a generic Striker 01 dashboard using RHEL 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
         KERNEL boot/$rhel_short/x86_64/vmlinuz
-        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker_ks}
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker1_ks}
+";
+		$i++;
+		$default_config .= "
+LABEL generic-rhel-striker-basic-bios
+        MENU LABEL ^$i) Striker 02 Dashboard - Traditional BIOS - RHEL 6
+	TEXT HELP
+		Installs a generic Striker 02 dashboard using RHEL 6. Will create a
+		traditional /boot + MBR install for systems with traditional BIOSes.
+		Partition will be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
+	ENDTEXT
+        KERNEL boot/$rhel_short/x86_64/vmlinuz
+        APPEND initrd=boot/$rhel_short/x86_64/initrd.img inst.repo=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/img/ ks=http://$conf->{network}{bcn}{ip}/$rhel_short/x86_64/ks/$conf->{pxe}{rhel}{striker2_ks}
 ";
 	}
 	
@@ -1740,6 +2299,89 @@ sub configure_dhcp
 		backup_file($conf, $conf->{path}{dhcpd_conf});
 	}
 	
+	# If the user didn't specify a BCN IP, then read it from the config
+	# file. If that doesn't exist, fail.
+	my $ifcfg_file = "";
+	print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+	if (not $conf->{network}{bcn}{ip})
+	{
+		# BCN not specified.
+		if (-e "$conf->{path}{network_configs}/ifcfg-bcn-bond1")
+		{
+			# Read in the IP from the bond file.
+			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn-bond1";
+			my $shell_call = "grep -e IPADDR -e NETMASK $ifcfg_file";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				   $line =~ s/"//g;
+				print "[ Debug ] - line: [$line]\n";
+				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
+				{
+					$conf->{network}{bcn}{ip} = $1;
+					print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+				}
+				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
+				{
+					$conf->{network}{bcn}{netmask} = $1;
+					print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
+				}
+			}
+			close $file_handle;
+		}
+		elsif (-e "$conf->{path}{network_configs}/ifcfg-bcn-link1")
+		{
+			# Read in the IP from the link file
+			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn-link1";
+			my $shell_call = "grep IPADDR $ifcfg_file";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				   $line =~ s/"//g;
+				print "[ Debug ] - line: [$line]\n";
+				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
+				{
+					$conf->{network}{bcn}{ip} = $1;
+					print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+				}
+				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
+				{
+					$conf->{network}{bcn}{netmask} = $1;
+					print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
+				}
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# Error out.
+			print "[ Error ] - PXE configuration was requested but the BCN IP wasn't specified.\n";
+			print "[ Error ]   Tried to read the current BCN IP from either config file:\n";
+			print "[ Error ]   - Bond: [$conf->{path}{network_configs}/ifcfg-bcn-bond1]\n";
+			print "[ Error ]   - Link: [$conf->{path}{network_configs}/ifcfg-bcn-link1]\n";
+			print "[ Error ]   Neither was found, so the BCN IP can not be determined. There is\n";
+			print "[ Error ]   no way to configure the DHCP server.\n";
+			print "[ Error ] - Install exiting.\n\n";
+			exit(26);
+		}
+	}
+	
+	# See if we have the IP now.
+	print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+	if (not $conf->{network}{bcn}{ip})
+	{
+		# Error out.
+		print "[ Error ] - PXE configuration was requested but the BCN IP wasn't specified.\n";
+		print "[ Error ]   Tried to read the IP from: [$ifcfg_file]\n";
+		print "[ Error ]   but the IP address wasn't defined (or found).\n";
+		print "[ Error ] - Install exiting.\n\n";
+		exit(27);
+	}
+	
 	### TODO: I have no checks yet to verify that the lease range is in the
 	###       BCN subnet... Fix that.
 	my $domain_name = ($conf->{sys}{hostname} =~ /^.*?\.(.*)$/)[0];
@@ -1752,9 +2394,10 @@ sub configure_dhcp
 	}
 	if ($conf->{network}{bcn}{netmask} eq "255.255.255.0")
 	{
-		$bcn_network =  ($conf->{network}{bcn}{ip} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+		$bcn_network =  ($conf->{network}{bcn}{netmask} =~ /^(\d+\.\d+\.\d+\.)/)[0];
 		$bcn_network .= "0";
 	}
+	print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
 	my $dhcpd_config = "
 # Generated by: [$THIS_FILE] on: [".get_date($conf)."].
 # DHCP Daemon config for PXE-based installs of nodes and striker dashboards.
@@ -1815,6 +2458,8 @@ sub manage_daemons
 	print "Configuring daemons to start/stop on boot and start/stop daemons.\n";
 	foreach my $daemon (@{$conf->{daemons}{disable}})
 	{
+		# No sense proceeding if the daemon doesn't exist.
+		next if not -e "/etc/init.d/$daemon";
 		my $shell_call = "$conf->{executable}{chkconfig} $daemon off && /etc/init.d/$daemon stop";
 		if ($daemon eq "NetworkManager")
 		{
@@ -1826,7 +2471,7 @@ sub manage_daemons
 			print "- Disabling: [$daemon] on boot and stopping it.\n";
 		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1840,6 +2485,8 @@ sub manage_daemons
 	}
 	foreach my $daemon (@{$conf->{daemons}{enable}})
 	{
+		# No sense proceeding if the daemon doesn't exist.
+		next if not -e "/etc/init.d/$daemon";
 		my $shell_call = "$conf->{executable}{chkconfig} $daemon on && /etc/init.d/$daemon restart";
 		if ($daemon eq "network")
 		{
@@ -1852,7 +2499,7 @@ sub manage_daemons
 			print "- Enabling: [$daemon] on boot and (re)starting it.\n";
 		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1860,6 +2507,11 @@ sub manage_daemons
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
 			print "- Output: [$line]\n";
+			if (($line =~ /FAILED/i) && ($daemon eq "dhcpd"))
+			{
+				print "[ Note ] - Starting DHCP daemon will fail if the BCN IP changed and the system\n";
+				print "[ Note ]   hasn't rebooted yet. It should work after the reboot.\n";
+			}
 		}
 		close $file_handle;
 		sleep 1;
@@ -2041,7 +2693,7 @@ sub install_striker_files
 		open ($file_handle, ">", $conf->{path}{striker_config}) or die "Failed to write: [$conf->{path}{striker_config}], the error was: $!\n";
 		print $file_handle $striker_config;
 		close $file_handle;
-		print "Done.\n\n";
+		print "- Done.\n";
 	}
 	
 	# Create an empty log file
@@ -3296,6 +3948,7 @@ sub install_missing_packages
 		#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
 		#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		print "==============================================================================\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -3460,9 +4113,23 @@ sub configure_an_repo
 {
 	my ($conf) = @_;
 	
+	print "Checking AN! software repository.\n";
 	if (-e $conf->{path}{an_repo})
 	{
-		print "- The AN!Repo is already installed.\n";
+		if ($conf->{switches}{'no-an-repo'})
+		{
+			print "- AN! repo unselected but exists, removing it.\n";
+			unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
+			print "- removed.\n";
+		}
+		else
+		{
+			print "- The AN!Repo is already installed.\n";
+		}
+	}
+	elsif ($conf->{switches}{'no-an-repo'})
+	{
+		print "- AN! software repository not requested, skipping.\n";
 	}
 	else
 	{
@@ -3488,8 +4155,8 @@ sub configure_an_repo
 			print "- output: [$line]\n";
 		}
 		close $file_handle;
-		print "- Done!\n\n";
 	}
+	print "- Done!\n\n";
 	
 	return(0);
 }
@@ -4073,10 +4740,20 @@ sub sanity_check_switches
 		$conf->{sys}{skip_network} = 1;
 		if ((not $conf->{network}{bcn}{ip}) || (not $conf->{network}{bcn}{netmask}))
 		{
-			print "[ Error ] - Network configuration is disabled, but the BCN network's IP address\n";
-			print "[ Error ]   and network mask were not found. Is the device 'bcn-link1'\n";
-			print "[ Error ]   configured with an IP address?\n";
-			#$bad_value = 1;
+			# Might have been configured in a previous run but not
+			# yet rebooted.
+			if (not -e "$conf->{path}{network_configs}/ifcfg-bcn-link1")
+			{
+				print "[ Error ] - Network configuration is disabled, but the BCN network's IP address\n";
+				print "[ Error ]   and network mask were not found. Is the device 'bcn-link1'\n";
+				print "[ Error ]   configured with an IP address?\n";
+				$bad_value = 1;
+			}
+			else
+			{
+				# It looks like it's already been configured,
+				# so no need to panic.
+			}
 		}
 	}
 	elsif (not $conf->{switches}{b})
@@ -4099,7 +4776,7 @@ sub sanity_check_switches
 	{
 		($bad_value) = sanity_check_dhcp($conf, $bad_value);
 	}
-	else
+	elsif (($conf->{switches}{'centos-iso'}) || ($conf->{switches}{'rhel-iso'}))
 	{
 		print "[ Error ] - The DHCP lease range must be defined for PXE-based installs to\n";
 		print "[ Error ]   work. Note that the DHCP server will *only* run when enabled via\n";
@@ -4227,7 +4904,7 @@ sub sanity_check_switches
 		else
 		{
 			print "[ Error ] - The Striker user name and password were not specified correctly.\n";
-			print "[ Error ]   Please use '-u \"<user>:<password>\".\n";
+			print "[ Error ]   Please use '-u \"<user:password>\".\n";
 			$bad_value = 1;
 		}
 	}
@@ -4243,13 +4920,89 @@ sub sanity_check_switches
 		else
 		{
 			print "[ Error ] - The Red Hat Network user name and password were not specified\n";
-			print "[ Error ]   correctly. Please use '--rhn \"<user>:<password>\".\n";
+			print "[ Error ]   correctly. Please use '--rhn \"<user:password>\".\n";
 			$bad_value = 1;
 		}
 	}
 	
+	### Sanity check IPMI if set.
+	# Credentials
+	if ($conf->{switches}{'ipmi-user'})
+	{
+		if ($conf->{switches}{'ipmi-user'} =~ /^(.*?):(.*)$/)
+		{
+			$conf->{sys}{ipmi_user}     = $1;
+			$conf->{sys}{ipmi_password} = $2;
+		}
+		else
+		{
+			print "[ Error ] - The IPMI BMC user name and password were not specified correctly.\n";
+			print "[ Error ]   Please use '--ipmi-user \"<user:password>\".\n";
+			$bad_value = 1;
+		}
+	}
+	
+	# IP address
+	if ($conf->{switches}{'ipmi-ip'})
+	{
+		# Did the user specify a gateway?
+		if ($conf->{switches}{'ipmi-ip'} =~ /^(.*?)\/(.*?),dg=(.*)$/)
+		{
+			$conf->{sys}{ipmi_ip}      = $1;
+			$conf->{sys}{ipmi_netmask} = $2;
+			$conf->{sys}{ipmi_gateway} = $3;
+		}
+		elsif ($conf->{switches}{'ipmi-ip'} =~ /^(.*?)\/(.*)$/)
+		{
+			$conf->{sys}{ipmi_ip}      = $1;
+			$conf->{sys}{ipmi_netmask} = $2;
+		}
+		else
+		{
+			# Unparsable
+			print "[ Error ] - The IPMI BMC user name and password were not specified correctly.\n";
+			print "[ Error ]   Please use '--ipmi-user \"<user:password>\".\n";
+			$bad_value = 1;
+		}
+	
+		### Verify sanity
+		# IP address
+		$conf->{sys}{ipmi_ip} = validate_ip_address($conf, $conf->{sys}{ipmi_ip});
+		if ($conf->{sys}{ipmi_ip} eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified IPMI IP address: [$conf->{sys}{ipmi_ip}] is not valid.\n";
+			$bad_value = 1;
+		}
+		
+		# Netmask
+		if ($conf->{sys}{ipmi_netmask} =~ /^\d{1,2}$/)
+		{
+			# Convert from CIDR to dotted-decimal
+			$conf->{sys}{ipmi_netmask} = convert_cidr_to_dotted_decimal($conf, $conf->{sys}{ipmi_netmask});
+		}
+		else
+		{
+			$conf->{sys}{ipmi_netmask} = validate_ip_address($conf, $conf->{sys}{ipmi_netmask});
+		}
+		if ($conf->{sys}{ipmi_netmask} eq "#!INVALID!#")
+		{
+			print "[ Error ] - The specified IPMI netmask value: [$conf->{sys}{ipmi_netmask}] is not valid.\n";
+			$bad_value = 1;
+		}
+		
+		# If defined, validate the gateway
+		if ($conf->{sys}{ipmi_gateway})
+		{
+			$conf->{sys}{ipmi_gateway} = validate_ip_address($conf, $conf->{sys}{ipmi_gateway});
+			if ($conf->{sys}{ipmi_gateway} eq "#!INVALID!#")
+			{
+				print "[ Error ] - The specified IPMI gateway: [$conf->{sys}{ipmi_gateway}] is not valid.\n";
+				$bad_value = 1;
+			}
+		}
+	}
+
 	print "Sanity checks complete.\n\n";
-	$bad_value=0;
 	return($bad_value);
 }
 
@@ -4294,7 +5047,10 @@ sub sanity_check_dhcp
 	}
 	if ((not $start_prefix) && (not $end_prefix))
 	{
-		print "[ Warning ] - Unable to check if the start and end IPs are in the same subnet.\n";
+		### TODO: This is hit when the BCN isn't specified. Move the
+		###       function that reads the BCN config (if it exists)
+		###       into a function and call it here.
+		#print "[ Warning ] - Unable to check if the start and end IPs are in the same subnet.\n";
 	}
 	elsif ($start_prefix ne $end_prefix)
 	{
@@ -4736,6 +5492,21 @@ SWITCHES
 		these are not set, dns1 will default to 8.8.8.8 and dns2 will
 		default to 8.8.4.4
 
+ --ipmi-user <user:password>
+
+	If specified, and if an IPMI BMC is found, the installer will set the
+	IPMI BMC password for the specified user.
+	
+	Note: This will *not* create a user! If the specified user is not found
+	      in the IPMI user list, the password will not be set and an error
+	      will be printed.
+
+ --ipmi-ip <ip_address/netmask>[,gw=<ip_address>]
+ 
+	If specified, and if an IPMI BMC is found, the installer will set the
+	IPMI BMC to have the specified IP address and network mask/subnet.
+	Optionally, if 'gw' is set, the BMC's gateway will also be set.
+
  -m <mail server:port>
 
 	This sets the mail server and port to use for sending email. If no port
@@ -4745,6 +5516,11 @@ SWITCHES
  -n <hostname>
 
 	This sets the host name of the Striker dashboard.
+
+ --no-an-repo
+
+	Use this to prevent adding the AN! software repository to this striker.
+	If specified and if the repo exists, it will be removed.
 
  -p <start_ip:end_ip>
  
@@ -4809,7 +5585,7 @@ Normal install, downloading ISOs from local web server:
                   -m mail.alteeve.ca:587 \
                   -n an-m01.alteeve.ca \
                   -u "admin:secret password" \
-                  -p lease-start=10.20.10.200,lease-end=10.20.10.210 \
+                  -p 10.20.10.200:10.20.10.210 \
                   -r http://10.255.255.254/repo/rhel6/local.repo \
                   --centos-iso http://10.255.255.254/c6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
                   --rhel-iso http://10.255.255.254/rhel6/x86_64/iso/rhel-server-6.6-x86_64-dvd.iso \
@@ -4824,7 +5600,7 @@ Developer install, using local copies of ISOs:
                   -n an-m01.alteeve.ca \
                   -d git \
                   -u "admin:secret password" \
-                  -p lease-start=10.20.10.200,lease-end=10.20.10.210 \
+                  -p 10.20.10.200:10.20.10.210 \
                   --centos-iso ./iso/CentOS-6.6-x86_64-bin-DVD1.iso \
                   --rhel-iso ./iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \

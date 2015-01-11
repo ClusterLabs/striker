@@ -641,6 +641,10 @@ sub write_new_striker_conf
 		}
 	}
 	
+	# This forces spice graphics when provisioning and disables in-browser
+	# VNC.
+	$conf->{sys}{use_spice_graphics} = $conf->{cgi}{anvil_use_spice_graphics} ? $conf->{cgi}{anvil_use_spice_graphics} : 0;
+	
 	# Write out the global values.
 	my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
 		smtp__server			=>	$conf->{smtp}{server},
@@ -652,6 +656,7 @@ sub write_new_striker_conf
 		smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
 		mail_data__to			=>	$conf->{mail_data}{to},
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
+		use_spice_graphics		=>	$conf->{sys}{use_spice_graphics},
 	}});
 	print $striker_conf $say_body;
 	
@@ -2250,8 +2255,14 @@ sub load_install_manifest
 				elsif ($b eq "iptables")
 				{
 					my $ports = $a->{$b}->[0]->{vnc}->[0]->{ports};
-					$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports} = $ports ? $ports : "";
+					$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports} = $ports ? $ports : 100;
 					#record($conf, "$THIS_FILE ".__LINE__."; Firewall iptables; VNC port count: [$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports}]\n");
+				}
+				elsif ($b eq "servers")
+				{
+					my $use_spice_graphics = $a->{$b}->[0]->{provision}->[0]->{use_spice_graphics};
+					$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
+					record($conf, "$THIS_FILE ".__LINE__."; Server provisioning; Use spice graphics: [$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics}]\n");
 				}
 				elsif ($b eq "media_library")
 				{
@@ -2478,6 +2489,9 @@ sub load_install_manifest
 		# iptables
 		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_open_vnc_ports: [$conf->{cgi}{anvil_open_vnc_ports}]\n");
+		
+		# Server provisioning
+		$conf->{cgi}{anvil_use_spice_graphics} = $conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics};
 		
 		# Storage Pool 1
 		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
@@ -2977,6 +2991,9 @@ sub generate_install_manifest
 	$conf->{cgi}{anvil_node2_ipmi_password} = $conf->{cgi}{anvil_node2_ipmi_password} ? $conf->{cgi}{anvil_node2_ipmi_password} : $conf->{cgi}{anvil_password};
 	$conf->{cgi}{anvil_node2_ipmi_user}     = $conf->{cgi}{anvil_node2_ipmi_user}     ? $conf->{cgi}{anvil_node2_ipmi_user}     : "admin";
 	
+	### TODO: This isn't set for some reason, fix
+	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
+	
 	### KVM-based fencing is supported but not documented. Sample entries
 	### are here for those who might ask for it when building test Anvil!
 	### systems later.
@@ -3096,6 +3113,9 @@ Striker Version: $conf->{sys}{version}
 		<iptables>
 			<vnc ports=\"$conf->{cgi}{anvil_open_vnc_ports}\" />
 		</iptables>
+		<servers>
+			<provision use_spice_graphics=\"0\" />
+		</servers>
 	</common>
 </config>
 ";
@@ -3156,7 +3176,7 @@ sub confirm_install_manifest_run
 	# I don't ask the user for the port range at this time,
 	# so it's possible the number of ports to open isn't in
 	# the manifest.
-	$conf->{cgi}{anvil_open_vnc_ports}         = $conf->{sys}{open_vnc_ports}     if not $conf->{cgi}{anvil_open_vnc_ports};
+	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
 	my $say_repos =  $conf->{cgi}{anvil_repositories};
 		$say_repos =~ s/,/<br \/>/;
 		$say_repos =  "--" if not $say_repos;
