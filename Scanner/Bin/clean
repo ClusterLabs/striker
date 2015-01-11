@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo 'Removing *.~ edit files'
+
+find . -type f -name '*~' -print -exec rm {} \;
+
+echo 'Removing #*# edit files'
+
+find . -type f -name '\#*\# -print -exec rm {} \;
+
