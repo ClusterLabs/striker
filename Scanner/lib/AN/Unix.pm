@@ -6,7 +6,7 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';    # update POD to match
 
 use English '-no_match_vars';
 use Carp;
@@ -86,7 +86,7 @@ __END__
 
 =head1 VERSION
 
-This document describes Unix.pm version 0.0.1
+This document describes Unix.pm version 1.0.0
 
 =head1 SYNOPSIS
 
@@ -222,4 +222,4 @@ There are no current incompatabilities.
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
+
