@@ -61,314 +61,45 @@ sub BUILD {
     return;
 }
 
-sub eval_discrete_status {
+sub insert_agent_record {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
+    my ( $args, $msg ) = @_;
 
-    say 'eval_discrete_status() invoked for unknown sensor: ', Dumper( [\@_] );
+    $self->insert_raw_record(
+                              { table              => $self->datatable_name,
+                                with_node_table_id => 'node_id',
+                                args               => {
+                                      value => $msg->{newval} || $args->{value},
+                                      units => $args->{rec_meta}{units} || '',
+                                      field => $msg->{label} || $args->{tag},
+                                      status   => $msg->{status},
+                                      msg_tag  => $msg->{tag},
+                                      msg_args => $msg->{args},
+				      target   => $args->{metadata}{name},
+                                },
+                              } );
+    return;
 }
-
-sub eval_rising_status {
+sub insert_alert_record {
     my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
+    my ( $args, $msg ) = @_;
 
-    my $units = $rec_meta->{units} || '';
-    my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
-
-    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
-
-    # 1) Previous status was OK, allow small overage before not OK
-    #
-    if (    $prev_status eq 'OK'
-         && $value <= $rec_meta->{ok_max} + $h ) {
-        $status = 'OK';
-    }
-
-    # 2) Previous status was not OK, require low value before OK.
-    #
-    elsif (    $prev_status ne 'OK'
-            && $value <= $rec_meta->{ok_max} - $h ) {
-        $status = 'OK';
-    }
-
-    # 3) Previous status was OK or WARN, allow small overage before CRISIS
-    #
-    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value <= $rec_meta->{warn_max} + $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-
-    # 4) Previous status was OK or WARN, go to CRISIS
-    #
-    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value > $rec_meta->{warn_max} + $h ) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-
-    # 5) Previous status was CRISIS, require low value before WARN.
-    #
-    elsif (    $prev_status eq 'CRISIS'
-            && $value <= $rec_meta->{warn_max} - $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-
-    # 6) Previous status was CRISIS, keep in CRISIS
-    #
-    elsif (    $prev_status eq 'CRISIS'
-            && $value > $rec_meta->{crisis_min} - $h ) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-    else {
-        $status   = 'DEBUG';
-        $msg_tag  = "Unexpected value";
-        $msg_args = "value=$value";
-    }
-    my $args = { table              => $self->datatable_name,
-		 with_node_table_id => 'node_id',
-		 args               => {
-		     target   => $metadata->{name},
-		     value    => $value,
-		     units    => $units,
-		     field    => $tag,
-		     status   => $status,
-		     msg_tag  => $msg_tag,
-		     msg_args => $msg_args,
-		 }, };
-
-    $self->insert_raw_record( $args );
-
-    if ( $status ne 'OK'
-	|| ( $status eq 'OK'
-	     && $prev_status ne 'OK' )) {
-	delete $args->{args}{target};
-	$args->{table} = $self->alerts_table_name;
-	$args->{args}{target_name} = $metadata->{name};
-	$args->{args}{target_type} = $metadata->{type};
-	$args->{args}{target_extra} = $metadata->{ip};
-	$self->insert_raw_record( $args );
-    }
-
-    return ($status);
-}
-
-sub eval_falling_status {
-    my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
-
-    my $units = $rec_meta->{units} || '';
-    my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
-
-    $value =~ s{([\d+.]+).*}{$1};    # convert '43 minutes' => '43'
-
-    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
-
-    # 1) Previous status was OK, allow small underaage before not OK
-    #
-    if (    $prev_status eq 'OK'
-         && $value >= $rec_meta->{ok_min} - $h ) {
-        $status = 'OK';
-    }
-
-    # 2) Previous status was not OK, require high value before OK.
-    #
-    elsif (    $prev_status ne 'OK'
-            && $value >= $rec_meta->{ok_min} + $h ) {
-        $status = 'OK';
-    }
-
-    # 3) Previous status was OK or WARN, allow small underage before CRISIS
-    #
-    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value >= $rec_meta->{warn_min} - $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-
-    # 4) Previous status was OK or WARN, go to CRISIS
-    #
-    elsif ( ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value < $rec_meta->{warn_min} - $h ) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-
-    # 5) Previous status was CRISIS, require high value before WARN.
-   # 
-    elsif (    $prev_status eq 'CRISIS'
-            && $value >= $rec_meta->{warn_min} + $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-
-    # 6) Previous status was CRISIS, keep in CRISIS
-    #
-    elsif (    $prev_status eq 'CRISIS'
-            && $value < $rec_meta->{crisis_max} + $h ) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-    else {
-        $status   = 'DEBUG';
-        $msg_tag  = "Unexpected value";
-        $msg_args = "value=$value";
-
-    }
-    my $args = { table              => $self->datatable_name,
-		 with_node_table_id => 'node_id',
-		 args               => {
-		     target   => $metadata->{name},
-		     value    => $value,
-		     units    => $units,
-		     field    => $tag,
-		     status   => $status,
-		     msg_tag  => $msg_tag,
-		     msg_args => $msg_args,
-		 }, };
-
-    $self->insert_raw_record( $args );
-
-    if ( $status ne 'OK'
-	|| ( $status eq 'OK'
-	     && $prev_status ne 'OK' )) {
-	$args->{table} = $self->alerts_table_name;
-	delete $args->{args}{target};
-	$args->{args}{target_name} = $metadata->{name};
-	$args->{args}{target_type} = $metadata->{type};
-	$args->{args}{target_extra} = $metadata->{ip};
-	$self->insert_raw_record( $args );
-    }
-    return ( $status, $value );
-}
-
-sub eval_nested_status {
-    my $self = shift;
-    my ( $tag, $value, $rec_meta, $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
-
-    my $units = $rec_meta->{units} || '';
-    my $h = ( $rec_meta->{hysteresis} || 0 ) / 2;
-
-    my ( $msg_tag, $msg_args, $status ) = ( '', '' );
-
-    # 1) Previous status was OK, allow small overage before not OK
-    #
-    if (    $prev_status eq 'OK'
-         && $value >= $rec_meta->{ok_min} - $h
-         && $value <= $rec_meta->{ok_max} + $h ) {
-        $status = 'OK';
-    }
-
-    # 2) Previous status was not OK, require low value before OK.
-    #
-    elsif (    $prev_status ne 'OK'
-            && $value >= $rec_meta->{ok_min} + $h
-            && $value <= $rec_meta->{ok_max} - $h ) {
-        $status = 'OK';
-    }
-
-    # 3) Previous status was OK or WARN, allow small overage before CRISIS
-    #
-    elsif (    ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && $value >= $rec_meta->{warn_min} - $h
-            && $value <= $rec_meta->{warn_max} + $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-    # 4) Previous status was OK or WARN, but now CRISIS
-    #
-    elsif (    ( $prev_status eq 'OK' || $prev_status eq 'WARNING' )
-            && ($value < $rec_meta->{warn_min} - $h
-		|| $value > $rec_meta->{warn_max} + $h 
-	       )) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-
-    # 5) Previous status was CRISIS, require low value before WARN.
-    #
-    elsif (    $prev_status eq 'CRISIS'
-            && $value >= $rec_meta->{warn_min} + $h
-            && $value <= $rec_meta->{warn_max} - $h ) {
-        $status   = 'WARNING';
-        $msg_tag  = "Value warning";
-        $msg_args = "value=$value";
-    }
-
-    # 6) Previous status was CRISIS, keep in CRISIS
-    #
-    elsif (    $prev_status eq 'CRISIS'
-            && ($value < $rec_meta->{warn_min} + $h
-		|| $value > $rec_meta->{warn_min} - $h
-	       )) {
-        $status   = 'CRISIS';
-        $msg_tag  = "Value crisis";
-        $msg_args = "value=$value";
-    }
-    else {
-        $status   = 'DEBUG';
-        $msg_tag  = "Unexpected value";
-        $msg_args = "value=$value";
-    }
-    my $args = { table              => $self->datatable_name,
-		 with_node_table_id => 'node_id',
-		 args               => {
-		     target   => $metadata->{name},
-		     value    => $value,
-		     units    => $units,
-		     field    => $tag,
-		     status   => $status,
-		     msg_tag  => $msg_tag,
-		     msg_args => $msg_args,
-		 }, };
-
-    $self->insert_raw_record( $args );
-
-    if ( $status ne 'OK'
-	|| ( $status eq 'OK'
-	     && $prev_status ne 'OK' )) {
-	$args->{table} = $self->alerts_table_name;
-	delete $args->{args}{target};
-	$args->{args}{target_name} = $metadata->{name};
-	$args->{args}{target_type} = $metadata->{type};
-	$args->{args}{target_extra} = $metadata->{ip};
-	$self->insert_raw_record( $args );
-    }
-    return ($status);
-}
-
-sub eval_status {
-#    my ( $self, $tag, $value, $rec_meta, 
-#         $prev_status, $prev_value, $metadata, $rawstatus ) = @_;
-
-    my ( $rec_meta ) = $_[3];
-	
-    return &eval_discrete_status
-        unless ( exists $rec_meta->{ok_min} );    # not range data.
-
-    return &eval_rising_status
-        if (    $rec_meta->{warn_min} == $rec_meta->{ok_max}
-             && $rec_meta->{warn_max} > $rec_meta->{ok_max} );
-
-    return &eval_falling_status
-        if (    $rec_meta->{warn_max} == $rec_meta->{ok_min}
-             && $rec_meta->{warn_min} < $rec_meta->{ok_min} );
-
-    return &eval_nested_status
-        if (    $rec_meta->{warn_max} >= $rec_meta->{ok_max}
-             && $rec_meta->{warn_min} <= $rec_meta->{ok_min} );
+    $self->insert_raw_record(
+                              { table              => $self->alerts_table_name,
+                                with_node_table_id => 'node_id',
+                                args               => {
+                                      value => $msg->{newval} || $args->{value},
+                                      units => $args->{rec_meta}{units} || '',
+                                      field => $msg->{label} || $args->{tag},
+                                      status   => $msg->{status},
+                                      msg_tag  => $msg->{tag},
+                                      msg_args => $msg->{args},
+				      target_name  => $args->{metadata}{name},
+				      target_type  => $args->{metadata}{type},
+				      target_extra => $args->{metadata}{ip},
+  				      target   => $args->{metadata}{name},
+                               },
+                              } );
     return;
 }
 
@@ -429,9 +160,16 @@ sub process_all_ipmi {
 				 $prev_status, $prev_value, uc $rawstatus ] )
 	    if grep {/process_all_ipmi/ } ($ENV{VERBOSE} || 0);
 
-	my ( $status, $newvalue ) = $self->eval_status( $tag, $value, $rec_meta,
-							$prev_status, $prev_value,
-							$meta, $rawstatus );
+
+	
+        my $args = { tag         => $tag,
+                     $value      => $value,
+                     rec_meta    => $rec_meta,
+                     prev_status => $prev_status,
+                     prev_value  => $prev_value,
+                     metadata    => $meta };
+	
+	my ( $status, $newvalue ) = $self->eval_status( $args );
 
         $prev->{$tag}{$tag}{value} = $newvalue || $value;
         $prev->{$tag}{$tag}{status} = $status;
