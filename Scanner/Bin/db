@@ -11,6 +11,7 @@
 #
 HOST=''
 HOST='-h an-m01'
+HOST='-h 10.255.4.251'
 
 # The user account with which to connect to DB
 #
