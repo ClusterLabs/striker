@@ -155,7 +155,14 @@ sub test_battery_replace {
     my $meta = { name => 'test', type => 'test', ip => 'ip' };
     my $rec_meta = {values => {1 => 'unneeded', 2 => 'needed'}};
 
-    $self->eval_discrete_status( 'battery replace', 1, $rec_meta, 'OK', 1, $meta);
+    my $data = { tag         => 'battery replace',
+                 value       => 1,
+                 rec_meta    => $rec_meta,
+                 prev_status => 'OK',
+                 prev_value  => 1,
+                 metadata    => $meta };
+
+    $self->eval_discrete_status( $data );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[0],
 	       [ 'battery replace', '', '', 'OK', '', 'unneeded', 1 ],
@@ -167,51 +174,66 @@ INSERT INTO agent_data
 VALUES
 (?, ?, ?, ?, ?, ?, ?)
 EOSQL
+
     is( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{sql}, $std_sql,
 	'eval battery replace /unneeded/ raw sql OK' );
 
     # ......................................................................
 
-    $self->eval_discrete_status( 'battery replace', 2, $rec_meta, 'OK', 1, $meta);
+    $data->{value} = 2;
+    $self->eval_discrete_status( $data );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[1],
-	       [ 'battery replace', '', 'Replace battery', 'DEBUG', '', 'needed', 1 ],
+	       [ 'battery replace', '', 'Replace battery', 'DEBUG',
+		 '', 'needed', 1 ],
 	       'eval battery replace /needed/ raw data OK' );
-
-    is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[0],
-	       [ 'battery replace', '', 'Replace battery', '1', 'DEBUG', 'ip', 'test', 'test', '', 'needed' ],
-	       'eval battery replace /needed/ alert data OK' );
 
     $std_sql = <<"EOSQL";
 INSERT INTO alerts
-(field, msg_args, msg_tag, node_id, status, target_extra, target_name, target_type, units, value)
+(field, msg_args, msg_tag, status, target_extra, target_name, target_type, units, value, node_id)
 VALUES
 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 EOSQL
+
     is( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{sql}, $std_sql,
 	'eval battery replace /needed/ alert sql OK' );
 
-        # ......................................................................
-    $self->eval_discrete_status( 'battery replace', 1, $rec_meta, 'WARNING', 2, $meta);
+    is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[0],
+	   [ 'battery replace', '', 'Replace battery',
+	     'DEBUG', 'ip', 'test', 'test', '', 'needed', 1 ],
+	   'eval battery replace /needed/ alert data OK' );
+
+    # ......................................................................
+
+    $data->{value} = 1;
+    $data->{prev_status} = 'WARNING';
+    $data->{prev_value} = 2;
+    $self->eval_discrete_status( $data );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[2],
-	       [ 'battery replace', '', '', 'OK', '', 'unneeded', 1 ],
-	       'eval battery replace /prev status NOK/ raw data OK' );
+	   [ 'battery replace', '', '', 'OK', '', 'unneeded', 1 ],
+	   'eval battery replace /prev status NOK/ raw data OK' );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[1],
-	       [ 'battery replace', '', '', '1', 'OK', 'ip', 'test', 'test', '', 'unneeded' ],
-	       'eval battery replace /prev status NOK/ alert data OK' );
+	   [ 'battery replace', '', '',  'OK', 'ip', 'test',
+	     'test', '', 'unneeded', '1' ],
+	   'eval battery replace /prev status NOK/ alert data OK' );
 
-        # ......................................................................
-    $self->eval_discrete_status( 'battery replace', 3, $rec_meta, 'OK', 1, $meta);
+    # ......................................................................
+
+    $data->{value} = 3;
+    $data->{prev_value} = 1;
+    $data->{prev_status} = 'OK';
+    $self->eval_discrete_status( $data );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[3],
-	       [ 'battery replace', 'value=3', 'Unrecognized value', 'DEBUG', '', '3', 1 ],
-	       'eval battery replace /invalid value/ raw data OK' );
+	   [ 'battery replace', 'value=3', 'Unrecognized value',
+	     'DEBUG', '', '3', 1 ],
+	   'eval battery replace /invalid value/ raw data OK' );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[2],
-	       [ 'battery replace', 'value=3', 'Unrecognized value', '1',
-		 'DEBUG', 'ip', 'test', 'test', '', '3' ],
+	   [ 'battery replace', 'value=3', 'Unrecognized value',
+	     'DEBUG', 'ip', 'test', 'test', '', '3', 1 ],
 	       'eval battery replace /invalid value/ alert data OK' );
     # ......................................................................
     return;
@@ -223,8 +245,15 @@ sub test_comms {
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
   my $rec_meta = {values => {1 => 'yes', 2 => 'no'},
 		  label   => 'Communications'};
+  my $data = {tag => 'comms',
+	      value => 1,
+	      rec_meta => $rec_meta,
+	      prev_status => 'OK',
+	      prev_value => 1,
+	      metadata => $meta
+  };
 
-  $self->eval_discrete_status( 'comms', 1, $rec_meta, 'OK', 1, $meta);
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[4],
 	     [ 'Communications', '', '', 'OK', '', 'yes', 1 ],
@@ -232,39 +261,48 @@ sub test_comms {
 
   # ......................................................................
 
-  $self->eval_discrete_status( 'comms', 2, $rec_meta, 'OK', 1, $meta);
+  $data->{value} = 2;
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[5],
-	     [ 'Communications', '', 'Communication disconnected', 'DEBUG', '', 'no', 1 ],
+	     [ 'Communications', '', 'Communication disconnected',
+	       'DEBUG', '', 'no', 1 ],
 	     'eval comms /no/ raw data OK' );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[3],
-	     [ 'Communications', '', 'Communication disconnected', '1',
-	       'DEBUG', 'ip', 'test', 'test', '', 'no' ],
+	     [ 'Communications', '', 'Communication disconnected',
+	       'DEBUG', 'ip', 'test', 'test', '', 'no', 1 ],
 	     'eval comms no /no/ alert data OK' );
 
   # ......................................................................
-  $self->eval_discrete_status( 'comms', 1, $rec_meta, 'WARNING', 2, $meta);
+  $data->{value} = 1;
+  $data->{prev_status} = 'WARNING';
+  $data->{prev_value} = 2;
+  $self->eval_discrete_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[6],
 	     [ 'Communications', '', '', 'OK', '', 'yes', 1 ],
 	     'eval comms /prev status NOK/ raw data OK' );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[4],
-	     [ 'Communications', '', '', '1',
-	       'OK', 'ip', 'test', 'test', '', 'yes' ],
+	     [ 'Communications', '', '', 
+	       'OK', 'ip', 'test', 'test', '', 'yes', 1 ],
 	     'eval comms /prev status NOK/ alert data OK' );
 
   # ......................................................................
-  $self->eval_discrete_status( 'comms', 3, $rec_meta, 'OK', 1, $meta);
+
+  $data->{value} = 3;
+  $data->{prev_status} = 'OK';
+  $data->{prev_value} = 1;
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[7],
 	     [ 'Communications', 'value=3', 'Unrecognized value', 'DEBUG', '', '3', 1 ],
 	     'eval comms /invalid value/ raw data OK' );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[5],
-	     [ 'Communications', 'value=3', 'Unrecognized value', '1',
-	       'DEBUG', 'ip', 'test', 'test', '', '3' ],
+	     [ 'Communications', 'value=3', 'Unrecognized value',
+	       'DEBUG', 'ip', 'test', 'test', '', '3', 1 ],
 	     'eval comms /invalid value/ alert data OK' );
 
   # ......................................................................
@@ -277,15 +315,25 @@ sub test_last_transfer_reason {
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
   my $rec_meta = {values => {1 => 'one thing', 2 => 'another'}};
 
-  $self->eval_discrete_status( 'reason for last transfer', 1, $rec_meta, 'OK', 'one thing', $meta);
+  my $data = {tag => 'reason for last transfer',
+		value => 1,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		prev_value => 'one thing',
+		metadata => $meta
+      };
+
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[8],
-	     [ 'reason for last transfer', '', '', 'OK', '', 'one thing', 1 ],
+	     [ 'reason for last transfer', '', '', 'OK', '',
+	       'one thing', 1 ],
 	     'eval reason for last transfer /one thing/ raw data OK' );
 
   # ......................................................................
 
-  $self->eval_discrete_status( 'reason for last transfer', 2, $rec_meta, 'OK', 'one thing', $meta);
+  $data->{value} = 2;
+  $self->eval_discrete_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[9],
 	     [ 'reason for last transfer', 'prevvalue=one thing;value=another',
@@ -294,7 +342,7 @@ sub test_last_transfer_reason {
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[6],
 	     [ 'reason for last transfer', 'prevvalue=one thing;value=another',
-	       'value changed', 1, 'DEBUG', 'ip', 'test', 'test', '', 'another' ],
+	       'value changed', 'DEBUG', 'ip', 'test', 'test', '', 'another', 1 ],
 	     'eval reason for last transfer /changed from prev/ alert data OK' );
 
   # ......................................................................
@@ -308,7 +356,16 @@ sub test_self_test_date {
   my $rec_meta = {};
 
   my $date = '2014-12-28 01:23:45';
-  $self->eval_discrete_status( 'last self test date', $date, $rec_meta, 'OK', $date, $meta);
+  my $data = {tag => 'last self test date',
+	      value => $date,
+	      rec_meta => $rec_meta,
+	      prev_status => 'OK',
+	      prev_value => $date,
+	      metadata => $meta
+  };
+
+
+  $self->eval_discrete_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[10],
 	     [ 'last self test date', '', '', 'OK', '', $date, 1 ],
@@ -318,8 +375,8 @@ sub test_self_test_date {
 
   my $date2 = $date;
   $date =~ s{45\z}{56};
-
-  $self->eval_discrete_status( 'last self test date', $date, $rec_meta, 'OK', $date2, $meta);
+  $data->{value} = $date;
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[11],
 	     [ 'last self test date', "prevvalue=$date2;value=$date",
@@ -328,7 +385,7 @@ sub test_self_test_date {
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[7],
 	     [ 'last self test date', "prevvalue=$date2;value=$date",
-	       'value changed', 1, 'DEBUG', 'ip', 'test', 'test', '', $date ],
+	       'value changed', 'DEBUG', 'ip', 'test', 'test', '', $date, 1 ],
 	     'eval last self test date /changed from prev/ alert data OK' );
 
   # ......................................................................
@@ -341,13 +398,21 @@ sub test_self_test_result {
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
   my $rec_meta = {};
 
-  $self->eval_discrete_status( 'last self test result', 1, $rec_meta, 'OK', undef, $meta);
+  my $data = {tag => 'last self test result',
+		value => 1,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		metadata => $meta
+      };
+
+  $self->eval_discrete_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[12],
 	     [ 'last self test result', '', '', 'OK', '', 1, 1 ],
 	     'eval last self test result /1/ raw data OK' );
 
-  $self->eval_discrete_status( 'last self test result', 4, $rec_meta, 'OK', undef, $meta);
+  $data->{value} = 4;
+  $self->eval_discrete_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[13],
 	     [ 'last self test result', '', '', 'OK', '', 4, 1 ],
@@ -355,7 +420,8 @@ sub test_self_test_result {
 
   # ......................................................................
 
-  $self->eval_discrete_status( 'last self test result', 2, $rec_meta, 'OK', undef, $meta);
+  $data->{value} = 2;
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[14],
 	     [ 'last self test result', undef,
@@ -364,10 +430,11 @@ sub test_self_test_result {
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[8],
 	     [ 'last self test result', undef,
-	       'Self-test not OK: ', 1, 'DEBUG', 'ip', 'test', 'test', '', 2 ],
+	       'Self-test not OK: ', 'DEBUG', 'ip', 'test', 'test', '', 2, 1 ],
 	     'eval last self test result /2/ alert data OK' );
 
-  $self->eval_discrete_status( 'last self test result', 3, $rec_meta, 'OK', undef, $meta);
+  $data->{value} = 3;
+  $self->eval_discrete_status( $data );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[15],
 	     [ 'last self test result', undef,
@@ -376,7 +443,7 @@ sub test_self_test_result {
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[9],
 	     [ 'last self test result', undef,
-	       'Self-test not OK: ', 1, 'DEBUG', 'ip', 'test', 'test', '', 3 ],
+	       'Self-test not OK: ', 'DEBUG', 'ip', 'test', 'test', '', 3, 1 ],
 	     'eval last self test result /3/ alert data OK' );
 
   # ......................................................................
@@ -406,29 +473,36 @@ sub test_rising_ok {
 		   crisis_min => 20, crisis_max => 30,
 		   hysteresis => 1,
 		 };
+  my $data = {tag => 'rising',
+	      value => 5,
+	      rec_meta => $rec_meta,
+	      prev_status => 'OK',
+	      metadata => $meta
+  };
 
-  my $val = 1;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'OK', undef, $meta);
+
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[16],
-	     [ 'rising', '', '', 'OK', '', $val, 1 ],
-	     "eval rising /$val/ raw data OK" );
+	     [ 'rising', '', '', 'OK', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value}/ raw data OK" );
 
-  $val = 10.5;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'OK', undef, $meta);
+  $data->{value} = 10.5;
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[17],
-	     [ 'rising', '', '', 'OK', '', $val, 1 ],
-	     "eval rising /$val prev OK/ raw data OK" );
+	     [ 'rising', '', '', 'OK', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} prev OK/ raw data OK" );
 
   # ......................................................................
 
-  $val = 9.5;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'WARN', undef, $meta);
+  $data->{value} = 9.5;
+  $data->{prev_status} = 'WARNING';
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[18],
-	     [ 'rising', '', '', 'OK', '', $val, 1 ],
-	     "eval rising /$val prev NOK/ raw data OK" );
+	     [ 'rising', '', '', 'OK', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} prev NOK/ raw data OK" );
 
   return;
 }
@@ -442,55 +516,67 @@ sub test_rising_warn {
 		   crisis_min => 20, crisis_max => 30,
 		   hysteresis => 1,
 		 };
+    my $data = {tag => 'rising',
+		value => 10.6,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		prev_value => 1,
+		metadata => $meta
+    };
 
-  my $val = 10.6;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'OK', undef, $meta);
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[19],
-	     [ 'rising', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	     "eval rising /$val from OK/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from OK/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[11],
-	     [ 'rising', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-	       'test', 'test', '', $val ],
-	     "eval rising /$val from OK/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from OK/ alert data OK" );
 
-  $val = 9.55;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'WARNING', undef, $meta);
+  $data->{value} = 9.55;
+  $data->{prev_status} = 'WARNING';
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[20],
-	     [ 'rising', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	     "eval rising /$val from WARNING/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[12],
-	     [ 'rising', "value=$val", 'Value warning', 1, 'WARNING', 'ip', 'test', 'test', '', $val ],
-	     "eval rising /$val from WARNING/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ alert data OK" );
 
   # ......................................................................
 
-  $val = 20.50;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'WARNING', undef, $meta);
+  $data->{value} = 20.50;
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[21],
-	     [ 'rising', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	     "eval rising /$val from WARNING/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[13],
-	     [ 'rising', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-	       'test', 'test', '', $val ],
-	     "eval rising /$val from WARNING/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	        'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ alert data OK" );
 
-  $val = 19.45;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'CRISIS', undef, $meta);
+  $data->{value} = 19.45;
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[22],
-	     [ 'rising', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	     "eval rising /$val from WARNING/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	       'WARNING', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[14],
-	     [ 'rising', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-	       'test', 'test', '', $val ],
-	     "eval rising /$val from WARNING/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value warning',
+	        'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ alert data OK" );
 
   # ......................................................................
 
@@ -507,29 +593,38 @@ sub test_rising_crisis {
 		   crisis_min => 20, crisis_max => 30,
 		   hysteresis => 1,
 		 };
+    my $data = {tag => 'rising',
+		value => 20.51,
+		rec_meta => $rec_meta,
+		prev_status => 'WARNING',
+		metadata => $meta
+    };
 
-  my $val = 20.51;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'WARNING', undef, $meta);
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[23],
-	     [ 'rising', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	     "eval rising /$val from WARNING/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value crisis',
+	       'CRISIS', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[15],
-	     [ 'rising', "value=$val", 'Value crisis', 1, 'CRISIS', 'ip',
-	       'test', 'test', '', $val ],
-	     "eval rising /$val from WARNING/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value crisis',
+	        'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from WARNING/ alert data OK" );
 
-  $val = 19.501;
-  $self->eval_rising_status( 'rising', $val, $rec_meta, 'CRISIS', undef, $meta);
+  $data->{value} = 19.501;
+  $data->{prev_status} = 'CRISIS';
+  $self->eval_rising_status( $data);
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[24],
-	     [ 'rising', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	     "eval rising /$val from CRISIS/ raw data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value crisis',
+	       'CRISIS', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from CRISIS/ raw data OK" );
 
   is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[16],
-	     [ 'rising', "value=$val", 'Value crisis', 1, 'CRISIS', 'ip', 'test', 'test', '', $val ],
-	     "eval rising /$val from CRISIS/ alert data OK" );
+	     [ 'rising', "value=$data->{value}", 'Value crisis',
+	        'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	     "eval rising /$data->{value} from CRISIS/ alert data OK" );
 
 
   # ......................................................................
@@ -558,29 +653,35 @@ sub test_falling_ok {
 		     crisis_min => 10, crisis_max => 20,
 		     hysteresis => 1,
 		 };
+    my $data = {tag => 'falling',
+		value => 35,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		metadata => $meta
+    };
 
-    my $val = 35;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'OK', undef, $meta);
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[25],
-	       [ 'falling', '', '', 'OK', '', $val, 1 ],
-	       "eval falling /$val/ raw data OK" );
+	       [ 'falling', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value}/ raw data OK" );
 
-    $val = 29.51;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'OK', undef, $meta);
+    $data->{value} = 29.51;
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[26],
-	       [ 'falling', '', '', 'OK', '', $val, 1 ],
-	       "eval falling /$val prev OK/ raw data OK" );
+	       [ 'falling', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} prev OK/ raw data OK" );
 
     # ......................................................................
 
-    $val = 30.5;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 30.5;
+    $data->{prev_status} = 'WARNING';
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[27],
-	       [ 'falling', '', '', 'OK', '', $val, 1 ],
-	       "eval falling /$val prev NOK/ raw data OK" );
+	       [ 'falling', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} prev NOK/ raw data OK" );
 
     return;
 }
@@ -594,56 +695,67 @@ sub test_falling_warn {
 		     crisis_min => 10, crisis_max => 20,
 		     hysteresis => 1,
     };
-    
-    my $val = 29.49;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'OK', undef, $meta);
+    my $data = {tag => 'falling',
+		value => 29.499,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		metadata => $meta
+	};
+
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[28],
-	       [ 'falling', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval falling /$val from OK/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from OK/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[18],
-	       [ 'falling', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval falling /$val from OK/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from OK/ alert data OK" );
 
-    $val = 30.4999;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 30.4999;
+    $data->{prev_status} = 'WARNING';
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[29],
-	       [ 'falling', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval falling /$val from WARNING/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[19],
-	       [ 'falling', "value=$val", 'Value warning', 1, 'WARNING',
-		 'ip', 'test', 'test', '', $val ],
-	       "eval falling /$val from WARNING/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		 'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ alert data OK" );
 
   # ......................................................................
 
-    $val = 19.5;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 19.5;
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[30],
-	       [ 'falling', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval falling /$val from WARNING/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[20],
-	       [ 'falling', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval falling /$val from WARNING/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ alert data OK" );
 
-    $val = 20.5;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 20.5;
+    $data->{prev_status} = 'CRISIS';
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[31],
-	       [ 'falling', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval falling /$val from CRISIS/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from CRISIS/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[21],
-	       [ 'falling', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval falling /$val from CRISIS/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from CRISIS/ alert data OK" );
 
     # ......................................................................
 
@@ -660,30 +772,38 @@ sub test_falling_crisis {
 		     hysteresis => 1,
     };
 
-    my $val = 19.49;
+    my $data = {tag => 'falling',
+		value => 19.499,
+		rec_meta => $rec_meta,
+		prev_status => 'WARNING',
+		metadata => $meta
+	};
 
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'WARNING', undef, $meta);
+    $self->eval_falling_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[32],
-	       [ 'falling', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval falling /$val from WARNING/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[22],
-	       [ 'falling', "value=$val", 'Value crisis', 1, 'CRISIS', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval falling /$val from WARNING/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value crisis',
+		  'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from WARNING/ alert data OK" );
 
-    $val = 20.49;
-    $self->eval_falling_status( 'falling', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 20.499;
+    $data->{prev_status} = 'CRISIS';
+    $self->eval_falling_status( $data);
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[33],
-	       [ 'falling', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval falling /$val from CRISIS/ raw data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from CRISIS/ raw data OK" );
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[23],
-	       [ 'falling', "value=$val", 'Value crisis', 1, 'CRISIS',
-		 'ip', 'test', 'test', '', $val ],
-	       "eval falling /$val from CRISIS/ alert data OK" );
+	       [ 'falling', "value=$data->{value}", 'Value crisis',
+		  'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval falling /$data->{value} from CRISIS/ alert data OK" );
 
 
   # ......................................................................
@@ -712,39 +832,45 @@ sub test_nested_ok {
 		     crisis_min => 20, crisis_max => 80,
 		     hysteresis => 1,
     };
+    my $data = {tag => 'nested',
+		value => 39.5,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		metadata => $meta
+    };
 
     # expanded low and high values for OK prev state
     #
-    my $val = 39.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'OK', undef, $meta);
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[34],
-	       [ 'nested', '', '', 'OK', '', $val, 1 ],
-	       "eval nested /$val/ raw data OK" );
+	       [ 'nested', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value}/ raw data OK" );
 
-    $val = 60.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'OK', undef, $meta);
+    $data->{value} = 60.5;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[35],
-	       [ 'nested', '', '', 'OK', '', $val, 1 ],
-	       "eval nested /$val prev OK/ raw data OK" );
+	       [ 'nested', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} prev OK/ raw data OK" );
 
     # ......................................................................
 
     # diminished low and high values for NOK prev state
-    $val = 40.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 40.5;
+    $data->{prev_status} = 'WARNING';
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[36],
-	       [ 'nested', '', '', 'OK', '', $val, 1 ],
-	       "eval nested /$val prev NOK/ raw data OK" );
+	       [ 'nested', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} prev NOK/ raw data OK" );
 
-    $val = 59.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 59.5;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[37],
-	       [ 'nested', '', '', 'OK', '', $val, 1 ],
-	       "eval nested /$val prev NOK/ raw data OK" );
+	       [ 'nested', '', '', 'OK', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} prev NOK/ raw data OK" );
 
 }
 
@@ -757,88 +883,101 @@ sub test_nested_warn {
 		     crisis_min => 20, crisis_max => 80,
 		     hysteresis => 1,
     };
+    my $data = {tag => 'nested',
+		value => 39.499,
+		rec_meta => $rec_meta,
+		prev_status => 'OK',
+		metadata => $meta
+    };
 
     # expanding from OK into WARNING
     #
-    my $val = 39.499;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'OK', undef, $meta);
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[38],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from OK/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from OK/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[26],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from OK/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from OK/ alert data OK" );
 
-    $val = 60.501;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'OK', undef, $meta);
+    $data->{value} = 60.501;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[39],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from OK/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from OK/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[27],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING',
-		 'ip', 'test', 'test', '', $val ],
-	       "eval nested /$val from OK/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from OK/ alert data OK" );
 
     # ......................................................................
 
     # shrinking from WARNING toward OK
     #
-    $val = 40.499;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 40.499;
+    $data->{prev_status} = 'WARNING';
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[40],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from WARNING/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[28],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from WARNING/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ alert data OK" );
 
-    $val = 59.501;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 59.501;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[41],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from WARNING/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[29],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from WARNING/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ alert data OK" );
 
     # ......................................................................
 
     # Shrinking from CRISIS into WARNING
     #
-    $val = 30.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 30.5;
+    $data->{prev_vaalue} = 'CRISIS';
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[42],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from CRISIS/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[30],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from CRISIS/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ alert data OK" );
 
-    $val = 69.5;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 69.5;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[43],
-	       [ 'nested', "value=$val", 'Value warning', 'WARNING', '', $val, 1 ],
-	       "eval nested /$val from CRISIS/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		 'WARNING', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[31],
-	       [ 'nested', "value=$val", 'Value warning', 1, 'WARNING', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from CRISIS/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value warning',
+		  'WARNING', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ alert data OK" );
 
     # ......................................................................
 
@@ -853,60 +992,70 @@ sub test_nested_crisis {
 		     crisis_min => 20, crisis_max => 80,
 		     hysteresis => 1,
     };
+    my $data = {tag => 'nested',
+		value => 29.499,
+		rec_meta => $rec_meta,
+		prev_status => 'WARNING',
+		metadata => $meta
+    };
 
     # expand from WARNING into CRISIS
     #
-    my $val = 29.499;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[44],
-	       [ 'nested', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval nested /$val from WARNING/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[32],
-	       [ 'nested', "value=$val", 'Value crisis', 1, 'CRISIS', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from WARNING/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		  'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ alert data OK" );
 
-    $val = 70.501;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'WARNING', undef, $meta);
+    $data->{value} = 70.501;
+    $self->eval_nested_status( $data);
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[45],
-	       [ 'nested', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval nested /$val from WARNING/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ raw data OK" );
 
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[33],
-	       [ 'nested', "value=$val", 'Value crisis', 1, 'CRISIS', 'ip',
-		 'test', 'test', '', $val ],
-	       "eval nested /$val from WARNING/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from WARNING/ alert data OK" );
 
     # ......................................................................
 
     # Shrinking CRISIS remains a CRISIS
     #
-    $val = 30.49;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 30.49;
+    $data->{prev_status} = 'CRISIS';
+    $self->eval_nested_status( $data);
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[46],
-	       [ 'nested', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval nested /$val from CRISIS/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ raw data OK" );
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[34],
-	       [ 'nested', "value=$val", 'Value crisis', 1, 'CRISIS',
-		 'ip', 'test', 'test', '', $val ],
-	       "eval nested /$val from CRISIS/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ alert data OK" );
 
-    $val = 69.501;
-    $self->eval_nested_status( 'nested', $val, $rec_meta, 'CRISIS', undef, $meta);
+    $data->{value} = 69.501;
+    $self->eval_nested_status( $data);
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[2]{execute}[47],
-	       [ 'nested', "value=$val", 'Value crisis', 'CRISIS', '', $val, 1 ],
-	       "eval nested /$val from CRISIS/ raw data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ raw data OK" );
     
     is_deeply( $self->dbs->{dbs}[0]{dbh}{prepare}[3]{execute}[35],
-	       [ 'nested', "value=$val", 'Value crisis', 1, 'CRISIS',
-		 'ip', 'test', 'test', '', $val ],
-	       "eval nested /$val from CRISIS/ alert data OK" );
+	       [ 'nested', "value=$data->{value}", 'Value crisis',
+		 'CRISIS', 'ip', 'test', 'test', '', $data->{value}, 1 ],
+	       "eval nested /$data->{value} from CRISIS/ alert data OK" );
 
 
   # ......................................................................
