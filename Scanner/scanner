@@ -62,13 +62,14 @@ sub process_args {
         msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
         from      => $FROM,               # from and smtp used for email
         smtp      => $SMTP,
-        max_retries => $MAX_RETRIES,      # How many times to loop on AN::Common routiens
+        max_retries =>
+            $MAX_RETRIES,    # How many times to loop on AN::Common routiens
     };
 
-    GetOptions( $opt,          'dbconf=s',     'rate=i',   'agentdir=s',
-                'db_name=s',   'from=s',       'smtp=s',   'msg_dir=s',
-                'run_until=s', 'verbose!', 'max_retries=s',
-		'man', 'help' )
+    GetOptions( $opt,          'dbconf=s', 'rate=i',        'agentdir=s',
+                'db_name=s',   'from=s',   'smtp=s',        'msg_dir=s',
+                'run_until=s', 'verbose!', 'max_retries=s', 'man',
+                'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
