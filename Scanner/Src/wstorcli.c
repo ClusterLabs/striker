@@ -29,6 +29,14 @@ int main ( int argc, char * argv[] ) {
   int ret;
 
   setuid( geteuid() );
+
+  if ( access( STORCLI, X_OK ) != 0 ) {
+     fprintf( stderr,
+              "ERROR: %s cannot find/execute 'storcli64' at %s!\n",
+              argv[0], STORCLI);
+     return 1;
+  }
+
   /*
    * Get summary info, including number of controllers.
    */
