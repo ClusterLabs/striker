@@ -6,4 +6,4 @@
 *bak
 
 # Devel::Cover files
-t/cover_db
+Scanner/t/cover_db
