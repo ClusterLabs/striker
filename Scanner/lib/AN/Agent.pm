@@ -8,7 +8,7 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';    # Update POD to match
 
 use English '-no_match_vars';
 use Carp;
@@ -54,7 +54,7 @@ sub path_to_configuration_files {
 sub BUILD {
     my $self = shift;
 
-    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+    $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
 
     $self->datatable_name($DATATABLE_NAME) unless $self->datatable_name;
     $self->alerts_table_name($ALERTS_TABLE_NAME)
@@ -96,7 +96,7 @@ EODUMP
 
 sub insert_raw_record {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
     $self->dbs()->insert_raw_record($args);
 }
@@ -120,23 +120,25 @@ sub generate_random_record {
     say scalar localtime(), ": $PROG -> $status, $msg_tag"
         if $self->verbose;
 
-    my $args = {value    => $value,
-		units    => 'a num',
-		field    => 'random values',
-		status   => $status,
-		msg_tag  => $msg_tag,
-		msg_args => $msg_args,
-    };
-    $self->insert_raw_record( { table              => $self->datatable_name,
-				with_node_table_id => 'node_id',
-				args               => $args });
-			      
-    $self->insert_raw_record( { table              => $self->alerts_table_name,
-				with_node_table_id => 'node_id',
-				args               => $args,
-			      }
-	) if $status ne 'OK';
-			      
+    my $args = { value    => $value,
+                 units    => 'a num',
+                 field    => 'random values',
+                 status   => $status,
+                 msg_tag  => $msg_tag,
+                 msg_args => $msg_args, };
+    $self->insert_raw_record(
+                              { table              => $self->datatable_name,
+                                with_node_table_id => 'node_id',
+                                args               => $args
+                              } );
+
+    $self->insert_raw_record(
+                              { table              => $self->alerts_table_name,
+                                with_node_table_id => 'node_id',
+                                args               => $args,
+                              } )
+        if $status ne 'OK';
+
     $first = 0;
     return;
 }
@@ -170,6 +172,156 @@ sub run {
 }
 
 1;
+__END__
 
 # ======================================================================
-# End of File.
+# POD
+
+=head1 NAME
+
+     An::Agent.pm - A simple demo scanner agent
+
+=head1 VERSION
+
+This document describes An::Agent.pm version 1.0.0
+
+=head1 SYNOPSIS
+
+    use AN::Agent;
+
+    my $agent = AN::Agent->new( {datatable_name => $dbname,
+                                 alerts_table_name => $alertdb,
+                                 dbconf            => '/Config/db.conf',
+                                 rate              => 30,
+                                 run_until         => '23:59:59'
+                                 });
+    $agent->run();
+
+=head1 DESCRIPTION
+
+This module implements the AN::Agent class, a simple scanner agent
+which generates random numbers.
+
+=head1 METHODS
+
+This module provides assorted unrelated subroutines.
+
+=over 4
+
+The only routine called from the main program is C<run> which prepares
+for and runs a loop which runs every B<rate> seconds until
+B<run_until>.
+
+=back
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item B<AN::Scanner>
+
+base class - provides time-limited repeating loop
+
+=item B<AN::Common>
+
+=item B<AN::MonitorAgent>
+
+=item B<AN::FlagFile>
+
+=item B<AN::Unix>
+
+=item B<AN::DBS>
+
+Utilities and components.
+
+=item B<Carp> I<core>
+
+Report errors as if they occur at call site.
+
+=item B<Class::Tiny>
+
+A simple OO framework. "Boilerplate is the root of all evil"
+
+=item B<Const::Fast>
+
+Provides fast constants.
+
+=item B<Cwd> I<core>
+
+Determine the current workind directory.
+
+=item B<English> I<core>
+
+Provides meaningful names for Perl 'punctuation' variables.
+
+=item B<File::Basename> I<core>
+
+Parses paths and file suffixes.
+
+=item B<File::Spec::Functions>
+
+Provides B<catdir> to concatenate file paths in a reliable manner.
+
+=item B<FindBin> I<core>
+
+Determine which directory contains the current program.
+
+=item B<Time::HiRes> I<core>
+
+Provides sub-millisecond precise versions of time(), alarm() and sleep().
+
+=item B<version> I<core since 5.9.0>
+
+Parses version strings.
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+This program is part of Aleeve's Anvil! system, and is released under
+the GNU GPL v2+ license.
+
+=head1 BUGS AND LIMITATIONS
+
+We don't yet know of any bugs or limitations. Report problems to 
+
+    Alteeve's Niche!  -  https://alteeve.ca
+
+No warranty is provided. Do not use this software unless you are
+willing and able to take full liability for its use. The authors take
+care to prevent unexpected side effects when using this
+program. However, no software is perfect and bugs may exist which
+could lead to hangs or crashes in the program, in your cluster and
+possibly even data loss.
+
+=begin unused
+
+=head1  INCOMPATIBILITIES
+
+There are no current incompatabilities.
+
+
+=head1 CONFIGURATION
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 USAGE
+
+=end unused
+
+=head1 AUTHOR
+
+    Alteeve's Niche!  -  https://alteeve.ca
+
+    Tom Legrady          December 2014
+    -  tom@alteeve.ca
+    -  tom@tomlegrady.com
+=cut
+
+# End of File
+# ======================================================================
+
