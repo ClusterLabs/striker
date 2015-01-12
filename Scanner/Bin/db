@@ -10,7 +10,7 @@
 # The second version for remote hosts.
 #
 HOST=''
-HOST='-h an-m01'
+#HOST='-h an-m01'
 
 # The user account with which to connect to DB
 #
