@@ -5,3 +5,5 @@
 # Ignore backup  files.
 *bak
 
+# Devel::Cover files
+t/cover_db
