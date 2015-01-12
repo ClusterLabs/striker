@@ -175,7 +175,7 @@ sub eval_discrete_status {
     my $self = shift;
     my ($args) = @_;
 
-    my  $msg = {args => '', tag => '', label => '', newval => '' };
+    my  $msg = {args => '', tag => '', label => '', newval => '', status => '' };
 
     if ( $args->{tag} eq 'battery replace' ) {
         $msg->{newval} = $args->{rec_meta}{values}{ $args->{value} } || '';
@@ -242,6 +242,7 @@ sub eval_discrete_status {
                 = ( [ undef, '', 'failed', 'invalid test' ] )[ $args->{value} ];
         }
     }
+    $args->{prev_status} ||= '';
 
     $self->insert_agent_record( $args, $msg );
     $self->insert_alert_record( $args, $msg )	
@@ -477,7 +478,7 @@ sub eval_nested_status {
 }
 
 sub eval_status {
-    my ($args) = @_;
+    my ($self, $args) = @_;
 
     return &eval_discrete_status
         unless ( exists $args->{rec_meta}{ok_min} );    # not range data.
@@ -519,7 +520,7 @@ sub process_all_oids {
         $i++;
 
         my $args = { tag         => $tag,
-                     $value      => $value,
+		     value       => $value,
                      rec_meta    => $rec_meta,
                      prev_status => $prev_status,
                      prev_value  => $prev_value,

@@ -97,7 +97,6 @@ sub insert_alert_record {
 				      target_name  => $args->{metadata}{name},
 				      target_type  => $args->{metadata}{type},
 				      target_extra => $args->{metadata}{ip},
-  				      target   => $args->{metadata}{name},
                                },
                               } );
     return;
@@ -163,7 +162,7 @@ sub process_all_ipmi {
 
 	
         my $args = { tag         => $tag,
-                     $value      => $value,
+                     value      => $value,
                      rec_meta    => $rec_meta,
                      prev_status => $prev_status,
                      prev_value  => $prev_value,
