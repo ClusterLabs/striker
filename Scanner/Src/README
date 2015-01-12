@@ -7,12 +7,20 @@ wipmi.c
 Edit wipmi.c to contain the correct path to ipmitool, and then carry
 out the following commands.
 
-	gcc -o ../wipmi wipmi.c
+	gcc -g -o ../wipmi wipmi.c
  	sudo chown root ../wipmi
 	sudo chmod 755 ../wipmi
         sudo chmod u+s ../wipmi
 
 The program should then be executable by non-root users to fetch ipmi data.
+
+Similarly for the storcli64 wrapper:
+
+	gcc -g -o ../wstorcli wstorcli.c
+ 	sudo chown root ../wstorcli
+	sudo chmod 755 ../wstorcli
+        sudo chmod u+s ../wstorcli
+
 
 # ----------------------------------------------------------------------
 
