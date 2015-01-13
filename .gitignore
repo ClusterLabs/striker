@@ -7,3 +7,7 @@
 
 # Devel::Cover files
 Scanner/t/cover_db
+
+# ignore compiled files
+wipmi
+wstorcli
