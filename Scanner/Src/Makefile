@@ -5,7 +5,7 @@
 # one shell per line. Make the shell be bash.
 #
 .ONESHELL:
-SHELL=/usr/bin/bash
+SHELL=/bin/bash
 
 USER := ${shell whoami}
 

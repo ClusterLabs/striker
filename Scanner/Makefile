@@ -5,18 +5,19 @@
 # one shell per line. Make the shell be bash.
 #
 .ONESHELL:
-SHELL=/usr/bin/bash
+SHELL := /bin/bash
 
-USER := ${shell whoami}
+USER  := ${shell whoami}
 
 wrapper:
-	@ echo running as $(USER)
-	@if [ "$(USER)" == "root" ] ; then
+	@echo "running as $(USER) - shell is $(SHELL)"
+	if [ "$(USER)" == "root" ]
+	then
 	    echo "Entering Src directory to make wrappers"
-	    cd 'Src' && $(MAKE)
+	    cd Src && $(MAKE)
 	else
-	    echo "Need to be root to create wrappers.";
-	    echo "run as: sudo make";
+	    echo "Need to be root to create wrappers."
+	    echo "run as: sudo make"
 	fi
 
 clean:
