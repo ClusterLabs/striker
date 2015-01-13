@@ -208,7 +208,7 @@ sub ipmi_request {
 			 units    => '',
 			 field    => 'IPMI fetch data',
 			 status   => 'CRISIS',
-			 msg_tag  => __PACKAGE__ . '::ipmi_request() failed',
+			 msg_tag  => 'AN-IPMI-Temp ipmi_request() failed',
 			 msg_args => "errormsg=" . join "\n", @data,
 		     }, };
 	    
