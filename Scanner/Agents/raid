@@ -31,6 +31,8 @@ const my $DEFAULT_DB_CONFIG   => 'Config/db.conf';
 const my $DEFAULT_RAID_CONFIG => 'Config/raid.conf';
 const my $DATATABLE_NAME      => 'raid_temp';
 
+const my $MEGASASLOG => 'MegaSAS.log';
+
 const my $AGENT_DIR  => 'Agents';
 const my $BRIEF      => 1;
 const my $COMMA      => q{,};
@@ -97,6 +99,9 @@ sub main {
     #
     chdir $UP_ONE_DIR
         if basename(getcwd) eq $AGENT_DIR;
+
+    #my $junkfile = getcwd() . $SLASH . $MEGASASLOG;
+    #unlink $junkfile if -e $junkfile;
 
     my $options = process_args();
 
