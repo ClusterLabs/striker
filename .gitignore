@@ -11,3 +11,6 @@ Scanner/t/cover_db
 # ignore compiled files
 wipmi
 wstorcli
+
+# LSI Raid controller insists on creating log file.
+Scanner/MegaSAS.log
