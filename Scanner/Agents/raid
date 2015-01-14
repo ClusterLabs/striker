@@ -28,7 +28,7 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $DEFAULT_DB_CONFIG   => 'Config/db.conf';
-const my $DEFAULT_RAID_CONFIG => 'Config/raid.conf';
+const my $DEFAULT_CONFIG_PATH => 'Config/raid.conf';
 const my $DATATABLE_NAME      => 'raid_temp';
 
 const my $MEGASASLOG => 'MegaSAS.log';
@@ -59,14 +59,14 @@ sub process_args {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
         dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
-        raidconf       => $DEFAULT_RAID_CONFIG,    # RAID configuration file.
+        confpath       => $DEFAULT_CONFIG_PATH,    # RAID configuration file.
         msg_file       => $MSG_DIR . $PROG,
         datatable_name => $DATATABLE_NAME, };
 
     GetOptions( $opt,               'rate=i',
                 'filepath=s',       'dbconf=s',
                 'msg_file=s',       'metadata|o=s',
-                'run_until=s',      'raidconf=s',
+                'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
                 'man',              'help' )
         or pod2usage(2);
@@ -108,7 +108,7 @@ sub main {
     my $agent = AN::RAID::Temp->new($options);
     $agent->create_flagfile();
 
-    my @node_args = @{ $agent->raid() }{qw(host ip type)};
+    my @node_args = @{ $agent->confdata() }{qw(host ip type)};
 
     my $status = $agent->run( \@node_args );
 

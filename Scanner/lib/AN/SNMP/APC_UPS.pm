@@ -28,7 +28,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( snmpconf snmp prev );
+use Class::Tiny qw( confpath confdata prev summary sumweight  );
 
 # ======================================================================
 # CONSTANTS
@@ -41,13 +41,13 @@ const my $DATATABLE_NAME => 'snmp_apc_ups';
 sub read_configuration_file {
     my $self = shift;
 
-    $self->snmpconf(
-              catdir( $self->path_to_configuration_files(), $self->snmpconf ) );
+    $self->confpath(
+              catdir( $self->path_to_configuration_files(), $self->confpath ) );
 
-    my %cfg = ( path => { config_file => $self->snmpconf } );
+    my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->snmp( $cfg{snmp} );
+    $self->confdata( $cfg{snmp} );
 }
 
 sub deep_copy {
@@ -77,17 +77,19 @@ sub deep_copy {
 sub normalize_global_and_local_config_data {
     my $self = shift;
 
-    my $snmp = $self->snmp;
-    return unless (    exists $snmp->{global}
-                    || exists $snmp->{default} );
-    my @targets = grep {/\A\d+\z/} keys %$snmp;
+    my $confdata = $self->confdata;
+    return unless (    exists $confdata->{global}
+                    || exists $confdata->{default} );
+    my @targets = grep {/\A\d+\z/} keys %$confdata;
 
     # Recursively copy global / default values to local
     # areas, unless they are already specified.
     #
+  TAG:
     for my $tag (qw( global local )) {
-        $self->deep_copy( $snmp->{$tag}, @{$snmp}{@targets} );
-        delete $snmp->{$tag};
+	next TAG if $tag eq 'summary';
+        $self->deep_copy( $confdata->{$tag}, @{$confdata}{@targets} );
+        delete $confdata->{$tag};
     }
 }
 
@@ -100,8 +102,8 @@ sub prep_reverse_cache_and_prev_values {
     my $self = shift;
 
     my %prev;
-    for my $target ( keys %{ $self->snmp() } ) {
-        my $dataset = $self->snmp()->{$target};
+    for my $target ( keys %{ $self->confdata() } ) {
+        my $dataset = $self->confdata()->{$target};
         my @oids;
         for my $mib ( keys %{ $dataset->{oid} } ) {
             my $oid = $dataset->{oid}{$mib};
@@ -111,6 +113,8 @@ sub prep_reverse_cache_and_prev_values {
         }
         $dataset->{oids} = \@oids;
     }
+    $prev{summary}{status} = 'OK';
+    $prev{summary}{value} = 0;
     $self->prev( \%prev );
 
 }
@@ -129,9 +133,61 @@ sub BUILD {
     return;
 }
 
+sub clear_summary {
+    my $self = shift;
+
+    $self->summary([]);
+    $self->sumweight(0);
+}
+
+sub summarize_status {
+    my $self = shift;
+    my ( $status, $weight ) = @_;
+
+    push @{ $self->summary() }, $status;
+    $self->sumweight($self->sumweight() + $weight);
+}
+
+# The global / local config data processing means there are multiple
+# instances of 'summary' data ... use only version '1'.
+#
+sub process_summary {
+    my $self = shift;
+    
+    my $prev     = $self->prev();
+
+    my $prev_summary 
+	= ( exists $prev->{summary}            ? $prev->{summary}
+	    : (exists $prev->{1}
+	       && exists $prev->{1}{summary} ) ? exists $prev->{1}{summary}
+	    :         carp "Can't find prev->{summary} in process_summary()."
+	);
+
+    return
+	if $self->sumweight() == 0 and $prev_summary->{status} eq 'OK';
+
+    my $metadata = $self->confdata();
+    $metadata = $metadata->{1} unless exists $metadata->{type};
+
+    my $rec_meta = $metadata->{summary} || $metadata->{1}{summary};
+    
+    my $args = { tag => 'summary',
+		 value => $self->sumweight(),
+		 rec_meta => $rec_meta,
+		 prev_status => $prev_summary->{status},
+		 prev_value => $prev_summary->{value},
+		 metadata => $metadata
+    };
+    $self->eval_status( $args );
+}
+
 sub insert_agent_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
+
+    my $msg_args = $msg->{args} . q{;} . ($args->{dev} || '');
+    $msg_args    = '' if $msg_args eq q{;};
+    my $name     = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(
                               { table              => $self->datatable_name,
@@ -142,7 +198,8 @@ sub insert_agent_record {
                                       field => $msg->{label} || $args->{tag},
                                       status   => $msg->{status},
                                       msg_tag  => $msg->{tag},
-                                      msg_args => $msg->{args},
+                                      msg_args => $msg_args,
+                                      target   => $name,
                                 },
                               } );
     return;
@@ -151,6 +208,8 @@ sub insert_agent_record {
 sub insert_alert_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
+
+    my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(
                               { table              => $self->alerts_table_name,
@@ -162,12 +221,14 @@ sub insert_alert_record {
                                       status   => $msg->{status},
                                       msg_tag  => $msg->{tag},
                                       msg_args => $msg->{args},
-				      target_name  => $args->{metadata}{name},
+				      target_name  => $name,
 				      target_type  => $args->{metadata}{type},
 				      target_extra => $args->{metadata}{ip},
   
                                },
                               } );
+    $self->summarize_status( $msg->{status}, 1)
+	if $msg->{status} eq 'CRISIS';
     return;
 }
 
@@ -484,12 +545,10 @@ sub eval_status {
         unless ( exists $args->{rec_meta}{ok_min} );    # not range data.
 
     return &eval_rising_status
-        if (    $args->{rec_meta}{warn_min} == $args->{rec_meta}{ok_max}
-             && $args->{rec_meta}{warn_max} > $args->{rec_meta}{ok_max} );
+        if $args->{rec_meta}{warn_min} >= $args->{rec_meta}{ok_max};
 
     return &eval_falling_status
-        if (    $args->{rec_meta}{warn_max} == $args->{rec_meta}{ok_min}
-             && $args->{rec_meta}{warn_min} < $args->{rec_meta}{ok_min} );
+        if $args->{rec_meta}{warn_max} <= $args->{rec_meta}{ok_min};
 
     return &eval_nested_status
         if (    $args->{rec_meta}{warn_max} >= $args->{rec_meta}{ok_max}
@@ -501,7 +560,7 @@ sub process_all_oids {
     my $self = shift;
     my ( $received, $target, $metadata ) = @_;
 
-    my ( $info, $prev ) = ( $self->snmp, $self->prev );
+    my ( $info, $prev ) = ( $self->confdata, $self->prev );
 
     for my $oid ( keys %$received ) {
         my ( $value, $tag ) = ( $received->{$oid}, $metadata->{roid}{$oid} );
@@ -563,6 +622,7 @@ sub snmp_connect {
 
         $args->{table} = $self->alerts_table_name;
         $self->insert_raw_record($args);
+	$self->summarize_status( 'CRISIS', 999);
     }
 
     return ( $meta, $session );
@@ -571,7 +631,9 @@ sub snmp_connect {
 sub query_target {
     my $self = shift;
 
-    my $info = $self->snmp;
+    $self->clear_summary();
+
+    my $info = $self->confdata;
 TARGET:    # For each snmp target (1, 2, ... ) in the config file
     for my $target ( keys %$info ) {
         my $metadata = $info->{$target};
@@ -606,6 +668,8 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             $args->{table} = $self->alerts_table_name;
             $self->insert_raw_record($args);
 
+	    $self->summarize_status( 'CRISIS', 999);
+
             next TARGET;
         }
         $session->close;
@@ -614,6 +678,7 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
         #
         $self->process_all_oids( $received, $target, $metadata );
     }
+    $self->process_summary();
     return;
 }
 

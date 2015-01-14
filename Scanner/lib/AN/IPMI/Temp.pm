@@ -27,7 +27,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( ipmiconf ipmi prev );
+use Class::Tiny qw( confpath confdata prev );
 
 # ======================================================================
 # CONSTANTS
@@ -41,13 +41,13 @@ const my $PARENTDIR      => q{/../};
 sub read_configuration_file {
     my $self = shift;
 
-    $self->ipmiconf( catdir( $self->path_to_configuration_files(),
-			     $self->ipmiconf ) );
+    $self->confpath( catdir( $self->path_to_configuration_files(),
+			     $self->confpath ) );
 
-    my %cfg = ( path => { config_file => $self->ipmiconf } );
+    my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->ipmi( $cfg{ipmi} );    
+    $self->confdata( $cfg{ipmi} );    
 }
 
 sub BUILD {
@@ -58,47 +58,6 @@ sub BUILD {
     $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
 
     $self->read_configuration_file;
-    return;
-}
-
-sub insert_agent_record {
-    my $self = shift;
-    my ( $args, $msg ) = @_;
-
-    $self->insert_raw_record(
-                              { table              => $self->datatable_name,
-                                with_node_table_id => 'node_id',
-                                args               => {
-                                      value => $msg->{newval} || $args->{value},
-                                      units => $args->{rec_meta}{units} || '',
-                                      field => $msg->{label} || $args->{tag},
-                                      status   => $msg->{status},
-                                      msg_tag  => $msg->{tag},
-                                      msg_args => $msg->{args},
-				      target   => $args->{metadata}{name},
-                                },
-                              } );
-    return;
-}
-sub insert_alert_record {
-    my $self = shift;
-    my ( $args, $msg ) = @_;
-
-    $self->insert_raw_record(
-                              { table              => $self->alerts_table_name,
-                                with_node_table_id => 'node_id',
-                                args               => {
-                                      value => $msg->{newval} || $args->{value},
-                                      units => $args->{rec_meta}{units} || '',
-                                      field => $msg->{label} || $args->{tag},
-                                      status   => $msg->{status},
-                                      msg_tag  => $msg->{tag},
-                                      msg_args => $msg->{args},
-				      target_name  => $args->{metadata}{name},
-				      target_type  => $args->{metadata}{type},
-				      target_extra => $args->{metadata}{ip},
-                               },
-                              } );
     return;
 }
 
@@ -124,6 +83,9 @@ sub init_prev {
 
 	@{$prev->{$tag}}{qw(value status)} = ($value, uc $status);
     }
+    $prev->{summary}{status} = 'OK';
+    $prev->{summary}{value} = 0;
+
     return $prev;
 }
 
@@ -136,7 +98,7 @@ sub process_all_ipmi {
 		       || grep {/process_all_ipmi/} $ENV{VERBOSE}
 	             );
 
-    my ( $info, $prev ) = ( $self->ipmi, $self->prev );
+    my ( $info, $prev ) = ( $self->confdata, $self->prev );
 
     state $meta = { name => $info->{host},
 		    ip   => $info->{ip},
@@ -173,12 +135,14 @@ sub process_all_ipmi {
         $prev->{$tag}{$tag}{value} = $newvalue || $value;
         $prev->{$tag}{$tag}{status} = $status;
     }
+    $self->prev( $prev );
+    return;
 }
 sub ipmi_request {
     my $self = shift;
 
  
-    state $cmd = $Bin . $PARENTDIR . $self->ipmi()->{query};
+    state $cmd = $Bin . $PARENTDIR . $self->confdata()->{query};
     say "ipmi cmd is $cmd" if grep {/ipmi_query/} $ENV{VERBOSE};
 
     # read bottom to top ...
@@ -197,7 +161,7 @@ sub ipmi_request {
     if ( not @data 
 	 || 5 >= @data ) {
 
-	my $info = $self->ipmi;
+	my $info = $self->confdata;
 	my $args = { table              => $self->datatable_name,
 		     with_node_table_id => 'node_id',
 		     args               => {
@@ -224,8 +188,10 @@ sub ipmi_request {
 sub query_target {
     my $self = shift;
 
+    $self->clear_summary();
     my $received = $self->ipmi_request();
     $self->process_all_ipmi( $received ) if @$received;
+    $self->process_summary();
 
     return;
 }

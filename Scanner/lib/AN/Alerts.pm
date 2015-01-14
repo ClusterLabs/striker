@@ -142,12 +142,6 @@ sub clear_alert_handled {
 
 # ......................................................................
 #
-sub new_alert_loop {
-    my $self = shift;
-
-    say strftime( '%F %T%z', localtime );
-    return;
-}
 
 sub add_alert {
     my $self = shift;

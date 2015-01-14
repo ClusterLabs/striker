@@ -27,7 +27,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( raidconf raid prev controller_count );
+use Class::Tiny qw( confpath confdata prev controller_count );
 
 # ======================================================================
 # CONSTANTS
@@ -44,13 +44,13 @@ const my $SPACE => q{ };
 sub read_configuration_file {
     my $self = shift;
 
-    $self->raidconf(
-              catdir( $self->path_to_configuration_files(), $self->raidconf ) );
+    $self->confpath(
+              catdir( $self->path_to_configuration_files(), $self->confpath ) );
 
-    my %cfg = ( path => { config_file => $self->raidconf } );
+    my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->raid( $cfg{raid} );
+    $self->confdata( $cfg{raid} );
 }
 
 sub get_controller_count {
@@ -79,52 +79,11 @@ sub BUILD {
     $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
 
     $self->read_configuration_file;
-    $self->raid()->{controller_count} = $self->get_controller_count();
+    $self->confdata()->{controller_count} = $self->get_controller_count();
 
     return;
 }
 
-sub insert_agent_record {
-    my $self = shift;
-    my ( $args, $msg ) = @_;
-
-    $self->insert_raw_record(
-                              { table              => $self->datatable_name,
-                                with_node_table_id => 'node_id',
-                                args               => {
-                                      value => $msg->{newval} || $args->{value},
-                                      units => $args->{rec_meta}{units} || '',
-                                      field => $msg->{label} || $args->{tag},
-                                      status   => $msg->{status},
-                                      msg_tag  => $msg->{tag},
-                                      msg_args => $msg->{args} . q{;} . $args->{dev},
-                                      target   => $args->{metadata}{name},
-                                },
-                              } );
-    return;
-}
-
-sub insert_alert_record {
-    my $self = shift;
-    my ( $args, $msg ) = @_;
-
-    $self->insert_raw_record(
-                              { table              => $self->alerts_table_name,
-                                with_node_table_id => 'node_id',
-                                args               => {
-                                      value => $msg->{newval} || $args->{value},
-                                      units => $args->{rec_meta}{units} || '',
-                                      field => $msg->{label} || $args->{tag},
-                                      status       => $msg->{status},
-                                      msg_tag      => $msg->{tag},
-                                      msg_args     => $msg->{args},
-                                      target_name  => $args->{metadata}{name},
-                                      target_type  => $args->{metadata}{type},
-                                      target_extra => $args->{metadata}{ip},
-                                },
-                              } );
-    return;
-}
 
 sub parse_dev {
     my $self = shift;
@@ -166,6 +125,9 @@ RECORD:
 	    warn( "Unexpected tag '$tag' in " . __PACKAGE__ . "::init_prev()\n");
 	}
     }
+    $prev->{summary}{status} = 'OK';
+    $prev->{summary}{value} = 0;
+    
     return $prev;
 }
 
@@ -177,7 +139,7 @@ sub process_all_raid {
     state $verbose = ( ( $self->verbose && $self->verbose >= 2 )
                        || grep {/process_all_raid/} $ENV{VERBOSE} );
 
-    my ( $info, $prev ) = ( $self->raid, $self->prev );
+    my ( $info, $prev ) = ( $self->confdata, $self->prev );
     $prev ||= $self->init_prev($received);
 
     state $meta = { name => $info->{host},
@@ -223,6 +185,7 @@ sub process_all_raid {
 	    
 	}
     }
+    $self->prev( $prev );
     return;
 }
 
@@ -231,7 +194,7 @@ sub raid_request {
 
     my (@args) = @_;
 
-    my $cmd = getcwd() . $SLASH . $self->raid()->{query};
+    my $cmd = getcwd() . $SLASH . $self->confdata()->{query};
     local $LIST_SEPARATOR = $SPACE;
     $cmd .= " @args" if @args;
     say "raid cmd is $cmd" if grep {/raid_query/} $ENV{VERBOSE};
@@ -243,7 +206,7 @@ sub raid_request {
     if ( not @data
          || 10 >= @data ) {
 
-        my $info = $self->raid;
+        my $info = $self->confdata;
         my $args = { table              => $self->datatable_name,
                      with_node_table_id => 'node_id',
                      args               => {
@@ -277,27 +240,27 @@ sub extract_controller_metadata {
         @$response;
     my $value = (split ' = ', $roc_sensor)[1];
     chomp $value;
-    $self->raid()->{controller}{$N}{sensor} = $value;
+    $self->confdata()->{controller}{$N}{sensor} = $value;
 
 
     my ($drive_counts) = grep {/Physical Drives = (\d+)/}
     @$response;
     $value = (split ' = ', $drive_counts)[1];
     chomp $value;
-    $self->raid()->{controller}{$N}{drives} = $value;
+    $self->confdata()->{controller}{$N}{drives} = $value;
 }
 
 sub get_controller_temp {
     my $self = shift;
 
-    state $maxN = $self->raid()->{controller_count} - 1;
+    state $maxN = $self->confdata()->{controller_count} - 1;
 
     my $received;
     for my $N ( 0 .. $maxN ) {
 	my $response = $self->raid_request( 'controller', $N);
 
 	$self->extract_controller_metadata( $response, $N )
-	    unless  exists $self->raid()->{controller}{$N};
+	    unless  exists $self->confdata()->{controller}{$N};
 	    
 	my ($roc_temp)     = grep {/ROC temperature\(Degree /}  @$response;
 	my $delimiters = qr{
@@ -325,20 +288,20 @@ sub extract_drive_metadata {
 
     for my $drive ( @names ) {
 	my $dev = (split /\s/, $drive)[1];
-	push @{$self->raid()->{controller}{$N}{drive}}, {name => $dev};
+	push @{$self->confdata()->{controller}{$N}{drive}}, {name => $dev};
     }
     return;
 }
 sub get_drive_temp {
     my $self = shift;
 
-    state $maxN = $self->raid()->{controller_count} - 1;
+    state $maxN = $self->confdata()->{controller_count} - 1;
 
     my $received;
     for my $N ( 0 .. $maxN ) {
 	my $response = $self->raid_request( 'drives', $N);
 	$self->extract_drive_metadata( $response, $N )
-	    unless  exists $self->raid()->{controller}{$N}{drive};
+	    unless  exists $self->confdata()->{controller}{$N}{drive};
 	    
 	my (@drive_temps)     = grep {/Drive Temperature = /}  @$response;
 	my $delimiters = qr{
@@ -364,10 +327,12 @@ sub get_drive_temp {
 sub query_target {
     my $self = shift;
 
+    $self->clear_summary();
     my $controllers = $self->get_controller_temp();
     my $drives      = $self->get_drive_temp();
 
     $self->process_all_raid( [ @$controllers, @$drives ] );
+    $self->process_summary();
 
     return;
 }

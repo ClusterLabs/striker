@@ -326,13 +326,6 @@ sub ok_to_exit {
     return $status eq $EXIT_OK;
 }
 
-sub new_alert_loop {
-    my $self = shift;
-
-    $self->alerts()->new_alert_loop();
-    return;
-}
-
 sub set_alert {
     my $self = shift;
 
@@ -693,13 +686,10 @@ sub process_agent_data {
 sub loop_core {
     my $self = shift;
 
-    $self->new_alert_loop();
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
     $self->process_agent_data();
     $self->handle_alerts();
-
-    $self->touch_pid_file;
 
     return;
 }
@@ -719,8 +709,9 @@ sub run_timed_loop_forever{
     # loop until this time tomorrow
     #
     while ( $now < $end_time ) {
-        $self->loop_core();
 
+        $self->loop_core();
+	$self->touch_pid_file;
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
 
