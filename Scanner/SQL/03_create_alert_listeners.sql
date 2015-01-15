@@ -13,7 +13,7 @@ DROP TYPE   IF EXISTS level;
 DROP FUNCTION  IF EXISTS history_alert_listeners();
 
 \echo Create enum data type for the mode and level fields.
-CREATE TYPE mode  AS ENUM ( 'NONE', 'SCREEN', 'EMAIL' );
+CREATE TYPE mode  AS ENUM ( 'NONE', 'Screen', 'Email', 'HealthMonitor' );
 CREATE TYPE level AS ENUM ( 'NONE', 'DEBUG', 'WARNING', 'CRISIS' );
 
 

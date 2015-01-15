@@ -301,10 +301,10 @@ sub dispatch {
 
 sub dispatch_msg {
     my $self = shift;
-    my ( $listener, $msgs ) = @_;
+    my ( $listener, $msgs, $sumweight ) = @_;
 
     $listener->add_dispatcher() unless $listener->has_dispatcher();
-    $listener->dispatch_msg($msgs);
+    $listener->dispatch_msg($msgs, $sumweight);
     return;
 }
 
@@ -381,7 +381,8 @@ sub handle_alerts {
 		push @msgs, $self->format_msg( $alert, $msg );
             }
         }
-        $self->dispatch_msg( $listener, \@msgs ) if @msgs;
+        $self->dispatch_msg( $listener, \@msgs, $self->owner->sumweight )
+	    if @msgs || $listener->mode eq 'HealthMonitor';
     }
     $self->mark_alerts_as_reported();
     return;

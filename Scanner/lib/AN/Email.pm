@@ -68,14 +68,15 @@ sub send_msg {
 
 sub dispatch {
     my $self = shift;
-    my ( $msgs, $listener ) = @_;
+    my ( $msgs, $listener, $sumweight ) = @_;
 
     my $to      = $listener->contact_info;
-    my $subject = 'Msg from HA scanner';
+    my $subject = $sumweight ? "$sumweight CRISIS events on HA scanner"
+                :              scalar @$msgs . " Messages from HA scanner";
 
     my $file = write_to_temp $msgs;
 
-    if ( 0 == send_msg $file, $to, $subject ) {    # Had an error?
+    if ( send_msg $file, $to, $subject ) {    # Had an error?
         carp "ERROR sending email '$file' to '$to' containing\n'@$msgs'";
     }
     else {

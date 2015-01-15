@@ -12,6 +12,7 @@ use English '-no_match_vars';
 use Carp;
 
 use Const::Fast;
+use Cwd;
 use File::Basename;
 use File::Spec::Functions 'catdir';
 use FileHandle;
@@ -38,30 +39,55 @@ use Class::Tiny qw( agentdir    db_name      db_type  dbconf
                     dbs         duration     flagfile from 
                     max_retries monitoragent msg_dir  port
                     rate        run_until    smtp     verbose
+                    confpath    confdata     shutdown
                   ), {
-    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
     agents                => sub { [] },
-    processes             => sub { [] },
+    alerts                => sub {my $self = shift;
+				  AN::Alerts->new({ agents => { pid      => $PID,
+								program  => $PROG,
+								hostname => AN::Unix::hostname(),
+								msg_dir  => $self->msg_dir,
+						    },
+						    owner => $self
+						  });
+                                },
     alert_num             => sub {'a'},
-    alerts                => sub {
-        my $self = shift;
-        AN::Alerts->new(
-                         { agents => { pid      => $PID,
-                                       program  => $PROG,
-                                       hostname => AN::Unix::hostname(),
-                                       msg_dir  => $self->msg_dir,
-                                     },
-                           owner => $self
-                         } );
-    }, };
+    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
+    processes             => sub { [] },
+    seen                  => sub { return {}; },
+    sumweight             => sub { 0 }
+    };
+
+# ----------------------------------------------------------------------
+# METHODS
+#
+sub path_to_configuration_files {
+
+    return getcwd();
+}
+
+sub read_configuration_file {
+    my $self = shift;
+
+    $self->confpath(
+              catdir( $self->path_to_configuration_files(), $self->confpath ) );
+
+    my %cfg = ( path => { config_file => $self->confpath } );
+    AN::Common::read_configuration_file( \%cfg );
+
+    $self->confdata( $cfg{$cfg{name}} );
+}
+
 
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
 
+    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+
     return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
 
-    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+    $self->read_configuration_file;
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -343,6 +369,7 @@ sub handle_alerts {
     my $self = shift;
 
     $self->alerts()->handle_alerts(@_);
+    $self->reset_summary_weight;
     return;
 }
 
@@ -667,16 +694,46 @@ sub detect_status {
     return;
 }
 
+sub process_summary_record {
+    my $self = shift;
+    my ( $process, $alert ) = @_;
+
+    my $weighted
+	= $self->confdata->{weight}{$process->{name}} * ($alert->{value} || 0);
+    $self->sumweight( $self->sumweight() + $weighted )
+	if $weighted;
+}
+
+sub reset_summary_weight {
+    my $self = shift;
+
+    $self->sumweight(0);
+    }
+
 sub process_agent_data {
     my $self = shift;
 
     say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
         my $alerts = $self->fetch_alert_data($process);
-        say "agent_data has @{[scalar @$alerts]} records." if $self->verbose;
+	my $allN = scalar @$alerts;
+	my $newN = 0;
+
+      ALERT:
         for my $alert (@$alerts) {
-            $self->detect_status( $process, $alert );
+	    next ALERT
+		if $self->seen->{$alert->{id}}++;
+	    $newN++;
+	    if ( $alert->{field} eq 'summary' ) {
+		$self->process_summary_record( $process, $alert );
+	    }
+	    else {
+		$self->detect_status( $process, $alert );
+	    }
         }
+	say scalar localtime()
+	    . " Received $allN alerts for process $process->{name}, $newN of them new."
+	    if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
     return;
 }
@@ -708,7 +765,8 @@ sub run_timed_loop_forever{
 
     # loop until this time tomorrow
     #
-    while ( $now < $end_time ) {
+    while ( $now < $end_time 
+	    && ! $self->shutdown() ) {
 
         $self->loop_core();
 	$self->touch_pid_file;
@@ -724,6 +782,8 @@ sub run_timed_loop_forever{
 
         $now = time;
     }
+    say "Exiting run_timed_loop_forever(); shutdown: " . $self->shutdown();
+    say "now: $now, end_time: $end_time.";
     return;
 }
 

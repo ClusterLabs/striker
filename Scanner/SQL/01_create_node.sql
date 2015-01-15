@@ -1,7 +1,7 @@
 \echo To load this file: psql -U postgres -d scanner -f create_node.sql
 \echo Drop existing instances to create new and clean
 
-DROP EXTENSION IF EXISTS plpgsql      cascade;
+-- DROP EXTENSION IF EXISTS plpgsql      cascade;
 
 DROP TABLE  IF EXISTS node	      cascade;
 DROP TABLE  IF EXISTS history.node    cascade;

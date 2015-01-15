@@ -137,13 +137,31 @@ sub fetch_alert_listeners {
         my $hlisteners = $db->fetch_alert_listeners();
 
         my $listeners = [];
+	my $found_health_monitor;
         for my $idx ( sort keys %$hlisteners ) {
             my $data = $hlisteners->{$idx};
             $data->{db}      = $db->dbconf()->{host};
             $data->{db_type} = $db->dbconf()->{db_type};
             $data->{owner}   = $owner;
             push @{$listeners}, AN::Listener->new($data);
+
+	    $found_health_monitor++
+		if $data->{mode} eq 'HealthMonitor';
         }
+	push @{$listeners},
+            AN::Listener->new( { added_by     => 0,
+				 contact_info => '',
+				 id           => 0,
+				 language     => 'en_CA',
+				 level        => 'WARNING',
+				 mode         => 'HealthMonitor',
+				 name         => 'Health Monitor',
+				 update       => 'Jan 14 14:01:41 2015',
+				 db           => $db->dbconf()->{host},
+				 db_type      => $db->dbconf()->{db_type},
+				 owner        => $owner,
+			       } ) unless $found_health_monitor++;
+
         return $listeners if @$listeners;
     }
     return;

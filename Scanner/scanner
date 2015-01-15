@@ -28,6 +28,7 @@ use Const::Fast;
 const my $BRIEF           => 1;
 const my $COMMA           => q{,};
 const my $DEFAULT_DB_CONF => $Bin . '/Config/db.conf';
+const my $DEFAULT_CONFIG_PATH => '/Config/scanner.conf';
 const my $DEFAULT_MSGS    => $Bin . '/Messages/';
 const my $DOTSLASH        => q{./};
 const my $LIFETIME        => 24 * 60 * 60;
@@ -59,6 +60,7 @@ sub process_args {
         agentdir  => $Bin . '/Agents',    # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
         dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
+	confpath  => $DEFAULT_CONFIG_PATH,   # scanner configuration.
         msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
         from      => $FROM,               # from and smtp used for email
         smtp      => $SMTP,
@@ -66,10 +68,10 @@ sub process_args {
             $MAX_RETRIES,    # How many times to loop on AN::Common routiens
     };
 
-    GetOptions( $opt,          'dbconf=s', 'rate=i',        'agentdir=s',
-                'db_name=s',   'from=s',   'smtp=s',        'msg_dir=s',
-                'run_until=s', 'verbose!', 'max_retries=s', 'man',
-                'help' )
+    GetOptions( $opt,          'dbconf=s',   'rate=i',   'agentdir=s',
+                'db_name=s',   'from=s',     'smtp=s',   'msg_dir=s',
+                'run_until=s', 'confpath=s', 'verbose!', 'max_retries=s',
+		'man',         'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
