@@ -23,8 +23,6 @@ wrapper:
 test:
 	prove t/*.t
 
-cover:
-	cd t && ./test_coverage
 clean:
 	-rm -rf *~ \#* *.bak *.tdy
 
