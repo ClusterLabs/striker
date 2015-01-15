@@ -743,11 +743,17 @@ sub process_agent_data {
 sub loop_core {
     my $self = shift;
 
+    state $verbose = grep {/seencount/} $ENV{VERBOSE} || '';
+   
+
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
     $self->process_agent_data();
     $self->handle_alerts();
-
+    
+    if ( $verbose ) {
+        say "Total number of distinct alerts seen: " . scalar length %{ $self->seen };
+    }
     return;
 }
 
