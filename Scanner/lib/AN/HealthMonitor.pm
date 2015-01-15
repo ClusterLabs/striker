@@ -1,4 +1,4 @@
-package AN::Screen;
+package AN::HealthMonitor;
 
 # _Perl_
 use warnings;
@@ -8,27 +8,87 @@ use 5.010;
 use version;
 our $VERSION = '0.0.1';
 
+use autodie qw(open close);
 use English '-no_match_vars';
 use Carp;
 
 use File::Basename;
 use FileHandle;
+use File::Path 'make_path';
 use IO::Select;
 use Time::Local;
 use FindBin qw($Bin);
 
 use Const::Fast;
 
-use Class::Tiny qw( attr );
+use Class::Tiny  {firsttime => sub { 1 }};
+
+const my @HEALTH => ( 'ok', 'sick', 'shutting down' );
 
 # ......................................................................
 #
+sub weight2health {
+    my $self = shift;
+    my ( $sumweight, $crisis_min ) = @_;
+
+    return $sumweight == 0         ? $HEALTH[0]
+	: $sumweight < $crisis_min ? $HEALTH[1]
+	:                            $HEALTH[2]
+	;
+}
 sub dispatch {
     my $self = shift;
-    my ($msgs, $owner, $sumweight) = @_;
+    my ($msgs, $listener, $sumweight) = @_;
 
-    say "Total crisis weight is $sumweight." if $sumweight;
-    say for @$msgs;
+    state $healthfile = $listener->owner->confdata->{healthfile};
+    state $shutdown   = $listener->owner->confdata->{shutdown};
+    state $crisis_min = $listener->owner->confdata->{summary}{crisis_min};
+    state $old_health = 'ok';
+    state $verbose = $listener->owner->verbose
+	|| grep {/HealthMonitor/} $ENV{VERBOSE} || '';
+
+    my $health = $self->weight2health( $sumweight, $crisis_min );
+
+    # create file on first pass and whenever health changes
+    #
+    say scalar localtime() . " HealthMonitor: weight '$sumweight'; "
+	. "old_health: $old_health; health: $health" if $verbose;
+
+    $self->create_parent_dirs( $healthfile )
+	if $self->firsttime;
+    
+    if ( $health ne $old_health
+	 || $self->firsttime ) {
+	say "Changing health file status from $old_health to $health"
+	    if $verbose;
+
+	open my $fh, '>'. $healthfile;
+	say $fh "health = $health";
+
+	$old_health = $health;
+	$self->firsttime(0);
+	
+    }
+    else {
+	system( '/bin/touch', $healthfile );
+    }
+    if ( $sumweight >= $crisis_min ) {
+	
+	say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
+	    "\nInvoking shutdown script $shutdown\n"
+	    if $verbose;
+	$listener->owner->shutdown( 1 );;
+	system( $shutdown ) 
+    }
+
+    return;
+}
+
+sub create_parent_dirs {
+    my $self = shift;
+    my ( $path ) = @_;
+
+    make_path dirname $path;
 }
 
 # ======================================================================

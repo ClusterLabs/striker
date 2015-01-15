@@ -38,18 +38,6 @@ const my $DATATABLE_NAME => 'snmp_apc_ups';
 # ......................................................................
 #
 
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath(
-              catdir( $self->path_to_configuration_files(), $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{snmp} );
-}
-
 sub deep_copy {
     my $self = shift;
     my ( $source, @targets ) = @_;
