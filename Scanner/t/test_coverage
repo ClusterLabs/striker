@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cover -delete
 
 for i in *.t; do
