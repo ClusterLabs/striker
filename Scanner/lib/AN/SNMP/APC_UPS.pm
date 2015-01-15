@@ -110,6 +110,7 @@ sub prep_reverse_cache_and_prev_values {
 sub BUILD {
     my $self = shift;
 
+    $self->clear_summary();
     # Don't run for sub-classes.
     #
     return unless ref $self eq __PACKAGE__;
@@ -173,8 +174,9 @@ sub insert_agent_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
 
-    my $msg_args = $msg->{args} . q{;} . ($args->{dev} || '');
-    $msg_args    = '' if $msg_args eq q{;};
+    my $msg_args = join q{;},
+                        grep { defined $_ && length $_ }
+                             ($msg->{args}, $args->{dev});
     my $name     = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(
