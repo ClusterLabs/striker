@@ -7,8 +7,6 @@
 .ONESHELL:
 #SHELL=/bin/bash
 
-WRAPPERDEST=..
-
 USER := ${shell whoami}
 
 targets = wipmi   wstorcli
@@ -19,13 +17,13 @@ wrapper: $(targets)
 $(targets) : $(sources)
 	if [[ "$(USER)" != "root" ]] ; then		\
 	    echo "Only root can create wrappers.";	\
-	    echo "run as: sudo make";			\
-	else						\
-	    cc -o $@ $<;				\
-	    cp $@ $(WRAPPERDEST);			\
-	    chown root:root $(WRAPPERDEST)/$@;		\
-	    chmod 755  $(WRAPPERDEST)/$@; 		\
-	    chmod u+s  $(WRAPPERDEST)/$@;		\
+	    echo "run as: sudo make";	\
+	else				\
+	    cc -o $@ $<;		\
+	    cp $@ ..;			\
+	    chown root:root ../$@;	\
+	    chmod 755  ../$@; 		\
+	    chmod u+s  ../$@;		\
 	fi
 
 
