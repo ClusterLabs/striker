@@ -748,7 +748,7 @@ sub loop_core {
     $self->handle_alerts();
     
     if ( $verbose ) {
-        say "Total number of distinct alerts seen: " . scalar length %{ $self->seen };
+        say "Total number of distinct alerts seen: " . scalar length keys %{ $self->seen };
     }
     return;
 }
