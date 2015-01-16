@@ -33,8 +33,7 @@ use Class::Tiny qw( confpath confdata prev );
 # CONSTANTS
 #
 const my $DATATABLE_NAME => 'ipmi';
-const my $PARENTDIR      => q{/../};
-   
+const my $SLASH          => q{/};   
 # ......................................................................
 #
 
@@ -126,7 +125,7 @@ sub ipmi_request {
     my $self = shift;
 
  
-    state $cmd = $Bin . $PARENTDIR . $self->confdata()->{query};
+    state $cmd = $self->bindir . $SLASH . $self->confdata()->{query};
     say "ipmi cmd is $cmd" if grep {/ipmi_query/} $ENV{VERBOSE};
 
     # read bottom to top ...

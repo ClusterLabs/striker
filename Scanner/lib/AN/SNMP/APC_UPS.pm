@@ -28,7 +28,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( confpath confdata prev summary sumweight  );
+use Class::Tiny qw( confpath confdata prev summary sumweight bindir );
 
 # ======================================================================
 # CONSTANTS

@@ -19,8 +19,8 @@ use Time::HiRes qw( time alarm sleep );
 use DBI;
 use Net::SNMP;
 
-use lib 'lib';       # When called by scanner core
-use lib '../lib';    # When run directly, during dev or test.
+use lib 'lib';       # When called by scanner core pre-install
+use lib '../lib';    # When run post-install, or directly during dev/test.
 use AN::SNMP::APC_UPS;
 
 use Const::Fast;
@@ -28,17 +28,32 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $DEFAULT_DB_CONFIG   => 'Config/db.conf';
-const my $DEFAULT_CONFIG_PATH => 'Config/snmp_apc_ups.conf';
+const my $SYSTEMNAME      => 'striker';
+const my $AGENTDIR       
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/bin") ? dirname $Bin . '/agents'
+	 :                                           $Bin 
+    );
+const my $BINDIR
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/agents") ? dirname $Bin . 'bin'
+	 : ( 'Agents' eq basename $Bin)               ? dirname $Bin 
+	 :                                              $Bin
+    );
+
+const my $TEXTBASE  
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/bin") ? "/etc/${SYSTEMNAME}"
+	 :                                           dirname $Bin
+    );
+
+const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/snmp_apc_ups.conf";
+const my $MSG_DIR             => "${TEXTBASE}/MESSAGES";
 const my $DATATABLE_NAME      => 'snmp_apc_ups';
 
-const my $AGENT_DIR  => 'Agents';
 const my $BRIEF      => 1;
 const my $COMMA      => q{,};
 const my $DOTSLASH   => q{./};
 const my $MAX_RATE   => 600;
 const my $MIN_RATE   => 1;
-const my $MSG_DIR    => 'MESSAGES/';
 const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 const my $REP_RATE   => 30;
 const my $RUN_UNTIL  => '23:59:59';
@@ -60,8 +75,9 @@ sub process_args {
         filepath  => '/tmp/agents',        # directory to scan for agents.
         dbconf    => $DEFAULT_DB_CONFIG,   # DB configuration file.
         confpath  => $DEFAULT_CONFIG_PATH, # configuration file.
-        msg_file => $MSG_DIR . $PROG,
+        msg_file  => $MSG_DIR . $PROG,
 	datatable_name => $DATATABLE_NAME,
+	bindir    => $BINDIR,
     };
 
     GetOptions( $opt,         'rate=i',       'filepath=s',  'dbconf=s',
@@ -114,8 +130,7 @@ sub main {
     # When run manually, program starts in 'agents' dir; when run by
     # scanner, cwd() is one level higher. Lets make things consistent.
     #
-    chdir $UP_ONE_DIR
-        if basename(getcwd) eq $AGENT_DIR;
+    chdir $BINDIR;
 
     my $options = process_args();
 

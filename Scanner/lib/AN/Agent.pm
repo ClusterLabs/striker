@@ -46,11 +46,6 @@ const my $UNDERSCORE        => q{_};
 # ......................................................................
 #
 
-sub path_to_configuration_files {
-
-    return getcwd();
-}
-
 sub BUILD {
     my $self = shift;
 

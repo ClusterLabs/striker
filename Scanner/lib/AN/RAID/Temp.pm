@@ -179,7 +179,7 @@ sub raid_request {
 
     my (@args) = @_;
 
-    my $cmd = getcwd() . $SLASH . $self->confdata()->{query};
+    my $cmd = $self->bindir . $SLASH . $self->confdata()->{query};
     local $LIST_SEPARATOR = $SPACE;
     $cmd .= " @args" if @args;
     say "raid cmd is $cmd" if grep {/raid_query/} $ENV{VERBOSE};
