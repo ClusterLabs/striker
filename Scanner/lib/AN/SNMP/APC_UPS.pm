@@ -115,7 +115,6 @@ sub BUILD {
     #
     return unless ref $self eq __PACKAGE__;
 
-    $self->read_configuration_file;
     $self->normalize_global_and_local_config_data;
     $self->prep_reverse_cache_and_prev_values;
 

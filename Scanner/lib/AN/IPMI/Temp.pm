@@ -38,26 +38,10 @@ const my $PARENTDIR      => q{/../};
 # ......................................................................
 #
 
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath( catdir( $self->path_to_configuration_files(),
-			     $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{ipmi} );    
-}
-
 sub BUILD {
     my $self = shift;
 
     return unless ref $self eq __PACKAGE__;
-
-    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
-
-    $self->read_configuration_file;
     return;
 }
 

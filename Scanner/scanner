@@ -27,20 +27,22 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $SYSTEMNAME      => 'striker';
-const my $AGENTDIR        => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin"
-			       ? dirname $Bin . '/agents'
-			       : $Bin . '/Agents'
+const my $AGENTDIR    
+    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? dirname $Bin . '/agents'
+	 :                                         $Bin . '/Agents'
     );
 
-const my $TEXTBASE        => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin"
-			       ? "/etc/${SYSTEMNAME}"
-			       : $Bin . '/Agents'
+const my $TEXTBASE        
+    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? "/etc/${SYSTEMNAME}"
+	 :                                         $Bin
     );
-const my $BRIEF               => 1;
-const my $COMMA               => q{,};
 const my $DEFAULT_DB_CONF     => "${TEXTBASE}/Config/db.conf";
 const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/scanner.conf";
 const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
+
+
+const my $BRIEF               => 1;
+const my $COMMA               => q{,};
 const my $DOTSLASH            => q{./};
 const my $LIFETIME        => 24 * 60 * 60;
 const my $RUN_UNTIL       => '23:59:59';

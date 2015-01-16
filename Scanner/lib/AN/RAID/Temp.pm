@@ -41,18 +41,6 @@ const my $SPACE => q{ };
 # ......................................................................
 #
 
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath(
-              catdir( $self->path_to_configuration_files(), $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{raid} );
-}
-
 sub get_controller_count {
     my $self = shift;
 
@@ -76,10 +64,6 @@ sub BUILD {
     my $self = shift;
 
     return unless ref $self eq __PACKAGE__;
-
-    $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
-
-    $self->read_configuration_file;
     $self->confdata()->{controller_count} = $self->get_controller_count();
 
     return;

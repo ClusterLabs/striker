@@ -63,7 +63,6 @@ sub BUILD {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbconf( catdir( path_to_configuration_files(), $self->dbconf ) );
     return;
 }
 
