@@ -17,7 +17,8 @@ use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
 
-use lib 'lib';
+use lib 'lib';			# pre-install
+use lib '../lib';		# post-install
 use AN::Scanner;
 
 use Const::Fast;
@@ -25,12 +26,22 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $BRIEF           => 1;
-const my $COMMA           => q{,};
-const my $DEFAULT_DB_CONF => $Bin . '/Config/db.conf';
-const my $DEFAULT_CONFIG_PATH => '/Config/scanner.conf';
-const my $DEFAULT_MSGS    => $Bin . '/Messages/';
-const my $DOTSLASH        => q{./};
+const my $SYSTEMNAME      => 'striker';
+const my $AGENTDIR        => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin"
+			       ? dirname $Bin . '/agents'
+			       : $Bin . '/Agents'
+    );
+
+const my $TEXTBASE        => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin"
+			       ? "/etc/${SYSTEMNAME}"
+			       : $Bin . '/Agents'
+    );
+const my $BRIEF               => 1;
+const my $COMMA               => q{,};
+const my $DEFAULT_DB_CONF     => "${TEXTBASE}/Config/db.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/scanner.conf";
+const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
+const my $DOTSLASH            => q{./};
 const my $LIFETIME        => 24 * 60 * 60;
 const my $RUN_UNTIL       => '23:59:59';
 const my $MAX_RETRIES     => 10;
@@ -57,7 +68,7 @@ sub process_args {
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
-        agentdir  => $Bin . '/Agents',    # directory to scan for agents.
+        agentdir  => $AGENTDIR,           # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
         dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
 	confpath  => $DEFAULT_CONFIG_PATH,   # scanner configuration.
