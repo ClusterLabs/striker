@@ -38,18 +38,6 @@ const my $DATATABLE_NAME => 'snmp_apc_ups';
 # ......................................................................
 #
 
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath(
-              catdir( $self->path_to_configuration_files(), $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{snmp} );
-}
-
 sub deep_copy {
     my $self = shift;
     my ( $source, @targets ) = @_;
@@ -122,6 +110,7 @@ sub prep_reverse_cache_and_prev_values {
 sub BUILD {
     my $self = shift;
 
+    $self->clear_summary();
     # Don't run for sub-classes.
     #
     return unless ref $self eq __PACKAGE__;
@@ -185,8 +174,9 @@ sub insert_agent_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
 
-    my $msg_args = $msg->{args} . q{;} . ($args->{dev} || '');
-    $msg_args    = '' if $msg_args eq q{;};
+    my $msg_args = join q{;},
+                        grep { defined $_ && length $_ }
+                             ($msg->{args}, $args->{dev});
     my $name     = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(

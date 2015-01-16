@@ -13,7 +13,7 @@
 		<key name="OLD_PROCESS_CRASH">Old process crashed.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 	</lang>

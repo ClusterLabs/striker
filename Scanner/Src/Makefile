@@ -5,29 +5,33 @@
 # one shell per line. Make the shell be bash.
 #
 .ONESHELL:
-SHELL=/bin/bash
+#SHELL=/bin/bash
 
 USER := ${shell whoami}
 
-wrapper: objects
-	@ echo running as $(USER)
-	@if [ "$(USER)" == "root" ] ; then
-	    cp wipmi wstorcli ..
-	    chown root:root ../wipmi ../wstorcli
-	    sudo chmod 755 ../wipmi ../wstorcli
-	    sudo chmod u+s ../wipmi ../wstorcli
-	else
-	    echo "Need to be root to create wrappers.";
-	    echo "run as: sudo make";
+targets = wipmi   wstorcli
+sources = wipmi.c wstorcli.c
+
+wrapper: $(targets)
+
+$(targets) : $(sources)
+	if [[ "$(USER)" != "root" ]] ; then		\
+	    echo "Only root can create wrappers.";	\
+	    echo "run as: sudo make";	\
+	else				\
+	    cc -o $@ $<;		\
+	    cp $@ ..;			\
+	    chown root:root ../$@;	\
+	    chmod 755  ../$@; 		\
+	    chmod u+s  ../$@;		\
 	fi
 
-objects  : wipmi wstorcli
-
-wipmi    : wipmi.o
-
-wstorcli :  wstorcli.o
 
 clean:
-	-rm -rf *~ \#* *.bak *.tdy
+	-rm -f *~ \#* *.bak *.tdy *.o 
 
-objects : wipmi.o wstorcli.o	
+distclean : clean
+	rm -f $(targets) $(objects)
+
+# ----------------------------------------------------------------------
+# End of file

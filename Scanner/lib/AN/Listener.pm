@@ -63,7 +63,7 @@ sub has_dispatcher {
 sub add_dispatcher {
     my $self = shift;
 
-    my $module = 'AN::' . ucfirst lc $self->mode;
+    my $module = 'AN::' . $self->mode;
     load $module;
     die "Couldn't load module to handle @{[$self->mode()]}." if $@;
     $self->dispatcher( $module->new( { owner => $self->owner } ) );
@@ -72,11 +72,11 @@ sub add_dispatcher {
 
 sub dispatch_msg {
     my $self = shift;
-    my ($msgs) = @_;
+    my ($msgs, $sumweight) = @_;
 
     $self->add_dispatcher() unless $self->has_dispatcher();
 
-    $self->dispatcher()->dispatch( $msgs, $self );
+    $self->dispatcher()->dispatch( $msgs, $self, $sumweight );
     return;
 }
 

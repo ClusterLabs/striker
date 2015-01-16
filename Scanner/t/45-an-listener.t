@@ -19,7 +19,7 @@ sub init_args {
 
     return { id           => 2,
              name         => 'screen',
-             mode         => 'SCREEN',
+             mode         => 'Screen',
              level        => 'DEBUG',
              contact_info => '',
              language     => 'en_CA',
