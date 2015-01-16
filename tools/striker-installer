@@ -41,13 +41,18 @@
 # 25 - Failed to download the repository.
 # 26 - BCN not specified or found and DHCP server config requested.
 # 27 - BCN not specified and IP not defined in ifcfg file.
+# 28 - Failed to install one or more required packaged for the GUI.
+# 29 - 
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
 #       - Create a '-g' switch to install the GUI (make sure this sets up
 #         'virt-manager'). Install 'virt-manager'
 #       - Add a firefox desktop icon when the GUI is installed for http://localhost
-# 
+#       - Configure avahi to announce newly build nodes and strikers and have
+#         striker listen for newly built nodes. 
+#         (broadcast 'I am $hostname on ip $ip' once per second, and then have
+#          striker stop this when it first starts to configure the node).
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -65,9 +70,9 @@ my $conf = {
 		# 'disable' is processes.
 		# NOTE: 'haldaemon' needs to restart before 'acpid' will work,
 		#       if 'acpid' was just installed.
-		enable			=>	["dhcpd", "iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "network", "ntpd", "xinetd"],
+		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "network", "ntpd", "xinetd"],
 		# These will be both chkconfig off'ed and stopped.
-		disable			=>	["ip6tables", "NetworkManager"],
+		disable			=>	["dhcpd", "ip6tables", "NetworkManager"],
 	},
 	directory	=>	{
 		apache			=>	"/etc/httpd",
@@ -170,17 +175,91 @@ my $conf = {
 			'freeipmi-bmc-watchdog'		=>	0,
 			'freeipmi-ipmidetectd'		=>	0,
 			ipmitool			=>	0,
+			NetworkManager			=>	0,
+			'NetworkManager-gnome'		=>	0,
 			OpenIPMI			=>	0,
 			'OpenIPMI-libs'			=>	0,
 		},
-		gui_groups	=>	{
-			'basic-desktop'			=>	0,
-			fonts				=>	0,
-			x11				=>	0,
-		},
 		gui_packages	=>	{
+			'abyssinica-fonts'		=>	0,
+			'alsa-plugins-pulseaudio'	=>	0,
+			'at-spi'			=>	0,
+			'cjkuni-uming-fonts'		=>	0,
+			'control-center'		=>	0,
+			'control-center-extra'		=>	0,
+			'dejavu-sans-fonts'		=>	0,
+			'dejavu-sans-mono-fonts'	=>	0,
+			'dejavu-serif-fonts'		=>	0,
+			dbus				=>	0,
+			eog				=>	0,
 			firefox				=>	0,
+			gdm				=>	0,
+			'gdm-plugin-fingerprint'	=>	0,
+			'gdm-user-switch-applet'	=>	0,
+			'glx-utils'			=>	0,
+			'gnome-applets'			=>	0,
+			'gnome-media'			=>	0,
+			'gnome-packagekit'		=>	0,
+			'gnome-panel'			=>	0,
+			'gnome-power-manager'		=>	0,
+			'gnome-screensaver'		=>	0,
+			'gnome-session'			=>	0,
+			'gnome-terminal'		=>	0,
+			'gnome-vfs2-smb'		=>	0,
+			'google-crosextra-caladea-fonts'	=>	0,
+			'google-crosextra-carlito-fonts'	=>	0,
+			'gvfs-archive'			=>	0,
+			'gvfs-fuse'			=>	0,
+			'gvfs-smb'			=>	0,
+			hal				=>	0,
+			'jomolhari-fonts'		=>	0,
+			'khmeros-base-fonts'		=>	0,
+			'kurdit-unikurd-web-fonts'	=>	0,
+			'liberation-mono-fonts'		=>	0,
+			'liberation-sans-fonts'		=>	0,
+			'liberation-serif-fonts'	=>	0,
+			'lklug-fonts'			=>	0,
+			'lohit-assamese-fonts'		=>	0,
+			'lohit-bengali-fonts'		=>	0,
+			'lohit-devanagari-fonts'	=>	0,
+			'lohit-gujarati-fonts'		=>	0,
+			'lohit-kannada-fonts'		=>	0,
+			'lohit-oriya-fonts'		=>	0,
+			'lohit-punjabi-fonts'		=>	0,
+			'lohit-tamil-fonts'		=>	0,
+			'lohit-telugu-fonts'		=>	0,
+			'madan-fonts'			=>	0,
+			metacity			=>	0,
+			nautilus			=>	0,
+			'notification-daemon'		=>	0,
+			'openssh-askpass'		=>	0,
+			'paktype-naqsh-fonts'		=>	0,
+			'paktype-tehreer-fonts'		=>	0,
+			'plymouth-system-theme'		=>	0,
+			'polkit-gnome'			=>	0,
+			'pulseaudio-module-gconf'	=>	0,
+			'pulseaudio-module-x11'		=>	0,
+			'sil-padauk-fonts'		=>	0,
+			'smc-meera-fonts'		=>	0,
+			'spice-vdagent'			=>	0,
+			'stix-fonts'			=>	0,
+			'thai-scalable-waree-fonts'	=>	0,
+			'tibetan-machine-uni-fonts'	=>	0,
+			'un-core-dotum-fonts'		=>	0,
+			vino				=>	0,
 			'virt-manager'			=>	0,
+			'vlgothic-fonts'		=>	0,
+			wdaemon				=>	0,
+			'wqy-zenhei-fonts'		=>	0,
+			'xdg-user-dirs-gtk'		=>	0,
+			'xorg-x11-drivers'		=>	0,
+			'xorg-x11-server-utils'		=>	0,
+			'xorg-x11-server-Xorg'		=>	0,
+			'xorg-x11-utils'		=>	0,
+			'xorg-x11-xauth'		=>	0,
+			'xorg-x11-xinit'		=>	0,
+			xvattr				=>	0,
+			yelp				=>	0,
 		},
 		# This is populated by 'get_list_of_installed_packages()' and
 		# uses the found package name as the key and sets the value to
@@ -203,11 +282,13 @@ my $conf = {
 		guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
 		guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
+		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
@@ -280,6 +361,7 @@ my $conf = {
 			mode			=>	"755",
 			recursive		=>	0,
 		},
+		### TODO: This might not be setting ownership properly, test!
 		# The following entries must sort last to ensure the setuid
 		# doesn't get changed by a change to the parent directory.
 		z_restart_tomcat	=>	{
@@ -685,6 +767,9 @@ sub setup_striker
 	# First up, install RPMs to make sure we've got everything we need.
 	install_packages($conf);
 	
+	# If requested, this will install and configure the GUI.
+	configure_gui($conf);
+	
 	# Download Striker, if needed.
 	download_striker($conf);
 	
@@ -730,6 +815,380 @@ sub setup_striker
 	#       get scrolled off the screen.
 	# Set the root user's password.
 	set_root_password($conf);
+	
+	return(0);
+}
+
+# This installs a GUI and configures it, if requested.
+sub configure_gui
+{
+	my ($conf) = @_;
+	
+	if (not $conf->{switches}{gui})
+	{
+		# GUI not requested.
+		return(0);
+	}
+	
+	print "Configuring Striker to use a graphical interface.\n";
+	my $stop_NetworkManager = 0;
+	my $to_install          = "";
+	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{gui_packages}})
+	{
+		if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+		{
+			$conf->{packages}{gui_packages}{$package} = 1;
+			print "- GUI Package: [$package] already installed.\n";
+		}
+		else
+		{
+			print "- Package: [$package] needs to be installed.\n";
+			$to_install .= "$package ";
+			if ($package eq "NetworkManager")
+			{
+				$stop_NetworkManager = 1;
+			}
+		}
+	}
+	
+	# Install anything needed.
+	if ($to_install)
+	{
+		# Install the packages, then verify they actually installed.
+		print "- Installing IPMI packages now. Please be patient.\n";
+		#print "- [ Note ] Please be patient! It may appear that nothing is happening for a\n";
+		#print "- [ Note ] while. This is likely because of how buffering is handled. If you\n";
+		#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
+		#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
+		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		#print "[ Debug ] - shell_call: [$shell_call]\n";
+		print "==============================================================================\n";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		print "==============================================================================\n";
+		close $file_handle;
+		print "- Done.\n";
+		
+		# Verify that everything is installed.
+		sleep 5;
+		get_list_of_installed_packages($conf);
+		print "- Verifying that everything is installed now.\n";
+		my $missing = 0;
+		foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{gui_packages}})
+		{
+			# Watch for autovivication...
+			if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
+			{
+				$conf->{packages}{gui_packages}{$package} = 1;
+				print "- Package: [$package] installed.\n";
+			}
+			else
+			{
+				print "[ Error ] - GUI Package: [$package] failed to install!\n";
+				$missing = 1;
+			}
+		}
+		# If anything is missing, fail.
+		if ($missing)
+		{
+			print "[ Error ] - Not all required packages for the GUI installed properly.\n";
+			exit(28);
+		}
+		else
+		{
+			print "- All required packages are now installed.\n\n";
+		}
+		
+		# Immediately disable NetworkManager.
+		if ($stop_NetworkManager)
+		{
+			print "- Disabling the just-installed NetworkManager.\n";
+			my $shell_call = "/etc/init.d/NetworkManager stop";
+			#print "[ Debug ] - shell_call: [$shell_call]\n";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				print $_;
+			}
+			close $file_handle;
+		}
+	}
+	else
+	{
+		print "- All required packages already installed.\n";
+	}
+	
+	### Now configure the desktop.
+	# First, ensure the GUI loads on boot.
+	if (-e $conf->{path}{inittab})
+	{
+		print "- Enabling GUI on boot.\n";
+		backup_file($conf, $conf->{path}{inittab});
+		my $shell_call = "sed -i 's/id:3:initdefault/id:5:initdefault/' $conf->{path}{inittab}";
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		print "==============================================================================\n";
+		close $file_handle;
+	}
+	
+	# Add a system user.
+	if (1)
+	{
+		# See if the user exists.
+		my $striker_user = $conf->{sys}{striker_user};
+		my $striker_pass = $conf->{sys}{striker_pass};
+		my $create_user  = 1;
+		
+		print "- Checking if the system user: [$striker_user] exists.\n";
+		open (my $file_handle, "<", $conf->{path}{passwd}) or die "Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			
+			# Update the apache user entry.
+			if ($line =~ /^$striker_user:/)
+			{
+				print "- User found.\n";
+				$create_user = 0;
+			}
+		}
+		close $file_handle;
+		
+		# Create the user account if needed.
+		if ($create_user)
+		{
+			print "- Creating the user account: [$striker_user]\n";
+			my $shell_call = "useradd $striker_user -m";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			close $file_handle;
+			print "- Done.\n";
+		}
+		
+		# Create the ssh key if needed.
+		if (not -e "/home/$striker_user/.ssh/id_rsa")
+		{
+			print "- Creating the SSH RSA key for: [$striker_user]\n";
+			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			close $file_handle;
+			print "- Done.\n";
+		}
+		
+		# Set the password.
+		if (1)
+		{
+			print "- Setting the system password for: [$striker_user]\n";
+			my $shell_call = "$conf->{executable}{echo} \"$striker_pass\" | $conf->{executable}{passwd} $striker_user --stdin";
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "- Output: [$line]\n";
+			}
+			close $file_handle;
+			print "- Done.\n";
+		}
+	}
+	
+	# Force instant shutdown in the GUI instead of waiting 60 seconds
+	if (-e $conf->{path}{inittab})
+	{
+		print "- Configuring immediate shut down in GUI.\n";
+		backup_file($conf, $conf->{path}{power_sh});
+		my $power_sh =  "#!/bin/sh\n\n";
+		   $power_sh .= "PATH=/sbin:/bin:/usr/bin\n";
+		   $power_sh .= "shutdown -h now\n";
+		   
+		my $shell_call = "$conf->{path}{power_sh}";
+		open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		print $file_handle $power_sh;
+		close $file_handle;
+		print "- Done.\n";
+	}
+	
+	# Desktop icons
+	print "- Configuring desktop icons:\n";
+	my $desktop = "/home/$conf->{sys}{striker_user}/Desktop";
+	if (not -e $desktop)
+	{
+		# Create the directory.
+		print "- Creating the desktop directory: [$desktop]\n";
+		mkdir $desktop or die "Failed to create the directory: [$desktop]. The error was: $!\n";
+		$conf->{permissions}{user_desktop}{path}      = "$desktop";
+		$conf->{permissions}{user_desktop}{owner}     = "$conf->{sys}{striker_user}";
+		$conf->{permissions}{user_desktop}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_desktop}{mode}      = "755";
+		$conf->{permissions}{user_desktop}{recursive} = 0;
+	}
+	if (1)
+	{
+		# Icon files
+		my $firefox_shortcut      = "$desktop/firefox.desktop";
+		my $virt_manager_shortcut = "$desktop/virt-manager.desktop";
+		#print "[ Debug ] ".__LINE__." - virt_manager_shortcut: [$virt_manager_shortcut]\n";
+		
+		### Add them to the permission setting hash
+		# Firefox
+		$conf->{permissions}{user_firefox_icon}{path}      = "$desktop/firefox.desktop";
+		$conf->{permissions}{user_firefox_icon}{owner}     = "$conf->{sys}{striker_user}";
+		$conf->{permissions}{user_firefox_icon}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_firefox_icon}{mode}      = "755";
+		$conf->{permissions}{user_firefox_icon}{recursive} = 0;
+		
+		# Virtual Machine Manager
+		$conf->{permissions}{user_virt_manager_icon}{path}      = "$desktop/virt-manager.desktop";
+		$conf->{permissions}{user_virt_manager_icon}{owner}     = "$conf->{sys}{striker_user}";
+		$conf->{permissions}{user_virt_manager_icon}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_virt_manager_icon}{mode}      = "755";
+		$conf->{permissions}{user_virt_manager_icon}{recursive} = 0;
+		#print "[ Debug ] ".__LINE__." - permissions::user_virt_manager_icon::path: [$conf->{permissions}{user_virt_manager_icon}{path}]\n";
+		
+		### Icon contents
+		# Firefox
+		my $firefox_body      =  "[Desktop Entry]\n";
+		   $firefox_body      .= "Version=1.0\n";
+		   $firefox_body      .= "Encoding=UTF-8\n";
+		   $firefox_body      .= "Name=Firefox Web Browser\n";
+		   $firefox_body      .= "GenericName=Web Browser\n";
+		   $firefox_body      .= "Comment=Browse the Web\n";
+		   $firefox_body      .= "Exec=firefox http://localhost/\n";
+		   $firefox_body      .= "Icon=firefox\n";
+		   $firefox_body      .= "Terminal=false\n";
+		   $firefox_body      .= "Type=Application\n";
+		   $firefox_body      .= "StartupWMClass=Firefox-bin\n";
+		   $firefox_body      .= "MimeType=text/html;text/xml;application/xhtml+xml;application/vnd.mozilla.xul+xml;text/mml;\n";
+		   $firefox_body      .= "StartupNotify=true\n";
+		   $firefox_body      .= "X-Desktop-File-Install-Version=0.15\n";
+		   $firefox_body      .= "Categories=Network;WebBrowser;\n";
+		   $firefox_body      .= "GenericName[en_US.UTF-8]=Firefox - Striker Dashboard\n";
+		   $firefox_body      .= "Comment[en_US.UTF-8]=Connect to the Striker Dashboard\n";
+		   $firefox_body      .= "Name[en_US]=Striker Dashboard\n";
+		
+		# Virt-manager
+		my $virt_manager_body =  "#!/usr/bin/env xdg-open\n\n";
+		   $virt_manager_body .= "[Desktop Entry]\n";
+		   $virt_manager_body .= "Name=Virtual Machine Manager\n";
+		   $virt_manager_body .= "Comment=Manage virtual machines\n";
+		   $virt_manager_body .= "Icon=virt-manager\n";
+		   $virt_manager_body .= "Exec=virt-manager\n";
+		   $virt_manager_body .= "Type=Application\n";
+		   $virt_manager_body .= "Terminal=false\n";
+		   $virt_manager_body .= "Encoding=UTF-8\n";
+		   $virt_manager_body .= "Categories=System;\n";
+		   
+		### Write them out.
+		# Firefox
+		my $shell_call = "$firefox_shortcut";
+		open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		print $file_handle $firefox_body;
+		close $file_handle;
+		
+		# Virt-manager
+		$shell_call = "$virt_manager_shortcut";
+		#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
+		open ($file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		print $file_handle $virt_manager_body;
+		close $file_handle;
+		print "- Done.\n";
+	}
+	
+	# Configure virt-manager to not connect to localhost on start.
+	if (1)
+	{
+		# Make the parent directories if needed.
+		print "- Configuring Virtual Machine Manager:\n";
+		if (not -e "/home/$conf->{sys}{striker_user}/.gconf")
+		{
+			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf]\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
+			$conf->{permissions}{user_gconf}{path}      = "/home/$conf->{sys}{striker_user}/.gconf";
+			$conf->{permissions}{user_gconf}{owner}     = "$conf->{sys}{striker_user}";
+			$conf->{permissions}{user_gconf}{group}     = "$conf->{sys}{striker_user}",
+			$conf->{permissions}{user_gconf}{mode}      = "700";
+			$conf->{permissions}{user_gconf}{recursive} = 0;
+		}
+		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps")
+		{
+			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps]\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
+			$conf->{permissions}{user_apps}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps";
+			$conf->{permissions}{user_apps}{owner}     = "$conf->{sys}{striker_user}";
+			$conf->{permissions}{user_apps}{group}     = "$conf->{sys}{striker_user}",
+			$conf->{permissions}{user_apps}{mode}      = "700";
+			$conf->{permissions}{user_apps}{recursive} = 0;
+		}
+		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager")
+		{
+			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager]\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
+			$conf->{permissions}{user_virt_manager_dir}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager";
+			$conf->{permissions}{user_virt_manager_dir}{owner}     = "$conf->{sys}{striker_user}";
+			$conf->{permissions}{user_virt_manager_dir}{group}     = "$conf->{sys}{striker_user}",
+			$conf->{permissions}{user_virt_manager_dir}{mode}      = "700";
+			$conf->{permissions}{user_virt_manager_dir}{recursive} = 0;
+		}
+		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections")
+		{
+			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections]\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
+			$conf->{permissions}{user_connections}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections";
+			$conf->{permissions}{user_connections}{owner}     = "$conf->{sys}{striker_user}";
+			$conf->{permissions}{user_connections}{group}     = "$conf->{sys}{striker_user}",
+			$conf->{permissions}{user_connections}{mode}      = "700";
+			$conf->{permissions}{user_connections}{recursive} = 0;
+		}
+		
+		my $virt_manager_file   =  "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections/\%gconf.xml";
+		my $virt_manager_config =  "<?xml version=\"1.0\"?>\n";
+		   $virt_manager_config .= "<gconf>\n";
+# 		   $virt_manager_config .= "	<entry name=\"autoconnect\" mtime=\"1421193300\" type=\"list\" ltype=\"string\">\n";
+# 		   $virt_manager_config .= "		<li type=\"string\">\n";
+# 		   $virt_manager_config .= "			<stringvalue>qemu+ssh://root\@10.255.255.250/system</stringvalue>\n";
+# 		   $virt_manager_config .= "		</li>\n";
+# 		   $virt_manager_config .= "	</entry>\n";
+		   $virt_manager_config .= "	<entry name=\"uris\" mtime=\"1421193275\" type=\"list\" ltype=\"string\">\n";
+		   $virt_manager_config .= "		<li type=\"string\">\n";
+		   $virt_manager_config .= "			<stringvalue>qemu+ssh://root\@10.255.255.250/system</stringvalue>\n";
+		   $virt_manager_config .= "		</li>\n";
+		   $virt_manager_config .= "		<li type=\"string\">\n";
+		   $virt_manager_config .= "			<stringvalue>qemu:///system</stringvalue>\n";
+		   $virt_manager_config .= "		</li>\n";
+		   $virt_manager_config .= "	</entry>\n";
+		   $virt_manager_config .= "</gconf>\n";
+		
+		my $shell_call = "$virt_manager_file";
+		open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		print $file_handle $virt_manager_config;
+		close $file_handle;
+		
+		$conf->{permissions}{user_gconf_xml}{path}      = "$virt_manager_file";
+		$conf->{permissions}{user_gconf_xml}{owner}     = "$conf->{sys}{striker_user}";
+		$conf->{permissions}{user_gconf_xml}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_gconf_xml}{mode}      = "600";
+		$conf->{permissions}{user_gconf_xml}{recursive} = 0;
+	}
+	
+	print "Done!\n\n";
 	
 	return(0);
 }
@@ -2302,7 +2761,7 @@ sub configure_dhcp
 	# If the user didn't specify a BCN IP, then read it from the config
 	# file. If that doesn't exist, fail.
 	my $ifcfg_file = "";
-	print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+	#print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# BCN not specified.
@@ -2317,16 +2776,16 @@ sub configure_dhcp
 				chomp;
 				my $line =  $_;
 				   $line =~ s/"//g;
-				print "[ Debug ] - line: [$line]\n";
+				#print "[ Debug ] - line: [$line]\n";
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
-					print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+					#print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
 				}
 				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{netmask} = $1;
-					print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
+					#print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
 				}
 			}
 			close $file_handle;
@@ -2342,16 +2801,16 @@ sub configure_dhcp
 				chomp;
 				my $line =  $_;
 				   $line =~ s/"//g;
-				print "[ Debug ] - line: [$line]\n";
+				#print "[ Debug ] - line: [$line]\n";
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
-					print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+					#print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
 				}
 				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{netmask} = $1;
-					print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
+					#print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
 				}
 			}
 			close $file_handle;
@@ -2371,7 +2830,7 @@ sub configure_dhcp
 	}
 	
 	# See if we have the IP now.
-	print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
+	#print "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]\n";
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# Error out.
@@ -2397,7 +2856,7 @@ sub configure_dhcp
 		$bcn_network =  ($conf->{network}{bcn}{netmask} =~ /^(\d+\.\d+\.\d+\.)/)[0];
 		$bcn_network .= "0";
 	}
-	print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
+	#print "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]\n";
 	my $dhcpd_config = "
 # Generated by: [$THIS_FILE] on: [".get_date($conf)."].
 # DHCP Daemon config for PXE-based installs of nodes and striker dashboards.
@@ -2478,7 +2937,7 @@ sub manage_daemons
 			my $line = $_;
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
-			print "- Output: [$line]\n";
+			#print "- Output: [$line]\n";
 		}
 		close $file_handle;
 		sleep 1;
@@ -2506,7 +2965,7 @@ sub manage_daemons
 			my $line = $_;
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
-			print "- Output: [$line]\n";
+			#print "- Output: [$line]\n";
 			if (($line =~ /FAILED/i) && ($daemon eq "dhcpd"))
 			{
 				print "[ Note ] - Starting DHCP daemon will fail if the BCN IP changed and the system\n";
@@ -2541,6 +3000,7 @@ sub set_file_ownership_and_modes
 		print "- On: [$path],\n";
 		print "  Setting ownership and mode to: [$owner:$group] and: [$mode], respectively.\n";
 		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path && $conf->{executable}{chmod} $recursive $mode $path";
+		#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -3882,7 +4342,8 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 		else
 		{
 			print "[ Warning ] - This system does not appear to be registered with RHN and no RHN\n";
-			print "[ Warning ]   credentials have been given. The install will likely fail!\n";
+			print "[ Warning ]   credentials have been given. The install will likely fail if any\n";
+			print "[ Warning ]   packages need to be installed and are not locally available!\n";
 			sleep 2;
 		}
 	}
@@ -5468,6 +5929,11 @@ SWITCHES
 	This is the email address user and password to use when logging in to
 	the mail server. This information will be recorded in postfix's
 	/etc/postfix/relay_password file.
+
+ --gui
+ 
+	This tells striker to install a graphical interface. This considerably
+	increases the size of the install.
 
  -h, -?, --help
 

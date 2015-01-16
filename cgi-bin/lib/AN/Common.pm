@@ -657,7 +657,7 @@ sub initialize_conf
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
-				shared_subdirectories	=>	["definitions", "provision", "archive", "files"],
+				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 			},
 		},
 		args			=>	{
@@ -691,6 +691,8 @@ sub initialize_conf
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
 			use_spice_graphics	=>	0,
+			# This allows for custom MTU sizes in an Install Manifest
+			mtu_size		=>	1500,
 			update_os		=>	1,
 			daemons			=>	{
 				enable			=>	[
@@ -703,6 +705,7 @@ sub initialize_conf
 					"ricci",	# LSB compliant
 				],
 				disable		=>	[
+					"acpid",
 					"clvmd",	# Appears to be LSB compliant
 					"cman",		# 
 					"drbd",		# 

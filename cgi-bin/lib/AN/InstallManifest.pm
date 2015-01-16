@@ -13,7 +13,6 @@ package AN::InstallManifest;
 #   striker IFN IPs assigned...
 # 
 # TODO:
-# - Add the ability to set 'sys::use_spice_graphics'
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
 #   /root/.ssh/known_hosts
 # - Make the map NIC removal prompt order configurable.
@@ -274,6 +273,9 @@ sub run_new_install_manifest
 		# Start cman up
 		start_cman($conf) or return(1);
 		
+		### TODO: Test migration! After rebuilding node 1, migration 
+		###       from 2 -> 1 failed because ~/.ssh/known_hosts wasn't
+		###       properly populated.
 		# Live migration won't work until we've populated
 		#  ~/.ssh/known_hosts, so do so now.
 		configure_ssh($conf) or return(1);
@@ -6545,7 +6547,7 @@ sub read_drbd_config_on_node
 			then 
 				echo start:$global_common; 
 				cat $global_common; 
-				echo end:global_common.conf; 
+				echo end:$global_common; 
 			else 
 				echo not_found:$global_common; 
 			fi;
@@ -6608,18 +6610,19 @@ sub read_drbd_config_on_node
 		if ($in_global)
 		{
 			$conf->{node}{$node}{drbd_file}{global_common} .= "$line\n";
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+/ /g;
-			if (($line =~ /^fence-peer/) || ($line =~ /^allow-two-primaries/))
+			my $test_line = $line;
+			   $test_line =~ s/^\s+//;
+			   $test_line =~ s/\s+$//;
+			   $test_line =~ s/\s+/ /g;
+			if (($test_line =~ /^fence-peer/) || ($test_line =~ /^allow-two-primaries/))
 			{
 				# These are not set by default, so we're _not_
 				# looking at a stock config.
 				$generic_global_common = 0;
 			}
 		}
-		if ($in_r0)     { $conf->{node}{$node}{drbd_file}{r0}            .= "$line\n"; }
-		if ($in_r1)     { $conf->{node}{$node}{drbd_file}{r1}            .= "$line\n"; }
+		if ($in_r0) { $conf->{node}{$node}{drbd_file}{r0} .= "$line\n"; }
+		if ($in_r1) { $conf->{node}{$node}{drbd_file}{r1} .= "$line\n"; }
 	}
 	
 	# Wipe out the global_common if it's generic.
@@ -7757,9 +7760,11 @@ sub map_network
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
-	# These will be all populated *if* the MACs seen on each node match
-	# MACs passed in fronm CGI (or loaded from manifest). If any are
-	# missing, a remap will be needed.
+	# These will be all populated *if*;
+	# * The MACs seen on each node match MACs passed in from CGI (or 
+	# * Loaded from manifest
+	# * If the existing network appears complete already.
+	# If any are missing, a remap will be needed.
 	# Node 1
 	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = "";
 	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'} = "";
@@ -7868,6 +7873,8 @@ sub map_network
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
 	
+	### TODO: Check *all* devices, not just ifn-bridge1
+	# Check node1
 	if ((exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}) && (exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}))
 	{
 		# Remap not needed, system already configured.
@@ -7898,6 +7905,28 @@ sub map_network
 		{
 			$node1_remap_needed = 1;
 		}
+	}
+	# Check node 2
+	if ((exists $conf->{conf}{node}{$node2}{current_nic}{'ifn-bridge1'}) && (exists $conf->{conf}{node}{$node2}{current_nic}{'ifn-bridge1'}))
+	{
+		# Remap not needed, system already configured.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'ifn-bridge1' device exists on both nodes already, remap not needed.\n");
+		
+		# To make the summary look better, we'll take the NICs we
+		# thought we didn't recognize and feed them into 'set_nic'.
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Recording 'unknown' NICs for node: [$node].\n");
+			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
+			{
+				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
+				$conf->{conf}{node}{$node}{set_nic}{$nic} = $mac;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], nic: [$nic], mac: [$conf->{conf}{node}{$node}{set_nic}{$nic}].\n");
+			}
+		}
+	}
+	else
+	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}].\n");
 		if ((not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}) || 
 		    (not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}) ||
@@ -7952,6 +7981,7 @@ sub map_network
 sub map_network_on_node
 {
 	my ($conf, $node, $password, $remap, $say_node) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; map_network_on_node(); node: [$node], remap: [$remap], say_node: [$say_node]\n");
 	
 	$conf->{cgi}{update_manifest} = 0;
 	if ($remap)

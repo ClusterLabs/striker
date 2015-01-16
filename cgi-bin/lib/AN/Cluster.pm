@@ -2313,6 +2313,12 @@ sub load_install_manifest
 								#record($conf, "$THIS_FILE ".__LINE__."; Bridge; name: [$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}]\n");
 							}
 						}
+						elsif ($c eq "mtu")
+						{
+							#<mtu size=\"$conf->{cgi}{anvil_mtu_size}\" />
+							my $size = $a->{$b}->[0]->{$c}->[0]->{size};
+							$conf->{install_manifest}{$file}{common}{network}{mtu}{size} = $size ? $size : 1500;
+						}
 						else
 						{
 							my $netblock = $a->{$b}->[0]->{$c}->[0]->{netblock};
@@ -2470,6 +2476,7 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}     ? $conf->{install_manifest}{$file}{common}{anvil}{password}     : $conf->{sys}{default_password};
 		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories} ? $conf->{install_manifest}{$file}{common}{anvil}{repositories} : "";
 		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}        ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}        : 8191;
+		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  : 1500;
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}]\n");
 		
 		# Media Library values
@@ -2994,6 +3001,9 @@ sub generate_install_manifest
 	### TODO: This isn't set for some reason, fix
 	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
 	
+	# This is currently not set by the program, but will be later.
+	$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{mtu_size} if not $conf->{cgi}{anvil_mtu_size};
+	
 	### KVM-based fencing is supported but not documented. Sample entries
 	### are here for those who might ask for it when building test Anvil!
 	### systems later.
@@ -3070,6 +3080,7 @@ Striker Version: $conf->{sys}{version}
 			<bridges>
 				<bridge name=\"ifn-bridge1\" on=\"ifn\" />
 			</bridges>
+			<mtu size=\"$conf->{cgi}{anvil_mtu_size}\" />
 		</networks>
 		<repository urls=\"$conf->{cgi}{anvil_repositories}\" />
 		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
@@ -5404,8 +5415,9 @@ sub footer
 # stamp
 sub get_date
 {
-	my ($conf, $time) = @_;
-	$time = time if not defined $time;
+	my ($conf, $time, $time_only) = @_;
+	$time      = time if not defined $time;
+	$time_only = 0 if not $time_only;
 	
 	my @time   = localtime($time);
 	my $year   = ($time[5] + 1900);
@@ -5416,7 +5428,7 @@ sub get_date
 	my $second = sprintf("%.2d", $time[0]);
 	
 	# this returns "yyyy-mm-dd_hh:mm:ss".
-	my $date = "$year-$month-$day $hour:$minute:$second";
+	my $date = $time_only ? "$hour:$minute:$second" : "$year-$month-$day $hour:$minute:$second";
 	
 	return ($date);
 }
@@ -5782,16 +5794,17 @@ sub read_files_on_shared
 sub record
 {
 	my ($conf, $message)=@_;
-
+	
 	my $fh = $conf->{handles}{'log'};
 	if (not $fh)
 	{
 		$fh = IO::Handle->new();
 		$conf->{handles}{'log'} = $fh;
 		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening Anvil! Striker log at ".get_date($conf, time)."\n";
+		print $fh "======\nOpening Striker log at ".get_date($conf, time)."\n";
 	}
-	print $fh $message;
+	my $time = get_date($conf, time, 1);
+	print $fh "$time $message";
 	$fh->flush;
 	
 	return (0);

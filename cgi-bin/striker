@@ -100,6 +100,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_ifn_subnet",
 	"anvil_media_library_size",
 	"anvil_media_library_unit",
+	"anvil_mtu_size",
 	"anvil_name",
 	"anvil_node1_bcn_ip",
 	"anvil_node1_bcn_link1_mac",

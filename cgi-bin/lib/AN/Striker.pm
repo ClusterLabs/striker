@@ -4611,6 +4611,39 @@ sub find_vm_host
 	return ($host);
 }
 
+# This gets the name of the bridge on the target node.
+sub get_bridge_name
+{
+	my ($conf, $node) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_bridge_name(); node: [$node]\n");
+	
+	my $bridge     = "";
+	my $shell_call = "brctl show";
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^(.*?)\s+\d/)
+		{
+			$bridge = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found bridge: [$bridge]\n");
+			last;
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bridge: [$bridge]\n");
+	return($bridge);
+}
+
 # This actually kicks off the VM.
 sub provision_vm
 {
@@ -4624,19 +4657,29 @@ sub provision_vm
 		title	=>	$say_title,
 	});
 	
+	# I need to know what the bridge is called.
+	my $node   = $conf->{new_vm}{host_node};
+	my $bridge = get_bridge_name($conf, $node);
+	
 	# Create the LVs
-	my $provision;
+	my $provision = "";
 	my $i = 0;
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
 	{
 		if (lc($conf->{new_vm}{vg}{$vg}{lvcreate_size}) eq "all")
 		{
-			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "then\n";
+			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "fi\n";
 			$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
 		}
 		else
 		{
-			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "then\n";
+			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "fi\n";
 			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
 		}
 		$i++;
@@ -4663,14 +4706,14 @@ sub provision_vm
 		#$provision .= "  --video cirrus \\\\\n";
 		$provision .= "  --video vga \\\\\n";
 	}
-	### TODO: Parse 'brctl show' for the bridge name.
+	# Connect to the discovered bridge
 	if ($conf->{new_vm}{virtio}{nic})
 	{
-		$provision .= "  --network bridge=ifn-bridge1,model=virtio \\\\\n";
+		$provision .= "  --network bridge=$bridge,model=virtio \\\\\n";
 	}
 	else
 	{
-		$provision .= "  --network bridge=ifn-bridge1,model=e1000 \\\\\n";
+		$provision .= "  --network bridge=$bridge,model=e1000 \\\\\n";
 	}
 	$i = 0;
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
@@ -4687,7 +4730,11 @@ sub provision_vm
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	if (not $conf->{sys}{use_spice_graphics})
+	if ($conf->{sys}{use_spice_graphics})
+	{
+		$provision .= "  --graphics spice \\\\\n";
+	}
+	else
 	{
 		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
 	}
@@ -4704,7 +4751,6 @@ sub provision_vm
 	}, {
 		script	=>	$script,
 	});
-	my $node = $conf->{new_vm}{host_node};
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4742,6 +4788,7 @@ sub provision_vm
 	$error = 0;
 	foreach my $line (@{$output})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
 		if ($line =~ /No such file or directory/i)
 		{
