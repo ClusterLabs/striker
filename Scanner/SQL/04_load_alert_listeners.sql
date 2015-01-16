@@ -16,9 +16,9 @@ SET search_path = public, pg_catalog;
 --
 
 COPY alert_listeners (id, name, mode, level, contact_info, language, added_by, updated) FROM stdin;
-	screen	SCREEN	DEBUG		en_CA	0	2014-12-11 14:42:13.273057-05
-	Tom Legrady	EMAIL	DEBUG	tom@alteeve.ca	en_CA	0	2014-12-11 16:54:25.477321-05
-	Health Monitor	Health_Monitor	WARNING	''	en_CA		2015-01-14 14:08:15-05
+1	screen	SCREEN	DEBUG		en_CA	0	2014-12-11 14:42:13.273057-05
+2	Tom Legrady	EMAIL	DEBUG	tom@alteeve.ca	en_CA	0	2014-12-11 16:54:25.477321-05
+3	Health Monitor	Health_Monitor	WARNING	''	en_CA		2015-01-14 14:08:15-05
 \.
 
 
@@ -26,7 +26,7 @@ COPY alert_listeners (id, name, mode, level, contact_info, language, added_by, u
 -- Name: alert_listeners_id_seq; Type: SEQUENCE SET; Schema: public; Owner: alteeve
 --
 
-SELECT pg_catalog.setval('alert_listeners_id_seq', 3, true);
+SELECT pg_catalog.setval('alert_listeners_id_seq', 4, true);
 
 
 --

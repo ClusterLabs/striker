@@ -2,7 +2,7 @@
 \echo provides the global settings, the 'history' schema and other
 \echo components that this file relies on \echo alread existing.
 \echo
-\echo To load this file: psql -U postgres -d scanner -f create_alert_listeners.sql
+\echo To load this file: psql -U postgres -d scanner -f 03_create_alert_listeners.sql
 
 \echo Drop existing instances to create new and clean
 
@@ -13,7 +13,7 @@ DROP TYPE   IF EXISTS level;
 DROP FUNCTION  IF EXISTS history_alert_listeners();
 
 \echo Create enum data type for the mode and level fields.
-CREATE TYPE mode  AS ENUM ( 'NONE', 'SCREEN', 'EMAIL' );
+CREATE TYPE mode  AS ENUM ( 'NONE', 'Screen', 'Email', 'HealthMonitor' );
 CREATE TYPE level AS ENUM ( 'NONE', 'DEBUG', 'WARNING', 'CRISIS' );
 
 
