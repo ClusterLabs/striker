@@ -75,6 +75,7 @@ sub process_args {
         confpath  => $DEFAULT_CONFIG_PATH, # configuration file.
         msg_file  => $MSG_DIR . $SLASH . $PROG,
 	datatable_name => $DATATABLE_NAME,
+        bindir    => $BINDIR,
     };
 
     GetOptions( $opt,         'rate=i',       'filepath=s',  'dbconf=s',
