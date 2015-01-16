@@ -41,18 +41,6 @@ const my $SPACE => q{ };
 # ......................................................................
 #
 
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath(
-              catdir( $self->path_to_configuration_files(), $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{raid} );
-}
-
 sub get_controller_count {
     my $self = shift;
 
@@ -63,6 +51,7 @@ sub get_controller_count {
     # Extract the part following  ' = ' and store as count;
     #
     my ($line) = (grep {/Number of Controllers/} @$response);
+    return 0 unless $line;
 
     my $count = (split ' = ', $line )[1];
     chomp $count;
@@ -75,10 +64,6 @@ sub BUILD {
     my $self = shift;
 
     return unless ref $self eq __PACKAGE__;
-
-    $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
-
-    $self->read_configuration_file;
     $self->confdata()->{controller_count} = $self->get_controller_count();
 
     return;
@@ -194,7 +179,7 @@ sub raid_request {
 
     my (@args) = @_;
 
-    my $cmd = getcwd() . $SLASH . $self->confdata()->{query};
+    my $cmd = $self->bindir . $SLASH . $self->confdata()->{query};
     local $LIST_SEPARATOR = $SPACE;
     $cmd .= " @args" if @args;
     say "raid cmd is $cmd" if grep {/raid_query/} $ENV{VERBOSE};
@@ -328,8 +313,13 @@ sub query_target {
     my $self = shift;
 
     $self->clear_summary();
+
+    # make sure $controllers & $drives can be de-referenced as arrays.
+    #
     my $controllers = $self->get_controller_temp();
+    $controllers ||= [];
     my $drives      = $self->get_drive_temp();
+    $drives      ||= [];
 
     $self->process_all_raid( [ @$controllers, @$drives ] );
     $self->process_summary();

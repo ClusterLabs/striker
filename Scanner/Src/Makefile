@@ -19,7 +19,7 @@ $(targets) : $(sources)
 	    echo "Only root can create wrappers.";	\
 	    echo "run as: sudo make";	\
 	else				\
-	    cc -o $@ $<;		\
+	    cc -o $@ $@.c;		\
 	    cp $@ ..;			\
 	    chown root:root ../$@;	\
 	    chmod 755  ../$@; 		\
