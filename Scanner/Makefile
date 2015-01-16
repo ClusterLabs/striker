@@ -46,7 +46,7 @@ scanner	:
 
 agents	: 
 	cp Agents/* $(AGENTDIR)
-	rm -f $(AGENTDIR)/random_agent
+	rm -f $(AGENTDIR)/random-agent
 
 libs	:
 	cp -r lib/* $(LIBDIR)
