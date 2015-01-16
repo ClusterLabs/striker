@@ -63,6 +63,7 @@ sub get_controller_count {
     # Extract the part following  ' = ' and store as count;
     #
     my ($line) = (grep {/Number of Controllers/} @$response);
+    return 0 unless $line;
 
     my $count = (split ' = ', $line )[1];
     chomp $count;
@@ -328,8 +329,13 @@ sub query_target {
     my $self = shift;
 
     $self->clear_summary();
+
+    # make sure $controllers & $drives can be de-referenced as arrays.
+    #
     my $controllers = $self->get_controller_temp();
+    $controllers ||= [];
     my $drives      = $self->get_drive_temp();
+    $drives      ||= [];
 
     $self->process_all_raid( [ @$controllers, @$drives ] );
     $self->process_summary();
