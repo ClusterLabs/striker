@@ -8,9 +8,12 @@
 # Devel::Cover files
 Scanner/t/cover_db
 
-# ignore compiled files
+# ignore compiled and object files
 wipmi
 wstorcli
+Scanner/Src/wipmi.o
+Scanner/Src/wstorcli.o
+
 
 # LSI Raid controller insists on creating log file.
 Scanner/MegaSAS.log
