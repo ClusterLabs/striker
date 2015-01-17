@@ -69,9 +69,7 @@ sub path_to_configuration_files {
 sub read_configuration_file {
     my $self = shift;
 
-    $self->confpath(
-              catdir( $self->path_to_configuration_files(), $self->confpath ) );
-
+    return unless $self->confpath;
     my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
@@ -84,10 +82,9 @@ sub BUILD {
     my ($args) = @_;
 
     $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+    $self->read_configuration_file;
 
     return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
-
-    $self->read_configuration_file;
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -103,7 +100,7 @@ sub BUILD {
                verbose  => $self->verbose(),
 
             } ) );
-    $ENV{VERBOSE} = '' unless defined $ENV{VERBOSE};
+    return;
 }
 
 sub alert_num {    # Return current value, increment to new value.
@@ -270,7 +267,8 @@ sub pid_file_is_recent {
     my $self = shift;
 
     my $file_age = $self->flagfile()->old_pid_file_age();
-    return $file_age < $self->rate * $self->max_loops_unrefreshed;
+    return $file_age
+	&&  $file_age < $self->rate * $self->max_loops_unrefreshed);
 }
 
 sub create_marker_file {
@@ -752,7 +750,7 @@ sub loop_core {
     $self->handle_alerts();
     
     if ( $verbose ) {
-        say "Total number of distinct alerts seen: " . scalar length %{ $self->seen };
+        say "Total number of distinct alerts seen: " . scalar length keys %{ $self->seen };
     }
     return;
 }

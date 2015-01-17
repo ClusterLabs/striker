@@ -46,11 +46,6 @@ const my $UNDERSCORE        => q{_};
 # ......................................................................
 #
 
-sub path_to_configuration_files {
-
-    return getcwd();
-}
-
 sub BUILD {
     my $self = shift;
 
@@ -63,7 +58,6 @@ sub BUILD {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    $self->dbconf( catdir( path_to_configuration_files(), $self->dbconf ) );
     return;
 }
 

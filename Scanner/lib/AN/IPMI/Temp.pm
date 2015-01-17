@@ -33,31 +33,14 @@ use Class::Tiny qw( confpath confdata prev );
 # CONSTANTS
 #
 const my $DATATABLE_NAME => 'ipmi';
-const my $PARENTDIR      => q{/../};
-   
+const my $SLASH          => q{/};   
 # ......................................................................
 #
-
-sub read_configuration_file {
-    my $self = shift;
-
-    $self->confpath( catdir( $self->path_to_configuration_files(),
-			     $self->confpath ) );
-
-    my %cfg = ( path => { config_file => $self->confpath } );
-    AN::Common::read_configuration_file( \%cfg );
-
-    $self->confdata( $cfg{ipmi} );    
-}
 
 sub BUILD {
     my $self = shift;
 
     return unless ref $self eq __PACKAGE__;
-
-    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
-
-    $self->read_configuration_file;
     return;
 }
 
@@ -142,7 +125,7 @@ sub ipmi_request {
     my $self = shift;
 
  
-    state $cmd = $Bin . $PARENTDIR . $self->confdata()->{query};
+    state $cmd = $self->bindir . $SLASH . $self->confdata()->{query};
     say "ipmi cmd is $cmd" if grep {/ipmi_query/} $ENV{VERBOSE};
 
     # read bottom to top ...

@@ -72,12 +72,15 @@ sub create_file {
 
     my $filename = $self->full_file_path( $args->{tag} );
 
+    no warnings;		# ignore msg re. use of $filename in END block
     open my $pidfile, '>', $filename
         or die "Could not create pidfile '$filename', $OS_ERROR";
     print {$pidfile} $args->{data}
         if $args->{data};
     close $pidfile
         or die "Could not close pidfile '$filename', $OS_ERROR";
+
+    END{ unlink $filename }; 	# delete file at program exit.
     return;
 }
 
