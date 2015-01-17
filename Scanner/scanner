@@ -27,15 +27,21 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $SYSTEMNAME      => 'striker';
+const my $binbase          => dirname $Bin;
 const my $AGENTDIR    
-    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? dirname $Bin . '/agents'
+    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? "${binbase}/agents"
 	 :                                         $Bin . '/Agents'
     );
+const my $BINDIR => (
+    ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
+    : ( ' Agents ' eq basename $Bin)              ? $binbase
+    :                                               $Bin );
 
 const my $TEXTBASE        
     => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? "/etc/${SYSTEMNAME}"
 	 :                                         $Bin
     );
+
 const my $DEFAULT_DB_CONF     => "${TEXTBASE}/Config/db.conf";
 const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/scanner.conf";
 const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
@@ -77,8 +83,7 @@ sub process_args {
         msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
         from      => $FROM,               # from and smtp used for email
         smtp      => $SMTP,
-        max_retries =>
-            $MAX_RETRIES,    # How many times to loop on AN::Common routiens
+        max_retries => $MAX_RETRIES,      # How many attempts in AN::Common
     };
 
     GetOptions( $opt,          'dbconf=s',   'rate=i',   'agentdir=s',
