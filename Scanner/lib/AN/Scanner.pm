@@ -684,7 +684,7 @@ sub detect_status {
 		     $db_record->target_type,
 		     $db_record->target_extra,
                      { timestamp => $db_record->timestamp }, );
-        say "Setting alert '$db_record->msg_tag' from $process->{db_data}{pid}."
+        say "Setting alert '" . $db_record->msg_tag .  "' in '" . $db_record->field . "' from $process->{db_data}{pid}."
             if $self->verbose;
         $self->set_alert(@args);
     }
