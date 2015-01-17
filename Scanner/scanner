@@ -84,6 +84,7 @@ sub process_args {
         from      => $FROM,               # from and smtp used for email
         smtp      => $SMTP,
         max_retries => $MAX_RETRIES,      # How many attempts in AN::Common
+	bindir    => $BINDIR,
     };
 
     GetOptions( $opt,          'dbconf=s',   'rate=i',   'agentdir=s',
