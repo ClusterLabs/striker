@@ -268,7 +268,7 @@ sub pid_file_is_recent {
 
     my $file_age = $self->flagfile()->old_pid_file_age();
     return $file_age
-	&&  $file_age < $self->rate * $self->max_loops_unrefreshed);
+	&&  $file_age < $self->rate * $self->max_loops_unrefreshed;
 }
 
 sub create_marker_file {
