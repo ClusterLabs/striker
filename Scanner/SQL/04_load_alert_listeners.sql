@@ -47,7 +47,7 @@ VALUES
 -- Name: alert_listeners_id_seq; Type: SEQUENCE SET; Schema: public; Owner: alteeve
 --
 
-SELECT pg_catalog.setval('alert_listeners_id_seq', 3, true);
+SELECT pg_catalog.setval('alert_listeners_id_seq', 4, true);
 
 
 --
