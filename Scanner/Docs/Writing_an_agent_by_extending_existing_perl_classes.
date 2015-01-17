@@ -53,38 +53,42 @@ Any tests for the modules should go in the 't' directory.
 	The Command-LIne Program
 	------------------------
 
-Make a copy of the 'anmp_apc_ups' file, giving it a name appropriate
+Make a copy of the 'raid' or 'ipmi' file, giving it a name appropriate
 to your target. I named my program to reflect the communication
-infrastructure ( SNMP ), the company providing the supported target
-device ( APC - Amemrican Power Corporation ) and the category of
-device ( UPS ).
+infrastructure ( raid ), but for snmp I appended the company providing
+the supported target device ( APC - Amemrican Power Corporation ) and
+the category of device ( UPS ).
 
-'snm_apc_ups' uses the AN::SNMP::APC_UPS module. You will write a
-module which inherits from AN::SNMP_APC_UPS. You will have the benefit
-of the class methods already provided in AN::SNMP::APC_UPS and its
-parent class AN::Agent, and its parent AN::SCanner. You will simply
-need to implement a few additional routines to provide the unique
-functionality for your target, and to replace a few of the provided
-routines.
+'raid' uses the AN::RAID::Temp module, which you can use as a template
+for your own module. You will write a module which inherits from
+AN::SNMP_APC_UPS. You will have the benefit of the class methods
+already provided in AN::SNMP::APC_UPS and its parent class AN::Agent,
+and its parent AN::SCanner. You will simply need to implement a few
+additional routines to provide the unique functionality for your
+target, and to replace a few of the provided routines.
 
 You will need to decide what to name your module. I used
-'AN::SNMP::APC_UPS', similar to the program name. In terms of the
-physical module file, the double-colons ('::') are interpreted as
-subdirectories under the 'lib' directory, so 'AN::SNMP::APC_UPS
-represents a file name 'APC_UPS.pm' located in the 'lib/AN/SNMP'
-directory. When you have chose a name, replace the existing line 24,
-'use AN::Agent', with the name of your module, e.g. 'use
-AN::SNMP::APC_UPS'.
+'AN::RAID::Temp', because it processes temperatures for the RAID
+subsystem.. In terms of the physical module file, the double-colons
+('::') are interpreted as subdirectories under the 'lib' directory, so
+'AN::RAID::Temp represents a file name 'Temp.pm' located in the
+'lib/AN/RAID' directory. When you have chose a name, replace the
+existing line 23, 'use AN::RAID::Temp', with the name of your module.
 
-In the 'CONSTANTS' section, at line 32, replace the name of the
-snmp_apc_ups configuration file with the name of your configuration
-file. As well, provide the name for your data table.
+In the 'CONSTANTS' section, at line 31, specify the name under which
+the entire system is installed. All existing programs will need to be
+updated if you use a different destination.  At line 32, replace the
+name of the configuration file $DEFAULT_CONFIG_PATH with the name of
+your configuration file. As well, provide the name for your data table
+$DATATABLE_NAME at line 49.
 
 If you want to pass additional information to your class obect, you
-can add new entries int he $opt set of default values, and provide
+can add new entries in the $opt set of default values, and provide
 command line options to be able to set alternate values in the
-'process_args' subroutine, lines 54-75. But more likely, configuration
-will be through the configuration file.
+'process_args' subroutine, lines 54-75. As well, you should probably
+create GetOptions specifications to manually adjust the options through
+command line options. But more likely, configuration will be through the
+configuration file.
 
 In your 'main' routine, at line 119, change the name of class being
 instanciated, to use the name of your module. Use the CLASSNAME->new()
