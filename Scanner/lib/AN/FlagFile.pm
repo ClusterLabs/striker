@@ -78,6 +78,8 @@ sub create_file {
         if $args->{data};
     close $pidfile
         or die "Could not close pidfile '$filename', $OS_ERROR";
+
+    END{ unlink $filename }; 	# delete file at program exit.
     return;
 }
 
