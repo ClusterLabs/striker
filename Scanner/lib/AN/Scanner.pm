@@ -69,6 +69,7 @@ sub path_to_configuration_files {
 sub read_configuration_file {
     my $self = shift;
 
+    return unless $self->confpath;
     my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 

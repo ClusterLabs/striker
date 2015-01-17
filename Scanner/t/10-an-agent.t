@@ -127,9 +127,10 @@ package main;
 #
 sub init_args {
 
-    return { 'dbconf'    => 'Config/db.conf',
+    my $parent = dirname $Bin;
+    return { 'dbconf'    => "$parent/Config/db.conf",
              'filepath'  => '/tmp/agents',
-             'msg_file'  => 'MESSAGES/random-agent',
+             'msg_file'  => "$parent/MESSAGES/random-agent.xml",
              'rate'      => 30,
              'run_until' => '23:59:59', };
 }
@@ -141,8 +142,6 @@ sub init_args {
 sub test_constructor {
     my $args  = init_args();
 
-    chdir '..' 
-	if 't' eq basename getcwd() ; 		# need getcwd() to be Scanner.
     my $agent = AN::Agent->new($args);
     isa_ok( $agent, 'AN::Agent', 'object ISA Agent object' );
 

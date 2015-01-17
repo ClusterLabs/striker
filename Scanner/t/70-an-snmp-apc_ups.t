@@ -116,8 +116,8 @@ my $dbfile = '/t/db.conf';
 
 sub create_db_file {
 
-
-  open my $conf, '>', getcwd() . '/' .   $dbfile;
+    my $parent = dirname $Bin;
+    open my $conf, '>', "${parent}/${dbfile}";;
     print $conf <<"EOCONF";
 db::1::name      = scanner
 db::1::db_type   = Pg
@@ -131,7 +131,8 @@ EOCONF
 }
 
 sub delete_db_file {
-  unlink  getcwd() . '/' .  $dbfile;
+    my $parent = dirname $Bin;
+    unlink "${parent}/${dbfile}";
 }
 
 # ----------------------------------------------------------------------
@@ -139,13 +140,15 @@ $ENV{VERBOSE} = '';
 
 sub test_constructor {
 
-  my $snmp = AN::SNMP::APC_UPS->new( { rate      => 50000,
-				       run_until => '23:59:59',
-				       confpath  => 'Config/snmp_apc_ups.conf',
-				       dbconf    => $dbfile,
-				     } );
-  $snmp->connect_dbs();
-  return $snmp;
+    my $parent = dirname $Bin;
+    my $snmp = AN::SNMP::APC_UPS->new(
+	{ rate      => 50000,
+	  run_until => '23:59:59',
+	  confpath  => "$parent/Config/snmp_apc_ups.conf",
+	  dbconf    => "$parent/$dbfile",
+	} );
+    $snmp->connect_dbs();
+    return $snmp;
 }
 
 # ----------------------------------------------------------------------
