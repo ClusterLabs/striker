@@ -29,19 +29,20 @@ use Const::Fast;
 # CONSTANTS
 #
 const my $SYSTEMNAME      => 'striker';
+const my $binbase    => dirname $Bin;
 const my $AGENTDIR       
-    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/bin") ? dirname $Bin . '/agents'
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/bin") ? "${binbase}/agents"
 	 :                                           $Bin 
     );
 const my $BINDIR
-    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/agents") ? dirname $Bin . 'bin'
-	 : ( 'Agents' eq basename $Bin)               ? dirname $Bin 
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/agents") ? "${binbase}/bin"
+	 : ( 'Agents' eq basename $Bin)               ? $binbase 
 	 :                                              $Bin
     );
 
 const my $TEXTBASE  
-    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/bin") ? "/etc/${SYSTEMNAME}"
-	 :                                           dirname $Bin
+    => ( ($Bin  eq "/usr/share/${SYSTEMNAME}/agents") ? "/etc/${SYSTEMNAME}"
+	 :                                            $binbase
     );
 
 const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
@@ -75,7 +76,7 @@ sub process_args {
         filepath  => '/tmp/agents',        # directory to scan for agents.
         dbconf    => $DEFAULT_DB_CONFIG,   # DB configuration file.
         confpath  => $DEFAULT_CONFIG_PATH, # configuration file.
-        msg_file  => $MSG_DIR . $PROG,
+        msg_file  => "${MSG_DIR}/${PROG}.xml",
 	datatable_name => $DATATABLE_NAME,
 	bindir    => $BINDIR,
     };

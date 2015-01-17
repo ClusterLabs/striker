@@ -113,12 +113,6 @@ sub verify_args {
 #
 
 sub main {
-
-    # When run manually, program starts in 'agents' dir; when run by
-    # scanner, cwd() is one level higher. Lets make things consistent.
-    #
-    chdir $BINDIR;
-
     my $options = process_args();
 
     my $agent = AN::IPMI::Temp->new($options);

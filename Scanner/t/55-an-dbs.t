@@ -128,7 +128,6 @@ package main;
 sub std_dbconf {
 
     return { 1 => { 'db_type'  => 'Pg',
-                    'host'     => '10.255.4.251',
                     'name'     => 'scanner',
                     'password' => 'alteeve',
                     'port'     => 5432,
@@ -163,7 +162,9 @@ sub test_constructor {
     isa_ok( $dbs, 'AN::DBS', 'DBS object' );
 
     is_deeply( $dbs->path,   $config_file, 'DBS obj has right config path.' );
-    is_deeply( $dbs->dbconf, std_dbconf(), 'DBS obj has right config data.' );
+    my $conf = $dbs->dbconf;
+    delete $conf->{1}{host};
+    is_deeply( $conf, std_dbconf(), 'DBS obj has right config data.' );
 
     my $onedb = $dbs->dbs->[0];
     isa_ok( $onedb, 'AN::OneDB', q{DBS object's dbs attribute'} );
@@ -236,7 +237,9 @@ sub test_fetch_alert_data {
             'fetch_alert_data() returns array of OneAlerts' );
 
     my $std = $AGENT_RECORD->{1};
-    @{$std}{qw(db_type db)} = ( 'Pg', '10.255.4.251' );
+    $std->{db_type} =  'Pg';
+    delete $record->{db};
+    delete $std->{db};
     is_deeply( $record, $std, 'fetch_alert_data() OK' );
 
     return;
