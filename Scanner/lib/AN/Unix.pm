@@ -67,7 +67,7 @@ sub new_bg_process {
     my $bg_obj = ( @args
                    ? Proc::Background->new( $TERMINATE_FLAG, $process )
                    : Proc::Background->new( $TERMINATE_FLAG, $process, @args )
-                 );
+                 ) || Carp "Failed to launch $process $args.";
     my $bg_pid = $bg_obj->pid;
     return { process => $bg_obj, pid => $bg_pid };
 }
