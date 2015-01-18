@@ -6689,7 +6689,7 @@ sub gather_node_details
 	else
 	{
 		check_if_on($conf, $node);
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 0)
 		{
 			$conf->{'system'}{show_nodes}         = 1;
@@ -8089,7 +8089,7 @@ sub parse_clustat
 sub parse_cluster_conf
 {
 	my ($conf, $node, $array) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
 	
 	my $in_fod          = 0;
 	my $current_fod     = "";
@@ -8195,13 +8195,19 @@ sub parse_cluster_conf
 		}
 		if (($in_method) && ($line =~ /<device\s/))
 		{
-			my $name   = $line =~ /name="(.*?)"/   ? $1 : "";
-			my $port   = $line =~ /port="(.*?)"/   ? $1 : "";
-			my $action = $line =~ /action="(.*?)"/ ? $1 : "";
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}   = $name;
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}   = $port;
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action} = $action;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
+			my $name     = $line =~ /name="(.*?)"/   ? $1 : "";
+			my $port     = $line =~ /port="(.*?)"/   ? $1 : "";
+			my $action   = $line =~ /action="(.*?)"/ ? $1 : "";
+			my $address  = $line =~ /ipaddr="(.*?)"/ ? $1 : "";
+			my $login    = $line =~ /login="(.*?)"/  ? $1 : "";
+			my $password = $line =~ /passwd="(.*?)"/ ? $1 : "";
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}     = $name;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}     = $port;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}   = $action;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}  = $address;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}    = $login;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password} = $password;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}], address: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}], login: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}], password: [".length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long]\n");
 			$device_count++;
 		}
 		
@@ -8220,16 +8226,18 @@ sub parse_cluster_conf
 		{
 			my $name     = $line =~ /name="(.*?)"/   ? $1 : "";
 			my $agent    = $line =~ /agent="(.*?)"/  ? $1 : "";
+			my $action   = $line =~ /action="(.*?)"/ ? $1 : "";
 			my $address  = $line =~ /ipaddr="(.*?)"/ ? $1 : "";
 			my $login    = $line =~ /login="(.*?)"/  ? $1 : "";
 			my $password = $line =~ /passwd="(.*?)"/ ? $1 : "";
 			# If the password has a single-quote, ricci changes it to &apos;. We need to change it back.
 			$password =~ s/&apos;/'/g;
 			$conf->{fence}{$name}{agent}    = $agent;
+			$conf->{fence}{$name}{action}   = $action;
 			$conf->{fence}{$name}{address}  = $address;
 			$conf->{fence}{$name}{login}    = $login;
 			$conf->{fence}{$name}{password} = $password;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}], action: [$conf->{fence}{$name}{action}]\n");
 		}
 		
 		# Find VMs.
@@ -8282,6 +8290,21 @@ sub parse_cluster_conf
 						my $login    = $conf->{fence}{$name}{login};
 						my $password = $conf->{fence}{$name}{password};
 						my $port     = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port};
+						
+						# See if we need to use values from the per-node definitions.
+						# These override the general fence device configs if needed.
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address})
+						{
+							$address = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address};
+						}
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login})
+						{
+							$login = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login};
+						}
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})
+						{
+							$password = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password};
+						}
 						#my $action   = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action};
 						#   $action   = "reboot" if not $action;
 						my $command  = "$agent -a $address ";
@@ -8315,6 +8338,7 @@ sub parse_cluster_conf
 		}
 		$conf->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
+	### NOTE: These expose passwords!
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence command: [$conf->{node}{$node}{info}{fence_methods}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer], fence command: [$conf->{node}{$peer}{info}{fence_methods}]\n");
 	
@@ -8685,7 +8709,7 @@ sub check_if_on
 		$peer = @{$conf->{up_nodes}}[0];
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	if ($peer)
 	{
 		# Check the power state using the peer node.
@@ -8716,10 +8740,10 @@ sub check_if_on
 			'close'		=>	0,
 			shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o status",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
@@ -8974,19 +8998,19 @@ sub on_same_network
 sub write_node_cache
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
 	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		push @lines, "host_name = $conf->{node}{$node}{info}{host_name}\n";
 		push @lines, "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
 		push @lines, "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
@@ -9012,7 +9036,7 @@ sub write_node_cache
 	if (@lines > 0)
 	{
 		my $fh         = IO::Handle->new();
-		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
 		open ($fh, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
 				uid		=>	$<,
@@ -9032,13 +9056,13 @@ sub write_node_cache
 sub read_node_cache
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
 	
 	# Write the command to disk so that I can check the power state
 	# in the future when both nodes are offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
 	if (not -e $cache_file)
 	{
 		# See if there is a version with or without '<node>.remote'
@@ -9107,7 +9131,7 @@ sub read_node_cache
 		$conf->{clusters}{$cluster}{cache_exists} = 0;
 		$conf->{node}{$node}{info}{host_name}     = $node;
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	
 	return(0);
 }
