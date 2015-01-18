@@ -33,7 +33,6 @@ use Class::Tiny qw( confpath confdata prev summary sumweight bindir );
 # ======================================================================
 # CONSTANTS
 #
-const my $DATATABLE_NAME => 'snmp_apc_ups';
 
 # ......................................................................
 #
@@ -73,9 +72,9 @@ sub normalize_global_and_local_config_data {
     # Recursively copy global / default values to local
     # areas, unless they are already specified.
     #
-  TAG:
+TAG:
     for my $tag (qw( global local )) {
-	next TAG if $tag eq 'summary';
+        next TAG if $tag eq 'summary';
         $self->deep_copy( $confdata->{$tag}, @{$confdata}{@targets} );
         delete $confdata->{$tag};
     }
@@ -102,7 +101,7 @@ sub prep_reverse_cache_and_prev_values {
         $dataset->{oids} = \@oids;
     }
     $prev{summary}{status} = 'OK';
-    $prev{summary}{value} = 0;
+    $prev{summary}{value}  = 0;
     $self->prev( \%prev );
 
 }
@@ -111,6 +110,7 @@ sub BUILD {
     my $self = shift;
 
     $self->clear_summary();
+
     # Don't run for sub-classes.
     #
     return unless ref $self eq __PACKAGE__;
@@ -124,7 +124,7 @@ sub BUILD {
 sub clear_summary {
     my $self = shift;
 
-    $self->summary([]);
+    $self->summary( [] );
     $self->sumweight(0);
 }
 
@@ -133,7 +133,7 @@ sub summarize_status {
     my ( $status, $weight ) = @_;
 
     push @{ $self->summary() }, $status;
-    $self->sumweight($self->sumweight() + $weight);
+    $self->sumweight( $self->sumweight() + $weight );
 }
 
 # The global / local config data processing means there are multiple
@@ -141,32 +141,30 @@ sub summarize_status {
 #
 sub process_summary {
     my $self = shift;
-    
-    my $prev     = $self->prev();
 
-    my $prev_summary 
-	= ( exists $prev->{summary}            ? $prev->{summary}
-	    : (exists $prev->{1}
-	       && exists $prev->{1}{summary} ) ? exists $prev->{1}{summary}
-	    :         carp "Can't find prev->{summary} in process_summary()."
-	);
+    my $prev = $self->prev();
+
+    my $prev_summary = (
+            exists $prev->{summary} ? $prev->{summary}
+            : (    exists $prev->{1}
+                && exists $prev->{1}{summary} ) ? exists $prev->{1}{summary}
+            : carp "Can't find prev->{summary} in process_summary()." );
 
     return
-	if $self->sumweight() == 0 and $prev_summary->{status} eq 'OK';
+        if $self->sumweight() == 0 and $prev_summary->{status} eq 'OK';
 
     my $metadata = $self->confdata();
     $metadata = $metadata->{1} unless exists $metadata->{type};
 
     my $rec_meta = $metadata->{summary} || $metadata->{1}{summary};
-    
-    my $args = { tag => 'summary',
-		 value => $self->sumweight(),
-		 rec_meta => $rec_meta,
-		 prev_status => $prev_summary->{status},
-		 prev_value => $prev_summary->{value},
-		 metadata => $metadata
-    };
-    $self->eval_status( $args );
+
+    my $args = { tag         => 'summary',
+                 value       => $self->sumweight(),
+                 rec_meta    => $rec_meta,
+                 prev_status => $prev_summary->{status},
+                 prev_value  => $prev_summary->{value},
+                 metadata    => $metadata };
+    $self->eval_status($args);
 }
 
 sub insert_agent_record {
@@ -174,12 +172,12 @@ sub insert_agent_record {
     my ( $args, $msg ) = @_;
 
     my $msg_args = join q{;},
-                        grep { defined $_ && length $_ }
-                             ($msg->{args}, $args->{dev});
-    my $name     = $args->{metadata}{name} || $args->{metadata}{host};
+        grep { defined $_ && length $_ } ( $msg->{args}, $args->{dev} );
+    my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
+    my $table = '';  #$->{db}{table}{$args->{tag}} || $info->{db}{table}{other},
     $self->insert_raw_record(
-                              { table              => $self->datatable_name,
+                              { table              => $table,
                                 with_node_table_id => 'node_id',
                                 args               => {
                                       value => $msg->{newval} || $args->{value},
@@ -201,23 +199,23 @@ sub insert_alert_record {
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(
-                              { table              => $self->alerts_table_name,
-                                with_node_table_id => 'node_id',
-                                args               => {
-                                      value => $msg->{newval} || $args->{value},
-                                      units => $args->{rec_meta}{units} || '',
-                                      field => $msg->{label} || $args->{tag},
-                                      status   => $msg->{status},
-                                      msg_tag  => $msg->{tag},
-                                      msg_args => $msg->{args},
-				      target_name  => $name,
-				      target_type  => $args->{metadata}{type},
-				      target_extra => $args->{metadata}{ip},
-  
-                               },
-                              } );
-    $self->summarize_status( $msg->{status}, 1)
-	if $msg->{status} eq 'CRISIS';
+        {  table              => '',          #$info->{db}{table}{alerts},
+           with_node_table_id => 'node_id',
+           args               => {
+               value => $msg->{newval}           || $args->{value},
+               units => $args->{rec_meta}{units} || '',
+               field => $msg->{label}            || $args->{tag},
+               status       => $msg->{status},
+               msg_tag      => $msg->{tag},
+               msg_args     => $msg->{args},
+               target_name  => $name,
+               target_type  => $args->{metadata}{type},
+               target_extra => $args->{metadata}{ip},
+
+                   },
+        } );
+    $self->summarize_status( $msg->{status}, 1 )
+        if $msg->{status} eq 'CRISIS';
     return;
 }
 
@@ -225,7 +223,8 @@ sub eval_discrete_status {
     my $self = shift;
     my ($args) = @_;
 
-    my  $msg = {args => '', tag => '', label => '', newval => '', status => '' };
+    my $msg
+        = { args => '', tag => '', label => '', newval => '', status => '' };
 
     if ( $args->{tag} eq 'battery replace' ) {
         $msg->{newval} = $args->{rec_meta}{values}{ $args->{value} } || '';
@@ -264,7 +263,7 @@ sub eval_discrete_status {
              && $args->{prev_value} ne $msg->{newval} ) {
             $msg->{status} = 'DEBUG';
             $msg->{tag}    = "value changed";
-            $msg->{args}   = "prevvalue=$args->{prev_value};value=$msg->{newval}";
+            $msg->{args} = "prevvalue=$args->{prev_value};value=$msg->{newval}";
         }
         else {
             $msg->{status} = 'OK';
@@ -295,11 +294,10 @@ sub eval_discrete_status {
     $args->{prev_status} ||= '';
 
     $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )	
-	if  $msg->{status} ne 'OK'
-	|| (    $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' )
-        ;
-    
+    $self->insert_alert_record( $args, $msg )
+        if $msg->{status} ne 'OK'
+        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+
     return ( $msg->{status}, $msg->{newval} || $args->{value} );
 }
 
@@ -309,7 +307,7 @@ sub eval_rising_status {
 
     my $h = ( $args->{rec_meta}{hysteresis} || 0 ) / 2;
 
-    my $msg = {args => '', tag => ''};
+    my $msg = { args => '', tag => '' };
 
     # 1) Previous status was OK, allow small overage before not OK
     #
@@ -367,10 +365,10 @@ sub eval_rising_status {
     }
 
     $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )	
-	if  $msg->{status} ne 'OK'
-	|| (    $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
-    
+    $self->insert_alert_record( $args, $msg )
+        if $msg->{status} ne 'OK'
+        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+
     return ( $msg->{status} );
 }
 
@@ -382,7 +380,7 @@ sub eval_falling_status {
 
     $args->{value} =~ s{([\d+.]+).*}{$1};    # convert '43 minutes' => '43'
 
-    my $msg = {args => '', tag => ''};
+    my $msg = { args => '', tag => '' };
 
     # 1) Previous status was OK, allow small underaage before not OK
     #
@@ -442,9 +440,8 @@ sub eval_falling_status {
 
     $self->insert_agent_record( $args, $msg );
     $self->insert_alert_record( $args, $msg )
-	if  $msg->{status} ne 'OK'
-	|| (    $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' )
-        ;
+        if $msg->{status} ne 'OK'
+        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
 
     return ( $msg->{status}, $args->{value} );
 }
@@ -455,7 +452,7 @@ sub eval_nested_status {
 
     my $h = ( $args->{rec_meta}{hysteresis} || 0 ) / 2;
 
-    my $msg = {args => '', tag => ''};
+    my $msg = { args => '', tag => '' };
 
     # 1) Previous status was OK, allow small overage before not OK
     #
@@ -520,15 +517,15 @@ sub eval_nested_status {
         $msg->{args}   = "value=$args->{value}";
     }
     $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )	
-	if  $msg->{status} ne 'OK'
-	|| (    $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+    $self->insert_alert_record( $args, $msg )
+        if $msg->{status} ne 'OK'
+        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
 
     return ( $msg->{status} );
 }
 
 sub eval_status {
-    my ($self, $args) = @_;
+    my ( $self, $args ) = @_;
 
     return &eval_discrete_status
         unless ( exists $args->{rec_meta}{ok_min} );    # not range data.
@@ -568,7 +565,7 @@ sub process_all_oids {
         $i++;
 
         my $args = { tag         => $tag,
-		     value       => $value,
+                     value       => $value,
                      rec_meta    => $rec_meta,
                      prev_status => $prev_status,
                      prev_value  => $prev_value,
@@ -582,7 +579,7 @@ sub process_all_oids {
 
 sub snmp_connect {
     my $self = shift;
-    my ($metadata) = @_;
+    my ( $metadata, $dbtables ) = @_;
 
     my $meta;
 
@@ -593,25 +590,28 @@ sub snmp_connect {
                               -community => $meta->{pw},
                               -version   => 'snmpv2c', );
     if ( !defined $session ) {
-        my $args = { table              => $self->datatable_name,
+        my $args = { table              => $dbtables->{other},
                      with_node_table_id => 'node_id',
                      args               => {
-                               target_name  => $meta->{name},
-                               target_type  => $meta->{type},
-                               target_extra => $meta->{ip},
-                               value        => $meta->{name},
-                               units        => '',
-                               field        => 'Net::SNMP connect',
-                               status       => 'CRISIS',
-                               msg_tag      => 'Net-SNMP connect failed',
-                               msg_args     => "errormsg=" . $error,
+                               target   => $meta->{type},
+                               value    => $meta->{name},
+                               units    => '',
+                               field    => 'Net::SNMP connect',
+                               status   => 'CRISIS',
+                               msg_tag  => 'Net-SNMP connect failed',
+                               msg_args => "errormsg=" . $error,
                              }, };
 
         $self->insert_raw_record($args);
 
-        $args->{table} = $self->alerts_table_name;
+	$args->{target_type}  = $args->{target};
+	delete $args->{args}{target};
+
+	$args->{target_name}  = $meta->{name};
+	$args->{target_extra} = $meta->{ip};
+	$args->{table}        = $dbtables->{alerts};
         $self->insert_raw_record($args);
-	$self->summarize_status( 'CRISIS', 999);
+        $self->summarize_status( 'CRISIS', 999 );
     }
 
     return ( $meta, $session );
@@ -626,10 +626,12 @@ sub query_target {
 TARGET:    # For each snmp target (1, 2, ... ) in the config file
     for my $target ( keys %$info ) {
         my $metadata = $info->{$target};
+        my $dbtables = $info->{db}{table};
 
         # Connect to the target, if possible.
         #
-        my ( $meta_out, $session ) = $self->snmp_connect($metadata);
+        my ( $meta_out, $session )
+            = $self->snmp_connect( $metadata, $dbtables );
         next TARGET unless $session;
 
         # Fetch list of data
@@ -638,26 +640,29 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             = $session->get_request( -varbindlist => $metadata->{oids}, );
 
         if ( not defined $received ) {
-            my $args = { table              => $self->datatable_name,
+            my $args = { table              => $dbtables->{other},
                          with_node_table_id => 'node_id',
                          args               => {
-                                   target_name  => $meta_out->{name},
-                                   target_type  => $meta_out->{type},
-                                   target_extra => $meta_out->{ip},
-                                   value        => $meta_out->{name},
-                                   units        => '',
-                                   field        => 'Net::SNMP fetch data',
-                                   status       => 'CRISIS',
+                                   target   => $meta_out->{type},
+                                   value    => $meta_out->{name},
+                                   units    => '',
+                                   field    => 'Net::SNMP fetch data',
+                                   status   => 'CRISIS',
                                    msg_tag  => 'Net-SNMP->get_request() failed',
                                    msg_args => "errormsg=" . $session->error,
                                  }, };
 
             $self->insert_raw_record($args);
 
-            $args->{table} = $self->alerts_table_name;
+	    $args->{target_type}  = $args->{target};
+	    delete $args->{args}{target};
+	    
+	    $args->{target_name}  = $meta_out->{name};
+	    $args->{target_extra} = $meta_out->{ip};
+            $args->{table}        = $dbtables->{alerts};
             $self->insert_raw_record($args);
 
-	    $self->summarize_status( 'CRISIS', 999);
+            $self->summarize_status( 'CRISIS', 999 );
 
             next TARGET;
         }
