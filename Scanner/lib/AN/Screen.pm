@@ -25,7 +25,7 @@ use Class::Tiny qw( attr );
 #
 sub dispatch {
     my $self = shift;
-    my ($msgs, $owner, $sumweight) = @_;
+    my ( $msgs, $owner, $sumweight ) = @_;
 
     say "Total crisis weight is $sumweight." if $sumweight;
     say for @$msgs;

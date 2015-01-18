@@ -143,8 +143,7 @@ FILE:
 
     # detect and drop deleted files
     #
-    my (@dropped)
-        = sort grep { 0 == $files{$_} }
+    my (@dropped) = sort grep { 0 == $files{$_} }
         keys %files;    # file keys with zero value.
     delete @files{@dropped};
 

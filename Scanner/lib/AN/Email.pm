@@ -55,13 +55,15 @@ sub write_to_temp {
 sub send_msg {
     my ( $file, $to, $subject ) = @_;
 
+    state $verbose = grep {/email/} $ENV{VERBOSE};
     state $MAILX = (   -e $USRBIN && -x _ ? $USRBIN
                      : -e $BIN    && -x _ ? $BIN
                      :   die __PACKAGE__ . q{can't find 'mailx'.} );
 
     #    my $cmd = "$MAILX -A gmail -s '$subject' $to < $file";
     my $cmd = "$MAILX -s '$subject' $to < $file";
-    say "Emailing: $cmd";
+    say "Emailing: $cmd"
+        if $verbose;
 
     return system $cmd;
 }
@@ -70,9 +72,11 @@ sub dispatch {
     my $self = shift;
     my ( $msgs, $listener, $sumweight ) = @_;
 
-    my $to      = $listener->contact_info;
-    my $subject = $sumweight ? "$sumweight CRISIS events on HA scanner"
-                :              scalar @$msgs . " Messages from HA scanner";
+    my $to = $listener->contact_info;
+    my $subject
+        = $sumweight
+        ? "$sumweight CRISIS events on HA scanner"
+        : scalar @$msgs . " Messages from HA scanner";
 
     my $file = write_to_temp $msgs;
 

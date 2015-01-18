@@ -14,9 +14,6 @@ use Carp;
 use File::Basename;
 use File::Spec::Functions 'catdir';
 
-#use FileHandle;
-#use IO::Select;
-#use Time::Local;
 use FindBin qw($Bin);
 use Clone 'clone';
 use Const::Fast;
@@ -38,7 +35,6 @@ const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 # Subroutines
 #
 
-    
 # ======================================================================
 # Methods
 #

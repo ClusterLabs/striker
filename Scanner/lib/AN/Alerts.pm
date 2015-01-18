@@ -47,10 +47,11 @@ sub BUILD {
         if ( $pid && $agent ) {
             $self->agents( { $pid => $agent } );
 
-            my $xlator_args = { pid    => $pid,
-				agents => { $pid => $agent } ,
-				sys    => { error_limit => $self->owner()->max_retries() },
-	    };
+            my $xlator_args = {
+                        pid    => $pid,
+                        agents => { $pid => $agent },
+                        sys => { error_limit => $self->owner()->max_retries() },
+            };
             $self->xlator( AN::Msg_xlator->new($xlator_args) );
 
             $self->owner($owner);
@@ -67,7 +68,7 @@ sub BUILD {
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $ALERT_MSG_FORMAT_STR => 'id %s | %s: %s->%s (%s);%s %s: %s';
-const my $TARGET_INFO_FMT      => ' ( %s %s %s )'; # leading space is needed.
+const my $TARGET_INFO_FMT => ' ( %s %s %s )';    # leading space is needed.
 
 const my %LEVEL => ( DEBUG   => 'DEBUG',
                      WARNING => 'WARNING',
@@ -176,9 +177,9 @@ sub add_agent {
     return;
 }
 
-sub  fetch_agent {
+sub fetch_agent {
     my $self = shift;
-    my ( $key ) = @_;
+    my ($key) = @_;
 
     return unless $self->agents()->{$key};
     return $self->agents()->{$key};
@@ -204,15 +205,15 @@ sub alert_exists {
     my $self = shift;
     my ( $key1, $key2 ) = @_;
 
-    return unless $key1;	# Can't query if no key1
+    return unless $key1;    # Can't query if no key1
 
-    $key2 ||= '+';	
+    $key2 ||= '+';
 
     my $alerts = $self->alerts;
 
-    return unless keys %$alerts;            # No alerts have been set
-    return unless exists  $alerts->{$key1}; # Alerts exist, any for key1?
-    return  exists $alerts->{$key1}{$key2}; # Figure out if any for key2
+    return unless keys %$alerts;              # No alerts have been set
+    return unless exists $alerts->{$key1};    # Alerts exist, any for key1?
+    return exists $alerts->{$key1}{$key2};    # Figure out if any for key2
 }
 
 # ......................................................................
@@ -227,9 +228,9 @@ sub extract_time_and_modify_array {
             $timestamp = $tsh->{timestamp};
             delete $tsh->{timestamp};
 
-	    # If $tsh only contained a timestamp, remove entire element
-	    # from array.
-	    splice( @$array, $idx ) unless scalar keys %$tsh;
+            # If $tsh only contained a timestamp, remove entire element
+            # from array.
+            splice( @$array, $idx ) unless scalar keys %$tsh;
         }
     }
     return $timestamp || strftime '%F %T%z', localtime;
@@ -237,27 +238,26 @@ sub extract_time_and_modify_array {
 
 sub set_alert {
     my $self = shift;
-    my ( $id,    $src,     $field,    $value, $units,
-         $level, $msg_tag, $msg_args, $target_name,
-	 $target_type, $target_extra, @others )
+    my ( $id,          $src,         $field,        $value,
+         $units,       $level,       $msg_tag,      $msg_args,
+         $target_name, $target_type, $target_extra, @others )
         = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others );
 
-    my $args = { id        => $id,
-                 pid       => $src,
-                 timestamp => $timestamp,
-                 field     => $field,
-                 value     => $value,
-                 units     => $units,
-                 status    => $level,
-                 msg_tag   => $msg_tag,
-                 msg_args  => $msg_args,
-		 target_name => $target_name,
-		 target_type => $target_type,
-		 target_extra => $target_extra,
-                 other     => ( @others? \@others : '' ),
-    };
+    my $args = { id           => $id,
+                 pid          => $src,
+                 timestamp    => $timestamp,
+                 field        => $field,
+                 value        => $value,
+                 units        => $units,
+                 status       => $level,
+                 msg_tag      => $msg_tag,
+                 msg_args     => $msg_args,
+                 target_name  => $target_name,
+                 target_type  => $target_type,
+                 target_extra => $target_extra,
+                 other        => ( @others ? \@others : '' ), };
     $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
 }
@@ -280,14 +280,14 @@ sub clear_alert {
 sub has_dispatcher {
     my ($listener) = @_;
 
-    die("Alerts::has_dispatcher() was invoked by " . caller() );
+    die( "Alerts::has_dispatcher() was invoked by " . caller() );
     return $listener->dispatcher;
 }
 
 sub add_dispatcher {
     my ($listener) = @_;
 
-    die("Alerts::add_dispatcher() was invoked by " . caller() );
+    die( "Alerts::add_dispatcher() was invoked by " . caller() );
     $listener->dispatcher('asd');
     return;
 }
@@ -295,7 +295,7 @@ sub add_dispatcher {
 sub dispatch {
     my ( $listener, $msgs ) = @_;
 
-    die("Alerts::dispatch() was invoked by " . caller() );
+    die( "Alerts::dispatch() was invoked by " . caller() );
     $listener->{dispatcher}->dispatch($msgs);
 }
 
@@ -304,7 +304,7 @@ sub dispatch_msg {
     my ( $listener, $msgs, $sumweight ) = @_;
 
     $listener->add_dispatcher() unless $listener->has_dispatcher();
-    $listener->dispatch_msg($msgs, $sumweight);
+    $listener->dispatch_msg( $msgs, $sumweight );
     return;
 }
 
@@ -314,21 +314,23 @@ sub format_msg {
 
     my $agent = $self->agents()->{ $alert->pid };
 
-    my $other_array =  'ARRAY' eq ref $alert->other ? @{ $alert->other }
-                    :                                 q{};
+    my $other_array
+        = 'ARRAY' eq ref $alert->other
+        ? @{ $alert->other }
+        : q{};
     my $other = join ' : ',
-                    grep {/\S/}  $other_array, @{$alert}{qw(field value units)};
+        grep {/\S/} $other_array, @{$alert}{qw(field value units)};
 
-    my $target_info
-	= ( $alert->{target_type}
-	    ? sprintf( $TARGET_INFO_FMT,
-		       (@{$alert}{qw(target_type target_name target_extra)}))
-	    : '');
+    my $target_info = (
+             $alert->{target_type}
+             ? sprintf( $TARGET_INFO_FMT,
+                       ( @{$alert}{qw(target_type target_name target_extra)} ) )
+             : '' );
     my $formatted = sprintf( $ALERT_MSG_FORMAT_STR,
                              $alert->{id} || 'na', $alert->timestamp,
-                             $agent->{hostname},   $agent->{program},
-			     $agent->{pid},        $target_info,
-			     $alert->status,       $msg );
+                             $agent->{hostname}, $agent->{program},
+                             $agent->{pid},      $target_info,
+                             $alert->status,     $msg );
     $formatted .= "; ($other)" if $other;
     return $formatted;
 }
@@ -370,19 +372,20 @@ sub handle_alerts {
                 next ALERT unless $alert->listening_at_this_level($listener);
 
                 $lookup->{key} = $alert->msg_tag();
-		if ( $alert->msg_args() && length $alert->msg_args() ) {
-		    map { my ($k, $v) = split '=';
-			  $lookup->{variables}{$k} = $v;
-		        } split ';', $alert->msg_args();
-		}
-		
+                if ( $alert->msg_args() && length $alert->msg_args() ) {
+                    map {
+                        my ( $k, $v ) = split '=';
+                        $lookup->{variables}{$k} = $v;
+                    } split ';', $alert->msg_args();
+                }
+
                 my $msg = $self->xlator()
                     ->lookup_msg( $key, $lookup, $self->agents->{$key} );
-		push @msgs, $self->format_msg( $alert, $msg );
+                push @msgs, $self->format_msg( $alert, $msg );
             }
         }
         $self->dispatch_msg( $listener, \@msgs, $self->owner->sumweight )
-	    if @msgs || $listener->mode eq 'HealthMonitor';
+            if @msgs || $listener->mode eq 'HealthMonitor';
     }
     $self->mark_alerts_as_reported();
     return;

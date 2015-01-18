@@ -36,27 +36,29 @@ const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
 use subs 'alert_num';    # manually define accessor.
 
 use Class::Tiny qw( agentdir    db_name      db_type  dbconf
-                    dbs         duration     flagfile from 
-                    max_retries monitoragent msg_dir  port
-                    rate        run_until    smtp     verbose
-                    confpath    confdata     shutdown
-                  ), {
-    agents                => sub { [] },
-    alerts                => sub {my $self = shift;
-				  AN::Alerts->new({ agents => { pid      => $PID,
-								program  => $PROG,
-								hostname => AN::Unix::hostname(),
-								msg_dir  => $self->msg_dir,
-						    },
-						    owner => $self
-						  });
-                                },
+    dbs         duration     flagfile from
+    max_retries monitoragent msg_dir  port
+    rate        run_until    smtp     verbose
+    confpath    confdata     shutdown
+    ), {
+    agents => sub { [] },
+    alerts => sub {
+        my $self = shift;
+        AN::Alerts->new(
+                         { agents => { pid      => $PID,
+                                       program  => $PROG,
+                                       hostname => AN::Unix::hostname(),
+                                       msg_dir  => $self->msg_dir,
+                                     },
+                           owner => $self
+                         } );
+    },
     alert_num             => sub {'a'},
     max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
     processes             => sub { [] },
     seen                  => sub { return {}; },
-    sumweight             => sub { 0 }
-    };
+    sumweight             => sub {0}
+       };
 
 # ----------------------------------------------------------------------
 # METHODS
@@ -73,15 +75,14 @@ sub read_configuration_file {
     my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
-    $self->confdata( $cfg{$cfg{name}} );
+    $self->confdata( $cfg{ $cfg{name} } );
 }
-
 
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
 
-    $ENV{VERBOSE} ||= '';	# set default to avoid undef variable.
+    $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
     $self->read_configuration_file;
 
     return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
@@ -268,7 +269,7 @@ sub pid_file_is_recent {
 
     my $file_age = $self->flagfile()->old_pid_file_age();
     return $file_age
-	&&  $file_age < $self->rate * $self->max_loops_unrefreshed;
+        && $file_age < $self->rate * $self->max_loops_unrefreshed;
 }
 
 sub create_marker_file {
@@ -680,11 +681,15 @@ sub detect_status {
                      $db_record->status,
                      $db_record->msg_tag,
                      $db_record->msg_args,
-		     $db_record->target_name,
-		     $db_record->target_type,
-		     $db_record->target_extra,
+                     $db_record->target_name,
+                     $db_record->target_type,
+                     $db_record->target_extra,
                      { timestamp => $db_record->timestamp }, );
-        say "Setting alert '" . $db_record->msg_tag .  "' in '" . $db_record->field . "' from $process->{db_data}{pid}."
+        say "Setting alert '"
+            . $db_record->msg_tag
+            . "' in '"
+            . $db_record->field
+            . "' from $process->{db_data}{pid}."
             if $self->verbose;
         $self->set_alert(@args);
     }
@@ -697,16 +702,17 @@ sub process_summary_record {
     my ( $process, $alert ) = @_;
 
     my $weighted
-	= $self->confdata->{weight}{$process->{name}} * ($alert->{value} || 0);
+        = $self->confdata->{weight}{ $process->{name} }
+        * ( $alert->{value} || 0 );
     $self->sumweight( $self->sumweight() + $weighted )
-	if $weighted;
+        if $weighted;
 }
 
 sub reset_summary_weight {
     my $self = shift;
 
     $self->sumweight(0);
-    }
+}
 
 sub process_agent_data {
     my $self = shift;
@@ -714,24 +720,24 @@ sub process_agent_data {
     say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
         my $alerts = $self->fetch_alert_data($process);
-	my $allN = scalar @$alerts;
-	my $newN = 0;
+        my $allN   = scalar @$alerts;
+        my $newN   = 0;
 
-      ALERT:
+    ALERT:
         for my $alert (@$alerts) {
-	    next ALERT
-		if $self->seen->{$alert->{id}}++;
-	    $newN++;
-	    if ( $alert->{field} eq 'summary' ) {
-		$self->process_summary_record( $process, $alert );
-	    }
-	    else {
-		$self->detect_status( $process, $alert );
-	    }
+            next ALERT
+                if $self->seen->{ $alert->{id} }++;
+            $newN++;
+            if ( $alert->{field} eq 'summary' ) {
+                $self->process_summary_record( $process, $alert );
+            }
+            else {
+                $self->detect_status( $process, $alert );
+            }
         }
-	say scalar localtime()
-	    . " Received $allN alerts for process $process->{name}, $newN of them new."
-	    if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
+        say scalar localtime()
+            . " Received $allN alerts for process $process->{name}, $newN of them new."
+            if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
     return;
 }
@@ -742,15 +748,15 @@ sub loop_core {
     my $self = shift;
 
     state $verbose = grep {/seencount/} $ENV{VERBOSE} || '';
-   
 
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
     $self->process_agent_data();
     $self->handle_alerts();
-    
-    if ( $verbose ) {
-        say "Total number of distinct alerts seen: " . scalar length keys %{ $self->seen };
+
+    if ($verbose) {
+        say "Total number of distinct alerts seen: " . scalar length
+            keys %{ $self->seen };
     }
     return;
 }
@@ -759,7 +765,7 @@ sub loop_core {
 # run a loop once every $options->{rate} seconds, to check $options->{agentdir}
 # for new files, ignoring files with a suffix listed in $options->{ignore}
 #
-sub run_timed_loop_forever{
+sub run_timed_loop_forever {
     my $self = shift;
 
     local $LIST_SEPARATOR = $COMMA;
@@ -769,18 +775,18 @@ sub run_timed_loop_forever{
 
     # loop until this time tomorrow
     #
-    while ( $now < $end_time 
-	    && ! $self->shutdown() ) {
+    while ( $now < $end_time
+            && !$self->shutdown() ) {
 
         $self->loop_core();
-	$self->touch_pid_file;
+        $self->touch_pid_file;
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
 
         print_loop_msg( $elapsed, $pending )
             if $self->verbose;
 
-	return if $pending < 0;    # dont wait negative duration.
+        return if $pending < 0;    # dont wait negative duration.
 
         sleep $pending;
 

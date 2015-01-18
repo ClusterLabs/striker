@@ -72,7 +72,7 @@ sub add_dispatcher {
 
 sub dispatch_msg {
     my $self = shift;
-    my ($msgs, $sumweight) = @_;
+    my ( $msgs, $sumweight ) = @_;
 
     $self->add_dispatcher() unless $self->has_dispatcher();
 

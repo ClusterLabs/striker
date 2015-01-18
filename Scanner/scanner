@@ -17,8 +17,8 @@ use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
 
-use lib 'lib';			# pre-install
-use lib '../lib';		# post-install
+use lib 'lib';       # pre-install
+use lib '../lib';    # post-install
 use AN::Scanner;
 
 use Const::Fast;
@@ -26,38 +26,35 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-const my $SYSTEMNAME      => 'striker';
-const my $binbase          => dirname $Bin;
-const my $AGENTDIR    
-    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? "${binbase}/agents"
-	 :                                         $Bin . '/Agents'
-    );
+const my $SYSTEMNAME => 'striker';
+const my $binbase    => dirname $Bin;
+const my $AGENTDIR => ( $Bin eq "/usr/share/${SYSTEMNAME}/bin"
+                        ? "${binbase}/agents"
+                        : $Bin . '/Agents' );
 const my $BINDIR => (
-    ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
-    : ( ' Agents ' eq basename $Bin)              ? $binbase
-    :                                               $Bin );
+                ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
+                : ( ' Agents ' eq basename $Bin)              ? $binbase
+                :                                               $Bin );
 
-const my $TEXTBASE        
-    => ( $Bin  eq "/usr/share/${SYSTEMNAME}/bin" ? "/etc/${SYSTEMNAME}"
-	 :                                         $Bin
-    );
+const my $TEXTBASE => ( $Bin eq "/usr/share/${SYSTEMNAME}/bin"
+                        ? "/etc/${SYSTEMNAME}"
+                        : $Bin );
 
 const my $DEFAULT_DB_CONF     => "${TEXTBASE}/Config/db.conf";
 const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/scanner.conf";
 const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
 
-
-const my $BRIEF               => 1;
-const my $COMMA               => q{,};
-const my $DOTSLASH            => q{./};
-const my $LIFETIME        => 24 * 60 * 60;
-const my $RUN_UNTIL       => '23:59:59';
-const my $MAX_RETRIES     => 10;
-const my $MAX_RATE        => 600;
-const my $MIN_RATE        => 1;
-const my $PROG            => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE        => 15;
-const my $SLASH           => q{/};
+const my $BRIEF       => 1;
+const my $COMMA       => q{,};
+const my $DOTSLASH    => q{./};
+const my $LIFETIME    => 24 * 60 * 60;
+const my $RUN_UNTIL   => '23:59:59';
+const my $MAX_RETRIES => 10;
+const my $MAX_RATE    => 600;
+const my $MIN_RATE    => 1;
+const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE    => 15;
+const my $SLASH       => q{/};
 
 const my $SMTP => 'mail.alteeve.ca';
 const my $FROM => 'scanner@alteeve.ca';
@@ -79,18 +76,20 @@ sub process_args {
         agentdir  => $AGENTDIR,           # directory to scan for agents.
         verbose   => 0,                   # print strings for no change?
         dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
-	confpath  => $DEFAULT_CONFIG_PATH,   # scanner configuration.
-        msg_dir   => $DEFAULT_MSGS,       # Where message strings XML lives.
-        from      => $FROM,               # from and smtp used for email
-        smtp      => $SMTP,
-        max_retries => $MAX_RETRIES,      # How many attempts in AN::Common
-	bindir    => $BINDIR,
-    };
+        confpath    => $DEFAULT_CONFIG_PATH,  # scanner configuration.
+        msg_dir     => $DEFAULT_MSGS,         # Where message strings XML lives.
+        from        => $FROM,                 # from and smtp used for email
+        smtp        => $SMTP,
+        max_retries => $MAX_RETRIES,          # How many attempts in AN::Common
+        bindir      => $BINDIR, };
 
-    GetOptions( $opt,          'dbconf=s',   'rate=i',   'agentdir=s',
-                'db_name=s',   'from=s',     'smtp=s',   'msg_dir=s',
-                'run_until=s', 'confpath=s', 'verbose!', 'max_retries=s',
-		'man',         'help' )
+    GetOptions( $opt,          'dbconf=s',
+                'rate=i',      'agentdir=s',
+                'db_name=s',   'from=s',
+                'smtp=s',      'msg_dir=s',
+                'run_until=s', 'confpath=s',
+                'verbose!',    'max_retries=s',
+                'man',         'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.

@@ -32,8 +32,7 @@ use Class::Tiny qw( confpath confdata prev controller_count );
 # ======================================================================
 # CONSTANTS
 #
-const my $DATATABLE_NAME => 'raid';
-const my $PARENTDIR      => q{/../};
+const my $PARENTDIR => q{/../};
 
 const my $SLASH => q{/};
 const my $SPACE => q{ };
@@ -50,10 +49,10 @@ sub get_controller_count {
     # Get the line with Number of Controllers = N;
     # Extract the part following  ' = ' and store as count;
     #
-    my ($line) = (grep {/Number of Controllers/} @$response);
+    my ($line) = ( grep {/Number of Controllers/} @$response );
     return 0 unless $line;
 
-    my $count = (split ' = ', $line )[1];
+    my $count = ( split ' = ', $line )[1];
     chomp $count;
 
     return 0 unless $count;
@@ -69,19 +68,18 @@ sub BUILD {
     return;
 }
 
-
 sub parse_dev {
     my $self = shift;
-    my ( $dev ) = @_;
+    my ($dev) = @_;
 
     my ( $controller, $drive );
     $controller = $1
-	if $dev =~ m{controller=(\d)};
+        if $dev =~ m{controller=(\d)};
 
-    $drive     = $1
-	if $dev =~ m{drive=(\d)};
+    $drive = $1
+        if $dev =~ m{drive=(\d)};
 
-    return( $controller, $drive );
+    return ( $controller, $drive );
 }
 
 sub init_prev {
@@ -94,25 +92,28 @@ RECORD:
     for my $record (@$received) {
         my ( $tag, $value ) = @{$record}{qw(field value )};
 
-	my ( $controller, $drive ) = $self->parse_dev( $record->{dev});
-	
+        my ( $controller, $drive ) = $self->parse_dev( $record->{dev} );
+
         # Ambient temperature will be greater than 20 C and other
         # temps greater than ambient.
         #
         next RECORD unless $value > 20;
 
-	if ( $tag eq 'ROC temperature' ) {
-	    $prev->{$tag}[$controller] = {value => $value, status => 'OK' };
-	} elsif ( $tag = 'Drive Temperature' ) {
-	    $prev->{$tag}[$controller][$drive]
-	        = {value => $value, status => 'OK' };
-	} else {
-	    warn( "Unexpected tag '$tag' in " . __PACKAGE__ . "::init_prev()\n");
-	}
+        if ( $tag eq 'ROC temperature' ) {
+            $prev->{$tag}[$controller] = { value => $value, status => 'OK' };
+        }
+        elsif ( $tag = 'Drive Temperature' ) {
+            $prev->{$tag}[$controller][$drive]
+                = { value => $value, status => 'OK' };
+        }
+        else {
+            warn(
+                "Unexpected tag '$tag' in " . __PACKAGE__ . "::init_prev()\n" );
+        }
     }
     $prev->{summary}{status} = 'OK';
-    $prev->{summary}{value} = 0;
-    
+    $prev->{summary}{value}  = 0;
+
     return $prev;
 }
 
@@ -135,18 +136,16 @@ sub process_all_raid {
         my ( $tag, $value ) = @{$record}{qw( field value )};
         my $rec_meta = $info->{$tag};
 
-	my ( $controller, $drive ) = $self->parse_dev( $record->{dev});
-	my ($prev_value, $prev_status)
-	    = defined $drive 
-	    ? @{$prev->{$tag}[$controller][$drive]}{qw(value status)}
-	    : @{$prev->{$tag}[$controller]}{qw(value status)} ;
+        my ( $controller, $drive ) = $self->parse_dev( $record->{dev} );
+        my ( $prev_value, $prev_status )
+            = defined $drive
+            ? @{ $prev->{$tag}[$controller][$drive] }{qw(value status)}
+            : @{ $prev->{$tag}[$controller] }{qw(value status)};
 
         # Calculate status and message.
         #
         say Data::Dumper->Dump(
-                                [ $i++, $tag, $value, $rec_meta,
-                                  $prev_status, $prev_value
-                                ] )
+                  [ $i++, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
             if $verbose;
 
         my $args = { tag         => $tag,
@@ -155,22 +154,21 @@ sub process_all_raid {
                      prev_status => $prev_status,
                      prev_value  => $prev_value,
                      metadata    => $meta,
-		     dev         => $record->{dev},
-	};
+                     dev         => $record->{dev}, };
 
         my ( $status, $newvalue ) = $self->eval_status($args);
 
-	if ( defined $drive ) {
-	    @{$prev->{$tag}[$controller][$drive]}{qw(value status)}
-                = ($newvalue || $value, $status);
-	}
-	else {
-	    @{$prev->{$tag}[$controller]}{qw(value status)} 
-                = ($newvalue || $value, $status);
-	    
-	}
+        if ( defined $drive ) {
+            @{ $prev->{$tag}[$controller][$drive] }{qw(value status)}
+                = ( $newvalue || $value, $status );
+        }
+        else {
+            @{ $prev->{$tag}[$controller] }{qw(value status)}
+                = ( $newvalue || $value, $status );
+
+        }
     }
-    $self->prev( $prev );
+    $self->prev($prev);
     return;
 }
 
@@ -192,25 +190,26 @@ sub raid_request {
          || 10 >= @data ) {
 
         my $info = $self->confdata;
-        my $args = { table              => $self->datatable_name,
-                     with_node_table_id => 'node_id',
-                     args               => {
-                             target_name  => $info->{host},
-                             target_type  => $info->{type},
-                             target_extra => $info->{ip},
-                             value        => $info->{host},
-                             units        => '',
-                             field        => 'RAID fetch data',
-                             status       => 'CRISIS',
-                             msg_tag      =>  'AN-RAID-Temp raid_request() failed',
-                             msg_args => "errormsg=" . join "\n",
-                             @data,
-                     }, };
+        my $args = {
+            table              => $info->{db}{table}{other},
+            with_node_table_id => 'node_id',
+            args               => {
+                      target_name  => $info->{host},
+                      target_type  => $info->{type},
+                      target_extra => $info->{ip},
+                      value        => $info->{host},
+                      units        => '',
+                      field        => 'RAID fetch data',
+                      status       => 'CRISIS',
+                      msg_tag      => 'AN-RAID-Temp raid_request() failed',
+                      msg_args     => "errormsg=" . join "\n",
+                      @data,
+                    }, };
 
         $self->insert_raw_record($args);
 
-        $args->{table} = $self->alerts_table_name;
-        $self->insert_raw_record($args);
+        $args->{table} = $info->{db}{table}{alerts};
+            $self->insert_raw_record($args);
     }
 
     return \@data;
@@ -221,16 +220,13 @@ sub extract_controller_metadata {
 
     my ( $response, $N ) = @_;
 
-    my ($roc_sensor)   = grep {/Temperature Sensor for ROC = /}
-        @$response;
-    my $value = (split ' = ', $roc_sensor)[1];
+    my ($roc_sensor) = grep {/Temperature Sensor for ROC = /} @$response;
+    my $value = ( split ' = ', $roc_sensor )[1];
     chomp $value;
     $self->confdata()->{controller}{$N}{sensor} = $value;
 
-
-    my ($drive_counts) = grep {/Physical Drives = (\d+)/}
-    @$response;
-    $value = (split ' = ', $drive_counts)[1];
+    my ($drive_counts) = grep {/Physical Drives = (\d+)/} @$response;
+    $value = ( split ' = ', $drive_counts )[1];
     chomp $value;
     $self->confdata()->{controller}{$N}{drives} = $value;
 }
@@ -242,24 +238,24 @@ sub get_controller_temp {
 
     my $received;
     for my $N ( 0 .. $maxN ) {
-	my $response = $self->raid_request( 'controller', $N);
+        my $response = $self->raid_request( 'controller', $N );
 
-	$self->extract_controller_metadata( $response, $N )
-	    unless  exists $self->confdata()->{controller}{$N};
-	    
-	my ($roc_temp)     = grep {/ROC temperature\(Degree /}  @$response;
-	my $delimiters = qr{
+        $self->extract_controller_metadata( $response, $N )
+            unless exists $self->confdata()->{controller}{$N};
+
+        my ($roc_temp) = grep {/ROC temperature\(Degree /} @$response;
+        my $delimiters = qr{
                              \s=\s # equal sign embedded in spaces
                               |	   # OR
                               [()] # opening or closing partheses
                            }xms;
-	my @temp = grep {/\S/} split /$delimiters/, $roc_temp;
-	chomp @temp;
-	push @$received, { field => $temp[0],
-			   units => $temp[1],
-			   value => $temp[2],
-			   dev => "controller=$N"
-	};
+        my @temp = grep {/\S/} split /$delimiters/, $roc_temp;
+        chomp @temp;
+        push @$received,
+            { field => $temp[0],
+              units => $temp[1],
+              value => $temp[2],
+              dev   => "controller=$N" };
     }
     return $received;
 }
@@ -271,12 +267,13 @@ sub extract_drive_metadata {
 
     my @names = grep {/Drive.*State :/} @$response;
 
-    for my $drive ( @names ) {
-	my $dev = (split /\s/, $drive)[1];
-	push @{$self->confdata()->{controller}{$N}{drive}}, {name => $dev};
+    for my $drive (@names) {
+        my $dev = ( split /\s/, $drive )[1];
+        push @{ $self->confdata()->{controller}{$N}{drive} }, { name => $dev };
     }
     return;
 }
+
 sub get_drive_temp {
     my $self = shift;
 
@@ -284,27 +281,28 @@ sub get_drive_temp {
 
     my $received;
     for my $N ( 0 .. $maxN ) {
-	my $response = $self->raid_request( 'drives', $N);
-	$self->extract_drive_metadata( $response, $N )
-	    unless  exists $self->confdata()->{controller}{$N}{drive};
-	    
-	my (@drive_temps)     = grep {/Drive Temperature = /}  @$response;
-	my $delimiters = qr{
+        my $response = $self->raid_request( 'drives', $N );
+        $self->extract_drive_metadata( $response, $N )
+            unless exists $self->confdata()->{controller}{$N}{drive};
+
+        my (@drive_temps) = grep {/Drive Temperature = /} @$response;
+        my $delimiters = qr{
                              \s=\s # equal sign embedded in spaces
                               |	   # OR
                               [()] # opening or closing partheses
                            }xms;
-	my $idx = 0;
-	for my $drive ( @drive_temps ) {
-	    my @temp = grep {/\S/} split /$delimiters/, $drive;
-	    $temp[1] =~ m{(\d+)(\w)};
-	    
-	    push @$received, { field => $temp[0],
-			       units => $2,
-			       value => $1,
-	                       dev => "controller=$N;drive=$idx"};
-	    $idx++
-	}
+        my $idx = 0;
+        for my $drive (@drive_temps) {
+            my @temp = grep {/\S/} split /$delimiters/, $drive;
+            $temp[1] =~ m{(\d+)(\w)};
+
+            push @$received,
+                { field => $temp[0],
+                  units => $2,
+                  value => $1,
+                  dev   => "controller=$N;drive=$idx" };
+            $idx++;
+        }
     }
     return $received;
 }
@@ -318,8 +316,8 @@ sub query_target {
     #
     my $controllers = $self->get_controller_temp();
     $controllers ||= [];
-    my $drives      = $self->get_drive_temp();
-    $drives      ||= [];
+    my $drives = $self->get_drive_temp();
+    $drives ||= [];
 
     $self->process_all_raid( [ @$controllers, @$drives ] );
     $self->process_summary();

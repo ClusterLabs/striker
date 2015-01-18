@@ -604,12 +604,12 @@ sub snmp_connect {
 
         $self->insert_raw_record($args);
 
-	$args->{target_type}  = $args->{target};
-	delete $args->{args}{target};
+        $args->{target_type} = $args->{target};
+        delete $args->{args}{target};
 
-	$args->{target_name}  = $meta->{name};
-	$args->{target_extra} = $meta->{ip};
-	$args->{table}        = $dbtables->{alerts};
+        $args->{target_name}  = $meta->{name};
+        $args->{target_extra} = $meta->{ip};
+        $args->{table}        = $dbtables->{alerts};
         $self->insert_raw_record($args);
         $self->summarize_status( 'CRISIS', 999 );
     }
@@ -654,11 +654,11 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
 
             $self->insert_raw_record($args);
 
-	    $args->{target_type}  = $args->{target};
-	    delete $args->{args}{target};
-	    
-	    $args->{target_name}  = $meta_out->{name};
-	    $args->{target_extra} = $meta_out->{ip};
+            $args->{target_type} = $args->{target};
+            delete $args->{args}{target};
+
+            $args->{target_name}  = $meta_out->{name};
+            $args->{target_extra} = $meta_out->{ip};
             $args->{table}        = $dbtables->{alerts};
             $self->insert_raw_record($args);
 

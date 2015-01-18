@@ -21,7 +21,8 @@ use FindBin qw($Bin);
 
 use Const::Fast;
 
-use Class::Tiny  {firsttime => sub { 1 }};
+use Class::Tiny { firsttime => sub {1}
+                };
 
 const my @HEALTH => ( 'ok', 'sick', 'shutting down' );
 
@@ -31,54 +32,59 @@ sub weight2health {
     my $self = shift;
     my ( $sumweight, $crisis_min ) = @_;
 
-    return $sumweight == 0         ? $HEALTH[0]
-	: $sumweight < $crisis_min ? $HEALTH[1]
-	:                            $HEALTH[2]
-	;
+    return
+          $sumweight == 0          ? $HEALTH[0]
+        : $sumweight < $crisis_min ? $HEALTH[1]
+        :                            $HEALTH[2];
 }
+
 sub dispatch {
     my $self = shift;
-    my ($msgs, $listener, $sumweight) = @_;
+    my ( $msgs, $listener, $sumweight ) = @_;
 
     state $healthfile = $listener->owner->confdata->{healthfile};
     state $shutdown   = $listener->owner->confdata->{shutdown};
     state $crisis_min = $listener->owner->confdata->{summary}{crisis_min};
     state $old_health = 'ok';
-    state $verbose = $listener->owner->verbose
-	|| grep {/HealthMonitor/} $ENV{VERBOSE} || '';
+    state $verbose
+        = $listener->owner->verbose
+        || grep {/HealthMonitor/} $ENV{VERBOSE}
+        || '';
 
     my $health = $self->weight2health( $sumweight, $crisis_min );
 
     # create file on first pass and whenever health changes
     #
-    say scalar localtime() . " HealthMonitor: weight '$sumweight'; "
-	. "old_health: $old_health; health: $health" if $verbose;
+    say scalar localtime()
+        . " HealthMonitor: weight '$sumweight'; "
+        . "old_health: $old_health; health: $health"
+        if $verbose;
 
-    $self->create_parent_dirs( $healthfile )
-	if $self->firsttime;
-    
-    if ( $health ne $old_health
-	 || $self->firsttime ) {
-	say "Changing health file status from $old_health to $health"
-	    if $verbose;
+    $self->create_parent_dirs($healthfile)
+        if $self->firsttime;
 
-	open my $fh, '>'. $healthfile;
-	say $fh "health = $health";
+    if (    $health ne $old_health
+         || $self->firsttime ) {
+        say "Changing health file status from $old_health to $health"
+            if $verbose;
 
-	$old_health = $health;
-	$self->firsttime(0);
-	
+        open my $fh, '>' . $healthfile;
+        say $fh "health = $health";
+
+        $old_health = $health;
+        $self->firsttime(0);
+
     }
     else {
-	system( '/bin/touch', $healthfile );
+        system( '/bin/touch', $healthfile );
     }
     if ( $sumweight >= $crisis_min ) {
-	
-	say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
-	    "\nInvoking shutdown script $shutdown\n"
-	    if $verbose;
-	$listener->owner->shutdown( 1 );;
-	system( $shutdown ) 
+
+        say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
+            "\nInvoking shutdown script $shutdown\n"
+            if $verbose;
+        $listener->owner->shutdown(1);
+        system($shutdown );
     }
 
     return;
@@ -86,7 +92,7 @@ sub dispatch {
 
 sub create_parent_dirs {
     my $self = shift;
-    my ( $path ) = @_;
+    my ($path) = @_;
 
     make_path dirname $path;
 }
