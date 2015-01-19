@@ -54,7 +54,7 @@ const my $MAX_RETRIES => 10;
 const my $MAX_RATE    => 600;
 const my $MIN_RATE    => 1;
 const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE    => 15;
+const my $REP_RATE    => 30;
 const my $SLASH       => q{/};
 
 const my $SMTP => 'mail.alteeve.ca';
