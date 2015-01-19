@@ -63,6 +63,7 @@ messages:
 install: wrapper dirs files scanner
 	@if [[ "$(USER)" == "root" ]] ; then		\
 	    cp scanner $(BINDIR);			\
+            chmod 777 /var/log/striker			\
 	else						\
 	    echo "Need to be root to create wrappers.";	\
 	    echo "run as: sudo make";			\
