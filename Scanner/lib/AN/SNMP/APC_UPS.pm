@@ -28,7 +28,9 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( confpath confdata prev summary sumweight bindir );
+use Class::Tiny qw( confpath confdata prev summary sumweight bindir ), {
+    compare => sub { {} },
+};
 
 # ======================================================================
 # CONSTANTS
@@ -136,11 +138,26 @@ sub summarize_status {
     $self->sumweight( $self->sumweight() + $weight );
 }
 
+sub summarize_compared_sides {
+    my $self = shift;
+
+    my $compared = $self->compare();
+
+  COMPARISON:
+    for my $tag ( sort keys %$compared ) {
+	next COMPARISON unless $compared->{$tag}{status} = 'CRISIS';
+	$self->sumweight( $self->sumweight() + $compared->{$tag}{weight} );
+    }
+    return;
+}
+
 # The global / local config data processing means there are multiple
 # instances of 'summary' data ... use only version '1'.
 #
 sub process_summary {
     my $self = shift;
+
+    $self->summarize_compared_sides();
 
     my $prev = $self->prev();
 
@@ -196,7 +213,7 @@ sub insert_agent_record {
 
 sub insert_alert_record {
     my $self = shift;
-    my ( $args, $msg ) = @_;
+    my ( $args, $msg, $exclude_from_sumweight ) = @_;
 
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
@@ -216,8 +233,70 @@ sub insert_alert_record {
 
                    },
         } );
+
+    return if $exclude_from_sumweight;
+
     $self->summarize_status( $msg->{status}, 1 )
         if $msg->{status} eq 'CRISIS';
+    return;
+}
+
+# Config file field 'compare' declares that field should be compared
+# between two sides. If the value associated with the field is
+# 'greater', use the larger of the two values; if 'lesser', use the
+# smaller value.  E.g. Time remaining should be larger of the two to
+# reflect the healthier, while 'temperature' should be the lower
+# value.
+#
+# If the tag exists, it was set by the other side, so do a comparison.
+# If it doesn't exist, set it with this datum, and wait for the other
+# side to show up.
+#
+sub compare_values {
+    my ( $v1, $v2, $c) = @_;
+
+    my $result = ( $c eq 'greater' ? $v1 > $v2
+		 : $c eq 'lesser'  ? $v2 < $v2
+		 :                   0
+	);
+    return $result;
+}
+sub compare_sides_or_report_record {
+    my $self = shift;
+    my ( $args, $msg ) = @_;
+
+    my $exclude_from_sumweight = 0;
+    if ( exists $args->{rec_meta}->{compare} ) {
+	$exclude_from_sumweight = 1;
+	my ($comparator, $weight) = @{ $args->{rec_meta}}{qw(compare weight)};
+	my $side = $args->{metadata}{name};
+	my $tag = $args->{tag};
+	my ( $new_value, $new_status ) = ($args->{value}, $msg->{status});
+
+	# If tag not present in compar() hash, this is first side, so
+	# store data and wait for other sides.
+	#
+	if ( ! exists $self->compare()->{$tag} ) {
+	    @{$self->compare()->{$tag}}{qw(value status side weight)}
+	    = ( $new_value, $new_status, $side, $weight );
+	}
+	# Process 2nd, 3rd, 4th sides ... if new value is 'better'
+	# than old one, update archived value to the newer. If equal
+	# or worse, leave unchanged.
+	#
+	else {
+	    my $other_value = $self->compare()->{$tag}{value};
+	    @{$self->compare()->{$tag}}{qw(value status side weight)}
+	    = ( $new_value, $new_status, $side, $weight )
+		if compare_values $new_value, $other_value, $comparator;
+	}
+    }
+    else {
+	$self->insert_agent_record( $args, $msg );
+	$self->insert_alert_record( $args, $msg, $exclude_from_sumweight )
+	    if $msg->{status} ne 'OK'
+	    || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+    }
     return;
 }
 
@@ -295,10 +374,7 @@ sub eval_discrete_status {
     }
     $args->{prev_status} ||= '';
 
-    $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )
-        if $msg->{status} ne 'OK'
-        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+    $self->compare_sides_or_report_record( $args, $msg );
 
     return ( $msg->{status}, $msg->{newval} || $args->{value} );
 }
@@ -366,10 +442,7 @@ sub eval_rising_status {
         $msg->{args}   = "value=$args->{value}";
     }
 
-    $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )
-        if $msg->{status} ne 'OK'
-        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+    $self->compare_sides_or_report_record( $args, $msg );
 
     return ( $msg->{status} );
 }
@@ -440,10 +513,7 @@ sub eval_falling_status {
 
     }
 
-    $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )
-        if $msg->{status} ne 'OK'
-        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+    $self->compare_sides_or_report_record( $args, $msg );
 
     return ( $msg->{status}, $args->{value} );
 }
@@ -518,11 +588,7 @@ sub eval_nested_status {
         $msg->{tag}    = "Unexpected value";
         $msg->{args}   = "value=$args->{value}";
     }
-    $self->insert_agent_record( $args, $msg );
-    $self->insert_alert_record( $args, $msg )
-        if $msg->{status} ne 'OK'
-        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
-
+    $self->compare_sides_or_report_record( $args, $msg );
     return ( $msg->{status} );
 }
 
