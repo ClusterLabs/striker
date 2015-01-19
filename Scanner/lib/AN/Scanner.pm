@@ -669,7 +669,8 @@ sub detect_status {
     my $self = shift;
     my ( $process, $db_record, ) = @_;
 
-    say "db_record with status @{[$db_record->{status}]}." if $self->verbose;
+    say "Got a db_record with status @{[$db_record->{status}]}."
+	 if $self->verbose;
     if ( $db_record->{status} eq 'OK' ) {
         say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
         $self->clear_alert( $process->{db_data}{pid} );
@@ -721,16 +722,30 @@ sub process_agent_data {
 
     say "Scanner::process_agent_data()." if $self->verbose;
     for my $process ( @{ $self->processes } ) {
+	my ($weight, $count);
         my $alerts = $self->fetch_alert_data($process);
         my $allN   = scalar @$alerts;
         my $newN   = 0;
 
     ALERT:
         for my $alert (@$alerts) {
+	    $weight += $alert->{value}
+  	        if $alert->{field} eq 'summary'
+		    and $alert->{age} < 1.5 * $self->rate;
+
             next ALERT
                 if $self->seen->{ $alert->{id} }++;
+	    $count++;
             $newN++;
             if ( $alert->{field} eq 'summary' ) {
+		# prevent health from wobbling back and forth, make it
+		# take a while to clear up to OK.
+		#
+		if ( 0 == $count ) {
+		    say "Adding $weight to existing ", $self->sumweight
+			if $self->verbose;
+		    $self->sumweight( $self->sumweight + $weight )
+		}
                 $self->process_summary_record( $process, $alert );
             }
             else {
@@ -741,6 +756,7 @@ sub process_agent_data {
             . " Received $allN alerts for process $process->{name}, $newN of them new."
             if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
+    
     return;
 }
 
