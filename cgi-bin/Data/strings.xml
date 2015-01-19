@@ -60,9 +60,9 @@
 		<key name="button_0053">Install</key>
 		<key name="button_0054">Remap Network</key>
 		<key name="button_0055">Modify Manifest</key>
-		<key name="button_0056"></key>
-		<key name="button_0057"></key>
-		<key name="button_0058"></key>
+		<key name="button_0056">Install Target</key>
+		<key name="button_0057">Enable Install Target</key>
+		<key name="button_0058">Disable Install Target</key>
 		<key name="button_0059"></key>
 		<key name="button_0060"></key>
 		
@@ -111,7 +111,7 @@ smtp::port				=	#!variable!smtp__port!#
 # the address used in the 'From: ' field for emails sent from this machine.
 # NOTE: If you IMAP user name is not an email address, this may not work (it
 # has not been tested). If you have trouble, please let us know:
-# - https://alteeve.ca/w/Support
+# - #!string!brand_0012!#
 smtp::username				=	#!variable!smtp__username!#
 
 # This is the password used for the email account above. This can be the
@@ -1140,7 +1140,7 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="title_0175"><![CDATA[]]></key>
 		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177">Almost ready to install!</key>
-		<key name="title_0178"></key>
+		<key name="title_0178">Install Target control</key>
 		<key name="title_0179"></key>
 		<key name="title_0180"></key>
 		
@@ -1189,7 +1189,7 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
 		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
-		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="https://alteeve.ca/w/Support" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
+		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
 		<key name="message_0047"><![CDATA[I was asked to check the power staus of <span class="fixed_width">#!variable!node!#</span> via it's peer <span class="fixed_width">#!variable!peer!#</span>, but the power check command is empty.<br />This is likely a program error.]]></key>
 		<key name="message_0048"><![CDATA[I was trying to resolve the host name <span class="fixed_width">#!variable!target_host!#</span> but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your <span class="fixed_width">/etc/hosts</span> file?]]></key>
@@ -1550,12 +1550,22 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step, if needed, is to <a href="?logo=true">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
 		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />#!string!brand_0014!#]]></key>
-		<key name="message_0405"><![CDATA[]]></key>
-		<key name="message_0406"><![CDATA[]]></key>
-		<key name="message_0407"><![CDATA[]]></key>
-		<key name="message_0408"><![CDATA[]]></key>
-		<key name="message_0409"><![CDATA[]]></key>
-		<key name="message_0410"><![CDATA[]]></key>
+		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">install target</a>.]]></key>
+		<key name="message_0406"><![CDATA[The "Install Target" service is currently running.]]></key>
+		<key name="message_0407"><![CDATA[The "Install Target" service is currently stopped.]]></key>
+		<key name="message_0408"><![CDATA[The "Install Target" service is in an unknown state ('<span class="code">/etc/init.d/dhcpd status</span>' returns an unexpected return code).<br />#!string!brand_0014!#]]></key>
+		<key name="message_0409"><![CDATA[Enabling the "Install Target" feature may cause network problems!<br /><br />By default, #!string!brand_0002!# tries to minimize the risk of interfering with your network by enabling the install manifest feature on the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0005!#</a> only.<br />However, if the confiuration was manually changed, or if your network doesn't use <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">VLANs</a> to isolate the #!string!brand_0005!#,<br />this feature could interrupt other machines on your network when they request a <a href="https://alteeve.ca/w/DHCP_on_an_RPM-based_OS" target="_new">DHCP</a> lease renewal.<br />Likewise, if the #!string!brand_0005!# is not isolated, your new node or #!string!brand_0002!# machine<br />may get an <a href="https://alteeve.ca/w/IP" target="_new">IP address</a> from another machine on your network and fail to install off of this #!string!brand_0002!# machine.<br />If you're having trouble with this feature, please feel free to <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
+		<key name="message_0410"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
+		<key name="message_0411"><![CDATA[The "Install Target" function is now enabled. Please remember to turn this off once you are done.<br />Remember to <a href="https://alteeve.ca/w/Configuring_Network_Boot_on_Fujitsu_Primergy" target="_new">network boot</a> your new machine using the one of the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0006!#</a>-connected interfaces.]]></key>
+		<key name="message_0412"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
+		<key name="message_0413"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
+		<key name="message_0414"><![CDATA[The "Install Target" function has been stopped.]]></key>
+		<key name="message_0415"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
+		<key name="message_0416"><![CDATA[]]></key>
+		<key name="message_0417"><![CDATA[]]></key>
+		<key name="message_0418"><![CDATA[]]></key>
+		<key name="message_0419"><![CDATA[]]></key>
+		<key name="message_0420"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

@@ -4570,7 +4570,7 @@ sub is_string_ipv4
 sub configure_dashboard
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
@@ -4949,8 +4949,6 @@ sub ask_which_cluster
 {
 	my ($conf) = @_;
 	
-	print AN::Common::template($conf, "select-anvil.html", "open-table");
-	
 	my $anvil_count = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
@@ -5003,17 +5001,277 @@ sub ask_which_cluster
 			});
 		}
 	}
-	# Print the 'Manage' button.
-	print AN::Common::template($conf, "select-anvil.html", "close-table");
 	
 	return (0);
+}
+
+# This toggles the dhcpd server on and off.
+sub control_dhcpd
+{
+	my ($conf, $action) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; control_dhcpd(); action: [$action]\n");
+	
+	my $ok = 1;
+	my $shell_call = "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $rc = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+			if ($rc eq "4")
+			{
+				# setuid failed
+				$ok = 2;
+			}
+			elsif ($rc eq "0")
+			{
+				# Running
+				$ok = 0;
+			}
+			else
+			{
+				# Unknown state.
+				$ok = 3;
+			}
+		}
+	}
+	close $file_handle;
+	
+	# 0 == Success
+	# 1 == Failed
+	# 2 == setuid failure
+	# 3 == unknown state
+	record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# Show the "select Anvil!" menu and Striker config and control options.
+sub show_anvil_selection_and_striker_options
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
+	
+	# If I'm toggling the install target (dhcpd), process it first.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
+	if ($conf->{cgi}{install_target})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::confirm: [$conf->{cgi}{confirm}]\n");
+		if (($conf->{cgi}{install_target} eq "start") && (not $conf->{cgi}{confirm}))
+		{
+			# Warn the user about possible DHCPd conflicts and ask
+			# them to confirm.
+			my $confirm_url = "?logo=true&install_target=start&confirm=true";
+			print AN::Common::template($conf, "select-anvil.html", "confirm-dhcpd-start", {
+				confirm_url	=>	$confirm_url,
+			});
+		}
+		elsif ($conf->{cgi}{install_target} eq "start")
+		{
+			# Enable it.
+			my ($ok) = control_dhcpd($conf, "start");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			# 0 == Success
+			# 1 == Failed
+			# 2 == setuid failure
+			# 3 == unknown state
+			# For now, 1 and 3 are treated the same.
+			my $message = "#!string!message_0410!#";
+			my $class   = "highlight_failed_bold";
+			if ($ok eq "0")
+			{
+				$message = "#!string!message_0411!#";
+				$class   = "highlight_good_bold";
+			}
+			if ($ok eq "2")
+			{
+				$message = "#!string!message_0412!#";
+				$class   = "highlight_good_bold";
+			}
+			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+				class	=>	$class,
+				message	=>	$message,
+			});
+		}
+		elsif ($conf->{cgi}{install_target} eq "stop")
+		{
+			# Disable it.
+			my ($ok) = control_dhcpd($conf, "stop");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			# 0 == Success
+			# 1 == Failed
+			# 2 == setuid failure
+			# 3 == unknown state
+			# For now, 1 and 3 are treated the same.
+			my $message = "#!string!message_0413!#";
+			my $class   = "highlight_failed_bold";
+			if ($ok eq "0")
+			{
+				$message = "#!string!message_0414!#";
+				$class   = "highlight_good_bold";
+			}
+			if ($ok eq "2")
+			{
+				$message = "#!string!message_0415!#";
+				$class   = "highlight_good_bold";
+			}
+			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+				class	=>	$class,
+				message	=>	$message,
+			});
+		}
+	}
+	
+	# Show the list of configured Anvil! systems.
+	print AN::Common::template($conf, "select-anvil.html", "open-table");
+	ask_which_cluster($conf);
+	
+	# See if this machine is configured as a boot target and, if so,
+	# whether dhcpd is running or not (so we can offer a toggle.
+	my ($dhcpd_state) = get_dhcpd_state($conf);
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	
+	# No decide what to show for the "Boot Target" button.
+	my $install_target_template = "disabled-install-target-button";
+	my $install_target_button   = "#!string!button_0056!#";
+	my $install_target_message  = "#!string!message_0405!#";
+	my $install_target_url      = "";
+	if ($dhcpd_state eq "0")
+	{
+		# dhcpd is running, offer the button to disable it.
+		$install_target_template = "enabled-install-target-button";
+		$install_target_button   = "#!string!button_0058!#";
+		$install_target_message  = "#!string!message_0406!#";
+		$install_target_url      = "?logo=true&install_target=stop";
+	}
+	elsif ($dhcpd_state eq "1")
+	{
+		# dhcpd is stopped, offer the button to enable it.
+		$install_target_template = "enabled-install-target-button";
+		$install_target_button   = "#!string!button_0057!#";
+		$install_target_message  = "#!string!message_0407!#";
+		$install_target_url      = "?logo=true&install_target=start";
+	}
+	elsif ($dhcpd_state eq "3")
+	{
+		# Unknown state, tell them to get help.
+		$install_target_template = "disabled-install-target-button";
+		$install_target_button   = "#!string!button_0056!#";
+		$install_target_message  = "#!string!message_0408!#";
+		$install_target_url      = "";
+	}
+	
+	# Now show the other configuration options
+	#record($conf, "$THIS_FILE ".__LINE__."; install_target_template: [$install_target_template], install_target_button: [$install_target_button], install_target_message: [$install_target_message], install_target_url: [$install_target_url]\n");
+	my $install_manifest_tr = AN::Common::template($conf, "select-anvil.html", $install_target_template, {
+		install_target_button	=>	$install_target_button,
+		install_target_message	=>	$install_target_message,
+		install_target_url	=>	$install_target_url,
+	});
+	#record($conf, "$THIS_FILE ".__LINE__."; install_manifest_tr: [$install_manifest_tr]\n");
+	print AN::Common::template($conf, "select-anvil.html", "close-table", {
+		install_manifest_tr	=>	$install_manifest_tr,
+	});
+	
+	return(0);
+}
+
+# This checks to see if dhcpd is configured to be an install target target and,
+# if so, see if dhcpd is running or not.
+sub get_dhcpd_state
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
+	
+	# First, read the dhcpd.conf file, if it exists, and look for the
+	# 'next-server' option.
+	my $dhcpd_state = 2;
+	my $boot_target = 0;
+	record($conf, "$THIS_FILE ".__LINE__."; path::dhcpd_conf: [$conf->{path}{dhcpd_conf}]\n");
+	if (-e $conf->{path}{dhcpd_conf})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
+		my $shell_call = "$conf->{path}{dhcpd_conf}";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open (my $file_handle, "<", "$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
+			{
+				$boot_target = 1;
+				record($conf, "$THIS_FILE ".__LINE__."; We're an install target!\n");
+				last;
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
+	if ($boot_target)
+	{
+		### NOTE: Don't use the setuid wrapper as 'root' isn't needed
+		###       for a status check anyway.
+		# See if dhcpd is running.
+		my $shell_call = "/etc/init.d/dhcpd status; echo rc:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+				if ($rc eq "3")
+				{
+					# Stopped
+					$dhcpd_state = 1;
+				}
+				elsif ($rc eq "0")
+				{
+					# Running
+					$dhcpd_state = 0;
+				}
+				else
+				{
+					# Unknown state.
+					$dhcpd_state = 4;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	return($dhcpd_state);
 }
 
 # I need to convert the global configuration of the clusters to the format I use here.
 sub convert_cluster_config
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
@@ -5391,7 +5649,7 @@ sub get_guacamole_link
 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	return ($guacamole_url);
 }
 

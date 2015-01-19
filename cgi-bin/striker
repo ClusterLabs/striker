@@ -190,6 +190,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"host",
 	"insert",
 	"install_iso",
+	"install_target",
 	"load",
 	"logical_disk",
 	"logo",
@@ -299,7 +300,9 @@ if ($conf->{cgi}{logo})
 	}
 	else
 	{
-		AN::Cluster::ask_which_cluster($conf);
+		# This is also where we provide options for backup/restore, 
+		# install manifests, etc.
+		AN::Cluster::show_anvil_selection_and_striker_options($conf);
 	}
 }
 elsif ($conf->{cgi}{config})

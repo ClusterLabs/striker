@@ -300,6 +300,13 @@ my $conf = {
 		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
 	},
 	permissions	=>	{
+		dhcpd_dir		=>	{
+			path			=>	"/etc/dhcp",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"0755",
+			recursive		=>	0,
+		},
 		document_root		=>	{
 			path			=>	"/var/www",
 			owner			=>	"apache",
@@ -361,9 +368,15 @@ my $conf = {
 			mode			=>	"755",
 			recursive		=>	0,
 		},
-		### TODO: This might not be setting ownership properly, test!
 		# The following entries must sort last to ensure the setuid
 		# doesn't get changed by a change to the parent directory.
+		z_control_dhcpd		=>	{
+			path			=>	"/var/www/tools/control_dhcpd",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		z_restart_tomcat	=>	{
 			path			=>	"/var/www/tools/restart_tomcat6",
 			owner			=>	"root",
