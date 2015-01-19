@@ -145,7 +145,8 @@ sub summarize_compared_sides {
 
   COMPARISON:
     for my $tag ( sort keys %$compared ) {
-	next COMPARISON unless $compared->{$tag}{status} = 'CRISIS';
+	next COMPARISON
+            unless $compared->{$tag}{status} eq 'CRISIS';
 	$self->sumweight( $self->sumweight() + $compared->{$tag}{weight} );
     }
     return;
@@ -291,12 +292,12 @@ sub compare_sides_or_report_record {
 		if compare_values $new_value, $other_value, $comparator;
 	}
     }
-    else {
-	$self->insert_agent_record( $args, $msg );
-	$self->insert_alert_record( $args, $msg, $exclude_from_sumweight )
-	    if $msg->{status} ne 'OK'
-	    || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
-    }
+
+    $self->insert_agent_record( $args, $msg );
+    $self->insert_alert_record( $args, $msg, $exclude_from_sumweight )
+	if $msg->{status} ne 'OK'
+	|| ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+
     return;
 }
 
