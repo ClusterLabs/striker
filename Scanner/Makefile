@@ -19,27 +19,35 @@ BINDIR     = $(CODEBASE)/bin
 AGENTDIR   = $(CODEBASE)/agents
 LIBDIR     = $(CODEBASE)/lib
 LOGDIR     = /var/log/$(SYSTEMNAME)
+TOOLDIR    = /var/www/tools
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
 	     $(AGENTDIR) $(LIBDIR) $(LOGDIR)
 
 WRAPPERS   = wipmi wstorcli 
+SHUTDOWN   = wshutdown
 
 wrapper: 
-	cd Src && $(MAKE) $(WRAPPERDEST)
+	cd Src && $(MAKE) 
 
 dirs    : $(DIRS)
 
 $(DIRS)	:
 	[[ -x $@ ]] || mkdir -p $@
 
-files 	: scanner agents libs configs messages $(WRAPPERS)
+files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN)
 
 $(WRAPPERS): wrapper
 	cp $@ $(BINDIR)
 	chown root:root $(BINDIR)/$@; 
 	chmod 755  $(BINDIR)/$@;
 	chmod u+s  $(BINDIR)/$@;
+
+$(SHUTDOWN): wrapper
+	cp $@ $(TOOLDIR)
+	chown root:root $(TOOLDIR)/$@; 
+	chmod 755  $(TOOLDIR)/$@;
+	chmod u+s  $(TOOLDIR)/$@;
 
 scanner	:
 	cp scanner $(BINDIR)
