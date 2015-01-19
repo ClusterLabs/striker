@@ -21,7 +21,7 @@ use Module::Load;
 use Const::Fast;
 
 use Class::Tiny qw( id      msg_tag      node_id      field         value
-    units   status       timestamp    db            db_type
+    units   status       timestamp    db            db_type         age
     pid     target_name  target_type  target_extra
     ),
     { msg_args => sub { [] },

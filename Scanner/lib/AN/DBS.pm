@@ -119,7 +119,10 @@ sub fetch_alert_data {
     my $alerts = [];
     for my $db ( @{ $self->dbs() } ) {
         my $db_data = $db->fetch_alert_data($proc_info);
-        for my $idx ( keys %$db_data ) {
+
+	# Process newest first;
+	#
+        for my $idx ( sort { $b <=> $a } keys %$db_data ) {
             my $record = $db_data->{$idx};
             @{$record}{qw(db db_type)}
                 = ( $db->dbconf()->{host}, $db->dbconf()->{db_type}, );
