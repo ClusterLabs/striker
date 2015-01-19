@@ -209,7 +209,7 @@ sub raid_request {
         $self->insert_raw_record($args);
 
         $args->{table} = $info->{db}{table}{alerts};
-            $self->insert_raw_record($args);
+        $self->insert_raw_record($args);
     }
 
     return \@data;

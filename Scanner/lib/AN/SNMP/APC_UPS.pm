@@ -175,7 +175,9 @@ sub insert_agent_record {
         grep { defined $_ && length $_ } ( $msg->{args}, $args->{dev} );
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
-    my $table = '';  #$->{db}{table}{$args->{tag}} || $info->{db}{table}{other},
+    my $table =  $self->confdata->{db}{table}{$args->{tag}}
+              || $self->confdata->{db}{table}{other};
+
     $self->insert_raw_record(
                               { table              => $table,
                                 with_node_table_id => 'node_id',
@@ -199,7 +201,7 @@ sub insert_alert_record {
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
     $self->insert_raw_record(
-        {  table              => '',          #$info->{db}{table}{alerts},
+        {  table              => $self->confdata->{db}{table}{alerts},
            with_node_table_id => 'node_id',
            args               => {
                value => $msg->{newval}           || $args->{value},
@@ -624,7 +626,7 @@ sub query_target {
 
     my $info = $self->confdata;
 TARGET:    # For each snmp target (1, 2, ... ) in the config file
-    for my $target ( keys %$info ) {
+    for my $target ( grep {/\A\d+\z/ } keys %$info ) {
         my $metadata = $info->{$target};
         my $dbtables = $info->{db}{table};
 
