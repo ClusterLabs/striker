@@ -39,7 +39,7 @@ use Class::Tiny qw( agentdir    db_name      db_type  dbconf
     dbs         duration     flagfile from
     max_retries monitoragent msg_dir  port
     rate        run_until    smtp     verbose
-    confpath    confdata     shutdown
+    confpath    confdata     shutdown logdir
     ), {
     agents => sub { [] },
     alerts => sub {
@@ -138,9 +138,8 @@ const my $SECONDS_IN_A_DAY =>
 const my $RUN     => 'run';
 const my $EXIT_OK => 'ok to exit';
 
-const my $METADATA_DIR => '/tmp';
 const my @NEW_AGENT_ARGS =>
-    ( '-o', 'meta-data', '-f', $METADATA_DIR, '--dbconf', 'xdbconfx' );
+    ( '-o', 'meta-data', '-f', 'xlogdirx', '--dbconf', 'xdbconfx' );
 
 const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
                                  \A         # beginning of string
@@ -233,7 +232,7 @@ sub create_flagfile {
 
     my $hostname = AN::Unix::hostname('-short');
 
-    my $args = { dir     => $METADATA_DIR,
+    my $args = { dir     => $self->logdir,
                  pidfile => "${hostname}-${PROG}", };
     $args->{data} = $data if $data;    # otherwise use default.
 
@@ -436,7 +435,10 @@ sub launch_new_agents {
 
     local $LIST_SEPARATOR = $SPACE;
     state $args
-        = [ map { $_ eq 'xdbconfx' ? $self->dbconf : $_; } @NEW_AGENT_ARGS ];
+        = [ map { $_ eq 'xdbconfx' ? $self->dbconf 
+		: $_ eq 'xlogdirx'      ? $self->logdir 
+		:                     $_;
+	        } @NEW_AGENT_ARGS ];
 
     my @new_agents;
     for my $agent (@$new) {

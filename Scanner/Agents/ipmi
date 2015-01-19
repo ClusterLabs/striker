@@ -41,6 +41,8 @@ const my $TEXTBASE => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" )
                         ? "/etc/${SYSTEMNAME}"
                         : $binbase );
 
+
+const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
 const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
 const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/ipmi.conf";
 const my $MSG_DIR             => "${TEXTBASE}/MESSAGES";
@@ -71,13 +73,15 @@ sub process_args {
         dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
         confpath => $DEFAULT_CONFIG_PATH,        # configuration file.
         msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
-        bindir   => $BINDIR, };    # Where bins are found
-
+        bindir   => $BINDIR,                     # Where bins are found
+	logdir   => $LOGDIR,			 # Where logfiles go
+    };
     GetOptions( $opt,               'rate=i',
                 'filepath=s',       'dbconf=s',
                 'msg_file=s',       'metadata|o=s',
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
+		'logdir=s',
                 'bindir=s',         'man',
                 'help' )
         or pod2usage(2);
