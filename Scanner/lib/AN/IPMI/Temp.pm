@@ -1,4 +1,4 @@
-package AN::IPMI::Temp;
+package AN::IPMI::Temperature;
 
 use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 

@@ -20,7 +20,7 @@ use DBI;
 
 use lib 'lib';       # When called by scanner core pre-install
 use lib '../lib';    # When run post-install, or directly during dev/test.
-use AN::IPMI::Temp;
+use AN::IPMI::Temperature;
 
 use Const::Fast;
 
@@ -106,7 +106,7 @@ sub verify_args {
 sub main {
     my $options = process_args();
 
-    my $agent = AN::IPMI::Temp->new($options);
+    my $agent = AN::IPMI::Temperature->new($options);
     $agent->create_flagfile();
 
     my @node_args = @{ $agent->confdata() }{qw(host ip type)};

@@ -14,7 +14,7 @@ use Cwd;
 use Test::More;
 use English '-no_match_vars';
 
-use AN::IPMI::Temp;
+use AN::IPMI::Temperature;
 
 # ----------------------------------------------------------------------
 my $SCHEMA = { 1 => { column_name => 'node_id', data_type => 'serial' },
@@ -141,7 +141,7 @@ $ENV{VERBOSE} = '';
 sub test_constructor {
 
     my $parent = dirname $Bin;
-    my $snmp = AN::IPMI::Temp->new(
+    my $snmp = AN::IPMI::Temperature->new(
 	{ rate      => 50000,
 	  run_until => '23:59:59',
 	  ipmiconf  => "$parent/Config/ipmi.conf",
