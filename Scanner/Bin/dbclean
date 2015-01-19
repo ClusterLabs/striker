@@ -7,4 +7,4 @@
 
 BIN=`dirname $0`
 
-psql -U postgres -d scanner -f $BIN/dbclean_cmds
+psql -h 10.255.4.251 -U postgres -d scanner -f $BIN/dbclean_cmds
