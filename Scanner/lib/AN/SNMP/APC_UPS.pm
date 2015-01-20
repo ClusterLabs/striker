@@ -391,21 +391,21 @@ sub eval_rising_status {
     # 1) Previous status was OK, allow small overage before not OK
     #
     if (    $args->{prev_status} eq 'OK'
-         && $args->{value} <= $args->{rec_meta}{ok_max} + $h ) {
+         && $args->{value} <= $args->{rec_meta}{ok} + $h ) {
         $msg->{status} = 'OK';
     }
 
     # 2) Previous status was not OK, require low value before OK.
     #
     elsif (    $args->{prev_status} ne 'OK'
-            && $args->{value} <= $args->{rec_meta}{ok_max} - $h ) {
+            && $args->{value} <= $args->{rec_meta}{ok} - $h ) {
         $msg->{status} = 'OK';
     }
 
     # 3) Previous status was OK or WARN, allow small overage before CRISIS
     #
     elsif (( $args->{prev_status} eq 'OK' || $args->{prev_status} eq 'WARNING' )
-           && $args->{value} <= $args->{rec_meta}{warn_max} + $h ) {
+           && $args->{value} <= $args->{rec_meta}{warn} + $h ) {
         $msg->{status} = 'WARNING';
         $msg->{tag}    = "Value warning";
         $msg->{args}   = "value=$args->{value}";
@@ -414,7 +414,7 @@ sub eval_rising_status {
     # 4) Previous status was OK or WARN, now changed to CRISIS
     #
     elsif (( $args->{prev_status} eq 'OK' || $args->{prev_status} eq 'WARNING' )
-           && $args->{value} > $args->{rec_meta}{warn_max} + $h ) {
+           && $args->{value} > $args->{rec_meta}{warn} + $h ) {
         $msg->{status} = 'CRISIS';
         $msg->{tag}    = "Value crisis";
         $msg->{args}   = "value=$args->{value}";
@@ -423,7 +423,7 @@ sub eval_rising_status {
     # 5) Previous status was CRISIS, require low value before WARN.
     #
     elsif (    $args->{prev_status} eq 'CRISIS'
-            && $args->{value} <= $args->{rec_meta}{warn_max} - $h ) {
+            && $args->{value} <= $args->{rec_meta}{warn} - $h ) {
         $msg->{status} = 'WARNING';
         $msg->{tag}    = "Value warning";
         $msg->{args}   = "value=$args->{value}";
@@ -432,7 +432,7 @@ sub eval_rising_status {
     # 6) Previous status was CRISIS, keep in CRISIS
     #
     elsif (    $args->{prev_status} eq 'CRISIS'
-            && $args->{value} > $args->{rec_meta}{crisis_min} - $h ) {
+            && $args->{value} > $args->{rec_meta}{warn} - $h ) {
         $msg->{status} = 'CRISIS';
         $msg->{tag}    = "Value crisis";
         $msg->{args}   = "value=$args->{value}";
@@ -461,21 +461,21 @@ sub eval_falling_status {
     # 1) Previous status was OK, allow small underaage before not OK
     #
     if (    $args->{prev_status} eq 'OK'
-         && $args->{value} >= $args->{rec_meta}{ok_min} - $h ) {
+         && $args->{value} >= $args->{rec_meta}{ok} - $h ) {
         $msg->{status} = 'OK';
     }
 
     # 2) Previous status was not OK, require high value before OK.
     #
     elsif (    $args->{prev_status} ne 'OK'
-            && $args->{value} >= $args->{rec_meta}{ok_min} + $h ) {
+            && $args->{value} >= $args->{rec_meta}{ok} + $h ) {
         $msg->{status} = 'OK';
     }
 
     # 3) Previous status was OK or WARN, allow small underage before CRISIS
     #
     elsif (( $args->{prev_status} eq 'OK' || $args->{prev_status} eq 'WARNING' )
-           && $args->{value} >= $args->{rec_meta}{warn_min} - $h ) {
+           && $args->{value} >= $args->{rec_meta}{warn} - $h ) {
         $msg->{status} = 'WARNING';
         $msg->{tag}    = "Value warning";
         $msg->{args}   = "value=$args->{value}";
@@ -484,7 +484,7 @@ sub eval_falling_status {
     # 4) Previous status was OK or WARN, go to CRISIS
     #
     elsif (( $args->{prev_status} eq 'OK' || $args->{prev_status} eq 'WARNING' )
-           && $args->{value} < $args->{rec_meta}{warn_min} - $h ) {
+           && $args->{value} < $args->{rec_meta}{warn} - $h ) {
         $msg->{status} = 'CRISIS';
         $msg->{tag}    = "Value crisis";
         $msg->{args}   = "value=$args->{value}";
@@ -493,7 +493,7 @@ sub eval_falling_status {
     # 4) Previous status was CRISIS, require high value before WARN.
     #
     elsif (    $args->{prev_status} eq 'CRISIS'
-            && $args->{value} >= $args->{rec_meta}{warn_min} + $h ) {
+            && $args->{value} >= $args->{rec_meta}{warn} + $h ) {
         $msg->{status} = 'WARNING';
         $msg->{tag}    = "Value warning";
         $msg->{args}   = "value=$args->{value}";
@@ -502,7 +502,7 @@ sub eval_falling_status {
     # 5) Previous status was CRISIS, keep in CRISIS
     #
     elsif (    $args->{prev_status} eq 'CRISIS'
-            && $args->{value} < $args->{rec_meta}{crisis_max} + $h ) {
+            && $args->{value} < $args->{rec_meta}{warn} + $h ) {
         $msg->{status} = 'CRISIS';
         $msg->{tag}    = "Value crisis";
         $msg->{args}   = "value=$args->{value}";
@@ -597,17 +597,18 @@ sub eval_status {
     my ( $self, $args ) = @_;
 
     return &eval_discrete_status
-        unless ( exists $args->{rec_meta}{ok_min} );    # not range data.
-
-    return &eval_rising_status
-        if $args->{rec_meta}{warn_min} >= $args->{rec_meta}{ok_max};
-
-    return &eval_falling_status
-        if $args->{rec_meta}{warn_max} <= $args->{rec_meta}{ok_min};
+        unless ( exists $args->{rec_meta}{ok}
+		 or exists $args->{rec_meta}{ok_min} ); # not range data.
 
     return &eval_nested_status
-        if (    $args->{rec_meta}{warn_max} >= $args->{rec_meta}{ok_max}
-             && $args->{rec_meta}{warn_min} <= $args->{rec_meta}{ok_min} );
+        if exists $args->{rec_meta}{ok_min};
+
+    return &eval_rising_status
+        if $args->{rec_meta}{warn} >= $args->{rec_meta}{ok};
+
+    return &eval_falling_status
+        if $args->{rec_meta}{warn} <= $args->{rec_meta}{ok};
+
     return;
 }
 
