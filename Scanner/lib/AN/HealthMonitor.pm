@@ -24,18 +24,18 @@ use Const::Fast;
 use Class::Tiny { firsttime => sub {1}
                 };
 
-const my @HEALTH => ( 'ok', 'sick', 'shutting down' );
+const my @HEALTH => ( 'ok', 'warning', 'critical' );
 
 # ......................................................................
 #
 sub weight2health {
     my $self = shift;
-    my ( $sumweight, $crisis_min ) = @_;
+    my ( $sumweight, $crisis ) = @_;
 
     return
-          $sumweight == 0          ? $HEALTH[0]
-        : $sumweight < $crisis_min ? $HEALTH[1]
-        :                            $HEALTH[2];
+          $sumweight == 0      ? $HEALTH[0]
+        : $sumweight < $crisis ? $HEALTH[1]
+        :                        $HEALTH[2];
 }
 
 sub dispatch {
@@ -44,14 +44,14 @@ sub dispatch {
 
     state $healthfile = $listener->owner->confdata->{healthfile};
     state $shutdown   = $listener->owner->confdata->{shutdown};
-    state $crisis_min = $listener->owner->confdata->{summary}{crisis_min};
+    state $crisis     = $listener->owner->confdata->{summary}{warn};
     state $old_health = 'ok';
     state $verbose
         = $listener->owner->verbose
         || grep {/HealthMonitor/} $ENV{VERBOSE}
         || '';
 
-    my $health = $self->weight2health( $sumweight, $crisis_min );
+    my $health = $self->weight2health( $sumweight, $crisis );
 
     # create file on first pass and whenever health changes
     #
@@ -78,7 +78,7 @@ sub dispatch {
     else {
         system( '/bin/touch', $healthfile );
     }
-    if ( $sumweight >= $crisis_min ) {
+    if ( $sumweight >= $crisis ) {
 
         say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
             "\nInvoking shutdown script $shutdown\n"
