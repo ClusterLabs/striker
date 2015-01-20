@@ -16,6 +16,7 @@ use Pod::Usage;
 use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
+use POSIX qw(strftime);
 
 use lib 'lib';       # pre-install
 use lib '../lib';    # post-install
@@ -84,6 +85,7 @@ sub process_args {
         max_retries => $MAX_RETRIES,          # How many attempts in AN::Common
         bindir      => $BINDIR,		      # Where the bins are
 	logdir      => $LOGDIR,		      # Where logfiles are other communication files are
+        log         => 0,
     };
 
     GetOptions( $opt,          'dbconf=s',
@@ -92,7 +94,7 @@ sub process_args {
                 'smtp=s',      'msg_dir=s',
                 'run_until=s', 'confpath=s',
                 'verbose!',    'max_retries=s',
-		'logdir=s',
+		'logdir=s',    'log',
                 'man',         'help' )
         or pod2usage(2);
 
@@ -148,13 +150,31 @@ sub verify_args {
     return;
 }
 
+sub interactive {
+
+    return -t STDIN && -t STDOUT;
+}
+
+sub begin_logging {
+        close STDOUT;
+        my $today = strftime '%F_%T', localtime;
+        my $filename = "${LOGDIR}/log.$today";
+        open STDOUT, '>', $filename;
+}
+
 # ----------------------------------------------------------------------
 # Main code
 #
 
 sub main {
-    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
     my $options = process_args();
+
+    do { begin_logging();
+         $options->{verbose}++;
+       } if $options->{log}
+         || ! interactive();
+
+    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
 
     my $scanner        = AN::Scanner->new($options);
     my $old_job_status = $scanner->check_for_previous_instance();

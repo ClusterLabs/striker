@@ -558,12 +558,16 @@ sub calculate_end_epoch {
 }
 
 sub print_loop_msg {
+    my $self = shift;
     my ( $elapsed, $pending ) = @_;
 
     state $loop = 1;
+
     my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
     say "$PROG loop $loop at @{[time]} $extra_arg.";
     $loop++;
+
+    say "\n" . '-' x 70 . "\n" if $self->verbose;
 
     return;
 }
@@ -801,7 +805,7 @@ sub run_timed_loop_forever {
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
 
-        print_loop_msg( $elapsed, $pending )
+        $self->print_loop_msg( $elapsed, $pending )
             if $self->verbose;
 
         return if $pending < 0;    # dont wait negative duration.
