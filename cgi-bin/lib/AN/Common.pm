@@ -687,6 +687,7 @@ sub initialize_conf
 			reboot_timeout		=>	600,
 			clustat_timeout		=>	120,
 			pool1_shrunk		=>	0,
+			striker_uid		=>	$<,
 			# This tells the install manifest generator how many
 			# ports to open on the IFN for incoming VNC connections
 			open_vnc_ports		=>	100,
@@ -824,6 +825,38 @@ sub initialize_conf
 	};
 	
 	return($conf);
+}
+
+# Check to see if the global settings have been setup.
+sub check_global_settings
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_global_settings()\n");
+	
+	my $global_set = 1;
+	
+	# Pull out the current config.
+	my $smtp__server              = $conf->{smtp}{server}; 			# mail.alteeve.ca
+	my $smtp__port                = $conf->{smtp}{port};			# 587
+	my $smtp__username            = $conf->{smtp}{username};		# example@alteeve.ca
+	my $smtp__password            = $conf->{smtp}{password};		# Initial1
+	my $smtp__security            = $conf->{smtp}{security};		# STARTTLS
+	my $smtp__encrypt_pass        = $conf->{smtp}{encrypt_pass};		# 1
+	my $smtp__helo_domain         = $conf->{smtp}{helo_domain};		# example.com
+	my $mail_data__to             = $conf->{mail_data}{to};			# you@example.com
+	my $mail_data__sending_domain = $conf->{mail_data}{sending_domain};	# example.com
+	
+	# TODO: Make this smarter... For now, just check the SMTP username to
+	# see if it is default.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; smtp__username: [$smtp__username]\n");
+	if ((not $smtp__username) or ($smtp__username =~ /example/))
+	{
+		# Not configured yet.
+		$global_set = 0;
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	return($global_set);
 }
 
 # At this point in time, all this does is print the content type needed for

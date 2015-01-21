@@ -2418,12 +2418,15 @@
 					</td>
 				</tr>
 				
-				<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
+				<!-- These sections are not shown to the user, but it will persist if the user changes the config file. -->
 				<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
 				<input type="hidden" name="#!replace!mail_data__sending_domain_name!#" id="#!replace!mail_data__sending_domain_id!#" value="#!replace!mail_data__sending_domain_value!#">
 				
 				<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
 				<input type="hidden" name="#!replace!smtp__helo_domain_name!#" id="#!replace!smtp__helo_domain_id!#" value="#!replace!smtp__helo_domain_value!#">
+				
+				<!-- This stores the user's spice/vnc graphics option -->
+				<input type="hidden" name="#!replace!sys__use_spice_graphics!#" id="#!replace!sys__use_spice_graphics_id!#" value="#!replace!sys__use_spice_graphics_value!#">
 				
 				<tr>
 					<td class="highlight_ready">

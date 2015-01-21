@@ -53,6 +53,9 @@
 #         striker listen for newly built nodes. 
 #         (broadcast 'I am $hostname on ip $ip' once per second, and then have
 #          striker stop this when it first starts to configure the node).
+#       - When installing without --rhel-iso or --centos-iso, look for existing
+#         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
+#         
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -466,18 +469,18 @@ my $conf = {
 	pxe		=>	{
 		centos		=>	{
 			enabled		=>	0,
-			node1_ks	=>	"anvil-m3-node1-basic-bios_centos.ks",
-			node2_ks	=>	"anvil-m3-node2-basic-bios_centos.ks",
-			striker1_ks	=>	"striker1-m3-basic-bios_centos.ks",
-			striker2_ks	=>	"striker2-m3-basic-bios_centos.ks",
+			node1_ks	=>	"anvil-m2-node01-basic-bios_centos.ks",
+			node2_ks	=>	"anvil-m2-node02-basic-bios_centos.ks",
+			striker1_ks	=>	"anvil-m2-striker01-basic-bios_centos.ks",
+			striker2_ks	=>	"anvil-m2-striker02-basic-bios_centos.ks",
 			short_name	=>	"c6",
 		},
 		rhel		=>	{
 			enabled		=>	0,
-			node1_ks	=>	"anvil-m3-node1-basic-bios_rhel.ks",
-			node2_ks	=>	"anvil-m3-node1-basic-bios_rhel.ks",
-			striker1_ks	=>	"striker1-m3-basic-bios_rhel.ks",
-			striker2_ks	=>	"striker2-m3-basic-bios_rhel.ks",
+			node1_ks	=>	"anvil-m2-node01-basic-bios_rhel.ks",
+			node2_ks	=>	"anvil-m2-node02-basic-bios_rhel.ks",
+			striker1_ks	=>	"anvil-m2-striker01-basic-bios_rhel.ks",
+			striker2_ks	=>	"anvil-m2-striker02-basic-bios_rhel.ks",
 			short_name	=>	"rhel6",
 		}
 	},
@@ -1810,25 +1813,25 @@ sub configure_iso_source
 			my $centos_striker2_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker2_ks}";
 			
 			# Write out the files.
-			print "- Writing out CentOS node 1 kickstart file.\n";
+			print "- Writing out CentOS node 01 kickstart file.\n";
 			open (my $file_handle, ">", $centos_node1_ks_file) or die "Failed to write: [$centos_node1_ks_file], the error was: $!\n";
 			print $file_handle $centos_node1_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_node1_ks_file].\n";
 			
-			print "- Writing out CentOS node 2 kickstart file.\n";
+			print "- Writing out CentOS node 02 kickstart file.\n";
 			open ($file_handle, ">", $centos_node2_ks_file) or die "Failed to write: [$centos_node2_ks_file], the error was: $!\n";
 			print $file_handle $centos_node2_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_node2_ks_file].\n";
 
-			print "- Writing out CentOS striker 1 kickstart file.\n";
+			print "- Writing out CentOS striker 01 kickstart file.\n";
 			open ($file_handle, ">", $centos_striker1_ks_file) or die "Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
 			print $file_handle $centos_striker1_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_striker1_ks_file].\n";
 
-			print "- Writing out CentOS striker 2 kickstart file.\n";
+			print "- Writing out CentOS striker 02 kickstart file.\n";
 			open ($file_handle, ">", $centos_striker2_ks_file) or die "Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
 			print $file_handle $centos_striker2_ks;
 			close $file_handle;
@@ -1979,25 +1982,25 @@ sub configure_iso_source
 			my $rhel_striker2_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker2_ks}";
 			
 			# Write out the files.
-			print "- Writing out CentOS node 1 kickstart file.\n";
+			print "- Writing out RHEL node 01 kickstart file.\n";
 			open (my $file_handle, ">", $rhel_node1_ks_file) or die "Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
 			print $file_handle $rhel_node1_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_node1_ks_file].\n";
 			
-			print "- Writing out CentOS node 2 kickstart file.\n";
+			print "- Writing out RHEL node 02 kickstart file.\n";
 			open ($file_handle, ">", $rhel_node2_ks_file) or die "Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
 			print $file_handle $rhel_node2_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_node2_ks_file].\n";
 
-			print "- Writing out CentOS striker 1 kickstart file.\n";
+			print "- Writing out RHEL striker 01 kickstart file.\n";
 			open ($file_handle, ">", $rhel_striker1_ks_file) or die "Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
 			print $file_handle $rhel_striker1_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_striker1_ks_file].\n";
 
-			print "- Writing out CentOS striker 2 kickstart file.\n";
+			print "- Writing out RHEL striker 02 kickstart file.\n";
 			open ($file_handle, ">", $rhel_striker2_ks_file) or die "Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
 			print $file_handle $rhel_striker2_ks;
 			close $file_handle;
@@ -2590,9 +2593,9 @@ LABEL next
 		$i++;
 		$default_config .= "
 LABEL generic-centos-anvil-node1-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node 01 - Traditional BIOS - CentOS 6
+        MENU LABEL ^$i) Anvil! M2 Node 01 - Traditional BIOS - CentOS 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node 01 using CentOS 6. Will create a
+		Installs a generic Anvil! m2 node 01 using CentOS 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
@@ -2602,9 +2605,9 @@ LABEL generic-centos-anvil-node1-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-centos-anvil-node2-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node 02 - Traditional BIOS - CentOS 6
+        MENU LABEL ^$i) Anvil! M2 node 02 - Traditional BIOS - CentOS 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node 02 using CentOS 6. Will create a
+		Installs a generic Anvil! m2 node 02 using CentOS 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
@@ -2617,9 +2620,9 @@ LABEL generic-centos-anvil-node2-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node 01 - Traditional BIOS - RHEL 6
+        MENU LABEL ^$i) Anvil! M2 node 01 - Traditional BIOS - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node 01 using RHEL 6. Will create a
+		Installs a generic Anvil! m2 node 01 using RHEL 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
@@ -2629,9 +2632,9 @@ LABEL generic-rhel-anvil-node-basic-bios
 		$i++;
 		$default_config .= "
 LABEL generic-rhel-anvil-node-basic-bios
-        MENU LABEL ^$i) Anvil! M3 node 02 - Traditional BIOS - RHEL 6
+        MENU LABEL ^$i) Anvil! M2 node 02 - Traditional BIOS - RHEL 6
 	TEXT HELP
-		Installs a generic Anvil! m3 node 02 using RHEL 6. Will create a
+		Installs a generic Anvil! m2 node 02 using RHEL 6. Will create a
 		traditional /boot + MBR install for systems with traditional BIOSes.
 		Partition will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT

@@ -582,6 +582,7 @@ sub sanity_check_striker_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
+			$conf->{sys}{use_spice_graphics}   = $conf->{cgi}{anvil_use_spice_graphics};
 		}
 	}
 
@@ -644,6 +645,23 @@ sub write_new_striker_conf
 	# This forces spice graphics when provisioning and disables in-browser
 	# VNC.
 	$conf->{sys}{use_spice_graphics} = $conf->{cgi}{anvil_use_spice_graphics} ? $conf->{cgi}{anvil_use_spice_graphics} : 0;
+	
+	# The user doesn't currently set the 'smtp::helo_domain' or 
+	# 'mail_data::sending_domain', so for now we'll devine it from the user's 
+	# 'smtp::username'.
+	record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]\n");
+	if ($conf->{smtp}{helo_domain} eq "example.com")
+	{
+		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+		$conf->{smtp}{helo_domain} = $domain if $domain;
+		record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], domain: [$domain]\n");
+	}
+	if ($conf->{mail_data}{sending_domain} eq "example.com")
+	{
+		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+		$conf->{mail_data}{sending_domain} = $domain if $domain;
+		record($conf, "$THIS_FILE ".__LINE__."; mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]: domain: [$domain]\n");
+	}
 	
 	# Write out the global values.
 	my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
@@ -1018,6 +1036,7 @@ sub load_configuration_defaults
 	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+	$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 	
 	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
@@ -1260,6 +1279,7 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+		$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
@@ -1353,6 +1373,9 @@ sub show_common_config_section
 		mail_data__to_name		=>	$mail_data__to_key,
 		mail_data__to_id		=>	$mail_data__to_key,
 		mail_data__to_value		=>	$conf->{cgi}{$mail_data__to_key},
+		sys__use_spice_graphics		=>	"sys__use_spice_graphics",
+		sys__use_spice_graphics_id	=>	"sys__use_spice_graphics",
+		sys__use_spice_graphics_value	=>	$conf->{cgi}{anvil_use_spice_graphics},
 		push_button			=>	$push_button,
 	}); 
 	
@@ -2672,6 +2695,7 @@ sub load_install_manifest
 		
 		### Now to build the fence strings.
 		my $fence_order = $conf->{install_manifest}{$file}{common}{cluster}{fence}{order};
+		$conf->{cgi}{anvil_fence_order} = $fence_order;
 		
 		# Nodes
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
@@ -4948,13 +4972,16 @@ sub convert_html_to_text
 sub ask_which_cluster
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
 	
+	print AN::Common::template($conf, "select-anvil.html", "open-table");
+	
+	# Now see if we have any Anvil! systems configured.
 	my $anvil_count = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
 		$anvil_count++;
 	}
-
 	if (not $anvil_count)
 	{
 		print AN::Common::template($conf, "select-anvil.html", "no-anvil-configured");
@@ -5000,6 +5027,15 @@ sub ask_which_cluster
 				url		=>	$say_url,
 			});
 		}
+	}
+	
+	# See if the global options have been configured yet.
+	my ($global_set) = AN::Common::check_global_settings($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	if (not $global_set)
+	{
+		# Looks like the user hasn't configured the global values yet.
+		print AN::Common::template($conf, "select-anvil.html", "global-not-configured");
 	}
 	
 	return (0);
@@ -5128,7 +5164,6 @@ sub show_anvil_selection_and_striker_options
 	}
 	
 	# Show the list of configured Anvil! systems.
-	print AN::Common::template($conf, "select-anvil.html", "open-table");
 	ask_which_cluster($conf);
 	
 	# See if this machine is configured as a boot target and, if so,
@@ -5138,6 +5173,7 @@ sub show_anvil_selection_and_striker_options
 	# 1 == Not running
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
 	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
 	
 	# No decide what to show for the "Boot Target" button.
@@ -5167,6 +5203,14 @@ sub show_anvil_selection_and_striker_options
 		$install_target_template = "disabled-install-target-button";
 		$install_target_button   = "#!string!button_0056!#";
 		$install_target_message  = "#!string!message_0408!#";
+		$install_target_url      = "";
+	}
+	elsif ($dhcpd_state eq "4")
+	{
+		# DHCP directory is probably not readable
+		$install_target_template = "disabled-install-target-button";
+		$install_target_button   = "#!string!button_0056!#";
+		$install_target_message  = "#!string!message_0416!#";
 		$install_target_url      = "";
 	}
 	
@@ -5221,6 +5265,7 @@ sub get_dhcpd_state
 	else
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
+		$dhcpd_state = 4;
 	}
 	record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
 	if ($boot_target)
@@ -5263,6 +5308,7 @@ sub get_dhcpd_state
 	# 1 == Not running
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
 	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
 	return($dhcpd_state);
 }

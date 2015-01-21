@@ -63,8 +63,18 @@
 		<key name="button_0056">Install Target</key>
 		<key name="button_0057">Enable Install Target</key>
 		<key name="button_0058">Disable Install Target</key>
-		<key name="button_0059"></key>
-		<key name="button_0060"></key>
+		<key name="button_0059">Global Settings</key>
+		<key name="button_0060">Install Manifests</key>
+		<key name="button_0061">Add a New #!string!brand_0004!#</key>
+		<key name="button_0062"></key>
+		<key name="button_0063"></key>
+		<key name="button_0064"></key>
+		<key name="button_0065"></key>
+		<key name="button_0066"></key>
+		<key name="button_0067"></key>
+		<key name="button_0068"></key>
+		<key name="button_0069"></key>
+		<key name="button_0070"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -141,7 +151,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 # servers. This also disables automatic convertion of 'spice' based servers to
 # VNC. This prevents the in-browser remote server viewer from working, but
 # allows for higher resolutions on some guest desktops, like RHEL 6.
-sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
+sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 
 
 ### Per-#!string!brand_0004!# Configurations
@@ -613,7 +623,7 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="row_0266">Success!</key>
 		<key name="row_0267"><![CDATA[Updating cluster password]]></key>
 		<key name="row_0268">Configure FS Table</key>
-		<key name="row_0269"></key>
+		<key name="row_0269">Unconfigured</key>
 		<key name="row_0270"></key>
 		
 		<!-- Program names -->
@@ -1145,7 +1155,7 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="title_0180"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
-		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0017!#</span> to add your first one!]]></key>
+		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
 		<key name="message_0002">Configure the common variables that are used for all #!string!brand_0003!# systems.</key>
 		<key name="message_0003"><![CDATA[I am sorry, but I can not find an #!string!brand_0003!# called <span class="fixed_width">#!variable!anvil!#</span> in the configuration file.<br /><br />Please update <span class="fixed_width">#!conf!path::striker_conf!#</span> in order to add a new #!string!brand_0003!# to this dashboard server.]]></key>
 		<key name="message_0004"><![CDATA[You appear to have tried to save an empty new #!string!brand_0003!#.<br />At minimum, the '<span class="highlight_ready">#!string!row_0005!#</span>', '<span class="highlight_ready">#!string!row_0006!#</span> and '<span class="highlight_ready">#!string!row_0007!#</span>' must be specified.]]></key>
@@ -1416,7 +1426,7 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="message_0269">Unable to connect to either #!string!brand_0003!# node. The status is not available at this time.</key>
 		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
-		<!-- <key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key> -->
+		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information...]]></key>
 		<key name="message_0273">This could take a minute to complete.</key>
 		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and we will try to help fix this.]]></key>
@@ -1561,8 +1571,8 @@ sys::use_spice_graphics			=	#!variable!sys::use_spice_graphics!#
 		<key name="message_0413"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
 		<key name="message_0414"><![CDATA[The "Install Target" function has been stopped.]]></key>
 		<key name="message_0415"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
-		<key name="message_0416"><![CDATA[]]></key>
-		<key name="message_0417"><![CDATA[]]></key>
+		<key name="message_0416"><![CDATA[The "Install Target" service depends on '<span class="code">dhcpd</span>' which is configured via the: [<span class="code">#!conf!path::dhcpd_conf!#</span>] file.<br />It looks like the directory this file is in can't be read by the system user with user ID: [<span class="code">#!conf!sys::striker_uid!#].<br />#!string!brand_0014!#]]></key>
+		<key name="message_0417"><![CDATA[It looks like this #!string!brand_0002!# dashboard has not yet been configured.<br />Click on "<span class="highlight_ready">#!string!button_0059!#</span>" to configure!]]></key>
 		<key name="message_0418"><![CDATA[]]></key>
 		<key name="message_0419"><![CDATA[]]></key>
 		<key name="message_0420"><![CDATA[]]></key>

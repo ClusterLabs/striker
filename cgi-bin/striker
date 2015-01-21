@@ -92,6 +92,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
 	"anvil_domain",
+	"anvil_fence_order",
 	"anvil_id",
 	"anvil_ifn_dns1",
 	"anvil_ifn_dns2",
@@ -353,7 +354,7 @@ elsif ($conf->{cgi}{cluster})
 else
 {
 	# Ask the user which cluster they want to look at.
-    AN::Cluster::ask_which_cluster($conf);
+	AN::Cluster::show_anvil_selection_and_striker_options($conf);
 }
 AN::Cluster::footer($conf);
 
