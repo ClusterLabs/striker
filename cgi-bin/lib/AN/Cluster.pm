@@ -1157,15 +1157,27 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
 	if ($this_cluster eq "new")
 	{
-		# New Anvil!
-		$say_this_cluster = "";
-		$clear_icon       = "";
+		# New Anvil! If the user is finishing an Install Manifest run,
+		# some values will be set.
+		$say_this_cluster  = $conf->{cgi}{cluster__new__name}         if $conf->{cgi}{cluster__new__name};
+		$this_description  = $conf->{cgi}{cluster__new__description}  if $conf->{cgi}{cluster__new__description};
+		$this_url          = $conf->{cgi}{cluster__new__url}          if $conf->{cgi}{cluster__new__url};
+		$this_company      = $conf->{cgi}{cluster__new__company}      if $conf->{cgi}{cluster__new__company};
+		$this_ricci_pw     = $conf->{cgi}{cluster__new__ricci_pw}     if $conf->{cgi}{cluster__new__ricci_pw};
+		$this_root_pw      = $conf->{cgi}{cluster__new__root_pw}      if $conf->{cgi}{cluster__new__root_pw};
+		$this_nodes_1_name = $conf->{cgi}{cluster__new__nodes_1_name} if $conf->{cgi}{cluster__new__nodes_1_name};
+		$this_nodes_2_name = $conf->{cgi}{cluster__new__nodes_2_name} if $conf->{cgi}{cluster__new__nodes_2_name};
+		$this_nodes_1_ip   = $conf->{cgi}{cluster__new__nodes_1_ip}   if $conf->{cgi}{cluster__new__nodes_1_ip};
+		$this_nodes_2_ip   = $conf->{cgi}{cluster__new__nodes_2_ip}   if $conf->{cgi}{cluster__new__nodes_2_ip};
+		$this_nodes_1_port = $conf->{cgi}{cluster__new__nodes_1_port} if $conf->{cgi}{cluster__new__nodes_1_port};
+		$this_nodes_2_port = $conf->{cgi}{cluster__new__nodes_2_port} if $conf->{cgi}{cluster__new__nodes_2_port};
+		$clear_icon        = "";
 		print AN::Common::template($conf, "config.html", "config-header", {
 			title_1	=>	"#!string!title_0003!#",
 			title_2	=>	"#!string!title_0004!#",
@@ -4631,6 +4643,7 @@ sub configure_dashboard
 	});
 	
 	# If showing an Anvil!, display it's details first.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
 	if ($conf->{cgi}{anvil})
 	{
 		# Show Anvil! header and node settings.

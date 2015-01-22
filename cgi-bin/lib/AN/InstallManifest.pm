@@ -11,6 +11,7 @@ package AN::InstallManifest;
 # BUG:
 # - Install Manifests can be created with IFN networks not matching the per-node/
 #   striker IFN IPs assigned...
+# - Back-button doesn't work after creating a new manifest.
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -296,16 +297,31 @@ sub run_new_install_manifest
 		my ($anvil_configured) = check_config_for_anvil($conf);
 		
 		# Do we need to show the link for adding the Anvil! to the config?
-		if ($anvil_configured)
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_configured: [$anvil_configured]\n");
+		my $message = AN::Common::get_string($conf, {key => "message_0286"});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+		if (not $anvil_configured)
 		{
 			# Nope
+			my $url .= "?anvil=new";
+			   $url .= "&anvil_id=new";
+			   $url .= "&config=new";
+			   $url .= "&section=global";
+			   $url .= "&cluster__new__name=$conf->{cgi}{anvil_name}";
+			   $url .= "&cluster__new__ricci_pw=$conf->{cgi}{anvil_password}";
+			   $url .= "&cluster__new__root_pw=$conf->{cgi}{anvil_password}";
+			   $url .= "&cluster__new__nodes_1_name=$conf->{cgi}{anvil_node1_name}";
+			   $url .= "&cluster__new__nodes_1_ip=$conf->{cgi}{anvil_node1_bcn_ip}";
+			   $url .= "&cluster__new__nodes_2_name=$conf->{cgi}{anvil_node2_name}";
+			   $url .= "&cluster__new__nodes_2_ip=$conf->{cgi}{anvil_node2_bcn_ip}";
+			# see what these value are, relative to global values.
+			
+			# Now the string.
+			$message = AN::Common::get_string($conf, {key => "message_0402", variables => { url => $url }});
 		}
-		else
-		{
-			# Yup
-		}
-		
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success");
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success", {
+			message	=>	$message,
+		});
 		
 		# Enough of that, now everyone go home.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");

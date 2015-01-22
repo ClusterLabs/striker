@@ -56,6 +56,8 @@
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
 #         
+# BUG: - ISO for PXE isn't mounted properly.
+# 
 
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -2192,8 +2194,9 @@ sub mount_iso
 	my ($conf, $source, $target) = @_;
 	
 	# First make sure the target isn't already mounted.
-	my $iso_file   = ($source =~ /^.*\/(.*)$/)[0];
-	my $shell_call = "if \$(grep -q $source /etc/fstab);
+	   $source     =~ s/\/\//\//g;
+	my $iso_file   =  ($source =~ /^.*\/(.*)$/)[0];
+	my $shell_call =  "if \$(grep -q $source /etc/fstab);
 			then
 				echo 'already added to /etc/fstab';
 			else

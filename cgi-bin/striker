@@ -234,7 +234,8 @@ AN::Cluster::get_cgi_vars($conf, [
 ]);
 
 # If 'anvil' was passed, get it's ID and then check for CGI variables.
-if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
+#if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
+if ($conf->{cgi}{anvil_id})
 {
 	my $this_id = $conf->{cgi}{anvil_id};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");

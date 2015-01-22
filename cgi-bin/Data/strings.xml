@@ -203,13 +203,13 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="text_0010"></key>
 		
 		<!-- These are strings used to explain things to the user. Generally they follow form fields. -->
-		<key name="explain_0001"><![CDATA[This is the name of your #!string!brand_0003!#'s cluster name.<br />This is set in <span class="fixed_width">cluster.conf</span> in the <span class="fixed_width"><cluster ...></span> element's <span class="fixed_width">name="..."</span> attribute.]]></key>
+		<key name="explain_0001"><![CDATA[This is the name of your #!string!brand_0003!#'s cluster name.<br />This is set in <span class="fixed_width">cluster.conf</span> in the <span class="fixed_width">&lt;cluster ...&gt;</span> element's <span class="fixed_width">name="..."</span> attribute.]]></key>
 		<key name="explain_0002">This is a free-form text field where you can put in any description you would like for the #!string!brand_0003!#.</key>
 		<key name="explain_0003">If you have an internal tracking or documentation system, and if you track the given #!string!brand_0003!# there, you can enter the URL for it here.</key>
 		<key name="explain_0004"><![CDATA[This is the name of the company, person or group that owns the specified #!string!brand_0003!#.<br />This is a purely descriptive field and you can set it to whatever you want.]]></key>
 		<key name="explain_0005"><![CDATA[When your #!string!brand_0003!# was built, a '<span class="highlight_note">ricci</span>' password was set.<br />Your dashboard needs this password in order to add, edit and remove servers from the given #!string!brand_0003!#.]]></key>
 		<key name="explain_0006"><![CDATA[On most #!string!brand_0003!# systems, the same password is used for both the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users.<br />If this is the case for you, you can leave this blank.<br />If you set a different '<span class="highlight_note">root</span>' password though, please enter that password here.<br />Please note that both nodes must have the same root password.]]></key>
-		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-cYYnZZ</span>.]]></key>
+		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-aYYnZZ</span>.]]></key>
 		<key name="explain_0008"><![CDATA[Generally, if this machine is in the same place as the the #!string!brand_0003!#, the name you set here will resolve to the '#!string!brand_0005!#' of the node.<br />If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />If you use DNS (or similar) to do name to IP translation, leave this blank.]]></key>
 		<key name="explain_0009"><![CDATA[This is the TCP port used to connect to the node over SSH. If you do not specify this, port <span class="fixed_width">22</span> will be used.<br />If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />When in doubt, leave this blank.]]></key>
 		<key name="explain_0010"><![CDATA[The dashboard does not send email, but your #!string!brand_0003!# nodes will.<br />The <span class="fixed_width">#!conf!path::striker_conf!#</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.]]></key>
@@ -1441,7 +1441,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"></key>	<!-- free -->
+		<key name="message_0286"><![CDATA[The #!string!brand_0004!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# dashboard, so you're all set!]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
@@ -1557,7 +1557,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
 		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
-		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step, if needed, is to <a href="?logo=true">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
+		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
 		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">install target</a>.]]></key>
