@@ -143,6 +143,7 @@ sub insert_raw_record {
 
     for my $db ( @{ $self->dbs() } ) {
         $db->insert_raw_record($args)
+	    or $db->insert_raw_record($args) # retry
             or warn "Problem inserting record '" . Data::Dumper::Dumper([$args])
 	            , "' into '", $db->dbconf->{host}, "'.";
     }

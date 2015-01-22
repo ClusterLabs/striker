@@ -23,9 +23,7 @@ use YAML;
 use AN::Unix;
 
 use Class::Tiny (qw( connect   dbh     dbconf  filename logdir node_args
-                     node_table_id     owner )),
-                   { sth => sub { {} },
-		   };
+                     node_table_id     owner   sth)) ;
 
 sub BUILD {
     my $self = shift;
@@ -144,18 +142,23 @@ sub log_new_process {
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
     if ( !$sth ) {
-        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
+        $sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
+	warn "DB error in log_new_process() @{[$DBI::errstr]}."
+	    if $@;
     }
-    my $rows = $sth->execute(@args);
-
-    if ( 0 < $rows ) {
-        $self->dbh->commit();
-        $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-                                          undef );
-    }
-    else {
-        $self->dbh->rollback;
-    }
+    eval {
+	my $rows = $sth->execute(@args);
+	if ( 0 < $rows ) {
+	    $self->dbh->commit();
+	    $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+					      undef );
+	}
+	else {
+	    $self->dbh->rollback
+	}
+    };
+    warn "DB error in log_new_process() @{[$DBI::errstr]}."
+	if $@;
     return $id;
 }
 
@@ -169,17 +172,23 @@ sub halt_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) )
-	    or $self->fail();
+        $sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
+	warn "DB error in halt_process() @{[$DBI::errstr]}."
+	    if $@;
     }
-    my $rows = $sth->execute( $self->node_table_id );
-
-    if ( 0 < $rows ) {
-        $self->dbh->commit();
-    }
-    else {
-        $self->dbh->rollback;
-    }
+    my $rows;
+    eval {
+	$rows = $sth->execute( $self->node_table_id );
+	
+	if ( 0 < $rows ) {
+	    $self->dbh->commit()
+	}
+	else {
+	    $self->dbh->rollback;
+	}
+    };
+    warn "DB error in halt_process() @{[$DBI::errstr]}."
+	if $@;
     return $rows;
 }
 
@@ -193,16 +202,23 @@ sub start_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-        $sth = $self->set_sth( $sql, $self->dbh()->prepare($sql) );
+        $sth = eval { $self->set_sth( $sql, $self->dbh()->prepare($sql) ) };
+	warn "DB error in start_process() @{[$DBI::errstr]}."
+	    if $@;
     }
-    my $rows = $sth->execute( $self->node_table_id );
+    my $rows;
+    eval {
+	$rows = $sth->execute( $self->node_table_id );
 
-    if ( 0 < $rows ) {
-        $self->dbh()->commit();
-    }
-    else {
-        $self->dbh()->rollback;
-    }
+	if ( 0 < $rows ) {
+	    $self->dbh()->commit();
+	}
+	else {
+	    $self->dbh()->rollback;
+	}
+    };
+    warn "DB error in start_process() @{[$DBI::errstr]}."
+	if $@;
     return $rows;
 }
 
@@ -212,6 +228,7 @@ sub start_process {
 sub startup {
     my $self = shift;
 
+    $self->sth({});
     $self->connect_dbs();
     $self->register_start( )
 	if $self->dbh;
@@ -232,7 +249,8 @@ sub connect_db {
 
     if ( ! 'HASH' eq ref $args
 	 || !  exists $args->{host} ) {
-	warn  __PACKAGE__ . "::connect_db() arg is: ", Data::Dumper::Dumper( [$args] );
+	warn  __PACKAGE__ . "::connect_db() arg is: ",
+	      Data::Dumper::Dumper( [$args] );
 	return;
     }
 
@@ -242,8 +260,8 @@ sub connect_db {
     my %args = %DB_CONNECT_ARGS;    # need to copy to avoid readonly error.
 
     my $dbh
-        = eval { DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args ) }
-        || $self->fail();
+	= eval { DBI->connect_cached( $dsn, $args->{user}, $args->{password},
+				      \%args )};
 
     return $dbh;
 }
@@ -327,6 +345,23 @@ sub manual_timestamp {
 
     return $sql;
 }
+
+sub fail_write {
+    my $self = shift;
+    my ( $sql, $fields, $args, $timestamp ) = @_;
+
+    say "DB operation failed @{[$DBI::errstr]} @ ", join ' ', caller();
+    $self->startup();
+
+    if ( $self->dbh() ) {
+	$self->save_to_db( $sql, $fields, $args, $timestamp );
+    }
+    elsif ( $timestamp ) {
+	$self->save_to_file( $sql, $fields, $args, $timestamp );
+    }
+    return;
+}
+
 sub save_to_db {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
@@ -334,10 +369,13 @@ sub save_to_db {
     $sql = $self->manual_timestamp( $sql, $fields, $args, $timestamp )
 	if $timestamp;
 
-    my ( $sth, $id ) = ( $self->get_sth($sql) );    
+    my $sth = $self->get_sth($sql);
+    my $id;
+
     if ( !$sth ) {
-	$sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) }
-             or warn"DBI error: '" . $DBI::errstr . "'.";
+	$sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
+	$self->fail_write( $sql, $fields, $args, $timestamp )
+	    if $@;
     }
 
     say Dumper ( [$sql, $fields, $args] )
@@ -345,20 +383,25 @@ sub save_to_db {
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = eval { $sth->execute( @{$args}{@$fields} ) }
-        or warn"DBI error: '" . $DBI::errstr . "'.";
+    my $rows = eval { $sth->execute( @{$args}{@$fields} ) };
+    $self->fail_write( $sql, $fields, $args, $timestamp )
+	if $@;
     
-    if ( $rows ) {
-	eval {
+    return 1 if $timestamp;	# Don't commit during bulkload
+
+    eval {
+	if ( $rows ) {
 	    $self->dbh->commit();
-	    $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-					      undef )
-	} or warn"DBI error: '" . $DBI::errstr . "'.";
-    }
-    else {
-	eval { $self->dbh->rollback }
-	or warn"DBI error: '" . $DBI::errstr . "'.";
-    }
+	    $id = $self->dbh->last_insert_id( undef, undef,
+					      $DB_PROCESS_TABLE, undef )
+	}
+	else {
+	    $self->dbh->rollback;
+	}
+    };
+    $self->fail_write( $sql, $fields, $args, $timestamp )
+	if $@;
+
     return $id;
 }
 
@@ -375,9 +418,9 @@ sub save_to_file {
 	unless $self->filename;
 
     my $str = YAML::Dump { sql    => $sql,
-		     fields => $fields,
-		     args   => $args,
-		     epoch  => time(),
+			   fields => $fields,
+			   args   => $args,
+			   epoch  => time(),
     };
     open my $fh, '>>', $self->filename
 	or die( 'Could not open for append DB-alternate file ',
@@ -392,13 +435,27 @@ sub save_to_file {
 sub load_db_from_file {
     my $self = shift;
 
-    $self->save_to_db( @{$_}{qw( sql fields args epoch )} )
-	for YAML::LoadFile( $self->filename );
+    my $load_succeeded = 1;
+    eval {$self->save_to_db( @{$_}{qw( sql fields args epoch )} )
+	      for YAML::LoadFile( $self->filename );
+    };
+    $load_succeeded = 0 if $@;	# error occured
 
-    rename $self->filename, $self->filename . '.' . strftime '%F_%T', localtime;
-    $self->filename(undef);
+    eval {
+	if ( $load_succeeded ) {
+	    $self->dbh->commit();
+	    rename $self->filename,
+                $self->filename . '.' . strftime '%F_%T', localtime;
+	    $self->filename(undef);
+	}
+	else {
+	    $self->dbh->rollback();
+	    return if $@;
+	}
+    };
     return;
 }
+
 # If node table id is not pre-defined, it is specificed dynamically
 # for each DB. In that case, delete the field from the args hash so it
 # is similarly undefined for the other DBes.
@@ -430,7 +487,7 @@ sub insert_raw_record {
     return $id;
 }
 
-sub fail {
+sub fail_read {
     my $self = shift;
 
     $self->owner()->switch_next_db;
@@ -468,24 +525,27 @@ sub fetch_alert_data {
     # prepare and archive sth unless it has already been done.
     #
     $sth ||= $self->set_sth( $sql, $self->dbh->prepare($sql) )
-	    or $self->fail();
+	    or $self->fail_read();
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = eval { $sth->execute($node_table_id) }
-	    or $self->fail();
-    my $records = eval { $sth->fetchall_hashref($ID_FIELD) }
-               or $self->fail();
+    my $rows = eval { $sth->execute($node_table_id) };
+    $self->fail_read()
+	if $@;
+    my $records = eval { $sth->fetchall_hashref($ID_FIELD) };
+     $self->fail_read()
+	 if $@;
 
-    if ( 0 < $rows ) {
-        eval { $self->dbh->commit() }
-	    or $self->fail();
-    }
-    else {
-        eval { $self->dbh->rollback }
-	    or $self->fail();
-    }
-
+    eval {
+	if ( $rows ) {
+	    $self->dbh->commit();
+	}
+	else {
+	    $self->dbh->rollback;
+	}
+    };
+    $self->fail_read()
+	if $@;
     return $records;
 }
 

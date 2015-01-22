@@ -27,7 +27,6 @@ use Const::Fast;
 # ======================================================================
 # CONSTANTS
 #
-## Please see file perltidy.ERR
 const my $SYSTEMNAME => 'striker';
 const my $binbase    => dirname $Bin;
 const my $AGENTDIR => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/bin" )
