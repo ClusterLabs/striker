@@ -18,4 +18,4 @@ Scanner/Src/wshutdown
 
 
 # LSI Raid controller insists on creating log file.
-Scanner/MegaSAS.log
+MegaSAS.log
