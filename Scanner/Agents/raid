@@ -18,8 +18,8 @@ use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
 
-use lib 'lib';       # When called by scanner core pre-install
-use lib '../lib';    # When run post-install, or directly during dev/test.
+use lib          $Bin  . '/lib'; # When called by scanner core pre-install
+use lib (dirname $Bin) . '/lib'; # When run post-install, or during dev/test.
 use AN::RAID::Temperature;
 
 use Const::Fast;

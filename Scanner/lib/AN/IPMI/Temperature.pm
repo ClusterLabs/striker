@@ -50,7 +50,7 @@ sub init_prev {
 
     my $prev = {};
 
-RECORD:
+RECOD:
     for my $record (@$received) {
         my ( $tag, $value, $status ) = @{$record}[ 0, 4, 2 ];
 

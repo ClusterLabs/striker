@@ -10,25 +10,28 @@ our $VERSION = '0.0.1';
 
 use English '-no_match_vars';
 use Carp;
+use Const::Fast;
 use Data::Dumper;
 use DBI;
 
+use File::Spec::Functions 'catdir';
 use File::Basename;
-
 use FindBin qw($Bin);
-use Const::Fast;
+use POSIX 'strftime';
+use YAML;
 
 use AN::Unix;
 
-use Class::Tiny (qw( dbh path dbconf node_table_id)), { sth => sub { {} }
-                                                      };
+use Class::Tiny (qw( connect   dbh     dbconf  filename logdir node_args
+                     node_table_id     owner )),
+                   { sth => sub { {} },
+		   };
 
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
 
-    $self->connect_dbs();
-    $self->register_start( $args->{node_args} || undef );
+    $self->startup() if $self->connect;
 }
 
 # ======================================================================
@@ -166,7 +169,8 @@ sub halt_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
+        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) )
+	    or $self->fail();
     }
     my $rows = $sth->execute( $self->node_table_id );
 
@@ -205,19 +209,41 @@ sub start_process {
 # ......................................................................
 # Private Methods
 #
+sub startup {
+    my $self = shift;
+
+    $self->connect_dbs();
+    $self->register_start( )
+	if $self->dbh;
+
+    return;
+}
+
+sub connect_dbs {
+    my $self = shift;
+
+    $self->dbh( $self->connect_db( $self->dbconf ) );
+    return;
+}
+
 sub connect_db {
-    my ($args) = @_;
+    my $self = shift;
+    my ( $args ) = @_;
+
+    if ( ! 'HASH' eq ref $args
+	 || !  exists $args->{host} ) {
+	warn  __PACKAGE__ . "::connect_db() arg is: ", Data::Dumper::Dumper( [$args] );
+	return;
+    }
 
     my $dsn = ( $args->{host} eq 'localhost'
                 ? sprintf( $DSN_SHORT_FMT, $args->{name} )
                 : sprintf( $DSN_FMT,       @{$args}{qw(name host port)} ) );
-    my %args = %DB_CONNECT_ARGS;    # need copy to avoid readonly error.
+    my %args = %DB_CONNECT_ARGS;    # need to copy to avoid readonly error.
 
     my $dbh
-        = DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args )
-        || die( sprintf( "Could not connect to DB %s on host %s: %s\n",
-                         $args->db_name, $args->{host}, $DBI::errstr
-                       ) );
+        = eval { DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args ) }
+        || $self->fail();
 
     return $dbh;
 }
@@ -225,14 +251,12 @@ sub connect_db {
 sub register_start {
     my $self = shift;
 
-    my ($args) = @_;
-
     my $hostname = AN::Unix::hostname '-short';
 
-    my ( $target_name, $target_ip, $target_type )
-        = ( 'ARRAY' eq ref $args
-            ? @$args
-            : ( '', '', '' ) );
+    my ( $target_name, $target_ip, $target_type
+	) = ( 'ARRAY' eq ref $self->node_args
+	      ? @{$self->node_args}
+	      : ( '', '', '' ) );
     $self->node_table_id( $self->log_new_process(
                               $PROG,            $hostname,         $PID,
                               $PROC_STATUS_NEW, $SCANNER_USER_NUM, $target_name,
@@ -244,12 +268,6 @@ sub register_start {
 # ......................................................................
 # Methods
 #
-sub connect_dbs {
-    my $self = shift;
-
-    $self->dbh( connect_db( $self->dbconf ) );
-}
-
 sub dump_metadata {
     my $self = shift;
     my ($prefix) = @_;
@@ -270,6 +288,7 @@ sub generate_insert_sql {
     my $node_table_id_ref = $options->{with_node_table_id} || '';
     my $args              = $options->{args};
     my @fields            = sort keys %$args;
+
     if ( $node_table_id_ref
          && not $args->{$node_table_id_ref} ) {
         push @fields, $node_table_id_ref;
@@ -288,14 +307,37 @@ EOSQL
     return ( $sql, \@fields, $args );
 }
 
-sub insert_raw_record {
+sub manual_timestamp {
     my $self = shift;
+    my ( $sql, $fields, $args, $timestamp ) = @_;
 
-    my ( $sql, $fields, $args ) = $self->generate_insert_sql(@_);
-    my ( $sth, $id ) = ( $self->get_sth($sql) );
+    # nothing to do if timestamp is already in the fields list.
+    #
+    return $sql if -1 < index $sql, ', timestamp';
 
+    # Nope, gotta get things dirty.
+    #
+    $sql =~ s{(\)\nVALUES)}{, timestamp $1}xms;
+    $sql =~ s{(\)\n)\z}
+             {, timestamp with time zone 'epoch' + ? * interval '1 second'$1}xms;
+
+    push @$fields, 'timestamp';
+    $args->{timestamp} = $timestamp;
+    $args->{node_id} = $self->node_table_id;
+
+    return $sql;
+}
+sub save_to_db {
+    my $self = shift;
+    my ( $sql, $fields, $args, $timestamp ) = @_;
+
+    $sql = $self->manual_timestamp( $sql, $fields, $args, $timestamp )
+	if $timestamp;
+
+    my ( $sth, $id ) = ( $self->get_sth($sql) );    
     if ( !$sth ) {
-        $sth = $self->set_sth( $sql, $self->dbh->prepare($sql) );
+	$sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) }
+             or warn"DBI error: '" . $DBI::errstr . "'.";
     }
 
     say Dumper ( [$sql, $fields, $args] )
@@ -303,17 +345,95 @@ sub insert_raw_record {
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = $sth->execute( @{$args}{@$fields} );
-
-    if ( 0 < $rows ) {
-        $self->dbh->commit();
-        $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-                                          undef );
+    my $rows = eval { $sth->execute( @{$args}{@$fields} ) }
+        or warn"DBI error: '" . $DBI::errstr . "'.";
+    
+    if ( $rows ) {
+	eval {
+	    $self->dbh->commit();
+	    $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+					      undef )
+	} or warn"DBI error: '" . $DBI::errstr . "'.";
     }
     else {
-        $self->dbh->rollback;
+	eval { $self->dbh->rollback }
+	or warn"DBI error: '" . $DBI::errstr . "'.";
     }
     return $id;
+}
+
+# Note, to convert epoch into Pg timestamp, use "SELECT TIMESTAMP WITH
+# TIME ZONE 'epoch' + 982384720 * INTERVAL '1 second';" from section
+# 9.9.1 of
+# http://www.postgresql.org/docs/8.0/interactive/functions-datetime.html
+#
+sub save_to_file {
+    my $self = shift;
+    my ( $sql, $fields, $args ) = @_;
+
+    $self->filename( catdir( $self->logdir, $PROG . '.db_alternate' ))
+	unless $self->filename;
+
+    my $str = YAML::Dump { sql    => $sql,
+		     fields => $fields,
+		     args   => $args,
+		     epoch  => time(),
+    };
+    open my $fh, '>>', $self->filename
+	or die( 'Could not open for append DB-alternate file ',
+		"'@{[$self->filename]}'.\n$!" );
+    say $fh $str;
+    close $fh;
+
+    return 1;
+}
+# Load data into DB, archive the file.
+#
+sub load_db_from_file {
+    my $self = shift;
+
+    $self->save_to_db( @{$_}{qw( sql fields args epoch )} )
+	for YAML::LoadFile( $self->filename );
+
+    rename $self->filename, $self->filename . '.' . strftime '%F_%T', localtime;
+    $self->filename(undef);
+    return;
+}
+# If node table id is not pre-defined, it is specificed dynamically
+# for each DB. In that case, delete the field from the args hash so it
+# is similarly undefined for the other DBes.
+#
+sub insert_raw_record {
+    my $self = shift;
+    my ( $db_args ) = @_;
+
+    if ( ! $self->dbh() ) {	# See if DB has come back.
+	$self->startup();
+	$self->load_db_from_file()
+	    if $self->dbh();
+    }
+
+    my $node_table_name = $db_args->{with_node_table_id};
+    my $dynamic_node_id = ! defined $db_args->{args}{$node_table_name};
+
+    my ( $sql, $fields, $args ) = $self->generate_insert_sql($db_args);
+
+    my $id = (  $self->dbh
+		? $self->save_to_db( $sql, $fields, $args )
+		: $self->save_to_file( $sql, $fields, $args )
+	);
+    # re-enable dynamic node_table_id
+    #
+    delete $db_args->{args}{$node_table_name}
+        if $dynamic_node_id;
+
+    return $id;
+}
+
+sub fail {
+    my $self = shift;
+
+    $self->owner()->switch_next_db;
 }
 
 sub generate_fetch_sql {
@@ -347,19 +467,23 @@ sub fetch_alert_data {
 
     # prepare and archive sth unless it has already been done.
     #
-    $sth ||= $self->set_sth( $sql, $self->dbh->prepare($sql) );
+    $sth ||= $self->set_sth( $sql, $self->dbh->prepare($sql) )
+	    or $self->fail();
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = $sth->execute($node_table_id)
-        || carp "No rows returns for query \n'$sql'\n";
-    my $records = $sth->fetchall_hashref($ID_FIELD);
+    my $rows = eval { $sth->execute($node_table_id) }
+	    or $self->fail();
+    my $records = eval { $sth->fetchall_hashref($ID_FIELD) }
+               or $self->fail();
 
     if ( 0 < $rows ) {
-        $self->dbh->commit();
+        eval { $self->dbh->commit() }
+	    or $self->fail();
     }
     else {
-        $self->dbh->rollback;
+        eval { $self->dbh->rollback }
+	    or $self->fail();
     }
 
     return $records;

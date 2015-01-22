@@ -18,8 +18,8 @@ use Time::HiRes qw( time alarm sleep );
 use DBI;
 use POSIX qw(strftime);
 
-use lib 'lib';       # pre-install
-use lib '../lib';    # post-install
+use lib          $Bin  . '/lib'; # pre-install
+use lib (dirname $Bin) . '/lib'; # post-install
 use AN::Scanner;
 
 use Const::Fast;

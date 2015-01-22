@@ -22,15 +22,17 @@ use AN::OneDB;
 use AN::OneAlert;
 use AN::Listener;
 
-use Class::Tiny qw( path dbconf dbs);
+use Class::Tiny qw( current dbconf  dbs     logdir    maxN    node_args
+                    path    switched_to_new_db );
 
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
-
-    my $extra_args = exists $args->{node_args} ? $args->{node_args} : undef;
-
-    $self->connect_dbs($extra_args);
+    
+    $self->node_args( $args->{node_args} )
+        if exists $args->{node_args};
+    $self->connect_dbs();
+    $self->maxN( scalar @{ $self->dbs() } );
 }
 
 # ======================================================================
@@ -67,30 +69,64 @@ sub add_db {
 sub connect_dbs {
     my $self = shift;
 
-    my ($extra_args) = @_;
-
     my %cfg = ( path => $self->path );
     AN::Common::read_configuration_file( \%cfg );
 
     $self->dbconf( $cfg{db} );
-
+    $self->maxN( scalar keys %{$cfg{db}} ); # Number of DB in dbconf
+    
     $self->dbs( [] );
+    my ($idx, $connect_flag) = (0, 1);
+
     for my $tag ( sort keys %{ $self->dbconf } ) {
+	$connect_flag = ( $idx++ == $self->current )
+	    if defined $self->current;
 
         $self->add_db( AN::OneDB->new(
                                        { dbconf    => $self->dbconf->{$tag},
-                                         node_args => $extra_args
+                                         node_args => $self->node_args,
+					 connect   => $connect_flag,
+					 owner     => $self,
+					 logdir    => $self->logdir,
                                        } ) );
     }
-
+    return;
 }
 
+sub switch_next_db {
+    my $self = shift;
+    return unless defined $self->current;
+
+    my $N = $self->current;
+
+    # Kill the old DB object and replace, to clean up DB connections.
+    #
+    $self->dbs()->[$N] = AN::OneDB->new({ dbconf    => $self->dbconf->{$N},
+					  node_args => $self->node_args,
+					  owner     => $self,
+					  logdir    => $self->logdir,
+					} );
+    # Connect with next DB, rolling over the first if gone through 
+    # all available DBs.
+    #
+    $N++;
+    $N %= $self->maxN;
+    $self->current( $N );
+    if ( exists $self->dbs()->[$N] ) { # Has it even been created yet?
+	$self->dbs()->[$N]->startup();
+	$self->switched_to_new_db(1);
+    }
+    return;
+}
 sub node_id {
     my $self = shift;
     my ( $prefix, $separator ) = @_;
 
     my ( $dbs, @ids ) = ( $self->dbs() );
+  DB:
     for my $idx ( 0 .. $#{$dbs} ) {
+	next DB
+	    unless exists $dbs->[$idx]{node_table_id};
         push @ids,
               $prefix
             . ( $idx + 1 )
@@ -107,9 +143,32 @@ sub insert_raw_record {
 
     for my $db ( @{ $self->dbs() } ) {
         $db->insert_raw_record($args)
-            or carp "Problem inserting record @$args into ";
+            or warn "Problem inserting record '" . Data::Dumper::Dumper([$args])
+	            , "' into '", $db->dbconf->{host}, "'.";
     }
     return;
+}
+
+# If connection fails, retry next DB;
+#
+sub fetch_data {
+    my $self = shift;
+    my ($proc_info) = @_;
+
+    my $N = 0;
+    my $current_db = $self->dbs()->[$self->current];
+    my $db_data = $current_db->fetch_alert_data($proc_info);
+
+    while ( !  $db_data
+	    && $self->switched_to_new_db ) {
+	die "Failed query with all @{[$self->maxN]} DB.\n"
+	    if ++$N == $self->maxN;
+
+	$self->switched_to_new_db(0);
+	$current_db = $self->dbs()->[$self->current];
+	$db_data    = $current_db->fetch_alert_data($proc_info);
+    }
+    return $db_data;
 }
 
 sub fetch_alert_data {
@@ -117,17 +176,16 @@ sub fetch_alert_data {
     my ($proc_info) = @_;
 
     my $alerts = [];
-    for my $db ( @{ $self->dbs() } ) {
-        my $db_data = $db->fetch_alert_data($proc_info);
+    my $db_data = $self->fetch_data($proc_info);
 
-	# Process newest first;
-	#
-        for my $idx ( sort { $b <=> $a } keys %$db_data ) {
-            my $record = $db_data->{$idx};
-            @{$record}{qw(db db_type)}
-                = ( $db->dbconf()->{host}, $db->dbconf()->{db_type}, );
-            push @$alerts, AN::OneAlert->new($record);
-        }
+    # Process newest first; Add info about source DB to alert record.
+    #
+    my $dbconf = $self->dbs()->[$self->current]->dbconf();
+
+    for my $idx ( sort { $b <=> $a } keys %$db_data ) {
+	my $record = $db_data->{$idx};
+	@{$record}{qw(db db_type)} = ( @{$dbconf}{qw(host db_type)} );
+	push @$alerts, AN::OneAlert->new($record);
     }
     return $alerts;
 }

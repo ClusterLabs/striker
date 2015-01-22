@@ -33,13 +33,19 @@ use AN::Unix;
 const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
 
+# is_recent == 0              is_running == 0       is_running == 1
+const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
+# is_recent == 1              is_running == 0       is_running == 1
+			    [  'OLD_PROCESS_RECENT_CRASH', undef],
+    );
+
 use subs 'alert_num';    # manually define accessor.
 
-use Class::Tiny qw( agentdir    db_name      db_type  dbconf
-    dbs         duration     flagfile from
-    max_retries monitoragent msg_dir  port
-    rate        run_until    smtp     verbose
-    confpath    confdata     shutdown logdir
+use Class::Tiny qw( 
+    agentdir confdata    confpath     db_name  db_type
+    dbconf   dbs         duration     flagfile from
+    logdir   max_retries monitoragent msg_dir  port
+    rate     run_until   shutdown     smtp     verbose
     ), {
     agents => sub { [] },
     alerts => sub {
@@ -377,30 +383,39 @@ sub check_for_previous_instance {
     $self->create_flagfile();
 
     # Old process exited cleanly, take over. Return early.
-    return $RUN if !$self->old_pid_file_exists();
+    if ( !$self->old_pid_file_exists() ) {
+	say "Previous scanner exited cleanly; taking over.";
+	return $RUN;
+    }
 
-    my ( $is_recent, $is_running )
-        = ( $self->pid_file_is_recent, $self->pid_file_process_is_running );
+    my ( $is_recent, $is_running ) = ( $self->pid_file_is_recent || 0,
+				       $self->pid_file_process_is_running || 0);
 
     # Old process is running and updating pid file. Return early.
-    return $EXIT_OK
-        if $is_recent && $is_running;
+    if ($is_recent && $is_running) {
+	say "A scanner process is already running; exiting";
+	return $EXIT_OK;
+    }
+
 
     # Old process exited recently without proper cleanup
+
+    my $tag = $OLD_PROC_MSG[$is_recent][$is_running];
     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-                      '', '', AN::Alerts::DEBUG(),
-                      'OLD_PROCESS_RECENT_CRASH', '' )
+                      '', '', AN::Alerts::DEBUG(), $tag, '' )
         if $is_recent && !$is_running;
 
     # Old process has stalled; running but not updating.
     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-                      '', '', AN::Alerts::DEBUG(), 'OLD_PROCESS_STALLED', '' )
+                      '', '', AN::Alerts::DEBUG(), $tag, '' )
         if !$is_recent && $is_running;
 
     # old process exited some time ago without proper cleanup
     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-                      '', '', AN::Alerts::DEBUG(), 'OLD_PROCESS_CRASH', '' )
+                      '', '', AN::Alerts::DEBUG(), $tag, '' )
         if !$is_recent && !$is_running;
+
+    say "Replacing defective previous scanner: ", $tag;
 
     return $RUN;
 }
@@ -409,7 +424,11 @@ sub connect_dbs {
     my $self = shift;
     my ($node_args) = @_;
 
-    my $args = { path => { config_file => $self->dbconf } };
+    my $args = { path   => { config_file => $self->dbconf },
+		 logdir => $self->logdir,
+               };
+    $args->{current} = 0	# In scanner, activate only one DB at a time
+	if __PACKAGE__ eq ref $self;
     $args->{node_args} = $node_args if $node_args;
 
     $self->dbs( AN::DBS->new($args) );
@@ -564,7 +583,7 @@ sub print_loop_msg {
     state $loop = 1;
 
     my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
-    say "$PROG loop $loop at @{[time]} $extra_arg.";
+    say "$PROG loop $loop at @{[scalar localtime]} $extra_arg.";
     $loop++;
 
     say "\n" . '-' x 70 . "\n" if $self->verbose;
@@ -804,11 +823,14 @@ sub run_timed_loop_forever {
         $self->touch_pid_file;
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
+	say "Processing took a long time: $elapsed seconds is more than ",
+	    "expected loop rate of @{[$self->rate]} seconds."
+		if $pending < 0;
 
-        $self->print_loop_msg( $elapsed, $pending )
+	$pending = 1 if $pending <= 0;
+
+	$self->print_loop_msg( $elapsed, $pending )
             if $self->verbose;
-
-        return if $pending < 0;    # dont wait negative duration.
 
         sleep $pending;
 
