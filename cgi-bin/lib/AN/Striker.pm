@@ -36,7 +36,7 @@ use AN::Common;
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
-my $THIS_FILE = "Striker.pm";
+my $THIS_FILE = "AN::Striker.pm";
 
 # This takes a node name and returns the peer node.
 sub get_peer_node
@@ -3406,7 +3406,7 @@ sub manage_vm
 					id		=>	"remote_icon",
 				}, "", 1);
 			}
-			elsif ($node =~ /n01/)
+			elsif (($node =~ /n01/) || ($node =~ /node01/))
 			{
 				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -3419,7 +3419,7 @@ sub manage_vm
 					id		=>	"guacamole_url_$say_vm",
 				}, "", 1);
 			}
-			elsif ($node =~ /n02/)
+			elsif (($node =~ /n02/) || ($node =~ /node02/))
 			{
 				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -4120,8 +4120,9 @@ sub add_vm_to_cluster
 		if ($fod =~ /primary_(.*?)$/)
 		{
 			my $node_suffix = $1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix]\n");
-			if ($node =~ /$node_suffix/)
+			my $alt_suffix  = $node_suffix eq "n01" ? "node01" : "node02";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
+			if (($node =~ /$node_suffix/) || ($node =~ /$alt_suffix/))
 			{
 				$failover_domain = $fod;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
@@ -4835,7 +4836,7 @@ sub provision_vm
 		###        guacamole's cookies better.
 		restart_tomcat($conf, "1");
 		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-		if ($node =~ /n01/)
+		if (($node =~ /n01/) || ($node =~ /node01/))
 		{
 			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -4848,7 +4849,7 @@ sub provision_vm
 				id		=>	"guacamole_url_$say_vm",
 			}, "", 1);
 		}
-		elsif ($node =~ /n02/)
+		elsif (($node =~ /n02/) || ($node =~ /node02/))
 		{
 			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -5802,7 +5803,7 @@ sub start_vm
 							id		=>	"server-desktop_offline",
 						}, "", 1);
 					}
-					elsif ($node =~ /n01/)
+					elsif (($node =~ /n01/) || ($node =~ /node01/))
 					{
 						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -5815,7 +5816,7 @@ sub start_vm
 							id		=>	"guacamole_url_$say_vm",
 						}, "", 1);
 					}
-					elsif ($node =~ /n02/)
+					elsif (($node =~ /n02/) || ($node =~ /node02/))
 					{
 						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -8362,10 +8363,12 @@ sub check_node_readiness
 sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_vm_definition(); node: [$node], vm: [$vm]\n");
 	if (not $vm)
 	{
 		AN::Cluster::error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
 	}
+	
 	my $say_vm = $vm;
 	if ($vm =~ /vm:(.*)/)
 	{
@@ -8378,7 +8381,7 @@ sub read_vm_definition
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.

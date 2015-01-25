@@ -86,7 +86,7 @@ sub create_rsync_wrapper
 echo '#!/usr/bin/expect' > ~/rsync.$node
 echo 'set timeout 3600' >> ~/rsync.$node
 echo 'eval spawn rsync \$argv' >> ~/rsync.$node
-echo 'expect  \"*?assword:\" \{ send \"$root_pw\\\\n\" \}' >> ~/rsync.$node
+echo 'expect \"password:\" \{ send \"$root_pw\\n\" \}' >> ~/rsync.$node
 echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -108,82 +108,65 @@ sub test_ssh_fingerprint
 	my ($conf, $node) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
 	
-	my $failed  = 0;
-	my $cluster = $conf->{cgi}{cluster};
-	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
-	my $sc = "ssh root\@$node \"uname -a\"";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	### TODO: This won't detect when the target's SSH key changed after a
+	###       node was replaced! Need to fix this.
+	my $failed     = 0;
+	my $cluster    = $conf->{cgi}{cluster};
+	my $root_pw    = $conf->{clusters}{$cluster}{root_pw};
+	my $shell_call = "grep ^\"$node\[, \]\" ~/.ssh/known_hosts -q; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+	open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
-		my $line =  $_;
+		my $line = $_;
 		   $line =~ s/\n/ /g;
 		   $line =~ s/\r/ /g;
 		   $line =~ s/\s+$//;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /The authenticity of host/)
+		if ($line =~ /^rc:(\d+)/)
 		{
-			# Add fingerprint to known_hosts
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
-			my $message = get_string($conf, {key => "message_0279", variables => {
-				node	=>	$node,
-			}});
-			print template($conf, "common.html", "generic-note", {
-				message	=>	$message,
-			});
-			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
-			#print template($conf, "common.html", "shell-output-header");
-			my $fh = IO::Handle->new();
-			my $sc = "$conf->{path}{'ssh-keyscan'} $node >> ~/.ssh/known_hosts";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			my $rc = $1;
+			if ($rc eq "0")
 			{
-				chomp;
-				my $line = $_;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				#print template($conf, "common.html", "shell-call-output", {
-				#	line	=>	$line,
-				#});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] already in '~/.ssh/known_hosts'.\n");
+				last;
 			}
-			$fh->close();
-			#print template($conf, "common.html", "shell-output-footer");
-			#$message = get_string($conf, {key => "message_0120"});
-			#print template($conf, "common.html", "generic-note", {
-			#	message	=>	$message,
-			#});
-			sleep 5;
-		}
-		elsif ($line =~ /Host key verification failed/)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host key verification failed message\n");
-			my $message = get_string($conf, {key => "message_0360", variables => {
-				node	=>	$node,
-			}});
-			print template($conf, "common.html", "generic-error", {
-				message	=>	$message,
-			});
-			$failed  = 1;
-		}
-		elsif ($line =~ /Offending key .*? (.*?):(\d+)/)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; offending key message\n");
-			my $file = $1;
-			my $line = $2;
-			my $message = get_string($conf, {key => "message_0358", variables => {
-				node	=>	$node,
-				file	=>	$file,
-				line	=>	$line,
-			}});
-			print template($conf, "common.html", "generic-error", {
-				message	=>	$message,
-			});
-			$failed  = 1;
+			elsif (($rc eq "1") or ($rc eq "2"))
+			{
+				if ($rc eq "1")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] not in '~/.ssh/known_hosts', adding.\n");
+				}
+				else
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [$node].\n");
+				}
+				# Add fingerprint to known_hosts
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
+				my $message = get_string($conf, {key => "message_0279", variables => {
+					node	=>	$node,
+				}});
+				print template($conf, "common.html", "generic-note", {
+					message	=>	$message,
+				});
+				#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+				#print template($conf, "common.html", "shell-output-header");
+				my $shell_call = "$conf->{path}{'ssh-keyscan'} $node 2>&1 >> ~/.ssh/known_hosts";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+				open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				}
+				close $file_handle;
+				sleep 5;
+			}
 		}
 	}
-	$fh->close();
+	close $file_handle;
 
 	return($failed);
 }

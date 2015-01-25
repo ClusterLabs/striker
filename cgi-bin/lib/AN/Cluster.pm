@@ -7320,7 +7320,7 @@ sub remote_call
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
 			}
 		}
 	}
@@ -7419,7 +7419,7 @@ sub remote_call
 	# Close the connection if requested.
 	if ($close)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
 		$ssh_fh->disconnect();
 		
 		# For good measure, blank both variables.
@@ -9322,7 +9322,7 @@ sub write_node_cache
 	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state

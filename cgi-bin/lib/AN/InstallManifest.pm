@@ -72,6 +72,7 @@ sub run_new_install_manifest
 		'qemu-kvm'			=>	0,
 		'qemu-kvm-tools'		=>	0,
 		parted				=>	0,
+		pciutils			=>	0,
 		perl				=>	0,
 		'perl-TermReadKey'		=>	0,
 		'perl-Time-HiRes'		=>	0,
