@@ -21,9 +21,10 @@ DROP TABLE  IF EXISTS history.snmp_apc_ups	cascade;
 DROP TABLE  IF EXISTS history.ipmi_temp		cascade;
 DROP TABLE  IF EXISTS history.raid_temp		cascade;
 
-DROP SCHEMA IF EXISTS history	      cascade;
-DROP TYPE   IF EXISTS status;
-DROP TYPE   IF EXISTS mode;
+DROP SCHEMA IF EXISTS history cascade;
+DROP TYPE   IF EXISTS status  cascade;
+DROP TYPE   IF EXISTS mode    cascade;
+DROP TYPE   IF EXISTS level   cascade;
 
 DROP FUNCTION  IF EXISTS history_node();
 
