@@ -22,6 +22,8 @@ use YAML;
 
 use AN::Unix;
 
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
+
 use Class::Tiny (qw( connect   dbh     dbconf  filename logdir node_args
                      node_table_id     owner   sth)) ;
 
@@ -30,6 +32,9 @@ sub BUILD {
     my ($args) = @_;
 
     $self->startup( {from_build => 1} ) if $self->connect;
+    $self->filename( catdir( $self->logdir,
+			     'db.' . $PROG . '.alternate.' . $self->dbconf->{host}
+		     ));
 }
 
 # ======================================================================
@@ -45,8 +50,6 @@ const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
 
 const my $DSN_SHORT_FMT => 'dbi:Pg:dbname=%s';
 const my $DSN_FMT       => 'dbi:Pg:dbname=%s;host=%s;port=%s';
-
-const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $DB_PROCESS_TABLE => 'node';
 
@@ -413,17 +416,24 @@ sub manual_timestamp {
     #
     return $sql if -1 < index $sql, ', timestamp';
 
+    state %cache;
     # Nope, gotta get things dirty.
     #
-    $sql =~ s{(\)\nVALUES)}{, timestamp $1}xms;
-    $sql =~ s{(\)\n)\z}
-             {, timestamp with time zone 'epoch' + ? * interval '1 second'$1}xms;
-
+    my $newsql;
+    if ( $cache{$sql} ) {
+	$newsql = $cache{$sql};
+    } else {
+        $newsql = $sql;
+	$newsql =~ s{(\)\nVALUES)}{, timestamp $1}xms;
+	$newsql =~ s{(\)\n)\z}
+	{, timestamp with time zone 'epoch' + ? * interval '1 second'$1}xms;
+	$cache{$sql} = $newsql;
+    }
     push @$fields, 'timestamp';
     $args->{timestamp} = $timestamp;
     $args->{node_id} = $self->node_table_id;
 
-    return $sql;
+    return $newsql;
 }
 
 sub fail_write {
@@ -508,9 +518,6 @@ sub save_to_file {
     my $self = shift;
     my ( $sql, $fields, $args ) = @_;
 
-    $self->filename( catdir( $self->logdir, 'db.' . $PROG . '.alternate' ))
-	unless $self->filename;
-
     my $str = YAML::Dump { sql    => $sql,
 			   fields => $fields,
 			   args   => $args,
@@ -529,6 +536,13 @@ sub save_to_file {
 sub load_db_from_file {
     my $self = shift;
 
+    return unless ref $self->dbh;     # no DBI:db to talk to.
+    return unless -e $self->filename; # no file to load from.
+
+    say "Loading DB @{[$self->dbconf()->{host}]} from @{[$self->filename]}."
+	if $self->owner->verbose;
+    
+
     my $load_succeeded = 1;
     eval {$self->save_to_db( @{$_}{qw( sql fields args epoch )} )
 	      for YAML::LoadFile( $self->filename );
@@ -540,7 +554,7 @@ sub load_db_from_file {
 	    $self->dbh->commit()
 		if $self->dbh->ping;
 	    rename $self->filename,
-                $self->filename . '.' . strftime '%F_%T', localtime;
+                $self->filename . '_@_' . strftime '%F_%T', localtime;
 	    $self->filename(undef);
 	}
 	else {

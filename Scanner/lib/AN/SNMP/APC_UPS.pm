@@ -746,6 +746,12 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
     return;
 }
 
+sub prep_for_loop {
+    my $self = shift;
+
+    $self->dbs->load_db_from_files;
+}
+
 sub loop_core {
     my $self = shift;
 

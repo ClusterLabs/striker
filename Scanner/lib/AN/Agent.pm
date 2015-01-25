@@ -143,6 +143,8 @@ sub loop_core {
     $self->generate_random_record();
 }
 
+sub prep_for_loop {}		# placeaholder for subclasses.
+
 sub run {
     my $self = shift;
 
@@ -156,6 +158,7 @@ sub run {
 
     # process until quitting time
     #
+    $self->prep_for_loop;
     $self->run_timed_loop_forever();
 
     # clean up and exit.

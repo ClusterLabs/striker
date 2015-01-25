@@ -561,11 +561,6 @@ sub clean_up_metadata_files {
         unlink $_;
     }
 
-    my $time = strftime '%F_%T', localtime;
-    for ( glob( catdir( $dir, ( 'db.' . $STAR . '.alternate' )))) {
-	say "archiving old file $_." if $self->verbose;
-	rename $_, ${_} . '.' . $time;
-    }
     return;
 }
 
@@ -927,7 +922,6 @@ sub run_timed_loop_forever {
     #
     while ( $now < $end_time
             && !$self->shutdown() ) {
-	say $PROG, ' $self->shutdown is ', $self->shutdown();
         $self->loop_core();
         $self->$touch_file();
         my ($elapsed) = time() - $now;

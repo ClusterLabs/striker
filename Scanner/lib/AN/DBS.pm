@@ -135,6 +135,15 @@ sub connect_dbs {
     return;
 }
 
+sub load_db_from_files {
+    my $self = shift;
+
+    for my $db ( @{ $self->dbs } ) {
+	$db->load_db_from_file;
+    }
+    return;
+}
+
 sub switch_next_db {
     my $self = shift;
     return unless defined $self->current;

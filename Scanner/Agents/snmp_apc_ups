@@ -142,12 +142,7 @@ sub main {
 	$agent->verbose( $agent->verbose + 1 );
     }
 
-    my $status = $agent->run( \@node_args );
-
-    if ( $status eq 'clean shutdown' ) {
-        $agent->shutdown();
-        exit 0;
-    }
+    $agent->run( \@node_args );
 }
 
 # ----------------------------------------------------------------------
