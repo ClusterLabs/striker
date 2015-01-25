@@ -18,6 +18,7 @@ use File::Spec::Functions 'catdir';
 use FileHandle;
 use FindBin qw($Bin);
 use IO::Select;
+use POSIX 'strftime';
 use List::MoreUtils;
 use Time::HiRes qw( time alarm sleep);
 use Time::Local;
@@ -44,6 +45,7 @@ use subs 'alert_num';    # manually define accessor.
 use Class::Tiny qw( 
     agentdir confdata    confpath     db_name  db_type
     dbconf   dbs         duration     flagfile from
+    ignore
     logdir   max_retries monitoragent msg_dir  port
     rate     run_until   shutdown     smtp     verbose
     ), {
@@ -69,6 +71,20 @@ use Class::Tiny qw(
 # ----------------------------------------------------------------------
 # METHODS
 #
+sub interactive {
+    my $self = shift;
+    return -t STDIN && -t STDOUT;
+}
+
+sub begin_logging {
+    my $self= shift;
+    close STDOUT;
+    my $today = strftime '%F_%T', localtime;
+    my $filename = $self->logdir . '/log.' . $PROG . '.' . $today;
+    open STDOUT, '>', $filename;
+    open STDERR, '>&STDOUT';		# '>&', is followed by a file handle.
+}
+
 sub path_to_configuration_files {
 
     return getcwd();
@@ -97,6 +113,11 @@ sub BUILD {
         unless $self->agentdir();
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
+
+    if ( $args->{ignorelist} ) {
+	$self->ignore({});
+	$self->ignore->{$_} = 1 for @{$args->{ignorelist}};
+    }
 
     $self->monitoragent(
         AN::MonitorAgent->new(
@@ -128,7 +149,7 @@ const my $PIPE  => q{|};
 const my $READ_PROC  => q{-|};
 const my $WRITE_PROC => q{|-};
 
-const my $EP_TIME_FMT => '%8.3f:%8.3f mSec';    # elapsed:pending time format
+const my $EP_TIME_FMT => '%8.3f ms elapsed;  %8.3f ms pending';
 
 const my $DB_NODE_TABLE       => 'node';
 const my $PROC_STATUS_NEW     => 'pre_run';
@@ -145,7 +166,7 @@ const my $RUN     => 'run';
 const my $EXIT_OK => 'ok to exit';
 
 const my @NEW_AGENT_ARGS =>
-    ( '-o', 'meta-data', '-f', 'xlogdirx', '--dbconf', 'xdbconfx' );
+    qw( -o meta-data -f xlogdirx --dbconf xdbconfx -log --verbose );
 
 const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
                                  \A         # beginning of string
@@ -283,6 +304,13 @@ sub create_marker_file {
 
     $self->flagfile()->create_marker_file( $tag, $data );
 }
+
+sub touch_marker_file {
+    my $self = shift;
+
+    $self->flagfile()->touch_marker_file();
+}
+
 
 # Look up whether the process id specified in the pidfile refers to
 # a running process, make sure it's the same name as we are. Otherwise
@@ -424,8 +452,10 @@ sub connect_dbs {
     my $self = shift;
     my ($node_args) = @_;
 
-    my $args = { path   => { config_file => $self->dbconf },
-		 logdir => $self->logdir,
+    my $args = { path    => { config_file => $self->dbconf },
+		 logdir  => $self->logdir,
+		 verbose => $self->verbose,
+		 owner   => $self,
                };
     $args->{current} = 0	# In scanner, activate only one DB at a time
 	if __PACKAGE__ eq ref $self;
@@ -460,7 +490,10 @@ sub launch_new_agents {
 	        } @NEW_AGENT_ARGS ];
 
     my @new_agents;
+  AGENT:
     for my $agent (@$new) {
+	next AGENT
+	    if exists $self->ignore()->{$agent};
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
@@ -496,6 +529,9 @@ sub scan_for_agents {
     if (@$deleted) {
         push @$retval, $self->drop_agents(@$new);
     }
+
+    sleep 1;
+
     return $retval;
 }
 
@@ -510,6 +546,11 @@ sub clean_up_metadata_files {
         unlink $_;
     }
 
+    my $time = strftime '%F_%T', localtime;
+    for ( glob( catdir( $dir, ( 'db.' . $STAR . '.alternate' )))) {
+	say "archiving old file $_." if $self->verbose;
+	rename $_, ${_} . '.' . $time;
+    }
     return;
 }
 
@@ -582,8 +623,9 @@ sub print_loop_msg {
 
     state $loop = 1;
 
+    my $now = strftime '%T', localtime;
     my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
-    say "$PROG loop $loop at @{[scalar localtime]} $extra_arg.";
+    say "$PROG loop $loop at @{[$now]} -> $extra_arg.";
     $loop++;
 
     say "\n" . '-' x 70 . "\n" if $self->verbose;
@@ -604,6 +646,15 @@ sub handle_deletions {
     $self->drop_processes(@$deletions)
         if $deletions;
     return;
+}
+
+sub fetch_node_entries {
+    my $self = shift;
+    my ( $pids ) = shift;
+
+    return unless $pids;
+    my $nodes = $self->dbs->fetch_node_entries($pids);
+    return $nodes;
 }
 
 sub wait_for_all_metadata_files {
@@ -632,13 +683,37 @@ sub wait_for_all_metadata_files {
     return;
 }
 
+sub update_process_node_id_entries {
+    my $self = shift;
+
+    state $verbose = grep { /debug node_id update/ } $ENV{VERBOSE};
+
+    my @pids = sort {$a <=> $b }
+                   map { $_->{db_data}->{pid}} @{$self->processes};
+    my $nodes;
+    do {
+	$nodes = $self->fetch_node_entries( \@pids );
+	say "update_process_node_id_entries got:\n",
+            Data::Dumper::Dumper $nodes
+	    if $verbose;;
+    } until scalar keys %$nodes == scalar @pids;
+
+    my $db_idx = $self->dbs->current + 1;
+
+    for my $process ( @{$self->processes} ) {
+	my $name = $process->{name};
+	$process->{db_data}{$db_idx}{node_table_id} = $nodes->{$name}{node_id};
+    }
+}
+
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
-
+    
     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
     my $tag            = AN::FlagFile::get_tag('METADATA');
     my $files          = $self->wait_for_all_metadata_files( $additions, $tag );
+    my $N              = 0;
 
 FILEPATH:
     for my $filepath ( @{ $files->{$tag} } ) {
@@ -655,8 +730,10 @@ FILEPATH:
                                        hostname => $cfg{db}{hostname},
                                        msg_dir  => $self->msg_dir,
                                     } );
+	$N++;
     }
-    return;
+    $self->update_process_node_id_entries( scalar @$additions );
+    return $N;
 }
 
 sub handle_changes {
@@ -740,14 +817,29 @@ sub reset_summary_weight {
     $self->sumweight(0);
 }
 
+sub check_if_process_needs_replacement {
+    my $self = shift;
+    my ( $replacement_processes, $process, $idx ) = @_;
+
+    my $proc = AN::Unix::pid2process $process->{db_data}{pid};
+    return;
+}	
+
 sub process_agent_data {
     my $self = shift;
 
     say "Scanner::process_agent_data()." if $self->verbose;
+    my ($idx, %replacement_processes) = (0);
+
     for my $process ( @{ $self->processes } ) {
 	my ($weight, $count);
         my $alerts = $self->fetch_alert_data($process);
-        my $allN   = scalar @$alerts;
+	if ( ! 'ARRAY' eq ref $alerts ) {
+	    $self->check_if_process_needs_replacement( \%replacement_processes,
+						       $process, $idx );
+	    return;
+	}
+	my $allN   = scalar @$alerts;
         my $newN   = 0;
 
     ALERT:
@@ -774,6 +866,7 @@ sub process_agent_data {
             else {
                 $self->detect_status( $process, $alert );
             }
+	    $idx++;
         }
         say scalar localtime()
             . " Received $allN alerts for process $process->{name}, $newN of them new."
@@ -792,7 +885,7 @@ sub loop_core {
 
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
-    $self->process_agent_data();
+    $self->process_agent_data( );
     $self->handle_alerts();
 
     if ($verbose) {
@@ -809,6 +902,10 @@ sub loop_core {
 sub run_timed_loop_forever {
     my $self = shift;
 
+    state $touch_file = ( __PACKAGE__ eq ref $self 
+			      ? 'touch_pid_file'
+			      : 'touch_marker_file'
+	);
     local $LIST_SEPARATOR = $COMMA;
 
     my ( $start_time, $end_time ) = ( time, $self->calculate_end_epoch );
@@ -820,7 +917,7 @@ sub run_timed_loop_forever {
             && !$self->shutdown() ) {
 
         $self->loop_core();
-        $self->touch_pid_file;
+        $self->$touch_file();
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
 	say "Processing took a long time: $elapsed seconds is more than ",

@@ -23,7 +23,7 @@ use AN::OneAlert;
 use AN::Listener;
 
 use Class::Tiny qw( current dbconf  dbs     logdir    maxN    node_args
-                    path    switched_to_new_db );
+                    owner   path    switched_to_new_db verbose );
 
 sub BUILD {
     my $self = shift;
@@ -41,6 +41,7 @@ sub BUILD {
 const my $ASSIGN      => q{=};
 const my $DOUBLECOLON => q{::};
 const my $DB          => q{db};
+const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
 
 # ======================================================================
 # Subroutines
@@ -62,6 +63,22 @@ sub add_db {
     return;
 }
 
+# scanCore has the concept of a current database from which it is
+# reading; agents leave it undef cause they want to write to all
+# available databases. So don't do anything if $self->current is
+# undef, but if it exists, increment and loop around maxN.
+#
+sub increment_current {
+    my $self = shift;
+
+    return unless defined $self->current;
+
+    my $N = $self->current;
+    $N++;
+    $N %= $self->maxN;
+    $self->current( $N );
+    return;
+}
 # ......................................................................
 # Methods
 #
@@ -76,20 +93,42 @@ sub connect_dbs {
     $self->maxN( scalar keys %{$cfg{db}} ); # Number of DB in dbconf
     
     $self->dbs( [] );
-    my ($idx, $connect_flag) = (0, 1);
+    my ($idx, $connect_flag, $failedN) = (0, 1, 0);
 
+    # $self->current is automatically incremented when connection
+    # fails.
     for my $tag ( sort keys %{ $self->dbconf } ) {
 	$connect_flag = ( $idx++ == $self->current )
 	    if defined $self->current;
 
-        $self->add_db( AN::OneDB->new(
-                                       { dbconf    => $self->dbconf->{$tag},
-                                         node_args => $self->node_args,
-					 connect   => $connect_flag,
-					 owner     => $self,
-					 logdir    => $self->logdir,
-                                       } ) );
+	my $onedb = AN::OneDB->new({ dbconf    => $self->dbconf->{$tag},
+				     node_args => $self->node_args,
+				     connect   => $connect_flag,
+				     owner     => $self,
+				     logdir    => $self->logdir,
+				      });
+
+	# If connection failed, replace with an inactive instance, and increment
+	# pointer to current index.
+	if ( $connect_flag && ! ref $onedb->dbh ) {
+	    $onedb = AN::OneDB->new({ dbconf    => $self->dbconf->{$tag},
+				      node_args => $self->node_args,
+				      owner     => $self,
+				      logdir    => $self->logdir,
+				    });
+	    $self->increment_current;
+	    $failedN++;
+	}
+	else {			# Succeeded, report
+	    my $verb = defined $self->current ? 'reading from' : 'writing to';
+	    say "Program $PROG $verb DB '@{[$self->dbconf->{$tag}{host}]}'."
+		if $connect_flag ;
+	}
+	$self->add_db($onedb);
     }
+    die"Failed to connect to any DB, $failedN failures out of @{[$self->maxN]} attempts."
+	if $failedN == $self->maxN;
+
     return;
 }
 
@@ -97,24 +136,28 @@ sub switch_next_db {
     my $self = shift;
     return unless defined $self->current;
 
-    my $N = $self->current;
-
     # Kill the old DB object and replace, to clean up DB connections.
     #
-    $self->dbs()->[$N] = AN::OneDB->new({ dbconf    => $self->dbconf->{$N},
-					  node_args => $self->node_args,
-					  owner     => $self,
-					  logdir    => $self->logdir,
-					} );
-    # Connect with next DB, rolling over the first if gone through 
-    # all available DBs.
+    $self->dbs()->[$self->current]
+	= AN::OneDB->new({ dbconf    => $self->dbconf->{$self->current},
+			   node_args => $self->node_args,
+			   owner     => $self,
+			   logdir    => $self->logdir,
+			 } );
+    # Connect with next DB, rolling over the first if gone through all
+    # available DBs. If the failure to connect occured during the
+    # initial OneDB creation loop, the next instance doesn't exist
+    # yet, so just return and allow that loop to try again with a new
+    # value of self->current.
     #
-    $N++;
-    $N %= $self->maxN;
-    $self->current( $N );
-    if ( exists $self->dbs()->[$N] ) { # Has it even been created yet?
-	$self->dbs()->[$N]->startup();
+    $self->increment_current;
+    if ( exists $self->dbs()->[$self->current] ) { 
+	$self->dbs()->[$self->current]->startup();
 	$self->switched_to_new_db(1);
+	$self->owner->update_process_node_id_entries();
+	my $host = $self->dbconf->{1+$self->current}{host};
+	say "Program $PROG switched to DB '$host'."
+	    if $self->verbose;
     }
     return;
 }
@@ -156,14 +199,33 @@ sub fetch_data {
     my $self = shift;
     my ($proc_info) = @_;
 
-    my $N = 0;
+    my $number_of_db_attempted = 0;
     my $current_db = $self->dbs()->[$self->current];
+    if ( $self->verbose ) {
+	state $debug = grep { /debug DBS fetch_data/ } $ENV{VERBOSE} || '';
+	my $cdb = $current_db;
+	if ( $debug ) {
+	    warn "\$current_db is undef" unless defined $cdb;
+	    warn "\$current_db is not a OneDB." unless 'AN::ONeDB' eq ref $cdb;
+	    warn "current db # is @{[$self->current()]}; scalar ->dbs() is ",
+	     scalar @{$self->dbs()};
+	    warn "\$current_db->dbconf is undef" unless defined $cdb->dbconf;
+	    warn "\$current_db->dbconf is not a hashref."
+		unless 'HASH' eq ref $cdb->dbconf;
+	    warn "$current_db dbh isa ", ref $self->dbh, "\n";
+	}
+	say "DBS::fetch_alert_data reading from @{[$cdb->dbconf->{host}]}.";
+    }
     my $db_data = $current_db->fetch_alert_data($proc_info);
 
     while ( !  $db_data
 	    && $self->switched_to_new_db ) {
-	die "Failed query with all @{[$self->maxN]} DB.\n"
-	    if ++$N == $self->maxN;
+
+	warn "fetch_data() failed and switched to new db.\n";
+	warn "self is '$self'.";
+	my $maxN = $self->maxN;
+	die "Failed query with all $maxN DBs.\n"
+	    if ++$$number_of_db_attempted == $maxN;
 
 	$self->switched_to_new_db(0);
 	$current_db = $self->dbs()->[$self->current];
@@ -176,8 +238,10 @@ sub fetch_alert_data {
     my $self = shift;
     my ($proc_info) = @_;
 
+
     my $alerts = [];
     my $db_data = $self->fetch_data($proc_info);
+    return unless 'HASH' eq ref $db_data;
 
     # Process newest first; Add info about source DB to alert record.
     #
@@ -191,44 +255,70 @@ sub fetch_alert_data {
     return $alerts;
 }
 
+sub fetch_node_entries {
+    my $self = shift;
+    my ( $pids ) = @_;
+
+    my $nodes = $self->dbs()->[$self->current]->fetch_node_entries($pids);
+    return unless 'ARRAY' eq ref $nodes;
+    
+    my %nodes;
+    my $host = AN::Unix::hostname '-short';
+    my %seen;
+  ENTRY:
+    for my $entry ( @$nodes ) {
+	next ENTRY unless $entry->{agent_host} eq $host; # wrong host
+
+	next ENTRY if ( $seen{$entry->{agent_name}} # older instance?
+			&& ($entry->{age} > $seen{$entry->{agent_name}}) );
+	$seen{$entry->{agent_name}}{age}
+	    = $entry->{age}; # archive instance's age
+
+	$nodes{$entry->{agent_name}}{node_id} = $entry->{node_id};
+    }
+    return \%nodes;
+}
+
 sub fetch_alert_listeners {
     my $self = shift;
     my ($owner) = @_;
 
-    for my $db ( @{ $self->dbs() } ) {
-        my $hlisteners = $db->fetch_alert_listeners();
+    my $db = $self->dbs()->[$self->current];
 
-        my $listeners = [];
-        my $found_health_monitor;
-        for my $idx ( sort keys %$hlisteners ) {
-            my $data = $hlisteners->{$idx};
-            $data->{db}      = $db->dbconf()->{host};
-            $data->{db_type} = $db->dbconf()->{db_type};
-            $data->{owner}   = $owner;
-            push @{$listeners}, AN::Listener->new($data);
+    my $hlisteners = $db->fetch_alert_listeners();
 
-            $found_health_monitor++
-                if $data->{mode} eq 'HealthMonitor';
-        }
-        push @{$listeners},
-            AN::Listener->new(
-                               { added_by     => 0,
-                                 contact_info => '',
-                                 id           => 0,
-                                 language     => 'en_CA',
-                                 level        => 'WARNING',
-                                 mode         => 'HealthMonitor',
-                                 name         => 'Health Monitor',
-                                 update       => 'Jan 14 14:01:41 2015',
-                                 db           => $db->dbconf()->{host},
-                                 db_type      => $db->dbconf()->{db_type},
-                                 owner        => $owner,
-                               } )
-            unless $found_health_monitor++;
+    my $listeners = [];
+    my $found_health_monitor;
+    for my $idx ( sort keys %$hlisteners ) {
+	my $data = $hlisteners->{$idx};
+	$data->{db}      = $db->dbconf()->{host};
+	$data->{db_type} = $db->dbconf()->{db_type};
+	$data->{owner}   = $owner;
+	push @{$listeners}, AN::Listener->new($data);
 
-        return $listeners if @$listeners;
+	$found_health_monitor++
+	    if $data->{mode} eq 'HealthMonitor';
     }
-    return;
+
+    # Add a default HealthMonitor if there isn't a customized one
+    # already specified.
+    #
+    push @{$listeners}, AN::Listener->new(
+	{ added_by     => 0,
+	  contact_info => '',
+	  id           => 0,
+	  language     => 'en_CA',
+	  level        => 'WARNING',
+	  mode         => 'HealthMonitor',
+	  name         => 'Health Monitor',
+	  update       => 'Jan 14 14:01:41 2015',
+	  db           => $db->dbconf()->{host},
+	  db_type      => $db->dbconf()->{db_type},
+	  owner        => $owner,
+	} )
+	unless $found_health_monitor++;
+
+    return $listeners;
 }
 
 # ----------------------------------------------------------------------

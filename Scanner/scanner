@@ -16,7 +16,6 @@ use Pod::Usage;
 use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
-use POSIX qw(strftime);
 
 use lib          $Bin  . '/lib'; # pre-install
 use lib (dirname $Bin) . '/lib'; # post-install
@@ -49,13 +48,14 @@ const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
 const my $BRIEF       => 1;
 const my $COMMA       => q{,};
 const my $DOTSLASH    => q{./};
+const my @IGNORELIST  => qw( MegaSAS.log );
 const my $LIFETIME    => 24 * 60 * 60;
 const my $RUN_UNTIL   => '23:59:59';
 const my $MAX_RETRIES => 10;
 const my $MAX_RATE    => 600;
 const my $MIN_RATE    => 1;
 const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE    => 30;
+const my $REP_RATE    => 15;
 const my $SLASH       => q{/};
 
 const my $SMTP => 'mail.alteeve.ca';
@@ -86,6 +86,7 @@ sub process_args {
         bindir      => $BINDIR,		      # Where the bins are
 	logdir      => $LOGDIR,		      # Where logfiles are other communication files are
         log         => 0,
+	ignorelist  => \@IGNORELIST, # Files to ignore
     };
 
     GetOptions( $opt,          'dbconf=s',
@@ -94,6 +95,7 @@ sub process_args {
                 'smtp=s',      'msg_dir=s',
                 'run_until=s', 'confpath=s',
                 'verbose!',    'max_retries=s',
+		'ignorelist=s@',
 		'logdir=s',    'log',
                 'man',         'help' )
         or pod2usage(2);
@@ -106,6 +108,8 @@ sub process_args {
     #
     $opt->agentdir( $Bin . $SLASH . substr( $opt->{agentdir}, 2 ) )
         if string_starts_with( $opt->{agentdir}, $DOTSLASH );
+
+    $opt->{ignorelist} = [split /,/, join ',', @{$opt->{ignorelist}}];
 
     verify_args($opt);
 
@@ -150,18 +154,6 @@ sub verify_args {
     return;
 }
 
-sub interactive {
-
-    return -t STDIN && -t STDOUT;
-}
-
-sub begin_logging {
-        close STDOUT;
-        my $today = strftime '%F_%T', localtime;
-        my $filename = "${LOGDIR}/log.$today";
-        open STDOUT, '>', $filename;
-}
-
 # ----------------------------------------------------------------------
 # Main code
 #
@@ -169,18 +161,20 @@ sub begin_logging {
 sub main {
     my $options = process_args();
 
-    do { begin_logging();
-         $options->{verbose}++;
-       } if $options->{log}
-         || ! interactive();
-
-    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
-
     my $scanner        = AN::Scanner->new($options);
     my $old_job_status = $scanner->check_for_previous_instance();
 
     exit 0
         if $scanner->ok_to_exit($old_job_status);    # old job running OK
+
+    if (  $options->{log} || ! $scanner->interactive() ) {
+	$scanner->begin_logging();
+	$scanner->verbose( $scanner->verbose + 1 );
+    }
+
+    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
+
+
 
     die "Unrecognized status $old_job_status in ${PROG}::main()"
         unless $old_job_status eq 'run';

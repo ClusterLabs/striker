@@ -75,6 +75,7 @@ sub process_args {
         msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
         bindir   => $BINDIR,			 # Where the bins are
         logdir   => $LOGDIR,			 # Where logfiles go
+        verbose  => 0,                           # avoid undef in addition at line 122
     };   
 
     GetOptions( $opt,               'rate=i',
@@ -115,6 +116,11 @@ sub main {
     $agent->create_flagfile();
 
     my @node_args = @{ $agent->confdata() }{qw(host ip type)};
+
+    if (  $options->{log} || ! $agent->interactive() ) {
+	$agent->begin_logging();
+	$agent->verbose( $agent->verbose() + 1 );
+    }
 
     my $status = $agent->run( \@node_args );
 

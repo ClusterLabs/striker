@@ -29,7 +29,7 @@ sub BUILD {
     my $self = shift;
     my ($args) = @_;
 
-    $self->startup() if $self->connect;
+    $self->startup( {from_build => 1} ) if $self->connect;
 }
 
 # ======================================================================
@@ -54,6 +54,8 @@ const my $PROC_STATUS_NEW     => 'pre_run';
 const my $PROC_STATUS_RUNNING => 'running';
 const my $PROC_STATUS_HALTED  => 'halted';
 
+const my $DB_ERR => 'DB error => ';
+
 # ======================================================================
 # SQL
 #
@@ -61,9 +63,21 @@ const my %SQL => (
     New_Process => <<"EOSQL",
 
 INSERT INTO node
-( agent_name, agent_host, pid, status, modified_user, target_name, target_ip, target_type )
+( agent_name, agent_host, pid, status, modified_user,
+  target_name, target_ip, target_type )
 values
 (  ?, ?, ?, ?, ?, ?, ?, ? )
+
+EOSQL
+
+    Node_Entries => <<"EOSQL",
+
+SELECT node_id, agent_name, agent_host, pid, 
+       round( extract( epoch from age( now(), modified_date ))) as age
+FROM   node
+WHERE  pid = any ( ? )
+AND    agent_host = ?
+ORDER BY modified_date desc
 
 EOSQL
 
@@ -142,19 +156,27 @@ sub log_new_process {
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
     if ( !$sth ) {
-        $sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
+	eval {
+	    $sth = $self->dbh->prepare($sql)
+		if $self->dbh->ping;;
+	    $self->set_sth( $sql, $sth );
+	};
 	warn "DB error in log_new_process() @{[$DBI::errstr]}."
 	    if $@;
     }
     eval {
-	my $rows = $sth->execute(@args);
-	if ( 0 < $rows ) {
-	    $self->dbh->commit();
+	my $rows = $sth->execute(@args)
+	    if $self->dbh->ping;
+	if ( $rows ) {
+	    $self->dbh->commit()
+		if $self->dbh->ping;
 	    $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-					      undef );
+					      undef )
+		if $self->dbh->ping;
 	}
 	else {
 	    $self->dbh->rollback
+		if $self->dbh->ping;
 	}
     };
     warn "DB error in log_new_process() @{[$DBI::errstr]}."
@@ -172,19 +194,26 @@ sub halt_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-        $sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
+	eval {
+	    $sth = $self->dbh->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
 	warn "DB error in halt_process() @{[$DBI::errstr]}."
 	    if $@;
     }
     my $rows;
     eval {
-	$rows = $sth->execute( $self->node_table_id );
+	$rows = $sth->execute( $self->node_table_id )
+	    if $self->dbh->ping;
 	
 	if ( 0 < $rows ) {
 	    $self->dbh->commit()
+		if $self->dbh->ping;
 	}
 	else {
-	    $self->dbh->rollback;
+	    $self->dbh->rollback
+		if $self->dbh->ping;
 	}
     };
     warn "DB error in halt_process() @{[$DBI::errstr]}."
@@ -202,19 +231,26 @@ sub start_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-        $sth = eval { $self->set_sth( $sql, $self->dbh()->prepare($sql) ) };
+	eval {
+	    $sth = $self->dbh()->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
 	warn "DB error in start_process() @{[$DBI::errstr]}."
 	    if $@;
     }
     my $rows;
     eval {
-	$rows = $sth->execute( $self->node_table_id );
+	$rows = $sth->execute( $self->node_table_id )
+	    if $self->dbh->ping;
 
 	if ( 0 < $rows ) {
-	    $self->dbh()->commit();
+	    $self->dbh()->commit()
+		if $self->dbh->ping;
 	}
 	else {
-	    $self->dbh()->rollback;
+	    $self->dbh()->rollback
+		if $self->dbh->ping;
 	}
     };
     warn "DB error in start_process() @{[$DBI::errstr]}."
@@ -227,12 +263,13 @@ sub start_process {
 #
 sub startup {
     my $self = shift;
-
+    my ( $args ) = @_;
+    
     $self->sth({});
     $self->connect_dbs();
-    $self->register_start( )
-	if $self->dbh;
-
+    if (  $self->dbh ) { 
+	$self->register_start( )
+    }
     return;
 }
 
@@ -249,8 +286,9 @@ sub connect_db {
 
     if ( ! 'HASH' eq ref $args
 	 || !  exists $args->{host} ) {
-	warn  __PACKAGE__ . "::connect_db() arg is: ",
-	      Data::Dumper::Dumper( [$args] );
+	carp  "In ", __PACKAGE__, "::connect_db() arg is: ",
+	      Data::Dumper::Dumper( [$args] ),
+
 	return;
     }
 
@@ -350,16 +388,21 @@ sub fail_write {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
 
-    say "DB operation failed @{[$DBI::errstr]} @ ", join ' ', caller();
+    my ($pkg, $file, $line) = caller();
+    $line--;
+
+    say $DB_ERR, __PACKAGE__, "::failwrite() invoked due to error: \n",
+    $DB_ERR, "'@{[$DBI::errstr]}' \n", $DB_ERR, "at line $line in $file."; 
     $self->startup();
 
     if ( $self->dbh() ) {
 	$self->save_to_db( $sql, $fields, $args, $timestamp );
+	return 1;
     }
     elsif ( $timestamp ) {
 	$self->save_to_file( $sql, $fields, $args, $timestamp );
+	return;
     }
-    return;
 }
 
 sub save_to_db {
@@ -370,12 +413,17 @@ sub save_to_db {
 	if $timestamp;
 
     my $sth = $self->get_sth($sql);
-    my $id;
+    my ($ok, $id) = (1, undef);
 
     if ( !$sth ) {
-	$sth = eval { $self->set_sth( $sql, $self->dbh->prepare($sql) ) };
-	$self->fail_write( $sql, $fields, $args, $timestamp )
-	    if $@;
+	eval {
+	    $sth = $self->dbh->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
+	$ok = $@ ? $self->fail_write( $sql, $fields, $args, $timestamp )
+	    :      1;
+	return unless $ok;
     }
 
     say Dumper ( [$sql, $fields, $args] )
@@ -383,25 +431,29 @@ sub save_to_db {
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = eval { $sth->execute( @{$args}{@$fields} ) };
-    $self->fail_write( $sql, $fields, $args, $timestamp )
+    my $rows = eval { $sth->execute( @{$args}{@$fields} ) }
+	    if $self->dbh->ping;
+    $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
 	if $@;
-    
+    return unless $ok;
     return 1 if $timestamp;	# Don't commit during bulkload
 
     eval {
 	if ( $rows ) {
-	    $self->dbh->commit();
+	    $self->dbh->commit()
+		if $self->dbh->ping;
 	    $id = $self->dbh->last_insert_id( undef, undef,
 					      $DB_PROCESS_TABLE, undef )
+		if $self->dbh->ping;
 	}
 	else {
-	    $self->dbh->rollback;
+	    $self->dbh->rollback
+	    if $self->dbh->ping;
 	}
     };
-    $self->fail_write( $sql, $fields, $args, $timestamp )
+    $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
 	if $@;
-
+    return unless $ok;
     return $id;
 }
 
@@ -414,7 +466,7 @@ sub save_to_file {
     my $self = shift;
     my ( $sql, $fields, $args ) = @_;
 
-    $self->filename( catdir( $self->logdir, $PROG . '.db_alternate' ))
+    $self->filename( catdir( $self->logdir, 'db.' . $PROG . '.alternate' ))
 	unless $self->filename;
 
     my $str = YAML::Dump { sql    => $sql,
@@ -443,13 +495,15 @@ sub load_db_from_file {
 
     eval {
 	if ( $load_succeeded ) {
-	    $self->dbh->commit();
+	    $self->dbh->commit()
+		if $self->dbh->ping;
 	    rename $self->filename,
                 $self->filename . '.' . strftime '%F_%T', localtime;
 	    $self->filename(undef);
 	}
 	else {
-	    $self->dbh->rollback();
+	    $self->dbh->rollback()
+		if $self->dbh->ping;
 	    return if $@;
 	}
     };
@@ -508,7 +562,7 @@ sub generate_fetch_sql {
 SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM $tablename
 WHERE node_id = ?
-and timestamp > now() - interval '1 minute'
+and timestamp > now() - interval '2 minute'
 ORDER BY timestamp asc
 
 EOSQL
@@ -522,31 +576,57 @@ sub fetch_alert_data {
     my ( $sql, $node_table_id ) = $self->generate_fetch_sql(@_);
     my ( $sth, $id )            = ( $self->get_sth($sql) );
 
+    say Dumper ( [$sql, $node_table_id] )
+        if grep { /\bfetch_alert_records\b/ } ($ENV{VERBOSE} || '');
+
     # prepare and archive sth unless it has already been done.
     #
-    $sth ||= $self->set_sth( $sql, $self->dbh->prepare($sql) )
-	    or $self->fail_read();
+    if ( ! $sth ) {
+	eval {
+	    $sth = $self->dbh->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
+	$self->fail_read() if $@;
+    }
 
     # extract the hash values in the order specified by the array of
     # key names.
-    my $rows = eval { $sth->execute($node_table_id) };
-    $self->fail_read()
-	if $@;
-    my $records = eval { $sth->fetchall_hashref($ID_FIELD) };
-     $self->fail_read()
-	 if $@;
 
+    my ( $records, $rows ) = (-1);
     eval {
-	if ( $rows ) {
-	    $self->dbh->commit();
-	}
-	else {
-	    $self->dbh->rollback;
-	}
+	$rows = eval { $sth->execute($node_table_id) }
+	    if $self->dbh->ping;
+	$records = eval { $sth->fetchall_hashref($ID_FIELD) }
+	    if $self->dbh->ping;
     };
     $self->fail_read()
-	if $@;
+	if $@ || -1 == $records;
     return $records;
+}
+
+sub fetch_node_entries {
+    my $self = shift;
+    my ( $pids,  ) = @_;
+
+    my ($nodes, @retval, $u );	# $u is undef
+
+    if ( $self->dbh->ping ) {
+	eval {
+	    my $sql = $SQL{Node_Entries};
+	    say $sql if $self->owner->verbose;
+	    $nodes = $self->dbh->selectall_hashref( $sql, 'node_id', $u, $pids,
+		AN::Unix::hostname('-short'));
+	};
+	$self->fail_read
+	    if $@ || 'HASH' ne ref $nodes;
+	
+	for my $tag ( keys %$nodes ) {
+	    push @retval, $nodes->{$tag}
+                unless 'scanner' eq $nodes->{$tag}->{agent_name};
+	}
+    }
+    return \@retval;
 }
 
 sub fetch_alert_listeners {
@@ -559,9 +639,11 @@ FROM    alert_listeners
 
 EOSQL
 
-    my $records = $self->dbh()->selectall_hashref( $sql, 'id' )
-        or die "Failed to fetch alert listeners.";
+    my $records = eval {$self->dbh()->selectall_hashref( $sql, 'id' ) }
+        if $self->dbh->ping;
 
+    die "Failed to fetch alert listeners."
+	if $@;
     return $records;
 }
 
