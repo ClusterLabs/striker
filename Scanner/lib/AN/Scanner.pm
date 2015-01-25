@@ -383,6 +383,13 @@ sub tell_old_job_to_quit {
 # Methods
 #
 
+sub tell_db_Im_dying {
+    my $self = shift;
+
+    $self->dbs->tell_db_Im_dying();
+    return;
+}
+
 sub fetch_alert_listeners {
     my $self = shift;
 
@@ -838,13 +845,14 @@ sub process_agent_data {
     say "Scanner::process_agent_data()." if $self->verbose;
     my ($idx, %replacement_processes) = (0);
 
+  PROCESS:
     for my $process ( @{ $self->processes } ) {
 	my ($weight, $count);
         my $alerts = $self->fetch_alert_data($process);
 	if ( ! 'ARRAY' eq ref $alerts ) {
 	    $self->check_if_process_needs_replacement( \%replacement_processes,
 						       $process, $idx );
-	    return;
+	    next PROCESS;
 	}
 	my $allN   = scalar @$alerts;
         my $newN   = 0;
@@ -855,8 +863,6 @@ sub process_agent_data {
   	        if $alert->{field} eq 'summary'
 		    and $alert->{age} < 1.5 * $self->rate;
 
-            next ALERT
-                if $self->seen->{ $alert->{id} }++;
 	    $count++;
             $newN++;
             if ( $alert->{field} eq 'summary' ) {
@@ -868,6 +874,8 @@ sub process_agent_data {
 			if $self->verbose;
 		    $self->sumweight( $self->sumweight + $weight )
 		}
+		next ALERT
+		    if $self->seen->{ $alert->{id} }++;
                 $self->process_summary_record( $process, $alert );
             }
             else {

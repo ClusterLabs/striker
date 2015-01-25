@@ -162,6 +162,16 @@ sub finalize_node_table_status {
     }
     return;
 }
+
+sub tell_db_Im_dying {
+    my $self = shift;
+
+    for my $db ( @{$self->dbs() } ) {
+	$db->tell_db_Im_dying();
+    }
+    return;
+}
+
 sub node_id {
     my $self = shift;
     my ( $prefix, $separator ) = @_;

@@ -123,6 +123,14 @@ ORDER BY ordinal_position
 
 EOSQL
 
+    I_am_dying => "EOSQL",
+
+INSERT INTO alerts
+(  agent_name, agent_host, pid, target_name, target_type status )
+VALUES
+( ?, ?, ?, ?, ?, ?, ? )
+
+EOSQL
                  );
 
 # ======================================================================
@@ -191,6 +199,34 @@ sub log_new_process {
     warn "DB error in log_new_process() @{[$DBI::errstr]}."
 	if $@;
     return $id;
+}
+
+sub tell_db_Im_dying {
+    my $self = shift;
+
+    my $sql = $SQL{I_am_dying};
+    my ( $sth, $id ) = ( $self->get_sth($sql) );
+
+    eval {
+	$sth = $self->dbh->prepare($sql);
+    };
+    warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
+	    if $@;
+
+    my $hostname = AN::Unix::hostname( '-short');
+    my @args = ( 'scanner', $hostname, $PID, 'node server', $hostname, 'DEAD' );
+    eval {
+	my $rows = $sth->execute(@args);
+	if ( $rows ) {
+	    $self->dbh->commit();
+	}
+	else {
+	    $self->dbh->rollback;
+	}
+    };
+    warn "DB error in tell_db_I'm_dying() @{[$DBI::errstr]}."
+	if $@;
+    return;    
 }
 
 # ......................................................................
