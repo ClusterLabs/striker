@@ -31,7 +31,6 @@ use AN::Listener;
 use AN::MonitorAgent;
 use AN::Unix;
 
-const my $MAX_LOOPS_UNREFRESHED => 10;
 const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
 
 # is_recent == 0              is_running == 0       is_running == 1
@@ -47,9 +46,11 @@ use Class::Tiny qw(
     dbconf   dbs         duration     flagfile from
     ignore
     logdir   max_retries monitoragent msg_dir  port
-    rate     run_until   shutdown     smtp     verbose
+    rate     run_until   smtp     verbose
     ), {
     agents => sub { [] },
+    max_loops_unrefreshed => sub { 10 },
+    shutdown => sub { '' },
     alerts => sub {
         my $self = shift;
         AN::Alerts->new(
@@ -62,7 +63,6 @@ use Class::Tiny qw(
                          } );
     },
     alert_num             => sub {'a'},
-    max_loops_unrefreshed => sub {$MAX_LOOPS_UNREFRESHED},
     processes             => sub { [] },
     seen                  => sub { return {}; },
     sumweight             => sub {0}
@@ -465,8 +465,11 @@ sub connect_dbs {
     return;
 }
 
-sub disconnect_dbs {
-    die "scanner::disconnect_dbs() not implemented yet.";
+sub finalize_node_table_status {
+    my $self = shift;
+
+    $self->dbs()->finalize_node_table_status();
+    return
 }
 
 sub process {
@@ -554,10 +557,6 @@ sub clean_up_metadata_files {
     return;
 }
 
-sub clean_up_running_agents {
-    die "scanner::clean_up_running_agents() not implemented yet.";
-}
-
 sub run {
     my $self = shift;
 
@@ -575,10 +574,11 @@ sub run {
 
     # clean up and exit.
     #
-    $self->clean_up_running_agents();
-    $self->disconnect_dbs();
+
+    $self->finalize_node_table_status();
     $self->delete_pid_file();
-    $self->handle_alerts();    # process any alerts from clean-up stage
+
+    return;
 }
 
 # ......................................................................
@@ -612,7 +612,7 @@ sub calculate_end_epoch {
     my $end_epoch
         = timelocal( $quit_sec, $quit_min, $quit_hr, $day, $mon, $year );
 
-    $end_epoch -= $self->rate * $MAX_LOOPS_UNREFRESHED;
+    $end_epoch -= $self->rate;
 
     return $end_epoch;
 }
@@ -933,8 +933,11 @@ sub run_timed_loop_forever {
 
         $now = time;
     }
-    say "Exiting run_timed_loop_forever(); shutdown: " . $self->shutdown();
-    say "now: $now, end_time: $end_time.";
+    say "At @{[strftime '%F_%T', localtime]} exiting run_timed_loop_forever() ", 
+        (   $now > $end_time  ? 'reached end time'
+	  : $self->shutdown() ? 'shutdown flag set'
+	  :                     'unknown reason'
+	);
     return;
 }
 

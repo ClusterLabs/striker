@@ -130,6 +130,12 @@ EOSQL
 # Extend simple accessor to set & fetch a specific DBI sth
 # corresponding to specified key.
 #
+sub connected {
+    my $self = shift;
+
+    return defined $self->dbh & 'DBI::db' eq ref $self->dbh;
+}
+
 sub set_sth {
     my $self = shift;
     my ( $key, $value ) = @_;
@@ -228,6 +234,42 @@ sub start_process {
     my $self = shift;
 
     my $sql = $SQL{Start_Process};
+    my ($sth) = $self->get_sth($sql);
+
+    if ( !$sth ) {
+	eval {
+	    $sth = $self->dbh()->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
+	warn "DB error in start_process() @{[$DBI::errstr]}."
+	    if $@;
+    }
+    my $rows;
+    eval {
+	$rows = $sth->execute( $self->node_table_id )
+	    if $self->dbh->ping;
+
+	if ( 0 < $rows ) {
+	    $self->dbh()->commit()
+		if $self->dbh->ping;
+	}
+	else {
+	    $self->dbh()->rollback
+		if $self->dbh->ping;
+	}
+    };
+    warn "DB error in start_process() @{[$DBI::errstr]}."
+	if $@;
+    return $rows;
+}
+# ......................................................................
+# mark this process's node table entry as running.
+#
+sub finalize_node_table_status {
+    my $self = shift;
+
+    my $sql = $SQL{Halt_Process};
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {

@@ -161,6 +161,16 @@ sub switch_next_db {
     }
     return;
 }
+
+sub finalize_node_table_status {
+    my $self = shift;
+
+    for my $db ( @{ $self->dbs() } ) {
+	$db->finalize_node_table_status()
+	    if $db->connected();
+    }
+    return;
+}
 sub node_id {
     my $self = shift;
     my ( $prefix, $separator ) = @_;
