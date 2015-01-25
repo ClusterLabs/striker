@@ -167,6 +167,8 @@ sub tell_db_Im_dying {
     my $self = shift;
 
     for my $db ( @{$self->dbs() } ) {
+	$db->startup()
+	    unless $db->connected();
 	$db->tell_db_Im_dying();
     }
     return;
