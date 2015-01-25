@@ -68,7 +68,7 @@ messages:
 
 
 
-install: wrapper dirs files scanner
+install: wrapper dirs files scanner  $(SHUTDOWN)
 	@if [[ "$(USER)" == "root" ]] ; then		\
 	    cp scanner $(BINDIR);			\
             chmod 777 /var/log/striker;			\
