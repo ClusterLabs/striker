@@ -55,7 +55,7 @@ const my $MAX_RETRIES => 10;
 const my $MAX_RATE    => 600;
 const my $MIN_RATE    => 1;
 const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE    => 15;
+const my $REP_RATE    => 30;
 const my $SLASH       => q{/};
 
 const my $SMTP => 'mail.alteeve.ca';
@@ -87,6 +87,7 @@ sub process_args {
 	logdir      => $LOGDIR,		      # Where logfiles are other communication files are
         log         => 0,
 	ignorelist  => \@IGNORELIST, # Files to ignore
+	commandlineargs => [ @ARGV ],
     };
 
     GetOptions( $opt,          'dbconf=s',
@@ -179,11 +180,11 @@ sub main {
     die "Unrecognized status $old_job_status in ${PROG}::main()"
         unless $old_job_status eq 'run';
 
-    my $status = $scanner->run();
+    $scanner->run();
 
-    if ( $status eq 'clean shutdown' ) {
-        $scanner->shutdown();
-        exit 0;
+    if ( 'restart' eq $scanner->shutdown ) {
+	$scanner->restart_scanCore_now();
+        exit 0;			# never reached;
     }
 }
 

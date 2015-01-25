@@ -42,7 +42,7 @@ const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
 use subs 'alert_num';    # manually define accessor.
 
 use Class::Tiny qw( 
-    agentdir confdata    confpath     db_name  db_type
+    agentdir commandlineargs confdata    confpath     db_name  db_type
     dbconf   dbs         duration     flagfile from
     ignore
     logdir   max_retries monitoragent msg_dir  port
@@ -50,7 +50,7 @@ use Class::Tiny qw(
     ), {
     agents => sub { [] },
     max_loops_unrefreshed => sub { 10 },
-    shutdown => sub { '' },
+    shutdown => sub { 0 },
     alerts => sub {
         my $self = shift;
         AN::Alerts->new(
@@ -85,9 +85,20 @@ sub begin_logging {
     open STDERR, '>&STDOUT';		# '>&', is followed by a file handle.
 }
 
-sub path_to_configuration_files {
+sub restart {
+    my $self = shift;
 
-    return getcwd();
+    $self->shutdown( 'restart' );
+    return;
+}
+
+sub restart_scanCore_now {
+    my $self = shift;
+
+    my @cmd = ($PROGRAM_NAME, @{$self->commandlineargs});
+    say "Restarting with cmd '@cmd'.";
+    exec @cmd 
+	or die "Failed: $!.\n";
 }
 
 sub read_configuration_file {
@@ -98,6 +109,7 @@ sub read_configuration_file {
     AN::Common::read_configuration_file( \%cfg );
 
     $self->confdata( $cfg{ $cfg{name} } );
+    return;
 }
 
 sub BUILD {
@@ -915,7 +927,7 @@ sub run_timed_loop_forever {
     #
     while ( $now < $end_time
             && !$self->shutdown() ) {
-
+	say $PROG, ' $self->shutdown is ', $self->shutdown();
         $self->loop_core();
         $self->$touch_file();
         my ($elapsed) = time() - $now;
@@ -933,9 +945,10 @@ sub run_timed_loop_forever {
 
         $now = time;
     }
+    say '$self->shutdown is ', $self->shutdown();
     say "At @{[strftime '%F_%T', localtime]} exiting run_timed_loop_forever() ", 
-        (   $now > $end_time  ? 'reached end time'
-	  : $self->shutdown() ? 'shutdown flag set'
+        (   $now > $end_time               ? 'reached end time'
+	  : 'restart' eq $self->shutdown() ? 'shutdown flag set'
 	  :                     'unknown reason'
 	);
     return;

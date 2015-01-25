@@ -66,17 +66,19 @@ sub add_db {
 # scanCore has the concept of a current database from which it is
 # reading; agents leave it undef cause they want to write to all
 # available databases. So don't do anything if $self->current is
-# undef, but if it exists, increment and loop around maxN.
+# undef, but if it exists, restart the scanCore. Would like to 
+# swap DBs, but leads to too many complications.
 #
 sub increment_current {
     my $self = shift;
 
     return unless defined $self->current;
 
-    my $N = $self->current;
-    $N++;
-    $N %= $self->maxN;
-    $self->current( $N );
+    $self->current( 1 + $self->current );
+    if ( $self->current >= $self->maxN ) {
+	warn __PACKAGE__, '::Increment_current ran out of DBS. Restarting!!';
+	$self->owner->restart;
+    }
     return;
 }
 # ......................................................................
@@ -126,7 +128,8 @@ sub connect_dbs {
 	}
 	$self->add_db($onedb);
     }
-    die"Failed to connect to any DB, $failedN failures out of @{[$self->maxN]} attempts."
+    die "Failed to connect to any DB, $failedN failures out of",
+        "@{[$self->maxN]} attempts."
 	if $failedN == $self->maxN;
 
     return;
@@ -136,29 +139,8 @@ sub switch_next_db {
     my $self = shift;
     return unless defined $self->current;
 
-    # Kill the old DB object and replace, to clean up DB connections.
-    #
-    $self->dbs()->[$self->current]
-	= AN::OneDB->new({ dbconf    => $self->dbconf->{$self->current},
-			   node_args => $self->node_args,
-			   owner     => $self,
-			   logdir    => $self->logdir,
-			 } );
-    # Connect with next DB, rolling over the first if gone through all
-    # available DBs. If the failure to connect occured during the
-    # initial OneDB creation loop, the next instance doesn't exist
-    # yet, so just return and allow that loop to try again with a new
-    # value of self->current.
-    #
-    $self->increment_current;
-    if ( exists $self->dbs()->[$self->current] ) { 
-	$self->dbs()->[$self->current]->startup();
-	$self->switched_to_new_db(1);
-	$self->owner->update_process_node_id_entries();
-	my $host = $self->dbconf->{1+$self->current}{host};
-	say "Program $PROG switched to DB '$host'."
-	    if $self->verbose;
-    }
+    warn __PACKAGE__, '::switch_next_db(): Restarting!!';
+    $self->owner->restart;
     return;
 }
 

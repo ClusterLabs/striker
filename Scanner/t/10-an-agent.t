@@ -205,14 +205,6 @@ EOSTD
 
 }
 
-
-sub test_path_to_configuration_files {
-    my $agent = shift;
-
-    is( $agent->path_to_configuration_files(), getcwd(),
-	'path to config files' );
-}
-
 sub test_insert_raw_record {
     my $agent = shift;
 
@@ -251,7 +243,6 @@ sub main {
 
     test_connect_dbs( $agent );
     test_dump_metadata($agent);
-    test_path_to_configuration_files( $agent);
     test_non_blank_lines($agent);
     test_generate_random_record($agent);
 }
