@@ -86,19 +86,20 @@ sub process_args {
         bindir      => $BINDIR,		      # Where the bins are
 	logdir      => $LOGDIR,		      # Where logfiles are other communication files are
         log         => 0,
-	ignorelist  => \@IGNORELIST, # Files to ignore
-	commandlineargs => [ @ARGV ],
+	ignorelist  => \@IGNORELIST,  # Files to ignore
+	commandlineargs => [ @ARGV ], # Archive the command line args in case of reboot
+	dashboard       => 0,	      # Are we running on a dashboard?
     };
 
-    GetOptions( $opt,          'dbconf=s',
-                'rate=i',      'agentdir=s',
-                'db_name=s',   'from=s',
-                'smtp=s',      'msg_dir=s',
-                'run_until=s', 'confpath=s',
-                'verbose!',    'max_retries=s',
-		'ignorelist=s@',
-		'logdir=s',    'log',
-                'man',         'help' )
+    GetOptions( $opt,            'dbconf=s',
+                'rate=i',        'agentdir=s',
+                'db_name=s',     'from=s',
+                'smtp=s',        'msg_dir=s',
+                'run_until=s',   'confpath=s',
+                'verbose!',      'max_retries=s',
+		'ignorelist=s@', 'dashboard',
+		'logdir=s',      'log',
+                'man',           'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
