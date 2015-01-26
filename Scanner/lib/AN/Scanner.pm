@@ -835,14 +835,6 @@ sub reset_summary_weight {
     $self->sumweight(0);
 }
 
-sub check_if_process_needs_replacement {
-    my $self = shift;
-    my ( $replacement_processes, $process, $idx ) = @_;
-
-    my $proc = AN::Unix::pid2process $process->{db_data}{pid};
-    return;
-}	
-
 sub get_latest_user_intervention {
     my $self = shift;
     my ( $host ) = @_;
@@ -862,56 +854,40 @@ sub handle_dead_server {
 
 sub process_agent_data {
     my $self = shift;
-
+    
+    state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
     say "Scanner::process_agent_data()." if $self->verbose;
-    my ($idx, %replacement_processes) = (0);
 
   PROCESS:
     for my $process ( @{ $self->processes } ) {
-	my ($weight, $count);
+	my ($weight);
         my $alerts = $self->fetch_alert_data($process);
-	if ( ! 'ARRAY' eq ref $alerts ) {
-	    $self->check_if_process_needs_replacement( \%replacement_processes,
-						       $process, $idx );
-	    next PROCESS;
-	}
+
+	next PROCESS
+	    unless 'ARRAY' eq ref $alerts 
+	    && @$alerts;
+
 	my $allN   = scalar @$alerts;
         my $newN   = 0;
-
+	say Data::Dumper::Dumper( [$alerts] )
+	    if $dump;
+	my $seen_summary = 0;
     ALERT:
         for my $alert (@$alerts) {
-	    if ( $alert->{status} eq 'DEAD' ) {
-		$self->handle_dead_server( $alert );
-		next ALERT;
-	    }
-
-	    $weight += $alert->{value}
-  	        if $alert->{field} eq 'summary'
-		    and $alert->{age} < 1.5 * $self->rate;
-
-	    $count++;
-            $newN++;
             if ( $alert->{field} eq 'summary' ) {
-		# prevent health from wobbling back and forth, make it
-		# take a while to clear up to OK.
-		#
-		if ( 0 == $count ) {
-		    say "Adding $weight to existing ", $self->sumweight
-			if $self->verbose;
-		    $self->sumweight( $self->sumweight + $weight )
-		}
-		next ALERT
-		    if $self->seen->{ $alert->{id} }++;
-                $self->process_summary_record( $process, $alert );
-            }
+		last ALERT
+		    if $seen_summary++; # this is from an earlier loop
+
+		$self->sumweight( $self->sumweight + $alert->{value} );
+	    }
             else {
                 $self->detect_status( $process, $alert );
             }
-	    $idx++;
+            $newN++;
         }
-        say scalar localtime()
-            . " Received $allN alerts for process $process->{name}, $newN of them new."
-            if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
+        say scalar localtime(), " Received $allN alerts for process ",
+	    "$process->{name}, $newN of them new."
+		if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
     
     return;
@@ -924,10 +900,9 @@ sub loop_core {
 
     state $verbose = grep {/seencount/} $ENV{VERBOSE} || '';
 
-    if ( ! $self->dashboard ) {	# Don't launch agents on dashboard. 
-	my $changes = $self->scan_for_agents();
-	$self->handle_changes($changes) if $changes;
-    }
+    my $changes = $self->scan_for_agents();
+    $self->handle_changes($changes) if $changes;
+
     $self->process_agent_data( );
     $self->handle_alerts();
 
