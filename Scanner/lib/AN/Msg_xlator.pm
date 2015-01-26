@@ -166,7 +166,7 @@ in the specified language. If no lannguage is specified, use some default langua
 
 =item B<Carp> I<core>
 
-Complain about arguements from the caller, not the callee.
+Complain about arguments from the caller, not the callee.
 
 =item B<Clone>
 

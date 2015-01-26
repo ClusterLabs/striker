@@ -229,7 +229,7 @@ sub test_set_alert {
     my $self = shift;
 
     my $args = [ 'id', 'pid',  'field', 'value', 'units', 'level', 'message_tag',
-		 'message_arguements', 'target_name', 'target_type', 'target_extra',
+		 'message_arguments', 'target_name', 'target_type', 'target_extra',
 		 { timestamp => '1234-56-78 12:34:56' }
 	];
 

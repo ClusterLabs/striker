@@ -21,7 +21,7 @@ use FindBin qw($Bin);
 
 use Const::Fast;
 
-use Class::Tiny qw(oowner), { firsttime => sub {1}
+use Class::Tiny qw(owner), { firsttime => sub {1}
                 };
 
 const my @HEALTH => ( 'ok', 'warning', 'critical' );
@@ -76,7 +76,6 @@ sub dispatch {
 
     }
     else {
-	$self->owner->tell_db_Im_dying();
         system( '/bin/touch', $healthfile );
     }
     if ( $sumweight >= $crisis ) {
@@ -84,6 +83,8 @@ sub dispatch {
         say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
             "\nInvoking shutdown script $shutdown\n"
             if $verbose;
+
+	$self->owner->tell_db_Im_dying();
         $listener->owner->shutdown(1);
         system($shutdown );
     }

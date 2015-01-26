@@ -126,8 +126,8 @@ EOSQL
     I_am_dying => <<"EOSQL",
 
 INSERT INTO alerts
-( node_id, target_name,   target_type, target_extra, field,
-  value,   status,        msg_tag,     msg_args)
+( node_id, target_name, target_type, target_extra,      field,
+  value,   status,      message_tag, message_arguments)
 VALUES
 ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
 
@@ -226,7 +226,7 @@ sub tell_db_Im_dying {
     my $hostname = AN::Unix::hostname( '-short');
     my @args = ( $self->node_table_id, 'scanner', $hostname, $PID,
 		 'node server', $hostname, 'DEAD', 'NODE_SERVER_DYING',
-		 $hostname );
+		 "host=$hostname" );
     eval {
 	my $rows = $sth->execute(@args);
 	if ( $rows ) {

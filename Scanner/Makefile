@@ -20,9 +20,10 @@ AGENTDIR   = $(CODEBASE)/agents
 LIBDIR     = $(CODEBASE)/lib
 LOGDIR     = /var/log/$(SYSTEMNAME)
 TOOLDIR    = /var/www/tools
+SHAREDDIR  = /shared/status
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
-	     $(AGENTDIR) $(LIBDIR) $(LOGDIR)
+	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
 
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
@@ -69,9 +70,10 @@ messages:
 
 
 install: wrapper dirs files scanner  $(SHUTDOWN)
-	@if [[ "$(USER)" == "root" ]] ; then		\
+	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp scanner $(BINDIR);			\
             chmod 777 /var/log/striker;			\
+            chmod 777 /shared/status;			\
 	else						\
 	    echo "Need to be root to create wrappers.";	\
 	    echo "run as: sudo make";			\

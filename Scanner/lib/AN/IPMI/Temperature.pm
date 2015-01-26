@@ -155,7 +155,7 @@ sub ipmi_request {
                                field        => 'IPMI fetch data',
                                status       => 'CRISIS',
                                message_tag  => 'AN-IPMI-Temp ipmi_request() failed',
-                               message_arguements => "errormsg=" . join "\n",
+                               message_arguments => "errormsg=" . join "\n",
                                @data,
                              }, };
 

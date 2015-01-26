@@ -173,7 +173,7 @@ sub test_battery_replace {
 
     my $std_sql = <<"EOSQL";
 INSERT INTO agent_data
-(field, message_arguements, message_tag, status, target, units, value, node_id)
+(field, message_arguments, message_tag, status, target, units, value, node_id)
 VALUES
 (?, ?, ?, ?, ?, ?, ?, ?)
 EOSQL
@@ -193,7 +193,7 @@ EOSQL
 
     $std_sql = <<"EOSQL";
 INSERT INTO alerts
-(field, message_arguements, message_tag, status, target_extra, target_name, target_type, units, value, node_id)
+(field, message_arguments, message_tag, status, target_extra, target_name, target_type, units, value, node_id)
 VALUES
 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 EOSQL

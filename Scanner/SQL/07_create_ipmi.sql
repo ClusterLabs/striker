@@ -28,7 +28,7 @@ CREATE TABLE ipmi_temperatures (
     units    text,
     status   status,
     message_tag  text,
-    message_arguements text,
+    message_arguments text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -91,7 +91,7 @@ CREATE TABLE history.ipmi_temperatures (
     units      text,
     status     status,
     message_tag    text,
-    message_arguements   text,
+    message_arguments   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -114,7 +114,7 @@ BEGIN
                  units,
 		 status,
                  message_tag,
-                 message_arguements,
+                 message_arguments,
                  timestamp
 		 )
 	VALUES
@@ -126,7 +126,7 @@ BEGIN
                  hist_rec.units,
                  hist_rec.status,
                  hist_rec.message_tag,
-                 hist_rec.message_arguements,
+                 hist_rec.message_arguments,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;

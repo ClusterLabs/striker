@@ -42,15 +42,13 @@ const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
 use subs 'alert_num';    # manually define accessor.
 
 use Class::Tiny qw( 
-    agentdir commandlineargs confdata    confpath     db_name  db_type
-    dbconf   dbs         duration     flagfile from
-    ignore
-    logdir   max_retries monitoragent msg_dir  port
-    rate     run_until   smtp     verbose
+              agentdir     commandlineargs confdata confpath dashboard  
+              db_name      db_type         dbconf   dbs      duration     
+              flagfile     from            ignore   logdir   max_retries 
+              monitoragent msg_dir         port     rate     run_until   
+              smtp         verbose
     ), {
     agents => sub { [] },
-    max_loops_unrefreshed => sub { 10 },
-    shutdown => sub { 0 },
     alerts => sub {
         my $self = shift;
         AN::Alerts->new(
@@ -63,8 +61,10 @@ use Class::Tiny qw(
                          } );
     },
     alert_num             => sub {'a'},
+    max_loops_unrefreshed => sub { 10 },
     processes             => sub { [] },
     seen                  => sub { return {}; },
+    shutdown              => sub { 0 },
     sumweight             => sub {0}
        };
 
@@ -800,7 +800,7 @@ sub detect_status {
                      $db_record->units,
                      $db_record->status,
                      $db_record->message_tag,
-                     $db_record->message_arguements,
+                     $db_record->message_arguments,
                      $db_record->target_name,
                      $db_record->target_type,
                      $db_record->target_extra,
@@ -923,8 +923,10 @@ sub loop_core {
 
     state $verbose = grep {/seencount/} $ENV{VERBOSE} || '';
 
-    my $changes = $self->scan_for_agents();
-    $self->handle_changes($changes) if $changes;
+    if ( ! $self->dashboard ) {	# Don't launch agents on dashboard. 
+	my $changes = $self->scan_for_agents();
+	$self->handle_changes($changes) if $changes;
+    }
     $self->process_agent_data( );
     $self->handle_alerts();
 
