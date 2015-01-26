@@ -217,7 +217,7 @@ sub tell_db_Im_dying {
     my $hostname = AN::Unix::hostname( '-short');
     my @args = ( $self->node_table_id, 'scanner', $hostname, $PID,
 		 'node server', $hostname, 'DEAD', 'NODE_SERVER_DYING',
-		 $hostname );
+		 "host=$hostname" );
     eval {
 	my $rows = $sth->execute(@args);
 	if ( $rows ) {
