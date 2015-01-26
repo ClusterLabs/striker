@@ -1,8 +1,3 @@
-
-drop trigger if exists trigger_agent_data on agent_data cascade;
-drop table if exists agent_data cascade;
-drop table if exists history.agent_data cascade;
-drop function if exists history_agent_data() cascade;
 --
 -- PostgreSQL database dump
 --
@@ -146,3 +141,5 @@ LANGUAGE plpgsql;
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

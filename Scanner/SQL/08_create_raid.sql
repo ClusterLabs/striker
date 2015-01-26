@@ -1,13 +1,3 @@
-drop table    if exists raid_controllers cascade;
-drop table    if exists history.raid_controllers cascade;
-drop function if exists history_raid_controllers();
-drop trigger  if exists trigger_raid_controllers;
-
-drop table    if exists raid_drives cascade;
-drop table    if exists history.raid_drives cascade;
-drop function if exists history_raid_drives();
-drop trigger  if exists trigger_raid_drives;
-
 --
 -- PostgreSQL database dump
 --
@@ -258,3 +248,5 @@ CREATE TRIGGER trigger_raid_drives
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

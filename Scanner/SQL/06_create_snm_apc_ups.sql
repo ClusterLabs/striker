@@ -1,8 +1,3 @@
-drop table    if exists snmp_apc_ups cascade;
-drop table    if exists history.snmp_apc_ups cascade;
-drop function if exists history_snmp_apc_ups();
-drop trigger  trigger_snmp_apc_ups;
-
 --
 -- PostgreSQL database dump
 --
@@ -150,3 +145,5 @@ CREATE TRIGGER trigger_snmp_apc_ups
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

@@ -1,8 +1,3 @@
-drop trigger if exists trigger_alerts on alerts cascade;
-drop table if exists alerts cascade;
-drop table if exists history.alerts cascade;
-drop function if exists history_alerts() cascade;
-
 --
 -- PostgreSQL database dump
 --
@@ -160,3 +155,5 @@ CREATE TRIGGER trigger_alerts
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

@@ -1,8 +1,3 @@
-drop table    if exists ipmi_temperatures cascade;
-drop table    if exists history.ipmi_temperatures cascade;
-drop function if exists history_ipmi_temperatures();
-drop trigger  trigger_ipmi_temperatures;
-
 --
 -- PostgreSQL database dump
 --
@@ -150,3 +145,5 @@ CREATE TRIGGER trigger_ipmi_temperatures
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File
