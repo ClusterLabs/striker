@@ -20,9 +20,10 @@ AGENTDIR   = $(CODEBASE)/agents
 LIBDIR     = $(CODEBASE)/lib
 LOGDIR     = /var/log/$(SYSTEMNAME)
 TOOLDIR    = /var/www/tools
+SHAREDDIR  = /shared/status
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
-	     $(AGENTDIR) $(LIBDIR) $(LOGDIR)
+	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
 
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
