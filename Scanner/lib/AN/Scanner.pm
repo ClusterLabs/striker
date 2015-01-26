@@ -130,15 +130,18 @@ sub BUILD {
 	$self->ignore({});
 	$self->ignore->{$_} = 1 for @{$args->{ignorelist}};
     }
+    my @files = split ' ', $self->confdata->{ignorefile}
+        if exists $self->confdata->{ignorefile};
+
 
     $self->monitoragent(
         AN::MonitorAgent->new(
-            {  core     => $self,
-               rate     => $self->rate(),
-               agentdir => $self->agentdir(),
-               duration => $self->duration,
-               verbose  => $self->verbose(),
-
+            {  core       => $self,
+               rate       => $self->rate(),
+               agentdir   => $self->agentdir(),
+               duration   => $self->duration,
+               verbose    => $self->verbose(),
+	       ignorefile => \@files,
             } ) );
     return;
 }
@@ -796,14 +799,14 @@ sub detect_status {
                      $db_record->value,
                      $db_record->units,
                      $db_record->status,
-                     $db_record->msg_tag,
-                     $db_record->msg_args,
+                     $db_record->message_tag,
+                     $db_record->message_arguements,
                      $db_record->target_name,
                      $db_record->target_type,
                      $db_record->target_extra,
                      { timestamp => $db_record->timestamp }, );
         say "Setting alert '"
-            . $db_record->msg_tag
+            . $db_record->message_tag
             . "' in '"
             . $db_record->field
             . "' from $process->{db_data}{pid}."
@@ -839,6 +842,23 @@ sub check_if_process_needs_replacement {
     return;
 }	
 
+sub get_latest_user_intervention {
+    my $self = shift;
+    my ( $host ) = @_;
+
+    my $intervention = $self->dbs->get_latest_user_intervention;
+    return $intervention;
+}
+
+sub handle_dead_server {
+    my $self = shift;
+    my ( $alert ) = @_;
+
+    my $intervention = $self->get_latest_user_intervention( $alert->value );
+
+    
+}
+
 sub process_agent_data {
     my $self = shift;
 
@@ -859,6 +879,11 @@ sub process_agent_data {
 
     ALERT:
         for my $alert (@$alerts) {
+	    if ( $alert->{status} eq 'DEAD' ) {
+		$self->handle_dead_server( $alert );
+		next ALERT;
+	    }
+
 	    $weight += $alert->{value}
   	        if $alert->{field} eq 'summary'
 		    and $alert->{age} < 1.5 * $self->rate;

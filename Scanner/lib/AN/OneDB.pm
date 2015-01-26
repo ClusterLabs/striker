@@ -132,6 +132,15 @@ VALUES
 ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
 
 EOSQL
+
+    User_Intervention => <<"EOSQL",
+
+SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
+FROM     alerts
+WHERE    message_tag = 'USER_OVERRIDE'
+ORDER BY timestamp desc
+LIMIT    1
+EOSQL
                  );
 
 # ======================================================================
@@ -523,7 +532,7 @@ sub save_to_db {
     # extract the hash values in the order specified by the array of
     # key names.
     my $rows = eval { $sth->execute( @{$args}{@$fields} ) }
-	    if $self->dbh->ping;
+        if $self->dbh->ping;
     $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
 	if $@;
     return unless $ok;
@@ -699,6 +708,47 @@ sub fetch_alert_data {
 	if $@ || -1 == $records;
     return $records;
 }
+
+sub get_latest_user_intervention {
+    my $self = shift;
+
+    my $sql = $SQL{User_Intervention};
+#    my ($db_data)  = $self->owner->dbconf->{db_data};
+#    my ($db_ident) = grep {/\b\d+\b/} keys %$db_data;
+#    my $db_info    = $db_data->{$db_ident};
+    my $node_table_id = 1; #$db_info->{node_table_id};
+
+    my ( $sth, $id )            = ( $self->get_sth($sql) );
+
+    say Dumper ( [$sql, $node_table_id] )
+        if grep { /\bfetch_alert_records\b/ } ($ENV{VERBOSE} || '');
+
+    # prepare and archive sth unless it has already been done.
+    #
+    if ( ! $sth ) {
+	eval {
+	    $sth = $self->dbh->prepare($sql)
+		if $self->dbh->ping;
+	    $self->set_sth( $sql, $sth );
+	};
+	$self->fail_read() if $@;
+    }
+
+    # extract the hash values in the order specified by the array of
+    # key names.
+
+    my ( $records, $rows ) = (-1);
+    eval {
+	$rows = eval { $sth->execute($node_table_id) }
+	    if $self->dbh->ping;
+	$records = eval { $sth->fetchall_hashref($ID_FIELD) }
+	    if $self->dbh->ping;
+    };
+    $self->fail_read()
+	if $@ || -1 == $records;
+    return $records;    
+}
+
 
 sub fetch_node_entries {
     my $self = shift;

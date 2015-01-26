@@ -79,11 +79,11 @@ install: wrapper dirs files scanner  $(SHUTDOWN)
 
 
 clean:
-	-rm -f *~ \#* *.bak *.tdy
+	-rm -rf *~ #* .#*  *.bak *.tdy
 	cd Src && $(MAKE) clean
 
 distclean: clean
-	rm -f $(WRAPPERS)
+	rm -rf $(WRAPPERS)
 	cd Src && $(MAKE) distclean
 
 uninstall: clean distclean

@@ -39,10 +39,10 @@ const my $SUFFIX_QR => qr{         # regex to extract filename suffix
 const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
 const my $VERBOSE             => 2;
 
-use Class::Tiny { rate     => sub { $REP_RATE; },
-                  agentdir => sub { catdir $Bin, 'agents'; },
-                  verbose  => sub { 0; },
-                  ignore   => sub { [qw( .conf .rc .init )] }, };
+use Class::Tiny qw(ignorefile), { rate     => sub { $REP_RATE; },
+				 agentdir => sub { catdir $Bin, 'agents'; },
+				 verbose  => sub { 0; },
+				 ignore   => sub { [qw( .conf .rc .init )] },};
 
 # ======================================================================
 # Methods
@@ -119,6 +119,8 @@ sub scan_files {
     # value is never used. only do the expansion the first time through.
     #
     state $ignore;
+    state $ignorefile = { map { $_ => 1 } @{$self->ignorefile} };
+
     @{$ignore}{ @{ $self->ignore() } } = (1) x scalar @{ $self->ignore() }
         if ( not $ignore ) && scalar @{ $self->ignore() };
 
@@ -135,6 +137,8 @@ FILE:
         my ( $name, $dir, $suffix ) = fileparse( $file, $SUFFIX_QR );
         next FILE
             if $suffix and exists $ignore->{$suffix};
+	next FILE
+	    if $ignorefile->{$name};
         my $fullname = $suffix ? $name . $suffix : $name;
         push @added, $fullname
             unless exists $files{$fullname};
