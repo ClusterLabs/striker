@@ -389,7 +389,7 @@ sub tell_old_job_to_quit {
 sub tell_db_Im_dying {
     my $self = shift;
 
-    $self->dbs->tell_db_Im_dying();
+    $self->dbs()->tell_db_Im_dying();
     return;
 }
 

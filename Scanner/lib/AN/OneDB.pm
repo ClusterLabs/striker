@@ -126,9 +126,10 @@ EOSQL
     I_am_dying => <<"EOSQL",
 
 INSERT INTO alerts
-(  agent_name, agent_host, pid, target_name, target_type status )
+( node_id, target_name,   target_type, target_extra, field,
+  value,   status,        msg_tag,     msg_args)
 VALUES
-( ?, ?, ?, ?, ?, ?, ? )
+( ?, ?, ?, ?, ?, ?, ?, ?, ? )
 
 EOSQL
 
@@ -220,10 +221,12 @@ sub tell_db_Im_dying {
 	$sth = $self->dbh->prepare($sql);
     };
     warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
-	    if $@;
+	if $@;
 
     my $hostname = AN::Unix::hostname( '-short');
-    my @args = ( 'scanner', $hostname, $PID, 'node server', $hostname, 'DEAD' );
+    my @args = ( $self->node_table_id, 'scanner', $hostname, $PID,
+		 'node server', $hostname, 'DEAD', 'NODE_SERVER_DYING',
+		 $hostname );
     eval {
 	my $rows = $sth->execute(@args);
 	if ( $rows ) {
@@ -233,7 +236,7 @@ sub tell_db_Im_dying {
 	    $self->dbh->rollback;
 	}
     };
-    warn "DB error in tell_db_I'm_dying() @{[$DBI::errstr]}."
+    warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
 	if $@;
     return;    
 }
