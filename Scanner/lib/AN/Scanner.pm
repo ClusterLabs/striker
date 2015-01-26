@@ -810,6 +810,7 @@ sub detect_status {
             . "' in '"
             . $db_record->field
             . "' from $process->{db_data}{pid}."
+	    . "from record @{[ $db_record->id() ]} time stamp @{[$db_record->timestamp]}"
             if $self->verbose;
         $self->set_alert(@args);
     }
