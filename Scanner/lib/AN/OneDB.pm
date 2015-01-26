@@ -43,7 +43,7 @@ sub BUILD {
 const my $ID_FIELD         => 'id';
 const my $SCANNER_USER_NUM => 0;
 
-const my %DB_CONNECT_ARGS => ( AutoCommit         => 0,
+const my %DB_CONNECT_ARGS => ( AutoCommit         => 1,
                                RaiseError         => 1,
                                PrintError         => 0,
                                dbi_connect_method => undef );
@@ -194,17 +194,9 @@ sub log_new_process {
     eval {
 	my $rows = $sth->execute(@args)
 	    if $self->dbh->ping;
-	if ( $rows ) {
-	    $self->dbh->commit()
-		if $self->dbh->ping;
-	    $id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-					      undef )
-		if $self->dbh->ping;
-	}
-	else {
-	    $self->dbh->rollback
-		if $self->dbh->ping;
-	}
+	$id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+					  undef )
+	    if $self->dbh->ping;
     };
     warn "DB error in log_new_process() @{[$DBI::errstr]}."
 	if $@;
@@ -229,12 +221,6 @@ sub tell_db_Im_dying {
 		 "host=$hostname" );
     eval {
 	my $rows = $sth->execute(@args);
-	if ( $rows ) {
-	    $self->dbh->commit();
-	}
-	else {
-	    $self->dbh->rollback;
-	}
     };
     warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
 	if $@;
@@ -263,15 +249,6 @@ sub halt_process {
     eval {
 	$rows = $sth->execute( $self->node_table_id )
 	    if $self->dbh->ping;
-	
-	if ( 0 < $rows ) {
-	    $self->dbh->commit()
-		if $self->dbh->ping;
-	}
-	else {
-	    $self->dbh->rollback
-		if $self->dbh->ping;
-	}
     };
     warn "DB error in halt_process() @{[$DBI::errstr]}."
 	if $@;
@@ -300,15 +277,6 @@ sub start_process {
     eval {
 	$rows = $sth->execute( $self->node_table_id )
 	    if $self->dbh->ping;
-
-	if ( 0 < $rows ) {
-	    $self->dbh()->commit()
-		if $self->dbh->ping;
-	}
-	else {
-	    $self->dbh()->rollback
-		if $self->dbh->ping;
-	}
     };
     warn "DB error in start_process() @{[$DBI::errstr]}."
 	if $@;
@@ -336,15 +304,6 @@ sub finalize_node_table_status {
     eval {
 	$rows = $sth->execute( $self->node_table_id )
 	    if $self->dbh->ping;
-
-	if ( 0 < $rows ) {
-	    $self->dbh()->commit()
-		if $self->dbh->ping;
-	}
-	else {
-	    $self->dbh()->rollback
-		if $self->dbh->ping;
-	}
     };
     warn "DB error in start_process() @{[$DBI::errstr]}."
 	if $@;
@@ -539,18 +498,10 @@ sub save_to_db {
     return 1 if $timestamp;	# Don't commit during bulkload
 
     eval {
-	if ( $rows ) {
-	    $self->dbh->commit()
-		if $self->dbh->ping;
-	    $id = $self->dbh->last_insert_id( undef, undef,
-					      $DB_PROCESS_TABLE, undef )
-		if $self->dbh->ping;
-	}
-	else {
-	    $self->dbh->rollback
+	$id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE, undef )
 	    if $self->dbh->ping;
-	}
-    };
+    } if  $rows;
+
     $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
 	if $@;
     return unless $ok;
@@ -597,19 +548,10 @@ sub load_db_from_file {
     };
     $load_succeeded = 0 if $@;	# error occured
 
-    eval {
-	if ( $load_succeeded ) {
-	    $self->dbh->commit()
-		if $self->dbh->ping;
-	    rename $self->filename,
-                $self->filename . '_@_' . strftime '%F_%T', localtime;
-	    $self->filename(undef);
-	}
-	else {
-	    $self->dbh->rollback()
-		if $self->dbh->ping;
-	    return if $@;
-	}
+    if ( $load_succeeded ) {
+	rename $self->filename,
+	$self->filename . '_@_' . strftime '%F_%T', localtime;
+	$self->filename(undef);
     };
     return;
 }
@@ -666,8 +608,8 @@ sub generate_fetch_sql {
 SELECT *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM $tablename
 WHERE node_id = ?
-and timestamp > now() - interval '2 minute'
-ORDER BY timestamp asc
+and timestamp > now() - interval '60 seconds'
+ORDER BY timestamp desc
 
 EOSQL
 
@@ -687,6 +629,7 @@ sub fetch_alert_data {
     #
     if ( ! $sth ) {
 	eval {
+	    
 	    $sth = $self->dbh->prepare($sql)
 		if $self->dbh->ping;
 	    $self->set_sth( $sql, $sth );
