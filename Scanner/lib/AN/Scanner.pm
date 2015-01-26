@@ -108,11 +108,6 @@ sub read_configuration_file {
     my %cfg = ( path => { config_file => $self->confpath } );
     AN::Common::read_configuration_file( \%cfg );
 
-    if ( exists $cfg->{ $cfg{name} }->{ignorefile} ) {
-	my @files = split ' ', $cfg->{ $cfg{name} }->{ignorefile};
-	$self->monitoragent->ignorefile( \@files );
-    }
-
     $self->confdata( $cfg{ $cfg{name} } );
     return;
 }
@@ -135,15 +130,18 @@ sub BUILD {
 	$self->ignore({});
 	$self->ignore->{$_} = 1 for @{$args->{ignorelist}};
     }
+    my @files = split ' ', $self->confdata->{ignorefile}
+        if exists $self->confdata->{ignorefile};
+
 
     $self->monitoragent(
         AN::MonitorAgent->new(
-            {  core     => $self,
-               rate     => $self->rate(),
-               agentdir => $self->agentdir(),
-               duration => $self->duration,
-               verbose  => $self->verbose(),
-
+            {  core       => $self,
+               rate       => $self->rate(),
+               agentdir   => $self->agentdir(),
+               duration   => $self->duration,
+               verbose    => $self->verbose(),
+	       ignorefile => \@files,
             } ) );
     return;
 }
@@ -854,8 +852,9 @@ sub get_latest_user_intervention {
 
 sub handle_dead_server {
     my $self = shift;
+    my ( $alert ) = @_;
 
-    my $intervention = $self->get_latest_user_intervention $alert->value;
+    my $intervention = $self->get_latest_user_intervention( $alert->value );
 
     
 }
@@ -881,7 +880,7 @@ sub process_agent_data {
     ALERT:
         for my $alert (@$alerts) {
 	    if ( $alert->{status} eq 'DEAD' ) {
-		$self->handle_dead_server $alert;
+		$self->handle_dead_server( $alert );
 		next ALERT;
 	    }
 

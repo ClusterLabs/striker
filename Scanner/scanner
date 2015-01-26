@@ -175,8 +175,6 @@ sub main {
 
     say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
 
-
-
     die "Unrecognized status $old_job_status in ${PROG}::main()"
         unless $old_job_status eq 'run';
 
