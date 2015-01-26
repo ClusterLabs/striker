@@ -116,5 +116,5 @@ CREATE TRIGGER trigger_node
 
 
 \echo Create an enum data type for the status field.
-CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD' );
+CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD', 'ENABLED', 'DISABLED' );
 
