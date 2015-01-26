@@ -19,7 +19,7 @@ use AN::OneAlert;
 sub init_args {
 
     return { 'level'     => 'DEBUG',
-             'message_arguements'  => undef,
+             'message_arguments'  => undef,
              'message_tag'   => 'OLD_PROCESS_CRASH',
              'other'     => [],
              'pid'       => 13991,

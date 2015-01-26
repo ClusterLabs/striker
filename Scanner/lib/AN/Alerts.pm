@@ -239,7 +239,7 @@ sub extract_time_and_modify_array {
 sub set_alert {
     my $self = shift;
     my ( $id,          $src,         $field,        $value,
-         $units,       $level,       $message_tag,      $message_arguements,
+         $units,       $level,       $message_tag,      $message_arguments,
          $target_name, $target_type, $target_extra, @others )
         = @_;
 
@@ -253,7 +253,7 @@ sub set_alert {
                  units        => $units,
                  status       => $level,
                  message_tag      => $message_tag,
-                 message_arguements     => $message_arguements,
+                 message_arguments     => $message_arguements,
                  target_name  => $target_name,
                  target_type  => $target_type,
                  target_extra => $target_extra,
@@ -372,11 +372,11 @@ sub handle_alerts {
                 next ALERT unless $alert->listening_at_this_level($listener);
 
                 $lookup->{key} = $alert->message_tag();
-                if ( $alert->message_arguements() && length $alert->message_arguements() ) {
+                if ( $alert->message_arguments() && length $alert->message_arguements() ) {
                     map {
                         my ( $k, $v ) = split '=';
                         $lookup->{variables}{$k} = $v;
-                    } split ';', $alert->message_arguements();
+                    } split ';', $alert->message_arguments();
                 }
 
                 my $msg = $self->xlator()

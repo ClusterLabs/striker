@@ -800,7 +800,7 @@ sub detect_status {
                      $db_record->units,
                      $db_record->status,
                      $db_record->message_tag,
-                     $db_record->message_arguements,
+                     $db_record->message_arguments,
                      $db_record->target_name,
                      $db_record->target_type,
                      $db_record->target_extra,

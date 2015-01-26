@@ -127,7 +127,7 @@ EOSQL
 
 INSERT INTO alerts
 ( node_id, target_name, target_type, target_extra,      field,
-  value,   status,      message_tag, message_arguements)
+  value,   status,      message_tag, message_arguments)
 VALUES
 ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
 

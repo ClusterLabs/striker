@@ -109,7 +109,7 @@ sub generate_random_record {
                     : $status eq 'WARNING' ? "$PROG warning msg"
                     : $status eq 'CRISIS'  ? "$PROG crisis msg"
                     :                        '' );
-    my $message_arguements = '';
+    my $message_arguments = '';
 
     say scalar localtime(), ": $PROG -> $status, $message_tag"
         if $self->verbose;
@@ -119,7 +119,7 @@ sub generate_random_record {
                  field    => 'random values',
                  status   => $status,
                  message_tag  => $message_tag,
-                 message_arguements => $message_arguements, };
+                 message_arguments => $message_arguements, };
     $self->insert_raw_record(
                               { table              => $self->datatable_name,
                                 with_node_table_id => 'node_id',

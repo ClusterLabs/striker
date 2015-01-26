@@ -24,7 +24,7 @@ use Class::Tiny qw( id      message_tag      node_id      field         value
     units   status       timestamp    db            db_type         age
     pid     target_name  target_type  target_extra
     ),
-    { message_arguements => sub { [] },
+    { message_arguments => sub { [] },
       other    => sub { [] },
       handled  => sub {0}, };
 

@@ -189,7 +189,7 @@ sub insert_agent_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
 
-    my $message_arguements = join q{;},
+    my $message_arguments = join q{;},
         grep { defined $_ && length $_ } ( $msg->{args}, $args->{dev} );
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
@@ -205,7 +205,7 @@ sub insert_agent_record {
                                       field => $msg->{label} || $args->{tag},
                                       status   => $msg->{status},
                                       message_tag  => $msg->{tag},
-                                      message_arguements => $message_arguements,
+                                      message_arguments => $message_arguements,
                                       target   => $name,
                                 },
                               } );
@@ -227,7 +227,7 @@ sub insert_alert_record {
                field => $msg->{label}            || $args->{tag},
                status       => $msg->{status},
                message_tag      => $msg->{tag},
-               message_arguements     => $msg->{args},
+               message_arguments     => $msg->{args},
                target_name  => $name,
                target_type  => $args->{metadata}{type},
                target_extra => $args->{metadata}{ip},
@@ -669,7 +669,7 @@ sub snmp_connect {
                                field    => 'Net::SNMP connect',
                                status   => 'CRISIS',
                                message_tag  => 'Net-SNMP connect failed',
-                               message_arguements => "errormsg=" . $error,
+                               message_arguments => "errormsg=" . $error,
                              }, };
 
         $self->insert_raw_record($args);
@@ -719,7 +719,7 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
                                    field    => 'Net::SNMP fetch data',
                                    status   => 'CRISIS',
                                    message_tag  => 'Net-SNMP->get_request() failed',
-                                   message_arguements => "errormsg=" . $session->error,
+                                   message_arguments => "errormsg=" . $session->error,
                                  }, };
 
             $self->insert_raw_record($args);

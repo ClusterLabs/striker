@@ -202,7 +202,7 @@ sub raid_request {
                       field        => 'RAID fetch data',
                       status       => 'CRISIS',
                       message_tag      => 'AN-RAID-Temp raid_request() failed',
-                      message_arguements     => "errormsg=" . join "\n",
+                      message_arguments     => "errormsg=" . join "\n",
                       @data,
                     }, };
 
