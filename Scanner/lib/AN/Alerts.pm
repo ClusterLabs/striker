@@ -253,7 +253,7 @@ sub set_alert {
                  units        => $units,
                  status       => $level,
                  message_tag      => $message_tag,
-                 message_arguments     => $message_arguements,
+                 message_arguments     => $message_arguments,
                  target_name  => $target_name,
                  target_type  => $target_type,
                  target_extra => $target_extra,
@@ -372,7 +372,7 @@ sub handle_alerts {
                 next ALERT unless $alert->listening_at_this_level($listener);
 
                 $lookup->{key} = $alert->message_tag();
-                if ( $alert->message_arguments() && length $alert->message_arguements() ) {
+                if ( $alert->message_arguments() && length $alert->message_arguments() ) {
                     map {
                         my ( $k, $v ) = split '=';
                         $lookup->{variables}{$k} = $v;

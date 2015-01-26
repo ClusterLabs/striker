@@ -119,7 +119,7 @@ sub generate_random_record {
                  field    => 'random values',
                  status   => $status,
                  message_tag  => $message_tag,
-                 message_arguments => $message_arguements, };
+                 message_arguments => $message_arguments, };
     $self->insert_raw_record(
                               { table              => $self->datatable_name,
                                 with_node_table_id => 'node_id',
