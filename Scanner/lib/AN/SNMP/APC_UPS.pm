@@ -205,7 +205,7 @@ sub insert_agent_record {
                                       field => $msg->{label} || $args->{tag},
                                       status   => $msg->{status},
                                       message_tag  => $msg->{tag},
-                                      message_arguments => $message_arguements,
+                                      message_arguments => $message_arguments,
                                       target   => $name,
                                 },
                               } );
