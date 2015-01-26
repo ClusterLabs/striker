@@ -31,8 +31,8 @@ CREATE TABLE agent_data (
     value text,
     units text,
     status status,
-    msg_tag text,
-    msg_args text,
+    message_tag text,
+    message_arguements text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -93,8 +93,8 @@ CREATE TABLE history.agent_data (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguements text,
     "timestamp"	timestamp with time zone	not null	default now()
 );
 
@@ -115,8 +115,8 @@ BEGIN
 		 value,
 		 units,
 		 status,
-		 msg_tag,
-		 msg_args,
+		 message_tag,
+		 message_arguements,
 	         timestamp_id,
 	)
 	VALUES
@@ -126,8 +126,8 @@ BEGIN
                  hist_agent_data.value,
                  hist_agent_data.units,
                  hist_agent_data.status,
-                 hist_agent_data.msg_tag,
-		 hist_agent_data.msg_args);
+                 hist_agent_data.message_tag,
+		 hist_agent_data.message_arguements);
 	RETURN NULL;
 END;
 $$

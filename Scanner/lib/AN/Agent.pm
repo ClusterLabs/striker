@@ -104,22 +104,22 @@ sub generate_random_record {
                    : $value > 90 ? 'CRISIS'
                    : $value > 80 ? 'WARNING'
                    :               'OK' );
-    my $msg_tag = (   $first == 1          ? "$PROG first record"
+    my $message_tag = (   $first == 1          ? "$PROG first record"
                     : $status eq 'DEBUG'   ? "$PROG debug msg"
                     : $status eq 'WARNING' ? "$PROG warning msg"
                     : $status eq 'CRISIS'  ? "$PROG crisis msg"
                     :                        '' );
-    my $msg_args = '';
+    my $message_arguements = '';
 
-    say scalar localtime(), ": $PROG -> $status, $msg_tag"
+    say scalar localtime(), ": $PROG -> $status, $message_tag"
         if $self->verbose;
 
     my $args = { value    => $value,
                  units    => 'a num',
                  field    => 'random values',
                  status   => $status,
-                 msg_tag  => $msg_tag,
-                 msg_args => $msg_args, };
+                 message_tag  => $message_tag,
+                 message_arguements => $message_arguements, };
     $self->insert_raw_record(
                               { table              => $self->datatable_name,
                                 with_node_table_id => 'node_id',

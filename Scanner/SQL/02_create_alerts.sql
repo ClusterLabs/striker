@@ -34,8 +34,8 @@ CREATE TABLE alerts (
     value text,
     units text,
     status status,
-    msg_tag text,
-    msg_args text,
+    message_tag text,
+    message_arguements text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -99,8 +99,8 @@ field 		text,
 value 		text,
 units 		text,
 status 		status,
-msg_tag 	text,
-msg_args 	text,
+message_tag 	text,
+message_arguements 	text,
 "timestamp" 	timestamp with time zone	not null	default now(),
 history_id      serial primary key
 );
@@ -125,8 +125,8 @@ BEGIN
 		value,
 		units,
 		status,
-		msg_tag,
-		msg_args
+		message_tag,
+		message_arguements
 		)
 	VALUES
 		(hist_alerts.id,
@@ -138,8 +138,8 @@ BEGIN
                  hist_alerts.value,
 		 hist_alerts.units,
 		 hist_alerts.status,
-		 hist_alerts.msg_tag,
-		 hist_alerts.msg_args
+		 hist_alerts.message_tag,
+		 hist_alerts.message_arguements
 		 );
 	RETURN NULL;
 END;

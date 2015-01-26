@@ -293,7 +293,7 @@ changing only the table name. Other agents may need a more complicated
 behaviour.
 
 The msg tags you define in the Messages directory may have variable
-slots to be filled in with specific values. The $msg_args field is the
+slots to be filled in with specific values. The $message_arguements field is the
 way to fill in these slots. Use the variable name in the expanded
 string, followed by an equal sig and the associated value. Multiple
 values are joined by semi-colons. Example:

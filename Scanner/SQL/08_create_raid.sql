@@ -38,8 +38,8 @@ CREATE TABLE raid_controllers (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguements text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -53,8 +53,8 @@ CREATE TABLE raid_drives (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguements text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -144,8 +144,8 @@ CREATE TABLE history.raid_controllers (
     value      text,
     units      text,
     status     status,
-    msg_tag    text,
-    msg_args   text,
+    message_tag    text,
+    message_arguements   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -160,8 +160,8 @@ CREATE TABLE history.raid_drives (
     value      text,
     units      text,
     status     status,
-    msg_tag    text,
-    msg_args   text,
+    message_tag    text,
+    message_arguements   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -185,8 +185,8 @@ BEGIN
 		 value,
                  units,
 		 status,
-                 msg_tag,
-                 msg_args,
+                 message_tag,
+                 message_arguements,
                  timestamp
 		 )
 	VALUES
@@ -197,8 +197,8 @@ BEGIN
 		 hist_rec.value,
                  hist_rec.units,
                  hist_rec.status,
-                 hist_rec.msg_tag,
-                 hist_rec.msg_args,
+                 hist_rec.message_tag,
+                 hist_rec.message_arguements,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;
@@ -221,8 +221,8 @@ BEGIN
 		 value,
                  units,
 		 status,
-                 msg_tag,
-                 msg_args,
+                 message_tag,
+                 message_arguements,
                  timestamp
 		 )
 	VALUES
@@ -233,8 +233,8 @@ BEGIN
 		 hist_rec.value,
                  hist_rec.units,
                  hist_rec.status,
-                 hist_rec.msg_tag,
-                 hist_rec.msg_args,
+                 hist_rec.message_tag,
+                 hist_rec.message_arguements,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;

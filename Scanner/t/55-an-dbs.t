@@ -34,8 +34,8 @@ my $AGENT_RECORD = { 1 => { id        => 1234,
                             value     => 100,
                             status    => 'OK',
                             node_id   => 13,
-                            msg_tag   => '',
-                            msg_args  => '',
+                            message_tag   => '',
+                            message_arguements  => '',
                             timestamp => '2014-02-14 12:00:00.000000-05'
                           }, };
 
