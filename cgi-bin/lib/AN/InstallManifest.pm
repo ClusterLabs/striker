@@ -4825,7 +4825,7 @@ sub read_lvm_conf_on_node
 					then
 						cat $conf->{path}{nodes}{lvm_conf}
 					else
-						echo \"doesn't exist\"
+						echo \"not found\"
 					fi",
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
@@ -4861,7 +4861,7 @@ sub read_lvm_conf_on_node
 	foreach my $line (@{$return})
 	{
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
-		last if $line =~ /doesn't exist/;
+		last if $line =~ /not found/;
 		
 		# Any line that starts with a '#' is passed on as-is.
 		if ((not $filter_injected) && ($line =~ /filter = \[/))
@@ -9702,7 +9702,7 @@ sub read_drbd_resource_files
 				then
 					cat $file;
 				else
-					echo \"doesn't exist\"
+					echo \"not found\"
 				fi";
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -9719,9 +9719,9 @@ sub read_drbd_resource_files
 		foreach my $line (@{$return})
 		{
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
-			if ($line eq "doesn't exist")
+			if ($line eq "not found")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], file: [$file] doesn't exist.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], file: [$file] not found.\n");
 			}
 			if ($line =~ /on $hostname {/)
 			{
@@ -10163,6 +10163,13 @@ sub read_cluster_conf
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I
 	# only care if the file exists at all.
+	my $shell_call = "if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
+			then
+				cat $conf->{path}{nodes}{cluster_conf}
+			else
+				echo not found
+			fi"
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -10170,12 +10177,7 @@ sub read_cluster_conf
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
-					then
-						cat $conf->{path}{nodes}{cluster_conf}
-					else
-						echo doesn't exist
-					fi",
+		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
@@ -10183,7 +10185,7 @@ sub read_cluster_conf
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
-		last if $line eq "doesn't exist";
+		last if $line eq "not found";
 		
 		$conf->{node}{$node}{cluster_conf} .= "$line\n";
 	}

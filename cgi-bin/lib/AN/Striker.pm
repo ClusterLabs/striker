@@ -9764,6 +9764,7 @@ sub display_node_controls
 					button_text	=>	"#!string!button_0062!#",
 					id		=>	"dual_boot",
 				}, "", 1);
+				$say_dual_boot =~ s/\n$//;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
 			}
 			
