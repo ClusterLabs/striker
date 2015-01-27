@@ -41,12 +41,21 @@ const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
 
 use subs 'alert_num';    # manually define accessor.
 
+sub shutdown {
+    my $self = shift;
+
+    if ( @_ && $_[0] ) {
+	die "shutdown set from " , join ' ', caller;
+    }
+    return $self->{shutdown};
+}
+
 use Class::Tiny qw( 
               agentdir     commandlineargs confdata confpath dashboard  
               db_name      db_type         dbconf   dbs      duration     
               flagfile     from            ignore   logdir   max_retries 
               monitoragent msg_dir         port     rate     run_until   
-              smtp         verbose
+              smtp         verbose  shutdown
     ), {
     agents => sub { [] },
     alerts => sub {
@@ -61,10 +70,13 @@ use Class::Tiny qw(
                          } );
     },
     alert_num             => sub {'a'},
+    isa_scanner           => sub { my $self = shift;
+				   ref $self eq __PACKAGE__
+				       || ref $self eq 'AN::Dashboard' },
     max_loops_unrefreshed => sub { 10 },
     processes             => sub { [] },
     seen                  => sub { return {}; },
-    shutdown              => sub { 0 },
+#    shutdown              => sub { 0 },
     sumweight             => sub {0}
        };
 
@@ -88,6 +100,7 @@ sub begin_logging {
 sub restart {
     my $self = shift;
 
+    die "restart set from " , join ' ', caller;
     $self->shutdown( 'restart' );
     return;
 }
@@ -119,7 +132,10 @@ sub BUILD {
     $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
     $self->read_configuration_file;
 
-    return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
+    # Build only node scanners & dashboard scanners; skip BUILD for
+    # 'agents'.
+    #
+    return unless $self->isa_scanner;
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -434,7 +450,7 @@ sub check_for_previous_instance {
 
     # Old process exited cleanly, take over. Return early.
     if ( !$self->old_pid_file_exists() ) {
-	say "Previous scanner exited cleanly; taking over.";
+	say "Previous $PROG exited cleanly; taking over.";
 	return $RUN;
     }
 
@@ -443,7 +459,7 @@ sub check_for_previous_instance {
 
     # Old process is running and updating pid file. Return early.
     if ($is_recent && $is_running) {
-	say "A scanner process is already running; exiting";
+	say "A $PROG process is already running; exiting";
 	return $EXIT_OK;
     }
 
@@ -465,7 +481,7 @@ sub check_for_previous_instance {
                       '', '', AN::Alerts::DEBUG(), $tag, '' )
         if !$is_recent && !$is_running;
 
-    say "Replacing defective previous scanner: ", $tag;
+    say "Replacing defective previous $PROG: ", $tag;
 
     return $RUN;
 }
@@ -480,7 +496,8 @@ sub connect_dbs {
 		 owner   => $self,
                };
     $args->{current} = 0	# In scanner, activate only one DB at a time
-	if __PACKAGE__ eq ref $self;
+	if $self->isa_scanner;
+
     $args->{node_args} = $node_args if $node_args;
 
     $self->dbs( AN::DBS->new($args) );
@@ -503,22 +520,39 @@ sub process {
     return;
 }
 
+# Want to launch all agents, except don't launch the node_monitor,
+# except on the dashboard, only when a node server has unespectedly
+# gone down.
+#
 sub launch_new_agents {
     my $self = shift;
-    my ($new) = @_;
+    my ($new, $extra) = @_;
 
     local $LIST_SEPARATOR = $SPACE;
+
+    say "in launch new agents with args:",
+    Data::Dumper::Dumper( [$new, $extra], [qw($new $extra)])
+	if grep {/debug launch_new_agents/} $ENV{VERBOSE} || '';
+
+    my @extra_args = ( $extra && 'HASH' eq ref $extra ? @{$extra->{args}}
+		     :                                  ('')
+	);
     state $args
         = [ map { $_ eq 'xdbconfx' ? $self->dbconf 
 		: $_ eq 'xlogdirx'      ? $self->logdir 
 		:                     $_;
-	        } @NEW_AGENT_ARGS ];
+	        } @NEW_AGENT_ARGS, @extra_args ];
 
     my @new_agents;
   AGENT:
     for my $agent (@$new) {
 	next AGENT
-	    if exists $self->ignore()->{$agent};
+	    if (exists $self->ignore()->{$agent} # ignore these agents
+		&& $extra			 # call-by-call override
+		&& 'HASH' eq ref $extra
+		&& exists $extra->{ignore_ignorefile}
+		&& $extra->{ignore_ignorefile}{$agent}
+	    );
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
@@ -856,7 +890,7 @@ sub process_agent_data {
     my $self = shift;
     
     state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
-    say "Scanner::process_agent_data()." if $self->verbose;
+    say "${PROG}::process_agent_data()." if $self->verbose;
 
   PROCESS:
     for my $process ( @{ $self->processes } ) {
@@ -893,7 +927,7 @@ sub process_agent_data {
     return;
 }
 
-# Things to do in the core for a scanner core object
+# Things to do in the core for a $PROG core object
 #
 sub loop_core {
     my $self = shift;
@@ -920,7 +954,7 @@ sub loop_core {
 sub run_timed_loop_forever {
     my $self = shift;
 
-    state $touch_file = ( __PACKAGE__ eq ref $self 
+    state $touch_file = ( $self->isa_scanner
 			      ? 'touch_pid_file'
 			      : 'touch_marker_file'
 	);

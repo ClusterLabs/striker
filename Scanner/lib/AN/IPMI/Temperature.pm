@@ -1,6 +1,6 @@
 package AN::IPMI::Temperature;
 
-use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
+use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
 # _Perl_
 use warnings;

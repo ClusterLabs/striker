@@ -133,13 +133,25 @@ VALUES
 
 EOSQL
 
-    User_Intervention => <<"EOSQL",
+    Node_Server_Status => <<"EOSQL",
 
 SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM     alerts
-WHERE    message_tag = 'USER_OVERRIDE'
+WHERE    message_tag = 'NODE_SERVER_STATUS'
+AND      value = ?
 ORDER BY timestamp desc
 LIMIT    1
+
+EOSQL
+
+    Auto_Boot=> <<"EOSQL",
+SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
+FROM     alerts
+WHERE    message_tag = 'AUTO_BOOY'
+AND      value = ?
+ORDER BY timestamp desc
+LIMIT    1
+
 EOSQL
                  );
 
@@ -217,7 +229,7 @@ sub tell_db_Im_dying {
 
     my $hostname = AN::Unix::hostname( '-short');
     my @args = ( $self->node_table_id, 'scanner', $hostname, $PID,
-		 'node server', $hostname, 'DEAD', 'NODE_SERVER_DYING',
+
 		 "host=$hostname" );
     eval {
 	my $rows = $sth->execute(@args);
@@ -590,6 +602,7 @@ sub insert_raw_record {
 sub fail_read {
     my $self = shift;
 
+    warn __PACKAGE__, "::failread called from ", join ' ', caller(), "\n"; 
     $self->owner()->switch_next_db;
 }
 
@@ -652,20 +665,19 @@ sub fetch_alert_data {
     return $records;
 }
 
-sub get_latest_user_intervention {
+sub generic_fetch {
     my $self = shift;
+    my ( $sql_tag, $verbose, $args ) = @_;
 
-    my $sql = $SQL{User_Intervention};
-#    my ($db_data)  = $self->owner->dbconf->{db_data};
-#    my ($db_ident) = grep {/\b\d+\b/} keys %$db_data;
-#    my $db_info    = $db_data->{$db_ident};
-    my $node_table_id = 1; #$db_info->{node_table_id};
+    my $sql = $SQL{$sql_tag};
+    my ( $sth, $id ) = ( $self->get_sth($sql) );
 
-    my ( $sth, $id )            = ( $self->get_sth($sql) );
-
-    say Dumper ( [$sql, $node_table_id] )
-        if grep { /\bfetch_alert_records\b/ } ($ENV{VERBOSE} || '');
-
+    if ( $verbose ) {
+	my $caller_sub = (caller(1))[3];
+	say __PACKAGE__, "::${caller_sub} for $sql_tag uses:\n",
+            @{[Dumper ( [$sql] )]}
+	        if $verbose;
+    }
     # prepare and archive sth unless it has already been done.
     #
     if ( ! $sth ) {
@@ -681,28 +693,41 @@ sub get_latest_user_intervention {
     # key names.
 
     my ( $records, $rows ) = (-1);
+    $args ||= [];		# if no args provide, need an empty array
     eval {
-	$rows = eval { $sth->execute($node_table_id) }
-	    if $self->dbh->ping;
-	$records = eval { $sth->fetchall_hashref($ID_FIELD) }
-	    if $self->dbh->ping;
+	$rows =  eval { $sth->execute( @$args ) };
+	$records = eval { $sth->fetchall_hashref($ID_FIELD) };
     };
     $self->fail_read()
-	if $@ || -1 == $records;
+	if $@ || ! defined $records || -1 == $records;
     return $records;    
 }
+sub check_node_server_status {
+    my $self = shift;
+    my ($ns_host) = @_;
 
+    state $verbose
+	= grep { /\bcheck node server status\b/ } ($ENV{VERBOSE} || '');
+
+    my @results;
+    for my $tag ( 'Auto_Boot', 'Node_Server_Status' ) {
+	my $records = $self->generic_fetch( $tag, $verbose, [$ns_host] );
+	my @keys = sort {$b <=> $a} keys %$records
+	    if 'HASH' eq ref $records;
+	push @results, $records->{$keys[0]} if @keys;
+    }
+    return \@results;
+}
 
 sub fetch_node_entries {
     my $self = shift;
-    my ( $pids,  ) = @_;
+    my ( $pids  ) = @_;
 
     my ($nodes, @retval, $u );	# $u is undef
 
     if ( $self->dbh->ping ) {
 	eval {
 	    my $sql = $SQL{Node_Entries};
-	    say $sql if $self->owner->verbose;
 	    $nodes = $self->dbh->selectall_hashref( $sql, 'node_id', $u, $pids,
 		AN::Unix::hostname('-short'));
 	};
