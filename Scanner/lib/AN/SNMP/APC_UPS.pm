@@ -1,6 +1,6 @@
 package AN::SNMP::APC_UPS;
 
-use base 'AN::Agent';    # inherit from AN::Agent
+use parent 'AN::Agent';    # inherit from AN::Agent
 
 # _Perl_
 use warnings;

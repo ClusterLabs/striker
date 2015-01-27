@@ -1,6 +1,6 @@
 package AN::Email;
 
-use base 'AN::Screen';
+use parent 'AN::Screen';
 
 # _Perl_
 use warnings;

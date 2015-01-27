@@ -105,7 +105,7 @@ __END__
 =head1 SYNOPSIS
 
     use AN::Msg_xlator;
-    use English;
+    use English 'no_match_vars';
     use File::Basename;
 
     my $pid = $PID;
