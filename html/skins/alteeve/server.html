@@ -1191,6 +1191,32 @@
 <br />
 <!-- end confirm-dual-poweron-node -->
 
+<!-- start confirm-cold-stop -->
+<table>
+	<tr>
+		<td colspan="2">
+			<span class="highlight_ready_bold">#!string!title_0179!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_warning_bold"><b>#!string!row_0044!#</b></span>
+		</td>
+		<td>
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<div class="align_right"><a href="#!replace!confirm_url!#"><b>#!string!button_0004!#</b></a></div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end confirm-cold-stop -->
+
 <!-- start confirm-start-server -->
 <table>
 	<tr>
@@ -1390,6 +1416,44 @@
 </table>
 <br />
 <!-- end confirm-migrate-server -->
+
+<!-- start cold-stop-header -->
+<table>
+	<tr>
+		<td colspan="2" class="highlight_ready_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			#!string!message_0179!#
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<br />
+			<table class="hidden_table" width="100%">
+<!-- end cold-stop-header -->
+
+<!-- start cold-stop-entry -->
+				<tr>
+					<td class="td_hidden_white">
+						<span class="#!replace!row_class!#">#!replace!row!#</span>
+					</td>
+					<td class="#!replace!message_class!#" align="left">
+						#!replace!message!#
+					</td>
+				</tr>
+<!-- end cold-stop-entry -->
+
+<!-- start cold-stop-footer -->
+			</table>
+			<br />
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end cold-stop-footer -->
 
 <!-- start start-server-header -->
 <table>
@@ -1966,8 +2030,30 @@
 	</tr>
 </table>
 <br />
-";
 <!-- end poweroff-node-aborted -->
+
+<!-- start cold-stop-aborted -->
+<table>
+	<tr>
+		<td class="highlight_bad_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td>
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end cold-stop-aborted -->
 
 <!-- start dual-boot-header -->
 <table>

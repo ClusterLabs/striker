@@ -66,7 +66,7 @@
 		<key name="button_0059">Global Settings</key>
 		<key name="button_0060">Install Manifests</key>
 		<key name="button_0061">Add a New #!string!brand_0004!#</key>
-		<key name="button_0062"></key>
+		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063"></key>
 		<key name="button_0064"></key>
 		<key name="button_0065"></key>
@@ -238,8 +238,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0033">Please use only one node's storage pool.</key>
 		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
-		<key name="explain_0036">Save the current configuration of this #!string!brand_0002!# to a file on your computer. This can be used to restore the configuration should this dashboard get reset or replaced.</key>
-		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration. If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
+		<key name="explain_0036"><![CDATA[Save the current configuration of this #!string!brand_0002!# to a file on your computer.<br />This can be used to restore the configuration should this dashboard get reset or replaced.]]></key>
+		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration.<br />If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
 		<key name="explain_0038">It would appear that no file was uploaded.</key>
 		<key name="explain_0039"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> does not appear to be a valid backup file.]]></key>
 		<key name="explain_0040"><![CDATA[The mimetype detected was <span class="fixed_width">#!variable!mimetype!#</span>. The backup file should be '<span class="fixed_width">text/plain</span>'.]]></key>
@@ -624,7 +624,17 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0267"><![CDATA[Updating cluster password]]></key>
 		<key name="row_0268">Configure FS Table</key>
 		<key name="row_0269">Unconfigured</key>
-		<key name="row_0270"></key>
+		<key name="row_0270">Stopping Server</key>
+		<key name="row_0271">Withdrawing Node</key>
+		<key name="row_0272">Powering down Node</key>
+		<key name="row_0273">In progress</key>
+		<key name="row_0274"></key>
+		<key name="row_0275"></key>
+		<key name="row_0276"></key>
+		<key name="row_0277"></key>
+		<key name="row_0278"></key>
+		<key name="row_0279"></key>
+		<key name="row_0280"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -1151,8 +1161,18 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177">Almost ready to install!</key>
 		<key name="title_0178">Install Target control</key>
-		<key name="title_0179"></key>
-		<key name="title_0180"></key>
+		<key name="title_0179">About to Cold-Stop the entire #!string!brand_0003!#!</key>
+		<key name="title_0180"><![CDATA[Cold-Stop of [<span class="fixed_width">#!variable!anvil!#</span>] aborted!]]></key>
+		<key name="title_0181"><![CDATA[Cold-Stop of: [<span class="highlight_detail">#!variable!anvil!#</span>] under way.]]></key>
+		<key name="title_0182"></key>
+		<key name="title_0183"></key>
+		<key name="title_0184"></key>
+		<key name="title_0185"></key>
+		<key name="title_0186"></key>
+		<key name="title_0187"></key>
+		<key name="title_0188"></key>
+		<key name="title_0189"></key>
+		<key name="title_0190"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1564,7 +1584,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0406"><![CDATA[The "Install Target" service is currently running.]]></key>
 		<key name="message_0407"><![CDATA[The "Install Target" service is currently stopped.]]></key>
 		<key name="message_0408"><![CDATA[The "Install Target" service is in an unknown state ('<span class="code">/etc/init.d/dhcpd status</span>' returns an unexpected return code).<br />#!string!brand_0014!#]]></key>
-		<key name="message_0409"><![CDATA[Enabling the "Install Target" feature may cause network problems!<br /><br />By default, #!string!brand_0002!# tries to minimize the risk of interfering with your network by enabling the install manifest feature on the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0005!#</a> only.<br />However, if the confiuration was manually changed, or if your network doesn't use <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">VLANs</a> to isolate the #!string!brand_0005!#,<br />this feature could interrupt other machines on your network when they request a <a href="https://alteeve.ca/w/DHCP_on_an_RPM-based_OS" target="_new">DHCP</a> lease renewal.<br />Likewise, if the #!string!brand_0005!# is not isolated, your new node or #!string!brand_0002!# machine<br />may get an <a href="https://alteeve.ca/w/IP" target="_new">IP address</a> from another machine on your network and fail to install off of this #!string!brand_0002!# machine.<br />If you're having trouble with this feature, please feel free to <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
+		<key name="message_0409"><![CDATA[Enabling the "Install Target" feature may cause network problems!<br /><br />By default, #!string!brand_0002!# tries to minimize the risk of interfering with your network<br />by enabling the install manifest feature on the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0005!#</a> only.<br />However, if the confiuration was manually changed, or if your network doesn't use <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">VLANs</a> to isolate the #!string!brand_0005!#,<br />this feature could interrupt other machines on your network when they request a <a href="https://alteeve.ca/w/DHCP_on_an_RPM-based_OS" target="_new">DHCP</a> lease renewal.<br />Likewise, if the #!string!brand_0005!# is not isolated, your new node or #!string!brand_0002!# machine<br />may get an <a href="https://alteeve.ca/w/IP" target="_new">IP address</a> from another machine on your network and fail to install off of this #!string!brand_0002!# machine.<br />If you're having trouble with this feature, please feel free to <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="message_0410"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
 		<key name="message_0411"><![CDATA[The "Install Target" function is now enabled. Please remember to turn this off once you are done.<br />Remember to <a href="https://alteeve.ca/w/Configuring_Network_Boot_on_Fujitsu_Primergy" target="_new">network boot</a> your new machine using the one of the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0006!#</a>-connected interfaces.]]></key>
 		<key name="message_0412"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
@@ -1573,9 +1593,29 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0415"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
 		<key name="message_0416"><![CDATA[The "Install Target" service depends on '<span class="code">dhcpd</span>' which is configured via the: [<span class="code">#!conf!path::dhcpd_conf!#</span>] file.<br />It looks like the directory this file is in can't be read by the system user with user ID: [<span class="code">#!conf!sys::striker_uid!#].<br />#!string!brand_0014!#]]></key>
 		<key name="message_0417"><![CDATA[It looks like this #!string!brand_0002!# dashboard has not yet been configured.<br />Click on "<span class="highlight_ready">#!string!button_0059!#</span>" to configure!]]></key>
-		<key name="message_0418"><![CDATA[]]></key>
-		<key name="message_0419"><![CDATA[]]></key>
-		<key name="message_0420"><![CDATA[]]></key>
+		<key name="message_0418"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br />Is this really what you want to do?]]></key>
+		<key name="message_0419"><![CDATA[Cold-Stopping the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# was aborted because it is already offline, or connection was lost.]]></key>
+		<key name="message_0420"><![CDATA[Starting the graceful shut down of the [<span class="highlight_detail">#!variable!server!#</span>] server...<br />If it doesn't shut down promptly, please log in and, if necessary, initiate the shut down.]]></key>
+		<key name="message_0421"><![CDATA[Failed to graceful shut down: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
+		<key name="message_0422"><![CDATA[All servers are now offline. Proceeding with withdrawl...]]></key>
+		<key name="message_0423"><![CDATA[Cold-stop has been aborted.]]></key>
+		<key name="message_0424"><![CDATA[The node: [<span class="highlight_detail">#!variable!node!#</span>] is already withdrawn.]]></key>
+		<key name="message_0425"><![CDATA[Starting to withdraw: [<span class="highlight_detail">#!variable!node!#</span>] from the cluster.<br />Please be patient! This can sometimes take a few minutes!]]></key>
+		<key name="message_0426"><![CDATA[One of the nodes didn't cleanly withdraw from the cluster.]]></key>
+		<key name="message_0427"><![CDATA[Both nodes have been withdrawn! Powering down now...]]></key>
+		<key name="message_0428"><![CDATA[Power-down initiated. The node should offline in a few moments.]]></key>
+		<key name="message_0429"><![CDATA[Cold-Stop completed successfully!]]></key>
+		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
+		<key name="message_0431"><![CDATA[]]></key>
+		<key name="message_0432"><![CDATA[]]></key>
+		<key name="message_0433"><![CDATA[]]></key>
+		<key name="message_0434"><![CDATA[]]></key>
+		<key name="message_0435"><![CDATA[]]></key>
+		<key name="message_0436"><![CDATA[]]></key>
+		<key name="message_0437"><![CDATA[]]></key>
+		<key name="message_0438"><![CDATA[]]></key>
+		<key name="message_0439"><![CDATA[]]></key>
+		<key name="message_0440"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
@@ -1633,7 +1673,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 	</lang>

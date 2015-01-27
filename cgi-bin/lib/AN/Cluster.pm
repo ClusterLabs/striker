@@ -1632,20 +1632,37 @@ sub create_backup_file
 	   $config_data .= "<!-- Striker version $conf->{sys}{version} -->\n";
 	   $config_data .= "<!-- Backup created ".get_date($conf, time)." -->\n\n";
 	
+	# Get a list of install manifests on this machine.
+	my @manifests;
+	my $manifest_directory =  $conf->{path}{apache_manifests_dir};
+	   $manifest_directory =~ s/\/$//g;
+	record($conf, "$THIS_FILE ".__LINE__."; manifest_directory: [$manifest_directory]\n");
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $manifest_directory);
+	while(my $file = readdir(DIRECTORY))
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; file: [$file]\n");
+		if ($file =~ /^install-manifest_(.*?).xml$/)
+		{
+			my $full_path = "$manifest_directory/$file";
+			push @manifests, $full_path;
+			record($conf, "$THIS_FILE ".__LINE__."; full_path: [$full_path]\n");
+		}
+	}
+	   
 	# Read the three config files and write them out to a file.
-	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config})
+	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config}, @manifests)
 	{
 		# Read in /etc/striker/striker.conf.
 		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
 		$config_data .= "<!-- start $file -->\n";
-		my $fh = IO::Handle->new();
-		my $sc = "$file";
-		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-		while (<$fh>)
+		my $shell_call = "$file";
+		open (my $file_handle, "<:encoding(UTF-8)", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
 		{
 			$config_data .= $_;
 		}
-		$fh->close();
+		close $file_handle;
 		$config_data .= "<!-- end $file -->\n\n";
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; config_data: [\n$config_data]\n");
@@ -1682,7 +1699,7 @@ sub load_backup_configuration
 	my $in_fh = $conf->{cgi_fh}{file};
 	
 	# Some variables.
-	my $this_file    = "";
+	my $file         = "";
 	my $striker_conf = "";
 	my $hosts        = "";
 	my $ssh_config   = "";
@@ -1709,12 +1726,13 @@ sub load_backup_configuration
 	}
 	else
 	{
-		# If the first line of the file isn't '<!-- Striker Backup -->',
-		# do not proceed.
+		# Parse the incoming file.
 		while (<$in_fh>)
 		{
 			chomp;
 			my $line = $_;
+			# If the first line of the file isn't 
+			# '<!-- Striker Backup -->', do not proceed.
 			if ($line =~ /<!-- Striker Backup -->/)
 			{
 				# Looks like a valid file.
@@ -1735,30 +1753,38 @@ sub load_backup_configuration
 				# Where in a valid file.
 				if ($line =~ /<!-- end (.*?) -->/)
 				{
-					$this_file = "";
+					$file = "";
 					next;
 				}
 				if ($line =~ /<!-- start (.*?) -->/)
 				{
-					$this_file = $1;
+					$file = $1;
+					if ($file =~ /install-manifest/)
+					{
+						$conf->{install_manifest}{$file}{config} = "";
+					}
 					next;
 				}
-				if ($this_file eq $conf->{path}{striker_conf})
+				if ($file eq $conf->{path}{striker_conf})
 				{
 					$striker_conf .= "$line\n";
 				}
-				elsif ($this_file eq $conf->{path}{hosts})
+				elsif ($file eq $conf->{path}{hosts})
 				{
 					$hosts .= "$line\n";
 				}
-				elsif ($this_file eq $conf->{path}{ssh_config})
+				elsif ($file eq $conf->{path}{ssh_config})
 				{
 					$ssh_config .= "$line\n";
 				}
-				elsif ($this_file)
+				elsif ($file =~ /install-manifest/)
+				{
+					$conf->{install_manifest}{$file}{config} .= "$line\n";
+				}
+				elsif ($file)
 				{
 					# Unknown file...
-					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$this_file], line: [$line]\n");
+					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$file], line: [$line]\n");
 				}
 			}
 		}
@@ -1771,20 +1797,27 @@ sub load_backup_configuration
 	{
 		### TODO: examine the contents of each file to ensure it looks sane.
 		# Looks good, write them out.
-		my $an_fh = IO::Handle->new();
-		open ($an_fh, ">$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
+		open (my $an_fh, ">", "$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
 		print $an_fh $striker_conf;
-		$an_fh->close();
+		close $an_fh;
 		
-		my $hosts_fh = IO::Handle->new();
-		open ($hosts_fh, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
+		open (my $hosts_fh, ">", "$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
 		print $hosts_fh $hosts;
-		$hosts_fh->close();
+		close $hosts_fh;
 		
-		my $ssh_fh = IO::Handle->new();
-		open ($ssh_fh, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
+		open (my $ssh_fh, ">", "$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
 		print $ssh_fh $ssh_config;
-		$ssh_fh->close();
+		close $ssh_fh;
+		
+		# Load any manifests.
+		foreach my $file (sort {$a cmp $b} keys %{$conf->{install_manifest}})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; writing manifest file: [$file]\n");
+			open (my $manifest_fh, ">", "$file") or die "$THIS_FILE ".__LINE__."; Can't write to: [$file], error: $!\n";
+			print $manifest_fh $conf->{install_manifest}{$file}{config};
+			close $manifest_fh;
+		}
+		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file		=>	$conf->{cgi}{file},
 			});
@@ -5460,6 +5493,19 @@ sub header
 			{
 				$say_refresh = "";
 			}
+			elsif ($conf->{cgi}{task} eq "archive")
+			{
+				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?config=true&task=archive",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}, "", 1);
+				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?logo=true",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}, "", 1);
+			}
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
 				my $link =  $conf->{'system'}{cgi_string};
@@ -5771,6 +5817,7 @@ sub get_cgi_vars
 		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
 		{
 			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n");
 			next;
 		}
 		
@@ -6134,20 +6181,6 @@ sub scan_cluster
 	record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
 	AN::Striker::set_node_names ($conf);
-	check_nodes    ($conf);
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-	if ($conf->{'system'}{up_nodes} > 0)
-	{
-		AN::Striker::check_vms($conf);
-	}
-
-	return(0);
-}
-
-sub check_nodes
-{
-	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; check_nodes()\n");
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -6158,7 +6191,13 @@ sub check_nodes
 	# Start your engines!
 	check_node_status($conf);
 	
-	return (0);
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	if ($conf->{'system'}{up_nodes} > 0)
+	{
+		AN::Striker::check_vms($conf);
+	}
+
+	return(0);
 }
 
 # This attempts to gather all information about a node in one SSH call. It's
