@@ -1,6 +1,6 @@
 package AN::Agent;
 
-use base 'AN::Scanner';    # inherit from AN::Scanner
+use parent 'AN::Scanner';    # inherit from AN::Scanner
 
 # _Perl_
 use warnings;
