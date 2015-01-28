@@ -220,6 +220,3 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR

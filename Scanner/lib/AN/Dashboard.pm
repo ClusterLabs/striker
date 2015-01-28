@@ -16,65 +16,69 @@ const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 use Class::Tiny qw(attr);
 
-
 sub parse_node_server_status {
     my $self = shift;
-    my ( $ns_host ) = @_;
+    my ($ns_host) = @_;
 
     my $records = $self->dbs()->check_node_server_status($ns_host);
-    my ( $dead_or_alive, $machine, $aok);
-    for my $record ( @$records ) {
-	if ( $record->{message_tag} eq 'NODE_SERVER_STATUS' ) {
-	    $dead_or_alive = $record->{status} eq 'DEAD' ? 'dead'
-		: $record->{status} eq 'OK'              ? 'alive'
-		:                                           undef;
-	    $aok = defined $dead_or_alive;
-	} elsif ( $record->{message_tag} eq 'AUTO_BOOT' ) {
-	    $machine = $record->{status} eq 'FALSE' ? 'disabled by user'
-		: $record->{status} eq 'TRUE'       ? 'should be running'
-		:                                      undef;
-	    $aok = defined $machine;
-	}
+    my ( $dead_or_alive, $machine, $aok );
+    for my $record (@$records) {
+        if ( $record->{message_tag} eq 'NODE_SERVER_STATUS' ) {
+            $dead_or_alive
+                = $record->{status} eq 'DEAD' ? 'dead'
+                : $record->{status} eq 'OK'   ? 'alive'
+                :                               undef;
+            $aok = defined $dead_or_alive;
+        }
+        elsif ( $record->{message_tag} eq 'AUTO_BOOT' ) {
+            $machine
+                = $record->{status} eq 'FALSE' ? 'disabled by user'
+                : $record->{status} eq 'TRUE'  ? 'should be running'
+                :                                undef;
+            $aok = defined $machine;
+        }
 
-	carp ( "Something's wrong with records received for ",
-	       " check_node_server_status--Wrong message tag or status\n",
-	       Data::Dumper::Dumper(
-		   [ {should_be => [{ message_tag => 'NODE_SERVER_STATUS',
-				      status => ['DEAD', 'OK'],
-				    },
-				    { message_tag => 'AUTO_BOOT',
-				      status => ['TRUE', 'FALSE'],
-				    },
-			  ],
-		      actual_record => $record, 
-		     },
-		   ],
-	       ),
-	    ) unless $aok;
+        carp( "Something's wrong with records received for ",
+              " check_node_server_status--Wrong message tag or status\n",
+              Data::Dumper::Dumper( [
+                                 { should_be => [
+                                         { message_tag => 'NODE_SERVER_STATUS',
+                                           status      => [ 'DEAD', 'OK' ],
+                                         },
+                                         { message_tag => 'AUTO_BOOT',
+                                           status      => [ 'TRUE', 'FALSE' ],
+                                         },
+                                   ],
+                                   actual_record => $record,
+                                 },
+                               ],
+              ), )
+            unless $aok;
     }
-    return ( $dead_or_alive, $machine);
+    return ( $dead_or_alive, $machine );
 }
-
 
 sub check_node_server_status {
     my $self = shift;
 
-    state $ns_keys = [ keys %{$self->confdata()->{node_server}}];
-    for my $key ( @$ns_keys ) {
-	my $ns_host = $self->confdata()->{node_server}{$key};
-	my ( $dead_or_alive, $machine)
-	    = $self->parse_node_server_status($ns_host);
+    state $ns_keys = [ keys %{ $self->confdata()->{node_server} } ];
+    for my $key (@$ns_keys) {
+        my $ns_host = $self->confdata()->{node_server}{$key};
+        my ( $dead_or_alive, $machine )
+            = $self->parse_node_server_status($ns_host);
 
-	return if $dead_or_alive 
-	    && $dead_or_alive eq 'alive'; # running - OK
-	return if $machine
-	    && $machine eq 'disabled by user'; # Not running, but OK
-	
-	# Not running, but it should be.
-	my $agent = $self->confdata->{node_server_down_agent};
-	my $args = {ignore_ignorefile => {$agent => 1},
-		    args => [$ns_host] };
-	$self->launch_new_agents( [$agent], $args );
+        return
+            if $dead_or_alive
+            && $dead_or_alive eq 'alive';    # running - OK
+        return
+            if $machine
+            && $machine eq 'disabled by user';    # Not running, but OK
+
+        # Not running, but it should be.
+        my $agent = $self->confdata->{node_server_down_agent};
+        my $args = { ignore_ignorefile => { $agent => 1 },
+                     args              => [$ns_host] };
+        $self->launch_new_agents( [$agent], $args );
     }
     return;
 }
@@ -83,38 +87,38 @@ sub check_node_server_status {
 # ordinary alerts to be display dispatchers.
 sub process_agent_data {
     my $self = shift;
-    
+
     state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
     say "${PROG}::process_agent_data()." if $self->verbose;
 
-  PROCESS:
+PROCESS:
     for my $process ( @{ $self->processes } ) {
         my $alerts = $self->fetch_alert_data($process);
 
-	next PROCESS
-	    unless 'ARRAY' eq ref $alerts 
-	    && @$alerts;
+        next PROCESS
+            unless 'ARRAY' eq ref $alerts
+            && @$alerts;
 
-	my $allN   = scalar @$alerts;
-        my $newN   = 0;
-	say Data::Dumper::Dumper( [$alerts] )
-	    if $dump;
-	my $seen_summary = 0;
+        my $allN = scalar @$alerts;
+        my $newN = 0;
+        say Data::Dumper::Dumper( [$alerts] )
+            if $dump;
+        my $seen_summary = 0;
     ALERT:
         for my $alert (@$alerts) {
             if ( $alert->{field} eq 'summary' ) {
-		last ALERT
-		    if $seen_summary++; # this is from an earlier loop
+                last ALERT
+                    if $seen_summary++;    # this is from an earlier loop
 
-		$self->sumweight( $self->sumweight + $alert->{value} );
-	    }
+                $self->sumweight( $self->sumweight + $alert->{value} );
+            }
             $newN++;
         }
         say scalar localtime(), " Received $allN alerts for process ",
-	    "$process->{name}, $newN of them new; weight is @{[$self->sumweight]}."
-		if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
+            "$process->{name}, $newN of them new; weight is @{[$self->sumweight]}."
+            if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
-    
+
     return;
 }
 
@@ -129,7 +133,7 @@ sub loop_core {
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
 
-    $self->process_agent_data( );
+    $self->process_agent_data();
     $self->handle_alerts();
 
     if ($verbose) {
@@ -138,7 +142,6 @@ sub loop_core {
     }
     return;
 }
-
 
 # ----------------------------------------------------------------------
 # end of code

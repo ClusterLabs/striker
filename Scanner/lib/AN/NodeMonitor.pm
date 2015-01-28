@@ -1,6 +1,6 @@
-package AN::RAID::Temperature;
+package AN::NodeMOnitor;
 
-use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
+use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
 # _Perl_
 use warnings;
@@ -193,17 +193,17 @@ sub raid_request {
         my $args = { table              => $info->{db}{table}{other},
                      with_node_table_id => 'node_id',
                      args               => {
-                            target_name  => $info->{host},
-                            target_type  => $info->{type},
-                            target_extra => $info->{ip},
-                            value        => $info->{host},
-                            units        => '',
-                            field        => 'RAID fetch data',
-                            status       => 'CRISIS',
-                            message_tag => 'AN-RAID-Temp raid_request() failed',
-                            message_arguments => "errormsg=" . join "\n",
-                            @data,
-                     }, };
+                               target_name  => $info->{host},
+                               target_type  => $info->{type},
+                               target_extra => $info->{ip},
+                               value        => $info->{host},
+                               units        => '',
+                               field        => 'RAID fetch data',
+                               status       => 'CRISIS',
+                               msg_tag  => 'AN-RAID-Temp raid_request() failed',
+                               msg_args => "errormsg=" . join "\n",
+                               @data,
+                             }, };
 
         $self->insert_raw_record($args);
 

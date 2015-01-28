@@ -147,17 +147,17 @@ sub ipmi_request {
         my $args = { table              => $info->{db}{table}{other},
                      with_node_table_id => 'node_id',
                      args               => {
-                               target_name  => $info->{host},
-                               target_type  => $info->{type},
-                               target_extra => $info->{ip},
-                               value        => $info->{host},
-                               units        => '',
-                               field        => 'IPMI fetch data',
-                               status       => 'CRISIS',
-                               message_tag  => 'AN-IPMI-Temp ipmi_request() failed',
-                               message_arguments => "errormsg=" . join "\n",
-                               @data,
-                             }, };
+                            target_name  => $info->{host},
+                            target_type  => $info->{type},
+                            target_extra => $info->{ip},
+                            value        => $info->{host},
+                            units        => '',
+                            field        => 'IPMI fetch data',
+                            status       => 'CRISIS',
+                            message_tag => 'AN-IPMI-Temp ipmi_request() failed',
+                            message_arguments => "errormsg=" . join "\n",
+                            @data,
+                     }, };
 
         $self->insert_raw_record($args);
 

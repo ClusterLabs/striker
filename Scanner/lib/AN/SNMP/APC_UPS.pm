@@ -28,9 +28,8 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( confpath confdata prev summary sumweight bindir ), {
-    compare => sub { {} },
-};
+use Class::Tiny qw( confpath confdata prev summary sumweight bindir ),
+    { compare => sub { {} }, };
 
 # ======================================================================
 # CONSTANTS
@@ -143,11 +142,11 @@ sub summarize_compared_sides {
 
     my $compared = $self->compare();
 
-  COMPARISON:
+COMPARISON:
     for my $tag ( sort keys %$compared ) {
-	next COMPARISON
+        next COMPARISON
             unless $compared->{$tag}{status} eq 'CRISIS';
-	$self->sumweight( $self->sumweight() + $compared->{$tag}{weight} );
+        $self->sumweight( $self->sumweight() + $compared->{$tag}{weight} );
     }
     return;
 }
@@ -193,8 +192,8 @@ sub insert_agent_record {
         grep { defined $_ && length $_ } ( $msg->{args}, $args->{dev} );
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
-    my $table =  $self->confdata->{db}{table}{$args->{tag}}
-              || $self->confdata->{db}{table}{other};
+    my $table = $self->confdata->{db}{table}{ $args->{tag} }
+        || $self->confdata->{db}{table}{other};
 
     $self->insert_raw_record(
                               { table              => $table,
@@ -203,10 +202,10 @@ sub insert_agent_record {
                                       value => $msg->{newval} || $args->{value},
                                       units => $args->{rec_meta}{units} || '',
                                       field => $msg->{label} || $args->{tag},
-                                      status   => $msg->{status},
-                                      message_tag  => $msg->{tag},
+                                      status            => $msg->{status},
+                                      message_tag       => $msg->{tag},
                                       message_arguments => $message_arguments,
-                                      target   => $name,
+                                      target            => $name,
                                 },
                               } );
     return;
@@ -225,12 +224,12 @@ sub insert_alert_record {
                value => $msg->{newval}           || $args->{value},
                units => $args->{rec_meta}{units} || '',
                field => $msg->{label}            || $args->{tag},
-               status       => $msg->{status},
-               message_tag      => $msg->{tag},
-               message_arguments     => $msg->{args},
-               target_name  => $name,
-               target_type  => $args->{metadata}{type},
-               target_extra => $args->{metadata}{ip},
+               status            => $msg->{status},
+               message_tag       => $msg->{tag},
+               message_arguments => $msg->{args},
+               target_name       => $name,
+               target_type       => $args->{metadata}{type},
+               target_extra      => $args->{metadata}{ip},
 
                    },
         } );
@@ -254,49 +253,51 @@ sub insert_alert_record {
 # side to show up.
 #
 sub compare_values {
-    my ( $v1, $v2, $c) = @_;
+    my ( $v1, $v2, $c ) = @_;
 
-    my $result = ( $c eq 'greater' ? $v1 > $v2
-		 : $c eq 'lesser'  ? $v2 < $v2
-		 :                   0
-	);
+    my $result = (   $c eq 'greater' ? $v1 > $v2
+                   : $c eq 'lesser'  ? $v2 < $v2
+                   : 0 );
     return $result;
 }
+
 sub compare_sides_or_report_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
 
     my $exclude_from_sumweight = 0;
     if ( exists $args->{rec_meta}->{compare} ) {
-	$exclude_from_sumweight = 1;
-	my ($comparator, $weight) = @{ $args->{rec_meta}}{qw(compare weight)};
-	my $side = $args->{metadata}{name};
-	my $tag = $args->{tag};
-	my ( $new_value, $new_status ) = ($args->{value}, $msg->{status});
+        $exclude_from_sumweight = 1;
+        my ( $comparator, $weight )
+            = @{ $args->{rec_meta} }{qw(compare weight)};
+        my $side = $args->{metadata}{name};
+        my $tag  = $args->{tag};
+        my ( $new_value, $new_status ) = ( $args->{value}, $msg->{status} );
 
-	# If tag not present in compar() hash, this is first side, so
-	# store data and wait for other sides.
-	#
-	if ( ! exists $self->compare()->{$tag} ) {
-	    @{$self->compare()->{$tag}}{qw(value status side weight)}
-	    = ( $new_value, $new_status, $side, $weight );
-	}
-	# Process 2nd, 3rd, 4th sides ... if new value is 'better'
-	# than old one, update archived value to the newer. If equal
-	# or worse, leave unchanged.
-	#
-	else {
-	    my $other_value = $self->compare()->{$tag}{value};
-	    @{$self->compare()->{$tag}}{qw(value status side weight)}
-	    = ( $new_value, $new_status, $side, $weight )
-		if compare_values $new_value, $other_value, $comparator;
-	}
+        # If tag not present in compar() hash, this is first side, so
+        # store data and wait for other sides.
+        #
+        if ( !exists $self->compare()->{$tag} ) {
+            @{ $self->compare()->{$tag} }{qw(value status side weight)}
+                = ( $new_value, $new_status, $side, $weight );
+        }
+
+        # Process 2nd, 3rd, 4th sides ... if new value is 'better'
+        # than old one, update archived value to the newer. If equal
+        # or worse, leave unchanged.
+        #
+        else {
+            my $other_value = $self->compare()->{$tag}{value};
+            @{ $self->compare()->{$tag} }{qw(value status side weight)}
+                = ( $new_value, $new_status, $side, $weight )
+                if compare_values $new_value, $other_value, $comparator;
+        }
     }
 
     $self->insert_agent_record( $args, $msg );
     $self->insert_alert_record( $args, $msg, $exclude_from_sumweight )
-	if $msg->{status} ne 'OK'
-	|| ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
+        if $msg->{status} ne 'OK'
+        || ( $msg->{status} eq 'OK' && $args->{prev_status} ne 'OK' );
 
     return;
 }
@@ -597,8 +598,8 @@ sub eval_status {
     my ( $self, $args ) = @_;
 
     return &eval_discrete_status
-        unless ( exists $args->{rec_meta}{ok}
-		 or exists $args->{rec_meta}{ok_min} ); # not range data.
+        unless (    exists $args->{rec_meta}{ok}
+                 or exists $args->{rec_meta}{ok_min} );    # not range data.
 
     return &eval_nested_status
         if exists $args->{rec_meta}{ok_min};
@@ -663,12 +664,12 @@ sub snmp_connect {
         my $args = { table              => $dbtables->{other},
                      with_node_table_id => 'node_id',
                      args               => {
-                               target   => $meta->{type},
-                               value    => $meta->{name},
-                               units    => '',
-                               field    => 'Net::SNMP connect',
-                               status   => 'CRISIS',
-                               message_tag  => 'Net-SNMP connect failed',
+                               target            => $meta->{type},
+                               value             => $meta->{name},
+                               units             => '',
+                               field             => 'Net::SNMP connect',
+                               status            => 'CRISIS',
+                               message_tag       => 'Net-SNMP connect failed',
                                message_arguments => "errormsg=" . $error,
                              }, };
 
@@ -694,7 +695,7 @@ sub query_target {
 
     my $info = $self->confdata;
 TARGET:    # For each snmp target (1, 2, ... ) in the config file
-    for my $target ( grep {/\A\d+\z/ } keys %$info ) {
+    for my $target ( grep {/\A\d+\z/} keys %$info ) {
         my $metadata = $info->{$target};
         my $dbtables = $info->{db}{table};
 
@@ -713,14 +714,14 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
             my $args = { table              => $dbtables->{other},
                          with_node_table_id => 'node_id',
                          args               => {
-                                   target   => $meta_out->{type},
-                                   value    => $meta_out->{name},
-                                   units    => '',
-                                   field    => 'Net::SNMP fetch data',
-                                   status   => 'CRISIS',
-                                   message_tag  => 'Net-SNMP->get_request() failed',
-                                   message_arguments => "errormsg=" . $session->error,
-                                 }, };
+                             target      => $meta_out->{type},
+                             value       => $meta_out->{name},
+                             units       => '',
+                             field       => 'Net::SNMP fetch data',
+                             status      => 'CRISIS',
+                             message_tag => 'Net-SNMP->get_request() failed',
+                             message_arguments => "errormsg=" . $session->error,
+                         }, };
 
             $self->insert_raw_record($args);
 

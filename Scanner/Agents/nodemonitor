@@ -17,11 +17,10 @@ use Pod::Usage;
 use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
-use Net::SNMP;
 
 use lib $Bin . '/lib';    # When called by scanner core pre-install
 use lib ( dirname $Bin) . '/lib';   # When run post-install, or during dev/test.
-use AN::SNMP::APC_UPS;
+use AN::NodeMonitor;
 
 use Const::Fast;
 
@@ -31,7 +30,7 @@ use Const::Fast;
 const my $SYSTEMNAME => 'striker';
 const my $binbase    => dirname $Bin;
 const my $AGENTDIR => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/bin" )
-                        ? "${binbase}/agents"
+                        ? "${binbase}/agent"
                         : $Bin );
 const my $BINDIR => (
                 ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
@@ -44,20 +43,21 @@ const my $TEXTBASE => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" )
 
 const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
 const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
-const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/snmp_apc_ups.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/nodemonitor.conf";
 const my $MSG_DIR             => "${TEXTBASE}/MESSAGES";
 
-const my $BRIEF      => 1;
-const my $COMMA      => q{,};
-const my $DOTSLASH   => q{./};
-const my $MAX_RATE   => 600;
-const my $MIN_RATE   => 1;
-const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE   => 30;
-const my $RUN_UNTIL  => '23:59:59';
-const my $SLASH      => q{/};
-const my $UP_ONE_DIR => q{..};
-const my $VERBOSE    => 2;
+const my $BRIEF     => 1;
+const my $COMMA     => q{,};
+const my $DOTSLASH  => q{./};
+const my $MAX_RATE  => 600;
+const my $MIN_RATE  => 1;
+const my $PROG      => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE  => 30;
+const my $RUN_UNTIL => ' 23
+    : 59
+    : 59 ';
+const my $SLASH   => q{/};
+const my $VERBOSE => 2;
 
 # ======================================================================
 # Subroutines
@@ -70,13 +70,12 @@ sub process_args {
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
-        filepath  => '/tmp/agents',       # directory to scan for agents.
         dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
-        confpath => $DEFAULT_CONFIG_PATH,        # configuration file.
+        confpath => $DEFAULT_CONFIG_PATH,        # RAID configuration file.
         msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
         bindir   => $BINDIR,                     # Where the bins are
         logdir   => $LOGDIR,                     # Where logfiles go
-        verbose => 0,    # avoid undef in addiotn at line 142.
+        verbose  => 0,                           # avoid undef in '+' @ line 122
               };
 
     GetOptions( $opt,               'rate=i',
@@ -102,19 +101,6 @@ sub process_args {
 sub verify_args {
     my ($opt) = @_;
 
-    pod2usage( -verbose => $BRIEF,
-               -message => "-run_until time '$opt->{run_until}' format dd:dd:dd"
-             )
-        unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
-
-    pod2usage( -verbose => $BRIEF,
-               -message => "rate '$opt->{rate}' < $MIN_RATE" )
-        if $opt->{rate} < $MIN_RATE;
-
-    pod2usage( -verbose => $BRIEF,
-               -message => "rate '$opt->{rate}' > $MAX_RATE" )
-        if $opt->{rate} > $MAX_RATE;
-
     return;
 }
 
@@ -123,22 +109,16 @@ sub verify_args {
 #
 
 sub main {
-
-    # When run manually, program starts in 'agents' dir; when run by
-    # scanner, cwd() is one level higher. Lets make things consistent.
-    #
-    chdir $BINDIR;
-
     my $options = process_args();
 
-    my $agent = AN::SNMP::APC_UPS->new($options);
+    my $agent = AN::NodeMonitor->new($options);
     $agent->create_flagfile();
 
-    my @node_args = @{ $agent->confdata()->{1} }{qw(name ip type)};
+    my @node_args = @{ $agent->confdata() }{qw(host ip type)};
 
     if ( $options->{log} || !$agent->interactive() ) {
         $agent->begin_logging();
-        $agent->verbose( $agent->verbose + 1 );
+        $agent->verbose( $agent->verbose() + 1 );
     }
 
     $agent->run( \@node_args );

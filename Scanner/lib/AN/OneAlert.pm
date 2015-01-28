@@ -25,8 +25,8 @@ use Class::Tiny qw( id      message_tag      node_id      field         value
     pid     target_name  target_type  target_extra
     ),
     { message_arguments => sub { [] },
-      other    => sub { [] },
-      handled  => sub {0}, };
+      other             => sub { [] },
+      handled           => sub {0}, };
 
 # ======================================================================
 # CONSTANTS

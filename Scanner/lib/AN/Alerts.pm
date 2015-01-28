@@ -159,9 +159,9 @@ sub add_alert {
         if ( $old                                      # return if duplicate.
              && $value->timestamp eq $old->timestamp );
     return
-        if ( $old                                      # return if no change.
-             && $value->status eq $old->status
-             && $value->message_tag eq $old->message_tag );
+        if ($old                                          # return if no change.
+            && $value->status eq $old->status
+            && $value->message_tag eq $old->message_tag );
     $self->alerts()->{$key1}{$key2} = $value;
     $self->clear_alert_handled( $key1, $key2 );
     return 1;
@@ -239,25 +239,25 @@ sub extract_time_and_modify_array {
 sub set_alert {
     my $self = shift;
     my ( $id,          $src,         $field,        $value,
-         $units,       $level,       $message_tag,      $message_arguments,
+         $units,       $level,       $message_tag,  $message_arguments,
          $target_name, $target_type, $target_extra, @others )
         = @_;
 
     my $timestamp = extract_time_and_modify_array( \@others );
 
-    my $args = { id           => $id,
-                 pid          => $src,
-                 timestamp    => $timestamp,
-                 field        => $field,
-                 value        => $value,
-                 units        => $units,
-                 status       => $level,
-                 message_tag      => $message_tag,
-                 message_arguments     => $message_arguments,
-                 target_name  => $target_name,
-                 target_type  => $target_type,
-                 target_extra => $target_extra,
-                 other        => ( @others ? \@others : '' ), };
+    my $args = { id                => $id,
+                 pid               => $src,
+                 timestamp         => $timestamp,
+                 field             => $field,
+                 value             => $value,
+                 units             => $units,
+                 status            => $level,
+                 message_tag       => $message_tag,
+                 message_arguments => $message_arguments,
+                 target_name       => $target_name,
+                 target_type       => $target_type,
+                 target_extra      => $target_extra,
+                 other             => ( @others ? \@others : '' ), };
     $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
 }
@@ -372,7 +372,8 @@ sub handle_alerts {
                 next ALERT unless $alert->listening_at_this_level($listener);
 
                 $lookup->{key} = $alert->message_tag();
-                if ( $alert->message_arguments() && length $alert->message_arguments() ) {
+                if ( $alert->message_arguments()
+                     && length $alert->message_arguments() ) {
                     map {
                         my ( $k, $v ) = split '=';
                         $lookup->{variables}{$k} = $v;
