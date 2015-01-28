@@ -1,4 +1,4 @@
-package AN::RAID::Temperature;
+package AN::NodeMOnitor;
 
 use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
