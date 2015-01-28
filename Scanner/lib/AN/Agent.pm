@@ -8,7 +8,7 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '1.0.0';    # Update POD to match
+our $VERSION = '1.0.0';      # Update POD to match
 
 use English '-no_match_vars';
 use Carp;
@@ -105,20 +105,20 @@ sub generate_random_record {
                    : $value > 80 ? 'WARNING'
                    :               'OK' );
     my $message_tag = (   $first == 1          ? "$PROG first record"
-                    : $status eq 'DEBUG'   ? "$PROG debug msg"
-                    : $status eq 'WARNING' ? "$PROG warning msg"
-                    : $status eq 'CRISIS'  ? "$PROG crisis msg"
-                    :                        '' );
+                        : $status eq 'DEBUG'   ? "$PROG debug msg"
+                        : $status eq 'WARNING' ? "$PROG warning msg"
+                        : $status eq 'CRISIS'  ? "$PROG crisis msg"
+                        :                        '' );
     my $message_arguments = '';
 
     say scalar localtime(), ": $PROG -> $status, $message_tag"
         if $self->verbose;
 
-    my $args = { value    => $value,
-                 units    => 'a num',
-                 field    => 'random values',
-                 status   => $status,
-                 message_tag  => $message_tag,
+    my $args = { value             => $value,
+                 units             => 'a num',
+                 field             => 'random values',
+                 status            => $status,
+                 message_tag       => $message_tag,
                  message_arguments => $message_arguments, };
     $self->insert_raw_record(
                               { table              => $self->datatable_name,
@@ -143,7 +143,7 @@ sub loop_core {
     $self->generate_random_record();
 }
 
-sub prep_for_loop {}		# placeaholder for subclasses.
+sub prep_for_loop { }    # placeaholder for subclasses.
 
 sub run {
     my $self = shift;

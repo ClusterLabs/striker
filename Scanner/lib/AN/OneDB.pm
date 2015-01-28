@@ -24,17 +24,19 @@ use AN::Unix;
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
-use Class::Tiny (qw( connect   dbh     dbconf  filename logdir node_args
-                     node_table_id     owner   sth)) ;
+use Class::Tiny (
+    qw( connect   dbh     dbconf  filename logdir node_args
+        node_table_id     owner   sth) );
 
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
 
-    $self->startup( {from_build => 1} ) if $self->connect;
-    $self->filename( catdir( $self->logdir,
-			     'db.' . $PROG . '.alternate.' . $self->dbconf->{host}
-		     ));
+    $self->startup( { from_build => 1 } ) if $self->connect;
+    $self->filename(
+                   catdir( $self->logdir,
+                           'db.' . $PROG . '.alternate.' . $self->dbconf->{host}
+                         ) );
 }
 
 # ======================================================================
@@ -144,7 +146,7 @@ LIMIT    1
 
 EOSQL
 
-    Auto_Boot=> <<"EOSQL",
+    Auto_Boot => <<"EOSQL",
 SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM     alerts
 WHERE    message_tag = 'AUTO_BOOY'
@@ -195,23 +197,24 @@ sub log_new_process {
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
     if ( !$sth ) {
-	eval {
-	    $sth = $self->dbh->prepare($sql)
-		if $self->dbh->ping;;
-	    $self->set_sth( $sql, $sth );
-	};
-	warn "DB error in log_new_process() @{[$DBI::errstr]}."
-	    if $@;
+        eval {
+            $sth = $self->dbh->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        warn "DB error in log_new_process() @{[$DBI::errstr]}."
+            if $@;
     }
     eval {
-	my $rows = $sth->execute(@args)
-	    if $self->dbh->ping;
-	$id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
-					  undef )
-	    if $self->dbh->ping;
+        my $rows = $sth->execute(@args)
+            if $self->dbh->ping;
+        $id
+            = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+                                          undef )
+            if $self->dbh->ping;
     };
     warn "DB error in log_new_process() @{[$DBI::errstr]}."
-	if $@;
+        if $@;
     return $id;
 }
 
@@ -221,22 +224,19 @@ sub tell_db_Im_dying {
     my $sql = $SQL{I_am_dying};
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
-    eval {
-	$sth = $self->dbh->prepare($sql);
-    };
+    eval { $sth = $self->dbh->prepare($sql); };
     warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
-	if $@;
+        if $@;
 
-    my $hostname = AN::Unix::hostname( '-short');
-    my @args = ( $self->node_table_id, 'scanner', $hostname, $PID,
+    my $hostname = AN::Unix::hostname('-short');
+    my @args = (
+        $self->node_table_id, 'scanner', $hostname, $PID,
 
-		 "host=$hostname" );
-    eval {
-	my $rows = $sth->execute(@args);
-    };
+        "host=$hostname" );
+    eval { my $rows = $sth->execute(@args); };
     warn "DB error in tell_db_Im_dying() @{[$DBI::errstr]}."
-	if $@;
-    return;    
+        if $@;
+    return;
 }
 
 # ......................................................................
@@ -249,21 +249,18 @@ sub halt_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-	eval {
-	    $sth = $self->dbh->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	warn "DB error in halt_process() @{[$DBI::errstr]}."
-	    if $@;
+        eval {
+            $sth = $self->dbh->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        warn "DB error in halt_process() @{[$DBI::errstr]}."
+            if $@;
     }
     my $rows;
-    eval {
-	$rows = $sth->execute( $self->node_table_id )
-	    if $self->dbh->ping;
-    };
+    eval { $rows = $sth->execute( $self->node_table_id ) if $self->dbh->ping; };
     warn "DB error in halt_process() @{[$DBI::errstr]}."
-	if $@;
+        if $@;
     return $rows;
 }
 
@@ -277,23 +274,21 @@ sub start_process {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-	eval {
-	    $sth = $self->dbh()->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	warn "DB error in start_process() @{[$DBI::errstr]}."
-	    if $@;
+        eval {
+            $sth = $self->dbh()->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        warn "DB error in start_process() @{[$DBI::errstr]}."
+            if $@;
     }
     my $rows;
-    eval {
-	$rows = $sth->execute( $self->node_table_id )
-	    if $self->dbh->ping;
-    };
+    eval { $rows = $sth->execute( $self->node_table_id ) if $self->dbh->ping; };
     warn "DB error in start_process() @{[$DBI::errstr]}."
-	if $@;
+        if $@;
     return $rows;
 }
+
 # ......................................................................
 # mark this process's node table entry as running.
 #
@@ -304,21 +299,18 @@ sub finalize_node_table_status {
     my ($sth) = $self->get_sth($sql);
 
     if ( !$sth ) {
-	eval {
-	    $sth = $self->dbh()->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	warn "DB error in start_process() @{[$DBI::errstr]}."
-	    if $@;
+        eval {
+            $sth = $self->dbh()->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        warn "DB error in start_process() @{[$DBI::errstr]}."
+            if $@;
     }
     my $rows;
-    eval {
-	$rows = $sth->execute( $self->node_table_id )
-	    if $self->dbh->ping;
-    };
+    eval { $rows = $sth->execute( $self->node_table_id ) if $self->dbh->ping; };
     warn "DB error in start_process() @{[$DBI::errstr]}."
-	if $@;
+        if $@;
     return $rows;
 }
 
@@ -327,12 +319,12 @@ sub finalize_node_table_status {
 #
 sub startup {
     my $self = shift;
-    my ( $args ) = @_;
-    
-    $self->sth({});
+    my ($args) = @_;
+
+    $self->sth( {} );
     $self->connect_dbs();
-    if (  $self->dbh ) { 
-	$self->register_start( )
+    if ( $self->dbh ) {
+        $self->register_start();
     }
     return;
 }
@@ -346,14 +338,14 @@ sub connect_dbs {
 
 sub connect_db {
     my $self = shift;
-    my ( $args ) = @_;
+    my ($args) = @_;
 
-    if ( ! 'HASH' eq ref $args
-	 || !  exists $args->{host} ) {
-	carp  "In ", __PACKAGE__, "::connect_db() arg is: ",
-	      Data::Dumper::Dumper( [$args] ),
+    if (    !'HASH' eq ref $args
+         || !exists $args->{host} ) {
+        carp "In ", __PACKAGE__, "::connect_db() arg is: ",
+            Data::Dumper::Dumper( [$args] ),
 
-	return;
+            return;
     }
 
     my $dsn = ( $args->{host} eq 'localhost'
@@ -361,9 +353,9 @@ sub connect_db {
                 : sprintf( $DSN_FMT,       @{$args}{qw(name host port)} ) );
     my %args = %DB_CONNECT_ARGS;    # need to copy to avoid readonly error.
 
-    my $dbh
-	= eval { DBI->connect_cached( $dsn, $args->{user}, $args->{password},
-				      \%args )};
+    my $dbh = eval {
+        DBI->connect_cached( $dsn, $args->{user}, $args->{password}, \%args );
+    };
 
     return $dbh;
 }
@@ -373,10 +365,10 @@ sub register_start {
 
     my $hostname = AN::Unix::hostname '-short';
 
-    my ( $target_name, $target_ip, $target_type
-	) = ( 'ARRAY' eq ref $self->node_args
-	      ? @{$self->node_args}
-	      : ( '', '', '' ) );
+    my ( $target_name, $target_ip, $target_type )
+        = ( 'ARRAY' eq ref $self->node_args
+            ? @{ $self->node_args }
+            : ( '', '', '' ) );
     $self->node_table_id( $self->log_new_process(
                               $PROG,            $hostname,         $PID,
                               $PROC_STATUS_NEW, $SCANNER_USER_NUM, $target_name,
@@ -436,21 +428,23 @@ sub manual_timestamp {
     return $sql if -1 < index $sql, ', timestamp';
 
     state %cache;
+
     # Nope, gotta get things dirty.
     #
     my $newsql;
     if ( $cache{$sql} ) {
-	$newsql = $cache{$sql};
-    } else {
+        $newsql = $cache{$sql};
+    }
+    else {
         $newsql = $sql;
-	$newsql =~ s{(\)\nVALUES)}{, timestamp $1}xms;
-	$newsql =~ s{(\)\n)\z}
+        $newsql =~ s{(\)\nVALUES)}{, timestamp $1}xms;
+        $newsql =~ s{(\)\n)\z}
 	{, timestamp with time zone 'epoch' + ? * interval '1 second'$1}xms;
-	$cache{$sql} = $newsql;
+        $cache{$sql} = $newsql;
     }
     push @$fields, 'timestamp';
     $args->{timestamp} = $timestamp;
-    $args->{node_id} = $self->node_table_id;
+    $args->{node_id}   = $self->node_table_id;
 
     return $newsql;
 }
@@ -459,20 +453,20 @@ sub fail_write {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
 
-    my ($pkg, $file, $line) = caller();
+    my ( $pkg, $file, $line ) = caller();
     $line--;
 
     say $DB_ERR, __PACKAGE__, "::failwrite() invoked due to error: \n",
-    $DB_ERR, "'@{[$DBI::errstr]}' \n", $DB_ERR, "at line $line in $file."; 
+        $DB_ERR, "'@{[$DBI::errstr]}' \n", $DB_ERR, "at line $line in $file.";
     $self->startup();
 
     if ( $self->dbh() ) {
-	$self->save_to_db( $sql, $fields, $args, $timestamp );
-	return 1;
+        $self->save_to_db( $sql, $fields, $args, $timestamp );
+        return 1;
     }
-    elsif ( $timestamp ) {
-	$self->save_to_file( $sql, $fields, $args, $timestamp );
-	return;
+    elsif ($timestamp) {
+        $self->save_to_file( $sql, $fields, $args, $timestamp );
+        return;
     }
 }
 
@@ -481,41 +475,45 @@ sub save_to_db {
     my ( $sql, $fields, $args, $timestamp ) = @_;
 
     $sql = $self->manual_timestamp( $sql, $fields, $args, $timestamp )
-	if $timestamp;
+        if $timestamp;
 
     my $sth = $self->get_sth($sql);
-    my ($ok, $id) = (1, undef);
+    my ( $ok, $id ) = ( 1, undef );
 
     if ( !$sth ) {
-	eval {
-	    $sth = $self->dbh->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	$ok = $@ ? $self->fail_write( $sql, $fields, $args, $timestamp )
-	    :      1;
-	return unless $ok;
+        eval {
+            $sth = $self->dbh->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        $ok
+            = $@
+            ? $self->fail_write( $sql, $fields, $args, $timestamp )
+            : 1;
+        return unless $ok;
     }
 
-    say Dumper ( [$sql, $fields, $args] )
-	if grep { /\binsert_raw_record\b/ } ($ENV{VERBOSE} || '');
+    say Dumper ( [ $sql, $fields, $args ] )
+        if grep {/\binsert_raw_record\b/} ( $ENV{VERBOSE} || '' );
 
     # extract the hash values in the order specified by the array of
     # key names.
     my $rows = eval { $sth->execute( @{$args}{@$fields} ) }
         if $self->dbh->ping;
     $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
-	if $@;
+        if $@;
     return unless $ok;
-    return 1 if $timestamp;	# Don't commit during bulkload
+    return 1 if $timestamp;    # Don't commit during bulkload
 
     eval {
-	$id = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE, undef )
-	    if $self->dbh->ping;
-    } if  $rows;
+        $id
+            = $self->dbh->last_insert_id( undef, undef, $DB_PROCESS_TABLE,
+                                          undef )
+            if $self->dbh->ping;
+    } if $rows;
 
     $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
-	if $@;
+        if $@;
     return unless $ok;
     return $id;
 }
@@ -530,41 +528,42 @@ sub save_to_file {
     my ( $sql, $fields, $args ) = @_;
 
     my $str = YAML::Dump { sql    => $sql,
-			   fields => $fields,
-			   args   => $args,
-			   epoch  => time(),
-    };
-    open my $fh, '>>', $self->filename
-	or die( 'Could not open for append DB-alternate file ',
-		"'@{[$self->filename]}'.\n$!" );
+                           fields => $fields,
+                           args   => $args,
+                           epoch  => time(), };
+    open my $fh, '>>',
+        $self->filename
+        or die( 'Could not open for append DB-alternate file ',
+                "'@{[$self->filename]}'.\n$!" );
     say $fh $str;
     close $fh;
 
     return 1;
 }
+
 # Load data into DB, archive the file.
 #
 sub load_db_from_file {
     my $self = shift;
 
-    return unless ref $self->dbh;     # no DBI:db to talk to.
-    return unless -e $self->filename; # no file to load from.
+    return unless ref $self->dbh;        # no DBI:db to talk to.
+    return unless -e $self->filename;    # no file to load from.
 
     say "Loading DB @{[$self->dbconf()->{host}]} from @{[$self->filename]}."
-	if $self->owner->verbose;
-    
+        if $self->owner->verbose;
 
     my $load_succeeded = 1;
-    eval {$self->save_to_db( @{$_}{qw( sql fields args epoch )} )
-	      for YAML::LoadFile( $self->filename );
+    eval {
+        $self->save_to_db( @{$_}{qw( sql fields args epoch )} )
+            for YAML::LoadFile( $self->filename );
     };
-    $load_succeeded = 0 if $@;	# error occured
+    $load_succeeded = 0 if $@;           # error occured
 
-    if ( $load_succeeded ) {
-	rename $self->filename,
-	$self->filename . '_@_' . strftime '%F_%T', localtime;
-	$self->filename(undef);
-    };
+    if ($load_succeeded) {
+        rename $self->filename,
+            $self->filename . '_@_' . strftime '%F_%T', localtime;
+        $self->filename(undef);
+    }
     return;
 }
 
@@ -574,23 +573,23 @@ sub load_db_from_file {
 #
 sub insert_raw_record {
     my $self = shift;
-    my ( $db_args ) = @_;
+    my ($db_args) = @_;
 
-    if ( ! $self->dbh() ) {	# See if DB has come back.
-	$self->startup();
-	$self->load_db_from_file()
-	    if $self->dbh();
+    if ( !$self->dbh() ) {    # See if DB has come back.
+        $self->startup();
+        $self->load_db_from_file()
+            if $self->dbh();
     }
 
     my $node_table_name = $db_args->{with_node_table_id};
-    my $dynamic_node_id = ! defined $db_args->{args}{$node_table_name};
+    my $dynamic_node_id = !defined $db_args->{args}{$node_table_name};
 
     my ( $sql, $fields, $args ) = $self->generate_insert_sql($db_args);
 
-    my $id = (  $self->dbh
-		? $self->save_to_db( $sql, $fields, $args )
-		: $self->save_to_file( $sql, $fields, $args )
-	);
+    my $id = (   $self->dbh
+               ? $self->save_to_db( $sql, $fields, $args )
+               : $self->save_to_file( $sql, $fields, $args ) );
+
     # re-enable dynamic node_table_id
     #
     delete $db_args->{args}{$node_table_name}
@@ -602,7 +601,7 @@ sub insert_raw_record {
 sub fail_read {
     my $self = shift;
 
-    warn __PACKAGE__, "::failread called from ", join ' ', caller(), "\n"; 
+    warn __PACKAGE__, "::failread called from ", join ' ', caller(), "\n";
     $self->owner()->switch_next_db;
 }
 
@@ -635,19 +634,18 @@ sub fetch_alert_data {
     my ( $sql, $node_table_id ) = $self->generate_fetch_sql(@_);
     my ( $sth, $id )            = ( $self->get_sth($sql) );
 
-    say Dumper ( [$sql, $node_table_id] )
-        if grep { /\bfetch_alert_records\b/ } ($ENV{VERBOSE} || '');
+    say Dumper ( [ $sql, $node_table_id ] )
+        if grep {/\bfetch_alert_records\b/} ( $ENV{VERBOSE} || '' );
 
     # prepare and archive sth unless it has already been done.
     #
-    if ( ! $sth ) {
-	eval {
-	    
-	    $sth = $self->dbh->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	$self->fail_read() if $@;
+    if ( !$sth ) {
+        eval {
+            $sth = $self->dbh->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        $self->fail_read() if $@;
     }
 
     # extract the hash values in the order specified by the array of
@@ -655,13 +653,13 @@ sub fetch_alert_data {
 
     my ( $records, $rows ) = (-1);
     eval {
-	$rows = eval { $sth->execute($node_table_id) }
-	    if $self->dbh->ping;
-	$records = eval { $sth->fetchall_hashref($ID_FIELD) }
-	    if $self->dbh->ping;
+        $rows = eval { $sth->execute($node_table_id) }
+            if $self->dbh->ping;
+        $records = eval { $sth->fetchall_hashref($ID_FIELD) }
+            if $self->dbh->ping;
     };
     $self->fail_read()
-	if $@ || -1 == $records;
+        if $@ || -1 == $records;
     return $records;
 }
 
@@ -672,72 +670,74 @@ sub generic_fetch {
     my $sql = $SQL{$sql_tag};
     my ( $sth, $id ) = ( $self->get_sth($sql) );
 
-    if ( $verbose ) {
-	my $caller_sub = (caller(1))[3];
-	say __PACKAGE__, "::${caller_sub} for $sql_tag uses:\n",
-            @{[Dumper ( [$sql] )]}
-	        if $verbose;
+    if ($verbose) {
+        my $caller_sub = ( caller(1) )[3];
+        say __PACKAGE__, "::${caller_sub} for $sql_tag uses:\n",
+            @{ [ Dumper( [$sql] ) ] }
+            if $verbose;
     }
+
     # prepare and archive sth unless it has already been done.
     #
-    if ( ! $sth ) {
-	eval {
-	    $sth = $self->dbh->prepare($sql)
-		if $self->dbh->ping;
-	    $self->set_sth( $sql, $sth );
-	};
-	$self->fail_read() if $@;
+    if ( !$sth ) {
+        eval {
+            $sth = $self->dbh->prepare($sql)
+                if $self->dbh->ping;
+            $self->set_sth( $sql, $sth );
+        };
+        $self->fail_read() if $@;
     }
 
     # extract the hash values in the order specified by the array of
     # key names.
 
     my ( $records, $rows ) = (-1);
-    $args ||= [];		# if no args provide, need an empty array
+    $args ||= [];    # if no args provide, need an empty array
     eval {
-	$rows =  eval { $sth->execute( @$args ) };
-	$records = eval { $sth->fetchall_hashref($ID_FIELD) };
+        $rows    = eval { $sth->execute(@$args) };
+        $records = eval { $sth->fetchall_hashref($ID_FIELD) };
     };
     $self->fail_read()
-	if $@ || ! defined $records || -1 == $records;
-    return $records;    
+        if $@ || !defined $records || -1 == $records;
+    return $records;
 }
+
 sub check_node_server_status {
     my $self = shift;
     my ($ns_host) = @_;
 
     state $verbose
-	= grep { /\bcheck node server status\b/ } ($ENV{VERBOSE} || '');
+        = grep {/\bcheck node server status\b/} ( $ENV{VERBOSE} || '' );
 
     my @results;
     for my $tag ( 'Auto_Boot', 'Node_Server_Status' ) {
-	my $records = $self->generic_fetch( $tag, $verbose, [$ns_host] );
-	my @keys = sort {$b <=> $a} keys %$records
-	    if 'HASH' eq ref $records;
-	push @results, $records->{$keys[0]} if @keys;
+        my $records = $self->generic_fetch( $tag, $verbose, [$ns_host] );
+        my @keys = sort { $b <=> $a } keys %$records
+            if 'HASH' eq ref $records;
+        push @results, $records->{ $keys[0] } if @keys;
     }
     return \@results;
 }
 
 sub fetch_node_entries {
     my $self = shift;
-    my ( $pids  ) = @_;
+    my ($pids) = @_;
 
-    my ($nodes, @retval, $u );	# $u is undef
+    my ( $nodes, @retval, $u );    # $u is undef
 
     if ( $self->dbh->ping ) {
-	eval {
-	    my $sql = $SQL{Node_Entries};
-	    $nodes = $self->dbh->selectall_hashref( $sql, 'node_id', $u, $pids,
-		AN::Unix::hostname('-short'));
-	};
-	$self->fail_read
-	    if $@ || 'HASH' ne ref $nodes;
-	
-	for my $tag ( keys %$nodes ) {
-	    push @retval, $nodes->{$tag}
+        eval {
+            my $sql = $SQL{Node_Entries};
+            $nodes = $self->dbh->selectall_hashref( $sql, 'node_id', $u, $pids,
+                                                 AN::Unix::hostname('-short') );
+        };
+        $self->fail_read
+            if $@ || 'HASH' ne ref $nodes;
+
+        for my $tag ( keys %$nodes ) {
+            push @retval, $nodes->{$tag}
                 unless 'scanner' eq $nodes->{$tag}->{agent_name};
-	}
+        }
     }
     return \@retval;
 }
@@ -752,11 +752,11 @@ FROM    alert_listeners
 
 EOSQL
 
-    my $records = eval {$self->dbh()->selectall_hashref( $sql, 'id' ) }
+    my $records = eval { $self->dbh()->selectall_hashref( $sql, 'id' ) }
         if $self->dbh->ping;
 
     die "Failed to fetch alert listeners."
-	if $@;
+        if $@;
     return $records;
 }
 

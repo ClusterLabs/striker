@@ -50,9 +50,9 @@ sub hostname {
 sub pid2process {
     my ($pid) = @_;
 
-    if ( ! $pid ) {
-	carp "pid2process called with no value for pid.";
-	return;
+    if ( !$pid ) {
+        carp "pid2process called with no value for pid.";
+        return;
     }
     my $cmd = sprintf $PID2PROC_NAME, $pid;
 

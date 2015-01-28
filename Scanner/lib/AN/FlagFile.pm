@@ -174,6 +174,7 @@ sub touch_pid_file {
     utime undef, undef, $self->full_file_path( $TAG{PIDFILE} );
     return;
 }
+
 sub touch_marker_file {
     my $self = shift;
 

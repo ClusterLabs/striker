@@ -190,21 +190,20 @@ sub raid_request {
          || 10 >= @data ) {
 
         my $info = $self->confdata;
-        my $args = {
-            table              => $info->{db}{table}{other},
-            with_node_table_id => 'node_id',
-            args               => {
-                      target_name  => $info->{host},
-                      target_type  => $info->{type},
-                      target_extra => $info->{ip},
-                      value        => $info->{host},
-                      units        => '',
-                      field        => 'RAID fetch data',
-                      status       => 'CRISIS',
-                      msg_tag      => 'AN-RAID-Temp raid_request() failed',
-                      msg_args     => "errormsg=" . join "\n",
-                      @data,
-                    }, };
+        my $args = { table              => $info->{db}{table}{other},
+                     with_node_table_id => 'node_id',
+                     args               => {
+                               target_name  => $info->{host},
+                               target_type  => $info->{type},
+                               target_extra => $info->{ip},
+                               value        => $info->{host},
+                               units        => '',
+                               field        => 'RAID fetch data',
+                               status       => 'CRISIS',
+                               msg_tag  => 'AN-RAID-Temp raid_request() failed',
+                               msg_args => "errormsg=" . join "\n",
+                               @data,
+                             }, };
 
         $self->insert_raw_record($args);
 

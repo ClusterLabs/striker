@@ -19,8 +19,8 @@ use Time::HiRes qw( time alarm sleep );
 use DBI;
 use Net::SNMP;
 
-use lib          $Bin  . '/lib'; # When called by scanner core pre-install
-use lib (dirname $Bin) . '/lib'; # When run post-install, or during dev/test.
+use lib $Bin . '/lib';    # When called by scanner core pre-install
+use lib ( dirname $Bin) . '/lib';   # When run post-install, or during dev/test.
 use AN::SNMP::APC_UPS;
 
 use Const::Fast;
@@ -75,8 +75,8 @@ sub process_args {
         confpath => $DEFAULT_CONFIG_PATH,        # configuration file.
         msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
         bindir   => $BINDIR,                     # Where the bins are
-	logdir   => $LOGDIR,                     # Where logfiles go
-        verbose  => 0,                           # avoid undef in addiotn at line 142.
+        logdir   => $LOGDIR,                     # Where logfiles go
+        verbose => 0,    # avoid undef in addiotn at line 142.
               };
 
     GetOptions( $opt,               'rate=i',
@@ -84,9 +84,8 @@ sub process_args {
                 'msg_file=s',       'metadata|o=s',
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
-		'logdir=s',
-                'bindir=s',         'man',
-                'help' )
+                'logdir=s',         'bindir=s',
+                'man',              'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
@@ -137,9 +136,9 @@ sub main {
 
     my @node_args = @{ $agent->confdata()->{1} }{qw(name ip type)};
 
-    if (  $options->{log} || ! $agent->interactive() ) {
-	$agent->begin_logging();
-	$agent->verbose( $agent->verbose + 1 );
+    if ( $options->{log} || !$agent->interactive() ) {
+        $agent->begin_logging();
+        $agent->verbose( $agent->verbose + 1 );
     }
 
     $agent->run( \@node_args );

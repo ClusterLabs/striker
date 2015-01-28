@@ -1544,8 +1544,10 @@ sub display_node_health {
         #print "<pre style=\"background: white;\">\n";
         #print "Displaying storage\n";
         foreach my $this_adapter ( sort { $a cmp $b }
-                                   keys %{ $conf->{storage}{lsi}{adapter} } ) {
-            foreach my $this_logical_disk ( sort { $a cmp $b }
+                                   keys %{ $conf->{storage}{lsi}{adapter} }
+            ) {
+            foreach my $this_logical_disk (
+                sort { $a cmp $b }
                 keys
                 %{ $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk} }
                 ) {
@@ -1686,7 +1688,8 @@ sub display_node_health {
             }
 
             # Show the logical disks now.
-            foreach my $this_logical_disk ( sort { $a cmp $b }
+            foreach my $this_logical_disk (
+                sort { $a cmp $b }
                 keys
                 %{ $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk} }
                 ) {
@@ -3006,8 +3009,10 @@ sub get_storage_data_lsi {
             # directly.
             if ( not $initial_led_state_set ) {
                 $initial_led_state_set = 1;
-                foreach my $this_adapter ( sort { $a cmp $b }
-                                    keys %{ $conf->{storage}{lsi}{adapter} } ) {
+                foreach my $this_adapter (
+                                        sort { $a cmp $b }
+                                        keys %{ $conf->{storage}{lsi}{adapter} }
+                    ) {
 
                     #print __LINE__."; LSI Adapter number: [$this_adapter]\n";
                     foreach my $this_logical_disk (
@@ -3073,8 +3078,10 @@ sub get_storage_data_lsi {
                 # the log doesn't reference the disk's logic
                 # drive, so we loop through all looking for a
                 # match.
-                foreach my $this_adapter ( sort { $a cmp $b }
-                                    keys %{ $conf->{storage}{lsi}{adapter} } ) {
+                foreach my $this_adapter (
+                                        sort { $a cmp $b }
+                                        keys %{ $conf->{storage}{lsi}{adapter} }
+                    ) {
 
                     #print __LINE__."; Adapter: [$this_adapter]\n";
                     foreach my $this_logical_disk (
@@ -3115,10 +3122,13 @@ sub get_storage_data_lsi {
 
     # This is purely debug to show the status of the drive LEDs.
     foreach my $this_adapter ( sort { $a cmp $b }
-                               keys %{ $conf->{storage}{lsi}{adapter} } ) {
-        foreach my $this_logical_disk ( sort { $a cmp $b }
+                               keys %{ $conf->{storage}{lsi}{adapter} }
+        ) {
+        foreach my $this_logical_disk (
+             sort { $a cmp $b }
              keys %{ $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}
-             } ) {
+             }
+            ) {
             foreach my $this_enclosure_device_id (
                  sort { $a cmp $b }
                  keys %{
@@ -6691,10 +6701,10 @@ sub confirm_provision_vm {
         $conf->{vg_selects}{$vg}{short_vg}      = $short_vg;
     }
     my $say_selects;
-    my $say_or
-        = AN::Common::template( $conf, "server.html",
-                                "provision-server-storage-pool-or-message",
-                                {}, {}, 1 );
+    my $say_or =
+        AN::Common::template( $conf, "server.html",
+                              "provision-server-storage-pool-or-message",
+                              {}, {}, 1 );
     foreach my $vg ( sort { $a cmp $b } keys %{ $conf->{vg_selects} } ) {
         my $space            = $conf->{vg_selects}{$vg}{space};
         my $say_max_storage  = $conf->{vg_selects}{$vg}{say_storage};
@@ -10348,7 +10358,8 @@ sub display_vm_details {
 
 #AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host], node: [$node], lv hash on node1: [$conf->{vm}{$vm}{node}{$node1}{lv}], lv hash on node2: [$conf->{vm}{$vm}{node}{$node2}{lv}]\n");
             foreach my $lv ( sort { $a cmp $b }
-                             keys %{ $conf->{vm}{$vm}{node}{$node}{lv} } ) {
+                             keys %{ $conf->{vm}{$vm}{node}{$node}{lv} }
+                ) {
 
 #record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
                 push @lv_path, $lv;
@@ -10356,8 +10367,10 @@ sub display_vm_details {
             }
 
             # Get the network arrays built.
-            foreach my $current_bridge ( sort { $a cmp $b }
-                                 keys %{ $conf->{vm}{$vm}{details}{bridge} } ) {
+            foreach my $current_bridge (
+                                     sort { $a cmp $b }
+                                     keys %{ $conf->{vm}{$vm}{details}{bridge} }
+                ) {
                 push @bridge, $current_bridge;
                 push @device,
                     $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
@@ -10528,7 +10541,8 @@ sub check_node_readiness {
         read_vm_definition( $conf, $node, $vm );
 
         foreach my $lv ( sort { $a cmp $b }
-                         keys %{ $conf->{vm}{$vm}{node}{$node}{lv} } ) {
+                         keys %{ $conf->{vm}{$vm}{node}{$node}{lv} }
+            ) {
 
 # Make sure the LV is active.
 #AN::Cluster::record($conf, "$THIS_FILE ".__LINE__.";  - vm: [$vm], node: [$node], lv: [$lv]\n");
@@ -10536,8 +10550,10 @@ sub check_node_readiness {
             if ( $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} ) {
 
                 # It's active, so now check the backing storage.
-                foreach my $res ( sort { $a cmp $b }
-                      keys %{ $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd} } ) {
+                foreach my $res (
+                          sort { $a cmp $b }
+                          keys %{ $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd} }
+                    ) {
 
                     # For easier reading...
                     my $cs = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}
@@ -10926,7 +10942,8 @@ sub check_vms {
             {
                 $host_node = $node;
                 foreach my $key ( sort { $a cmp $b }
-                              keys %{ $conf->{vm}{$vm}{node}{$node}{virsh} } ) {
+                                  keys %{ $conf->{vm}{$vm}{node}{$node}{virsh} }
+                    ) {
                     if ( $key eq "state" ) {
                         $vm_state = $conf->{vm}{$vm}{node}{$host_node}{virsh}
                             {'state'};
@@ -11092,8 +11109,10 @@ sub find_prefered_host {
     }
 
     # TODO: Check to see if I need to use <=> instead of cmp.
-    foreach my $priority ( sort { $a cmp $b }
-               keys %{ $conf->{failoverdomain}{$failover_domain}{priority} } ) {
+    foreach my $priority (
+                   sort { $a cmp $b }
+                   keys %{ $conf->{failoverdomain}{$failover_domain}{priority} }
+        ) {
 
         # I only care about the first entry, so I will
         # exit the loop as soon as I analyze it.

@@ -31,13 +31,14 @@ use AN::Listener;
 use AN::MonitorAgent;
 use AN::Unix;
 
-const my $PROG                  => ( fileparse($PROGRAM_NAME) )[0];
+const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 # is_recent == 0              is_running == 0       is_running == 1
-const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
-# is_recent == 1              is_running == 0       is_running == 1
-			    [  'OLD_PROCESS_RECENT_CRASH', undef],
-    );
+const my @OLD_PROC_MSG => (
+    [ 'OLD_PROCESS_CRASH', 'OLD_PROCESS_STALLED' ],
+
+    # is_recent == 1              is_running == 0       is_running == 1
+    [ 'OLD_PROCESS_RECENT_CRASH', undef ], );
 
 use subs 'alert_num';    # manually define accessor.
 
@@ -45,17 +46,17 @@ sub shutdown {
     my $self = shift;
 
     if ( @_ && $_[0] ) {
-	die "shutdown set from " , join ' ', caller;
+        die "shutdown set from ", join ' ', caller;
     }
     return $self->{shutdown};
 }
 
-use Class::Tiny qw( 
-              agentdir     commandlineargs confdata confpath dashboard  
-              db_name      db_type         dbconf   dbs      duration     
-              flagfile     from            ignore   logdir   max_retries 
-              monitoragent msg_dir         port     rate     run_until   
-              smtp         verbose  shutdown
+use Class::Tiny qw(
+    agentdir     commandlineargs confdata confpath dashboard
+    db_name      db_type         dbconf   dbs      duration
+    flagfile     from            ignore   logdir   max_retries
+    monitoragent msg_dir         port     rate     run_until
+    smtp         verbose  shutdown
     ), {
     agents => sub { [] },
     alerts => sub {
@@ -69,15 +70,18 @@ use Class::Tiny qw(
                            owner => $self
                          } );
     },
-    alert_num             => sub {'a'},
-    isa_scanner           => sub { my $self = shift;
-				   ref $self eq __PACKAGE__
-				       || ref $self eq 'AN::Dashboard' },
-    max_loops_unrefreshed => sub { 10 },
+    alert_num   => sub {'a'},
+    isa_scanner => sub {
+        my $self = shift;
+        ref $self eq __PACKAGE__
+            || ref $self eq 'AN::Dashboard';
+    },
+    max_loops_unrefreshed => sub {10},
     processes             => sub { [] },
     seen                  => sub { return {}; },
-#    shutdown              => sub { 0 },
-    sumweight             => sub {0}
+
+    #    shutdown              => sub { 0 },
+    sumweight => sub {0}
        };
 
 # ----------------------------------------------------------------------
@@ -89,29 +93,29 @@ sub interactive {
 }
 
 sub begin_logging {
-    my $self= shift;
+    my $self = shift;
     close STDOUT;
     my $today = strftime '%F_%T', localtime;
     my $filename = $self->logdir . '/log.' . $PROG . '.' . $today;
     open STDOUT, '>', $filename;
-    open STDERR, '>&STDOUT';		# '>&', is followed by a file handle.
+    open STDERR, '>&STDOUT';    # '>&', is followed by a file handle.
 }
 
 sub restart {
     my $self = shift;
 
-    die "restart set from " , join ' ', caller;
-    $self->shutdown( 'restart' );
+    die "restart set from ", join ' ', caller;
+    $self->shutdown('restart');
     return;
 }
 
 sub restart_scanCore_now {
     my $self = shift;
 
-    my @cmd = ($PROGRAM_NAME, @{$self->commandlineargs});
+    my @cmd = ( $PROGRAM_NAME, @{ $self->commandlineargs } );
     say "Restarting with cmd '@cmd'.";
-    exec @cmd 
-	or die "Failed: $!.\n";
+    exec @cmd
+        or die "Failed: $!.\n";
 }
 
 sub read_configuration_file {
@@ -143,22 +147,20 @@ sub BUILD {
         unless $self->rate();
 
     if ( $args->{ignorelist} ) {
-	$self->ignore({});
-	$self->ignore->{$_} = 1 for @{$args->{ignorelist}};
+        $self->ignore( {} );
+        $self->ignore->{$_} = 1 for @{ $args->{ignorelist} };
     }
     my @files = split ' ', $self->confdata->{ignorefile}
         if exists $self->confdata->{ignorefile};
 
-
-    $self->monitoragent(
-        AN::MonitorAgent->new(
-            {  core       => $self,
-               rate       => $self->rate(),
-               agentdir   => $self->agentdir(),
-               duration   => $self->duration,
-               verbose    => $self->verbose(),
-	       ignorefile => \@files,
-            } ) );
+    $self->monitoragent( AN::MonitorAgent->new(
+                                               { core     => $self,
+                                                 rate     => $self->rate(),
+                                                 agentdir => $self->agentdir(),
+                                                 duration => $self->duration,
+                                                 verbose  => $self->verbose(),
+                                                 ignorefile => \@files,
+                                               } ) );
     return;
 }
 
@@ -342,7 +344,6 @@ sub touch_marker_file {
     $self->flagfile()->touch_marker_file();
 }
 
-
 # Look up whether the process id specified in the pidfile refers to
 # a running process, make sure it's the same name as we are. Otherwise
 # could be another process re-using that pid.
@@ -450,19 +451,19 @@ sub check_for_previous_instance {
 
     # Old process exited cleanly, take over. Return early.
     if ( !$self->old_pid_file_exists() ) {
-	say "Previous $PROG exited cleanly; taking over.";
-	return $RUN;
+        say "Previous $PROG exited cleanly; taking over.";
+        return $RUN;
     }
 
-    my ( $is_recent, $is_running ) = ( $self->pid_file_is_recent || 0,
-				       $self->pid_file_process_is_running || 0);
+    my ( $is_recent, $is_running )
+        = ( $self->pid_file_is_recent || 0,
+            $self->pid_file_process_is_running || 0 );
 
     # Old process is running and updating pid file. Return early.
-    if ($is_recent && $is_running) {
-	say "A $PROG process is already running; exiting";
-	return $EXIT_OK;
+    if ( $is_recent && $is_running ) {
+        say "A $PROG process is already running; exiting";
+        return $EXIT_OK;
     }
-
 
     # Old process exited recently without proper cleanup
 
@@ -491,12 +492,11 @@ sub connect_dbs {
     my ($node_args) = @_;
 
     my $args = { path    => { config_file => $self->dbconf },
-		 logdir  => $self->logdir,
-		 verbose => $self->verbose,
-		 owner   => $self,
-               };
-    $args->{current} = 0	# In scanner, activate only one DB at a time
-	if $self->isa_scanner;
+                 logdir  => $self->logdir,
+                 verbose => $self->verbose,
+                 owner   => $self, };
+    $args->{current} = 0    # In scanner, activate only one DB at a time
+        if $self->isa_scanner;
 
     $args->{node_args} = $node_args if $node_args;
 
@@ -508,7 +508,7 @@ sub finalize_node_table_status {
     my $self = shift;
 
     $self->dbs()->finalize_node_table_status();
-    return
+    return;
 }
 
 sub process {
@@ -526,33 +526,34 @@ sub process {
 #
 sub launch_new_agents {
     my $self = shift;
-    my ($new, $extra) = @_;
+    my ( $new, $extra ) = @_;
 
     local $LIST_SEPARATOR = $SPACE;
 
     say "in launch new agents with args:",
-    Data::Dumper::Dumper( [$new, $extra], [qw($new $extra)])
-	if grep {/debug launch_new_agents/} $ENV{VERBOSE} || '';
+        Data::Dumper::Dumper( [ $new, $extra ], [qw($new $extra)] )
+        if grep {/debug launch_new_agents/} $ENV{VERBOSE} || '';
 
-    my @extra_args = ( $extra && 'HASH' eq ref $extra ? @{$extra->{args}}
-		     :                                  ('')
-	);
-    state $args
-        = [ map { $_ eq 'xdbconfx' ? $self->dbconf 
-		: $_ eq 'xlogdirx'      ? $self->logdir 
-		:                     $_;
-	        } @NEW_AGENT_ARGS, @extra_args ];
+    my @extra_args = ( $extra && 'HASH' eq ref $extra
+                       ? @{ $extra->{args} }
+                       : ('') );
+    state $args = [
+        map {
+                  $_ eq 'xdbconfx' ? $self->dbconf
+                : $_ eq 'xlogdirx' ? $self->logdir
+                :                    $_;
+            } @NEW_AGENT_ARGS,
+        @extra_args ];
 
     my @new_agents;
-  AGENT:
+AGENT:
     for my $agent (@$new) {
-	next AGENT
-	    if (exists $self->ignore()->{$agent} # ignore these agents
-		&& $extra			 # call-by-call override
-		&& 'HASH' eq ref $extra
-		&& exists $extra->{ignore_ignorefile}
-		&& $extra->{ignore_ignorefile}{$agent}
-	    );
+        next AGENT
+            if (exists $self->ignore()->{$agent}         # ignore these agents
+                && $extra                                # call-by-call override
+                && 'HASH' eq ref $extra
+                && exists $extra->{ignore_ignorefile}
+                && $extra->{ignore_ignorefile}{$agent} );
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
@@ -701,7 +702,7 @@ sub handle_deletions {
 
 sub fetch_node_entries {
     my $self = shift;
-    my ( $pids ) = shift;
+    my ($pids) = shift;
 
     return unless $pids;
     my $nodes = $self->dbs->fetch_node_entries($pids);
@@ -737,30 +738,30 @@ sub wait_for_all_metadata_files {
 sub update_process_node_id_entries {
     my $self = shift;
 
-    state $verbose = grep { /debug node_id update/ } $ENV{VERBOSE};
+    state $verbose = grep {/debug node_id update/} $ENV{VERBOSE};
 
-    my @pids = sort {$a <=> $b }
-                   map { $_->{db_data}->{pid}} @{$self->processes};
+    my @pids = sort { $a <=> $b }
+        map { $_->{db_data}->{pid} } @{ $self->processes };
     my $nodes;
     do {
-	$nodes = $self->fetch_node_entries( \@pids );
-	say "update_process_node_id_entries got:\n",
+        $nodes = $self->fetch_node_entries( \@pids );
+        say "update_process_node_id_entries got:\n",
             Data::Dumper::Dumper $nodes
-	    if $verbose;;
+            if $verbose;
     } until scalar keys %$nodes == scalar @pids;
 
     my $db_idx = $self->dbs->current + 1;
 
-    for my $process ( @{$self->processes} ) {
-	my $name = $process->{name};
-	$process->{db_data}{$db_idx}{node_table_id} = $nodes->{$name}{node_id};
+    for my $process ( @{ $self->processes } ) {
+        my $name = $process->{name};
+        $process->{db_data}{$db_idx}{node_table_id} = $nodes->{$name}{node_id};
     }
 }
 
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
-    
+
     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
     my $tag            = AN::FlagFile::get_tag('METADATA');
     my $files          = $self->wait_for_all_metadata_files( $additions, $tag );
@@ -781,7 +782,7 @@ FILEPATH:
                                        hostname => $cfg{db}{hostname},
                                        msg_dir  => $self->msg_dir,
                                     } );
-	$N++;
+        $N++;
     }
     $self->update_process_node_id_entries( scalar @$additions );
     return $N;
@@ -821,7 +822,7 @@ sub detect_status {
     my ( $process, $db_record, ) = @_;
 
     say "Got a db_record with status @{[$db_record->{status}]}."
-	 if $self->verbose;
+        if $self->verbose;
     if ( $db_record->{status} eq 'OK' ) {
         say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
         $self->clear_alert( $process->{db_data}{pid} );
@@ -844,7 +845,7 @@ sub detect_status {
             . "' in '"
             . $db_record->field
             . "' from $process->{db_data}{pid}."
-	    . "from record @{[ $db_record->id() ]} time stamp @{[$db_record->timestamp]}"
+            . "from record @{[ $db_record->id() ]} time stamp @{[$db_record->timestamp]}"
             if $self->verbose;
         $self->set_alert(@args);
     }
@@ -871,7 +872,7 @@ sub reset_summary_weight {
 
 sub get_latest_user_intervention {
     my $self = shift;
-    my ( $host ) = @_;
+    my ($host) = @_;
 
     my $intervention = $self->dbs->get_latest_user_intervention;
     return $intervention;
@@ -879,51 +880,50 @@ sub get_latest_user_intervention {
 
 sub handle_dead_server {
     my $self = shift;
-    my ( $alert ) = @_;
+    my ($alert) = @_;
 
     my $intervention = $self->get_latest_user_intervention( $alert->value );
 
-    
 }
 
 sub process_agent_data {
     my $self = shift;
-    
+
     state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
     say "${PROG}::process_agent_data()." if $self->verbose;
 
-  PROCESS:
+PROCESS:
     for my $process ( @{ $self->processes } ) {
-	my ($weight);
+        my ($weight);
         my $alerts = $self->fetch_alert_data($process);
 
-	next PROCESS
-	    unless 'ARRAY' eq ref $alerts 
-	    && @$alerts;
+        next PROCESS
+            unless 'ARRAY' eq ref $alerts
+            && @$alerts;
 
-	my $allN   = scalar @$alerts;
-        my $newN   = 0;
-	say Data::Dumper::Dumper( [$alerts] )
-	    if $dump;
-	my $seen_summary = 0;
+        my $allN = scalar @$alerts;
+        my $newN = 0;
+        say Data::Dumper::Dumper( [$alerts] )
+            if $dump;
+        my $seen_summary = 0;
     ALERT:
         for my $alert (@$alerts) {
             if ( $alert->{field} eq 'summary' ) {
-		last ALERT
-		    if $seen_summary++; # this is from an earlier loop
+                last ALERT
+                    if $seen_summary++;    # this is from an earlier loop
 
-		$self->sumweight( $self->sumweight + $alert->{value} );
-	    }
+                $self->sumweight( $self->sumweight + $alert->{value} );
+            }
             else {
                 $self->detect_status( $process, $alert );
             }
             $newN++;
         }
         say scalar localtime(), " Received $allN alerts for process ",
-	    "$process->{name}, $newN of them new."
-		if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
+            "$process->{name}, $newN of them new."
+            if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
-    
+
     return;
 }
 
@@ -937,7 +937,7 @@ sub loop_core {
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
 
-    $self->process_agent_data( );
+    $self->process_agent_data();
     $self->handle_alerts();
 
     if ($verbose) {
@@ -955,9 +955,8 @@ sub run_timed_loop_forever {
     my $self = shift;
 
     state $touch_file = ( $self->isa_scanner
-			      ? 'touch_pid_file'
-			      : 'touch_marker_file'
-	);
+                          ? 'touch_pid_file'
+                          : 'touch_marker_file' );
     local $LIST_SEPARATOR = $COMMA;
 
     my ( $start_time, $end_time ) = ( time, $self->calculate_end_epoch );
@@ -971,13 +970,13 @@ sub run_timed_loop_forever {
         $self->$touch_file();
         my ($elapsed) = time() - $now;
         my $pending = $self->rate - $elapsed;
-	say "Processing took a long time: $elapsed seconds is more than ",
-	    "expected loop rate of @{[$self->rate]} seconds."
-		if $pending < 0;
+        say "Processing took a long time: $elapsed seconds is more than ",
+            "expected loop rate of @{[$self->rate]} seconds."
+            if $pending < 0;
 
-	$pending = 1 if $pending <= 0;
+        $pending = 1 if $pending <= 0;
 
-	$self->print_loop_msg( $elapsed, $pending )
+        $self->print_loop_msg( $elapsed, $pending )
             if $self->verbose;
 
         sleep $pending;
@@ -985,11 +984,10 @@ sub run_timed_loop_forever {
         $now = time;
     }
     say '$self->shutdown is ', $self->shutdown();
-    say "At @{[strftime '%F_%T', localtime]} exiting run_timed_loop_forever() ", 
+    say "At @{[strftime '%F_%T', localtime]} exiting run_timed_loop_forever() ",
         (   $now > $end_time               ? 'reached end time'
-	  : 'restart' eq $self->shutdown() ? 'shutdown flag set'
-	  :                     'unknown reason'
-	);
+          : 'restart' eq $self->shutdown() ? 'shutdown flag set'
+          :                                  'unknown reason' );
     return;
 }
 
@@ -1119,5 +1117,3 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
-## Please see file perltidy.ERR
