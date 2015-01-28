@@ -34,8 +34,8 @@ my $AGENT_RECORD = { 1 => { id        => 1234,
                             value     => 100,
                             status    => 'OK',
                             node_id   => 13,
-                            msg_tag   => '',
-                            msg_args  => '',
+                            message_tag   => '',
+                            message_arguments  => '',
                             timestamp => '2014-02-14 12:00:00.000000-05'
 		     }, };
 
@@ -217,7 +217,7 @@ sub test_generate_random_record {
 
     my $sql = <<"EOSQL";
 INSERT INTO agent_data
-(field, msg_args, msg_tag, status, units, value, node_id)
+(field, message_arguments, message_tag, status, units, value, node_id)
 VALUES
 (?, ?, ?, ?, ?, ?, ?)
 EOSQL

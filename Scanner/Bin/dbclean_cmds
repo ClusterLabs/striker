@@ -8,12 +8,12 @@ delete from alerts;
 delete from snmp_apc_ups;
 
 \echo
-\echo Cleaning ipmi_temperature
-delete from ipmi_temperature;
+\echo Cleaning ipmi_temperatures
+delete from ipmi_temperatures;
 
 \echo
-\echo Cleaning raid_controller
-delete from raid_controller;
+\echo Cleaning raid_controllers
+delete from raid_controllers;
 
 \echo
 \echo Cleaning raid_drives

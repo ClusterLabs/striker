@@ -139,7 +139,8 @@ sub load_db_from_files {
     my $self = shift;
 
     for my $db ( @{ $self->dbs } ) {
-	$db->load_db_from_file;
+	$db->load_db_from_file
+	    if $db->connected();;
     }
     return;
 }
@@ -148,7 +149,8 @@ sub switch_next_db {
     my $self = shift;
     return unless defined $self->current;
 
-    warn __PACKAGE__, '::switch_next_db(): Restarting!!';
+    warn __PACKAGE__, "::switch_next_db(): Restarting!!\n",
+         "called from ", join ' ', caller;
     $self->owner->restart;
     return;
 }
@@ -167,6 +169,8 @@ sub tell_db_Im_dying {
     my $self = shift;
 
     for my $db ( @{$self->dbs() } ) {
+	$db->startup()
+	    unless $db->connected();
 	$db->tell_db_Im_dying();
     }
     return;
@@ -204,8 +208,22 @@ sub insert_raw_record {
     return;
 }
 
-# If connection fails, retry next DB;
-#
+sub check_node_server_status {
+    my $self = shift;
+    my ( $ns_host ) = @_;
+
+    my @results;
+  DB:
+    for my $db ( @{ $self->dbs() } ) {
+	next DB unless $db->connected();
+	my $records = $db->check_node_server_status($ns_host);
+	push @results, @$records
+	    if @$records;
+    }
+    return \@results;
+}
+
+
 sub fetch_data {
     my $self = shift;
     my ($proc_info) = @_;
@@ -458,4 +476,4 @@ Tom Legrady       -  tom@alteeve.ca	November 2014
 
 # End of File
 # ======================================================================
-## Please see file perltidy.ERR
+

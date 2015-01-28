@@ -1,6 +1,6 @@
 package AN::SNMP::APC_UPS;
 
-use base 'AN::Agent';    # inherit from AN::Agent
+use parent 'AN::Agent';    # inherit from AN::Agent
 
 # _Perl_
 use warnings;
@@ -189,7 +189,7 @@ sub insert_agent_record {
     my $self = shift;
     my ( $args, $msg ) = @_;
 
-    my $msg_args = join q{;},
+    my $message_arguments = join q{;},
         grep { defined $_ && length $_ } ( $msg->{args}, $args->{dev} );
     my $name = $args->{metadata}{name} || $args->{metadata}{host};
 
@@ -204,8 +204,8 @@ sub insert_agent_record {
                                       units => $args->{rec_meta}{units} || '',
                                       field => $msg->{label} || $args->{tag},
                                       status   => $msg->{status},
-                                      msg_tag  => $msg->{tag},
-                                      msg_args => $msg_args,
+                                      message_tag  => $msg->{tag},
+                                      message_arguments => $message_arguments,
                                       target   => $name,
                                 },
                               } );
@@ -226,8 +226,8 @@ sub insert_alert_record {
                units => $args->{rec_meta}{units} || '',
                field => $msg->{label}            || $args->{tag},
                status       => $msg->{status},
-               msg_tag      => $msg->{tag},
-               msg_args     => $msg->{args},
+               message_tag      => $msg->{tag},
+               message_arguments     => $msg->{args},
                target_name  => $name,
                target_type  => $args->{metadata}{type},
                target_extra => $args->{metadata}{ip},
@@ -668,8 +668,8 @@ sub snmp_connect {
                                units    => '',
                                field    => 'Net::SNMP connect',
                                status   => 'CRISIS',
-                               msg_tag  => 'Net-SNMP connect failed',
-                               msg_args => "errormsg=" . $error,
+                               message_tag  => 'Net-SNMP connect failed',
+                               message_arguments => "errormsg=" . $error,
                              }, };
 
         $self->insert_raw_record($args);
@@ -718,8 +718,8 @@ TARGET:    # For each snmp target (1, 2, ... ) in the config file
                                    units    => '',
                                    field    => 'Net::SNMP fetch data',
                                    status   => 'CRISIS',
-                                   msg_tag  => 'Net-SNMP->get_request() failed',
-                                   msg_args => "errormsg=" . $session->error,
+                                   message_tag  => 'Net-SNMP->get_request() failed',
+                                   message_arguments => "errormsg=" . $session->error,
                                  }, };
 
             $self->insert_raw_record($args);

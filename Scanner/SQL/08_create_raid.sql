@@ -1,13 +1,3 @@
-drop table    if exists raid_controllers cascade;
-drop table    if exists history.raid_controllers cascade;
-drop function if exists history_raid_controllers();
-drop trigger  if exists trigger_raid_controllers;
-
-drop table    if exists raid_drives cascade;
-drop table    if exists history.raid_drives cascade;
-drop function if exists history_raid_drives();
-drop trigger  if exists trigger_raid_drives;
-
 --
 -- PostgreSQL database dump
 --
@@ -38,8 +28,8 @@ CREATE TABLE raid_controllers (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguments text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -53,8 +43,8 @@ CREATE TABLE raid_drives (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguments text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -144,8 +134,8 @@ CREATE TABLE history.raid_controllers (
     value      text,
     units      text,
     status     status,
-    msg_tag    text,
-    msg_args   text,
+    message_tag    text,
+    message_arguments   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -160,8 +150,8 @@ CREATE TABLE history.raid_drives (
     value      text,
     units      text,
     status     status,
-    msg_tag    text,
-    msg_args   text,
+    message_tag    text,
+    message_arguments   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -185,8 +175,8 @@ BEGIN
 		 value,
                  units,
 		 status,
-                 msg_tag,
-                 msg_args,
+                 message_tag,
+                 message_arguments,
                  timestamp
 		 )
 	VALUES
@@ -197,8 +187,8 @@ BEGIN
 		 hist_rec.value,
                  hist_rec.units,
                  hist_rec.status,
-                 hist_rec.msg_tag,
-                 hist_rec.msg_args,
+                 hist_rec.message_tag,
+                 hist_rec.message_arguments,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;
@@ -221,8 +211,8 @@ BEGIN
 		 value,
                  units,
 		 status,
-                 msg_tag,
-                 msg_args,
+                 message_tag,
+                 message_arguments,
                  timestamp
 		 )
 	VALUES
@@ -233,8 +223,8 @@ BEGIN
 		 hist_rec.value,
                  hist_rec.units,
                  hist_rec.status,
-                 hist_rec.msg_tag,
-                 hist_rec.msg_args,
+                 hist_rec.message_tag,
+                 hist_rec.message_arguments,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;
@@ -258,3 +248,5 @@ CREATE TRIGGER trigger_raid_drives
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

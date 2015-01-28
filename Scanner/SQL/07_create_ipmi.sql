@@ -1,8 +1,3 @@
-drop table    if exists ipmi_temperatures cascade;
-drop table    if exists history.ipmi_temperatures cascade;
-drop function if exists history_ipmi_temperatures();
-drop trigger  trigger_ipmi_temperatures;
-
 --
 -- PostgreSQL database dump
 --
@@ -32,8 +27,8 @@ CREATE TABLE ipmi_temperatures (
     value    text,
     units    text,
     status   status,
-    msg_tag  text,
-    msg_args text,
+    message_tag  text,
+    message_arguments text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -95,8 +90,8 @@ CREATE TABLE history.ipmi_temperatures (
     value      text,
     units      text,
     status     status,
-    msg_tag    text,
-    msg_args   text,
+    message_tag    text,
+    message_arguments   text,
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -118,8 +113,8 @@ BEGIN
 		 value,
                  units,
 		 status,
-                 msg_tag,
-                 msg_args,
+                 message_tag,
+                 message_arguments,
                  timestamp
 		 )
 	VALUES
@@ -130,8 +125,8 @@ BEGIN
 		 hist_rec.value,
                  hist_rec.units,
                  hist_rec.status,
-                 hist_rec.msg_tag,
-                 hist_rec.msg_args,
+                 hist_rec.message_tag,
+                 hist_rec.message_arguments,
 		 hist_rec.timestamp);
 	RETURN NULL;
 END;
@@ -150,3 +145,5 @@ CREATE TRIGGER trigger_ipmi_temperatures
 -- PostgreSQL database dump complete
 --
 
+-- ----------------------------------------------------------------------
+-- End of File

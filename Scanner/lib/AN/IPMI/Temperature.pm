@@ -1,6 +1,6 @@
 package AN::IPMI::Temperature;
 
-use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
+use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
 # _Perl_
 use warnings;
@@ -154,8 +154,8 @@ sub ipmi_request {
                                units        => '',
                                field        => 'IPMI fetch data',
                                status       => 'CRISIS',
-                               msg_tag  => 'AN-IPMI-Temp ipmi_request() failed',
-                               msg_args => "errormsg=" . join "\n",
+                               message_tag  => 'AN-IPMI-Temp ipmi_request() failed',
+                               message_arguments => "errormsg=" . join "\n",
                                @data,
                              }, };
 

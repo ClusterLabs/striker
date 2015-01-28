@@ -1,32 +1,6 @@
 \echo To load this file: psql -U postgres -d scanner -f create_node.sql
 \echo Drop existing instances to create new and clean
 
---DROP EXTENSION IF EXISTS plpgsql      cascade;
-
-DROP TABLE  IF EXISTS node	      	cascade;
-DROP TABLE  IF EXISTS alerts	      	cascade;
-DROP TABLE  IF EXISTS agent_data      	cascade;
-DROP TABLE  IF EXISTS alert_listeners   cascade;
-DROP TABLE  IF EXISTS snmp_apc_ups      cascade;
-DROP TABLE  IF EXISTS ipmi_temp	      	cascade;
-DROP TABLE  IF EXISTS raid_temp	      	cascade;
-DROP TABLE  IF EXISTS node_node_id_seq	      cascade;
-DROP TABLE  IF EXISTS alert_listeners_id_seq  cascade;
-DROP TABLE  IF EXISTS snmp_apc_ups_id_seq     cascade;
-DROP TABLE  IF EXISTS ipmi_temp_id_seq	      cascade;
-DROP TABLE  IF EXISTS raid_temp_id_seq	      cascade;
-DROP TABLE  IF EXISTS history.node    		cascade;
-DROP TABLE  IF EXISTS history.alert_listeners	cascade;
-DROP TABLE  IF EXISTS history.snmp_apc_ups	cascade;
-DROP TABLE  IF EXISTS history.ipmi_temp		cascade;
-DROP TABLE  IF EXISTS history.raid_temp		cascade;
-
-DROP SCHEMA IF EXISTS history	      cascade;
-DROP TYPE   IF EXISTS status;
-DROP TYPE   IF EXISTS mode;
-
-DROP FUNCTION  IF EXISTS history_node();
-
 \echo Global settings
 
 SET client_encoding = 'UTF8';
@@ -115,5 +89,10 @@ CREATE TRIGGER trigger_node
 
 
 \echo Create an enum data type for the status field.
-CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD' );
+\echo Ordinary agent readings use OK, DEBUG, WARNING or CRISIS.
+\echo Node Servers may be DEAD or OK.
+\echo AUTO BOOT may be TRUE or FALSE.
+CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD', 'TRUE', 'FALSE' );
 
+-- ----------------------------------------------------------------------
+-- End of File

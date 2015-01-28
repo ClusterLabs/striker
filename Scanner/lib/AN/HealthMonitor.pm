@@ -21,7 +21,7 @@ use FindBin qw($Bin);
 
 use Const::Fast;
 
-use Class::Tiny qw(oowner), { firsttime => sub {1}
+use Class::Tiny qw(owner), { firsttime => sub {1}
                 };
 
 const my @HEALTH => ( 'ok', 'warning', 'critical' );
@@ -30,10 +30,10 @@ const my @HEALTH => ( 'ok', 'warning', 'critical' );
 #
 sub weight2health {
     my $self = shift;
-    my ( $sumweight, $crisis ) = @_;
+    my ( $sumweight, $warn, $crisis ) = @_;
 
     return
-          $sumweight == 0      ? $HEALTH[0]
+          $sumweight < $warn   ? $HEALTH[0]
         : $sumweight < $crisis ? $HEALTH[1]
         :                        $HEALTH[2];
 }
@@ -44,6 +44,7 @@ sub dispatch {
 
     state $healthfile = $listener->owner->confdata->{healthfile};
     state $shutdown   = $listener->owner->confdata->{shutdown};
+    state $warn       = $listener->owner->confdata->{summary}{ok};
     state $crisis     = $listener->owner->confdata->{summary}{warn};
     state $old_health = 'ok';
     state $verbose
@@ -51,7 +52,7 @@ sub dispatch {
         || grep {/HealthMonitor/} $ENV{VERBOSE}
         || '';
 
-    my $health = $self->weight2health( $sumweight, $crisis );
+    my $health = $self->weight2health( $sumweight, $warn, $crisis );
 
     # create file on first pass and whenever health changes
     #
@@ -76,7 +77,6 @@ sub dispatch {
 
     }
     else {
-	$self->owner->tell_db_Im_dying();
         system( '/bin/touch', $healthfile );
     }
     if ( $sumweight >= $crisis ) {
@@ -84,6 +84,8 @@ sub dispatch {
         say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
             "\nInvoking shutdown script $shutdown\n"
             if $verbose;
+
+	$self->owner->tell_db_Im_dying();
         $listener->owner->shutdown(1);
         system($shutdown );
     }

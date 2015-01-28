@@ -41,16 +41,23 @@ const my @OLD_PROC_MSG => ( [ 'OLD_PROCESS_CRASH',  'OLD_PROCESS_STALLED'],
 
 use subs 'alert_num';    # manually define accessor.
 
+sub shutdown {
+    my $self = shift;
+
+    if ( @_ && $_[0] ) {
+	die "shutdown set from " , join ' ', caller;
+    }
+    return $self->{shutdown};
+}
+
 use Class::Tiny qw( 
-    agentdir commandlineargs confdata    confpath     db_name  db_type
-    dbconf   dbs         duration     flagfile from
-    ignore
-    logdir   max_retries monitoragent msg_dir  port
-    rate     run_until   smtp     verbose
+              agentdir     commandlineargs confdata confpath dashboard  
+              db_name      db_type         dbconf   dbs      duration     
+              flagfile     from            ignore   logdir   max_retries 
+              monitoragent msg_dir         port     rate     run_until   
+              smtp         verbose  shutdown
     ), {
     agents => sub { [] },
-    max_loops_unrefreshed => sub { 10 },
-    shutdown => sub { 0 },
     alerts => sub {
         my $self = shift;
         AN::Alerts->new(
@@ -63,8 +70,13 @@ use Class::Tiny qw(
                          } );
     },
     alert_num             => sub {'a'},
+    isa_scanner           => sub { my $self = shift;
+				   ref $self eq __PACKAGE__
+				       || ref $self eq 'AN::Dashboard' },
+    max_loops_unrefreshed => sub { 10 },
     processes             => sub { [] },
     seen                  => sub { return {}; },
+#    shutdown              => sub { 0 },
     sumweight             => sub {0}
        };
 
@@ -88,6 +100,7 @@ sub begin_logging {
 sub restart {
     my $self = shift;
 
+    die "restart set from " , join ' ', caller;
     $self->shutdown( 'restart' );
     return;
 }
@@ -119,7 +132,10 @@ sub BUILD {
     $ENV{VERBOSE} ||= '';    # set default to avoid undef variable.
     $self->read_configuration_file;
 
-    return unless ref $self eq __PACKAGE__;    # skip BUILD for descendents
+    # Build only node scanners & dashboard scanners; skip BUILD for
+    # 'agents'.
+    #
+    return unless $self->isa_scanner;
 
     croak(q{Missing Scanner constructor arg 'agentdir'.})
         unless $self->agentdir();
@@ -130,15 +146,18 @@ sub BUILD {
 	$self->ignore({});
 	$self->ignore->{$_} = 1 for @{$args->{ignorelist}};
     }
+    my @files = split ' ', $self->confdata->{ignorefile}
+        if exists $self->confdata->{ignorefile};
+
 
     $self->monitoragent(
         AN::MonitorAgent->new(
-            {  core     => $self,
-               rate     => $self->rate(),
-               agentdir => $self->agentdir(),
-               duration => $self->duration,
-               verbose  => $self->verbose(),
-
+            {  core       => $self,
+               rate       => $self->rate(),
+               agentdir   => $self->agentdir(),
+               duration   => $self->duration,
+               verbose    => $self->verbose(),
+	       ignorefile => \@files,
             } ) );
     return;
 }
@@ -386,7 +405,7 @@ sub tell_old_job_to_quit {
 sub tell_db_Im_dying {
     my $self = shift;
 
-    $self->dbs->tell_db_Im_dying();
+    $self->dbs()->tell_db_Im_dying();
     return;
 }
 
@@ -431,7 +450,7 @@ sub check_for_previous_instance {
 
     # Old process exited cleanly, take over. Return early.
     if ( !$self->old_pid_file_exists() ) {
-	say "Previous scanner exited cleanly; taking over.";
+	say "Previous $PROG exited cleanly; taking over.";
 	return $RUN;
     }
 
@@ -440,7 +459,7 @@ sub check_for_previous_instance {
 
     # Old process is running and updating pid file. Return early.
     if ($is_recent && $is_running) {
-	say "A scanner process is already running; exiting";
+	say "A $PROG process is already running; exiting";
 	return $EXIT_OK;
     }
 
@@ -462,7 +481,7 @@ sub check_for_previous_instance {
                       '', '', AN::Alerts::DEBUG(), $tag, '' )
         if !$is_recent && !$is_running;
 
-    say "Replacing defective previous scanner: ", $tag;
+    say "Replacing defective previous $PROG: ", $tag;
 
     return $RUN;
 }
@@ -477,7 +496,8 @@ sub connect_dbs {
 		 owner   => $self,
                };
     $args->{current} = 0	# In scanner, activate only one DB at a time
-	if __PACKAGE__ eq ref $self;
+	if $self->isa_scanner;
+
     $args->{node_args} = $node_args if $node_args;
 
     $self->dbs( AN::DBS->new($args) );
@@ -500,22 +520,39 @@ sub process {
     return;
 }
 
+# Want to launch all agents, except don't launch the node_monitor,
+# except on the dashboard, only when a node server has unespectedly
+# gone down.
+#
 sub launch_new_agents {
     my $self = shift;
-    my ($new) = @_;
+    my ($new, $extra) = @_;
 
     local $LIST_SEPARATOR = $SPACE;
+
+    say "in launch new agents with args:",
+    Data::Dumper::Dumper( [$new, $extra], [qw($new $extra)])
+	if grep {/debug launch_new_agents/} $ENV{VERBOSE} || '';
+
+    my @extra_args = ( $extra && 'HASH' eq ref $extra ? @{$extra->{args}}
+		     :                                  ('')
+	);
     state $args
         = [ map { $_ eq 'xdbconfx' ? $self->dbconf 
 		: $_ eq 'xlogdirx'      ? $self->logdir 
 		:                     $_;
-	        } @NEW_AGENT_ARGS ];
+	        } @NEW_AGENT_ARGS, @extra_args ];
 
     my @new_agents;
   AGENT:
     for my $agent (@$new) {
 	next AGENT
-	    if exists $self->ignore()->{$agent};
+	    if (exists $self->ignore()->{$agent} # ignore these agents
+		&& $extra			 # call-by-call override
+		&& 'HASH' eq ref $extra
+		&& exists $extra->{ignore_ignorefile}
+		&& $extra->{ignore_ignorefile}{$agent}
+	    );
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
@@ -796,17 +833,18 @@ sub detect_status {
                      $db_record->value,
                      $db_record->units,
                      $db_record->status,
-                     $db_record->msg_tag,
-                     $db_record->msg_args,
+                     $db_record->message_tag,
+                     $db_record->message_arguments,
                      $db_record->target_name,
                      $db_record->target_type,
                      $db_record->target_extra,
                      { timestamp => $db_record->timestamp }, );
         say "Setting alert '"
-            . $db_record->msg_tag
+            . $db_record->message_tag
             . "' in '"
             . $db_record->field
             . "' from $process->{db_data}{pid}."
+	    . "from record @{[ $db_record->id() ]} time stamp @{[$db_record->timestamp]}"
             if $self->verbose;
         $self->set_alert(@args);
     }
@@ -831,67 +869,65 @@ sub reset_summary_weight {
     $self->sumweight(0);
 }
 
-sub check_if_process_needs_replacement {
+sub get_latest_user_intervention {
     my $self = shift;
-    my ( $replacement_processes, $process, $idx ) = @_;
+    my ( $host ) = @_;
 
-    my $proc = AN::Unix::pid2process $process->{db_data}{pid};
-    return;
-}	
+    my $intervention = $self->dbs->get_latest_user_intervention;
+    return $intervention;
+}
+
+sub handle_dead_server {
+    my $self = shift;
+    my ( $alert ) = @_;
+
+    my $intervention = $self->get_latest_user_intervention( $alert->value );
+
+    
+}
 
 sub process_agent_data {
     my $self = shift;
-
-    say "Scanner::process_agent_data()." if $self->verbose;
-    my ($idx, %replacement_processes) = (0);
+    
+    state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
+    say "${PROG}::process_agent_data()." if $self->verbose;
 
   PROCESS:
     for my $process ( @{ $self->processes } ) {
-	my ($weight, $count);
+	my ($weight);
         my $alerts = $self->fetch_alert_data($process);
-	if ( ! 'ARRAY' eq ref $alerts ) {
-	    $self->check_if_process_needs_replacement( \%replacement_processes,
-						       $process, $idx );
-	    next PROCESS;
-	}
+
+	next PROCESS
+	    unless 'ARRAY' eq ref $alerts 
+	    && @$alerts;
+
 	my $allN   = scalar @$alerts;
         my $newN   = 0;
-
+	say Data::Dumper::Dumper( [$alerts] )
+	    if $dump;
+	my $seen_summary = 0;
     ALERT:
         for my $alert (@$alerts) {
-	    $weight += $alert->{value}
-  	        if $alert->{field} eq 'summary'
-		    and $alert->{age} < 1.5 * $self->rate;
-
-	    $count++;
-            $newN++;
             if ( $alert->{field} eq 'summary' ) {
-		# prevent health from wobbling back and forth, make it
-		# take a while to clear up to OK.
-		#
-		if ( 0 == $count ) {
-		    say "Adding $weight to existing ", $self->sumweight
-			if $self->verbose;
-		    $self->sumweight( $self->sumweight + $weight )
-		}
-		next ALERT
-		    if $self->seen->{ $alert->{id} }++;
-                $self->process_summary_record( $process, $alert );
-            }
+		last ALERT
+		    if $seen_summary++; # this is from an earlier loop
+
+		$self->sumweight( $self->sumweight + $alert->{value} );
+	    }
             else {
                 $self->detect_status( $process, $alert );
             }
-	    $idx++;
+            $newN++;
         }
-        say scalar localtime()
-            . " Received $allN alerts for process $process->{name}, $newN of them new."
-            if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
+        say scalar localtime(), " Received $allN alerts for process ",
+	    "$process->{name}, $newN of them new."
+		if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
     }
     
     return;
 }
 
-# Things to do in the core for a scanner core object
+# Things to do in the core for a $PROG core object
 #
 sub loop_core {
     my $self = shift;
@@ -900,6 +936,7 @@ sub loop_core {
 
     my $changes = $self->scan_for_agents();
     $self->handle_changes($changes) if $changes;
+
     $self->process_agent_data( );
     $self->handle_alerts();
 
@@ -917,7 +954,7 @@ sub loop_core {
 sub run_timed_loop_forever {
     my $self = shift;
 
-    state $touch_file = ( __PACKAGE__ eq ref $self 
+    state $touch_file = ( $self->isa_scanner
 			      ? 'touch_pid_file'
 			      : 'touch_marker_file'
 	);

@@ -105,7 +105,7 @@ __END__
 =head1 SYNOPSIS
 
     use AN::Msg_xlator;
-    use English;
+    use English 'no_match_vars';
     use File::Basename;
 
     my $pid = $PID;
@@ -166,7 +166,7 @@ in the specified language. If no lannguage is specified, use some default langua
 
 =item B<Carp> I<core>
 
-Complain about arguements from the caller, not the callee.
+Complain about arguments from the caller, not the callee.
 
 =item B<Clone>
 

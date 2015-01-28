@@ -21,11 +21,11 @@ package owner;
 
      return $self->{status};
    }
-   sub msg_tag {
+   sub message_tag {
      my $self = shift;
-     $self->{msg_tag} = $_[0] if @_;
+     $self->{message_tag} = $_[0] if @_;
 
-     return $self->{msg_tag};
+     return $self->{message_tag};
    }
 
 package main;
@@ -137,7 +137,7 @@ sub test_add_alert {
     my $old = owner->new();
     $old->timestamp( 'ts');
     $old->status( 'stat');
-    $old->msg_tag( 'tag');
+    $old->message_tag( 'tag');
 
     my $new = clone $old;
 
@@ -149,7 +149,7 @@ sub test_add_alert {
 
     $new->timestamp( 'new ts' );
     is( $self->add_alert( 'key', 'subkey', $new ), undef,
-	'adding duplicate status & msg_tag detected');
+	'adding duplicate status & message_tag detected');
 
     $new->status( 'new status' );
     is( $self->add_alert( 'key', 'subkey', $new ), 1,
@@ -228,8 +228,8 @@ sub test_add_agent {
 sub test_set_alert {
     my $self = shift;
 
-    my $args = [ 'id', 'pid',  'field', 'value', 'units', 'level', 'msg_tag',
-		 'msg_args', 'target_name', 'target_type', 'target_extra',
+    my $args = [ 'id', 'pid',  'field', 'value', 'units', 'level', 'message_tag',
+		 'message_arguments', 'target_name', 'target_type', 'target_extra',
 		 { timestamp => '1234-56-78 12:34:56' }
 	];
 
@@ -302,7 +302,7 @@ sub test_dispatch_msg {
 sub test_format_msg {
     my $self = shift;
 
-    my $alert = AN::OneAlert->new( { id => 'id', msg_tag => 'msg_tag',
+    my $alert = AN::OneAlert->new( { id => 'id', message_tag => 'message_tag',
 				     node_id => 'node_id', field => 'field', 
 				     value => 'value', units => 'units', 
 				     status => 'status', timestamp => 'timestamp',

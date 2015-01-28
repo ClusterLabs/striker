@@ -1,6 +1,6 @@
 package AN::RAID::Temperature;
 
-use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
+use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
 # _Perl_
 use warnings;
@@ -201,8 +201,8 @@ sub raid_request {
                       units        => '',
                       field        => 'RAID fetch data',
                       status       => 'CRISIS',
-                      msg_tag      => 'AN-RAID-Temp raid_request() failed',
-                      msg_args     => "errormsg=" . join "\n",
+                      message_tag      => 'AN-RAID-Temp raid_request() failed',
+                      message_arguments     => "errormsg=" . join "\n",
                       @data,
                     }, };
 
