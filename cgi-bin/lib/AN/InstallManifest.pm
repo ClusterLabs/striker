@@ -12,6 +12,8 @@ package AN::InstallManifest;
 # - Install Manifests can be created with IFN networks not matching the per-node/
 #   striker IFN IPs assigned...
 # - Back-button doesn't work after creating a new manifest.
+# - parted created an unaligned partition... Need to find a way to say "adjust
+#   to the closest aligned block"
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -140,9 +142,12 @@ sub run_new_install_manifest
 	# It doesn't sanity check much yet.
 	check_storage($conf);
 	
+	# See if the node is in a cluster already. If so, we'll set a flag to
+	# block reboots if needed.
+	check_if_in_cluster($conf);
+	
 	# Get a map of the physical network interfaces for later remapping to
 	# device names.
-
 	my ($node1_remap_required, $node2_remap_required) = map_network($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_remap_required: [$node1_remap_required], node2_remap_required: [$node2_remap_required].\n");
 	
@@ -331,6 +336,95 @@ sub run_new_install_manifest
 	return(0);
 }
 
+# See if the node is in a cluster already. If so, we'll set a flag to block
+# reboots if needed.
+sub check_if_in_cluster
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
+	
+	my $shell_call = "if [ -e '/etc/init.d/cman' ];
+			then 
+				/etc/init.d/cman status; echo rc:$?; 
+			else 
+				echo 'not in a cluster'; 
+			fi";
+	# rc == 0; in a cluster
+	# rc == 3; NOT in a cluster
+	# Node 1
+	if (1)
+	{
+		my $node                            = $conf->{cgi}{anvil_node1_current_ip};
+		   $conf->{node}{$node}{in_cluster} = 0;
+		
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$conf->{cgi}{anvil_node1_current_ip},
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$conf->{cgi}{anvil_node1_current_password},
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$conf->{cgi}{anvil_node1_current_ip}], rc: [$rc]\n");
+				if ($rc eq "0")
+				{
+					# It's in a cluster.
+					$conf->{node}{$node}{in_cluster} = 1;
+				}
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$conf->{cgi}{anvil_node1_current_ip}], line: [$line]\n");
+			}
+		}
+	}
+	# Node 2
+	if (1)
+	{
+		my $node                            = $conf->{cgi}{anvil_node2_current_ip};
+		   $conf->{node}{$node}{in_cluster} = 0;
+		
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$conf->{cgi}{anvil_node2_current_ip},
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$conf->{cgi}{anvil_node2_current_password},
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$conf->{cgi}{anvil_node2_current_ip}], rc: [$rc]\n");
+				if ($rc eq "0")
+				{
+					# It's in a cluster.
+					$conf->{node}{$node}{in_cluster} = 1;
+				}
+			}
+			else
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$conf->{cgi}{anvil_node2_current_ip}], line: [$line]\n");
+			}
+		}
+	}
+	
+	return(0);
+}
+
 # Check to see if the created Anvil! is in the configuration yet.
 sub check_config_for_anvil
 {
@@ -338,10 +432,10 @@ sub check_config_for_anvil
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
 	
 	my $anvil_configured = 0;
-	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
+	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], clusters::${cluster}::name: [$conf->{clusters}{$cluster}{name}]\n");
-		if ($conf->{cgi}{anvil_name} eq $conf->{clusters}{$cluster}{name})
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cluster::${cluster}::name: [$conf->{cluster}{$cluster}{name}]\n");
+		if ($conf->{cgi}{anvil_name} eq $conf->{cluster}{$cluster}{name})
 		{
 			$anvil_configured = 1;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Match!\n");
@@ -2472,7 +2566,7 @@ sub do_drbd_connect_on_node
 sub do_drbd_attach_on_node
 {
 	my ($conf, $node, $password) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_known_hosts_on_node(); node: [$node]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_attach_on_node(); node: [$node]\n");
 	
 	my $message     = "";
 	my $return_code = 0;
@@ -2645,8 +2739,8 @@ sub configure_ssh
 	my ($node2_rsa) = get_node_rsa_public_key($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
 	# Populate known_hosts
-	my ($node1_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_rsa, $node2_rsa);
-	my ($node2_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node1_rsa, $node2_rsa);
+	my ($node1_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	
 	# Add the rsa keys to the node's root user's authorized_keys file.
 	my $node1_ak_ok = 255;
@@ -2724,59 +2818,29 @@ sub configure_ssh
 sub populate_authorized_keys_on_node
 {
 	my ($conf, $node, $password, $node1_rsa, $node2_rsa) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_known_hosts_on_node(); node: [$node]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_authorized_keys_on_node(); node: [$node]\n");
 	
-	### NOTE: To avoid buffer issues, I do these as a series of separate
-	###      calls.
+	# If a node is being rebuilt, it's old keys will no longer be valid. To
+	# deal with this, we simply remove existing keys and re-add them.
 	my $ok = 1;
-	# The grep returns '0' on match, '1' if no match, '2' if no file
-	my $add_node1  = 1;
-	my $add_node2  = 1;
-	my $shell_call = "if [ -e '/root/.ssh/authorized_keys' ]
-			then
-				cat /root/.ssh/authorized_keys
-			else
-				echo 'no file'
-			fi";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return})
+	foreach my $name (@{$conf->{sys}{node_names}})
 	{
-		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /no file/)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] authorized_keys doesn't exist.\n");
-		}
-		elsif ($line =~ /^ssh-rsa /)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] ssh-rsa key found: [$line].\n");
-			if ($line eq $node1_rsa)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] key matches node 1.\n");
-				$add_node1 = 0;
-			}
-			elsif ($line eq $node2_rsa)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] key matches node 1.\n");
-				$add_node2 = 0;
-			}
-		}
+		my $shell_call = "if [ -e '/root/.ssh/authorized_keys' ]
+				then
+					if \$(grep -q $name ~/.ssh/authorized_keys);
+					then 
+						echo 'RSA key exists, removing it.'
+						sed -i '/ root\@$name$/d' /root/.ssh/authorized_keys
+					fi;
+				else
+					echo 'no file'
+				fi
+				";
 	}
 	
-	### Now add if needed.
+	### Now add the keys.
 	# Node 1
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_node1: [$add_node1]\n");
-	if ($add_node1)
+	if (1)
 	{
 		my $shell_call = "echo \"$node1_rsa\" >> /root/.ssh/authorized_keys";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
@@ -2828,8 +2892,7 @@ sub populate_authorized_keys_on_node
 	}
 	
 	# Node 2.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_node2: [$add_node2]\n");
-	if ($add_node2)
+	if (1)
 	{
 		my $shell_call = "echo \"$node2_rsa\" >> /root/.ssh/authorized_keys";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
@@ -2892,20 +2955,23 @@ sub populate_known_hosts_on_node
 	my $ok = 1;
 	foreach my $name (@{$conf->{sys}{node_names}})
 	{
+		# If a node is being replaced, the old entries will no longer
+		# match. So as a precaution, existing keys are removed if
+		# found.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; checking/adding fingerprint for: [$name]\n");
 		my $shell_call = "if \$(grep -q $name ~/.ssh/known_hosts);
-		then 
-			echo 'fingerprint recorded'; 
-		else 
-			ssh-keyscan $name >> ~/.ssh/known_hosts;
-			if \$(grep -q $name ~/.ssh/known_hosts);
-			then 
-				echo 'fingerprint added';
-			else
-				echo 'failed to record fingerprint for $node.';
-			fi;
-		fi";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				then 
+					echo 'fingerprint exists, removing it.'
+					sed -i '/^$name /d' /root/.ssh/known_hosts
+				fi
+				ssh-keyscan $name >> ~/.ssh/known_hosts;
+				if \$(grep -q $name ~/.ssh/known_hosts);
+				then 
+					echo 'fingerprint added';
+				else
+					echo 'failed to record fingerprint for $node.';
+				fi;";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -2918,7 +2984,7 @@ sub populate_known_hosts_on_node
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		foreach my $line (@{$return})
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /fingerprint recorded/)
 			{
 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] name: [$name] previously recorded.\n");
@@ -3067,32 +3133,32 @@ sub start_cman
 		if ($node1_cman_state)
 		{
 			# Started!
-			$node2_rc = 4;
+			$node2_rc = 2;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully startes cman on node 1: [$conf->{cgi}{anvil_node1_current_ip}].\n");
 		}
 		else
 		{
 			# Failed to start.
-			$node1_rc = 2;
+			$node1_rc = 4;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start cman on node 1: [$conf->{cgi}{anvil_node1_current_ip}].\n");
 		}
 	}
 	elsif (not $node2_cman_state)
 	{
 		# Node 1 is running, node 2 isn't, start it.
-		start_cman_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		start_cman_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 		my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2_cman_state: [$node2_cman_state], node2_cman_state: [$node2_cman_state]\n");
 		if ($node2_cman_state)
 		{
 			# Started!
-			$node2_rc = 4;
+			$node2_rc = 2;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully startes cman on node 2: [$conf->{cgi}{anvil_node2_current_ip}].\n");
 		}
 		else
 		{
 			# Failed to start.
-			$node2_rc = 2;
+			$node2_rc = 4;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start cman on node 2: [$conf->{cgi}{anvil_node2_current_ip}].\n");
 		}
 	}
@@ -3465,10 +3531,15 @@ sub set_root_password
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_root_password()\n");
 	
-	# Reloading the browser won't work after this step, so warn the user.
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
-		message	=>	AN::Common::get_string($conf, {key => "explain_0142", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
-	});
+	# Reloading the browser won't work after this step if either node's 
+	# password is going to change, so warn the user.
+	if (($conf->{cgi}{anvil_password} ne $conf->{cgi}{anvil_node1_current_password}) ||
+	    ($conf->{cgi}{anvil_password} ne $conf->{cgi}{anvil_node2_current_password}))
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0142", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
+		});
+	}
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
 	###       This might change later, so this function is designed to
@@ -4915,10 +4986,17 @@ sub reboot_nodes
 {
 	my ($conf) = @_;
 	
-	# This could take a while
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-		message	=>	AN::Common::get_string($conf, {key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
-	});
+	# If neither node needs a reboot, don't print the lengthy message.
+	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	if ((($conf->{node}{$node1}{reboot_needed}) && (not $conf->{node}{$node1}{in_cluster})) || 
+	    (($conf->{node}{$node2}{reboot_needed}) && (not $conf->{node}{$node2}{in_cluster})))
+	{
+		# This could take a while
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
+		});
+	}
 	
 	# I do this sequentially for now, so that if one fails, the other
 	# should still be up and hopefully provide a route into the lost one
@@ -4926,7 +5004,7 @@ sub reboot_nodes
 	my $ok         = 1;
 	my ($node1_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_bcn_ip});
 	my $node2_rc   = 255;
-	if ((not $node1_rc) || ($node1_rc eq "1"))
+	if ((not $node1_rc) || ($node1_rc eq "1") || ($node1_rc eq "5"))
 	{
 		($node2_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_bcn_ip});
 	}
@@ -4936,6 +5014,7 @@ sub reboot_nodes
 	# 2 = Reboot failed, but node is pingable.
 	# 3 = Reboot failed, node is not pingable.
 	# 4 = Reboot failed, server didn't shut down before timeout.
+	# 5 = Reboot needed, but manual reboot required.
 	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0046!#";
@@ -4968,6 +5047,11 @@ sub reboot_nodes
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = "#!string!state_0051!#",
 		$ok            = 0;
+	}
+	elsif ($node1_rc == 5)
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0097!#",
 	}
 	# Node 2
 	if ($node2_rc == 255)
@@ -5004,6 +5088,11 @@ sub reboot_nodes
 		$node2_message = "#!string!state_0051!#",
 		$ok            = 0;
 	}
+	elsif ($node1_rc == 5)
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0097!#",
+	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0247!#",
 		node1_class	=>	$node1_class,
@@ -5027,6 +5116,12 @@ sub do_node_reboot
 	{
 		$return_code = 1;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] reboot NOT needed.\n");
+	}
+	elsif ($conf->{node}{$node}{in_cluster})
+	{
+		# Reboot needed, but the user has to do it.
+		$return_code = 5;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] reboot MUST be performed manually!\n");
 	}
 	else
 	{
@@ -5557,11 +5652,12 @@ sub create_partition_on_node
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], disk: [$disk], return: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], disk: [$disk], return: [$line]\n");
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], return: [$line]\n");
 		if ($line =~ /(\d+)MiB (\d+)MiB (\d+)MiB Free/i)
 		{
 			$start = $1;
@@ -5641,7 +5737,7 @@ sub create_partition_on_node
 		foreach my $line (@{$return})
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-			if ($line =~ /Error/)
+			if ($line =~ /Error/i)
 			{
 				$ok = 0;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], start: [$start], end: [$end].\n");
@@ -5655,6 +5751,24 @@ sub create_partition_on_node
 						shell_call	=>	$shell_call,
 					}}),
 					row	=>	"#!string!state_0042!#",
+				});
+			}
+			if ($line =~ /not properly aligned/i)
+			{
+				### TODO: Make this fatal once the math is 
+				###       properly sorted out.
+				#$ok = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], start: [$start], end: [$end].\n");
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+					message	=>	AN::Common::get_string($conf, {key => "message_0431", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						start		=>	AN::Cluster::bytes_to_hr($conf, $start)." ($start #!string!suffix_0009!#)",
+						end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}}),
+					row	=>	"#!string!state_0099!#",
 				});
 			}
 			if ($line =~ /reboot/)
@@ -10020,55 +10134,130 @@ sub configure_cman
 	
 	# Generate a new cluster.conf, then check to see if one already exists.
 	generate_cluster_conf($conf);
-	read_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	read_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_cluster_conf_version) = read_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_cluster_conf_version) = read_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_cluster_conf_version: [$node1_cluster_conf_version], node2_cluster_conf_version: [$node2_cluster_conf_version]\n");
 	
 	# If one of the nodes has an existing cluster.conf, use it.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	if (($conf->{node}{$node1}{cluster_conf}) && ($conf->{node}{$node2}{cluster_conf}))
+	my $ok    = 1;
+	
+	# This will set if a node's cluster.conf is (re)written or not.
+	my $write_node1 = 0;
+	my $write_node2 = 0;
+	
+	# If either node's cluster.conf in > 1, use it.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if there was an existing cluster.conf configured on either node.\n");
+	if ($node1_cluster_conf_version > 1)
 	{
-		# Both already written, but we'll rewrite anyway in case the
-		# user had to fix something (the originals will be in the
-		# backup directory).
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1's cluster.conf is version: [$node1_cluster_conf_version], checking is node2's matched: [$node2_cluster_conf_version]\n");
+		if ($node1_cluster_conf_version eq $node2_cluster_conf_version)
+		{
+			# Both are the same and both are > 1, do nothing.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It does, no further action will be taken.\n");
+		}
+		elsif ($node1_cluster_conf_version > $node2_cluster_conf_version)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It doesn't but it is newer than node2, so using it.\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 1's 'cluster.conf': ====\n$conf->{node}{$node1}{cluster_conf}\n====\n");
+			$conf->{node}{$node2}{cluster_conf} = $conf->{node}{$node1}{cluster_conf};
+			$write_node2                        = 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 2's 'cluster.conf': ====\n$conf->{node}{$node2}{cluster_conf}\n====\n");
+		}
+		elsif ($node1_cluster_conf_version < $node2_cluster_conf_version)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It doesn't, and node2's version is higher, so using it instead.\n");
+			$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+			$write_node1                        = 1;
+		}
+	}
+	elsif ($node2_cluster_conf_version > 1)
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 2's cluster.conf: [$node2_cluster_conf_version] is newer than node 1's: [$node1_cluster_conf_version], using it.\n");
+		$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+		$write_node1                        = 1;
+	}
+	elsif ((not $conf->{node}{$node1}{cluster_conf}) && (not $conf->{node}{$node2}{cluster_conf}))
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Neither node has an existing cluster.conf, using the default generated one.\n");
+		$conf->{node}{$node1}{cluster_conf} = $conf->{sys}{cluster_conf};
+		$conf->{node}{$node2}{cluster_conf} = $conf->{sys}{cluster_conf};
+		$write_node1                        = 1;
+		$write_node2                        = 1;
 	}
 	elsif ($conf->{node}{$node1}{cluster_conf})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 1 has a version 1 cluster.conf and node 2 has no cluster.conf at all, using node 1's version.\n");
 		$conf->{node}{$node2}{cluster_conf} = $conf->{node}{$node1}{cluster_conf};
+		$write_node2                        = 1;
 	}
 	elsif ($conf->{node}{$node2}{cluster_conf})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 2 has a version 1 cluster.conf and node 1 has no cluster.conf at all, using node 2's version.\n");
 		$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+		$write_node1                        = 1;
 	}
 	else
 	{
-		# Totally fresh, use generated cluster.conf.
-		$conf->{node}{$node1}{cluster_conf} = $conf->{sys}{cluster_conf};
-		$conf->{node}{$node2}{cluster_conf} = $conf->{sys}{cluster_conf};
+		# wat
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; There was an unknown problem checking cluster.conf... No check condition was matched, and that should not be possible.\n");
+		$ok = 2;
 	}
 	
-	# Now write.
-	my ($node1_rc, $node1_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc, $node2_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	# 0 = Written and validated
-	# 1 = ccs_config_validate failed
+	# Write them out now.
+	my $node1_rc             = "";
+	my $node1_return_message = "";
+	my $node2_rc             = "";
+	my $node2_return_message = "";
+	if ($ok eq "1")
+	{
+		if ($write_node1)
+		{
+			($node1_rc, $node1_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		}
+		if ($write_node2)
+		{
+			($node2_rc, $node2_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		}
+		# 0 = Written and validated
+		# 1 = ccs_config_validate failed
+	}
 	
-	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "#!string!state_0020!#";
+	my $node1_message = "#!string!state_0028!#";
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "#!string!state_0020!#";
-	if ($node1_rc eq "1")
+	my $node2_message = "#!string!state_0028!#";
+	if ($ok eq "2")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node1_return_message" }});
+		$node1_message = "#!string!state_0098!#";
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0098!#";
 		$ok            = 0;
 	}
-	if ($node2_rc eq "1")
+	else
 	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node2_return_message" }});
-		$ok            = 0;
+		if ($node1_rc eq "1")
+		{
+			$node1_class   = "highlight_warning_bold";
+			$node1_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node1_return_message" }});
+			$ok            = 0;
+		}
+		elsif ($write_node1)
+		{
+			$node1_message = "#!string!state_0029!#";
+		}
+		if ($node2_rc eq "1")
+		{
+			$node2_class   = "highlight_warning_bold";
+			$node2_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node2_return_message" }});
+			$ok            = 0;
+		}
+		elsif ($write_node2)
+		{
+			$node2_message = "#!string!state_0029!#";
+		}
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0221!#",
@@ -10098,7 +10287,7 @@ sub write_cluster_conf
 	my $message     = "";
 	my $return_code = 255;
 	my $shell_call  =  "cat > $conf->{path}{nodes}{cluster_conf} << EOF\n";
-	   $shell_call  .= "$conf->{sys}{cluster_conf}\n";
+	   $shell_call  .= "$conf->{node}{$node}{cluster_conf}\n";
 	   $shell_call  .= "EOF\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -10168,7 +10357,7 @@ sub read_cluster_conf
 				cat $conf->{path}{nodes}{cluster_conf}
 			else
 				echo not found
-			fi"
+			fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -10181,16 +10370,24 @@ sub read_cluster_conf
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
-	$conf->{node}{$node}{cluster_conf} = "";
+	$conf->{node}{$node}{cluster_conf_version} = 0;
+	$conf->{node}{$node}{cluster_conf}         = "";
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		last if $line eq "not found";
-		
 		$conf->{node}{$node}{cluster_conf} .= "$line\n";
+		
+		# If the version is > 1, we'll use it no matter what.
+		if ($line =~ /config_version="(\d+)"/)
+		{
+			$conf->{node}{$node}{cluster_conf_version} = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cluster.conf version: [$conf->{node}{$node}{cluster_conf_version}]\n");
+		}
 	}
 	
-	return(0)
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster.conf version: [$conf->{node}{$node}{cluster_conf_version}]\n");
+	return($conf->{node}{$node}{cluster_conf_version})
 }
 
 # This checks to make sure both nodes have a compatible OS installed.

@@ -977,10 +977,20 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">/shared</span>']]></key>
 		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
 		<key name="state_0096">Timed out</key>
-		<key name="state_0097"></key>
-		<key name="state_0098"></key>
-		<key name="state_0099"></key>
+		<key name="state_0097">Manual Reboot Needed</key>
+		<key name="state_0098"><![CDATA[Error parsing: [<span class="highlight_detail">cluster.conf</span>]]]></key>
+		<key name="state_0099">Partition Warning</key>
 		<key name="state_0100"></key>
+		<key name="state_0101"></key>
+		<key name="state_0102"></key>
+		<key name="state_0103"></key>
+		<key name="state_0104"></key>
+		<key name="state_0105"></key>
+		<key name="state_0106"></key>
+		<key name="state_0107"></key>
+		<key name="state_0108"></key>
+		<key name="state_0109"></key>
+		<key name="state_0110"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1565,7 +1575,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
 		<key name="message_0388"><![CDATA[Unable to partition the drives on the nodes!<br />Both nodes should have matching disk configurations, but the largest disk on node 1 is: [<span class="fixed_width">#!variable!disk1!#</span>] and on node 2 it is: [<span class="fixed_width">#!variable!disk2!#</span>]]]></key>
 		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
-		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
+		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0391"><![CDATA[I was asked to create a partition, but I had to shrink the partition's end size to make it fit.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], original end: [<span class="fixed_width">#!variable!old_end!#</span>], new end: [<span class="fixed_width">#!variable!new_end!#</span>].]]></key>
 		<key name="message_0392"><![CDATA[By my calculations, we'll need more space on node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>] than is available.<br />Needed: [<span class="fixed_width">#!variable!space_needed!#</span>] but only have: [<span class="fixed_width">#!variable!free_space!#</span>].<br />We'll try to continue and adjust the space used by the last partition to fit.]]></key>
 		<key name="message_0393"><![CDATA[There is a very odd problem with partitioning node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>].<br />The second storage pool appears to exist already, but the first one does not. Did someone manually delete it?]]></key>
@@ -1606,7 +1616,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0428"><![CDATA[Power-down initiated. The node should offline in a few moments.]]></key>
 		<key name="message_0429"><![CDATA[Cold-Stop completed successfully!]]></key>
 		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
-		<key name="message_0431"><![CDATA[]]></key>
+		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
 		<key name="message_0432"><![CDATA[]]></key>
 		<key name="message_0433"><![CDATA[]]></key>
 		<key name="message_0434"><![CDATA[]]></key>

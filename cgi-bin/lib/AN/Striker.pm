@@ -4104,6 +4104,9 @@ sub add_vm_to_cluster
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
 	
+	### TODO: Auto-add the server and then immediately change the boot
+	###       device to "hd".
+	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
 	my $cluster    = $conf->{cgi}{cluster};
