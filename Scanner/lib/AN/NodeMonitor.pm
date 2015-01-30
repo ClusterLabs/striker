@@ -131,9 +131,9 @@ sub relaunch_host {
     my $self            = shift;
 
     my $lines = $self->ipmi_power_utility( 'on' );
-    my $status = ($lines =~ m{Chassis Power Control: ([\w+\\]+)\z}xms);
+    my ($status) = ($lines =~ m{Chassis \s Power \s Control: \s (\S+)}xms);
 
-    $self->status( 'host  has power')
+    $self->status( 'host has power')
         if $status eq 'Up/On';
     return;
 }
