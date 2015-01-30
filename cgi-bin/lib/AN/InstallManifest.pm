@@ -344,11 +344,11 @@ sub check_if_in_cluster
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
 	
 	my $shell_call = "if [ -e '/etc/init.d/cman' ];
-			then 
-				/etc/init.d/cman status; echo rc:$?; 
-			else 
-				echo 'not in a cluster'; 
-			fi";
+                        then 
+                                /etc/init.d/cman status; echo rc:\$?; 
+                        else 
+                                echo 'not in a cluster'; 
+                        fi";
 	# rc == 0; in a cluster
 	# rc == 3; NOT in a cluster
 	# Node 1
@@ -357,7 +357,7 @@ sub check_if_in_cluster
 		my $node                            = $conf->{cgi}{anvil_node1_current_ip};
 		   $conf->{node}{$node}{in_cluster} = 0;
 		
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$conf->{cgi}{anvil_node1_current_ip},
 			port		=>	22,
@@ -392,7 +392,7 @@ sub check_if_in_cluster
 		my $node                            = $conf->{cgi}{anvil_node2_current_ip};
 		   $conf->{node}{$node}{in_cluster} = 0;
 		
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$conf->{cgi}{anvil_node2_current_ip},
 			port		=>	22,
@@ -5250,12 +5250,12 @@ sub ping_ip
 			# watching the logs.
 			my $pings_sent     = $1;
 			my $pings_received = $2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ip: [$ip], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ip: [$ip], pings_sent: [$pings_sent], pings_received: [$pings_received]\n");
 		}
 		if ($line =~ /ping:(\d+)/)
 		{
 			$ping_rc = $1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc] (0 == pingable)\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc] (0 == pingable)\n");
 			$success = 1 if not $ping_rc;
 		}
 	}
@@ -5637,8 +5637,8 @@ sub create_partition_on_node
 	my $size    = 0;
 	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition
 	###       type when called with --machine
-	#my $shell_call = "parted --machine /dev/$disk unit MiB print free";
-	my $shell_call = "parted /dev/$disk unit MiB print free";
+	#my $shell_call = "parted --machine /dev/$disk unit GiB print free";
+	my $shell_call = "parted /dev/$disk unit GiB print free";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -5658,7 +5658,7 @@ sub create_partition_on_node
 		$line =~ s/\s+/ /g;
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << return: [$line]\n");
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], return: [$line]\n");
-		if ($line =~ /(\d+)MiB (\d+)MiB (\d+)MiB Free/i)
+		if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB Free/i)
 		{
 			$start = $1;
 			$end   = $2;
@@ -5696,8 +5696,8 @@ sub create_partition_on_node
 		}
 		else
 		{
-			my $mib_size = sprintf("%.0f", ($partition_size /= (2 ** 20)));
-			   $use_end  = $start + $mib_size;
+			my $gib_size = sprintf("%.0f", ($partition_size /= (2 ** 30)));
+			   $use_end  = $start + $gib_size;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], use_end: [$use_end], end: [$end].\n");
 			if ($use_end > $end)
 			{
@@ -5716,12 +5716,12 @@ sub create_partition_on_node
 				$use_end = $end;
 			}
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; snode: [$node], disk: [$disk], type: [$type], start: [$start MiB], end: [$end MiB]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; snode: [$node], disk: [$disk], type: [$type], start: [$start GiB], end: [$end GiB]\n");
 		
-		my $shell_call = "parted -a opt /dev/$disk mkpart $type ${start}MiB ${use_end}MiB";
+		my $shell_call = "parted -a opt /dev/$disk mkpart $type ${start}GiB ${use_end}GiB";
 		if ($use_end eq "100%")
 		{
-			$shell_call = "parted -a opt /dev/$disk mkpart $type ${start}MiB 100%";
+			$shell_call = "parted -a opt /dev/$disk mkpart $type ${start}GiB 100%";
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -5755,9 +5755,8 @@ sub create_partition_on_node
 			}
 			if ($line =~ /not properly aligned/i)
 			{
-				### TODO: Make this fatal once the math is 
-				###       properly sorted out.
-				#$ok = 0;
+				# This will mess with performance... =/
+				$ok = 0;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], start: [$start], end: [$end].\n");
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
 					message	=>	AN::Common::get_string($conf, {key => "message_0431", variables => { 
@@ -6394,7 +6393,6 @@ sub configure_storage_stage2
 	});
 	
 	## Now Pool 2
-	$ok            = 1;
 	$node1_class   = "highlight_good_bold";
 	$node1_message = "#!string!state_0045!#";
 	$node2_class   = "highlight_good_bold";
