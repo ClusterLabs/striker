@@ -150,8 +150,8 @@ sub add_alert {
 
     $key2 ||= '+';
 
-    die("key1 = $key1, key2 = $key2, value = $value, caller = @{[caller]}")
-        unless $key1 && $value;
+    die(" => key1 = $key1, key2 = $key2, value = $value, caller = @{[caller]}")
+        unless defined $key1 && defined $value;
 
     my $old = $self->alerts()->{$key1}{$key2};
 
