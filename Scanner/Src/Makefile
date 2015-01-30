@@ -9,8 +9,8 @@
 
 USER := ${shell whoami}
 
-targets = wipmi   wstorcli   wshutdown
-sources = wipmi.c wstorcli.c wshutdown.c
+targets = wipmi   wstorcli   wshutdown   
+sources = wipmi.c wstorcli.c wshutdown.c 
 
 wrapper: $(targets)
 

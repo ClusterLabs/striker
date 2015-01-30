@@ -1,0 +1,100 @@
+#!/bin/bash
+
+#set -x 
+
+# ---------------------------------------------------------------------- 
+# 
+# The user account with which to connect to DB
+#
+USER=alteeve
+
+# The DB to access.
+#
+DB=scanner
+
+# The command to perform.
+#
+CMD=
+
+# IP of the host to wonnect with.
+#
+IP=
+
+# Account to connect with.
+#
+USER=admin
+
+# Password to use
+#
+PASSWD=admin
+
+CALL="/usr/bin/ipmitool"
+
+
+# ---------------------------------------------------------------------- 
+
+function usage() {
+
+if [[ -n $1 ]]; then
+    echo "
+You passed an unfamiliar argument, '$1'
+"
+fi
+
+echo "
+USAGE: $0 [-h ip] [-c cmd] [-u user] [-p passwd] [-v]
+
+Where
+      * -c cmd    : The command to perform using fence_ipmilan. 
+                    One of:
+                      * 'on', 
+                      * 'off', 
+                      * 'status', 
+      * -h ip     : The IP number to whjich to connect.
+        -p passwd : The password to use,  if not specified, 'admin' is used.
+        -u user   : The account to connect with, if not specified, 'admin'.
+        -v        : display the resulting SQL query before running it
+
+Note: -h & -c are required.
+
+"
+exit 1
+}
+# ---------------------------------------------------------------------- 
+
+if [[ 4 > $# ]]; then
+    usage
+fi
+
+while getopts ":c:h:p:u:v" opt; do
+    case $opt in
+      c) CMD=$OPTARG
+         ;;
+      h) IP=$OPTARG
+         ;;
+      p) PASSWD=$OPTARG
+         ;;
+      u) USER=$OPTARG
+         ;;
+      v) VERBOSE=1
+         ;;
+      *) usage $OPTARG
+         ;;
+    esac
+done
+
+# : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : 
+
+SHELL="$CALL -I lanplus -H $IP -U $USER -P $PASSWD -v chassis power $CMD "
+
+if [ $VERBOSE ]; then
+    echo "$SHELL"
+else 
+    echo "$SHELL"
+    DATA=`$SHELL`
+    echo $DATA
+    echo rc:$!
+fi
+
+# ----------------------------------------------------------------------
+# end of file.

@@ -42,15 +42,6 @@ const my @OLD_PROC_MSG => (
 
 use subs 'alert_num';    # manually define accessor.
 
-sub shutdown {
-    my $self = shift;
-
-    if ( @_ && $_[0] ) {
-        die "shutdown set from ", join ' ', caller;
-    }
-    return $self->{shutdown};
-}
-
 use Class::Tiny qw(
     agentdir     commandlineargs confdata confpath dashboard
     db_name      db_type         dbconf   dbs      duration
@@ -104,7 +95,6 @@ sub begin_logging {
 sub restart {
     my $self = shift;
 
-    die "restart set from ", join ' ', caller;
     $self->shutdown('restart');
     return;
 }
@@ -146,12 +136,9 @@ sub BUILD {
     croak(q{Missing Scanner constructor arg 'rate'.})
         unless $self->rate();
 
-    if ( $args->{ignorelist} ) {
-        $self->ignore( {} );
-        $self->ignore->{$_} = 1 for @{ $args->{ignorelist} };
-    }
     my @files = split ' ', $self->confdata->{ignorefile}
         if exists $self->confdata->{ignorefile};
+    $self->ignore({ map { $_ => 1 } @files });
 
     $self->monitoragent( AN::MonitorAgent->new(
                                                { core     => $self,
@@ -549,11 +536,12 @@ sub launch_new_agents {
 AGENT:
     for my $agent (@$new) {
         next AGENT
-            if (exists $self->ignore()->{$agent}         # ignore these agents
-                && $extra                                # call-by-call override
-                && 'HASH' eq ref $extra
-                && exists $extra->{ignore_ignorefile}
-                && $extra->{ignore_ignorefile}{$agent} );
+            if (exists $self->ignore()->{$agent}  # ignore these agents
+                && ! ($extra	                  # call-by-call override
+		      && 'HASH' eq ref $extra
+		      && exists $extra->{ignore_ignorefile}
+		      && $extra->{ignore_ignorefile}{$agent}
+		));
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
