@@ -25,7 +25,7 @@ SHAREDDIR  = /shared/status
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
 	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
 
-WRAPPERS   = wipmi wstorcli 
+WRAPPERS   = wipmi wstorcli wfence_ipmilan
 SHUTDOWN   = wshutdown
 
 wrapper: 
@@ -36,7 +36,7 @@ dirs    : $(DIRS)
 $(DIRS)	:
 	[[ -x $@ ]] || mkdir -p $@
 
-files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN)
+files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
 $(WRAPPERS): wrapper
 	cp $@ $(BINDIR)
@@ -71,7 +71,7 @@ messages:
 
 install: wrapper dirs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
-	    cp scanner $(BINDIR);			\
+	    cp scanner wipmi_power  $(BINDIR);		\
             chmod 777 /var/log/striker;			\
             chmod 777 /shared/status;			\
 	else						\

@@ -76,7 +76,8 @@ sub process_args {
         bindir   => $BINDIR,                     # Where the bins are
         logdir   => $LOGDIR,                     # Where logfiles go
         verbose  => 0,                           # avoid undef in '+' @ line 122
-              };
+	log      => 0,
+    };
 
     GetOptions( $opt,               'rate=i',
                 'filepath=s',       'dbconf=s',
@@ -84,11 +85,17 @@ sub process_args {
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
                 'logdir=s',         'bindir=s',
+		'log',
+		'host=s',           'healthfile=s',
                 'man',              'help' )
         or pod2usage(2);
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
+
+    pod2usage( -verbose => $BRIEF, 
+	       -message => q{'host' and 'healthfile' args are mandatory}
+	) unless $opt->{host} and $opt->{healthfile};
 
     verify_args($opt);
 

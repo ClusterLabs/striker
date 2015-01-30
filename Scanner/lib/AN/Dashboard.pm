@@ -77,7 +77,8 @@ sub check_node_server_status {
         # Not running, but it should be.
         my $agent = $self->confdata->{node_server_down_agent};
         my $args = { ignore_ignorefile => { $agent => 1 },
-                     args              => [$ns_host] };
+                     args => [-host       => $ns_host,
+			      -healthfile => $self->confdata()->{healthfile}],};
         $self->launch_new_agents( [$agent], $args );
     }
     return;
