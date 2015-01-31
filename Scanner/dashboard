@@ -48,7 +48,6 @@ const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
 const my $BRIEF       => 1;
 const my $COMMA       => q{,};
 const my $DOTSLASH    => q{./};
-const my @IGNORELIST  => qw( MegaSAS.log );
 const my $LIFETIME    => 24 * 60 * 60;
 const my $RUN_UNTIL   => '23:59:59';
 const my $MAX_RETRIES => 10;
@@ -86,7 +85,6 @@ sub process_args {
         bindir      => $BINDIR,               # Where the bins are
         logdir => $LOGDIR,    # Where logfiles are other communication files are
         log    => 0,
-        ignorelist      => \@IGNORELIST,    # Files to ignore
         commandlineargs => [@ARGV]
         ,    # Archive the command line args in case of reboot
               };
@@ -108,10 +106,9 @@ sub process_args {
     # If agentdir is relative path './xxx', convert to fully qualified
     # relative to location of this script.
     #
-    $opt->agentdir( $Bin . $SLASH . substr( $opt->{agentdir}, 2 ) )
+    $opt->{agentdir} = $Bin . $SLASH . substr( $opt->{agentdir}, 2 )
         if string_starts_with( $opt->{agentdir}, $DOTSLASH );
 
-    $opt->{ignorelist} = [ split /,/, join ',', @{ $opt->{ignorelist} } ];
 
     verify_args($opt);
 

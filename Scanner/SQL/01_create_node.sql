@@ -90,9 +90,10 @@ CREATE TRIGGER trigger_node
 
 \echo Create an enum data type for the status field.
 \echo Ordinary agent readings use OK, DEBUG, WARNING or CRISIS.
-\echo Node Servers may be DEAD or OK.
+\echo Node Servers may be DEAD, TIMEOUT or OK.
 \echo AUTO BOOT may be TRUE or FALSE.
-CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD', 'TRUE', 'FALSE' );
+
+CREATE TYPE status AS ENUM ( 'OK', 'DEBUG', 'WARNING', 'CRISIS', 'DEAD', 'TIMEOUT', 'TRUE', 'FALSE' );
 
 -- ----------------------------------------------------------------------
 -- End of File

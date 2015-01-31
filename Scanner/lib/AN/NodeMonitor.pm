@@ -1,6 +1,6 @@
-package AN::NodeMOnitor;
+package AN::NodeMonitor;
 
-use base 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
+use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
 # _Perl_
 use warnings;
@@ -8,319 +8,287 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION            = '0.0.1';
 
+use Const::Fast;
 use English '-no_match_vars';
 use Carp;
-use Cwd;
 use Data::Dumper;
 use File::Basename;
 
-use File::Spec::Functions 'catdir';
-use FindBin qw($Bin);
-use Const::Fast;
-use Time::HiRes qw(time alarm sleep);
+use AN::Cluster;
 
-use AN::Common;
-use AN::MonitorAgent;
-use AN::FlagFile;
-use AN::Unix;
-use AN::DBS;
-
-use Class::Tiny qw( confpath confdata prev controller_count );
+use Class::Tiny qw( healthfile host status first_ping_at sent_last_timeout_at
+                    elapsed),
+                  {cache => sub {$_[0]->read_cache_file();},
+                  };
 
 # ======================================================================
 # CONSTANTS
 #
-const my $PARENTDIR => q{/../};
-
-const my $SLASH => q{/};
-const my $SPACE => q{ };
+const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
+const my $SLASH      => q{/};
+const my %STATUS2MSG => ( on  => 'host has power',
+                          off => 'host down'
+                        );
 
 # ......................................................................
 #
-
-sub get_controller_count {
+sub insert_raw_record {
     my $self = shift;
+    my ($args) = @_;
 
-    my $response = $self->raid_request;
-    return unless scalar @$response;
-
-    # Get the line with Number of Controllers = N;
-    # Extract the part following  ' = ' and store as count;
-    #
-    my ($line) = ( grep {/Number of Controllers/} @$response );
-    return 0 unless $line;
-
-    my $count = ( split ' = ', $line )[1];
-    chomp $count;
-
-    return 0 unless $count;
-    return $count;
-}
-
-sub BUILD {
-    my $self = shift;
-
-    return unless ref $self eq __PACKAGE__;
-    $self->confdata()->{controller_count} = $self->get_controller_count();
-
+    $self->dbs->insert_raw_record( $args );
     return;
 }
 
-sub parse_dev {
-    my $self = shift;
-    my ($dev) = @_;
+# ......................................................................
+#
+sub healthfile_status_shows_ok {
+    my $self            = shift;
 
-    my ( $controller, $drive );
-    $controller = $1
-        if $dev =~ m{controller=(\d)};
+    state $file         = $self->healthfile();
 
-    $drive = $1
-        if $dev =~ m{drive=(\d)};
+    return unless -r $file;
 
-    return ( $controller, $drive );
+    open my $hf, '<', $file
+        or carp "Could not open healthfile '$file'.";
+    my (@line)          = grep { /health/ } split "\n", <$hf>;
+    my $status          = (split ' = ', $line[0])[1];
+    close $hf;
+
+    return $status eq 'ok';
 }
+# ......................................................................
+#
+sub read_cache_file {
+    my $self            = shift;
 
-sub init_prev {
+    say "Reading cache file";
+    my $args            = { cgi  => {cluster       => $self->confdata->{cluster}},
+                 path   => {striker_cache => $self->confdata->{striker_cache},
+                            log => '/dev/null',
+                 },};
+    AN::Cluster::read_node_cache( $args, $self->host );
+    delete $args->{cgi}; delete $args->{path}; delete $args->{handles};
+
+    $self->cache( $args );
+    
+    return $args;
+}
+# ......................................................................
+#
+sub get_ip {
     my $self = shift;
-    my ($received) = @_;
 
-    my $prev = {};
+    my $ipmi_host = $self->host() . '.ipmi';
+    my $ip = $self->cache()->{node}{$self->host}{hosts}{$ipmi_host};
+    die( "Host @{[$self->host()]} not found in cache file ",
+         Data::Dumper::Dumper([$self->cache()]), "\n"
+        ) unless $ip;
 
-RECORD:
-    for my $record (@$received) {
-        my ( $tag, $value ) = @{$record}{qw(field value )};
+    return $ip->{ip};
+}
+# ......................................................................
+#
+sub ipmi_power_utility {
+    my $self    = shift;
+    my ( $cmd ) = @_;
 
-        my ( $controller, $drive ) = $self->parse_dev( $record->{dev} );
+    my $shell = join ' ', ($self->bindir . $SLASH . $self->confdata->{ipmitool},
+                           '-h', $self->get_ip, '-c', $cmd);
 
-        # Ambient temperature will be greater than 20 C and other
-        # temps greater than ambient.
-        #
-        next RECORD unless $value > 20;
+    say "Running : $shell" if $self->verbose;
+    my $lines = `$shell 2>&1`;
+    say join "\nIPMITOOL ==> ", split "\n", $lines
+        if $self->verbose;
+    return $lines
+}
+# ......................................................................
+#
+sub fetch_host_power_status {
+    my $self = shift;
 
-        if ( $tag eq 'ROC temperature' ) {
-            $prev->{$tag}[$controller] = { value => $value, status => 'OK' };
-        }
-        elsif ( $tag = 'Drive Temperature' ) {
-            $prev->{$tag}[$controller][$drive]
-                = { value => $value, status => 'OK' };
+    my $lines = $self->ipmi_power_utility( 'status' );
+    my ($status) = $lines =~ m{Chassis  \s Power \s is \s (\w+)}xms;
+    return $status;
+}
+# ......................................................................
+#
+sub verify_host_down {
+    my $self = shift;
+
+    my $status = $self->fetch_host_power_status;
+    my $msg = exists $STATUS2MSG{$status} && $STATUS2MSG{$status};
+
+    $self->status($msg)
+        if $msg;
+    return;
+}
+# ......................................................................
+#
+sub relaunch_host {
+    my $self            = shift;
+
+    my $lines = $self->ipmi_power_utility( 'on' );
+    my ($status) = ($lines =~ m{Chassis \s Power \s Control: \s (\S+)}xms);
+
+    $self->status( 'host has power')
+        if $status eq 'Up/On';
+    return;
+}
+# ......................................................................
+#
+# When we're trying to ping the host, if we haven't reached
+# max_seconds_for_reboot ( let's call it MAX) yet, then keep looping
+# around and trying every MAX seconds. 
+#
+# If we have timed out, save the current_time in sent_last_timeout_at,
+# and send an alert saying how long the reboot been going on. In the
+# future, use the time since sent_last_timeout_at to determine when to
+# timeout again. Every MAX seconds, send a new alert.
+#
+sub has_timed_out {
+    my $self = shift;
+
+    state $max = $self->confdata->{max_seconds_for_reboot};
+    my $elapsed = time - $self->first_ping_at;
+
+    if (  $elapsed > $max ) {
+        if ( (! $self->sent_last_timeout_at ) 
+             || time - $self->sent_last_timeout_at > $max ) {
+            $self->sent_last_timeout_at( time );
+            $self->elapsed($elapsed);
+            return;    # timed out, return total elapsed time.
         }
         else {
-            warn(
-                "Unexpected tag '$tag' in " . __PACKAGE__ . "::init_prev()\n" );
+            $self->elapsed(0);
+            return;             # false, keep running
         }
     }
-    $prev->{summary}{status} = 'OK';
-    $prev->{summary}{value}  = 0;
-
-    return $prev;
 }
-
-sub process_all_raid {
+# ......................................................................
+#
+sub ping_host {
     my $self = shift;
-    my ($received) = @_;
 
-    state $i = 1;
-    state $verbose = ( ( $self->verbose && $self->verbose >= 2 )
-                       || grep {/process_all_raid/} $ENV{VERBOSE} );
+    my $shell = $self->confdata->{ping} . " -c 1 " . $self->get_ip;
 
-    my ( $info, $prev ) = ( $self->confdata, $self->prev );
-    $prev ||= $self->init_prev($received);
+    say "Running : $shell" if $self->verbose;
+    my @lines = split "\n", `$shell`;
+   
+    say join "\nPing -> ", @lines if $self->verbose;
+    my ($num) = ($lines[4] =~ m{([\d.]+)% \s packet \s loss}xms);
 
-    state $meta = { name => $info->{host},
-                    ip   => $info->{ip},
-                    type => $info->{type}, };
+    return $num == 0;
+}
+# ......................................................................
+#
+# There are three possibilities:
+#     1) The host is still coming up. In this case, loop around for
+#     another 30 seconds and try again.
+#     2) The host is pingable. Report success. Yippee!
+#     3) We've run out of time, and the host isn't up. Boo! Hiss!
+#     Report failure. but keep trying, send message every N minutes.
+#
+sub ping_host_until_OK_or_timeout {
+    my $self            = shift;
 
-    for my $record (@$received) {
-        my ( $tag, $value ) = @{$record}{qw( field value )};
-        my $rec_meta = $info->{$tag};
+    
+    $self->first_ping_at( time ) unless $self->first_ping_at;
 
-        my ( $controller, $drive ) = $self->parse_dev( $record->{dev} );
-        my ( $prev_value, $prev_status )
-            = defined $drive
-            ? @{ $prev->{$tag}[$controller][$drive] }{qw(value status)}
-            : @{ $prev->{$tag}[$controller] }{qw(value status)};
+    my $pingable        = $self->ping_host;
 
-        # Calculate status and message.
-        #
-        say Data::Dumper->Dump(
-                  [ $i++, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
-            if $verbose;
-
-        my $args = { tag         => $tag,
-                     value       => $value,
-                     rec_meta    => $rec_meta,
-                     prev_status => $prev_status,
-                     prev_value  => $prev_value,
-                     metadata    => $meta,
-                     dev         => $record->{dev}, };
-
-        my ( $status, $newvalue ) = $self->eval_status($args);
-
-        if ( defined $drive ) {
-            @{ $prev->{$tag}[$controller][$drive] }{qw(value status)}
-                = ( $newvalue || $value, $status );
-        }
-        else {
-            @{ $prev->{$tag}[$controller] }{qw(value status)}
-                = ( $newvalue || $value, $status );
-
-        }
+    if ( $pingable ) {
+        $self->status('host is pingable');
     }
-    $self->prev($prev);
-    return;
-}
-
-sub raid_request {
-    my $self = shift;
-
-    my (@args) = @_;
-
-    my $cmd = $self->bindir . $SLASH . $self->confdata()->{query};
-    local $LIST_SEPARATOR = $SPACE;
-    $cmd .= " @args" if @args;
-    say "raid cmd is $cmd" if grep {/raid_query/} $ENV{VERBOSE};
-
-    my @data = `$cmd`;
-
-    # less than 10 lines is an error message rather than real data
-    #
-    if ( not @data
-         || 10 >= @data ) {
-
-        my $info = $self->confdata;
-        my $args = { table              => $info->{db}{table}{other},
-                     with_node_table_id => 'node_id',
-                     args               => {
-                               target_name  => $info->{host},
-                               target_type  => $info->{type},
-                               target_extra => $info->{ip},
-                               value        => $info->{host},
-                               units        => '',
-                               field        => 'RAID fetch data',
-                               status       => 'CRISIS',
-                               msg_tag  => 'AN-RAID-Temp raid_request() failed',
-                               msg_args => "errormsg=" . join "\n",
-                               @data,
-                             }, };
-
-        $self->insert_raw_record($args);
-
-        $args->{table} = $info->{db}{table}{alerts};
-        $self->insert_raw_record($args);
-    }
-
-    return \@data;
-}
-
-sub extract_controller_metadata {
-    my $self = shift;
-
-    my ( $response, $N ) = @_;
-
-    my ($roc_sensor) = grep {/Temperature Sensor for ROC = /} @$response;
-    my $value = ( split ' = ', $roc_sensor )[1];
-    chomp $value;
-    $self->confdata()->{controller}{$N}{sensor} = $value;
-
-    my ($drive_counts) = grep {/Physical Drives = (\d+)/} @$response;
-    $value = ( split ' = ', $drive_counts )[1];
-    chomp $value;
-    $self->confdata()->{controller}{$N}{drives} = $value;
-}
-
-sub get_controller_temp {
-    my $self = shift;
-
-    state $maxN = $self->confdata()->{controller_count} - 1;
-
-    my $received;
-    for my $N ( 0 .. $maxN ) {
-        my $response = $self->raid_request( 'controller', $N );
-
-        $self->extract_controller_metadata( $response, $N )
-            unless exists $self->confdata()->{controller}{$N};
-
-        my ($roc_temp) = grep {/ROC temperature\(Degree /} @$response;
-        my $delimiters = qr{
-                             \s=\s # equal sign embedded in spaces
-                              |	   # OR
-                              [()] # opening or closing partheses
-                           }xms;
-        my @temp = grep {/\S/} split /$delimiters/, $roc_temp;
-        chomp @temp;
-        push @$received,
-            { field => $temp[0],
-              units => $temp[1],
-              value => $temp[2],
-              dev   => "controller=$N" };
-    }
-    return $received;
-}
-
-sub extract_drive_metadata {
-    my $self = shift;
-
-    my ( $response, $N ) = @_;
-
-    my @names = grep {/Drive.*State :/} @$response;
-
-    for my $drive (@names) {
-        my $dev = ( split /\s/, $drive )[1];
-        push @{ $self->confdata()->{controller}{$N}{drive} }, { name => $dev };
+    else {
+        $self->status( 'reboot timed out' )
+            if $self->has_timed_out;
     }
     return;
 }
-
-sub get_drive_temp {
+# ......................................................................
+#
+sub report_host_status_to_boss {
     my $self = shift;
 
-    state $maxN = $self->confdata()->{controller_count} - 1;
 
-    my $received;
-    for my $N ( 0 .. $maxN ) {
-        my $response = $self->raid_request( 'drives', $N );
-        $self->extract_drive_metadata( $response, $N )
-            unless exists $self->confdata()->{controller}{$N}{drive};
+    my $host = $self->host;
+    my $status
+        = ( $self->status_host_is_pingable ? 'OK'
+            : $self->status_host_timed_out ? 'TIMEOUT'
+            :                                'unknown'
+        );
+    if ( $status eq 'unknown' ) {
+        carp "unknown status '$status'.";
+        $status = 'DEAD';
+    }
 
-        my (@drive_temps) = grep {/Drive Temperature = /} @$response;
-        my $delimiters = qr{
-                             \s=\s # equal sign embedded in spaces
-                              |	   # OR
-                              [()] # opening or closing partheses
-                           }xms;
-        my $idx = 0;
-        for my $drive (@drive_temps) {
-            my @temp = grep {/\S/} split /$delimiters/, $drive;
-            $temp[1] =~ m{(\d+)(\w)};
+    my $msg_args = "host=$host";
+    $msg_args .= "elapsed=" . $self->elapsed
+        if $self->elapsed;
+    my $record = { table => $self->confdata->{db}{table}{alerts},
+                   with_node_table_id => 'node_id',
+                   args               => {
+                       value             => $self->host,
+                       field             => 'node server',
+                       status            => $status,
+                       message_tag       => 'NODE_SERVER_STATUS',
+                       message_arguments => $msg_args,
+                       target_name       => 'node monitor',
+                       target_type       => $host,
+                   },
+    };
+    $self->insert_raw_record($record);
 
-            push @$received,
-                { field => $temp[0],
-                  units => $2,
-                  value => $1,
-                  dev   => "controller=$N;drive=$idx" };
-            $idx++;
+    say "set alert ", Data::Dumper::Dumper([$record]);
+    return;
+}
+# ......................................................................
+#
+sub status_host_is_down {
+    my $self            = shift;
+    return $self->status eq 'host down';
+}
+# ......................................................................
+#
+sub status_host_has_power {
+    my $self            = shift;
+    return $self->status eq 'host has power';
+}
+# ......................................................................
+#
+sub status_host_is_pingable {
+    my $self            = shift;
+    return $self->status eq 'host is pingable';
+}
+# ......................................................................
+#
+sub status_host_timed_out {
+    my $self            = shift;
+    return $self->status eq 'reboot timed out';
+}
+# ......................................................................
+#
+
+sub loop_core {
+    my $self = shift;
+
+    if ( $self->healthfile_status_shows_ok ) {
+        $self->verify_host_down
+            unless $self->status;
+        $self->relaunch_host
+	    if $self->status_host_is_down;
+	$self->ping_host_until_OK_or_timeout
+	    if $self->status_host_has_power;
+    
+        if ($self->status_host_is_pingable 
+            || $self->status_host_timed_out  ) {
+            $self->report_host_status_to_boss;
+            exit;               # All done, either success or failure!
         }
     }
-    return $received;
-}
-
-sub query_target {
-    my $self = shift;
-
-    $self->clear_summary();
-
-    # make sure $controllers & $drives can be de-referenced as arrays.
-    #
-    my $controllers = $self->get_controller_temp();
-    $controllers ||= [];
-    my $drives = $self->get_drive_temp();
-    $drives ||= [];
-
-    $self->process_all_raid( [ @$controllers, @$drives ] );
-    $self->process_summary();
-
     return;
 }
 
