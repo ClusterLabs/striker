@@ -4,33 +4,48 @@
        ---------
 
 Creating a new agent involves writing some perl code, as well as some
-configuration files, but much of the work is already done for you. I
-will describe the file structure as it exists before it is installed
-on the system, because, frankly, I haven't written the delivery
-script, yet. Anyway, you need to create / modify files in the
-undelivered file hierarchy.
+configuration files, but much of the work is already done for you.
+Code is delivered to '/usr/share/striker' into subdirectories
+'agents', 'bin' and 'lib. Configuration files and I18N message
+translation files live in'/etc/striker' subdirectories ''Config' and
+'Messages', respectively. Log files, pid files and DB alternative
+archives are in '/var/log/striker'. Health files go in the
+'/shared/status directory'. The shutdown wrapper script goes in
+'/var/www/tools', while '/var/www/home/cache' contains cluster
+information files.
 
-Everything lives under .../Striker/Scanner/.
 
-The 'scanner' file is the only file that lives directly under the
-'scanner' directory. It launches any agents it find, and handles the
-delivery of alerts.
+'/usr/share/striker' contains 'scanner' program, which is the
+supervisor for node servers, and 'dashboard', the suervisor for
+dashboards. These are mostly identical, with some differences in
+behaviour. The directory also contains some interface script for
+access to system information: 'wipmi' is a suid script for IPMI
+information, 'wstorcli' provides RAID information, and 'wipmi_power'
+accesses chassis power information. 'scanner' & 'dashboard' launche
+any agents they find, and handle the delivery of alerts.
 
 The 'agents' directory contains agents. 'random-agent' is a program
 that generates random numbers, and is intended to demonstrate the
-system. It has no purpose in a production system, but may be useful
-during configuration and testing. 'snmp_apc_ups' is an agent to
-connect to APC UPSes using SNMP.
+system. It is loaded onto the system, but not installed into
+'/usr/share/striker/agents'. It has no purpose in a production system,
+but may be useful during configuration and testing. 'snmp_apc_ups' is
+an agent to connect to APC UPSes using SNMP. 'ipmi' queries system
+ipmi information. 'raid' queries the RAID controller and
+drives. 'nodemonitor' runs only on the dashboard, and serves to revive
+node servers that have shut down.
+
+While the bin and agent files provide a command line interface, mostly
+identical to each other, the core functionality is provided by library
+modules. These all live under '/usr/share/striker/lib/AN'.
 
 The 'Config' directory contains configuration files. 'db.conf' needs
 to be accessed by every program which will connect to the databases. A
 new agent will presumably have its own configuration file, feel free
-to have multiple files, if necessary.
+to have multiple files, if necessary. Each program has a configuration
+file containing it's own specific information.
 
-The 'Docs' directory contains this file, and possibility other
-informative docummentation files.
-
-All Perl modules live under the 'lib' directory.
+The 'Docs' directory contains this guiide to the system, and
+possibility other informative docummentation files.
 
 The 'Messages' directory contains XML files mapping a specified
 language and concise message to extended message strings in multiple
@@ -39,9 +54,6 @@ languages.
 The 'MIB' folder contains the SNMP MIB file containing specifications
 for SNMP devices. Currently it contains APC's 'powernet412.mib.txt'
 file.
-
-The 'RPMS' directory contains Perl modules which are pre-requisistes for
-the Scanner system but are not easily available for RedHat EL6.
 
 The 'SQL' directory contains SQL to create the various tables required
 for the scanner system.
@@ -59,49 +71,41 @@ infrastructure ( raid ), but for snmp I appended the company providing
 the supported target device ( APC - Amemrican Power Corporation ) and
 the category of device ( UPS ).
 
-'raid' uses the AN::RAID::Temp module, which you can use as a template
-for your own module. You will write a module which inherits from
-AN::SNMP_APC_UPS. You will have the benefit of the class methods
+'raid' uses the AN::RAID::Temperature module, which you can use as a
+template for your own module. You will write a module which inherits
+from AN::SNMP_APC_UPS. You will have the benefit of the class methods
 already provided in AN::SNMP::APC_UPS and its parent class AN::Agent,
-and its parent AN::SCanner. You will simply need to implement a few
+and its parent AN::Scanner. You will simply need to implement a few
 additional routines to provide the unique functionality for your
 target, and to replace a few of the provided routines.
 
 You will need to decide what to name your module. I used
-'AN::RAID::Temp', because it processes temperatures for the RAID
-subsystem.. In terms of the physical module file, the double-colons
-('::') are interpreted as subdirectories under the 'lib' directory, so
-'AN::RAID::Temp represents a file name 'Temp.pm' located in the
-'lib/AN/RAID' directory. When you have chose a name, replace the
-existing line 23, 'use AN::RAID::Temp', with the name of your module.
+'AN::RAID::Temperature', because it processes temperatures for the
+RAID subsystem.. In terms of the physical module file, the
+double-colons ('::') are interpreted as subdirectories under the 'lib'
+directory, so 'AN::RAID::Temp represents a file name 'Temperature.pm'
+located in the 'lib/AN/RAID' directory. When you have chose a name,
+replace the existing line 23, 'use AN::RAID::Temperature', with the
+name of your module.
 
-In the 'CONSTANTS' section, at line 31, specify the name under which
+In the 'CONSTANTS' section, at line 30, specify the name under which
 the entire system is installed. All existing programs will need to be
-updated if you use a different destination.  At line 32, replace the
+updated if you use a different destination.  At line 46, replace the
 name of the configuration file $DEFAULT_CONFIG_PATH with the name of
-your configuration file. As well, provide the name for your data table
-$DATATABLE_NAME at line 49.
+your configuration file. 
 
 If you want to pass additional information to your class obect, you
 can add new entries in the $opt set of default values, and provide
 command line options to be able to set alternate values in the
-'process_args' subroutine, lines 54-75. As well, you should probably
+'process_args' subroutine, lines 68-96. As well, you should probably
 create GetOptions specifications to manually adjust the options through
-command line options. But more likely, configuration will be through the
+command line options. But mostly, configuration will be through the
 configuration file.
 
-In your 'main' routine, at line 119, change the name of class being
+In your 'main' routine, at line 114, change the name of class being
 instanciated, to use the name of your module. Use the CLASSNAME->new()
 style, the once-popular 'new CLASSNAME' can lead to errors in some
 cases and is considered unsafe.
-
-One thing worth noting in the main() routines is that when the agent
-is invoked from the scanner core program, the current directory will
-be that of the scanner. When we invoke the agent on its own, the
-current directory will be the AGENTS directory. main() changes up one
-directory to reach the scanner core directory, so remaining processing
-is the same. This may need alternate behaviour after installation, if
-the relationshipo of directories is different.
 
 Update the POD to represent your program.
 
@@ -110,49 +114,39 @@ Update the POD to represent your program.
 	The Module
 	----------
 
-Go to 'lib/AN/SNMP/' and make a copy of the 'APC_UPS.pm' file. If you
-are creating another agent which communicates using SNMP, place your
-file under teh SNMP directory. Otherwise, create a directory for your
-interface, or simply place your module directly under 'lib'AN'. Of
-yourse your package name will have to modify or drop the 'SNMP'
-component, if you are placing your file in a different directory.
+Go to 'lib/AN/RAID/' and make a copy of the 'Temperature.pm' file. If
+you are creating another agent relating to RAID, place your file under
+the RAID directory. Otherwise, create a directory for your interface,
+or simply place your module directly under 'lib'AN'. Of yourse your
+package name will have to modify or drop the 'RAID' component, if you
+are placing your file in a different directory.
 
-Change the name in line one to reflect your package, and then alter
-line 3 to subclass from 'AN::SNMP::APC_UPS ...
+Change the name in line one to reflect your package. 
+Line 3 makes the current file a subclass of 'AN::SNMP::APC_UPS',
 
      use base 'AN::SNMP::APC_UPS;
 
-If you are not using SNMP, remove the reference to the Net::SNMP
-module at line 22, and instead invoke any modules your system requires.
+You can leave that for your own file.
 
 At line 30, Class::Tiny defines the attributes of your
-class. 'AN::SNMP::APC_UPS' inherits the attributes associated with
-'AN::Agent', which is its base class, as well as adding three new
-ones:
+class. 'AN::RAID::Temperature' inherits the attributes associated with its base class,
+'AN::SNMP::APC_UPS', and on up the tree, as well as adding new attributes:
 
-	* 'snmpconf',
-	* 'snmp',
-	* 'prev'.
+	* 'prev',
+	* 'controller_count',
 
-'snmpconf' is the name of the configuration file, including the
-'Config' subdirectory it is in.
-
-'snmp' will store the contents of the configuration file.
-
-'prev' will contain values from the previous iteration of the
-processing loop, so we can compare new values from the target with
-older ones.
-
-You will want to alter these to something relevant to your target, and
-may possibly need more attributes. If you simply convert the names to
-equivalents directly suited to your target, global search-and-replace
-can simplify the change ... just be careful that 'snmp' is a subset of
-'snmpconf.
+'Controller_count' stores the number of controllers to be queried,
+while 'prev' archives the values from the previous query. to determine
+how they have changed.
 
 Class::Tiny will provide accessor functions to make it possible to get
-and set these values. If you invoke '$obj->snmpconf()', the existing
-value will be returned to your program; '$obj->snmpconf( $newvalue )'
-will store a new value.
+and set these values. If you invoke '$obj->controller_count()', the
+existing value will be returned to your program;
+'$obj->controller_count( $newvalue )' will store a new value. Look at
+AN:;SNMP::APC_UPS to see a case which requires more complicated
+initalization at construction time. 'compare' is a hash attribute, so
+the first time it is accessed, the anonymous subroutine is invoked,
+assigning an empty hash to the attribute.
 
 It is far better to use the accessors to get and set values, than to
 directly dig into the objects innards each time you want to reference
@@ -174,52 +168,53 @@ hashref fields are ignored. It then invokes the BUILD subroutine, if
 we have provided one. This is an opportunity to do any iniitialization
 which is more complicated than merely copying values. 
 
-
-The first step in the BUILD routine is to canonicalize the path to a
+Since the BUILD routine for ancestor classes is invoked, lots of
+intialization is already handled. Such initialization is split into
+inherited and non-inherited sections, but returning unless we are
+building the class associated with a file, at a certain point.  The
+first step in the BUILD routine is to canonicalize the path to a
 fully-specified path. Since the path_to_configuration_files() routine
 wil be inherited by your class, you don't have to worry about the
 difference between uninstalled and installed file hierarchies; it will
-have been handled for you.
-
+have been handled for you.Among the tasks handled by parent classes is
+reading the file-spepcific configuration file in directory 'Config'.
 The the data is read from the confriguration file, and stored in the
-'snmp' attribute.
+'confdata' attribute.
 
-Finally, some post-processing is performed on the configuration data,
-and the 'prev' attribute is configured.  If your code needs alternate
-ways to reference configuration data, say a value => key reverse
-mapping, you don't want to process this over and over each time the
-processing routine is called. Neither do you want to have it in the
-configuration file. Storing both k => v and v => k requires humans to
-do computer work, and invites errors. BUILD() is the approriate time
-to generate the derived values.
+In the SNMP agent, you'll note that specific OID strings need to be
+passed for queries, but then they need to mapped back to strings for
+display. BUILD is a good place for buikding a reverse map hash of the
+OID values we are using.
 
     The Main Loop
     -------------
 
-Back in the program, snmp_apc_ups, we have a 'main() routine. It fixes
-the current directory, processes command line a rguments, creates an
+Back in the program, raid, we have a 'main() routine. It processes command line a rguments, creates an
 object, runs the agent, and finally handles a shutdown. The 'run()'
 routine provided by the Scanner module does some preparation which is
-not approrpriate for agents, so the Agent module replaces that run(0
-with it's own version. This is suitable for all descendents. It
+not approrpriate for agents, so the Agent module replaces that 'run'
+with its own version. This is suitable for all descendents. It
 prepares the databases, creates a marker file to communicate with the
 scanner, and then enteres an (almost) infinite loop, which is provided
 by Scanner. The important aspect of that routine is that it invokes a
-routine, loop_core().
+routine, 'loop_core'.
 
-Each module can re-implement loop_core(), to carry out whatever tasks
+Each module can re-implement 'loop_core', to carry out whatever tasks
 it requires. When the tasks are done, the infinite loop will handle
 waiting the appropriate time to run again, and if in --verbose mode,
-will print out some loop information.
+will print out some loop information. The 'loop_core' for
+AN::SNMP::APC_UPS consists of a single routine, 'query_target', so in
+AN::RAID:Temperature we merely re-implement query_target. Which level
+to replace is a matter of choice.
 
 Looking at AN::SNMP::APC_UPS::loop_core(), we see that all it does is
 call one routine, to query the target and process the received
 information. If all you do is invoke a routine called 'quary_target,
 you can re-use the inherited loop_core(), you don't have to write
-anything. Or if it makes more sense, you can call one or more routiens
+anything. Or if it makes more sense, you can call one or more routines
 with whatever names you prefer.
 
-query_target() will need your own implementation, unless you are
+'query_target()' will need your own implementation, unless you are
 accessing an SNMP target.  In the current case, we loop over all the
 targets. There are only two UPSes, but there could conceivably by
 numerous instances of some target. 0, 1, or many, we handle all of
@@ -233,7 +228,7 @@ In this case, we iterate over the received data, fetch some relevant
 metadata from the config file, as well as the previous iterationj's
 value and status, and pass those into a routine, eval_status().
 
-There are four different cases to handle in the SNMP data, as
+There are four different cases to handle in any data, as
 indicated by the Configuration file information.
 
       1) OK values are less than WARNING values which are less than
@@ -254,15 +249,63 @@ indicated by the Configuration file information.
       two if it is needed. These are passed on the
       eval_discrete_status().
 
-You can probably use the eval_status() inherited from the parent
-class, if the configuration files uses 'ok_min', 'ok_max', 'warn_min'
-and 'warn_max' variables. Otherwise it should be simple to come up
-with a variation. The current implementation uses a trick: invoking a
-routine with an & prefix, and not supplying any arguments, re-uses the
-existing @_. The same arguments are passed on as are received, so
-invoking them this way saves redundancy.
+You can reuse the eval_status() inherited from the parent class, if
+the configuration files uses 'ok', and 'warn' variables. 'ok marks the
+boundary between OK and WARNING states, 'warn' the boundary between
+'WARNING' and 'CRISIS'. Otherwise it should be simple to come up with
+a your classification routine. The current implementation uses a
+common Perl trick: invoking a routine with an & prefix, and not
+supplying any arguments, re-uses the existing @_. The same arguments
+are passed on as are received, so invoking them this way saves
+redundancy.
 
-The crucuial activity in each of the four eval routiens is to figure
+Invoke '$self->eval_status()' with a hash containing something like
+the following, and it will take care of storing the raw records, and
+creating an alerts table entry if required.
+
+  DB<4> x $args
+0  HASH(0x5415c38)
+   'dev' => 'controller=0'
+   'metadata' => HASH(0x5416130)
+      'ip' => '10.255.4.251'
+      'name' => 'an-c07n01.alteeve.ca'
+      'type' => 'RAID subsystem'
+   'prev_status' => 'OK'
+   'prev_value' => 77
+   'rec_meta' => HASH(0x52b6bf8)
+      'hysteresis' => 1
+      'ok' => 50
+      'units' => 'degrees C'
+      'warn' => 60
+   'tag' => 'ROC temperature'
+   'value' => 77
+
+The 'metadata' is obtained from the config file and identifies the
+category of data presented. The 'dev' field is used to specify which
+device within the category is associated with the current data; for a
+drive it would look like 'controller=0;drive=0'.
+
+'prev_status' and 'prev_value' are used to track the change of
+values. In particular, an OK record should not generate an alert, but
+if it represents a WARNIGN or CRISIS clearing up, then the OK should
+indeed be passed on.
+
+'rec_meta' also comes from the config file, but applies to a
+particular data being processed in this record. 'ok' and 'warn'
+indicate the status transition boundaries, 'hysteresis, indicates how
+much up and down wandering should be ignored at transition
+points. That is, a value at the transition can generate a lot of noise
+by varying up and down a tiny bit. By ignoring minor variations in the
+value wandering up and down by half of this hysteresis value, the
+bigger picture becomes clearer. 'units' is used in human-readable
+messages.
+
+Finally the 'tag' and 'value' indicate what is being processed, and
+what the current value is. In this case the transition points have
+been seet artificially low, to force a CRISIS in the controllers,
+which normally run hot.
+
+The crucial activity in each of the four eval routines is to figure
 out what status a current situation represents. Note that I look at
 the previous status to add or subtract a small hysteresis to the
 boundary. This prevents noise when a variable hovers just near the
@@ -279,7 +322,7 @@ are stored as 'unneeded', or 'needed', rather than as '1' or '2'. As
 well, one value is received as '43 minutes : 00:00', which is
 simplified to '43'.
 
-The final action of the eval routiens is to store the information in
+The final action of the eval routines is to store the information in
 the database. AN::Agent::insert_raw_record handles this for us, we
 just need to tell it the name of the table, the name of the field with
 a foreign key into the nodes table, and the args, a hash of field
@@ -287,10 +330,10 @@ names and their values. It is up to the user to call
 AN::Agent::insert_raw_record once to store every record into the
 agent's own data table, as well as to store data into the 'alerts'
 table if the status is not OK, or if the status has just returned to
-'OK' from not 'OK'. For snmp_apc_ups, the agent data table has the ame
+'OK' from not 'OK'. For raid, the agent data table has mostly the same
 structure as the alerts table, so I re-use the same arguments,
-changing only the table name. Other agents may need a more complicated
-behaviour.
+changing only the table name and a couple of fields. Other agents may
+need a more complicated behaviour.
 
 The msg tags you define in the Messages directory may have variable
 slots to be filled in with specific values. The $message_arguments field is the
