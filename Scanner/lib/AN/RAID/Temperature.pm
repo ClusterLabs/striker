@@ -27,7 +27,7 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
-use Class::Tiny qw( confpath confdata prev controller_count );
+use Class::Tiny qw( prev controller_count );
 
 # ======================================================================
 # CONSTANTS
