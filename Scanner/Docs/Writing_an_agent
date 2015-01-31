@@ -1,0 +1,270 @@
+                           Writing an Agent
+                           ----------------
+
+
+In quick and simple terms, an agent is a program which is launched by
+the scanner main program, 'scanner', refered to as the scanCore. The
+agent queries some subsystem and extracts a nunmber of values, such as
+cpu temperature or remaining battery life. The raw records are stored
+in a database associated with that agent. Any extreme values are
+stored in an 'alerts' table shared with other agents. Records in this
+table are read by the scanCore twice a minute, and actions taken based
+on their values. Actions can including sending email or SMS to
+administrators or shutting down a miss-behaving system.
+
+Besides one record for each 'errant' variable, the agent should send a
+summary record once each loop, presenting a weighted sum of the number
+of abnormal variables it has seen. As well, when the agent starts up,
+it creates a record in the 'nodes' table to indicate it is
+running. This nodes table entry is references by the other records as
+a foreign key, to indicate whhich instance of an agent generated a
+record.
+
+#
+======================================================================
+Note, in the following, 'pud' is a trivial script I use to provide
+'psql -U postgres -d scanner'. It saves repetitive typing.
+
+$ pud -x -c "select * from node limit 1"
+-[ RECORD 1 ]-+------------------------------
+node_id       | 1
+agent_name    | nodemonitor
+agent_host    | an-a07n02
+pid           | 9773
+target_name   | 
+target_type   | 
+target_ip     | 
+status        | running
+modified_user | 0
+modified_date | 2015-01-29 21:38:16.889098-05
+
+#
+======================================================================
+The RAID subsystem has two tables for raw data, one for controllers,
+one for drives. You may have more, or just one.
+
+$ pud -x -c "select * from raid_controllers limit 1"
+-[ RECORD 1 ]-----+------------------------------
+id                | 1
+node_id           | 10
+target            | an-c07n01.alteeve.ca
+field             | ROC temperature
+value             | 79
+units             | degrees C
+status            | CRISIS
+message_tag       | Value crisis
+message_arguments | value=79;controller=0
+timestamp         | 2015-01-30 09:28:20.209896-05
+
+# ======================================================================
+
+$ pud -x -c "select * from raid_drives limit 1"
+-[ RECORD 1 ]-----+------------------------------
+id                | 1
+node_id           | 10
+target            | an-c07n01.alteeve.ca
+field             | Drive Temperature
+value             | 27
+units             | degrees C
+status            | OK
+message_tag       | 
+message_arguments | controller=0;drive=0
+timestamp         | 2015-01-30 09:28:20.621607-05
+
+# ======================================================================
+An 'ordinary alert record'.
+
+$ pud -x -c "select * from alerts  where id = 3"
+-[ RECORD 1 ]-----+------------------------------
+id                | 3
+node_id           | 10
+target_name       | an-c07n01.alteeve.ca
+target_type       | RAID subsystem
+target_extra      | 10.255.4.251
+field             | ROC temperature
+value             | 79
+units             | degrees C
+status            | CRISIS
+message_tag       | Value crisis
+message_arguments | value=79
+timestamp         | 2015-01-30 09:28:20.588365-05
+
+# ======================================================================
+A 'summary' alert.
+
+$ pud -x -c "select * from alerts  where id = 10"
+-[ RECORD 1 ]-----+------------------------------
+id                | 10
+node_id           | 10
+target_name       | an-c07n01.alteeve.ca
+target_type       | RAID subsystem
+target_extra      | 10.255.4.251
+field             | summary
+value             | 1
+units             | 
+status            | WARNING
+message_tag       | Value warning
+message_arguments | value=1
+timestamp         | 2015-01-30 09:29:50.878015-05
+
+# ======================================================================
+The /etc/striker/Config directory
+
+[tom@an-a07n01 Config]$ ls -l
+total 32
+-rw-r--r--. 1 root root  379 Jan 26 12:32 db.conf
+-rw-r--r--. 1 root root 5187 Jan 26 12:32 ipmi.conf
+-rw-r--r--. 1 root root 1184 Jan 26 12:32 raid.conf
+-rw-r--r--. 1 root root  900 Jan 26 12:32 scanner.conf
+-rw-r--r--. 1 root root 9111 Jan 26 12:32 snmp_apc_ups.conf
+
+# ======================================================================
+The db configuration file passed by in to the agent.
+
+[tom@an-a07n01 Config]$ cat db.conf 
+db::1::name      = scanner
+db::1::db_type   = Pg
+db::1::host      = 10.255.4.251
+#db::1::host      = localhost
+db::1::port      = 5432
+db::1::user      = alteeve
+db::1::password  = alteeve
+
+db::2::name      = scanner
+db::2::db_type   = Pg
+db::2::host      = 10.255.4.252
+#db::2::host      = localhost
+db::2::port      = 5432
+db::2::user      = alteeve
+db::2::password  = alteeve
+
+#
+======================================================================
+The raid config file. The 'name' tag references the prefix used for
+the remaining records. In the existing implementation this is used so
+all agents wind up with their custom data available as a 'confdata'
+attribute. You don't have to do this, it's your private data not used
+by anyone else, but it might be useful.
+
+[tom@an-a07n01 Config]$ cat raid.conf 
+# RAID config file
+#
+
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name = raid
+
+# Agent metadata
+#
+raid::db::table::ROC temperature   = raid_controllers
+raid::db::table::Drive Temperature = raid_drives
+raid::db::table::summary           = raid_controllers
+raid::db::table::other 		   = raid_controllers
+raid::db::table::alerts            = alerts
+
+raid::host  = an-c07n01.alteeve.ca
+raid::ip    = 10.255.4.251
+raid::type  = RAID subsystem
+raid::query = wstorcli
+
+# specifications for the summary data & various attributes
+#
+raid::summary::max        = 100
+raid::summary::ok         = 0
+raid::summary::warn       = 4
+raid::summary::hysteresis = 0
+
+
+raid::Drive Temperature::ok         =  40
+raid::Drive Temperature::warn       =  50
+raid::Drive Temperature::hysteresis =   1
+raid::Drive Temperature::units      = degrees C
+
+raid::ROC temperature::ok         =  50
+raid::ROC temperature::warn       =  60
+raid::ROC temperature::hysteresis =   1
+raid::ROC temperature::units      = degrees C
+
+
+# ----------------------------------------------------------------------
+# End of file.
+
+# ======================================================================
+The Messages directory.
+
+[tom@an-a07n01 Messages]$ ls -l
+total 20
+-rw-r--r--. 1 root root 1728 Jan 26 12:32 ipmi.xml
+-rw-r--r--. 1 root root 1728 Jan 26 12:32 raid.xml
+-rw-r--r--. 1 root root 1570 Jan 26 12:32 random-agent.xml
+-rw-r--r--. 1 root root 1523 Jan 26 12:32 scanner.xml
+-rw-r--r--. 1 root root 2002 Jan 26 12:32 snmp_apc_ups.xml
+
+# ======================================================================
+The raid xml file.
+
+[tom@an-a07n01 Messages]$ cat raid.xml 
+<?xml version="1.0" encoding="UTF-8"?>
+<string>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Tom Legrady (tom@alteeve.ca) for the Striker.</key>
+		
+		<!-- Branding strings - Most likely to be changed by a reseller. -->
+		<key name="brand_0001">Alteeve's Niche!</key>
+		
+		<!-- Text messages used in config files and such. -->
+		<key name="Value changed">value changed from '#!variable!prevvalue!#' => '#!variable!value!#'</key>
+		<key name="Value warning">value '#!variable!value!#' in Warning range</key>
+		<key name="Value crisis">value '#!variable!value!#' in Crisis range</key>
+		<key name="Unexpected value">value '#!variable!value!#' outside expected range</key>
+		<key name="AN-RAID-Temp connect failed">Could not connect to Net::SNMP session</key>
+		<key name="AN-RAID-Temp get_request() failed">Net::SNMP->get_request() failed</key>
+		
+		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
+		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
+		<key name="legal_0003">Release version #!conf!sys::version!#</key>
+	</lang>
+
+	<!-- Japanese -->
+	<lang name="ja" long_name="日本語">
+		<lang_comment>Tom legrady、(tom@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
+	</lang>
+
+	<!-- French -->
+	<lang name="fr" long_name="Français">
+		<lang_comment>Géré par Tom Legrady (tom@alteeve.ca) pour Striker.</lang_comment>
+	</lang>
+</string>
+
+# ======================================================================
+The /var/log/striker/ metadata file generated by a raid process
+running on node server 'an-a07n01', stored in file 'metadata.an-a07n01-raid'.
+
+It references the two databases mentioned in the db.conf file,
+reporting what node_id it's records have in each table.
+
+[tom@an-a07n01 striker]$ cat metadata.an-a07n01-raid
+db::name=raid
+db::pid=22649
+db::hostname=an-a07n01
+db::datatable_name=alerts
+db::1::node_table_id=123
+db::2::node_table_id=83
+
+# ======================================================================
+
+
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
+# ======================================================================
