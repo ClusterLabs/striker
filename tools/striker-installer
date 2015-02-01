@@ -451,7 +451,7 @@ my $conf = {
 		tarball_dir		=>	"striker-#!striker_version!#",
 	},
 	url		=>	{
-		git_master	=>	"https://codeload.github.com/digimer/striker/zip/master",
+		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
 		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
 	},
 	# This will be changed to have two of each link if four NICs are found.
@@ -1380,7 +1380,7 @@ sub configure_gui
 		print "- Disabling 'NetworkManager'\n";
 		my $shell_call = "chkconfig NetworkManager off";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1398,7 +1398,7 @@ sub configure_gui
 		print "- Enabling 'network'\n";
 		my $shell_call = "chkconfig network on";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3655,6 +3655,7 @@ sub download_striker
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
 		$conf->{directory}{source} = "./striker-master";
+		#print "[ Debug ] - directory::source: [$conf->{directory}{source}]\n";
 	}
 	else
 	{
