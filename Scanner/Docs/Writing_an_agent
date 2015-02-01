@@ -458,4 +458,54 @@ drwxr-xr-x. 3 root root 4096 Jan 17 11:26 ..
 health = warning
 
 # ======================================================================
+The 'alert_listeners' table in the database is the mechanism by which 
+users register to be notified of alert events.
+
+[tom@an-m01 ~]
+$ pud -x -c "select * from alert_listeners"
+-[ RECORD 1 ]+------------------------------
+id           | 1
+name         | screen
+mode         | Screen
+level        | DEBUG
+contact_info | screen
+language     | en_CA
+added_by     | 0
+updated      | 2014-12-11 14:42:13.273057-05
+-[ RECORD 2 ]+------------------------------
+id           | 2
+name         | Tom Legrady
+mode         | Email
+level        | DEBUG
+contact_info | tom@alteeve.ca
+language     | en_CA
+added_by     | 0
+updated      | 2014-12-11 16:54:25.477321-05
+-[ RECORD 3 ]+------------------------------
+id           | 3
+name         | Health Monitor
+mode         | HealthMonitor
+level        | WARNING
+contact_info | 
+language     | en_CA
+added_by     | 0
+updated      | 2015-01-14 14:08:15-05
+
+from lib/AN/OneAlert.pm:
+
+const my $LISTENS_TO => {
+                  CRISIS  => { OK => 0, DEBUG => 0, WARNING => 0, CRISIS => 1 },
+                  WARNING => { OK => 0, DEBUG => 0, WARNING => 1, CRISIS => 1 },
+                  DEBUG   => { OK => 0, DEBUG => 1, WARNING => 1, CRISIS => 1 },
+                  OK      => { OK => 1, DEBUG => 1, WARNING => 1, CRISIS => 1 },
+                        };
+
+Users that register to be notified of CRISIS events receive only
+those. WARNING listeners receive both WARNIGN and CRISIS. DEBUG
+listeners receive both those as well as DEBUG events, which OK
+listeners receive all events.
+
+The OK that clears a WARNING or CRISIS is an exception, and is passed
+on to the more limited listeners.  #
+======================================================================
 # End of File
