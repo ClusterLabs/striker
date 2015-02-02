@@ -161,7 +161,8 @@ sub add_alert {
     return
         if ($old                                          # return if no change.
             && $value->status eq $old->status
-            && $value->message_tag eq $old->message_tag );
+            && $value->message_tag eq $old->message_tag )
+            && $value->target_extra != 'override';
     $self->alerts()->{$key1}{$key2} = $value;
     $self->clear_alert_handled( $key1, $key2 );
     return 1;
@@ -257,7 +258,7 @@ sub set_alert {
                  target_name       => $target_name,
                  target_type       => $target_type,
                  target_extra      => $target_extra,
-                 other             => ( @others ? \@others : '' ), };
+                 other             => ( @others ? \@others : [] ), };
     $self->add_alert( $src, $field, AN::OneAlert->new($args) );
     return;
 }
@@ -368,9 +369,10 @@ sub handle_alerts {
             for my $subkey ( keys %{ $alerts->{$key} } ) {
                 my $alert = $alerts->{$key}{$subkey};
                 next ALERT if $alert->has_this_alert_been_reported_yet();
-                next ALERT if $self->handled_alert( $key, $subkey );
-                next ALERT unless $alert->listening_at_this_level($listener);
-
+                if ( ! $alert->override ) {
+                    next ALERT if $self->handled_alert( $key, $subkey ); 
+                    next ALERT unless $alert->listening_at_this_level($listener);
+                }
                 $lookup->{key} = $alert->message_tag();
                 if ( $alert->message_arguments()
                      && length $alert->message_arguments() ) {

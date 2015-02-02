@@ -12,7 +12,8 @@
 		<key name="OLD_PROCESS_STALLED">Old process running but stalled.</key>
 		<key name="OLD_PROCESS_CRASH">Old process crashed.</key>
 
-		<key name="'NODE_SERVER_DYING'">The node server on host '#!variable!host!#'  has been shut down.</key>
+		<key name="NODE_SERVER_STATUS">The node server on host '#!variable!host!#' is not running.</key>
+		<key name="NODE_SERVER_STATUS_OK">The node server on host '#!variable!host!#' is running again.</key>
 
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
@@ -22,7 +23,7 @@
 
 	<!-- Japanese -->
 	<lang name="ja" long_name="日本語">
-		<lang_comment>Tom legrady、(tom@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
+		<lang_comment>Tom Legrady、(tom@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
 	</lang>
 
 	<!-- French -->
