@@ -999,6 +999,7 @@ sub configure_gui
 		# Create the ssh key if needed.
 		if (not -e "/home/$striker_user/.ssh/id_rsa")
 		{
+			### BUG: This isn't working...
 			print "- Creating the SSH RSA key for: [$striker_user]\n";
 			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";

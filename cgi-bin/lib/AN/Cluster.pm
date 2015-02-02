@@ -89,10 +89,10 @@ sub call_gather_system_info
 	
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
 	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
-	binmode $fh, ":utf8:";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	binmode $file_handle, ":utf8:";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -110,7 +110,7 @@ sub call_gather_system_info
 			#record($conf, "$THIS_FILE ".__LINE__."; interface::${interface}::$key: [$conf->{interface}{$interface}{$key}]\n");
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	record($conf, "$THIS_FILE ".__LINE__."; sys::hostname: [$conf->{sys}{hostname}]\n");
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
@@ -730,10 +730,10 @@ sub read_hosts
 	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{hosts}";
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{hosts}";
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -762,7 +762,7 @@ sub read_hosts
 			}
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -776,11 +776,11 @@ sub read_ssh_config
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ssh_config}";
-	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$sc]\n");
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{ssh_config}";
+	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$shell_call]\n");
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -807,7 +807,7 @@ sub read_ssh_config
 			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> port: [$conf->{hosts}{$this_host}{port}]\n");
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -818,19 +818,19 @@ sub copy_file
 	my ($conf, $source, $destination) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; copy_file(); source: [$source], destination: [$destination]\n");
 	
-	my $output = "";
-	my $sc     = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $output     = "";
+	my $shell_call = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		$output .= "$line\n";
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	if (not -e $destination)
 	{
@@ -1339,7 +1339,7 @@ sub show_common_config_section
 	#record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
 	# If both nodes are up, enable the 'Push' button.
 	my $push_button = "";
-	if ($conf->{cgi}{anvil})
+	if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 	{
 		$push_button =  "&nbsp; ";
 		$push_button .= AN::Common::template($conf, "common.html", "enabled-button", {
@@ -1499,8 +1499,15 @@ sub push_config_to_anvil
 			
 			# Make sure there is an '/etc/an' directory on the node
 			# and create it, if not.
-			my $sc = "if [ ! -e '/etc/an' ]; then mkdir /etc/an; fi; ls /etc/an";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $striker_directory = ($conf->{path}{striker_conf} =~ /^(.*)\/.*$/)[0];
+			record($conf, "$THIS_FILE ".__LINE__."; striker_directory: [$striker_directory]\n");
+			my $shell_call        = "if [ ! -e '$striker_directory' ]; 
+						then 
+							mkdir -p $striker_directory;
+							echo 'Create: [$striker_directory]';
+						fi;
+						ls $striker_directory";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			my ($error, $ssh_fh, $output) = remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -1508,7 +1515,7 @@ sub push_config_to_anvil
 				password	=>	$conf->{'system'}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	0,
-				shell_call	=>	$sc,
+				shell_call	=>	$shell_call,
 			});
 			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -1526,14 +1533,18 @@ sub push_config_to_anvil
 					});
 				}
 			}
-			$error  = "";
-			$output = "";
-			$sc     = "";
+			$error      = "";
+			$output     = "";
+			$shell_call = "";
 			
 			# Backup, but don't care if it fails.
 			my $backup_file = "$config_file.$date";
-			$sc = "if [ -e \"$config_file\" ]; then cp $config_file $backup_file; fi; ls $backup_file";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			   $shell_call  = "if [ -e \"$config_file\" ]; 
+					then 
+						cp $config_file $backup_file; 
+					fi; 
+					ls $backup_file";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			($error, $ssh_fh, $output) = remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -1541,7 +1552,7 @@ sub push_config_to_anvil
 				password	=>	$conf->{'system'}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	1,
-				shell_call	=>	$sc,
+				shell_call	=>	$shell_call,
 			});
 			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -1575,19 +1586,19 @@ sub push_config_to_anvil
 				row	=>	"#!string!row_0131!#",
 				message	=>	"$message",
 			});
-			$sc = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
+			$shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			# This is a dumb way to check, try a test upload and see if it fails.
 			if ( -e "/usr/bin/expect" )
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
 				AN::Common::create_rsync_wrapper($conf, $node);
-				$sc = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
+				$shell_call = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			my $file_handle = IO::Handle->new();
+			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $no_key = 0;
-			while(<$fh>)
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
@@ -1595,7 +1606,7 @@ sub push_config_to_anvil
 					line	=>	$line,
 				});
 			}
-			$fh->close;
+			$file_handle->close;
 			print AN::Common::template($conf, "config.html", "close-push-entry");
 		}
 		print AN::Common::template($conf, "config.html", "close-table");
@@ -1678,12 +1689,12 @@ sub create_backup_file
 	   $conf->{sys}{backup_url} =~ s/#!date!#/$date/;
 	
 	# Now write out the file.
-	my $fh = IO::Handle->new();
-	my $sc = "$backup_file";
-	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$sc]\n");
-	open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
-	print $fh $config_data;
-	$fh->close();
+	my $file_handle         = IO::Handle->new();
+	my $shell_call = "$backup_file";
+	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$shell_call]\n");
+	open ($file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $config_data;
+	$file_handle->close();
 	
 	return(0);
 }
@@ -5862,10 +5873,10 @@ sub read_conf
 	my ($conf) = @_;
 	
 	$conf->{raw}{striker_conf} = [];
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{striker_conf}";
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{striker_conf}";
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -5884,7 +5895,7 @@ sub read_conf
 		next if (not $var);
 		AN::Common::_make_hash_reference($conf, $var, $val);
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -6159,17 +6170,17 @@ sub record
 {
 	my ($conf, $message)=@_;
 	
-	my $fh = $conf->{handles}{'log'};
-	if (not $fh)
+	my $file_handle = $conf->{handles}{'log'};
+	if (not $file_handle)
 	{
-		$fh = IO::Handle->new();
-		$conf->{handles}{'log'} = $fh;
-		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening Striker log at ".get_date($conf, time)."\n";
+		$file_handle = IO::Handle->new();
+		$conf->{handles}{'log'} = $file_handle;
+		open ($file_handle, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
 	}
 	my $time = get_date($conf, time, 1);
-	print $fh "$time $message";
-	$fh->flush;
+	print $file_handle "$time $message";
+	$file_handle->flush;
 	
 	return (0);
 }
@@ -6695,11 +6706,11 @@ sub ping_node
 	my ($conf, $node) = @_;
 	
 	my $exit;
-	my $fh = IO::Handle->new;
-	my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new;
+	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -6709,7 +6720,7 @@ sub ping_node
 			$exit = $1;
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 	
 	if ($exit)
@@ -6723,10 +6734,10 @@ sub ping_node
 		{
 			$node .= ".remote";
 		}
-		my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
+		my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -6736,7 +6747,7 @@ sub ping_node
 				$exit = $1;
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 		record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 		
 		if ($exit)
@@ -7175,17 +7186,17 @@ sub get_rsa_public_key
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; rsa_public_file: [$rsa_public_file] doesn't exist, trying to create it now.\n");
 		
-		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-		while(<$fh>)
+		my $shell_call = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
-		$fh->close();
+		$file_handle->close();
 		
 		if (not -e $rsa_public_file)
 		{
@@ -7193,11 +7204,11 @@ sub get_rsa_public_key
 		}
 	}
 	
-	my $sc = $rsa_public_file;
-	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]. Error was: $!\n";
-	while(<$fh>)
+	my $shell_call = $rsa_public_file;
+	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]. Error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line =  $_;
@@ -7221,17 +7232,17 @@ sub get_hostname
 	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
 
 	my $hostname;
-	my $sc = "$conf->{path}{hostname}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $shell_call = "$conf->{path}{hostname}";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		$hostname = $_;
 		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	return($hostname);
@@ -9129,11 +9140,11 @@ sub check_if_on
 			if ($local_access)
 			{
 				# I can reach it directly
-				my $sc = "$conf->{node}{$node}{info}{power_check_command} -o status";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-				while(<$fh>)
+				my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				my $file_handle = IO::Handle->new();
+				open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+				while(<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
@@ -9154,7 +9165,7 @@ sub check_if_on
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
 					}
 				}
-				$fh->close();
+				$file_handle->close();
 			}
 			else
 			{
@@ -9195,11 +9206,11 @@ sub on_same_network
 	my $local_access = 0;
 	my $target_ip;
 	
-	my $sc = "$conf->{path}{gethostip} -d $target_host";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $shell_call = "$conf->{path}{gethostip} -d $target_host";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -9244,7 +9255,7 @@ sub on_same_network
 			error($conf, $error);
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
@@ -9254,11 +9265,11 @@ sub on_same_network
 		my $this_ip      = "";
 		my $this_nm      = "";
 		
-		my $sc           = "$conf->{path}{ifconfig}";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-		while(<$fh>)
+		my $shell_call           = "$conf->{path}{ifconfig}";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -9343,7 +9354,7 @@ sub on_same_network
 				}
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 	}
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
@@ -9391,18 +9402,18 @@ sub write_node_cache
 	
 	if (@lines > 0)
 	{
-		my $fh         = IO::Handle->new();
+		my $file_handle         = IO::Handle->new();
 		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
-		open ($fh, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
+		open ($file_handle, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
 				uid		=>	$<,
 				error		=>	$!,
 			}}));
 		foreach my $line (@lines)
 		{
-			print $fh $line;
+			print $file_handle $line;
 		}
-		$fh->close();
+		$file_handle->close();
 	}
 	
 	return(0);
@@ -9437,11 +9448,11 @@ sub read_node_cache
 	{
 		# It exists! Read it.
 		my $in_hosts = 0;
-		my $sc       = $cache_file;
-		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
-		while(<$fh>)
+		my $shell_call       = $cache_file;
+		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -9479,7 +9490,7 @@ sub read_node_cache
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 		$conf->{clusters}{$cluster}{cache_exists} = 1;
 	}
 	else
