@@ -12,6 +12,7 @@ use File::Basename;
 use FileHandle;
 
 use Cwd;
+use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 use FindBin qw($Bin);
@@ -66,6 +67,9 @@ const my $VERBOSE => 2;
 # process command-line arguments
 #
 sub process_args {
+    
+    say "Raw command line arguments are ", Dumper([\@ARGV])
+        if grep {/debug command line args/} $ENV{VERBOSE} || '';
 
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
@@ -83,9 +87,13 @@ sub process_args {
                 'msg_file=s',       'metadata|o=s',
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
-                'logdir=s',         'bindir=s',
+                'logdir=s',         'log',
+                'bindir=s',
                 'man',              'help' )
         or pod2usage(2);
+
+    say "Processed args into: ", Dumper([$opt])
+        if grep {/debug command line args/} $ENV{VERBOSE} || '';
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
