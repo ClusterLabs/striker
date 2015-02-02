@@ -52,10 +52,10 @@ sub set_server_ok_alert {
     my $long_override = $override ? 'override existing alert' : ''; 
     my @args = ( 0,             # id
                  $PID,          # pid
-                 'NODE_SERVER_STATUS', # field
-                 'OK',                 # value
-                 '',                   # units
-                 'OK',                 # status
+                 'NODE_SERVER_STATUS_OK', # field
+                 'OK',                    # value
+                 '',                      # units
+                 'OK',                    # status
                  'NODE_SERVER_STATUS_OK', # message_tag
                  "host=@{[$self->host]}",     # message_arguments
                  AN::Unix::hostname('-short'),# target_name
