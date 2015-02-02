@@ -97,7 +97,9 @@ sub create_parent_dirs {
     my $self = shift;
     my ($path) = @_;
 
-    make_path dirname $path;
+    my $dir = dirname $path;
+    make_path $dir
+	unless -e $dir;
 }
 
 # ======================================================================
