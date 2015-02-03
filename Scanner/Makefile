@@ -25,7 +25,7 @@ SHAREDDIR  = /shared/status
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
 	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
 
-WRAPPERS   = wipmi wstorcli wfence_ipmilan
+WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
 
 wrapper: 
@@ -91,6 +91,8 @@ distclean: clean
 uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
 
+test:
+	prove t/*.t
 
 # ----------------------------------------------------------------------
 # End of file
