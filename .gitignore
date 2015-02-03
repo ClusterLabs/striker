@@ -1,0 +1,21 @@
+# Ignore vi and emacs temp files
+*~
+#*#
+
+# Ignore backup  files.
+*bak
+
+# Devel::Cover files
+Scanner/t/cover_db
+
+# ignore compiled and object files
+wipmi
+wstorcli
+wshutdown
+Scanner/Src/wipmi.o
+Scanner/Src/wstorcli.o
+Scanner/Src/wshutdown
+
+
+# LSI Raid controller insists on creating log file.
+MegaSAS.log

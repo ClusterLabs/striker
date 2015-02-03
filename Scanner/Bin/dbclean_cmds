@@ -1,0 +1,32 @@
+
+\echo
+\echo Cleaning alerts
+delete from alerts;
+
+\echo
+\echo Cleaning snmp_apc_ups
+delete from snmp_apc_ups;
+
+\echo
+\echo Cleaning ipmi_temperatures
+delete from ipmi_temperatures;
+
+\echo
+\echo Cleaning raid_controllers
+delete from raid_controllers;
+
+\echo
+\echo Cleaning raid_drives
+delete from raid_drives;
+
+\echo
+\echo Cleaning agent_data
+delete from agent_data;
+
+\echo
+\echo Cleaning node
+delete from node;
+
+\echo
+-- ----------------------------------------------------------------------
+-- End of File.

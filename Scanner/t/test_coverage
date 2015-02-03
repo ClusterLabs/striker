@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cover -delete
+
+for i in *.t; do
+    perl  -MDevel::Cover=+ignore,lib/AN/Cluster.pm,+ignore,lib/AN/Common.pm,+ignore,lib/AN/InstallManifest.pm,+ignore,lib/AN/Striker,+ignore,.t,-select,lib/AN $i
+done
+
+cover
+
+

@@ -1,0 +1,26 @@
+A compiled copy of the ipmi wrapper, wipmi, is provided in the Scanner directory. 
+
+If this does not work on a host, or if the ipmitool is in a different
+location, rather thann /usr/bin, a new instance can be compiled from
+wipmi.c
+
+Edit wipmi.c to contain the correct path to ipmitool, and then carry
+out the following commands.
+
+	gcc -g -o ../wipmi wipmi.c
+ 	sudo chown root:root ../wipmi
+	sudo chmod 755 ../wipmi
+        sudo chmod u+s ../wipmi
+
+The program should then be executable by non-root users to fetch ipmi data.
+
+Similarly for the storcli64 wrapper:
+
+	gcc -g -o ../wstorcli wstorcli.c
+ 	sudo chown root:root ../wstorcli
+	sudo chmod 755 ../wstorcli
+        sudo chmod u+s ../wstorcli
+
+
+# ----------------------------------------------------------------------
+

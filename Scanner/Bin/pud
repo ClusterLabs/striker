@@ -1,0 +1,7 @@
+#!/bin/bash
+# Carry out queries on scanner database
+
+HOST="-h 10.255.4.251"
+
+/usr/bin/psql $HOST -U 'alteeve' -d 'scanner' "$@"
+ 

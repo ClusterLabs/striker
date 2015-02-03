@@ -1,0 +1,339 @@
+#!/usr/bin/perl
+
+# _Perl_
+use warnings;
+use strict;
+use 5.010;
+
+our $VERSION = 1.0;
+use autodie qw(open close);
+use English '-no_match_vars';
+use File::Basename;
+use FileHandle;
+
+use Getopt::Long;
+use Pod::Usage;
+use FindBin qw($Bin);
+use Time::HiRes qw( time alarm sleep );
+use DBI;
+
+use lib $Bin . '/lib';    # pre-install
+use lib ( dirname $Bin) . '/lib';    # post-install
+use AN::Dashboard;
+
+use Const::Fast;
+
+# ======================================================================
+# CONSTANTS
+#
+const my $SYSTEMNAME => 'striker';
+const my $binbase    => dirname $Bin;
+const my $AGENTDIR => ( $Bin eq "/usr/share/${SYSTEMNAME}/bin"
+                        ? "${binbase}/agents"
+                        : $Bin . '/Agents' );
+const my $BINDIR => (
+                ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
+                : ( ' Agents ' eq basename $Bin)              ? $binbase
+                :                                               $Bin );
+
+const my $TEXTBASE => ( $Bin eq "/usr/share/${SYSTEMNAME}/bin"
+                        ? "/etc/${SYSTEMNAME}"
+                        : $Bin );
+
+const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
+const my $DEFAULT_DB_CONF     => "${TEXTBASE}/Config/db.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/dashboard.conf";
+const my $DEFAULT_MSGS        => "${TEXTBASE}/Messages/";
+
+const my $BRIEF       => 1;
+const my $COMMA       => q{,};
+const my $DOTSLASH    => q{./};
+const my $LIFETIME    => 24 * 60 * 60;
+const my $RUN_UNTIL   => '23:59:59';
+const my $MAX_RETRIES => 10;
+const my $MAX_RATE    => 600;
+const my $MIN_RATE    => 1;
+const my $PROG        => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE    => 30;
+const my $SLASH       => q{/};
+
+const my $SMTP => 'mail.alteeve.ca';
+const my $FROM => 'scanner@alteeve.ca';
+
+const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
+const my $VERBOSE             => 2;
+
+# ======================================================================
+# Subroutines
+#
+# ......................................................................
+# process command-line arguments
+#
+sub process_args {
+
+    my $opt = {
+        rate      => $REP_RATE,           # loop repetition rate in seconds.
+        run_until => $RUN_UNTIL,          # Stop this process at appointed time.
+        agentdir  => $AGENTDIR,           # directory to scan for agents.
+        verbose   => 0,                   # print strings for no change?
+        dbconf    => $DEFAULT_DB_CONF,    # DB configuration file.
+        confpath    => $DEFAULT_CONFIG_PATH,  # scanner configuration.
+        msg_dir     => $DEFAULT_MSGS,         # Where message strings XML lives.
+        from        => $FROM,                 # from and smtp used for email
+        smtp        => $SMTP,
+        max_retries => $MAX_RETRIES,          # How many attempts in AN::Common
+        bindir      => $BINDIR,               # Where the bins are
+        logdir => $LOGDIR,    # Where logfiles are other communication files are
+        log    => 0,
+        commandlineargs => [@ARGV]
+        ,    # Archive the command line args in case of reboot
+              };
+
+    GetOptions( $opt,            'dbconf=s',
+                'rate=i',        'agentdir=s',
+                'db_name=s',     'from=s',
+                'smtp=s',        'msg_dir=s',
+                'run_until=s',   'confpath=s',
+                'verbose!',      'max_retries=s',
+                'ignorelist=s@', 'dashboard',
+                'logdir=s',      'log',
+                'man',           'help' )
+        or pod2usage(2);
+
+    pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
+    pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
+
+    # If agentdir is relative path './xxx', convert to fully qualified
+    # relative to location of this script.
+    #
+    $opt->{agentdir} = $Bin . $SLASH . substr( $opt->{agentdir}, 2 )
+        if string_starts_with( $opt->{agentdir}, $DOTSLASH );
+
+
+    verify_args($opt);
+
+    return $opt;
+}
+
+sub string_starts_with {
+    my ( $string, $substring ) = @_;
+
+    return 0 == index $string, $substring;
+}
+
+# ......................................................................
+# Check command line argument validity
+#
+sub verify_args {
+    my ($opt) = @_;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "-run_until time '$opt->{run_until}' format dd:dd:dd"
+             )
+        unless AN::Scanner::run_until_data_is_valid( $opt->{run_until} );
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$opt->{rate}' < $MIN_RATE" )
+        if $opt->{rate} < $MIN_RATE;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "rate '$opt->{rate}' > $MAX_RATE" )
+        if $opt->{rate} > $MAX_RATE;
+
+    pod2usage( -verbose => $BRIEF,
+               -message => "agentdir '$opt->{agentdir}' not found" )
+        unless -e $opt->{agentdir};
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot read agentdir '$opt->{agentdir}'" )
+        unless -r $opt->{agentdir};
+    pod2usage( -verbose => $BRIEF,
+               -message => "Cannot execute agentdir '$opt->{agentdir}'" )
+        unless -x $opt->{agentdir};
+
+    return;
+}
+
+# ----------------------------------------------------------------------
+# Main code
+#
+
+sub main {
+    my $options = process_args();
+
+    my $scanner        = AN::Dashboard->new($options);
+    my $old_job_status = $scanner->check_for_previous_instance();
+
+    exit 0
+        if $scanner->ok_to_exit($old_job_status);    # old job running OK
+
+    if ( $options->{log} || !$scanner->interactive() ) {
+        $scanner->begin_logging();
+        $scanner->verbose( $scanner->verbose + 1 );
+    }
+
+    say "Starting $PROGRAM_NAME at @{[ scalar localtime()]}.";
+
+    die "Unrecognized status $old_job_status in ${PROG}::main()"
+        unless $old_job_status eq 'run';
+
+    $scanner->run();
+
+    if ( 'restart' eq $scanner->shutdown ) {
+        $scanner->restart_scanCore_now();
+        exit 0;    # never reached;
+    }
+}
+
+# ----------------------------------------------------------------------
+# Now invoke main()
+
+STDOUT->autoflush();
+main();
+
+__END__
+# ======================================================================
+# POD
+
+=head1 NAME
+
+     scan_for_agents - Check agents dir for added or removed files.
+
+=head1 SYNOPSIS
+
+     scan_for_agents [options]
+
+     Options:
+         -rate     N         How often test is performed, by default
+                             every 30 seconds.
+         -run_until 23:59:59 Time at which process should make way for new instance.
+         -agentdir <path>    Which directory to check, by default
+                             the 'agents directory next to this program.
+         -help               Brief help message.
+         -man                Full documentation.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-rate N>
+
+How often loop is run, in seconds. Must be one or greater; larger than
+600 is considered an error.
+
+=item B<-agentdir path>
+
+Path to the directory to be scanned for additions and removals.
+
+
+=item B<duration N>
+
+How long should the program run, before spawning a fresh replacement?
+Typically 24 hours, i.e. 86400 seconds.
+
+=item B<-verbose>
+
+Output a message even if no files have been added or deleted.
+
+=item B<showsleep>
+
+Adds a component to the output string showing the duration of
+processing, and the amount of time that will be spent sleeping before
+the next iteration. =item B<-help>
+
+Print a brief help message and exits.
+
+=item B<-help>
+
+Prints guide to command line arguments.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<scan_for_agents> is one of scanning agents for the scan-core
+program. It checks the specified directory for files that have been
+added or removed.
+
+When the program begins to run, it outputs a message, 
+
+C<Starting ./scan_for_agents at Sat Nov  1 23:53:51 2014.>
+
+to report the program being run, and the start time.
+
+Similarly when the program terminates because the run duration has
+expired, a similar message is output:
+
+C<Halting ./scan_for_agents at Sat Nov  1 23:59:46 2014.>
+
+Immediately after the start message, the first scan is performed. A
+sample output string looks like:
+
+C<scan_for_agents 1414898302.50597 [abc,xyz,zyx], [] 0.290:29999.710 mSec.>
+
+Where
+
+C<scan_for_agents> is the program name,
+
+C<1414898302.50597> is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
+
+C<[abc,xyz,zyx]> are files added since the previous scan,
+
+C<[]> indicates no files deleted,
+
+C<0.290:29999.710 mSec> indicates it took 0.290 milli-seconds (290
+microseconds) to scan the directory, and there are 29999.710
+milli-seconds to sleep till the next iteration.
+
+The scan time and time to sleep are only displayed if the -showsleep
+option was specified.
+
+=head1 LICENSE AND COPYRIGHT
+
+This program is part of Aleeve's Anvil! system, and is released under
+the GNU GPL v2+ license.
+
+=head1 BUGS AND LIMITATIONS
+
+We don't yet know of any bugs or limitations. Report problems to 
+
+    Alteeve's Niche!  -  https://alteeve.ca
+
+No warranty is provided. Do not use this software unless you are
+willing and able to take full liability for it's use. The authors take
+care to prevent unexpected side effects when using this
+program. However, no software is perfect and bugs may exist which
+could lead to hangs or crashes in the program, in your cluster and
+possibly even data loss.
+
+=begin unused
+
+=head1  INCOMPATIBILITIES
+
+There are no current incompatabilities.
+
+=head1 DEPENDENCIES
+
+=head1 CONFIGURATION
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 USAGE
+
+=end unused
+
+=head1 AUTHOR
+
+Alteeve's Niche!  -  https://alteeve.ca
+
+Tom Legrady       -  tom@alteeve.ca	November 2014
+
+=cut
+

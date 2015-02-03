@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<string>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Tom Legrady (tom@alteeve.ca) for the Striker.</key>
+		
+		<!-- Branding strings - Most likely to be changed by a reseller. -->
+		<key name="brand_0001">Alteeve's Niche!</key>
+		
+		<!-- Text messages used in config files and such. -->
+		<key name="Value changed">value changed from '#!variable!prevvalue!#' => '#!variable!value!#'</key>
+		<key name="Value warning">value '#!variable!value!#' in Warning range</key>
+		<key name="Value crisis">value '#!variable!value!#' in Crisis range</key>
+		<key name="Unexpected value">value '#!variable!value!#' outside expected range</key>
+		<key name="AN-IPMI-Temp connect failed">Could not connect to Net::SNMP session</key>
+		<key name="AN-IPMI-Temp get_request() failed">Net::SNMP->get_request() failed</key>
+		
+		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
+		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
+		<key name="legal_0003">Release version #!conf!sys::version!#</key>
+	</lang>
+
+	<!-- Japanese -->
+	<lang name="ja" long_name="日本語">
+		<lang_comment>Tom Legrady、(tom@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
+	</lang>
+
+	<!-- French -->
+	<lang name="fr" long_name="Français">
+		<lang_comment>Géré par Tom Legrady (tom@alteeve.ca) pour Striker.</lang_comment>
+	</lang>
+</string>

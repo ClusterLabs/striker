@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Run all the commands in Bin/dbclean_cmds, so as to delete all node
+# table, agent_data table, snmp_apc_ups table and alerts table entries.
+
+#set -x 
+
+BIN=`dirname $0`
+
+psql -h 10.255.4.251 -U postgres -d scanner -f $BIN/dbclean_cmds
