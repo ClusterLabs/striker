@@ -25,6 +25,11 @@ SHAREDDIR  = /shared/status
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
 	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
 
+RPMDIR     = $(HOME)/rpmbuild       $(HOME)/rpmbuild/BUILD   $(HOME)/rpmbuild/RPMS \
+	     $(HOME)/rpmbuild/SPECS $(HOME)/rpmbuild/SOURCES $(HOME)/rpmbuild/SRPMS
+
+RPMDEST   = $(HOME)/rpmbuild/SOURCES/Scanner
+
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
 
@@ -34,6 +39,12 @@ wrapper:
 dirs    : $(DIRS)
 
 $(DIRS)	:
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMDIRS):
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMDEST): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
 files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
@@ -93,6 +104,9 @@ uninstall: clean distclean
 
 test:
 	prove t/*.t
+
+copyToRPM: distclean $(RPMDEST)
+	cp -R . $(RPMDEST)
 
 # ----------------------------------------------------------------------
 # End of file
