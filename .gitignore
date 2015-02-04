@@ -8,6 +8,9 @@
 # Devel::Cover files
 Scanner/t/cover_db
 
+# list of files for RPM
+scanner.files
+
 # ignore compiled and object files
 wipmi
 wstorcli
