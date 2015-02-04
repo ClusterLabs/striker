@@ -9,77 +9,166 @@ use 5.010;
 
 use Carp;
 use Const::Fast;
+use Data::Dumper;
 use English qw( -no_match_vars );
 use File::Basename;
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
-use Class::Tiny qw(attr);
+use Class::Tiny qw(host ), {launched_monitor => sub{ {}; }};
+
+# DB sample record ...
+#  1 | 1 | node monitor | an-a07n01 | | node server | an-a07n01 | | TIMEOUT |
+#  NODE_SERVER_STATUS | host=an-a07n01 | 2015-01-29 21:39:31.774518-05
+#
+sub set_server_timeout_alert {
+    my $self = shift;
+
+    my @args = ( 0,             # id
+                 $PID,          # pid
+                 'NODE_SERVER_STATUS', # field
+                 'TIMEOUT',            # value
+                 '',                   # units
+                 'CRISIS',             # status
+                 'NODE_SERVER_STATUS', # message_tag
+                 "host=@{[$self->host]}",     # message_arguments
+                 AN::Unix::hostname('-short'),# target_name
+                 'dashboard',                 # target_type
+                 'override',                  #target_extra
+                 'override existing alert'
+        );
+
+
+
+
+
+    $self->set_alert(@args)
+}
+sub set_server_ok_alert {
+    my $self = shift;
+    my ( $override ) = @_;
+
+    $override ||= '';
+    my $long_override = $override ? 'override existing alert' : ''; 
+    my @args = ( 0,             # id
+                 $PID,          # pid
+                 'NODE_SERVER_STATUS_OK', # field
+                 'OK',                    # value
+                 '',                      # units
+                 'OK',                    # status
+                 'NODE_SERVER_STATUS_OK', # message_tag
+                 "host=@{[$self->host]}",     # message_arguments
+                 AN::Unix::hostname('-short'),# target_name
+                 'dashboard',                 # target_type
+                 $override,                   #target_extra
+                 $long_override,
+        );
+
+    $self->set_alert(@args)
+}
+sub set_server_dead_alert {
+    my $self = shift;
+
+    my @args = ( 0,             # id
+                 $PID,          # pid
+                 'NODE_SERVER_STATUS', # field
+                 'DEAD',               # value
+                 '',                   # units
+                 'CRISIS',             # status
+                 'NODE_SERVER_STATUS', # message_tag
+                 "host=@{[$self->host]}", # message_arguments
+                 AN::Unix::hostname('-short'),# target_name
+                 'dashboard',          # target_type
+                 '',                   #target_extra
+        );
+
+
+
+
+
+    $self->set_alert(@args)
+}
 
 sub parse_node_server_status {
     my $self = shift;
-    my ($ns_host) = @_;
 
-    my $records = $self->dbs()->check_node_server_status($ns_host);
-    my ( $dead_or_alive, $machine, $aok );
+    my $records = $self->dbs()->check_node_server_status($self->host);
+    my ( $dead_or_alive, $autoboot, $aok );
     for my $record (@$records) {
         if ( $record->{message_tag} eq 'NODE_SERVER_STATUS' ) {
             $dead_or_alive
-                = $record->{status} eq 'DEAD' ? 'dead'
-                : $record->{status} eq 'OK'   ? 'alive'
-                :                               undef;
+                = $record->{status} eq 'DEAD'    ? 'dead'
+                : $record->{status} eq 'TIMEOUT' ? 'timeout'
+                : $record->{status} eq 'OK'      ? 'alive'
+                :                                  undef;
             $aok = defined $dead_or_alive;
         }
         elsif ( $record->{message_tag} eq 'AUTO_BOOT' ) {
-            $machine
+            $autoboot
                 = $record->{status} eq 'FALSE' ? 'disabled by user'
                 : $record->{status} eq 'TRUE'  ? 'should be running'
                 :                                undef;
-            $aok = defined $machine;
+            $aok = defined $autoboot;
         }
 
         carp( "Something's wrong with records received for ",
               " check_node_server_status--Wrong message tag or status\n",
-              Data::Dumper::Dumper( [
-                                 { should_be => [
-                                         { message_tag => 'NODE_SERVER_STATUS',
-                                           status      => [ 'DEAD', 'OK' ],
-                                         },
-                                         { message_tag => 'AUTO_BOOT',
-                                           status      => [ 'TRUE', 'FALSE' ],
-                                         },
-                                   ],
-                                   actual_record => $record,
-                                 },
-                               ],
+              Dumper( [
+                          { should_be => [
+                                { message_tag => 'NODE_SERVER_STATUS',
+                                  status      => [ 'DEAD', 'TIEMOUT', 'OK' ],
+                                },
+                                { message_tag => 'AUTO_BOOT',
+                                  status      => [ 'TRUE', 'FALSE' ],
+                                },
+                                ],
+                             actual_record => $record,
+                          },
+                      ],
               ), )
             unless $aok;
     }
-    return ( $dead_or_alive, $machine );
+    return ( $dead_or_alive, $autoboot );
 }
 
 sub check_node_server_status {
     my $self = shift;
 
     state $ns_keys = [ keys %{ $self->confdata()->{node_server} } ];
+  KEY:
     for my $key (@$ns_keys) {
-        my $ns_host = $self->confdata()->{node_server}{$key};
-        my ( $dead_or_alive, $machine )
-            = $self->parse_node_server_status($ns_host);
+        $self->host( $self->confdata()->{node_server}{$key} );
+        my ( $dead_or_alive, $autoboot ) = $self->parse_node_server_status;
 
-        return
-            if $dead_or_alive
-            && $dead_or_alive eq 'alive';    # running - OK
-        return
-            if $machine
-            && $machine eq 'disabled by user';    # Not running, but OK
+        if ( $dead_or_alive  # node server on host is running OK
+             && $dead_or_alive eq 'alive' ) {
+            if ( $self->launched_monitor->{$self->host} ) {
+                $self->set_server_ok_alert( 'override' );
+                delete $self->launched_monitor->{$self->host};
+            }
+            next KEY;
+        } 
 
-        # Not running, but it should be.
-        my $agent = $self->confdata->{node_server_down_agent};
-        my $args = { ignore_ignorefile => { $agent => 1 },
-                     args => [-host       => $ns_host,
-			      -healthfile => $self->confdata()->{healthfile}],};
-        $self->launch_new_agents( [$agent], $args );
+        next KEY
+            if $autoboot
+            && $autoboot eq 'disabled by user';    # Not running, but OK
+
+        if ( $dead_or_alive eq 'timeout' ) {
+            $self->set_server_timeout_alert;
+        }
+        elsif ( $dead_or_alive eq 'dead' ) {
+            # Not running, but it should be.
+            $self->launched_monitor->{$self->host} = 1;
+            $self->set_server_dead_alert;
+            my $agent = $self->confdata->{node_server_down_agent};
+            my $args = { ignore_ignorefile => { $agent => 1 },
+                         args => [-host       => $self->host,
+                                  -healthfile => $self->confdata()->{healthfile}],};
+            $self->launch_new_agents( [$agent], $args );
+        }
+        else {
+            carp "Unknown dead_or_alive value '$dead_or_alive.";
+        }
     }
     return;
 }

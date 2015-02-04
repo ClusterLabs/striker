@@ -72,8 +72,8 @@ sub new_bg_process {
     say "Launching process $process @args."
         if $verbose;
     my $bg_obj = ( @args
-                   ? Proc::Background->new( $TERMINATE_FLAG, $process )
-                   : Proc::Background->new( $TERMINATE_FLAG, $process, @args )
+                   ? Proc::Background->new( $TERMINATE_FLAG, $process, @args )
+                   : Proc::Background->new( $TERMINATE_FLAG, $process )
                  );
     my $bg_pid = $bg_obj->pid;
     return { process => $bg_obj, pid => $bg_pid };

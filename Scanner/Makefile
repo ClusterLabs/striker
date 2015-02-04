@@ -32,6 +32,7 @@ SOURCESDIR = $(HOME)/rpmbuild/SOURCES
 RPMDIRS    = $(HOME)/rpmbuild/BUILD   $(HOME)/rpmbuild/RPMS \
              $(SOURCESDIR) $(SPECSDIR) $(HOME)/rpmbuild/SRPMS
 
+RPMDEST   = $(HOME)/rpmbuild/SOURCES/Scanner
 
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
@@ -45,6 +46,12 @@ $(DIRS) :
 	[[ -x $@ ]] || mkdir -p $@
 
 $(RPMDIRS) :
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMDIRS):
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMDEST): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
 files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
@@ -77,8 +84,6 @@ configs	:
 
 messages:
 	cp Messages/* $(MSGDIR)
-
-
 
 install: wrapper dirs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
@@ -113,6 +118,8 @@ RPM: distclean $(RPMDIRS)
 	tar -czf $(SOURCESDIR)/scanner.tar.gz .
 	cp SPECS/scanner.spec $(SPECSDIR)
 
+test:
+	prove t/*.t
 
 # ----------------------------------------------------------------------
 # End of file

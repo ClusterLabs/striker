@@ -15,6 +15,7 @@ use English '-no_match_vars';
 use Carp;
 use Data::Dumper;
 use File::Basename;
+use POSIX 'strftime';
 
 use AN::Cluster;
 
@@ -159,6 +160,7 @@ sub has_timed_out {
              || time - $self->sent_last_timeout_at > $max ) {
             $self->sent_last_timeout_at( time );
             $self->elapsed($elapsed);
+            $self->status('reboot timed out');
             return;    # timed out, return total elapsed time.
         }
         else {
@@ -286,6 +288,8 @@ sub loop_core {
         if ($self->status_host_is_pingable 
             || $self->status_host_timed_out  ) {
             $self->report_host_status_to_boss;
+            say "NodeMonitor successfully rebooted @{[$self->host()]} @ ",
+                strftime "%F %T", localtime;
             exit;               # All done, either success or failure!
         }
     }
