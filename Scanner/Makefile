@@ -48,9 +48,6 @@ $(DIRS) :
 $(RPMDIRS) :
 	[[ -x $@ ]] || mkdir -p $@
 
-$(RPMDIRS):
-	[[ -x $@ ]] || mkdir -p $@
-
 $(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
@@ -108,13 +105,19 @@ uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
 
 RPM: distclean $(RPMDIRS) $(RPMBUILD)
-	rm -f scanner.files
-	$ find . -type d                                        \
-		 -name RPMS -o -name cover_db  -prune -o        \
-		 -type f                                        \
-	         -name '*.rpm' -o -name load_rpm_packages.sh -o \
-		 -name '*.c' -prune -o                          \
-                 -print > scanner.files
+	rm -f Scanner.files
+	find . -type d                \
+		     -name RPMS  -o   \
+	             -name cover_db   \
+	                  -prune -o   \
+		 -type f              \
+	             -name '*.rpm'              -o \
+	             -name load_rpm_packages.sh -o \
+		     -name '*.c'      \
+	                  -prune -o   \
+	         -print             | \
+	perl -n -e 's{\A\.}{};       \
+                     print if length' > Scanner.files
 	tar --exclude='*.rpm' -czf $(SOURCESDIR)/scanner.tar.gz .
 	cp SPECS/scanner.spec $(SPECSDIR)
 

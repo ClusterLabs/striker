@@ -9,7 +9,7 @@
 Scanner/t/cover_db
 
 # list of files for RPM
-scanner.files
+Scanner.files
 
 # ignore compiled and object files
 wipmi
