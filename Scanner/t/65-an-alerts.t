@@ -28,6 +28,13 @@ package owner;
      return $self->{message_tag};
    }
 
+   sub target_extra {
+     my $self = shift;
+     $self->{target_extra} = $_[0] if @_;
+
+     return $self->{target_extra};
+   }
+
 package main;
 
 # _Perl_
@@ -138,6 +145,7 @@ sub test_add_alert {
     $old->timestamp( 'ts');
     $old->status( 'stat');
     $old->message_tag( 'tag');
+    $old->target_extra( 'target extra');
 
     my $new = clone $old;
 

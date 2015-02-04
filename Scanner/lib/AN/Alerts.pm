@@ -162,7 +162,7 @@ sub add_alert {
         if ($old                                          # return if no change.
             && $value->status eq $old->status
             && $value->message_tag eq $old->message_tag )
-            && $value->target_extra != 'override';
+            && $value->target_extra ne 'override';
     $self->alerts()->{$key1}{$key2} = $value;
     $self->clear_alert_handled( $key1, $key2 );
     return 1;
