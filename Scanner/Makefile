@@ -32,7 +32,7 @@ SOURCESDIR = $(HOME)/rpmbuild/SOURCES
 RPMDIRS    = $(HOME)/rpmbuild/BUILD   $(HOME)/rpmbuild/RPMS \
              $(SOURCESDIR) $(SPECSDIR) $(HOME)/rpmbuild/SRPMS
 
-RPMDEST   = $(HOME)/rpmbuild/SOURCES/Scanner
+RPMBUILD   = $(HOME)/rpmbuild/BUILD/Scanner
 
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
@@ -51,7 +51,7 @@ $(RPMDIRS) :
 $(RPMDIRS):
 	[[ -x $@ ]] || mkdir -p $@
 
-$(RPMDEST): $(RPMDIRS)
+$(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
 files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
@@ -107,7 +107,7 @@ distclean: clean
 uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
 
-RPM: distclean $(RPMDIRS)
+RPM: distclean $(RPMDIRS) $(RPMBUILD)
 	rm -f scanner.files
 	$ find . -type d                                        \
 		 -name RPMS -o -name cover_db  -prune -o        \

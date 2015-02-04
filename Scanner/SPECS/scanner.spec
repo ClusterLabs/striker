@@ -7,7 +7,7 @@
 # https://alteeve.ca
 #
 
-Name:           scanner
+Name:           Scanner
 Version:        1.0
 Release:        1.0
 Summary:        System to monitor HA system resources
@@ -33,15 +33,16 @@ Requires :      YAML
 BuildRequires:  perl
 BuildRequires:  perl-macros
 
-%description 'scanner' is a system-monitoring package for HA
-systems. On the servers it runs the scanCore, 'scanner', which
-launches and monitors agents, which report UPS, RAID, PDU, and system
-chassis temperatures and other characteristics. ON the monitoring
-dashboard, it runs a dashboard monitor which will attempt to resurrect
-failed servers when it becomes safe to do so.
+%description
+'scanner' is a system-monitoring package for HA systems. On the servers
+it runs the scanCore, 'scanner', which launches and monitors agents,
+which report UPS, RAID, PDU, and system chassis temperatures and other
+characteristics. ON the monitoring dashboard, it runs a dashboard monitor
+which will attempt to resurrect failed servers when it becomes safe to
+do so.
 
 %prep
-#%setup -c -q -n %{name}-%{version}
+%setup -c -q -n %{name}
 
 %build
 %{__make} wrapper
