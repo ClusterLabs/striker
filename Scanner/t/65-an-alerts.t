@@ -291,12 +291,12 @@ sub test_dispatch_msg {
 
     $self->dispatch_msg( $listener, $msgs );
 
-    my $callfile = 'Striker/Scanner/t/../lib/AN/Alerts.pm';
+    my $callfile = 't/../lib/AN/Alerts.pm';
     for my $routine ( sort keys %{$listener->{called}} ) {
 	for my $call (  @{ $listener->{called}{$routine}  } ) {
 	    is( $call->[0],   'AN::Alerts', "${routine}() call  class");
-        my $file = $call->[1];
-	    $file =~ s{.*/(?=Striker)}{};
+	    my $file = $call->[1];
+	    $file =~ s{.*/(?=t/..)}{};
 	    is( $file,   $callfile,    "${routine}() call file");
 	    like( $call->[2], qr{\A\d+\z},  "${routine}() call line number");
 	    if ( $routine eq 'dispatch_msg' ) {
