@@ -115,7 +115,7 @@ RPM: distclean $(RPMDIRS) $(RPMBUILD)
 	         -name '*.rpm' -o -name load_rpm_packages.sh -o \
 		 -name '*.c' -prune -o                          \
                  -print > scanner.files
-	tar -czf $(SOURCESDIR)/scanner.tar.gz .
+	tar --exclude='*.rpm' --exclude '*.t' -czf $(SOURCESDIR)/scanner.tar.gz .
 	cp SPECS/scanner.spec $(SPECSDIR)
 
 test:
