@@ -14,7 +14,8 @@ Summary:        System to monitor HA system resources
 License:        GPL-2.0
 Group:          Development/Libraries/Perl
 Url:            https://alteeve.ca
-Source:         http://github.com/digimer/striker/tree/scanner/Scanner
+#Source:         http://github.com/digimer/striker/tree/scanner/Scanner
+Source:         scanner.tar.gz
 PACKAGER:       Tom Legrady <tom@alteeve.ca> 
 BuildArch:      noarch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
