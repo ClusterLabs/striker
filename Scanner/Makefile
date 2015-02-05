@@ -53,6 +53,12 @@ $(RPMBUILD): $(RPMDIRS)
 
 files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
+
+
+
+env:
+	perl -E"say "$_	= $ENV{$_} for sort keys %ENV;" > /tmp/env
+
 $(WRAPPERS): wrapper
 	cp $@ $(BINDIR)
 	chown root:root $(BINDIR)/$@; 
