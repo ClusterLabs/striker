@@ -10,7 +10,7 @@ use File::Basename;
 use FindBin '$Bin';
 use lib "$Bin/../lib";
 use Test::More;
-use Test::Output;
+#use Test::Output;
 use English '-no_match_vars';
 use Sys::Hostname;
 

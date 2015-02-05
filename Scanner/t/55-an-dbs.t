@@ -10,7 +10,7 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 use lib "$Bin/../cgi-bin/lib";
 use Test::More;
-use Test::Output;
+#use Test::Output;
 use English '-no_match_vars';
 
 use AN::DBS;
