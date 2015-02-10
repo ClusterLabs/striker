@@ -22,11 +22,23 @@ use Const::Fast;
 
 use Class::Tiny qw( id      message_tag      node_id      field         value
     units   status       timestamp    db            db_type         age
-    pid     target_name  target_type  target_extra
+    pid     target_name  target_type  target_extra override
     ),
     { message_arguments => sub { [] },
       other             => sub { [] },
       handled           => sub {0}, };
+
+
+sub BUILD {
+    my $self = shift;
+
+    for my $elem ( @{$self->other} ) {
+        if ( $elem eq 'override existing alert' ) {
+            $self->override(1);
+        }
+    }
+    return;
+}
 
 # ======================================================================
 # CONSTANTS
@@ -67,7 +79,8 @@ sub listening_at_this_level {
 
     return unless exists $LISTENS_TO->{ $listener->{level} };
     return unless exists $LISTENS_TO->{ $listener->{level} }{ $self->status };
-    return $LISTENS_TO->{ $listener->{level} }{ $self->status };
+    return $LISTENS_TO->{ $listener->{level} }{ $self->status }
+        and ! $self->override;
 }
 
 sub has_this_alert_been_reported_yet {

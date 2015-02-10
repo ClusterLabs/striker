@@ -524,7 +524,7 @@ sub launch_new_agents {
     my @extra_args = ( $extra && 'HASH' eq ref $extra
                        ? @{ $extra->{args} }
                        : ('') );
-    state $args = [
+    my $args = [
         map {
                   $_ eq 'xdbconfx' ? $self->dbconf
                 : $_ eq 'xlogdirx' ? $self->logdir

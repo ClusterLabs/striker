@@ -68,6 +68,8 @@ use 5.010;
     }
 }
 
+sub ping { return 1; }
+
 sub prepare {
     my $self = shift;
     my ($sql) = @_;
@@ -146,6 +148,7 @@ sub test_constructor {
 	  run_until => '23:59:59',
 	  confpath  => "$parent/Config/snmp_apc_ups.conf",
 	  dbconf    => "$parent/$dbfile",
+	  logdir    => '/tmp'
 	} );
     $snmp->connect_dbs();
     return $snmp;
@@ -172,7 +175,7 @@ sub test_battery_replace {
 	       'eval battery replace /unneeded/ raw data OK' );
 
     my $std_sql = <<"EOSQL";
-INSERT INTO agent_data
+INSERT INTO snmp_apc_ups
 (field, message_arguments, message_tag, status, target, units, value, node_id)
 VALUES
 (?, ?, ?, ?, ?, ?, ?, ?)
@@ -474,9 +477,8 @@ sub test_rising_ok {
   my $self = shift;
 
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
-  my $rec_meta = { ok_min => 1, ok_max => 10,
-		   warn_min => 10, warn_max => 20,
-		   crisis_min => 20, crisis_max => 30,
+  my $rec_meta = { ok => 10,
+		   warn => 20,
 		   hysteresis => 1,
 		 };
   my $data = {tag => 'rising',
@@ -520,9 +522,8 @@ sub test_rising_warn {
   my $self = shift;
 
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
-  my $rec_meta = { ok_min => 1, ok_max => 10,
-		   warn_min => 10, warn_max => 20,
-		   crisis_min => 20, crisis_max => 30,
+  my $rec_meta = { ok => 10,
+		   warn => 20,
 		   hysteresis => 1,
 		 };
     my $data = {tag => 'rising',
@@ -597,9 +598,8 @@ sub test_rising_crisis {
   my $self = shift;
 
   my $meta = { name => 'test', type => 'test', ip => 'ip' };
-  my $rec_meta = { ok_min => 1, ok_max => 10,
-		   warn_min => 10, warn_max => 20,
-		   crisis_min => 20, crisis_max => 30,
+  my $rec_meta = { ok => 10,
+		   warn => 20,
 		   hysteresis => 1,
 		 };
     my $data = {tag => 'rising',
@@ -657,9 +657,8 @@ sub test_falling_ok {
     my $self = shift;
 
     my $meta = { name => 'test', type => 'test', ip => 'ip' };
-    my $rec_meta = { ok_min => 30, ok_max => 40,
-		     warn_min => 20, warn_max => 30,
-		     crisis_min => 10, crisis_max => 20,
+    my $rec_meta = { ok => 30,
+		     warn => 20,
 		     hysteresis => 1,
 		 };
     my $data = {tag => 'falling',
@@ -702,9 +701,8 @@ sub test_falling_warn {
     my $self = shift;
 
     my $meta = { name => 'test', type => 'test', ip => 'ip' };
-    my $rec_meta = { ok_min => 30, ok_max => 40,
-		     warn_min => 20, warn_max => 30,
-		     crisis_min => 10, crisis_max => 20,
+    my $rec_meta = { ok   => 30,
+		     warn => 20,
 		     hysteresis => 1,
     };
     my $data = {tag => 'falling',
@@ -778,9 +776,8 @@ sub test_falling_crisis {
     my $self = shift;
 
     my $meta = { name => 'test', type => 'test', ip => 'ip' };
-    my $rec_meta = { ok_min => 30, ok_max => 40,
-		     warn_min => 20, warn_max => 30,
-		     crisis_min => 10, crisis_max => 20,
+    my $rec_meta = { ok   => 30,
+		     warn => 20,
 		     hysteresis => 1,
     };
 

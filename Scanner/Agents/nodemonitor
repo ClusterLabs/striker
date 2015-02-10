@@ -12,6 +12,7 @@ use File::Basename;
 use FileHandle;
 
 use Cwd;
+use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 use FindBin qw($Bin);
@@ -67,6 +68,7 @@ const my $VERBOSE => 2;
 #
 sub process_args {
 
+    my @cmdline = ( @ARG );
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
@@ -94,7 +96,8 @@ sub process_args {
     pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
 
     pod2usage( -verbose => $BRIEF, 
-	       -message => q{'host' and 'healthfile' args are mandatory}
+	       -message => q{'host' and 'healthfile' args are mandatory; actual: }
+               . Dumper([\@cmdline, $opt], ['raw args', 'processed'])
 	) unless $opt->{host} and $opt->{healthfile};
 
     verify_args($opt);

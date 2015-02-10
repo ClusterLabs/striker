@@ -85,6 +85,8 @@ package DBI;
     }
 }
 
+sub ping { return 1; }
+
 sub prepare {
     my $self = shift;
     my ($sql) = @_;
@@ -132,7 +134,9 @@ sub init_args {
              'filepath'  => '/tmp/agents',
              'msg_file'  => "$parent/MESSAGES/random-agent.xml",
              'rate'      => 30,
-             'run_until' => '23:59:59', };
+             'run_until' => '23:59:59', 
+	     logdir      => '/tmp',
+};
 }
 
 # ----------------------------------------------------------------------
@@ -154,7 +158,7 @@ sub test_connect_dbs {
     $agent->connect_dbs();
 
     is_deeply( [sort keys %$agent],
-		 [qw( alerts_table_name datatable_name dbconf dbs rate run_until ) ],
+		 [qw( alerts_table_name datatable_name dbconf dbs isa_scanner logdir rate run_until ) ],
 		 'connect_dbs() generates right fields');
 
     my $dbs = $agent->dbs();
@@ -162,7 +166,7 @@ sub test_connect_dbs {
     isa_ok( $dbs, 'AN::DBS', 'dbs obj is right sort of object');
 
     is_deeply( [sort keys %$dbs],
-	       [qw( dbconf dbs path )],
+	       [qw( dbconf dbs logdir maxN owner path verbose )],
 	       'dbs obj has right fields' );
 
     my $db = $dbs->{dbs}[0]; 
@@ -198,6 +202,7 @@ db::pid=
 db::hostname=
 db::datatable_name=alerts
 db::1::node_table_id=1
+db::2::node_table_id=2
 EOSTD
 
     $std =~ s{\A\n}{};

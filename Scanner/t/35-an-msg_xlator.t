@@ -124,10 +124,11 @@ sub load_strings_table {
     is( ref $xlator->string()->{lang}{en_CA},
         'HASH', 'string en_CA sub-component is a hash' );
     is_deeply( [ sort keys %{ $xlator->string->{lang}{en_CA}{key} } ],
-               [  'OLD_PROCESS_CRASH',   'OLD_PROCESS_RECENT_CRASH',
-                  'OLD_PROCESS_STALLED', 'brand_0001',
-                  'comment',             'legal_0001',
-                  'legal_0002',          'legal_0003'
+               [  'NODE_SERVER_DYING',        'OLD_PROCESS_CRASH',
+		  'OLD_PROCESS_RECENT_CRASH', 'OLD_PROCESS_STALLED',
+		  'brand_0001',               'comment',
+		  'legal_0001',               'legal_0002', 
+		  'legal_0003'
                ],
                'string attribute tags OK' );
     is_deeply( $xlator->string->{lang}{en_CA}{key}{OLD_PROCESS_CRASH},

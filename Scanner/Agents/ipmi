@@ -81,7 +81,8 @@ sub process_args {
                 'msg_file=s',       'metadata|o=s',
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
-                'logdir=s',         'bindir=s',
+                'logdir=s',         'log',
+                'bindir=s',
                 'man',              'help' )
         or pod2usage(2);
 
