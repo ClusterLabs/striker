@@ -86,7 +86,7 @@ sub create_rsync_wrapper
 echo '#!/usr/bin/expect' > ~/rsync.$node
 echo 'set timeout 3600' >> ~/rsync.$node
 echo 'eval spawn rsync \$argv' >> ~/rsync.$node
-echo 'expect  \"*?assword:\" \{ send \"$root_pw\\\\n\" \}' >> ~/rsync.$node
+echo 'expect \"password:\" \{ send \"$root_pw\\n\" \}' >> ~/rsync.$node
 echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
@@ -108,82 +108,65 @@ sub test_ssh_fingerprint
 	my ($conf, $node) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
 	
-	my $failed  = 0;
-	my $cluster = $conf->{cgi}{cluster};
-	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
-	my $sc = "ssh root\@$node \"uname -a\"";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	### TODO: This won't detect when the target's SSH key changed after a
+	###       node was replaced! Need to fix this.
+	my $failed     = 0;
+	my $cluster    = $conf->{cgi}{cluster};
+	my $root_pw    = $conf->{clusters}{$cluster}{root_pw};
+	my $shell_call = "grep ^\"$node\[, \]\" ~/.ssh/known_hosts -q; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+	open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
-		my $line =  $_;
+		my $line = $_;
 		   $line =~ s/\n/ /g;
 		   $line =~ s/\r/ /g;
 		   $line =~ s/\s+$//;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /The authenticity of host/)
+		if ($line =~ /^rc:(\d+)/)
 		{
-			# Add fingerprint to known_hosts
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
-			my $message = get_string($conf, {key => "message_0279", variables => {
-				node	=>	$node,
-			}});
-			print template($conf, "common.html", "generic-note", {
-				message	=>	$message,
-			});
-			#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
-			#print template($conf, "common.html", "shell-output-header");
-			my $fh = IO::Handle->new();
-			my $sc = "$conf->{path}{'ssh-keyscan'} $node >> ~/.ssh/known_hosts";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			my $rc = $1;
+			if ($rc eq "0")
 			{
-				chomp;
-				my $line = $_;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-				#print template($conf, "common.html", "shell-call-output", {
-				#	line	=>	$line,
-				#});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] already in '~/.ssh/known_hosts'.\n");
+				last;
 			}
-			$fh->close();
-			#print template($conf, "common.html", "shell-output-footer");
-			#$message = get_string($conf, {key => "message_0120"});
-			#print template($conf, "common.html", "generic-note", {
-			#	message	=>	$message,
-			#});
-			sleep 5;
-		}
-		elsif ($line =~ /Host key verification failed/)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host key verification failed message\n");
-			my $message = get_string($conf, {key => "message_0360", variables => {
-				node	=>	$node,
-			}});
-			print template($conf, "common.html", "generic-error", {
-				message	=>	$message,
-			});
-			$failed  = 1;
-		}
-		elsif ($line =~ /Offending key .*? (.*?):(\d+)/)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; offending key message\n");
-			my $file = $1;
-			my $line = $2;
-			my $message = get_string($conf, {key => "message_0358", variables => {
-				node	=>	$node,
-				file	=>	$file,
-				line	=>	$line,
-			}});
-			print template($conf, "common.html", "generic-error", {
-				message	=>	$message,
-			});
-			$failed  = 1;
+			elsif (($rc eq "1") or ($rc eq "2"))
+			{
+				if ($rc eq "1")
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] not in '~/.ssh/known_hosts', adding.\n");
+				}
+				else
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [$node].\n");
+				}
+				# Add fingerprint to known_hosts
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
+				my $message = get_string($conf, {key => "message_0279", variables => {
+					node	=>	$node,
+				}});
+				print template($conf, "common.html", "generic-note", {
+					message	=>	$message,
+				});
+				#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+				#print template($conf, "common.html", "shell-output-header");
+				my $shell_call = "$conf->{path}{'ssh-keyscan'} $node 2>&1 >> ~/.ssh/known_hosts";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+				open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				}
+				close $file_handle;
+				sleep 5;
+			}
 		}
 	}
-	$fh->close();
+	close $file_handle;
 
 	return($failed);
 }
@@ -564,7 +547,7 @@ sub initialize
 sub initialize_conf
 {
 	# Setup (sane) defaults
-	my $conf={
+	my $conf = {
 		nodes			=>	"",
 		check_using_node	=>	"",
 		up_nodes		=>	[],
@@ -584,7 +567,10 @@ sub initialize_conf
 			ccs			=>	"/usr/sbin/ccs",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
+			control_dhcpd		=>	"/var/www/tools/control_dhcpd",
 			cp			=>	"/bin/cp",
+			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
+			docroot			=>	"/var/www/html/",
 			email_password_file	=>	"/var/www/tools/email_pw.txt",
 			expect			=>	"/usr/bin/expect",
 			fence_ipmilan		=>	"/sbin/fence_ipmilan",
@@ -595,6 +581,7 @@ sub initialize_conf
 			hostname		=>	"/bin/hostname",
 			hosts			=>	"/etc/hosts",
 			ifconfig		=>	"/sbin/ifconfig",
+			ip			=>	"/sbin/ip",
 			'log'			=>	"/var/log/striker.log",
 			lvdisplay		=>	"/sbin/lvdisplay",
 			ping			=>	"/usr/bin/ping",
@@ -612,6 +599,15 @@ sub initialize_conf
 			do_dd			=>	"/var/www/tools/do_dd",
 			rsync			=>	"/usr/bin/rsync",
 			skins			=>	"../html/skins/",
+			# These are the tools that will be copied to 'docroot'
+			# if either node doesn't have an internet connection.
+			tools			=>	[
+				"anvil-configure-network",
+				"anvil-map-drives",
+				"anvil-map-network",
+				"anvil-self-destruct",
+			],
+			tools_directory		=>	"/var/www/tools/",
 			tput			=>	"/usr/bin/tput",
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"Data/strings.xml",
@@ -620,20 +616,33 @@ sub initialize_conf
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
+				anvil_install_status	=>	"/root/.anvil_install_progress",
+				backups			=>	"/root/backups",
+				drbd			=>	"/etc/drbd.d",
 				hostname		=>	"/etc/sysconfig/network",
 				hosts			=>	"/etc/hosts",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link1",
 				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link2",
+				cluster_conf		=>	"/etc/cluster/cluster.conf",
+				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
+				drbd_r0			=>	"/etc/drbd.d/r0.res",
+				drbd_r1			=>	"/etc/drbd.d/r1.res",
+				fstab			=>	"/etc/fstab",
 				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",
 				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bond1",
 				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bridge1",
 				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link1",
 				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
+				iptables		=>	"/etc/sysconfig/iptables",
+				lvm_conf		=>	"/etc/lvm/lvm.conf",
+				network_scripts		=>	"/etc/sysconfig/network-scripts",
+				shadow			=>	"/etc/shadow",
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 			},
 		},
 		args			=>	{
@@ -642,11 +651,15 @@ sub initialize_conf
 		},
 		sys			=>	{
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
+			default_password	=>	"Initial1",
 			error_limit		=>	10000,
 			language		=>	"en_CA",
+			cluster_conf		=>	"",
+			lvm_conf		=>	"",
+			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			html_lang		=>	"en",
 			skin			=>	"alteeve",
-			version			=>	"1.1.7",
+			version			=>	"1.2.0 β",
 			log_level		=>	3,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
@@ -654,6 +667,44 @@ sub initialize_conf
 			log_language		=>	"en_CA",
 			system_timezone		=>	"America/Toronto",
 			output			=>	"web",
+			reboot_timeout		=>	600,
+			clustat_timeout		=>	120,
+			pool1_shrunk		=>	0,
+			striker_uid		=>	$<,
+			# This tells the install manifest generator how many
+			# ports to open on the IFN for incoming VNC connections
+			open_vnc_ports		=>	100,
+			# If a user wants to use spice + qxl for video in VMs,
+			# set this to '1'. NOTE: This disables web-based VNC!
+			use_spice_graphics	=>	0,
+			# This allows for custom MTU sizes in an Install Manifest
+			mtu_size		=>	1500,
+			update_os		=>	1,
+			daemons			=>	{
+				enable			=>	[
+					"gpm",		# LSB compliant
+					"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
+					"iptables",	# LSB compliant
+					"modclusterd",	# LSB compliant
+					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
+					"ntpd",		# LSB compliant
+					"ricci",	# LSB compliant
+				],
+				disable		=>	[
+					"acpid",
+					"clvmd",	# Appears to be LSB compliant
+					"cman",		# 
+					"drbd",		# 
+					"gfs2",		# 
+					"ip6tables",	# 
+					"kdump",	# 
+					"rgmanager",	# 
+				],
+			},
+			# This is filled later and used to populate
+			# ~/.ssh/known_hosts on each node.
+			node_names		=>	[],
+			shared_fs_uuid		=>	"",
 		},
 		# Config values needed to managing strings
 		strings				=>	{
@@ -757,6 +808,38 @@ sub initialize_conf
 	};
 	
 	return($conf);
+}
+
+# Check to see if the global settings have been setup.
+sub check_global_settings
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_global_settings()\n");
+	
+	my $global_set = 1;
+	
+	# Pull out the current config.
+	my $smtp__server              = $conf->{smtp}{server}; 			# mail.alteeve.ca
+	my $smtp__port                = $conf->{smtp}{port};			# 587
+	my $smtp__username            = $conf->{smtp}{username};		# example@alteeve.ca
+	my $smtp__password            = $conf->{smtp}{password};		# Initial1
+	my $smtp__security            = $conf->{smtp}{security};		# STARTTLS
+	my $smtp__encrypt_pass        = $conf->{smtp}{encrypt_pass};		# 1
+	my $smtp__helo_domain         = $conf->{smtp}{helo_domain};		# example.com
+	my $mail_data__to             = $conf->{mail_data}{to};			# you@example.com
+	my $mail_data__sending_domain = $conf->{mail_data}{sending_domain};	# example.com
+	
+	# TODO: Make this smarter... For now, just check the SMTP username to
+	# see if it is default.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; smtp__username: [$smtp__username]\n");
+	if ((not $smtp__username) or ($smtp__username =~ /example/))
+	{
+		# Not configured yet.
+		$global_set = 0;
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	return($global_set);
 }
 
 # At this point in time, all this does is print the content type needed for

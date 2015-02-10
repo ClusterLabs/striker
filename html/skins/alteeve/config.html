@@ -1,51 +1,6 @@
 <!-- These are used when a user is configuring an Anvil! or the global values -->
 
-<!-- start ask-new-or-replace-run-install-manifest -->
-<table>
-	<tr>
-		<td colspan="2" class="highlight_ready_bold">
-			#!string!title_0170!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			<br />
-			#!string!message_0353!#<br />
-			<br />
-			#!string!message_0354!#<br />
-			<br />
-			#!string!message_0355!#<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<a href="#!replace!new_link!#" class="bold_button">#!string!button_0050!#</a>
-		</td>
-		<td>
-			<a href="#!replace!replace_link!#" class="bold_button">#!string!button_0051!#</a>
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end ask-new-or-replace-run-install-manifest -->
-
-<!-- start confirm-new-anvil-creation -->
+<!-- start confirm-anvil-manifest-run -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
 	<tr>
@@ -69,7 +24,7 @@
 		</td>
 	</tr>
 	<tr>
-		<td class="highlight_ready_bold">
+		<td class="highlight_warning_bold">
 			#!string!button_0050!#
 		</td>
 		<td colspan="2">
@@ -598,15 +553,20 @@
 			&nbsp;
 		</td>
 	</tr>
-	<!-- Hosts File contents -->
+	<!-- User-defined repos -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0215!#
+			#!string!row_0244!#
 		</td>
-		<td colspan="2" class="fixed_width" style="text-align: left;">
-			#!replace!say_hosts_file!#
+		<td class="fixed_width">
+			#!replace!say_anvil_repos!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
 		</td>
 	</tr>
+	<!-- VNC Ports to Open - Not yet user-selectable. -->
+	<input type="hidden" name="anvil_open_vnc_ports" id="anvil_open_vnc_ports" value="#!replace!anvil_open_vnc_ports!#" />
 	<tr>
 		<td colspan="3">
 			&nbsp;
@@ -627,6 +587,7 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- Current node access -->
 	<tr>
 		<td>
 			&nbsp;
@@ -705,7 +666,7 @@
 	</form>
 </table>
 <br />
-<!-- end confirm-new-anvil-creation -->
+<!-- end confirm-anvil-manifest-run -->
 
 <!-- start install-manifest-summay -->
 <table>
@@ -1125,6 +1086,15 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- Additional repositories -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0244!#
+		</td>
+		<td class="fixed_width" colspan="4">
+			#!replace!say_anvil_repositories!#
+		</td>
+	</tr>
 	<tr>
 		<td colspan="5">
 			&nbsp;
@@ -1200,6 +1170,7 @@
 						<input type="hidden" name="anvil_striker2_bcn_ip"    id="anvil_striker2_bcn_ip"    value="#!replace!anvil_striker2_bcn_ip!#" />
 						<input type="hidden" name="anvil_striker2_ifn_ip"    id="anvil_striker2_ifn_ip"    value="#!replace!anvil_striker2_ifn_ip!#" />
 						<input type="hidden" name="anvil_sequence"           id="anvil_sequence"           value="#!replace!anvil_sequence!#" />
+						<input type="hidden" name="anvil_repositories"       id="anvil_repositories"       value="#!replace!anvil_repositories!#" />
 						<input type="submit" name="do" id="do" value="#!string!button_0047!#" class="bold_button" />
 						<input type="hidden" name="config" id="config" value="true" />
 						<input type="hidden" name="generate" id="generate" value="true" />
@@ -1433,7 +1404,9 @@
 	<!-- Tell the user about this form -->
 	<tr>
 		<td colspan="4">
-			#!string!explain_0060!#
+			<br />
+			#!string!explain_0060!#<br />
+			<br />
 		</td>
 	</tr>
 	<tr>
@@ -1497,7 +1470,7 @@
 			#!string!row_0194!#<span class="highlight_bad_star">#!replace!anvil_password_star!#</span>
 		</td>
 		<td>
-			<input type="text" name="anvil_password" id="anvil_password" value="#!replace!anvil_password!#" style="width: 200px;" maxlength="15" />
+			<input type="text" name="anvil_password" id="anvil_password" value="#!replace!anvil_password!#" style="width: 200px;" />
 		</td>
 		<td style="text-align: left;">
 			#!string!explain_0110!#<br />
@@ -1579,6 +1552,21 @@
 		</td>
 		<td>
 			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Determining_Storage_Pool_Sizes" target="_new">#!string!button_0003!#</a><br />
+		</td>
+	</tr>
+	<!-- Custom Repositories -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0244!#<span class="highlight_bad_star">#!replace!anvil_repositories_star!#</span>
+		</td>
+		<td>
+			<input type="text" name="anvil_repositories" id="anvil_repositories" value="#!replace!anvil_repositories!#" style="width: 200px;" />
+		</td>
+		<td style="text-align: left;">
+			#!string!explain_0139!#<br />
+		</td>
+		<td>
+			<a href="https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories" target="_new">#!string!button_0003!#</a><br />
 		</td>
 	</tr>
 	<tr>
@@ -2430,12 +2418,15 @@
 					</td>
 				</tr>
 				
-				<!-- These two sections are not shown to the user, but it will persist if the user changes the config file. -->
+				<!-- These sections are not shown to the user, but it will persist if the user changes the config file. -->
 				<!-- If not set, this will be set to the same address as set in 'smtp__server' -->
 				<input type="hidden" name="#!replace!mail_data__sending_domain_name!#" id="#!replace!mail_data__sending_domain_id!#" value="#!replace!mail_data__sending_domain_value!#">
 				
 				<!-- If not set, this will be set to the short version of address as set in 'smtp__server' -->
 				<input type="hidden" name="#!replace!smtp__helo_domain_name!#" id="#!replace!smtp__helo_domain_id!#" value="#!replace!smtp__helo_domain_value!#">
+				
+				<!-- This stores the user's spice/vnc graphics option -->
+				<input type="hidden" name="#!replace!sys__use_spice_graphics!#" id="#!replace!sys__use_spice_graphics_id!#" value="#!replace!sys__use_spice_graphics_value!#">
 				
 				<tr>
 					<td class="highlight_ready">

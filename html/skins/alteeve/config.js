@@ -50,38 +50,83 @@ $("#set_secondary_values").click(function(){
 	// Host names
 	// Node 1
 	var node1_name = prefix + '-a' + padded_sequence + 'n01.' + domain;
+	if (!prefix)
+	{
+		var node1_name = 'node01.' + domain;
+	}
 	$("#anvil_node1_name").val(node1_name);
 	// Node 2
 	var node2_name = prefix + '-a' + padded_sequence + 'n02.' + domain;
+	if (!prefix)
+	{
+		var node2_name = 'node02.' + domain;
+	}
 	$("#anvil_node2_name").val(node2_name);
+	
 	// Anvil! Name
 	var anvil_cluster_name = $("#anvil_cluster_name").val();
 	var anvil_name         = prefix + '-' + anvil_cluster_name + '-' + padded_sequence;
+	if (!prefix)
+	{
+		var anvil_name = anvil_cluster_name + '-' + padded_sequence;
+	}
 	$("#anvil_name").val(anvil_name);
 	
 	// Switch 1
 	var switch1_name = prefix + '-switch01.' + domain;
+	if (!prefix)
+	{
+		var switch1_name = 'switch01.' + domain;
+	}
 	$("#anvil_switch1_name").val(switch1_name);
 	// Switch 2
 	var switch2_name = prefix + '-switch02.' + domain;
+	if (!prefix)
+	{
+		var switch2_name = 'switch02.' + domain;
+	}
 	$("#anvil_switch2_name").val(switch2_name);
 	// PDU 1
 	var pdu1_name = prefix + '-pdu01.' + domain;
+	if (!prefix)
+	{
+		var pdu1_name = 'pdu01.' + domain;
+	}
 	$("#anvil_pdu1_name").val(pdu1_name);
 	// PDU 2
 	var pdu2_name = prefix + '-pdu02.' + domain;
+	if (!prefix)
+	{
+		var pdu2_name = 'pdu02.' + domain;
+	}
 	$("#anvil_pdu2_name").val(pdu2_name);
 	// UPS 1
 	var ups1_name = prefix + '-ups01.' + domain;
+	if (!prefix)
+	{
+		var ups1_name = 'ups01.' + domain;
+	}
 	$("#anvil_ups1_name").val(ups1_name);
 	// UPS 2
 	var ups2_name = prefix + '-ups02.' + domain;
+	if (!prefix)
+	{
+		var ups2_name = 'ups02.' + domain;
+	}
 	$("#anvil_ups2_name").val(ups2_name);
 	// Striker 1
 	var striker1_name = prefix + '-striker01.' + domain;
+	if (!prefix)
+	{
+		var striker1_name = 'striker01.' + domain;
+	}
 	$("#anvil_striker1_name").val(striker1_name);
 	// Striker 2
 	var striker2_name = prefix + '-striker02.' + domain;
+	if (!prefix)
+	{
+		var striker2_name = 'striker02.' + domain;
+	}
 	$("#anvil_striker2_name").val(striker2_name);
 	
 	// Set the PDU outlet numbers
@@ -296,9 +341,9 @@ $("#set_secondary_values").click(function(){
 		}
 		
 		// Striker Dashboards
-		var striker1_ifn_ip = ifn_root + '.4.' + 1;
+		var striker1_ifn_ip = ifn_root + integer_sequence + 3;
 		    striker1_ifn_ip = striker1_ifn_ip.replace(/\.\./g, ".");
-		var striker2_ifn_ip = ifn_root + '.4.' + 2;
+		var striker2_ifn_ip = ifn_root + integer_sequence + 4;
 		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_ifn_ip))
 		{

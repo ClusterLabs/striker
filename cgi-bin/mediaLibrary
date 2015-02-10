@@ -58,7 +58,7 @@ AN::Cluster::get_cgi_vars($conf, [
 ]);
 
 # Print the header.
-AN::Cluster::header($conf, "an-mc");
+AN::Cluster::header($conf, "mediaLibrary");
 
 # Do I have a cluster name?
 #AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");

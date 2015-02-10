@@ -1,5 +1,50 @@
 <!-- This is for templates related to the "Select and Anvil!" page shown when 2+ Anvil!s are configured but none are selected. -->
 
+<!-- start confirm-dhcpd-start -->
+<table>
+	<tr>
+		<td colspan="2" class="highlight_ready_bold">
+			#!string!title_0178!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_warning_bold">
+			#!string!row_0120!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0409!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2" class="bold_button" style="text-align: right;">
+			<a href="#!replace!confirm_url!#">#!string!button_0004!#</a>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end confirm-dhcpd-start -->
+
+<!-- start control-dhcpd-results -->
+<table>
+	<tr>
+		<td colspan="2" class="highlight_ready_bold">
+			#!string!title_0178!#
+		</td>
+	</tr>
+	<tr>
+		<td class="#!replace!class!#">
+			#!string!row_0083!#
+		</td>
+		<td>
+			#!replace!message!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end control-dhcpd-results -->
+
 <!-- start open-table -->
 <table>
 	<tr>
@@ -31,12 +76,23 @@
 	</tr>
 <!-- end open-table -->
 
+<!-- start global-not-configured -->
+	<tr>
+		<td class="highlight_good">
+			#!string!row_0269!#
+		</td>
+		<td colspan="4">
+			#!string!message_0417!#
+		</td>
+	</tr>
+<!-- end global-not-configured -->
+
 <!-- start no-anvil-configured -->
 	<tr>
 		<td class="highlight_good">
 			#!string!row_0001!#
 		</td>
-		<td colspan="3">
+		<td colspan="4">
 			#!string!message_0001!#
 		</td>
 	</tr>
@@ -68,30 +124,34 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- Configure global settings. -->
 	<tr>
 		<td colspan="2">
-			<a href="?config=true&anvil=new">#!string!row_0017!#</a>
-		</td>
-		<td colspan="3">
-			#!string!message_0343!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			<a href="?config=true&task=create-install-manifest">#!string!row_0158!#</a>
-		</td>
-		<td colspan="3">
-			#!string!message_0345!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			<a href="?config=true">#!string!row_0002!#</a>
+			<a href="?config=true">#!string!button_0059!#</a>
 		</td>
 		<td colspan="3">
 			#!string!message_0002!#
 		</td>
 	</tr>
+	<!-- Add a new Anvil! to Striker -->
+	<tr>
+		<td colspan="2">
+			<a href="?config=true&anvil=new">#!string!button_0061!#</a>
+		</td>
+		<td colspan="3">
+			#!string!message_0343!#
+		</td>
+	</tr>
+	<!-- Create or run an install manifest. -->
+	<tr>
+		<td colspan="2">
+			<a href="?config=true&task=create-install-manifest">#!string!button_0060!#</a>
+		</td>
+		<td colspan="3">
+			#!string!message_0345!#
+		</td>
+	</tr>
+	<!-- Backup and restore configuration -->
 	<tr>
 		<td colspan="2">
 			<a href="?config=true&task=archive">#!string!button_0040!#</a>
@@ -100,6 +160,8 @@
 			#!string!message_0344!#
 		</td>
 	</tr>
+	<!-- Install Target -->
+	#!replace!install_manifest_tr!#
 <!--	<tr>
 		<td>
 			<a href="?system=true">#!string!row_0136!#</a>
@@ -116,3 +178,26 @@
 </table>
 <br />
 <!-- end close-table -->
+
+<!-- start enabled-install-target-button -->
+	<tr>
+		<td colspan="2">
+			<a href="#!replace!install_target_url!#">#!replace!install_target_button!#</a>
+		</td>
+		<td colspan="3">
+			#!replace!install_target_message!#
+		</td>
+	</tr>
+<!-- end enabled-install-target-button -->
+
+<!-- start disabled-install-target-button -->
+	<tr>
+		<td colspan="2">
+			<span class="disabled_button">#!replace!install_target_button!#</span>
+		</td>
+		<td colspan="3">
+			#!replace!install_target_message!#
+		</td>
+	</tr>
+<!-- end disabled-install-target-button -->
+

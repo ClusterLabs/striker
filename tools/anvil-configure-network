@@ -60,6 +60,7 @@ my $conf = {
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 	},
 	mode		=>	"interactive",
+	#nics		=>	["bcn-link1", "bcn-link2", "bcn-link3", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2", "ifn-link3"],
 	nics		=>	["bcn-link1", "bcn-link2", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2"],
 	network		=>	{
 		bcn		=>	{
@@ -921,7 +922,7 @@ sub backup_file
 	$file =~ s/\/$//g;
 	$conf->{path}{backups} .= "/" if $conf->{path}{backups} !~ /\/$/;
 	
-	my $file_handle = "";
+	my $file_handle = undef;
 	my $shell_call  = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
 	if ($conf->{script})
 	{
@@ -1153,6 +1154,21 @@ sub sanity_check_network
 			else
 			{
 				$gateway = ($netmask =~ /,dg=(.*)/)[0];
+				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+			}
+		}
+		# 'gw' is often used, so support if (if unofficially)
+		if ($netmask =~ /,gw=/)
+		{
+			# Good, strip it out.
+			if ($netmask =~ /,gw=(.*?),/)
+			{
+				$gateway = $1;
+				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
+			}
+			else
+			{
+				$gateway = ($netmask =~ /,gq=(.*)/)[0];
 				#print "$THIS_FILE ".__LINE__."; gateway: [$gateway]\n";
 			}
 		}
