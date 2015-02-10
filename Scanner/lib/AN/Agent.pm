@@ -61,6 +61,7 @@ sub BUILD {
 
     return;
 }
+
 # ----------------------------------------------------------------------
 # API - Generate contents for metadata file defining this process's
 # output. Used unchanged by subclasses.
@@ -81,6 +82,7 @@ EODUMP
 
     return $metadata;
 }
+
 # ----------------------------------------------------------------------
 # API - delegate database storage to DBS object.
 #
@@ -90,6 +92,7 @@ sub insert_raw_record {
 
     $self->dbs()->insert_raw_record($args);
 }
+
 # ----------------------------------------------------------------------
 # Generate randomly varying value to explore OK/WARNING/CRISIS range.
 #
@@ -134,6 +137,7 @@ sub generate_random_record {
     $first = 0;
     return;
 }
+
 # ----------------------------------------------------------------------
 # API - class-specific behaviour within timed infinite loop.
 #
@@ -142,11 +146,12 @@ sub loop_core {
 
     $self->generate_random_record();
 }
+
 # ----------------------------------------------------------------------
 # API - placeholder for subclasses ... initialioze prior to infinite
 # loop.
 #
-sub prep_for_loop { }    
+sub prep_for_loop { }
 
 # ----------------------------------------------------------------------
 # Prepare for and clean up after main infinite loop. Used unchanged by
