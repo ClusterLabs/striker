@@ -175,20 +175,6 @@ sub test_connect_dbs {
     return;
 }
 
-sub test_non_blank_lines {
-    my $agent = shift;
-
-    my $args = <<"ARGS";
-line 1
-
-line 3
-ARGS
-
-    my $std = 'line 1 line 3';
-    is( AN::Agent::non_blank_lines( $args ), $std, 
-	'non_blank_lines OK' );
-}
-
 sub test_dump_metadata {
     my $agent = shift;
 
@@ -248,7 +234,6 @@ sub main {
 
     test_connect_dbs( $agent );
     test_dump_metadata($agent);
-    test_non_blank_lines($agent);
     test_generate_random_record($agent);
 }
 
