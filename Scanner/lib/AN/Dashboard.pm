@@ -37,14 +37,13 @@ const my $STD_NODE_SERVER_RECORD => [
 
 const my $MSG_BAD_NODE_SERVER_RECORD =>
     "Something's wrong with records received for check_node_server_status\n"
-    . "\t-- Wrong message tag or status:\n"
+    . "\t-- Wrong message tag or status:\n";
 
-## Please see file perltidy.ERR
-    # ======================================================================
-    # Generate alert records for NODE_SERVER_STATUS for server 'DEAD' or
-    # 'OK', or TIMEOUT trying to restart the server.
-    #
-    sub set_server_generic_alert {
+# ======================================================================
+# Generate alert records for NODE_SERVER_STATUS for server 'DEAD' or
+# 'OK', or TIMEOUT trying to restart the server.
+#
+sub set_server_generic_alert {
     my $self = shift;
     my ( $value, $status, $override ) = @_;
 
