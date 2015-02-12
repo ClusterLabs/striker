@@ -9,7 +9,7 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 use lib "$Bin/../cgi-bin/lib";
 use Test::More;
-use Test::Output;
+#use Test::Output;
 use English '-no_match_vars';
 
 use AN::OneDB;
@@ -55,6 +55,8 @@ package DBI;
         return bless { args => \@args }, $class;
     }
 }
+
+sub ping { return 1; }
 
 sub prepare {
     my $self = shift;
@@ -104,7 +106,10 @@ sub init_args {
                                'password' => 'alteeve',
                                'port'     => 5432,
                                'user'     => 'alteeve',
-                             }, };
+                             },
+		   logdir => '/tmp',
+		   connect => 1,
+    };
 
     return ($dbconf);
 }
@@ -134,7 +139,7 @@ sub test_constructor {
     is( $dbh_args->[1], 'alteeve',               'dbh username OK' );
     is( $dbh_args->[2], 'alteeve',               'dbh password OK' );
     is_deeply( $dbh_args->[3],
-               {  'AutoCommit'         => 0,
+               {  'AutoCommit'         => 1,
                   'PrintError'         => 0,
                   'RaiseError'         => 1,
                   'dbi_connect_method' => undef
@@ -187,13 +192,14 @@ EOSQL
 sub test_insert_raw_record {
     my $onedb = shift;
 
-    my $args = { table         => 'tablename',
-                 node_table_id => 1,
-                 args          => {
-                           field   => 'value',
-                           another => 'more'
-                         }, };
-
+    my $args = { table              => 'tablename',
+		 with_node_table_id => 'node_id',
+                 node_table_id      => 1,
+                 args               => {
+		     field   => 'value',
+		     another => 'more'
+		 }, };
+    
     my $status = $onedb->insert_raw_record($args);
     is( $status, 2, 'insert_raw_record() OK' );
     return;
@@ -210,7 +216,7 @@ sub test_generate_fetch_sql {
     $sql =~ s{\s+}{ }g;
     $sql =~ s{\s\z}{};
     my $std_sql
-        = q{SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? and timestamp > now() - interval '1 minute' ORDER BY timestamp asc};
+        = q{SELECT *, round( extract( epoch from age( now(), timestamp ))) as age FROM tablename WHERE node_id = ? and timestamp > now() - interval '60 seconds' ORDER BY timestamp desc};
 
     is( $sql, $std_sql, 'generate_fetch_sql() sql OK' );
     is( $id,  1,        'generate_fetch_sql() node_table_id OK' );

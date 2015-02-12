@@ -10,7 +10,7 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 use lib "$Bin/../cgi-bin/lib";
 use Test::More;
-use Test::Output;
+#use Test::Output;
 use English '-no_match_vars';
 
 use AN::DBS;
@@ -83,6 +83,8 @@ package DBI;
     }
 }
 
+sub ping { return 1; }
+
 sub prepare {
     my $self = shift;
     my ($sql) = @_;
@@ -132,7 +134,15 @@ sub std_dbconf {
                     'password' => 'alteeve',
                     'port'     => 5432,
                     'user'     => 'alteeve',
-                  } };
+                  },
+	     2 => { 'db_type'  => 'Pg',
+		    'host'     => '10.255.4.252',
+		    'name'     => 'scanner',
+		    'password' => 'alteeve',
+		    'port'     => 5432,
+		    'user'     => 'alteeve',
+	     },
+    };
 }
 
 sub alert_args {
@@ -155,10 +165,11 @@ sub alert_args {
 
 sub test_constructor {
 
-    my $path = catdir( $Bin, '../Config/db.conf' );
-    my $config_file = { config_file => $path };
-
-    my $dbs = AN::DBS->new( { path => $config_file } );
+    my $config_file = { config_file => catdir( $Bin, '../Config/db.conf' ) };
+    my $args = { path   => $config_file,
+		 logdir => '/tmp',
+    };
+    my $dbs = AN::DBS->new( $args  );
     isa_ok( $dbs, 'AN::DBS', 'DBS object' );
 
     is_deeply( $dbs->path,   $config_file, 'DBS obj has right config path.' );
@@ -229,7 +240,7 @@ sub test_fetch_alert_data {
     my $dbs = shift;
 
     my $args = alert_args();
-
+    $dbs->current(0);
     my $records = $dbs->fetch_alert_data($args);
 
     my $record = $records->[0];
@@ -240,6 +251,7 @@ sub test_fetch_alert_data {
     $std->{db_type} =  'Pg';
     delete $record->{db};
     delete $std->{db};
+    $std->{other} = [];
     is_deeply( $record, $std, 'fetch_alert_data() OK' );
 
     return;

@@ -28,6 +28,13 @@ package owner;
      return $self->{message_tag};
    }
 
+   sub target_extra {
+     my $self = shift;
+     $self->{target_extra} = $_[0] if @_;
+
+     return $self->{target_extra};
+   }
+
 package main;
 
 # _Perl_
@@ -138,6 +145,7 @@ sub test_add_alert {
     $old->timestamp( 'ts');
     $old->status( 'stat');
     $old->message_tag( 'tag');
+    $old->target_extra( 'target extra');
 
     my $new = clone $old;
 
@@ -283,12 +291,12 @@ sub test_dispatch_msg {
 
     $self->dispatch_msg( $listener, $msgs );
 
-    my $callfile = 'Striker/Scanner/t/../lib/AN/Alerts.pm';
+    my $callfile = 't/../lib/AN/Alerts.pm';
     for my $routine ( sort keys %{$listener->{called}} ) {
 	for my $call (  @{ $listener->{called}{$routine}  } ) {
 	    is( $call->[0],   'AN::Alerts', "${routine}() call  class");
-        my $file = $call->[1];
-	    $file =~ s{.*/(?=Striker)}{};
+	    my $file = $call->[1];
+	    $file =~ s{.*/(?=t/..)}{};
 	    is( $file,   $callfile,    "${routine}() call file");
 	    like( $call->[2], qr{\A\d+\z},  "${routine}() call line number");
 	    if ( $routine eq 'dispatch_msg' ) {

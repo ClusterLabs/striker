@@ -23,7 +23,16 @@ TOOLDIR    = /var/www/tools
 SHAREDDIR  = /shared/status
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
-	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR)
+	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR) $(TOOLDIR) 
+
+SPECSDIR   = $(HOME)/rpmbuild/SPECS 
+
+SOURCESDIR = $(HOME)/rpmbuild/SOURCES
+
+RPMDIRS    = $(HOME)/rpmbuild/BUILD   $(HOME)/rpmbuild/RPMS \
+             $(SOURCESDIR) $(SPECSDIR) $(HOME)/rpmbuild/SRPMS
+
+RPMBUILD   = $(HOME)/rpmbuild/BUILD/Scanner
 
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
@@ -33,10 +42,22 @@ wrapper:
 
 dirs    : $(DIRS)
 
-$(DIRS)	:
+$(DIRS) :
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMDIRS) :
+	[[ -x $@ ]] || mkdir -p $@
+
+$(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
 files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
+
+
+
+
+env:
+	perl -E"say "$_	= $ENV{$_} for sort keys %ENV;" > /tmp/env
 
 $(WRAPPERS): wrapper
 	cp $@ $(BINDIR)
@@ -44,7 +65,7 @@ $(WRAPPERS): wrapper
 	chmod 755  $(BINDIR)/$@;
 	chmod u+s  $(BINDIR)/$@;
 
-$(SHUTDOWN): wrapper
+$(SHUTDOWN): wrapper $(TOOLDIR)
 	cp $@ $(TOOLDIR)
 	chown root:root $(TOOLDIR)/$@; 
 	chmod 755  $(TOOLDIR)/$@;
@@ -67,8 +88,6 @@ configs	:
 messages:
 	cp Messages/* $(MSGDIR)
 
-
-
 install: wrapper dirs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp scanner wipmi_power  $(BINDIR);		\
@@ -90,6 +109,23 @@ distclean: clean
 
 uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
+
+RPM: distclean $(RPMDIRS) $(RPMBUILD)
+	rm -f Scanner.files
+	find . -type d                \
+		     -name RPMS  -o   \
+	             -name cover_db   \
+	                  -prune -o   \
+		 -type f              \
+	             -name '*.rpm'              -o \
+	             -name load_rpm_packages.sh -o \
+		     -name '*.c'      \
+	                  -prune -o   \
+	         -print             | \
+	perl -n -e 's{\A\.}{};       \
+                     print if length' > Scanner.files
+	tar --exclude='*.rpm' -czf $(SOURCESDIR)/scanner.tar.gz .
+	cp SPECS/scanner.spec $(SPECSDIR)
 
 test:
 	prove t/*.t
