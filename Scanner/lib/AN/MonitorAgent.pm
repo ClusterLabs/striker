@@ -5,112 +5,48 @@ use warnings;
 use strict;
 use 5.010;
 
-our $VERSION = 1.0;
-
-use English '-no_match_vars';
-use File::Basename;
-use File::Spec::Functions 'catdir';
-use FileHandle;
-
-use FindBin qw($Bin);
-use Time::HiRes qw( time alarm sleep );
-use DBI;
-use Pod::Usage;
+use version;
+our $VERSION = '1.0.0';
 
 use Const::Fast;
+use English '-no_match_vars';
 
 # ======================================================================
 # CONSTANTS
 #
-const my $BRIEF     => 1;
 const my $COMMA     => q{,};
-const my $DOTSLASH  => q{./};
-const my $LIFETIME  => 24 * 60 * 60;
-const my $MAX_RATE  => 600;
-const my $MIN_RATE  => 1;
-const my $PROG      => ( fileparse($PROGRAM_NAME) )[0];
-const my $REP_RATE  => 30;
-const my $SLASH     => q{/};
 const my $SUFFIX_QR => qr{         # regex to extract filename suffix
-                                    [.]   # starts with a literal dot
-                                    [^.]+ # sequence of non-dot characters
-                                    \z    # continuing until end of string
-                                   }xms;
-const my $TIMED_OUT_ALARM_MSG => 'alarm timed out';
-const my $VERBOSE             => 2;
-
-use Class::Tiny qw(ignorefile),
-    { rate     => sub { $REP_RATE; },
-      agentdir => sub { catdir $Bin, 'agents'; },
-      verbose  => sub { 0; },
-      ignore   => sub { [qw( .conf .rc .init )] }, };
+                           [.]     # starts with a literal dot 
+                           [^.]+   # sequence of non-dot characters
+                           \z      # continuing until end of string
+                         }xms;
 
 # ======================================================================
-# Methods
+# CLASS ATTRIBUTES & CONTRUCTOR
 #
+use Class::Tiny qw(ignorefile agentdir),
+    { verbose => sub { 0; },
+      ignore  => sub { [qw( .conf .rc .init )] }, };
+
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
-
-    # If agentdir is relative path './xxx', convert to fully qualified
-    # relative to location of this script.
-    #
-    $self->agentdir( catdir( $Bin, substr $self->agentdir(), 2 ) )
-        if 0 == index $self->agentdir(), $DOTSLASH;
 
     # Separate CSV values into separate arg elements.
     #
     $self->ignore( [ split $COMMA, join $COMMA, @{ $self->ignore } ] );
 
-    $self->verify_args();
-
     return;
 }
 
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
+# ======================================================================
+# Methods
 #
-
-# ......................................................................
-# Check command line argument validity
-#
-sub verify_args {
-    my $self = shift;
-
-    local $LIST_SEPARATOR = $COMMA;
-
-    pod2usage( -verbose => $BRIEF,
-               -message => "rate '$self->rate()' < $MIN_RATE" )
-        if $self->rate() < $MIN_RATE;
-
-    pod2usage( -verbose => $BRIEF,
-               -message => "rate '$self->rate()' > $MAX_RATE" )
-        if $self->rate() > $MAX_RATE;
-
-    pod2usage( -verbose => $BRIEF,
-               -message => "agentdir '$self->agentdir()' not found" )
-        unless -e $self->agentdir();
-    pod2usage( -verbose => $BRIEF,
-               -message => "Cannot read agentdir '$self->agentdir()'" )
-        unless -r $self->agentdir();
-    pod2usage( -verbose => $BRIEF,
-               -message => "Cannot execute agentdir '$self->agentdir()'" )
-        unless -x $self->agentdir();
-
-    pod2usage(
-             -verbose => $BRIEF,
-             -message =>
-                 "Illegal character '/' in suffix ignore list '$self->ignore()'"
-             )
-        if scalar grep {m{/}xms} $self->ignore();
-
-    return;
-}
 
 # ......................................................................
 # Scan files in the directory, comparing against a persistent list
-# return list of additions and deletions. Ignore specified suffixes.
+# return list of additions and deletions. Ignore specified suffixes,
+# and explicitly excluded files.
 #
 sub scan_files {
     my $self = shift;
@@ -118,6 +54,7 @@ sub scan_files {
     # If any suffixes are specified in 'ignore', turn them
     # into keys in a persistent hash. Use '1' as the value for the key,
     # value is never used. only do the expansion the first time through.
+    # Similarly create a hash of files to be ignored.
     #
     state $ignore;
     state $ignorefile = { map { $_ => 1 } @{ $self->ignorefile } };
@@ -127,7 +64,7 @@ sub scan_files {
 
     # Persistent list of files. Reset associated values to zero. During
     # scan, update value to 1. At end, any file names with a value of
-    # zero have been removed, and so value has not been update.
+    # zero have been removed, and so hash value has not been updated.
     #
     state %files;
     @files{ keys %files } = (0) x scalar keys %files;
@@ -166,108 +103,95 @@ __END__
 
 =head1 NAME
 
-     scan_for_agents - Check agents dir for added or removed files.
+     MonitorAgent - Check agents dir for added or removed files.
+
+=head1 VERSION
+
+This document describes AN::MonitorAgent.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-     scan_for_agents [options]
+    use AN::MonitorAgent
 
-     Options:
-         -rate     N         How often test is performed, by default
-                             every 30 seconds.
-         -agentdir <path>    Which directory to check, by default
-                             the 'agents directory next to this program.
-         -ignore   .conf,.rc Files with these suffixes will be ignored.
-         -help               Brief help message.
-         -man                Full documentation.
+    my $ma = AN::MonitorAgent->new( { ignorefile => ['node_monitor'],
+                                      agentdir   => '/usr/share/striker/Agents',
+                                      verbose    => 1,
+                                    } );
+    my ($added, $removed) = $ma->$scan_files();
 
-=head1 OPTIONS
+=head1 DESCRIPTION
+
+This module implements the AN::MonitorAgent class, which monitors the
+Agents directory to determine programs which have been added or
+removed.
+
+=head1 METHODS
+
+An object of this class implements a constructor and a single method
 
 =over 4
 
-=item B<-rate N>
+=item B<new>
 
-How often loop is run, in seconds. Must be one or greater; larger than
-600 is considered an error.
+The constructor takes a few arguments in the form of a single hash
+reference, or else as pairs of arguments specifying key name and
+value.
 
-=item B<-agentdir path>
+=over 4
+
+=item B<agentdir path>
 
 Path to the directory to be scanned for additions and removals.
 
-=item B<-ignore .conf,.rc,.init>
+=item B<ignore .conf,.rc,.init>
 
 Ignore filenames with these suffixes. These additional files are meant
 to provide configuration data for the code files. A CSV list can be
 provided, or else multiple calls to the same command-line argument
 invoked, in the more verbose format:
 
-    -ignore .conf  -ignore .rc  -ignore .init
+    ignore .conf  -ignore .rc  -ignore .init
 
 By default, .conf, .rc and .init files are ignored. But the default
 list is discarded if the user specifies any -ignore options. So if you
 want to add to the default list, rather than replace it, you will need
 to include '.conf,.rc,.init' in your ignore list.
 
-=item B<-verbose>
+=item B<ignorefile arrayref>
+
+Ignore any of the filenames listed in the array ref.
+
+=item B<verbose>
 
 Output a message even if no files have been added or deleted.
 
-=item B<showsleep>
+=back
 
-Adds a component to the output string showing the duration of
-processing, and the amount of time that will be spent sleeping before
-the next iteration. =item B<-help>
+=item B<scan_files>
 
-Print a brief help message and exits.
-
-=item B<-help>
-
-Prints guide to command line arguments.
-
-=item B<-man>
-
-Prints the manual page and exits.
+Scan files in the directory, comparing against a persistent list
+return list of additions and deletions. Ignore specified suffixes,
+and explicitly excluded files.
 
 =back
 
-=head1 DESCRIPTION
+=head1 DEPENDENCIES
 
-B<scan_for_agents> is one of scanning agents for the scan-core
-program. It checks the specified directory for files that have been
-added or removed.
+=over 4
 
-When the program begins to run, it outputs a message, 
+=item B<Class::Tiny>
 
-C<Starting ./scan_for_agents at Sat Nov  1 23:53:51 2014.>
+A simple OO framework. "Boilerplate is the root of all evil"
 
-to report the program being run, and the start time.
+=item B<Const::Fast>
 
-Similarly when the program terminates because the run duration has
-expired, a similar message is output:
+Provides fast constants.
 
-C<Halting ./scan_for_agents at Sat Nov  1 23:59:46 2014.>
+=item B<English> I<core>
 
-Immediately after the start message, the first scan is performed. A
-sample output string looks like:
+Provides meaningful names for Perl 'punctuation' variables.
 
-C<scan_for_agents 1414898302.50597 [abc,xyz,zyx], [] 0.290:29999.710 mSec.>
-
-Where
-
-C<scan_for_agents> is the program name,
-
-C<1414898302.50597> is the Unix time(), i.e. Sat Nov  1 23:18:22 2014,
-
-C<[abc,xyz,zyx]> are files added since the previous scan,
-
-C<[]> indicates no files deleted,
-
-C<0.290:29999.710 mSec> indicates it took 0.290 milli-seconds (290
-microseconds) to scan the directory, and there are 29999.710
-milli-seconds to sleep till the next iteration.
-
-The scan time and time to sleep are only displayed if the -showsleep
-option was specified.
+=back
 
 =head1 LICENSE AND COPYRIGHT
 
@@ -292,8 +216,6 @@ possibly even data loss.
 =head1  INCOMPATIBILITIES
 
 There are no current incompatabilities.
-
-=head1 DEPENDENCIES
 
 =head1 CONFIGURATION
 
