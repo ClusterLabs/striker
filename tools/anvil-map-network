@@ -55,7 +55,7 @@ my $conf = {
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 	},
 	mode		=>	"interactive",
-	nics		=>	["bcn-link1", "bcn-link2", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2"],
+	nics		=>	["bcn_link1", "bcn_link2", "sn_link1", "sn_link2", "ifn_link1", "ifn_link2"],
 	script		=>	0,
 };
 
@@ -936,9 +936,9 @@ sub select_nics
 			}
 		}
 		my $say_nic = $nic;
-		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
-		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^sn_link(\d)/)  { $say_nic = "Storage Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		if ($conf->{script})
 		{
 			print "#!string!script_0039!#,,nic=$nic\n";
@@ -1026,9 +1026,9 @@ sub select_nics
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $say_nic = $nic;
-		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
-		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^sn_link(\d)/)  { $say_nic = "Storage Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		my $this_mac = $conf->{nic}{name}{$nic};
 		if (not $this_mac)
 		{

@@ -419,6 +419,13 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		'z_touch_striker.log'	=>	{
+			path			=>	"/var/www/tools/touch_striker.log",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 	},
 	sys		=>	{
 		apache_group		=>	"apache",
@@ -455,7 +462,7 @@ my $conf = {
 		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
 	},
 	# This will be changed to have two of each link if four NICs are found.
-	nics		=>	["bcn-link1", "ifn-link1"],
+	nics		=>	["bcn_link1", "ifn_link1"],
 	network		=>	{
 		bcn		=>	{
 			ip		=>	"",
@@ -2567,13 +2574,13 @@ sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_con
 	{
 		$kickstart .= "
 cat > /etc/yum.repos.d/striker-$conf->{sys}{hostname}-$os.repo << EOF
-[striker-$conf->{sys}{hostname}-bcn-$os]
+[striker-$conf->{sys}{hostname}-bcn_$os]
 name=Striker $conf->{sys}{hostname}'s $say_os 6 BCN repo.
 baseurl=http://$conf->{network}{bcn}{ip}/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
 
-[striker-$conf->{sys}{hostname}-ifn-$os]
+[striker-$conf->{sys}{hostname}-ifn_$os]
 name=Striker $conf->{sys}{hostname}'s $say_os 6 IFN repo.
 baseurl=http://$conf->{network}{ifn}{ip}/$os_directory/x86_64/img/
 enabled=1
@@ -2986,10 +2993,10 @@ sub configure_dhcp
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# BCN not specified.
-		if (-e "$conf->{path}{network_configs}/ifcfg-bcn-bond1")
+		if (-e "$conf->{path}{network_configs}/ifcfg-bcn_bond1")
 		{
 			# Read in the IP from the bond file.
-			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn-bond1";
+			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
 			my $shell_call = "grep -e IPADDR -e NETMASK $ifcfg_file";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -3011,10 +3018,10 @@ sub configure_dhcp
 			}
 			close $file_handle;
 		}
-		elsif (-e "$conf->{path}{network_configs}/ifcfg-bcn-link1")
+		elsif (-e "$conf->{path}{network_configs}/ifcfg-bcn_link1")
 		{
 			# Read in the IP from the link file
-			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn-link1";
+			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
 			my $shell_call = "grep IPADDR $ifcfg_file";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -3041,8 +3048,8 @@ sub configure_dhcp
 			# Error out.
 			print "[ Error ] - PXE configuration was requested but the BCN IP wasn't specified.\n";
 			print "[ Error ]   Tried to read the current BCN IP from either config file:\n";
-			print "[ Error ]   - Bond: [$conf->{path}{network_configs}/ifcfg-bcn-bond1]\n";
-			print "[ Error ]   - Link: [$conf->{path}{network_configs}/ifcfg-bcn-link1]\n";
+			print "[ Error ]   - Bond: [$conf->{path}{network_configs}/ifcfg-bcn_bond1]\n";
+			print "[ Error ]   - Link: [$conf->{path}{network_configs}/ifcfg-bcn_link1]\n";
 			print "[ Error ]   Neither was found, so the BCN IP can not be determined. There is\n";
 			print "[ Error ]   no way to configure the DHCP server.\n";
 			print "[ Error ] - Install exiting.\n\n";
@@ -4875,13 +4882,13 @@ sub configure_striker_rhel_repo
 		# Create the repo
 		print "- The local Striker RHEL repo hasn't been added yet, adding it now.\n";
 		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
-		print $file_handle "[striker-$conf->{sys}{hostname}-bcn-rhel]\n";
+		print $file_handle "[striker-$conf->{sys}{hostname}-bcn_rhel]\n";
 		print $file_handle "name=Striker $conf->{sys}{hostname}'s RHEL repo.\n";
 		print $file_handle "baseurl=http://$conf->{network}{bcn}{ip}/rhel6/x86_64/img/\n";
 		print $file_handle "enabled=1\n";
 		print $file_handle "gpgcheck=0\n";
 		print $file_handle "\n";
-		print $file_handle "[striker-$conf->{sys}{hostname}-ifn-rhel]\n";
+		print $file_handle "[striker-$conf->{sys}{hostname}-ifn_rhel]\n";
 		print $file_handle "name=Striker $conf->{sys}{hostname}'s RHEL repo.\n";
 		print $file_handle "baseurl=http://$conf->{network}{ifn}{ip}/rhel6/x86_64/img/\n";
 		print $file_handle "enabled=1\n";
@@ -5051,42 +5058,42 @@ sub update_network_config_files
 	# How I proceed depends on whether I am creating bonds or not.
 	if ($conf->{sys}{create_bonds})
 	{
-		my $ifcfg_bcn_bond1_file = "$conf->{path}{network_configs}/ifcfg-bcn-bond1";
-		my $ifcfg_bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn-link1";
-		my $ifcfg_bcn_link2_file = "$conf->{path}{network_configs}/ifcfg-bcn-link2";
-		my $ifcfg_ifn_bond1_file = "$conf->{path}{network_configs}/ifcfg-ifn-bond1";
-		my $ifcfg_ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn-link1";
-		my $ifcfg_ifn_link2_file = "$conf->{path}{network_configs}/ifcfg-ifn-link2";
+		my $ifcfg_bcn_bond1_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
+		my $ifcfg_bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
+		my $ifcfg_bcn_link2_file = "$conf->{path}{network_configs}/ifcfg-bcn_link2";
+		my $ifcfg_ifn_bond1_file = "$conf->{path}{network_configs}/ifcfg-ifn_bond1";
+		my $ifcfg_ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn_link1";
+		my $ifcfg_ifn_link2_file = "$conf->{path}{network_configs}/ifcfg-ifn_link2";
 		
 		my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
-		   $ifcfg_bcn_link1 .= "DEVICE=\"bcn-link1\"\n";
+		   $ifcfg_bcn_link1 .= "DEVICE=\"bcn_link1\"\n";
 		   $ifcfg_bcn_link1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_bcn_link1 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_bcn_link1 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_bcn_link1 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_bcn_link1 .= "SLAVE=\"yes\"\n";
-		   $ifcfg_bcn_link1 .= "MASTER=\"bcn-bond1\"";
+		   $ifcfg_bcn_link1 .= "MASTER=\"bcn_bond1\"";
 		
 		#$conf->{path}{nodes}{bcn_link2_config};
 		my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
-		   $ifcfg_bcn_link2 .= "DEVICE=\"bcn-link2\"\n";
+		   $ifcfg_bcn_link2 .= "DEVICE=\"bcn_link2\"\n";
 		   $ifcfg_bcn_link2 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_bcn_link2 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_bcn_link2 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_bcn_link2 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_bcn_link2 .= "SLAVE=\"yes\"\n";
-		   $ifcfg_bcn_link2 .= "MASTER=\"bcn-bond1\"";
+		   $ifcfg_bcn_link2 .= "MASTER=\"bcn_bond1\"";
 		
 		#$conf->{path}{nodes}{bcn_bond1_config};
 		my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
-		   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn-bond1\"\n";
+		   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn_bond1\"\n";
 		   $ifcfg_bcn_bond1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
-		   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn-link1\"\n";
+		   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1\"\n";
 		   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
 		   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
 		   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
@@ -5095,33 +5102,33 @@ sub update_network_config_files
 		# IFN Link 1
 		my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
-		   $ifcfg_ifn_link1 .= "DEVICE=\"ifn-link1\"\n";
+		   $ifcfg_ifn_link1 .= "DEVICE=\"ifn_link1\"\n";
 		   $ifcfg_ifn_link1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_ifn_link1 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_ifn_link1 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_ifn_link1 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_ifn_link1 .= "SLAVE=\"yes\"\n";
-		   $ifcfg_ifn_link1 .= "MASTER=\"ifn-bond1\"";
+		   $ifcfg_ifn_link1 .= "MASTER=\"ifn_bond1\"";
 		
 		# IFN Link 2
 		my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
-		   $ifcfg_ifn_link2 .= "DEVICE=\"ifn-link2\"\n";
+		   $ifcfg_ifn_link2 .= "DEVICE=\"ifn_link2\"\n";
 		   $ifcfg_ifn_link2 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_ifn_link2 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_ifn_link2 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_ifn_link2 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_ifn_link2 .= "SLAVE=\"yes\"\n";
-		   $ifcfg_ifn_link2 .= "MASTER=\"ifn-bond1\"";
+		   $ifcfg_ifn_link2 .= "MASTER=\"ifn_bond1\"";
 		
 		# IFN Bond 1
 		my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
-		   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn-bond1\"\n";
+		   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn_bond1\"\n";
 		   $ifcfg_ifn_bond1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
-		   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn-link1\"\n";
+		   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1\"\n";
 		   $ifcfg_ifn_bond1 .= "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
 		   $ifcfg_ifn_bond1 .= "NETMASK=\"$conf->{network}{ifn}{netmask}\"\n";
 		   $ifcfg_ifn_bond1 .= "GATEWAY=\"$conf->{network}{ifn}{gateway}\"\n";
@@ -5165,13 +5172,13 @@ sub update_network_config_files
 	else
 	{
 		# BCN first
-		my $bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn-link1";
+		my $bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
 		print "- BCN Link 1: [$bcn_link1_file]\n";
 		my $shell_call = $bcn_link1_file;
 		open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		print $file_handle "# Back-Channel Network - Link 1\n";
-		print $file_handle "DEVICE=\"bcn-link1\"\n";
+		print $file_handle "DEVICE=\"bcn_link1\"\n";
 		print $file_handle "BOOTPROTO=\"static\"\n";
 		print $file_handle "NM_CONTROLLED=\"no\"\n";
 		print $file_handle "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
@@ -5180,13 +5187,13 @@ sub update_network_config_files
 		close $file_handle;
 		
 		# Now the IFN
-		my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn-link1";
+		my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn_link1";
 		print "- IFN Link 1: [$ifn_link1_file]\n";
 		$shell_call = $ifn_link1_file;
 		open ($file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		print $file_handle "# Internet-Facing Network - Link 1\n";
-		print $file_handle "DEVICE=\"ifn-link1\"\n";
+		print $file_handle "DEVICE=\"ifn_link1\"\n";
 		print $file_handle "BOOTPROTO=\"static\"\n";
 		print $file_handle "NM_CONTROLLED=\"no\"\n";
 		print $file_handle "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
@@ -5246,8 +5253,8 @@ sub write_udev_persistent_net
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $say_nic = $nic;
-		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		my $this_mac = $conf->{nic}{name}{$nic};
 		if (not $this_mac)
 		{
@@ -5421,7 +5428,7 @@ sub sanity_check_switches
 	elsif ((not $conf->{switches}{b}) && (not $conf->{switches}{i}))
 	{
 		print "[ Note ] - No network details given. Skipping Network config!\n";
-		my $shell_call = "$conf->{executable}{ip} addr show bcn-link1";
+		my $shell_call = "$conf->{executable}{ip} addr show bcn_link1";
 		open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5440,10 +5447,10 @@ sub sanity_check_switches
 		{
 			# Might have been configured in a previous run but not
 			# yet rebooted.
-			if (not -e "$conf->{path}{network_configs}/ifcfg-bcn-link1")
+			if (not -e "$conf->{path}{network_configs}/ifcfg-bcn_link1")
 			{
 				print "[ Error ] - Network configuration is disabled, but the BCN network's IP address\n";
-				print "[ Error ]   and network mask were not found. Is the device 'bcn-link1'\n";
+				print "[ Error ]   and network mask were not found. Is the device 'bcn_link1'\n";
 				print "[ Error ]   configured with an IP address?\n";
 				$bad_value = 1;
 			}
@@ -6422,8 +6429,8 @@ sub select_nics
 			sleep 1;
 		}
 		my $say_nic = $nic;
-		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		print "- Please unplug the interface you want to make:\n";
 		print "  [$say_nic]\n";
 		my $last_conflict = "";
@@ -6465,8 +6472,8 @@ sub select_nics
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $say_nic = $nic;
-		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		my $this_mac = $conf->{nic}{name}{$nic};
 		if (not $this_mac)
 		{
@@ -6621,7 +6628,7 @@ sub check_nic_states
 	if ((not $conf->{sys}{skip_network}) && ($nic_count == 4))
 	{
 		# Woo! I like this user. :3
-		$conf->{nics}              = ["bcn-link1", "bcn-link2", "ifn-link1", "ifn-link2"];
+		$conf->{nics}              = ["bcn_link1", "bcn_link2", "ifn_link1", "ifn_link2"];
 		$conf->{sys}{create_bonds} = 1;
 	}
 	

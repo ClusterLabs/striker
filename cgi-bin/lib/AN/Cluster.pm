@@ -1978,7 +1978,44 @@ sub create_install_manifest
 			if ($return_code)
 			{
 				# Something went wrong.
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer");
+				my $button = AN::Common::template($conf, "common.html", "form-button", {
+					class	=>	"bold_button", 
+					name	=>	"confirm",
+					id	=>	"confirm",
+					value	=>	"#!string!button_0063!#",
+				});
+				my $message = AN::Common::get_string($conf, {
+					key	=>	"message_0432", variables => {
+						try_again_button	=>	$button,
+					},
+				});
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
+					form_file			=>	"/cgi-bin/striker",
+					button_class			=>	"bold_button", 
+					button_name			=>	"confirm",
+					button_id			=>	"confirm",
+					button_value			=>	"#!string!button_0063!#",
+					message				=>	$message, 
+					anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+					anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+					anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
+					anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
+					anvil_open_vnc_ports		=>	$conf->{cgi}{anvil_open_vnc_ports},
+					run				=>	$conf->{cgi}{run},
+					try_again_button		=>	$button,
+					anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+					anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
+					anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+					anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
+					anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+					anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
+					anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+					anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
+					anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+					anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
+					anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+					anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
+				});
 			}
 		}
 		else
@@ -2738,12 +2775,12 @@ sub load_install_manifest
 			# undo the results.
 			if (not $conf->{cgi}{perform_install})
 			{
-				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac};
-				$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac};
-				$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac};
-				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
-				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
-				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
+				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{bcn_link1}{mac};
+				$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{bcn_link2}{mac};
+				$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{sn_link1}{mac};
+				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{sn_link2}{mac};
+				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link1}{mac};
+				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link2}{mac};
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
 			}
 			$i++;
@@ -3114,12 +3151,12 @@ Striker Version: $conf->{sys}{version}
 			<on reference=\"kvm_host\" port=\"\" />
 		</kvm>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node1_bcn_link1_mac}\" />
-			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node1_bcn_link2_mac}\" />
-			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node1_sn_link1_mac}\" />
-			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node1_sn_link2_mac}\" />
-			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node1_ifn_link1_mac}\" />
-			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
+			<interface name=\"bcn_link1\" mac=\"$conf->{cgi}{anvil_node1_bcn_link1_mac}\" />
+			<interface name=\"bcn_link2\" mac=\"$conf->{cgi}{anvil_node1_bcn_link2_mac}\" />
+			<interface name=\"sn_link1\" mac=\"$conf->{cgi}{anvil_node1_sn_link1_mac}\" />
+			<interface name=\"sn_link2\" mac=\"$conf->{cgi}{anvil_node1_sn_link2_mac}\" />
+			<interface name=\"ifn_link1\" mac=\"$conf->{cgi}{anvil_node1_ifn_link1_mac}\" />
+			<interface name=\"ifn_link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<node name=\"$conf->{cgi}{anvil_node2_name}\">
@@ -3139,12 +3176,12 @@ Striker Version: $conf->{sys}{version}
 			<on reference=\"kvm_host\" port=\"\" />
 		</kvm>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node2_bcn_link1_mac}\" />
-			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node2_bcn_link2_mac}\" />
-			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node2_sn_link1_mac}\" />
-			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node2_sn_link2_mac}\" />
-			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node2_ifn_link1_mac}\" />
-			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node2_ifn_link2_mac}\" />
+			<interface name=\"bcn_link1\" mac=\"$conf->{cgi}{anvil_node2_bcn_link1_mac}\" />
+			<interface name=\"bcn_link2\" mac=\"$conf->{cgi}{anvil_node2_bcn_link2_mac}\" />
+			<interface name=\"sn_link1\" mac=\"$conf->{cgi}{anvil_node2_sn_link1_mac}\" />
+			<interface name=\"sn_link2\" mac=\"$conf->{cgi}{anvil_node2_sn_link2_mac}\" />
+			<interface name=\"ifn_link1\" mac=\"$conf->{cgi}{anvil_node2_ifn_link1_mac}\" />
+			<interface name=\"ifn_link2\" mac=\"$conf->{cgi}{anvil_node2_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<common>
@@ -3153,12 +3190,12 @@ Striker Version: $conf->{sys}{version}
 			<sn  netblock=\"$conf->{cgi}{anvil_sn_network}\" netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" dns1=\"\" dns2=\"\" defroute=\"no\" />
 			<ifn netblock=\"$conf->{cgi}{anvil_ifn_network}\" netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_ifn_dns1}\" dns2=\"$conf->{cgi}{anvil_ifn_dns2}\" defroute=\"yes\" />
 			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
-				<bcn name=\"bcn-bond1\" primary=\"bcn-link1\" secondary=\"bcn-link2\" />
-				<sn name=\"sn-bond1\" primary=\"sn-link1\" secondary=\"sn-link2\" />
-				<ifn name=\"ifn-bond1\" primary=\"ifn-link1\" secondary=\"ifn-link2\" />
+				<bcn name=\"bcn_bond1\" primary=\"bcn_link1\" secondary=\"bcn_link2\" />
+				<sn name=\"sn_bond1\" primary=\"sn_link1\" secondary=\"sn_link2\" />
+				<ifn name=\"ifn_bond1\" primary=\"ifn_link1\" secondary=\"ifn_link2\" />
 			</bonding>
 			<bridges>
-				<bridge name=\"ifn-bridge1\" on=\"ifn\" />
+				<bridge name=\"ifn_bridge1\" on=\"ifn\" />
 			</bridges>
 			<mtu size=\"$conf->{cgi}{anvil_mtu_size}\" />
 		</networks>
@@ -5867,39 +5904,6 @@ sub get_cgi_vars
 	return (0);
 }
 
-# This reads in the configuration file.
-sub read_conf
-{
-	my ($conf) = @_;
-	
-	$conf->{raw}{striker_conf} = [];
-	my $file_handle = IO::Handle->new();
-	my $shell_call = "$conf->{path}{striker_conf}";
-	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		push @{$conf->{raw}{striker_conf}}, $line;
-		next if not $line;
-		next if $line !~ /=/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if $line =~ /^#/;
-		next if not $line;
-		my ($var, $val) = (split/=/, $line, 2);
-		$var =~ s/^\s+//;
-		$var =~ s/\s+$//;
-		$val =~ s/^\s+//;
-		$val =~ s/\s+$//;
-		next if (not $var);
-		AN::Common::_make_hash_reference($conf, $var, $val);
-	}
-	$file_handle->close();
-	
-	return(0);
-}
-
 # This builds an HTML select field.
 sub build_select
 {
@@ -6173,6 +6177,31 @@ sub record
 	my $file_handle = $conf->{handles}{'log'};
 	if (not $file_handle)
 	{
+		# Touch the file if it doesn't exist yet.
+		#print "[ Debug ] - Checking if: [$conf->{path}{'log'}] is writable...\n";
+		if (not -w $conf->{path}{'log'})
+		{
+			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
+			#       is hard-coded to use '/var/log/striker.log'.
+			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
+			my $shell_call = $conf->{path}{'touch_striker.log'};
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - Output: [$line]\n";
+			}
+			close $file_handle;
+			
+			#print "[ Debug ] - Checking if it is writable now...\n";
+			if (not -w $conf->{path}{'log'})
+			{
+				#print "[ Error ] - Failed to make: [$conf->{path}{'log'}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
+				exit(1);
+			}
+		}
+		
 		$file_handle = IO::Handle->new();
 		$conf->{handles}{'log'} = $file_handle;
 		open ($file_handle, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
@@ -7014,7 +7043,7 @@ sub gather_node_details
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"if [ -e '/proc/net/bonding/ifn-bond1' ];
+			shell_call	=>	"if [ -e '/proc/net/bonding/ifn_bond1' ];
 						then
 							for i in \$(ls /proc/net/bonding/); 
 							do 

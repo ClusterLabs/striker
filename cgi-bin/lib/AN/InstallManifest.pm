@@ -304,7 +304,7 @@ sub run_new_install_manifest
 		
 		# Do we need to show the link for adding the Anvil! to the config?
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_configured: [$anvil_configured]\n");
-		my $message = AN::Common::get_string($conf, {key => "message_0286"});
+		my $message = AN::Common::get_string($conf, {key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
 		if (not $anvil_configured)
 		{
@@ -6311,6 +6311,7 @@ sub configure_storage_stage2
 	my $node1_message = "#!string!state_0045!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0045!#";
+	my $show_lvm_note = 0;
 	my $message       = "";
 	# Node 1, Pool 1
 	if ($node1_pool1_rc eq "1")
@@ -6335,6 +6336,7 @@ sub configure_storage_stage2
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
+		$show_lvm_note = 1;
 	}
 	elsif ($node1_pool1_rc eq "5")
 	{
@@ -6370,6 +6372,7 @@ sub configure_storage_stage2
 	{
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$show_lvm_note = 1;
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "5")
@@ -6420,6 +6423,7 @@ sub configure_storage_stage2
 	{
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+		$show_lvm_note = 1;
 		$ok            = 0;
 	}
 	elsif ($node1_pool2_rc eq "5")
@@ -6461,6 +6465,7 @@ sub configure_storage_stage2
 	{
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+		$show_lvm_note = 1;
 		$ok            = 0;
 	}
 	elsif ($node2_pool2_rc eq "5")
@@ -6493,6 +6498,15 @@ sub configure_storage_stage2
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
 			message	=>	"#!string!message_0398!#",
 			row	=>	"#!string!state_0034!#",
+		});
+	}
+	
+	# Tell the user they may need to 'dd' the partition, if needed.
+	if ($show_lvm_note)
+	{
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
+			message	=>	"#!string!message_0433!#",
+			row	=>	"#!string!row_0032!#",
 		});
 	}
 	
@@ -7153,8 +7167,8 @@ sub summarize_build_plan
 	}
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2].\n");
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}]\n");
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}]\n");
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}).")], cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}).")]\n");
 	if (not $conf->{cgi}{anvil_storage_partition_1_byte_size})
 	{
@@ -7170,23 +7184,23 @@ sub summarize_build_plan
 		form_file			=>	"/cgi-bin/striker",
 		title				=>	"#!string!title_0177!#",
 		bcn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "1" }}),
-		bcn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'},
-		bcn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'},
+		bcn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
+		bcn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
 		bcn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "2" }}),
-		bcn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'},
-		bcn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'},
+		bcn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
+		bcn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
 		sn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "1" }}),
-		sn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'},
-		sn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'},
+		sn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link1},
+		sn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link1},
 		sn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "2" }}),
-		sn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'},
-		sn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'},
+		sn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link2},
+		sn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link2},
 		ifn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "1" }}),
-		ifn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'},
-		ifn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'},
+		ifn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
+		ifn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
 		ifn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "2" }}),
-		ifn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'},
-		ifn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'},
+		ifn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
+		ifn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
 		media_library_size		=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}),
 		pool1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}),
 		pool2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}),
@@ -7260,49 +7274,49 @@ sub configure_network_on_node
 	#$conf->{path}{nodes}{udev_net_rules};
 	my $udev_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
 	   $udev_rules .= "# Back-Channel Network, Link 1\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link1_mac_key}\", NAME=\"bcn-link1\"\n\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link1_mac_key}\", NAME=\"bcn_link1\"\n\n";
 	   $udev_rules .= "# Back-Channel Network, Link 2\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link2_mac_key}\", NAME=\"bcn-link2\"\n\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link2_mac_key}\", NAME=\"bcn_link2\"\n\n";
 	   $udev_rules .= "# Storage Network, Link 1\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link1_mac_key}\", NAME=\"sn-link1\"\n\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link1_mac_key}\", NAME=\"sn_link1\"\n\n";
 	   $udev_rules .= "# Storage Network, Link 2\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link2_mac_key}\", NAME=\"sn-link2\"\n\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link2_mac_key}\", NAME=\"sn_link2\"\n\n";
 	   $udev_rules .= "# Internet-Facing Network, Link 1\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn-link1\"\n\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn_link1\"\n\n";
 	   $udev_rules .= "# Internet-Facing Network, Link 2\n";
-	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn-link2\"\n";
+	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn_link2\"\n";
 	
 	### Back-Channel Network
 	#$conf->{path}{nodes}{bcn_link1_config};
 	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
-	   $ifcfg_bcn_link1 .= "DEVICE=\"bcn-link1\"\n";
+	   $ifcfg_bcn_link1 .= "DEVICE=\"bcn_link1\"\n";
 	   $ifcfg_bcn_link1 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_bcn_link1 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_bcn_link1 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_bcn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_bcn_link1 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_bcn_link1 .= "MASTER=\"bcn-bond1\"";
+	   $ifcfg_bcn_link1 .= "MASTER=\"bcn_bond1\"";
 	
 	#$conf->{path}{nodes}{bcn_link2_config};
 	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
-	   $ifcfg_bcn_link2 .= "DEVICE=\"bcn-link2\"\n";
+	   $ifcfg_bcn_link2 .= "DEVICE=\"bcn_link2\"\n";
 	   $ifcfg_bcn_link2 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_bcn_link2 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_bcn_link2 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_bcn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_bcn_link2 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_bcn_link2 .= "MASTER=\"bcn-bond1\"";
+	   $ifcfg_bcn_link2 .= "MASTER=\"bcn_bond1\"";
 	
 	#$conf->{path}{nodes}{bcn_bond1_config};
 	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
-	   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn-bond1\"\n";
+	   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn_bond1\"\n";
 	   $ifcfg_bcn_bond1 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn-link1\"\n";
+	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1\"\n";
 	   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{cgi}{$bcn_ip_key}\"\n";
 	   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_bcn_subnet}\"\n";
 	   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
@@ -7311,33 +7325,33 @@ sub configure_network_on_node
 	#$conf->{path}{nodes}{sn_link1_config};
 	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_sn_link1 .= "# Storage Network - Link 1\n";
-	   $ifcfg_sn_link1 .= "DEVICE=\"sn-link1\"\n";
+	   $ifcfg_sn_link1 .= "DEVICE=\"sn_link1\"\n";
 	   $ifcfg_sn_link1 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_sn_link1 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_sn_link1 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_sn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_sn_link1 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_sn_link1 .= "MASTER=\"sn-bond1\"";
+	   $ifcfg_sn_link1 .= "MASTER=\"sn_bond1\"";
 	
 	#$conf->{path}{nodes}{sn_link2_config};
 	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_sn_link2 .= "# Storage Network - Link 2\n";
-	   $ifcfg_sn_link2 .= "DEVICE=\"sn-link2\"\n";
+	   $ifcfg_sn_link2 .= "DEVICE=\"sn_link2\"\n";
 	   $ifcfg_sn_link2 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_sn_link2 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_sn_link2 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_sn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_sn_link2 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_sn_link2 .= "MASTER=\"sn-bond1\"";
+	   $ifcfg_sn_link2 .= "MASTER=\"sn_bond1\"";
 	
 	#$conf->{path}{nodes}{sn_bond1_config};
 	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_sn_bond1 .= "# Storage Network - Bond 1\n";
-	   $ifcfg_sn_bond1 .= "DEVICE=\"sn-bond1\"\n";
+	   $ifcfg_sn_bond1 .= "DEVICE=\"sn_bond1\"\n";
 	   $ifcfg_sn_bond1 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_sn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_sn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=sn-link1\"\n";
+	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=sn_link1\"\n";
 	   $ifcfg_sn_bond1 .= "IPADDR=\"$conf->{cgi}{$sn_ip_key}\"\n";
 	   $ifcfg_sn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_sn_subnet}\"\n";
 	   $ifcfg_sn_bond1 .= "DEFROUTE=\"no\"";
@@ -7346,34 +7360,34 @@ sub configure_network_on_node
 	#$conf->{path}{nodes}{ifn_link1_config};
 	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
-	   $ifcfg_ifn_link1 .= "DEVICE=\"ifn-link1\"\n";
+	   $ifcfg_ifn_link1 .= "DEVICE=\"ifn_link1\"\n";
 	   $ifcfg_ifn_link1 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_ifn_link1 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_ifn_link1 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_ifn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_ifn_link1 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_ifn_link1 .= "MASTER=\"ifn-bond1\"";
+	   $ifcfg_ifn_link1 .= "MASTER=\"ifn_bond1\"";
 	
 	#$conf->{path}{nodes}{ifn_link2_config};
 	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
-	   $ifcfg_ifn_link2 .= "DEVICE=\"ifn-link2\"\n";
+	   $ifcfg_ifn_link2 .= "DEVICE=\"ifn_link2\"\n";
 	   $ifcfg_ifn_link2 .= "MTU=\"9000\"\n" if $mtu;
 	   $ifcfg_ifn_link2 .= "NM_CONTROLLED=\"no\"\n";
 	   $ifcfg_ifn_link2 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_ifn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_ifn_link2 .= "SLAVE=\"yes\"\n";
-	   $ifcfg_ifn_link2 .= "MASTER=\"ifn-bond1\"";
+	   $ifcfg_ifn_link2 .= "MASTER=\"ifn_bond1\"";
 	
 	#$conf->{path}{nodes}{ifn_bond1_config};
 	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
-	   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn-bond1\"\n";
+	   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn_bond1\"\n";
 	   $ifcfg_ifn_bond1 .= "MTU=\"9000\"\n" if $mtu;
-	   $ifcfg_ifn_bond1 .= "BRIDGE=\"ifn-bridge1\"\n";
+	   $ifcfg_ifn_bond1 .= "BRIDGE=\"ifn_bridge1\"\n";
 	   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn-link1\"";
+	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1\"";
 	
 	#$conf->{path}{nodes}{ifn_bridge1_config};
 	### NOTE: We don't set the MTU here because the bridge will ignore it.
@@ -7381,7 +7395,7 @@ sub configure_network_on_node
 	###       lowest MTU.
 	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
 	   $ifcfg_ifn_bridge1 .= "# Internet-Facing Network - Bridge 1\n";
-	   $ifcfg_ifn_bridge1 .= "DEVICE=\"ifn-bridge1\"\n";
+	   $ifcfg_ifn_bridge1 .= "DEVICE=\"ifn_bridge1\"\n";
 	   $ifcfg_ifn_bridge1 .= "TYPE=\"Bridge\"\n";
 	   $ifcfg_ifn_bridge1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
@@ -7796,7 +7810,7 @@ sub configure_network_on_node
 	foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n"); }
 	
 	### TODO: Add sanity checks.
-	# If there is not an 'ifn-bridge1', assume we need to reboot.
+	# If there is not an ifn_bridge1, assume we need to reboot.
 	my $bridge_found = 0;
 	   $shell_call   = "brctl show";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
@@ -7813,7 +7827,7 @@ sub configure_network_on_node
 	foreach my $line (@{$return})
 	{
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-		if ($line =~ /ifn-bridge1/)
+		if ($line =~ /ifn_bridge1/)
 		{
 			$bridge_found = 1;
 		}
@@ -7941,19 +7955,19 @@ sub map_network
 	# * If the existing network appears complete already.
 	# If any are missing, a remap will be needed.
 	# Node 1
-	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}  = "";
-	$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}  = "";
-	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{sn_link1}  = "";
+	$conf->{conf}{node}{$node1}{set_nic}{sn_link2}  = "";
+	$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = "";
+	$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = "";
 	# Node 2
-	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}  = "";
-	$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}  = "";
-	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{sn_link1}  = "";
+	$conf->{conf}{node}{$node2}{set_nic}{sn_link2}  = "";
+	$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = "";
+	$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = "";
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
@@ -7966,33 +7980,33 @@ sub map_network
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_bcn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}].\n");
+			$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
 		}
 		else
 		{
@@ -8012,29 +8026,29 @@ sub map_network
 # 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}].\n");
+			$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_bcn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}].\n");
+			$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'} = $mac;
+			$conf->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'} = $mac;
+			$conf->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'} = $mac;
+			$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'} = $mac;
+			$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
 		}
 		else
 		{
@@ -8043,17 +8057,17 @@ sub map_network
 		}
 	}
 	
-	# Now determine if a remap is needed. If 'ifn-bridge1' exists, assume
+	# Now determine if a remap is needed. If ifn_bridge1 exists, assume
 	# it's configured and skip.
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
 	
-	### TODO: Check *all* devices, not just ifn-bridge1
+	### TODO: Check *all* devices, not just ifn_bridge1
 	# Check node1
-	if ((exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}) && (exists $conf->{conf}{node}{$node1}{current_nic}{'ifn-bridge1'}))
+	if ((exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'ifn-bridge1' device exists on both nodes already, remap not needed.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The ifn_bridge1 device exists on both nodes already, remap not needed.\n");
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
@@ -8070,22 +8084,22 @@ sub map_network
 	}
 	else
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}].\n");
-		if ((not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link1'}) || 
-		    (not $conf->{conf}{node}{$node1}{set_nic}{'bcn-link2'}) ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link1'})  ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{'sn-link2'})  ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link1'}) ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{'ifn-link2'}))
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
+		if ((not $conf->{conf}{node}{$node1}{set_nic}{bcn_link1}) || 
+		    (not $conf->{conf}{node}{$node1}{set_nic}{bcn_link2}) ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{sn_link1})  ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{sn_link2})  ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{ifn_link1}) ||
+		    (not $conf->{conf}{node}{$node1}{set_nic}{ifn_link2}))
 		{
 			$node1_remap_needed = 1;
 		}
 	}
 	# Check node 2
-	if ((exists $conf->{conf}{node}{$node2}{current_nic}{'ifn-bridge1'}) && (exists $conf->{conf}{node}{$node2}{current_nic}{'ifn-bridge1'}))
+	if ((exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'ifn-bridge1' device exists on both nodes already, remap not needed.\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The ifn_bridge1 device exists on both nodes already, remap not needed.\n");
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
@@ -8102,13 +8116,13 @@ sub map_network
 	}
 	else
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}].\n");
-		if ((not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link1'}) || 
-		    (not $conf->{conf}{node}{$node2}{set_nic}{'bcn-link2'}) ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link1'})  ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{'sn-link2'})  ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link1'}) ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{'ifn-link2'}))
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
+		if ((not $conf->{conf}{node}{$node2}{set_nic}{bcn_link1}) || 
+		    (not $conf->{conf}{node}{$node2}{set_nic}{bcn_link2}) ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{sn_link1})  ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{sn_link2})  ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{ifn_link1}) ||
+		    (not $conf->{conf}{node}{$node2}{set_nic}{ifn_link2}))
 		{
 			$node2_remap_needed = 1;
 		}
@@ -8340,13 +8354,13 @@ sub map_network_on_node
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
 		
 		# We should now know this info.
-		$conf->{conf}{node}{$node}{set_nic}{'bcn-link1'} = $conf->{conf}{node}{$node}{current_nic}{'bcn-link1'};
-		$conf->{conf}{node}{$node}{set_nic}{'bcn-link2'} = $conf->{conf}{node}{$node}{current_nic}{'bcn-link2'};
-		$conf->{conf}{node}{$node}{set_nic}{'sn-link1'}  = $conf->{conf}{node}{$node}{current_nic}{'sn-link1'};
-		$conf->{conf}{node}{$node}{set_nic}{'sn-link2'}  = $conf->{conf}{node}{$node}{current_nic}{'sn-link2'};
-		$conf->{conf}{node}{$node}{set_nic}{'ifn-link1'} = $conf->{conf}{node}{$node}{current_nic}{'ifn-link1'};
-		$conf->{conf}{node}{$node}{set_nic}{'ifn-link2'} = $conf->{conf}{node}{$node}{current_nic}{'ifn-link2'};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]: bcn-link1: [$conf->{conf}{node}{$node}{set_nic}{'bcn-link1'}], bcn-link2: [$conf->{conf}{node}{$node}{set_nic}{'bcn-link2'}], sn-link1: [$conf->{conf}{node}{$node}{set_nic}{'sn-link1'}], sn-link2: [$conf->{conf}{node}{$node}{set_nic}{'sn-link2'}], ifn-link1: [$conf->{conf}{node}{$node}{set_nic}{'ifn-link1'}], ifn-link2: [$conf->{conf}{node}{$node}{set_nic}{'ifn-link2'}]\n");
+		$conf->{conf}{node}{$node}{set_nic}{bcn_link1} = $conf->{conf}{node}{$node}{current_nic}{bcn_link1};
+		$conf->{conf}{node}{$node}{set_nic}{bcn_link2} = $conf->{conf}{node}{$node}{current_nic}{bcn_link2};
+		$conf->{conf}{node}{$node}{set_nic}{sn_link1}  = $conf->{conf}{node}{$node}{current_nic}{sn_link1};
+		$conf->{conf}{node}{$node}{set_nic}{sn_link2}  = $conf->{conf}{node}{$node}{current_nic}{sn_link2};
+		$conf->{conf}{node}{$node}{set_nic}{ifn_link1} = $conf->{conf}{node}{$node}{current_nic}{ifn_link1};
+		$conf->{conf}{node}{$node}{set_nic}{ifn_link2} = $conf->{conf}{node}{$node}{current_nic}{ifn_link2};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]: bcn_link1: [$conf->{conf}{node}{$node}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node}{set_nic}{ifn_link2}]\n");
 	}
 	
 	if ($nics_seen < 6)

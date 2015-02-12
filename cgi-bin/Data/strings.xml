@@ -67,7 +67,7 @@
 		<key name="button_0060">Install Manifests</key>
 		<key name="button_0061">Add a New #!string!brand_0004!#</key>
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
-		<key name="button_0063"></key>
+		<key name="button_0063">Restart</key>
 		<key name="button_0064"></key>
 		<key name="button_0065"></key>
 		<key name="button_0066"></key>
@@ -628,7 +628,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0271">Withdrawing Node</key>
 		<key name="row_0272">Powering down Node</key>
 		<key name="row_0273">In progress</key>
-		<key name="row_0274"></key>
+		<key name="row_0274">Try Again</key>
 		<key name="row_0275"></key>
 		<key name="row_0276"></key>
 		<key name="row_0277"></key>
@@ -1471,7 +1471,10 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"><![CDATA[The #!string!brand_0004!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# dashboard, so you're all set!]]></key>
+		<key name="message_0286"><![CDATA[The #!string!brand_0004!# has been rebuilt successfully!<br />
+			It is already in your #!string!brand_0002!# dashboard, so you're all set!<br />
+			<a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.
+			]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
@@ -1617,8 +1620,19 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0429"><![CDATA[Cold-Stop completed successfully!]]></key>
 		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
 		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
-		<key name="message_0432"><![CDATA[]]></key>
-		<key name="message_0433"><![CDATA[]]></key>
+		<key name="message_0432"><![CDATA[If you think the problem is now resolved, you can try re-running the install.]]></key>
+		<key name="message_0433"><![CDATA[If you a node was part of an #!string!brand_0003!# before, it might be seeing<br />
+						the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a> signature from the previous install. There is no safe way to determine<br />
+						if this is the case, or if this partition contains real data. So for safety, the<br />
+						install will now abort. If you are sure that there is no data on the partition, you<br />
+						can wipe any data using the 'dd' command. To do this, you need to log into the<br />
+						node(s) and run:<br />
+						<br />
+						<span class="code">dd if=/dev/zero of=/dev/X bs=4M count=1000</span><br />
+						<br />
+						Where '/dev/X' is replaced by the device in the error(s) above.<br />
+						<span class="highlight_dangerous_bold">BE WARNED!</span><br />
+						The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[]]></key>
 		<key name="message_0435"><![CDATA[]]></key>
 		<key name="message_0436"><![CDATA[]]></key>

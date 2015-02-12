@@ -82,21 +82,21 @@ sub create_rsync_wrapper
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
-	my $sc = "
+	my $shell_call = "
 echo '#!/usr/bin/expect' > ~/rsync.$node
 echo 'set timeout 3600' >> ~/rsync.$node
 echo 'eval spawn rsync \$argv' >> ~/rsync.$node
 echo 'expect \"password:\" \{ send \"$root_pw\\n\" \}' >> ~/rsync.$node
 echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		print $_;
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -558,7 +558,6 @@ sub initialize_conf
 		path			=>	{
 			'striker_files'		=>	"/var/www/home",
 			'striker_cache'		=>	"/var/www/home/cache",
-			striker_conf		=>	"/etc/striker/striker.conf",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
@@ -569,6 +568,7 @@ sub initialize_conf
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
 			control_dhcpd		=>	"/var/www/tools/control_dhcpd",
 			cp			=>	"/bin/cp",
+			default_striker_manifest	=>	"/var/www/html/manifests/striker-default.xml",
 			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 			docroot			=>	"/var/www/html/",
 			email_password_file	=>	"/var/www/tools/email_pw.txt",
@@ -612,8 +612,9 @@ sub initialize_conf
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"Data/strings.xml",
 			log_file		=>	"/var/log/striker.log",
-			config_file		=>	"/etc/striker/striker.conf",	# TODO: Why is this here?!
+			config_file		=>	"/etc/striker/striker.conf",
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
+			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
 				anvil_install_status	=>	"/root/.anvil_install_progress",
@@ -621,26 +622,26 @@ sub initialize_conf
 				drbd			=>	"/etc/drbd.d",
 				hostname		=>	"/etc/sysconfig/network",
 				hosts			=>	"/etc/hosts",
-				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-bond1",
-				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link1",
-				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn-link2",
+				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
+				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
+				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link2",
 				cluster_conf		=>	"/etc/cluster/cluster.conf",
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
 				fstab			=>	"/etc/fstab",
 				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",
-				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bond1",
-				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-bridge1",
-				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link1",
-				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn-link2",
+				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_bond1",
+				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_bridge1",
+				ifn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_link1",
+				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_link2",
 				iptables		=>	"/etc/sysconfig/iptables",
 				lvm_conf		=>	"/etc/lvm/lvm.conf",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				shadow			=>	"/etc/shadow",
-				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-bond1",
-				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link1",
-				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn-link2",
+				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
+				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link1",
+				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link2",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 			},
@@ -895,32 +896,39 @@ sub read_configuration_file
 {
 	my ($conf) = @_;
 	
-	$conf->{raw}{config_file} = [];
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{config_file}";
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $return_code = 1;
+	if (-e $conf->{path}{config_file})
 	{
-		chomp;
-		my $line = $_;
-		push @{$conf->{raw}{config_file}}, $line;
-		next if not $line;
-		next if $line !~ /=/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if $line =~ /^#/;
-		next if not $line;
-		my ($var, $val) = (split/=/, $line, 2);
-		$var =~ s/^\s+//;
-		$var =~ s/\s+$//;
-		$val =~ s/^\s+//;
-		$val =~ s/\s+$//;
-		next if (not $var);
-		_make_hash_reference($conf, $var, $val);
+		   $return_code = 0;
+		my $file_handle = IO::Handle->new();
+		my $shell_call  = "$conf->{path}{config_file}";
+		$conf->{raw}{config_file} = [];
+		# This isn't fatal. Not finding the config file will trigger the
+		# configuration tool.
+		open ($file_handle, "<$shell_call"); 
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			push @{$conf->{raw}{config_file}}, $line;
+			next if not $line;
+			next if $line !~ /=/;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			next if $line =~ /^#/;
+			next if not $line;
+			my ($var, $val) = (split/=/, $line, 2);
+			$var =~ s/^\s+//;
+			$var =~ s/\s+$//;
+			$val =~ s/^\s+//;
+			$val =~ s/\s+$//;
+			next if (not $var);
+			_make_hash_reference($conf, $var, $val);
+		}
+		$file_handle->close();
 	}
-	$fh->close();
 	
-	return(0);
+	return($return_code);
 }
 
 # This records log messages to the log file.
@@ -936,26 +944,26 @@ sub to_log
 	#print "<pre>record; line: [$line], file: [$file], level: [$level] (sys::log_level: [$conf->{sys}{log_level}]), message: [$message]</pre>\n";
 	if ($conf->{sys}{log_level} >= $level)
 	{
-		my $fh = $conf->{handles}{'log'};
-		if (not $fh)
+		my $file_handle = $conf->{handles}{'log'};
+		if (not $file_handle)
 		{
-			$fh                     = IO::Handle->new();
-			$conf->{handles}{'log'} = $fh;
+			$file_handle                     = IO::Handle->new();
+			$conf->{handles}{'log'} = $file_handle;
 			my $current_dir         = get_current_directory($conf);
 			my $log_file            = $current_dir."/".$conf->{path}{log_file};
 			if ($conf->{path}{log_file} =~ /^\//)
 			{
 				$log_file = $conf->{path}{log_file};
 			}
-			open ($fh, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writing. The error was: $!.\n");
+			open ($file_handle, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writing. The error was: $!.\n");
 			my ($date, $time)  = get_date_and_time($conf);
 			my $say_log_header = get_string($conf, {language => $conf->{sys}{log_language}, key => "log_0001", variables => {
 				date	=>	$date,
 				'time'	=>	$time,
 			}});
-			print $fh "-=] $say_log_header\n";
+			print $file_handle "-=] $say_log_header\n";
 		}
-		print $fh "$file $line; $message";
+		print $file_handle "$file $line; $message";
 	}
 	
 	return(0);
@@ -1543,13 +1551,13 @@ sub get_screen_width
 	my ($conf) = @_;
 	
 	my $cols = 0;
-	open my $fh, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
-	while (<$fh>)
+	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		$cols = $_;
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return($cols);
 }

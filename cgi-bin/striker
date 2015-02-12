@@ -65,7 +65,14 @@ my ($conf) = AN::Common::initialize($THIS_FILE);
 AN::Cluster::find_executables($conf);
 AN::Cluster::read_hosts($conf);
 AN::Cluster::read_ssh_config($conf);
-AN::Cluster::read_conf($conf);
+
+# If the configuration file isn't found, we'll switch over to 'Configure'.
+if (AN::Common::read_configuration_file($conf))
+{
+	# Configuration needed, striker.conf doesn't exist.
+	print AN::Common::template($conf, "main-page.html", "redirect-to-configure"); 
+	exit(1);
+}
 
 # I need to convert the global configuration of the clusters to the format I use here.
 AN::Cluster::convert_cluster_config($conf);
@@ -177,7 +184,8 @@ AN::Cluster::get_cgi_vars($conf, [
 	"boot_device",
 	"change",
 	"cluster",
-	"config",
+	"config",	# This is used by various things
+	"configure",	# This controls the WebUI based Striker Configurator
 	"confirm",
 	"cpu_cores",
 	"delete",

@@ -4117,7 +4117,7 @@ sub check_network
 		if ($line =~ /^(.*?) Link/i)
 		{
 			$this_dev = $1;
-			if ($this_dev eq "bcn-link1")
+			if (($this_dev eq "bcn-link1") || ($this_dev eq "bcn_link1"))
 			{
 				# This will prevent the program from trying to
 				# parse bond0, which shouldn't exist but does
@@ -4886,11 +4886,11 @@ Links(s): $say_interface0
 		# Ignore 'bond0' when dealing with new-style network configs.
 		next if (($conf->{'system'}{new_style_network}) && ($dev eq "bond0"));
 		my $say_out = "Internet-Facing Network";
-		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i))
+		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i) || ($dev =~ /bcn_bond1/i))
 		{
 			$say_out = "Back-Channel Network"
 		}
-		elsif (($dev eq "bond1") || ($dev =~ /sn-bond1/i))
+		elsif (($dev eq "bond1") || ($dev =~ /sn-bond1/i) || ($dev =~ /sn_bond1/i))
 		{
 			$say_out = "Storage Network"
 		}
@@ -5584,11 +5584,11 @@ sub compare_new_and_old
 	foreach my $dev (sort {$a cmp $b} keys %{$conf->{data}{network}{new}{bond}})
 	{
 		my $say_out = "Internet-Facing Network";
-		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i))
+		if (($dev eq "bond0") || ($dev =~ /bcn-bond1/i) || ($dev =~ /bcn_bond1/i))
 		{
 			$say_out = "Back-Channel Network"
 		}
-		elsif(($dev eq "bond1") || ($dev =~ /sn-bond1/i))
+		elsif(($dev eq "bond1") || ($dev =~ /sn-bond1/i) || ($dev =~ /sn_bond1/i))
 		{
 			$say_out = "Storage Network"
 		}

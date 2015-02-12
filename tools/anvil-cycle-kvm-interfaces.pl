@@ -13,9 +13,9 @@
 use strict;
 use warnings;
 
-my $bcn_bridge = "bcn-bridge1";
-my $sn_bridge  = "sn-bridge1";
-my $ifn_bridge = "ifn-bridge1";
+my $bcn_bridge = "bcn_bridge1";
+my $sn_bridge  = "sn_bridge1";
+my $ifn_bridge = "ifn_bridge1";
 
 my $vm = $ARGV[0];
 if (not $vm)
