@@ -8,7 +8,7 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
 use Carp;
 use Const::Fast;
