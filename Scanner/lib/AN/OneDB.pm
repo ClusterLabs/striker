@@ -6,22 +6,23 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
 use Carp;
 use Const::Fast;
 use Data::Dumper;
 use DBI;
-
-use File::Spec::Functions 'catdir';
+use English '-no_match_vars';
 use File::Basename;
-use FindBin qw($Bin);
+use File::Spec::Functions 'catdir';
 use POSIX 'strftime';
 use YAML;
 
 use AN::Unix;
 
+# ======================================================================
+# CLASS ATTRIBUTES & CONSTRUCTOR
+#
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 use Class::Tiny (
@@ -158,10 +159,10 @@ EOSQL
                  );
 
 # ======================================================================
-# Subroutines
+# Methods
 #
 
-# ......................................................................
+# ----------------------------------------------------------------------
 # Extend simple accessor to set & fetch a specific DBI sth
 # corresponding to specified key.
 #
@@ -171,6 +172,9 @@ sub connected {
     return defined $self->dbh & 'DBI::db' eq ref $self->dbh;
 }
 
+# ----------------------------------------------------------------------
+# Set and retrieve map from SQL string ==> DBI::sth for that string.
+#
 sub set_sth {
     my $self = shift;
     my ( $key, $value ) = @_;
@@ -186,8 +190,8 @@ sub get_sth {
     return $self->sth->{$key} || undef;
 }
 
-# ......................................................................
-# create new node table entry for this process.
+# ----------------------------------------------------------------------
+# Create new node table entry for this process.
 #
 sub log_new_process {
     my $self = shift;
@@ -218,6 +222,9 @@ sub log_new_process {
     return $id;
 }
 
+# ----------------------------------------------------------------------
+# Create an alerts table record to report dying server.
+#
 sub tell_db_Im_dying {
     my $self = shift;
 
@@ -237,7 +244,7 @@ sub tell_db_Im_dying {
     return;
 }
 
-# ......................................................................
+# ----------------------------------------------------------------------
 # Mark this process's node table entry as no longer running .
 #
 sub halt_process {
@@ -262,7 +269,7 @@ sub halt_process {
     return $rows;
 }
 
-# ......................................................................
+# ----------------------------------------------------------------------
 # mark this process's node table entry as running.
 #
 sub start_process {
@@ -312,28 +319,24 @@ sub finalize_node_table_status {
     return $rows;
 }
 
-# ......................................................................
-# Private Methods
+# ----------------------------------------------------------------------
+# Connect to database and create a node table entry. Reset sth cache.
 #
 sub startup {
     my $self = shift;
     my ($args) = @_;
 
     $self->sth( {} );
-    $self->connect_dbs();
+    $self->dbh( $self->connect_db( $self->dbconf ) );
     if ( $self->dbh ) {
         $self->register_start();
     }
     return;
 }
 
-sub connect_dbs {
-    my $self = shift;
-
-    $self->dbh( $self->connect_db( $self->dbconf ) );
-    return;
-}
-
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+# Connect to database.
+#
 sub connect_db {
     my $self = shift;
     my ($args) = @_;
@@ -358,6 +361,9 @@ sub connect_db {
     return $dbh;
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+# Create node table entry for process and save the node table id.
+#
 sub register_start {
     my $self = shift;
 
@@ -375,8 +381,9 @@ sub register_start {
     $self->start_process();
 }
 
-# ......................................................................
-# Methods
+# ----------------------------------------------------------------------
+# Report node table id for this database connection, for reporting to
+# scanCore component.
 #
 sub dump_metadata {
     my $self = shift;
@@ -390,6 +397,11 @@ EODUMP
     return $metadata;
 }
 
+# ----------------------------------------------------------------------
+# Generate SQL for insert_raw_record. Returns the SQL, a hash of field
+# names and the value to return for that field, and an array of field
+# names to define the order in which to provide the values.
+#
 sub generate_insert_sql {
     my $self = shift;
     my ($options) = @_;
@@ -417,6 +429,14 @@ EOSQL
     return ( $sql, \@fields, $args );
 }
 
+# ----------------------------------------------------------------------
+# When a record was saved to file, due to the database being
+# unavailable, the current time was archived as well. Modify the SQL,
+# field list and values to include that timestamp. A archive file will
+# contain a few varieties of SQL, with many occurences of each. So
+# archive the converted SQL, to replace text modification with simple
+# text lookup.
+#
 sub manual_timestamp {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
@@ -447,6 +467,10 @@ sub manual_timestamp {
     return $newsql;
 }
 
+# ----------------------------------------------------------------------
+# Attempt to restart connection to database. If it succeeds, save the
+# record to the database, otherwise save it to file.
+#
 sub fail_write {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
@@ -468,6 +492,9 @@ sub fail_write {
     }
 }
 
+# ----------------------------------------------------------------------
+# Save the record to the database.
+#
 sub save_to_db {
     my $self = shift;
     my ( $sql, $fields, $args, $timestamp ) = @_;
@@ -501,7 +528,7 @@ sub save_to_db {
     $ok = $self->fail_write( $sql, $fields, $args, $timestamp )
         if $@;
     return unless $ok;
-    return 1 if $timestamp;    # Don't commit during bulkload
+    return 1 if $timestamp;    # Don't need record id during bulkload
 
     eval {
         $id
@@ -516,10 +543,13 @@ sub save_to_db {
     return $id;
 }
 
+# ----------------------------------------------------------------------
 # Note, to convert epoch into Pg timestamp, use "SELECT TIMESTAMP WITH
 # TIME ZONE 'epoch' + 982384720 * INTERVAL '1 second';" from section
 # 9.9.1 of
 # http://www.postgresql.org/docs/8.0/interactive/functions-datetime.html
+#
+# Save record to file, since DB is not available.
 #
 sub save_to_file {
     my $self = shift;
@@ -539,6 +569,7 @@ sub save_to_file {
     return 1;
 }
 
+# ----------------------------------------------------------------------
 # Load data into DB, archive the file.
 #
 sub load_db_from_file {
@@ -565,6 +596,7 @@ sub load_db_from_file {
     return;
 }
 
+# ----------------------------------------------------------------------
 # If node table id is not pre-defined, it is specificed dynamically
 # for each DB. In that case, delete the field from the args hash so it
 # is similarly undefined for the other DBes.
@@ -596,6 +628,10 @@ sub insert_raw_record {
     return $id;
 }
 
+# ----------------------------------------------------------------------
+# Was unable to read from database. AN::DBS::switch_next_db() actually
+# restarts the entire program.
+#
 sub fail_read {
     my $self = shift;
 
@@ -603,6 +639,9 @@ sub fail_read {
     $self->owner()->switch_next_db;
 }
 
+# ----------------------------------------------------------------------
+# generate SQL to fetch current records from a particular database table.
+#
 sub generate_fetch_sql {
     my $self = shift;
     my ($options) = @_;
@@ -626,6 +665,9 @@ EOSQL
     return ( $sql, $node_table_id );
 }
 
+# ----------------------------------------------------------------------
+# Fetch records from alerts table.
+#
 sub fetch_alert_data {
     my $self = shift;
 
@@ -661,6 +703,9 @@ sub fetch_alert_data {
     return $records;
 }
 
+# ----------------------------------------------------------------------
+# Fetch records from database using a predefined SQL.
+#
 sub generic_fetch {
     my $self = shift;
     my ( $sql_tag, $verbose, $args ) = @_;
@@ -700,6 +745,9 @@ sub generic_fetch {
     return $records;
 }
 
+# ----------------------------------------------------------------------
+# Fetch AUTO_BOOT and NODE_SERVER_STATUS records from the alerts table.
+#
 sub check_node_server_status {
     my $self = shift;
     my ($ns_host) = @_;
@@ -717,6 +765,9 @@ sub check_node_server_status {
     return \@results;
 }
 
+# ----------------------------------------------------------------------
+# Fetch node table entries.
+#
 sub fetch_node_entries {
     my $self = shift;
     my ($pids) = @_;
@@ -740,6 +791,9 @@ sub fetch_node_entries {
     return \@retval;
 }
 
+# ----------------------------------------------------------------------
+# Fetch all records from alert listeners table ( there aren't many).
+#
 sub fetch_alert_listeners {
     my $self = shift;
 
@@ -768,17 +822,28 @@ __END__
 
 =head1 NAME
 
-     Scanner.pm - System monitoring loop
+     AN::OneDB.pm - Class to handle queries to one database.
 
 =head1 VERSION
 
-This document describes Scanner.pm version 0.0.1
+This document describes AN::OneDB.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use AN::Scanner;
-    my $scanner = AN::Scanner->new();
-
+    use AN::OneDB;
+    my $onedb_args = { dbconf    => $self->dbconf->{$tag},
+                       node_args => $self->node_args,
+                       connect   => $connect_flag,
+                       owner     => $self,
+                       logdir    => $self->logdir, };
+    my $oneDB = AN::OneDB->new($onedb_args);
+    $onedb->insert_raw_record();
+    $onedb->fetch_alert_data();
+    $onedb->check_node_server_status();
+    $onedb->fetch_node_entries();
+    $onedb->fetch_alert_listeners();
+    $onedb->tell_db_Im_dying();
+    $onedb->finalize_node_table_status();
 
 =head1 DESCRIPTION
 
@@ -798,16 +863,70 @@ value pairs. The key list must include :
 
 =over 4
 
-=item B<agentdir>
+=item B<dbconf>
 
-The directory that is scanned for scanning plug-ins.
+Contents of the db.conf file, we need type of database, the database
+within the server, and the user name and password, as well as the host
+name or IP number.
 
-=item B<rate>
+=item B<node_args>
 
-How often the loop should scan.
+Optional reference to array which contains, in order: $target_name,
+$target_ip, $target_type.
+
+=item B<connect>
+
+Flag to indicate whether connection should be made immediately or
+deferred.
+
+=item B<owner>
+
+Reference to the owner object. Used to notify the system if a database
+connection fails.
+
+=item B<logdir>
+
+Directory in which to archive queries which cannot be written due to a
+failed database.
 
 =back
 
+=item B<insert_raw_record>
+
+Insert a record into specified table.  User provides field list and
+associated values. Code assumes presence of a timestamp field.
+
+If node table id is not pre-defined, it is specificed dynamically
+for each DB. In that case, delete the field from the args hash so it
+is similarly undefined for the other DBes.
+
+=item B<fetch_alert_data>
+
+Fetch records from alerts table which are less than 1 minute old..
+
+=item B<check_node_server_status>
+
+Fetch AUTO_BOOT and NODE_SERVER_STATUS records from the alerts table.
+
+=item B<fetch_node_entries>
+
+Fetch all records from the node table which match a set of specified
+process ids running on the current host. Used by the scanCore to
+locate the agents it has spawned.
+
+=item B<fetch_alert_listeners>
+
+Select all records from the alert_listeners table.
+
+=item B<tell_db_Im_dying>
+
+Insert a record in the alerts table reporting that the server is being
+shut down.
+
+=item B<finalize_node_table_status>
+
+Set the node table entry for the current process to a final, 'halted'
+state.
 
 =back
 
@@ -815,25 +934,42 @@ How often the loop should scan.
 
 =over 4
 
+=item B<Carp> I<core>
+
+Report errors as occuring at the caller site.
+
+=item B<Const::Fast>
+
+Provide fast constants.
+
+=item B<Data::Dumper> I<core>
+
+Used to display records and variables in log messages.
+
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
-
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
 
 =item B<File::Basename> I<core>
 
 Parses paths and file suffixes.
 
-=item B<FileHandle> I<code>
+=item B<File::Spec::Functions> I<code>
 
-Provides access to FileHandle / IO::* attributes.
+Portably perform operations on file names.
 
-=item B<FindBin> I<core>
+=item B<POSIX> I<core>
 
-Determine which directory contains the current program.
+Provide date-time formatting routine C<strftime>.
+
+=item B<YAML>
+
+Text archive SQL, field llist, data value hashes, when a database
+becomes unavailable.
+
+=item B<version> I<core>
+
+Parses version strings.
 
 =back
 
