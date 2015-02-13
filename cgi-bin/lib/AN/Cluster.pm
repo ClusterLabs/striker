@@ -89,8 +89,7 @@ sub call_gather_system_info
 	
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
 	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
 	binmode $file_handle, ":utf8:";
 	while (<$file_handle>)
 	{
@@ -110,7 +109,7 @@ sub call_gather_system_info
 			#record($conf, "$THIS_FILE ".__LINE__."; interface::${interface}::$key: [$conf->{interface}{$interface}{$key}]\n");
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	record($conf, "$THIS_FILE ".__LINE__."; sys::hostname: [$conf->{sys}{hostname}]\n");
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
@@ -534,8 +533,8 @@ sub sanity_check_striker_conf
 			# Record hosts
 			$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
 			$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
-			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
-			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
+			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= " $this_nodes_1_name ";
+			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= " $this_nodes_2_name ";
 			
 			# Search in 'hosts' and 'ssh_config' for previous
 			# entries with these names and delete them if found.
@@ -586,6 +585,7 @@ sub sanity_check_striker_conf
 		}
 	}
 
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	return ($save);
 }
 
@@ -601,14 +601,14 @@ sub write_new_striker_conf
 	}); 
 	
 	# Start writing the config file.
-	my $striker_conf = IO::Handle->new();
-	open ($striker_conf, ">$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
+	my $shell_call = $conf->{path}{config_file};
+	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Can't write to: [$shell_call], error was: $!\n";
 	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
 	my $say_text = AN::Common::get_string($conf, {key => "text_0001"});
-	print $striker_conf "$say_date_header\n";
-	print $striker_conf "$say_text\n";
+	print $file_handle "$say_date_header\n";
+	print $file_handle "$say_text\n";
 
 	# If saving the global values, check for a couple substitutions.
 	if (not $conf->{cgi}{anvil_id})
@@ -676,7 +676,7 @@ sub write_new_striker_conf
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
 		use_spice_graphics		=>	$conf->{sys}{use_spice_graphics},
 	}});
-	print $striker_conf $say_body;
+	print $file_handle $say_body;
 	
 	# Now print the individual Anvil!s 
 	foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
@@ -685,14 +685,14 @@ sub write_new_striker_conf
 		next if not $conf->{cluster}{$this_id}{name};
 		
 		# Main Anvil! values, always recorded, even when blank.
-		print $striker_conf "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
-		print $striker_conf "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
-		print $striker_conf "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
-		print $striker_conf "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
-		print $striker_conf "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
-		print $striker_conf "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
-		print $striker_conf "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
-		print $striker_conf "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
+		print $file_handle "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
+		print $file_handle "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
+		print $file_handle "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
+		print $file_handle "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
+		print $file_handle "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
+		print $file_handle "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
+		print $file_handle "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
+		print $file_handle "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
 		
 		# Set any undefined values to '#!inherit!#'
 		$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
@@ -707,18 +707,18 @@ sub write_new_striker_conf
 		
 		# Record this Anvil!'s overrides (or that it doesn't override,
 		# as the case may be).
-		print $striker_conf "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
-		print $striker_conf "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
-		print $striker_conf "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
-		print $striker_conf "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
-		print $striker_conf "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
-		print $striker_conf "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
-		print $striker_conf "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
-		print $striker_conf "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
-		print $striker_conf "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
+		print $file_handle "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
+		print $file_handle "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
+		print $file_handle "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
+		print $file_handle "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
+		print $file_handle "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
+		print $file_handle "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
+		print $file_handle "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
+		print $file_handle "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
+		print $file_handle "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
 	}
-	print $striker_conf "\n";
-	$striker_conf->close();
+	print $file_handle "\n";
+	close $file_handle;
 	
 	return(0);
 }
@@ -730,9 +730,8 @@ sub read_hosts
 	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
-	my $file_handle = IO::Handle->new();
 	my $shell_call = "$conf->{path}{hosts}";
-	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -762,7 +761,7 @@ sub read_hosts
 			}
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -776,10 +775,9 @@ sub read_ssh_config
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
-	my $file_handle = IO::Handle->new();
 	my $shell_call = "$conf->{path}{ssh_config}";
 	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$shell_call]\n");
-	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -807,7 +805,7 @@ sub read_ssh_config
 			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> port: [$conf->{hosts}{$this_host}{port}]\n");
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -821,8 +819,7 @@ sub copy_file
 	my $output     = "";
 	my $shell_call = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -830,7 +827,7 @@ sub copy_file
 		$output .= "$line\n";
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	if (not -e $destination)
 	{
@@ -851,13 +848,12 @@ sub write_new_ssh_config
 	my ($conf, $say_date) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; write_new_ssh_config(); say_date: [$say_date]\n");
 	
-	my $ssh_config = IO::Handle->new();
-	open ($ssh_config, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
-	#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [### Last updated: [$say_date]]\n");
+	my $shell_call = $conf->{path}{ssh_config};
+	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
-	print $ssh_config "$say_date_header\n";
+	print $file_handle "$say_date_header\n";
 	
 	# Re print the ssh_config, but skip 'Host' sections for now.
 	my $last_line_was_blank = 0;
@@ -885,24 +881,24 @@ sub write_new_ssh_config
 		{
 			$last_line_was_blank = 0;
 		}
-		print $ssh_config "$line\n";
+		print $file_handle "$line\n";
 	}
 	
 	# Print the header box that separates the main config from our 'Host ...' entries.
 	my $say_host_header = AN::Common::get_string($conf, {key => "text_0004"});
-	print $ssh_config "\n$say_host_header\n\n";
+	print $file_handle "\n$say_host_header\n\n";
 	
 	# Now add any new entries.
 	foreach my $this_host (sort {$a cmp $b} keys %{$conf->{hosts}})
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], port: [$conf->{hosts}{$this_host}{port}]\n");
 		next if not $conf->{hosts}{$this_host}{port};
-		print $ssh_config "Host $this_host\n";
-		print $ssh_config "\tPort $conf->{hosts}{$this_host}{port}\n\n";
+		print $file_handle "Host $this_host\n";
+		print $file_handle "\tPort $conf->{hosts}{$this_host}{port}\n\n";
 		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [Host $this_host]\n");
 		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [\tPort $conf->{hosts}{$this_host}{port}]\n");
 	}
-	$ssh_config->close();
+	close $file_handle;
 
 	return(0);
 }
@@ -915,14 +911,14 @@ sub write_new_hosts
 	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date]\n");
 	
 	# Open the file
-	my $hosts_file = IO::Handle->new();
-	open ($hosts_file, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
+	my $shell_call = $conf->{path}{hosts};
+	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
 	}});
 	my $say_host_header = AN::Common::get_string($conf, {key => "text_0005"});
-	print $hosts_file "$say_date_header\n";
-	print $hosts_file "$say_host_header\n";
+	print $file_handle "$say_date_header\n";
+	print $file_handle "$say_host_header\n";
 
 	# Cycle through the passed variables and add them to the hashed created
 	# when the hosts file was last read.
@@ -962,9 +958,9 @@ sub write_new_hosts
 			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], say_hosts: [$say_hosts]\n");
-		print $hosts_file "$this_ip\t$say_hosts\n";
+		print $file_handle "$this_ip\t$say_hosts\n";
 	}
-	$hosts_file->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -986,10 +982,12 @@ sub save_dashboard_configure
 		$say_date      =~ s/ /, /;
 		
 		# Write out the new config file.
-		copy_file($conf, $conf->{path}{striker_conf}, "$conf->{path}{home}/archive/striker.conf.$date");
+		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date]\n");
+		copy_file($conf, $conf->{path}{config_file}, "$conf->{path}{home}/archive/striker.conf.$date");
 		write_new_striker_conf($conf, $say_date);
 		
 		# Write out the 'hosts' file.
+		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{hosts}] to: [$conf->{path}{home}/archive/hosts.$date]\n");
 		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/archive/hosts.$date");
 		write_new_hosts($conf, $say_date);
 		
@@ -997,9 +995,16 @@ sub save_dashboard_configure
 		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/archive/ssh_config.$date");
 		write_new_ssh_config($conf, $say_date);
 		
+		# Tell the user we've succeeded and provide a link to their new
+		# Anvil!.
+		my $anvil_id   = $conf->{cgi}{anvil_id};
+		my $anvil_key  = "cluster__${anvil_id}__name";
+		my $anvil_name = $conf->{cgi}{$anvil_key};
 		print AN::Common::template($conf, "config.html", "general-row-good", {
 			row	=>	"#!string!row_0019!#",
-			message	=>	"#!string!message_0017!#",
+			message	=>	AN::Common::get_string($conf, {key => "message_0017", variables => {
+					url	=>	"?cluster=$anvil_name"
+				}}),
 		});
 		print AN::Common::template($conf, "config.html", "close-table");
 		footer($conf);
@@ -1472,7 +1477,7 @@ sub push_config_to_anvil
 	else
 	{
 		# Push!
-		my $config_file = $conf->{path}{striker_conf};
+		my $config_file = $conf->{path}{config_file};
 		if (not -r $config_file)
 		{
 			die "Failed to read local: [$config_file]\n";
@@ -1499,7 +1504,7 @@ sub push_config_to_anvil
 			
 			# Make sure there is an '/etc/an' directory on the node
 			# and create it, if not.
-			my $striker_directory = ($conf->{path}{striker_conf} =~ /^(.*)\/.*$/)[0];
+			my $striker_directory = ($conf->{path}{config_file} =~ /^(.*)\/.*$/)[0];
 			record($conf, "$THIS_FILE ".__LINE__."; striker_directory: [$striker_directory]\n");
 			my $shell_call        = "if [ ! -e '$striker_directory' ]; 
 						then 
@@ -1595,8 +1600,7 @@ sub push_config_to_anvil
 				$shell_call = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-			my $file_handle = IO::Handle->new();
-			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $no_key = 0;
 			while(<$file_handle>)
 			{
@@ -1662,7 +1666,7 @@ sub create_backup_file
 	}
 	   
 	# Read the three config files and write them out to a file.
-	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config}, @manifests)
+	foreach my $file ($conf->{path}{config_file}, $conf->{path}{hosts}, $conf->{path}{ssh_config}, @manifests)
 	{
 		# Read in /etc/striker/striker.conf.
 		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
@@ -1689,12 +1693,11 @@ sub create_backup_file
 	   $conf->{sys}{backup_url} =~ s/#!date!#/$date/;
 	
 	# Now write out the file.
-	my $file_handle         = IO::Handle->new();
 	my $shell_call = "$backup_file";
 	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$shell_call]\n");
-	open ($file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	open (my $file_handle, ">", $shell_call) or die "Failed to write: [$shell_call], the error was: $!\n";
 	print $file_handle $config_data;
-	$file_handle->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -1776,7 +1779,7 @@ sub load_backup_configuration
 					}
 					next;
 				}
-				if ($file eq $conf->{path}{striker_conf})
+				if ($file eq $conf->{path}{config_file})
 				{
 					$striker_conf .= "$line\n";
 				}
@@ -1808,7 +1811,7 @@ sub load_backup_configuration
 	{
 		### TODO: examine the contents of each file to ensure it looks sane.
 		# Looks good, write them out.
-		open (my $an_fh, ">", "$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
+		open (my $an_fh, ">", "$conf->{path}{config_file}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{config_file}], error: $!\n";
 		print $an_fh $striker_conf;
 		close $an_fh;
 		
@@ -5144,7 +5147,7 @@ sub control_dhcpd
 	my $ok = 1;
 	my $shell_call = "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
 	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5369,7 +5372,7 @@ sub get_dhcpd_state
 		# See if dhcpd is running.
 		my $shell_call = "/etc/init.d/dhcpd status; echo rc:\$?";
 		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5751,72 +5754,86 @@ sub find_executables
 }
 
 # This is the new 'get_guacamole_link()' that assumes 'mod_proxy' is in use.
-sub get_guacamole_link
-{
-	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
-	
-	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
-	my $guacamole_url;
-	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
-	if ($ENV{HTTP_REFERER})
-	{
-		if ($guacamole_url =~ /cgi-bin/)
-		{
-			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
-			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-		}
-		else
-		{
-			$guacamole_url = $ENV{HTTP_REFERER};
-			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-		}
-		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
-		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	}
-	elsif ($ENV{HTTP_HOST})
-	{
-		if ($ENV{SERVER_PORT} eq "443")
-		{
-			$guacamole_url = "https://".$ENV{HTTP_HOST};
-			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-		}
-		else
-		{
-			$guacamole_url = "http://".$ENV{HTTP_HOST};
-			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-		}
-	}
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	
-	my $cluster = $conf->{cgi}{cluster};
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
-	
-	$guacamole_url .= "/guacamole/client.xhtml";
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# sub get_guacamole_link
+# {
+# 	my ($conf, $node) = @_;
+# 	#record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
+# 	
+# 	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
+# 	my $guacamole_url;
+# 	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
+# 	if ($ENV{HTTP_REFERER})
+# 	{
+# 		if ($guacamole_url =~ /cgi-bin/)
+# 		{
+# 			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
+# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 		}
+# 		else
+# 		{
+# 			$guacamole_url = $ENV{HTTP_REFERER};
+# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 		}
+# 		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 	}
+# 	elsif ($ENV{HTTP_HOST})
+# 	{
+# 		if ($ENV{SERVER_PORT} eq "443")
+# 		{
+# 			$guacamole_url = "https://".$ENV{HTTP_HOST};
+# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 		}
+# 		else
+# 		{
+# 			$guacamole_url = "http://".$ENV{HTTP_HOST};
+# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 		}
+# 	}
+# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 	
+# 	my $cluster = $conf->{cgi}{cluster};
+# 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
+# 	
+# 	$guacamole_url .= "/guacamole/client.xhtml";
+# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 
+# 	# No node specified, so return a link to the guacamole main page.
+# 	if (not $node)
+# 	{
+# 		$guacamole_url =~ s/\/client.xhtml.*$/\//;
+# 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 	}
+# 	
+# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+# 	return ($guacamole_url);
+# }
 
-	# No node specified, so return a link to the guacamole main page.
-	if (not $node)
-	{
-		$guacamole_url =~ s/\/client.xhtml.*$/\//;
-		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	}
-	
-	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-	return ($guacamole_url);
-}
+### Old footer with guacamole support.
+# sub old_footer
+# {
+# 	my ($conf) = @_;
+# 	
+# 	return(0) if $conf->{'system'}{footer_printed}; 
+# 	my ($guacamole_url) = get_guacamole_link($conf, "");
+# 	
+# 	print AN::Common::template($conf, "common.html", "footer", {
+# 		guacamole_url	=>	$guacamole_url,
+# 	});
+# 	
+# 	$conf->{'system'}{footer_printed} = 1;
+# 	
+# 	return (0);
+# }
 
+# Footer that closes out all pages.
 sub footer
 {
 	my ($conf) = @_;
 	
 	return(0) if $conf->{'system'}{footer_printed}; 
-	my ($guacamole_url) = get_guacamole_link($conf, "");
 	
-	print AN::Common::template($conf, "common.html", "footer", {
-		guacamole_url	=>	$guacamole_url,
-	});
-	
+	print AN::Common::template($conf, "common.html", "footer");
 	$conf->{'system'}{footer_printed} = 1;
 	
 	return (0);
@@ -6169,23 +6186,25 @@ sub read_files_on_shared
 	return ($connected);
 }
 
+### TODO: Switch to 'to_log'
 # Record a message to the log file.
 sub record
 {
 	my ($conf, $message)=@_;
 	
-	my $file_handle = $conf->{handles}{'log'};
+	my $file_handle = $conf->{handles}{'log'} ? $conf->{handles}{'log'} : "";
+	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 	if (not $file_handle)
 	{
 		# Touch the file if it doesn't exist yet.
-		#print "[ Debug ] - Checking if: [$conf->{path}{'log'}] is writable...\n";
-		if (not -w $conf->{path}{'log'})
+		#print "[ Debug ] $THIS_FILE ".__LINE__."; - Checking if: [$conf->{path}{log_file}] is writable...\n";
+		if (not -w $conf->{path}{log_file})
 		{
 			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
 			#       is hard-coded to use '/var/log/striker.log'.
 			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
 			my $shell_call = $conf->{path}{'touch_striker.log'};
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -6195,21 +6214,28 @@ sub record
 			close $file_handle;
 			
 			#print "[ Debug ] - Checking if it is writable now...\n";
-			if (not -w $conf->{path}{'log'})
+			if (not -w $conf->{path}{log_file})
 			{
-				#print "[ Error ] - Failed to make: [$conf->{path}{'log'}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
+				#print "[ Error ] - Failed to make: [$conf->{path}{log_file}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
 				exit(1);
 			}
 		}
 		
+		my $shell_call = $conf->{path}{log_file};
+		# I need to call 'IO::handle' here.
 		$file_handle = IO::Handle->new();
-		$conf->{handles}{'log'} = $file_handle;
-		open ($file_handle, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		$file_handle->autoflush(1);
+		open ($file_handle, ">>", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+		#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
+		
+		# Store the handle.
+		$conf->{handles}{'log'} = $file_handle;
+		#print "[ Debug ] $THIS_FILE ".__LINE__."; - handles::log: [$conf->{handles}{'log'}]\n";
 	}
 	my $time = get_date($conf, time, 1);
+	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 	print $file_handle "$time $message";
-	$file_handle->flush;
 	
 	return (0);
 }
@@ -6735,10 +6761,9 @@ sub ping_node
 	my ($conf, $node) = @_;
 	
 	my $exit;
-	my $file_handle = IO::Handle->new;
 	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
 	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6749,7 +6774,7 @@ sub ping_node
 			$exit = $1;
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 	record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 	
 	if ($exit)
@@ -6776,7 +6801,7 @@ sub ping_node
 				$exit = $1;
 			}
 		}
-		$file_handle->close();
+		close $file_handle;
 		record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 		
 		if ($exit)
@@ -7217,15 +7242,14 @@ sub get_rsa_public_key
 		
 		my $shell_call = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-		my $file_handle = IO::Handle->new();
-		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
-		$file_handle->close();
+		close $file_handle;
 		
 		if (not -e $rsa_public_file)
 		{
@@ -7235,8 +7259,7 @@ sub get_rsa_public_key
 	
 	my $shell_call = $rsa_public_file;
 	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]. Error was: $!\n";
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -7263,15 +7286,14 @@ sub get_hostname
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		$hostname = $_;
 		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	return($hostname);
@@ -9171,8 +9193,7 @@ sub check_if_on
 				# I can reach it directly
 				my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
 				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-				my $file_handle = IO::Handle->new();
-				open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -9194,7 +9215,7 @@ sub check_if_on
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
 					}
 				}
-				$file_handle->close();
+				close $file_handle;
 			}
 			else
 			{
@@ -9237,8 +9258,7 @@ sub on_same_network
 	
 	my $shell_call = "$conf->{path}{gethostip} -d $target_host";
 	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -9284,20 +9304,18 @@ sub on_same_network
 			error($conf, $error);
 		}
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
 	{
 		# Find out my own IP(s) and subnet(s).
-		my $in_dev       = "";
-		my $this_ip      = "";
-		my $this_nm      = "";
-		
-		my $shell_call           = "$conf->{path}{ifconfig}";
+		my $in_dev     = "";
+		my $this_ip    = "";
+		my $this_nm    = "";
+		my $shell_call = "$conf->{path}{ifconfig}";
 		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-		my $file_handle = IO::Handle->new();
-		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -9383,7 +9401,7 @@ sub on_same_network
 				}
 			}
 		}
-		$file_handle->close();
+		close $file_handle;
 	}
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
@@ -9431,9 +9449,9 @@ sub write_node_cache
 	
 	if (@lines > 0)
 	{
-		my $file_handle         = IO::Handle->new();
 		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
-		open ($file_handle, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
+		my $shell_call = "$cache_file";
+		open (my $file_handle, ">", "$shell_call") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
 				uid		=>	$<,
 				error		=>	$!,
@@ -9442,7 +9460,7 @@ sub write_node_cache
 		{
 			print $file_handle $line;
 		}
-		$file_handle->close();
+		close $file_handle;
 	}
 	
 	return(0);
@@ -9476,11 +9494,10 @@ sub read_node_cache
 	if (-e $cache_file)
 	{
 		# It exists! Read it.
-		my $in_hosts = 0;
-		my $shell_call       = $cache_file;
+		my $in_hosts   = 0;
+		my $shell_call = $cache_file;
 		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
-		my $file_handle = IO::Handle->new();
-		open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]\n";
+		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -9519,7 +9536,7 @@ sub read_node_cache
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 			}
 		}
-		$file_handle->close();
+		close $file_handle;
 		$conf->{clusters}{$cluster}{cache_exists} = 1;
 	}
 	else

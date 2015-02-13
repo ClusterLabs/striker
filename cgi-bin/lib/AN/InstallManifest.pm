@@ -23,9 +23,9 @@ package AN::InstallManifest;
 
 use strict;
 use warnings;
-
 use AN::Cluster;
 use AN::Common;
+use IO::Handle;
 
 # Set static variables.
 my $THIS_FILE = "AN::InstallManifest.pm";
@@ -3531,16 +3531,6 @@ sub set_root_password
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_root_password()\n");
 	
-	# Reloading the browser won't work after this step if either node's 
-	# password is going to change, so warn the user.
-	if (($conf->{cgi}{anvil_password} ne $conf->{cgi}{anvil_node1_current_password}) ||
-	    ($conf->{cgi}{anvil_password} ne $conf->{cgi}{anvil_node2_current_password}))
-	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0142", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
-		});
-	}
-	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
 	###       This might change later, so this function is designed to
 	###       support different passwords.
@@ -5233,13 +5223,12 @@ sub ping_ip
 	my ($conf, $ip) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_ip(); ip: [$ip]\n");
 	
-	my $success = 0;
-	my $ping_rc = 255;
-	my $sc      = "$conf->{path}{ping} -n $ip -c 1; echo ping:\$?";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $success    = 0;
+	my $ping_rc    = 255;
+	my $shell_call = "$conf->{path}{ping} -n $ip -c 1; echo ping:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -5259,7 +5248,7 @@ sub ping_ip
 			$success = 1 if not $ping_rc;
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; success: [$success] (1 == pingable)\n");
 	return($success);
@@ -7285,6 +7274,7 @@ sub configure_network_on_node
 	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn_link1\"\n\n";
 	   $udev_rules .= "# Internet-Facing Network, Link 2\n";
 	   $udev_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn_link2\"\n";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_rules: \n====\n$udev_rules\n====\n");
 	
 	### Back-Channel Network
 	#$conf->{path}{nodes}{bcn_link1_config};
@@ -10578,13 +10568,12 @@ sub get_local_bcn_ip
 {
 	my ($conf) = @_;
 	
-	my $in_dev = "";
-	my $bcn_ip = "";
-	my $sc     = "$conf->{path}{ip} addr";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $in_dev     = "";
+	my $bcn_ip     = "";
+	my $shell_call = "$conf->{path}{ip} addr";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -10612,7 +10601,7 @@ sub get_local_bcn_ip
 			last;
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bcn_ip: [$bcn_ip]\n");
 	return($bcn_ip);
@@ -10642,16 +10631,16 @@ sub copy_tools_to_docroot
 		elsif (-e $source)
 		{
 			# Copy.
-			my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc]\n");
-			open (my $fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-			while(<$fh>)
+			my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			}
-			$fh->close();
+			close $file_handle;
 			if (-e $destination)
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copied successfully!\n");

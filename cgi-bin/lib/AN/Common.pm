@@ -5,10 +5,10 @@ package AN::Common;
 
 use strict;
 use warnings;
+use IO::Handle;
 use Encode;
 use CGI;
 use utf8;
-use IO::Handle;
 use Term::ReadKey;
 use XML::Simple qw(:strict);
 
@@ -90,13 +90,12 @@ echo 'expect \"password:\" \{ send \"$root_pw\\n\" \}' >> ~/rsync.$node
 echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	my $file_handle = IO::Handle->new();
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		print $_;
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -556,49 +555,59 @@ sub initialize_conf
 			'log'			=>	"",
 		},
 		path			=>	{
-			'striker_files'		=>	"/var/www/home",
-			'striker_cache'		=>	"/var/www/home/cache",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
 			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
+			check_dvd		=>	"/var/www/tools/check_dvd",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
+			config_file		=>	"/etc/striker/striker.conf",
 			control_dhcpd		=>	"/var/www/tools/control_dhcpd",
 			cp			=>	"/bin/cp",
 			default_striker_manifest	=>	"/var/www/html/manifests/striker-default.xml",
 			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
+			do_dd			=>	"/var/www/tools/do_dd",
 			docroot			=>	"/var/www/html/",
 			email_password_file	=>	"/var/www/tools/email_pw.txt",
 			expect			=>	"/usr/bin/expect",
 			fence_ipmilan		=>	"/sbin/fence_ipmilan",
 			gethostip		=>	"/bin/gethostip",
 			'grep'			=>	"/bin/grep",
-			guacamole_config	=>	"/etc/guacamole/noauth-config.xml",
 			home			=>	"/var/www/home/",
 			hostname		=>	"/bin/hostname",
 			hosts			=>	"/etc/hosts",
 			ifconfig		=>	"/sbin/ifconfig",
 			ip			=>	"/sbin/ip",
-			'log'			=>	"/var/log/striker.log",
+			log_file		=>	"/var/log/striker.log",
 			lvdisplay		=>	"/sbin/lvdisplay",
+			media			=>	"/var/www/home/media/",
 			ping			=>	"/usr/bin/ping",
-			restart_guacd		=>	"/var/www/tools/restart_guacd",
-			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 			rhn_file		=>	"/etc/sysconfig/rhn/systemid",
-			ssh_config		=>	"/etc/ssh/ssh_config",
-			sync			=>	"/bin/sync",
-			virsh			=>	"/usr/bin/virsh",
+			rsync			=>	"/usr/bin/rsync",
 			screen			=>	"/usr/bin/screen",
 			shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
-			status			=>	"/var/www/home/status/",
-			media			=>	"/var/www/home/media/",
-			check_dvd		=>	"/var/www/tools/check_dvd",
-			do_dd			=>	"/var/www/tools/do_dd",
-			rsync			=>	"/usr/bin/rsync",
 			skins			=>	"../html/skins/",
+			ssh_config		=>	"/etc/ssh/ssh_config",
+			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
+			status			=>	"/var/www/home/status/",
+			'striker_files'		=>	"/var/www/home",
+			'striker_cache'		=>	"/var/www/home/cache",
+			sync			=>	"/bin/sync",
+			tools_directory		=>	"/var/www/tools/",
+			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
+			tput			=>	"/usr/bin/tput",
+			virsh			=>	"/usr/bin/virsh",
+			words_common		=>	"Data/common.xml",
+			words_file		=>	"Data/strings.xml",
+			
+			### These will go away
+# 			guacamole_config	=>	"/etc/guacamole/noauth-config.xml",
+# 			restart_guacd		=>	"/var/www/tools/restart_guacd",
+# 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
+			
 			# These are the tools that will be copied to 'docroot'
 			# if either node doesn't have an internet connection.
 			tools			=>	[
@@ -607,29 +616,21 @@ sub initialize_conf
 				"anvil-map-network",
 				"anvil-self-destruct",
 			],
-			tools_directory		=>	"/var/www/tools/",
-			tput			=>	"/usr/bin/tput",
-			words_common		=>	"Data/common.xml",
-			words_file		=>	"Data/strings.xml",
-			log_file		=>	"/var/log/striker.log",
-			config_file		=>	"/etc/striker/striker.conf",
-			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
-			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
+			
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
-				anvil_install_status	=>	"/root/.anvil_install_progress",
 				backups			=>	"/root/backups",
-				drbd			=>	"/etc/drbd.d",
-				hostname		=>	"/etc/sysconfig/network",
-				hosts			=>	"/etc/hosts",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
 				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link2",
 				cluster_conf		=>	"/etc/cluster/cluster.conf",
+				drbd			=>	"/etc/drbd.d",
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
 				fstab			=>	"/etc/fstab",
+				hostname		=>	"/etc/sysconfig/network",
+				hosts			=>	"/etc/hosts",
 				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",
 				ifn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_bond1",
 				ifn_bridge1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_bridge1",
@@ -639,11 +640,11 @@ sub initialize_conf
 				lvm_conf		=>	"/etc/lvm/lvm.conf",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				shadow			=>	"/etc/shadow",
+				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link2",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
-				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 			},
 		},
 		args			=>	{
@@ -677,7 +678,7 @@ sub initialize_conf
 			open_vnc_ports		=>	100,
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
-			use_spice_graphics	=>	0,
+			use_spice_graphics	=>	1,
 			# This allows for custom MTU sizes in an Install Manifest
 			mtu_size		=>	1500,
 			update_os		=>	1,
@@ -899,13 +900,10 @@ sub read_configuration_file
 	my $return_code = 1;
 	if (-e $conf->{path}{config_file})
 	{
-		   $return_code = 0;
-		my $file_handle = IO::Handle->new();
-		my $shell_call  = "$conf->{path}{config_file}";
-		$conf->{raw}{config_file} = [];
-		# This isn't fatal. Not finding the config file will trigger the
-		# configuration tool.
-		open ($file_handle, "<$shell_call"); 
+		   $conf->{raw}{config_file} = [];
+		   $return_code              = 0;
+		my $shell_call               = "$conf->{path}{config_file}";
+		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -925,7 +923,7 @@ sub read_configuration_file
 			next if (not $var);
 			_make_hash_reference($conf, $var, $val);
 		}
-		$file_handle->close();
+		close $file_handle;
 	}
 	
 	return($return_code);
@@ -944,18 +942,45 @@ sub to_log
 	#print "<pre>record; line: [$line], file: [$file], level: [$level] (sys::log_level: [$conf->{sys}{log_level}]), message: [$message]</pre>\n";
 	if ($conf->{sys}{log_level} >= $level)
 	{
+		# Touch the file if it doesn't exist yet.
+		#print "[ Debug ] - Checking if: [$conf->{path}{log_file}] is writable...\n";
+		if (not -w $conf->{path}{log_file})
+		{
+			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
+			#       is hard-coded to use '/var/log/striker.log'.
+			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
+			my $shell_call = $conf->{path}{'touch_striker.log'};
+			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				#print "[ Debug ] - Output: [$line]\n";
+			}
+			close $file_handle;
+			
+			#print "[ Debug ] - Checking if it is writable now...\n";
+			if (not -w $conf->{path}{log_file})
+			{
+				#print "[ Error ] - Failed to make: [$conf->{path}{log_file}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
+				exit(1);
+			}
+		}
+		
 		my $file_handle = $conf->{handles}{'log'};
 		if (not $file_handle)
 		{
-			$file_handle                     = IO::Handle->new();
+			my $shell_call = $conf->{path}{log_file};
+			open (my $file_handle, ">>", "$shell_call") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$shell_call] for writing. The error was: $!.\n");
+			$file_handle->autoflush(1);
 			$conf->{handles}{'log'} = $file_handle;
+			
 			my $current_dir         = get_current_directory($conf);
 			my $log_file            = $current_dir."/".$conf->{path}{log_file};
 			if ($conf->{path}{log_file} =~ /^\//)
 			{
 				$log_file = $conf->{path}{log_file};
 			}
-			open ($file_handle, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writing. The error was: $!.\n");
 			my ($date, $time)  = get_date_and_time($conf);
 			my $say_log_header = get_string($conf, {language => $conf->{sys}{log_language}, key => "log_0001", variables => {
 				date	=>	$date,
@@ -999,11 +1024,10 @@ sub template
 	
 	# Read in the raw template.
 	my $in_template = 0;
-	my $read        = IO::Handle->new();
 	my $shell_call  = "$template_file";
-	open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
-	binmode $read, ":utf8:";
-	while (<$read>)
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	binmode $file_handle, ":utf8:";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -1025,7 +1049,7 @@ sub template
 			push @contents, $line;
 		}
 	}
-	$read->close();
+	close $file_handle;
 	
 	# Now parse the contents for replacement keys.
 	my $page = "";
@@ -1247,14 +1271,13 @@ sub read_strings
 	my $data        = "";	# The data being read for the given key.
 	my $key_name    = "";	# This is a double-colon list of hash keys used to build each hash element.
 	
-	my $read        = IO::Handle->new;
-	my $shell_call  = "<$file";
-	open ($read, $shell_call) or die hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+	my $shell_call  = "$file";
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	if ($conf->{strings}{force_utf8})
 	{
-		binmode $read, "encoding(utf8)";
+		binmode $file_handle, "encoding(utf8)";
 	}
-	while(<$read>)
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line=$_;
@@ -1461,7 +1484,7 @@ sub read_strings
 		}
 		next if $line eq "";
 	}
-	$read->close();
+	close $file_handle;
 	#use Data::Dumper; print Dumper $conf;
 	
 	return(0);
@@ -1557,7 +1580,7 @@ sub get_screen_width
 		chomp;
 		$cols = $_;
 	}
-	$file_handle->close();
+	close $file_handle;
 	
 	return($cols);
 }

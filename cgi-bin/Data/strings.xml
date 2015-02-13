@@ -68,7 +68,7 @@
 		<key name="button_0061">Add a New #!string!brand_0004!#</key>
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063">Restart</key>
-		<key name="button_0064"></key>
+		<key name="button_0064">Create</key>
 		<key name="button_0065"></key>
 		<key name="button_0066"></key>
 		<key name="button_0067"></key>
@@ -343,8 +343,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
-		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.<br />After this step, re-loading the page may not work anymore.<br />Please <a href="#!variable!url!#">click here</a> to re-run the installer using the password set in the install manifest.]]></key>
-		<key name="explain_0142"><![CDATA[The next step will update the <span class="highlight_detail">root</span> user's password.<br />After this, if the password changed, reloading this page will fail.<br />Please <a href="#!variable!url!#">click here</a> to re-run the installer using the password set in the install manifest.]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
+		<key name="explain_0142"><![CDATA[]]></key>
 		<key name="explain_0143"><![CDATA[]]></key>
 		<key name="explain_0144"><![CDATA[]]></key>
 		<key name="explain_0145"><![CDATA[]]></key>
@@ -1201,7 +1201,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0014"></key>		<!-- Free -->
 		<key name="message_0015">Everything seems sensible, ready to save.</key>
 		<key name="message_0016"><![CDATA[Failed to copy the file <span class="highlight_detail">#!variable!file!#</span> to <span class="highlight_detail">#!variable!destination!#</span>.<br />Shell call output:<br /><hr /><span class="highlight_detail">#!variable!output!#</span><hr />]]></key>
-		<key name="message_0017">Changes saved.</key>
+		<key name="message_0017"><![CDATA[Saved. <a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#!]]></key>
 		<key name="message_0018">Please fix the issues found above. Once ready, please try again.</key>
 		<key name="message_0019"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />It is on an accessible subnet, so the node is likely off or there is a network problem.<br />If you just powered on the node, please be patient, it might still be booting.]]></key>
 		<key name="message_0020"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />The server running #!string!brand_0002!# is not currently on the same subnet as the node.]]></key>

@@ -75,7 +75,8 @@ my $conf = {
 		# 'disable' is processes.
 		# NOTE: 'haldaemon' needs to restart before 'acpid' will work,
 		#       if 'acpid' was just installed.
-		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "network", "ntpd", "xinetd"],
+		#enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "network", "ntpd", "xinetd"],
+		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "network", "ntpd", "xinetd"],
 		# These will be both chkconfig off'ed and stopped.
 		disable			=>	["dhcpd", "ip6tables", "NetworkManager"],
 	},
@@ -86,10 +87,10 @@ my $conf = {
 		centos_pxe_web		=>	"html/c6",			# Appeanded to 'document_root' + arch appended after
 		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
 		document_root		=>	"/var/www/",
-		guac_classpath		=>	"/var/lib/guacamole/classpath",
-		guac_etc		=>	"/etc/guacamole",
-		guac_lib		=>	"/var/lib/guacamole",
-		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
+# 		guac_classpath		=>	"/var/lib/guacamole/classpath",
+# 		guac_etc		=>	"/etc/guacamole",
+# 		guac_lib		=>	"/var/lib/guacamole",
+# 		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
 		media			=>	"/var/www/home/media",
 		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
 		pxelinux_boot		=>	"/var/lib/tftpboot/boot",	# TODO: Make this and _config subdirtories of 'pxelinux'
@@ -144,12 +145,12 @@ my $conf = {
 			dhcp				=>	0,
 			expect				=>	0, 
 			'fence-agents'			=>	0, 
-			guacd				=>	0, 
+			#guacd				=>	0, 
 			httpd				=>	0, 
 			libcdio				=>	0, 
-			'libguac-client-rdp'		=>	0,
-			'libguac-client-ssh'		=>	0, 
-			'libguac-client-vnc'		=>	0, 
+			#'libguac-client-rdp'		=>	0,
+			#'libguac-client-ssh'		=>	0, 
+			#'libguac-client-vnc'		=>	0, 
 			man				=>	0, 
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
@@ -170,7 +171,7 @@ my $conf = {
 			'syslinux-tftpboot'		=>	0,
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
-			tomcat6				=>	0, 
+			#tomcat6				=>	0, 
 			unzip				=>	0,
 			'vim-common'			=>	0, 
 			'vim-enhanced'			=>	0, 
@@ -282,12 +283,12 @@ my $conf = {
 		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
-		guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
-		guac_noauth_config	=>	"/etc/guacamole/noauth-config.xml",
-		guac_properties		=>	"/etc/guacamole/guacamole.properties",
-		guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
-		guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
-		guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
+		#guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
+		#guac_noauth_config	=>	"/etc/guacamole/noauth-config.xml",
+		#guac_properties		=>	"/etc/guacamole/guacamole.properties",
+		#guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
+		#guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
+		#guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
@@ -303,7 +304,7 @@ my $conf = {
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		striker_config		=>	"/etc/striker/striker.conf",
 		striker_log		=>	"/var/log/striker.log",
-		tomcat_server		=>	"/etc/tomcat6/server.xml",
+		#tomcat_server		=>	"/etc/tomcat6/server.xml",
 		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
 	},
 	permissions	=>	{
@@ -360,14 +361,14 @@ my $conf = {
 			recursive		=>	0,
 			selinux			=>	"httpd_sys_content_t",
 		},
-		guac_noauth_config	=>	{
-			path			=>	"/etc/guacamole/noauth-config.xml",
-			owner			=>	"root",
-			group			=>	"apache",
-			mode			=>	"0664",
-			recursive		=>	0,
-			selinux			=>	"httpd_sys_content_t",
-		},
+# 		guac_noauth_config	=>	{
+# 			path			=>	"/etc/guacamole/noauth-config.xml",
+# 			owner			=>	"root",
+# 			group			=>	"apache",
+# 			mode			=>	"0664",
+# 			recursive		=>	0,
+# 			selinux			=>	"httpd_sys_content_t",
+# 		},
 		pxelinux		=>	{
 			path			=>	"/var/lib/tftpboot/pxelinux.cfg",
 			owner			=>	"root",
@@ -384,20 +385,20 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
-		z_restart_tomcat	=>	{
-			path			=>	"/var/www/tools/restart_tomcat6",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
-		z_restart_guacd	=>	{
-			path			=>	"/var/www/tools/restart_guacd",
-			owner			=>	"root",
-			group			=>	"root",
-			mode			=>	"6755",
-			recursive		=>	0,
-		},
+# 		z_restart_tomcat	=>	{
+# 			path			=>	"/var/www/tools/restart_tomcat6",
+# 			owner			=>	"root",
+# 			group			=>	"root",
+# 			mode			=>	"6755",
+# 			recursive		=>	0,
+# 		},
+# 		z_restart_guacd	=>	{
+# 			path			=>	"/var/www/tools/restart_guacd",
+# 			owner			=>	"root",
+# 			group			=>	"root",
+# 			mode			=>	"6755",
+# 			recursive		=>	0,
+# 		},
 		z_check_dvd		=>	{
 			path			=>	"/var/www/tools/check_dvd",
 			owner			=>	"root",
@@ -433,7 +434,7 @@ my $conf = {
 		apache_user		=>	"apache",
 		create_bonds		=>	0,		# Gets set to '1' if 4 NICs are found.
 		customer		=>	"Striker Dashboard",
-		guac_version		=>	"0.9.2",
+		#guac_version		=>	"0.9.2",
 		hostname		=>	"",
 		ipmi_gateway		=>	"",
 		ipmi_ip			=>	"",
@@ -614,7 +615,7 @@ sub freeze_networkmanager
 				echo rc:1
 			fi";
 	#print "[ Debbug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -663,7 +664,7 @@ sub freeze_networkmanager
 				# Link is up. Check it's config file.
 				my $nm_controlled = "";
 				   $shell_call    = "cat $conf->{path}{network_configs}/ifcfg-$iface";
-				open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -708,7 +709,7 @@ sub freeze_networkmanager
 			print "- Note: Other interfaces may go down temporarily.\n";
 			$shell_call .= "/etc/init.d/NetworkManager stop; /etc/init.d/network start";
 			#print "[ Debbug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -756,7 +757,7 @@ sub add_repo
 			print "- Downloading: [$url]\n";
 			my $shell_call = "$conf->{executable}{curl} $url > $conf->{directory}{yum_repos}/$repo_file && $conf->{executable}{yum} clean all";
 			#print "[ Debbug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			print "==============================================================================\n";
 			while(<$file_handle>)
 			{
@@ -803,10 +804,10 @@ sub setup_striker
 	configure_apache($conf);
 	
 	# Configure Tomcat
-	configure_tomcat($conf);
+	#configure_tomcat($conf);
 	
 	# Configure guacamole
-	configure_guacamole($conf);
+	#configure_guacamole($conf);
 	
 	# Configure SSH to allow faster logins when there is not Internet
 	# access. Also, create an SSH RSA keyset for apache, though it
@@ -889,7 +890,7 @@ sub configure_gui
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		print "==============================================================================\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -934,7 +935,7 @@ sub configure_gui
 			print "- Disabling the just-installed NetworkManager.\n";
 			my $shell_call = "/etc/init.d/NetworkManager stop";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				print $_;
@@ -954,7 +955,7 @@ sub configure_gui
 		print "- Enabling GUI on boot.\n";
 		backup_file($conf, $conf->{path}{inittab});
 		my $shell_call = "sed -i 's/id:3:initdefault/id:5:initdefault/' $conf->{path}{inittab}";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -972,7 +973,7 @@ sub configure_gui
 		my $create_user  = 1;
 		
 		print "- Checking if the system user: [$striker_user] exists.\n";
-		open (my $file_handle, "<", $conf->{path}{passwd}) or die "Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+		open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -992,7 +993,7 @@ sub configure_gui
 		{
 			print "- Creating the user account: [$striker_user]\n";
 			my $shell_call = "useradd $striker_user -m";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1009,7 +1010,7 @@ sub configure_gui
 			### BUG: This isn't working...
 			print "- Creating the SSH RSA key for: [$striker_user]\n";
 			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1025,7 +1026,7 @@ sub configure_gui
 		{
 			print "- Setting the system password for: [$striker_user]\n";
 			my $shell_call = "$conf->{executable}{echo} \"$striker_pass\" | $conf->{executable}{passwd} $striker_user --stdin";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1047,7 +1048,7 @@ sub configure_gui
 		   $power_sh .= "shutdown -h now\n";
 		   
 		my $shell_call = "$conf->{path}{power_sh}";
-		open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 		print $file_handle $power_sh;
 		close $file_handle;
 		print "- Done.\n";
@@ -1060,7 +1061,7 @@ sub configure_gui
 	{
 		# Create the directory.
 		print "- Creating the desktop directory: [$desktop]\n";
-		mkdir $desktop or die "Failed to create the directory: [$desktop]. The error was: $!\n";
+		mkdir $desktop or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$desktop]. The error was: $!\n";
 		$conf->{permissions}{user_desktop}{path}      = "$desktop";
 		$conf->{permissions}{user_desktop}{owner}     = "$conf->{sys}{striker_user}";
 		$conf->{permissions}{user_desktop}{group}     = "$conf->{sys}{striker_user}",
@@ -1126,14 +1127,14 @@ sub configure_gui
 		### Write them out.
 		# Firefox
 		my $shell_call = "$firefox_shortcut";
-		open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 		print $file_handle $firefox_body;
 		close $file_handle;
 		
 		# Virt-manager
 		$shell_call = "$virt_manager_shortcut";
 		#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
-		open ($file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+		open ($file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 		print $file_handle $virt_manager_body;
 		close $file_handle;
 		print "- Done.\n";
@@ -1147,7 +1148,7 @@ sub configure_gui
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
 			$conf->{permissions}{user_gconf}{path}      = "/home/$conf->{sys}{striker_user}/.gconf";
 			$conf->{permissions}{user_gconf}{owner}     = "$conf->{sys}{striker_user}";
 			$conf->{permissions}{user_gconf}{group}     = "$conf->{sys}{striker_user}",
@@ -1157,7 +1158,7 @@ sub configure_gui
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
 			$conf->{permissions}{user_apps}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps";
 			$conf->{permissions}{user_apps}{owner}     = "$conf->{sys}{striker_user}";
 			$conf->{permissions}{user_apps}{group}     = "$conf->{sys}{striker_user}",
@@ -1170,7 +1171,7 @@ sub configure_gui
 		{
 			print "- Touching file: [$apps_gconf]\n";
 			my $shell_call = "$apps_gconf";
-			open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 			close $file_handle;
 			$conf->{permissions}{apps_conf}{path}      = "$apps_gconf";
 			$conf->{permissions}{apps_conf}{owner}     = "$conf->{sys}{striker_user}";
@@ -1181,7 +1182,7 @@ sub configure_gui
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
 			$conf->{permissions}{user_virt_manager_dir}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager";
 			$conf->{permissions}{user_virt_manager_dir}{owner}     = "$conf->{sys}{striker_user}";
 			$conf->{permissions}{user_virt_manager_dir}{group}     = "$conf->{sys}{striker_user}",
@@ -1191,17 +1192,17 @@ sub configure_gui
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
 		}
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats], error was: $!\n";
 		}
 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields")
 		{
 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields" or die "Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields], error was: $!\n";
+			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields], error was: $!\n";
 		}
 		
 		# First up, the main virt-manager gconf
@@ -1226,7 +1227,7 @@ sub configure_gui
 			   $vm_connections_config .= "</gconf>\n";
 			
 			my $shell_call = "$vm_connections_file";
-			open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 			print $file_handle $vm_connections_config;
 			close $file_handle;
 			$conf->{permissions}{vm_connections}{path}      = "$vm_connections_file";
@@ -1247,7 +1248,7 @@ sub configure_gui
 			   $stats_config .= "</gconf>\n";
 			
 			my $shell_call = "$stats_file";
-			open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 			print $file_handle $stats_config;
 			close $file_handle;
 			$conf->{permissions}{vm_stats}{path}      = "$stats_file";
@@ -1268,7 +1269,7 @@ sub configure_gui
 			   $vmlist_config .= "</gconf>\n";
 			
 			my $shell_call = "$vmlist_file";
-			open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 			print $file_handle $vmlist_config;
 			close $file_handle;
 			$conf->{permissions}{vm_vmlist}{path}      = "$vmlist_file";
@@ -1289,7 +1290,7 @@ sub configure_gui
 			   $vm_core_config .= "</gconf>\n";
 			
 			my $shell_call = "$vm_core_file";
-			open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 			print $file_handle $vm_core_config;
 			close $file_handle;
 			$conf->{permissions}{vm_core}{path}      = "$vm_core_file";
@@ -1307,7 +1308,7 @@ sub configure_gui
 		my $is_qxl     = 0;
 		my $shell_call = "$conf->{executable}{lspci} -m";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1330,7 +1331,7 @@ sub configure_gui
 			if (not -e $config_dir)
 			{
 				print "- Creating directory: [$config_dir]\n";
-				mkdir "$config_dir" or die "Failed to create: [$config_dir], error was: $!\n";
+				mkdir "$config_dir" or die "$THIS_FILE ".__LINE__."; Failed to create: [$config_dir], error was: $!\n";
 				$conf->{permissions}{user_config}{path}      = "$config_dir";
 				$conf->{permissions}{user_config}{owner}     = "$conf->{sys}{striker_user}";
 				$conf->{permissions}{user_config}{group}     = "$conf->{sys}{striker_user}",
@@ -1370,7 +1371,7 @@ sub configure_gui
 				   $monitor_config .= "</monitors>\n";
 				
 				my $shell_call = "$monitors_file";
-				open (my $file_handle, ">", "$shell_call") || die "Failed to write to: [$shell_call], error was: $!\n";
+				open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 				print $file_handle $monitor_config;
 				close $file_handle;
 				$conf->{permissions}{monitor_config}{path}      = "$monitors_file";
@@ -1388,7 +1389,7 @@ sub configure_gui
 		print "- Disabling 'NetworkManager'\n";
 		my $shell_call = "chkconfig NetworkManager off";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1406,7 +1407,7 @@ sub configure_gui
 		print "- Enabling 'network'\n";
 		my $shell_call = "chkconfig network on";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1466,7 +1467,7 @@ sub configure_ipmi
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		print "==============================================================================\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -1531,7 +1532,7 @@ sub configure_ipmi
 					echo 'rc:1'
 				fi";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1582,7 +1583,7 @@ sub configure_ipmi
 			my $rc         = "";
 			my $shell_call = "ipmitool lan print $channel 2>&1; echo rc:\$?";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
@@ -1627,7 +1628,7 @@ sub configure_ipmi
 			my $ipmi_user  = $conf->{sys}{ipmi_user};
 			my $shell_call = "ipmitool user list $channel 2>&1";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $filehandle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			open (my $filehandle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$filehandle>)
 			{
 				chomp;
@@ -1649,7 +1650,7 @@ sub configure_ipmi
 		# Set the password.
 		my $shell_call = "ipmitool user set password $user_id '$conf->{sys}{ipmi_password}'";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1664,7 +1665,7 @@ sub configure_ipmi
 			my $password_ok = 0;
 			my $try_20      = 0;
 			my $shell_call  = "ipmitool user test $user_id 16 '$conf->{sys}{ipmi_password}'";
-			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
 			while (<$file_handle>)
 			{
@@ -1694,7 +1695,7 @@ sub configure_ipmi
 			{
 				my $shell_call = "ipmitool user test $user_id 20 '$conf->{sys}{ipmi_password}'";
 				#print "[ Debug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+				open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 				while (<$file_handle>)
 				{
 					chomp;
@@ -1723,7 +1724,7 @@ sub configure_ipmi
 		# Setup the IPMI IP to static
 		my $shell_call = "ipmitool lan set $channel ipsrc static";
 		#print "[ Debug ] shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1735,7 +1736,7 @@ sub configure_ipmi
 		# Now set the IP
 		$shell_call = "ipmitool lan set $channel ipaddr $conf->{sys}{ipmi_ip}";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1747,7 +1748,7 @@ sub configure_ipmi
 		# Now the netmask
 		$shell_call = "ipmitool lan set $channel netmask $conf->{sys}{ipmi_netmask}";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1760,7 +1761,7 @@ sub configure_ipmi
 		{
 			my $shell_call = "ipmitool lan set $channel defgw ipaddr $conf->{sys}{ipmi_gateway}";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
@@ -1774,7 +1775,7 @@ sub configure_ipmi
 		# Now the netmask
 		$shell_call = "ipmitool lan print $channel";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open ($file_handle, '-|', $shell_call) or die "Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1911,7 +1912,7 @@ sub configure_iso_source
 				}
 				else
 				{
-					mkdir $directory or die "Failed to create the directory: [$directory], error was: $!\n";
+					mkdir $directory or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$directory], error was: $!\n";
 					print "- Created: [$directory]\n";
 				}
 			}
@@ -1944,7 +1945,7 @@ sub configure_iso_source
 				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
 				#print "[ Debbug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				print "==============================================================================\n";
 				while(<$file_handle>)
 				{
@@ -2025,25 +2026,25 @@ sub configure_iso_source
 			
 			# Write out the files.
 			print "- Writing out CentOS node 01 kickstart file.\n";
-			open (my $file_handle, ">", $centos_node1_ks_file) or die "Failed to write: [$centos_node1_ks_file], the error was: $!\n";
+			open (my $file_handle, ">", $centos_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node1_ks_file], the error was: $!\n";
 			print $file_handle $centos_node1_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_node1_ks_file].\n";
 			
 			print "- Writing out CentOS node 02 kickstart file.\n";
-			open ($file_handle, ">", $centos_node2_ks_file) or die "Failed to write: [$centos_node2_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
 			print $file_handle $centos_node2_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_node2_ks_file].\n";
 
 			print "- Writing out CentOS striker 01 kickstart file.\n";
-			open ($file_handle, ">", $centos_striker1_ks_file) or die "Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
 			print $file_handle $centos_striker1_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_striker1_ks_file].\n";
 
 			print "- Writing out CentOS striker 02 kickstart file.\n";
-			open ($file_handle, ">", $centos_striker2_ks_file) or die "Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
 			print $file_handle $centos_striker2_ks;
 			close $file_handle;
 			print "- Wrote: [$centos_striker2_ks_file].\n";
@@ -2077,7 +2078,7 @@ sub configure_iso_source
 				}
 				else
 				{
-					mkdir $directory or die "Failed to create the directory: [$directory], error was: $!\n";
+					mkdir $directory or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$directory], error was: $!\n";
 					print "- Created: [$directory]\n";
 				}
 			}
@@ -2110,7 +2111,7 @@ sub configure_iso_source
 				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
 				#print "[ Debbug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				print "==============================================================================\n";
 				while(<$file_handle>)
 				{
@@ -2191,25 +2192,25 @@ sub configure_iso_source
 			
 			# Write out the files.
 			print "- Writing out RHEL node 01 kickstart file.\n";
-			open (my $file_handle, ">", $rhel_node1_ks_file) or die "Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
+			open (my $file_handle, ">", $rhel_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
 			print $file_handle $rhel_node1_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_node1_ks_file].\n";
 			
 			print "- Writing out RHEL node 02 kickstart file.\n";
-			open ($file_handle, ">", $rhel_node2_ks_file) or die "Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
 			print $file_handle $rhel_node2_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_node2_ks_file].\n";
 
 			print "- Writing out RHEL striker 01 kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker1_ks_file) or die "Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
 			print $file_handle $rhel_striker1_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_striker1_ks_file].\n";
 
 			print "- Writing out RHEL striker 02 kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker2_ks_file) or die "Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
+			open ($file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
 			print $file_handle $rhel_striker2_ks;
 			close $file_handle;
 			print "- Wrote: [$rhel_striker2_ks_file].\n";
@@ -2250,7 +2251,7 @@ sub generate_iso
 	# To divine the file name, and to confirm the disc is still available,
 	# I need to check the disc.
 	my $shell_call = "cd-info --dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -2318,7 +2319,7 @@ sub generate_iso
 			my $iso_size   = 0;
 			my $shell_call = "dd if=$device of=$file_name bs=1M";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2371,7 +2372,7 @@ sub unmount_iso
 	# First make sure the target isn't already mounted.
 	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -2418,7 +2419,7 @@ sub mount_iso
 				echo mount:$?; 
 			fi";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -2560,6 +2561,10 @@ sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
 sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config 
 sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
+
+# Show details on boot.
+plymouth-set-default-theme details -R
+
 ";
 	
 	my $os_directory = "c6";
@@ -2573,6 +2578,7 @@ sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_con
 	if (0)
 	{
 		$kickstart .= "
+# Add local repos
 cat > /etc/yum.repos.d/striker-$conf->{sys}{hostname}-$os.repo << EOF
 [striker-$conf->{sys}{hostname}-bcn_$os]
 name=Striker $conf->{sys}{hostname}'s $say_os 6 BCN repo.
@@ -2610,53 +2616,35 @@ EOF
 # configured later.                                                           #
 ###############################################################################
 
+DRIVE=\"sda\";
+
 ### SATA disks
 # EeeBox machine
 if grep -q sdb /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --all --drives=sdb
-ignoredisk --only-use=sdb
-bootloader --location=mbr --driveorder=sdb
-
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=sdb
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=sdb
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=sdb
-
-END
-
-# /dev/sda Single drive, or hardware RAID
-elif grep -q sda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --all --drives=sda
-ignoredisk --only-use=sda
-bootloader --location=mbr --driveorder=sda
-
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=sda
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=sda
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=sda
-
-END
-
+	DRIVE=\"sdb\"
 # /dev/vda KVM virtual machine
 elif grep -q vda /proc/partitions; then
+	DRIVE=\"vdb\"
+fi
+
+# Zero-out the first 100GB to help avoid running into problems when a node that
+# was previously in a cluster gets rebuilt.
+dd if=/dev/zero of=/dev/\${DRIVE} bs=4M count=25000
+
+# Now write the partition script
 cat >> /tmp/part-include <<END
 
 zerombr
-clearpart --all --drives=vda
-ignoredisk --only-use=vda
-bootloader --location=mbr --driveorder=vda
+clearpart --all --drives=\${DRIVE}
+ignoredisk --only-use=\${DRIVE}
+bootloader --location=mbr --driveorder=\${DRIVE}
 
-part     /boot --fstype ext4 --size=512   --asprimary --ondisk=vda
-part     swap  --fstype swap --size=4096  --asprimary --ondisk=vda
-part     /     --fstype ext4 --size=40960 --asprimary --ondisk=vda
+part     /boot --fstype ext4 --size=512   --asprimary --ondisk=\${DRIVE}
+part     swap  --fstype swap --size=4096  --asprimary --ondisk=\${DRIVE}
+part     /     --fstype ext4 --size=40960 --asprimary --ondisk=\${DRIVE}
 
 END
 
-fi
 \%end
 ";
 	}
@@ -2669,9 +2657,17 @@ fi
 # generic VMs.                                                                #
 ###############################################################################
 
+DRIVE=\"sda\";
+
 ### SATA disks
 # EeeBox machine
 if grep -q sdb /proc/partitions; then
+	DRIVE=\"sdb\";
+# /dev/vda KVM virtual machine
+elif grep -q vda /proc/partitions; then
+	DRIVE=\"vda\";
+fi
+
 cat >> /tmp/part-include <<END
 
 zerombr
@@ -2685,37 +2681,6 @@ part     /     --fstype ext4 --size=100  --asprimary --ondisk=sdb --grow
 
 END
 
-# /dev/sda Single drive, or hardware RAID
-elif grep -q sda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --all --drives=sda
-ignoredisk --only-use=sda
-bootloader --location=mbr --driveorder=sda
-
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=sda
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=sda
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=sda --grow
-
-END
-
-# /dev/vda KVM virtual machine
-elif grep -q vda /proc/partitions; then
-cat >> /tmp/part-include <<END
-
-zerombr
-clearpart --all --drives=vda
-ignoredisk --only-use=vda
-bootloader --location=mbr --driveorder=vda
-
-part     /boot --fstype ext4 --size=512  --asprimary --ondisk=vda
-part     swap  --fstype swap --size=4096 --asprimary --ondisk=vda
-part     /     --fstype ext4 --size=100  --asprimary --ondisk=vda --grow
-
-END
-
-fi
 \%end
 ";
 	}
@@ -2782,7 +2747,7 @@ MENU COLOR disabled    0  #807f7f7f #ee000000 std      # Disabled menu options, 
 MENU COLOR cmdmark     0  #c000ffff #ee000000 std      # Command line marker - The '> ' on the left when editing an option
 MENU COLOR cmdline     0  #c0ffffff #ee000000 std      # Command line - The text being edited
 # Options below haven't been tested, descriptions may be lacking.
-MENU COLOR scrollbar   0  #40000000 #00000000 std      # Scroll bar
+MENU COLOR scrollbar   0  #407f7f7f #00000000 std      # Scroll bar
 MENU COLOR pwdborder   0  #80ffffff #20ffffff std      # Password box wire-frame border
 MENU COLOR pwdheader   0  #80ff8080 #20ffffff std      # Password box header
 MENU COLOR pwdentry    0  #80ffffff #20ffffff std      # Password entry field
@@ -2911,7 +2876,7 @@ LABEL generic-rhel-striker
 	
 	# Write out the new one.
 	print "- Writing out dhcp daemon configuration file.\n";
-	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "Failed to write: [$conf->{path}{pxe_default_config}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{pxe_default_config}], the error was: $!\n";
 	print $file_handle $default_config;
 	close $file_handle;
 	
@@ -2937,7 +2902,8 @@ sub configure_xinetd
 	
 	print "- Reading in current: [$conf->{path}{xinetd_tftp_config}]\n";
 	my $xinetd_tftp_config = "";
-	open (my $file_handle, "<", $conf->{path}{xinetd_tftp_config}) or die "Failed to read: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
+	my $shell_call         = $conf->{path}{xinetd_tftp_config};
+	open (my $file_handle, "<", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -2952,21 +2918,21 @@ sub configure_xinetd
 	close $file_handle;
 	# Next, write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{xinetd_tftp_config}) or die "Failed to write: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{xinetd_tftp_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
 	print $file_handle $xinetd_tftp_config;
 	close $file_handle;
 	
 	print "- Verifying the PXE config directory exists.\n";
 	if (not -e $conf->{directory}{pxelinux_config})
 	{
-		mkdir $conf->{directory}{pxelinux_config} or die "Failed to create the directory: [$conf->{directory}{pxelinux_config}], error was: $!\n";
+		mkdir $conf->{directory}{pxelinux_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{pxelinux_config}], error was: $!\n";
 		print "- Created: [$conf->{directory}{pxelinux_config}]\n";
 	}
 	
 	print "- Verifying the PXE boot directory exists.\n";
 	if (not -e $conf->{directory}{pxelinux_boot})
 	{
-		mkdir $conf->{directory}{pxelinux_boot} or die "Failed to create the directory: [$conf->{directory}{pxelinux_boot}], error was: $!\n";
+		mkdir $conf->{directory}{pxelinux_boot} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{pxelinux_boot}], error was: $!\n";
 		print "- Created: [$conf->{directory}{pxelinux_boot}]\n";
 	}
 	print "Done.\n\n";
@@ -2998,7 +2964,7 @@ sub configure_dhcp
 			# Read in the IP from the bond file.
 			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
 			my $shell_call = "grep -e IPADDR -e NETMASK $ifcfg_file";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3023,7 +2989,7 @@ sub configure_dhcp
 			# Read in the IP from the link file
 			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
 			my $shell_call = "grep IPADDR $ifcfg_file";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3128,7 +3094,7 @@ subnet $bcn_network netmask $conf->{network}{bcn}{netmask} {
 	
 	# Write out the new one.
 	print "- Writing out dhcp daemon configuration file.\n";
-	open (my $file_handle, ">", $conf->{path}{dhcpd_conf}) or die "Failed to write: [$conf->{path}{dhcpd_conf}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{dhcpd_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{dhcpd_conf}], the error was: $!\n";
 	print $file_handle $dhcpd_config;
 	close $file_handle;
 	print "Done.\n\n";
@@ -3158,7 +3124,7 @@ sub manage_daemons
 			print "- Disabling: [$daemon] on boot and stopping it.\n";
 		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3186,7 +3152,7 @@ sub manage_daemons
 			print "- Enabling: [$daemon] on boot and (re)starting it.\n";
 		}
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3228,7 +3194,7 @@ sub set_file_ownership_and_modes
 		print "- Setting ownership and mode to: [$owner:$group] and: [$mode] ($conf->{permissions}{$file}{recursive}) on: [$path]\n";
 		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path";
 		#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
-		open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3241,7 +3207,7 @@ sub set_file_ownership_and_modes
 		close $file_handle;
 		$shell_call = "$conf->{executable}{chmod} $recursive $mode $path";
 		#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
-		open ($file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3263,7 +3229,7 @@ sub set_file_ownership_and_modes
 			print "  Setting selinux context to: [$selinux].\n";
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3280,7 +3246,7 @@ sub set_file_ownership_and_modes
 		print "- Giving apache permission to create network connections.\n";
 		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3341,7 +3307,7 @@ sub install_striker_files
 		else
 		{
 			print "- Creating the Striker configuration directory.\n";
-			mkdir $striker_conf_dir or die "Failed to create the directory: [$striker_conf_dir], error was: $!\n";
+			mkdir $striker_conf_dir or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$striker_conf_dir], error was: $!\n";
 		}
 		
 		print "- Copying base Striker configuration file.\n";
@@ -3375,7 +3341,7 @@ sub install_striker_files
 		#print "[ Debug ] - mail user: [$conf->{sys}{mail_user}], password: [$conf->{sys}{mail_password}]\n";
 		#print "[ Debug ] - Reading: [$conf->{path}{striker_config}]\n";
 		my $striker_config = "";
-		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "Failed to read: [$conf->{path}{striker_config}], the error was: $!\n";
+		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{striker_config}], the error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3393,7 +3359,7 @@ sub install_striker_files
 		close $file_handle;
 		# Next, write it out.
 		print "- Writing out the new version.\n";
-		open ($file_handle, ">", $conf->{path}{striker_config}) or die "Failed to write: [$conf->{path}{striker_config}], the error was: $!\n";
+		open ($file_handle, ">", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{striker_config}], the error was: $!\n";
 		print $file_handle $striker_config;
 		close $file_handle;
 		print "- Done.\n";
@@ -3401,7 +3367,7 @@ sub install_striker_files
 	
 	# Create an empty log file
 	print "- Creating empty Striker log file.\n";
-	open (my $file_handle, ">", $conf->{path}{striker_log}) or die "Failed to write: [$conf->{path}{striker_log}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{striker_log}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{striker_log}], the error was: $!\n";
 	print $file_handle "";
 	close $file_handle;
 	
@@ -3417,7 +3383,7 @@ sub rsync_files
 	
 	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3441,184 +3407,184 @@ sub rsync_files
 }
 
 # Configure guacamole.
-sub configure_guacamole
-{
-	my ($conf) = @_;
-	
-	print "Configuring guacamole\n";
-	
-	# Create the guacamole directory if needed.
-	if (-e $conf->{directory}{guac_etc})
-	{
-		print "- Guacamole configuration directory already exists.\n";
-	}
-	else
-	{
-		print "- Creating the Guacamole configuration directory.\n";
-		mkdir $conf->{directory}{guac_etc} or die "Failed to create the directory: [$conf->{directory}{guac_etc}], error was: $!\n";
-	}
-	
-	# Make sure gacamole tomcat diretory exists
-	if (-e $conf->{directory}{guac_tomcat})
-	{
-		print "- Guacamole Tomcat directory already exists.\n";
-	}
-	else
-	{
-		print "- Creating the Guacamole Tomcat directory.\n";
-		mkdir $conf->{directory}{guac_tomcat} or die "Failed to create the directory: [$conf->{directory}{guac_tomcat}], error was: $!\n";
-	}
-	
-	# Make sure the library path directory exists (before we check classpath}.
-	if (-e $conf->{directory}{guac_lib})
-	{
-		print "- Guacamole library directory already exists.\n";
-	}
-	else
-	{
-		print "- Creating the Guacamole library directory.\n";
-		mkdir $conf->{directory}{guac_lib} or die "Failed to create the directory: [$conf->{directory}{guac_lib}], error was: $!\n";
-	}
-	
-	# Make sure the class path directory exists.
-	if (-e $conf->{directory}{guac_classpath})
-	{
-		print "- Guacamole classpath directory already exists.\n";
-	}
-	else
-	{
-		print "- Creating the Guacamole classpath directory.\n";
-		mkdir $conf->{directory}{guac_classpath} or die "Failed to create the directory: [$conf->{directory}{guac_classpath}], error was: $!\n";
-	}
-	
-	# insert guacamole version into path names.
-	$conf->{path}{guac_noauth} =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
-	$conf->{path}{guac_war}    =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
-	
-	# Now start copying things into place.
-	if (-e $conf->{path}{guac_noauth})
-	{
-		print "- The 'auth-noauth' module is already in place.\n";
-	}
-	else
-	{
-		print "- Copying the 'auth-noauth' module into place.\n";
-		my $noauth_file =  ($conf->{path}{guac_noauth} =~ /^.*\/(.*)$/)[0];
-		my $destination =  $conf->{path}{guac_noauth};
-		   $destination =~ s/$noauth_file$//;
-		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
-		print "- Copying: [$source]\n";
-		print "       to: [$destination]\n";
-		copy_file($conf, $source, $destination);
-	}
-	
-	# Create the noauth config, if needed.
-	if (-e $conf->{path}{guac_noauth_config})
-	{
-		print "- The 'noauth' config already exists.\n";
-	}
-	else
-	{
-		print "- Copying the 'auth-noauth' module into place.\n";
-		my $noauth_file =  ($conf->{path}{guac_noauth_config} =~ /^.*\/(.*)$/)[0];
-		my $destination =  $conf->{path}{guac_noauth_config};
-		   $destination =~ s/$noauth_file$//;
-		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
-		print "- Copying: [$source]\n";
-		print "       to: [$destination]\n";
-		copy_file($conf, $source, $destination);
-	}
-	
-	# Copy the .war file and symlink it.
-	if (-e $conf->{path}{guac_war})
-	{
-		print "- Guacamole web archive file already in place.\n";
-	}
-	else
-	{
-		# Delete the symlink if it exists.
-		if (-l $conf->{path}{guac_war_symlink})
-		{
-			print "- Deleting the existing symlink.\n";
-			unlink $conf->{path}{guac_war_symlink} or die "Failed to delete the symlink: [$conf->{path}{guac_war_symlink}]\n";
-		}
-		
-		# Now copy.
-		my ($destination, $war_file) = ($conf->{path}{guac_war} =~ /^(.*)\/(.*)$/);
-		my $source                   = "$conf->{directory}{source}/guacamole/$war_file";
-		print "- Copying: [$source]\n";
-		print "       to: [$destination]\n";
-		copy_file($conf, $source, $destination);
-		
-		# If I am here, the copy succeeded.
-		print "- Creating guacamole web archive symlink.\n";
-		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
-		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			print "- Output: [$line]\n";
-		}
-		close $file_handle;
-		
-		if (-l $conf->{path}{guac_war_symlink})
-		{
-			print "- Symlink created successfully.\n";
-		}
-		else
-		{
-			print "[ Error ] - I was unable to link: [$destination/$war_file]\n";
-			print "[ Error ]                     to: [$conf->{path}{guac_war_symlink}]\n";
-			exit(20);
-		}
-	}
-	
-	# Copy the guacamoly properties file into place.
-	if (-e $conf->{path}{guac_properties})
-	{
-		print "- Properties file already in place.\n";
-	}
-	else
-	{
-		my $properties_file =  ($conf->{path}{guac_properties} =~ /^.*\/(.*)$/)[0];
-		my $destination     =  $conf->{path}{guac_properties};
-		   $destination     =~ s/$properties_file$//;
-		my $source          =  "$conf->{directory}{source}/guacamole/$properties_file";
-		print "- Copying: [$source]\n";
-		print "       to: [$destination]\n";
-		copy_file($conf, $source, $destination);
-		
-		# Create the symlink, if needed.
-		print "- Creating guacamole properties symlink.\n";
-		my $shell_call = "$conf->{executable}{ln} -s $destination/$properties_file $conf->{path}{guac_properties_symlink}";
-		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			print "- Output: [$line]\n";
-		}
-		close $file_handle;
-		
-		if (-l $conf->{path}{guac_properties_symlink})
-		{
-			print "- Symlink created successfully.\n";
-		}
-		else
-		{
-			print "[ Error ] - I was unable to link: [$destination/$properties_file]\n";
-			print "[ Error ]                     to: [$conf->{path}{guac_properties_symlink}]\n";
-			exit(20);
-		}
-	}
-	
-	print "Done.\n\n";
-	
-	return(0);
-}
+# sub configure_guacamole
+# {
+# 	my ($conf) = @_;
+# 	
+# 	print "Configuring guacamole\n";
+# 	
+# 	# Create the guacamole directory if needed.
+# 	if (-e $conf->{directory}{guac_etc})
+# 	{
+# 		print "- Guacamole configuration directory already exists.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Creating the Guacamole configuration directory.\n";
+# 		mkdir $conf->{directory}{guac_etc} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_etc}], error was: $!\n";
+# 	}
+# 	
+# 	# Make sure gacamole tomcat diretory exists
+# 	if (-e $conf->{directory}{guac_tomcat})
+# 	{
+# 		print "- Guacamole Tomcat directory already exists.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Creating the Guacamole Tomcat directory.\n";
+# 		mkdir $conf->{directory}{guac_tomcat} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_tomcat}], error was: $!\n";
+# 	}
+# 	
+# 	# Make sure the library path directory exists (before we check classpath}.
+# 	if (-e $conf->{directory}{guac_lib})
+# 	{
+# 		print "- Guacamole library directory already exists.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Creating the Guacamole library directory.\n";
+# 		mkdir $conf->{directory}{guac_lib} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_lib}], error was: $!\n";
+# 	}
+# 	
+# 	# Make sure the class path directory exists.
+# 	if (-e $conf->{directory}{guac_classpath})
+# 	{
+# 		print "- Guacamole classpath directory already exists.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Creating the Guacamole classpath directory.\n";
+# 		mkdir $conf->{directory}{guac_classpath} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_classpath}], error was: $!\n";
+# 	}
+# 	
+# 	# insert guacamole version into path names.
+# 	$conf->{path}{guac_noauth} =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
+# 	$conf->{path}{guac_war}    =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
+# 	
+# 	# Now start copying things into place.
+# 	if (-e $conf->{path}{guac_noauth})
+# 	{
+# 		print "- The 'auth-noauth' module is already in place.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Copying the 'auth-noauth' module into place.\n";
+# 		my $noauth_file =  ($conf->{path}{guac_noauth} =~ /^.*\/(.*)$/)[0];
+# 		my $destination =  $conf->{path}{guac_noauth};
+# 		   $destination =~ s/$noauth_file$//;
+# 		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
+# 		print "- Copying: [$source]\n";
+# 		print "       to: [$destination]\n";
+# 		copy_file($conf, $source, $destination);
+# 	}
+# 	
+# 	# Create the noauth config, if needed.
+# 	if (-e $conf->{path}{guac_noauth_config})
+# 	{
+# 		print "- The 'noauth' config already exists.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Copying the 'auth-noauth' module into place.\n";
+# 		my $noauth_file =  ($conf->{path}{guac_noauth_config} =~ /^.*\/(.*)$/)[0];
+# 		my $destination =  $conf->{path}{guac_noauth_config};
+# 		   $destination =~ s/$noauth_file$//;
+# 		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
+# 		print "- Copying: [$source]\n";
+# 		print "       to: [$destination]\n";
+# 		copy_file($conf, $source, $destination);
+# 	}
+# 	
+# 	# Copy the .war file and symlink it.
+# 	if (-e $conf->{path}{guac_war})
+# 	{
+# 		print "- Guacamole web archive file already in place.\n";
+# 	}
+# 	else
+# 	{
+# 		# Delete the symlink if it exists.
+# 		if (-l $conf->{path}{guac_war_symlink})
+# 		{
+# 			print "- Deleting the existing symlink.\n";
+# 			unlink $conf->{path}{guac_war_symlink} or die "$THIS_FILE ".__LINE__."; Failed to delete the symlink: [$conf->{path}{guac_war_symlink}]\n";
+# 		}
+# 		
+# 		# Now copy.
+# 		my ($destination, $war_file) = ($conf->{path}{guac_war} =~ /^(.*)\/(.*)$/);
+# 		my $source                   = "$conf->{directory}{source}/guacamole/$war_file";
+# 		print "- Copying: [$source]\n";
+# 		print "       to: [$destination]\n";
+# 		copy_file($conf, $source, $destination);
+# 		
+# 		# If I am here, the copy succeeded.
+# 		print "- Creating guacamole web archive symlink.\n";
+# 		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
+# 		#print "[ Debug ] - shell_call: [$shell_call]\n";
+# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			print "- Output: [$line]\n";
+# 		}
+# 		close $file_handle;
+# 		
+# 		if (-l $conf->{path}{guac_war_symlink})
+# 		{
+# 			print "- Symlink created successfully.\n";
+# 		}
+# 		else
+# 		{
+# 			print "[ Error ] - I was unable to link: [$destination/$war_file]\n";
+# 			print "[ Error ]                     to: [$conf->{path}{guac_war_symlink}]\n";
+# 			exit(20);
+# 		}
+# 	}
+# 	
+# 	# Copy the guacamoly properties file into place.
+# 	if (-e $conf->{path}{guac_properties})
+# 	{
+# 		print "- Properties file already in place.\n";
+# 	}
+# 	else
+# 	{
+# 		my $properties_file =  ($conf->{path}{guac_properties} =~ /^.*\/(.*)$/)[0];
+# 		my $destination     =  $conf->{path}{guac_properties};
+# 		   $destination     =~ s/$properties_file$//;
+# 		my $source          =  "$conf->{directory}{source}/guacamole/$properties_file";
+# 		print "- Copying: [$source]\n";
+# 		print "       to: [$destination]\n";
+# 		copy_file($conf, $source, $destination);
+# 		
+# 		# Create the symlink, if needed.
+# 		print "- Creating guacamole properties symlink.\n";
+# 		my $shell_call = "$conf->{executable}{ln} -s $destination/$properties_file $conf->{path}{guac_properties_symlink}";
+# 		#print "[ Debug ] - shell_call: [$shell_call]\n";
+# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			print "- Output: [$line]\n";
+# 		}
+# 		close $file_handle;
+# 		
+# 		if (-l $conf->{path}{guac_properties_symlink})
+# 		{
+# 			print "- Symlink created successfully.\n";
+# 		}
+# 		else
+# 		{
+# 			print "[ Error ] - I was unable to link: [$destination/$properties_file]\n";
+# 			print "[ Error ]                     to: [$conf->{path}{guac_properties_symlink}]\n";
+# 			exit(20);
+# 		}
+# 	}
+# 	
+# 	print "Done.\n\n";
+# 	
+# 	return(0);
+# }
 
 # This copies a file... Hey, what it says on the tin.
 sub copy_file
@@ -3627,7 +3593,7 @@ sub copy_file
 	
 	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3671,7 +3637,7 @@ sub download_striker
 		{
 			my $version;
 			print "- Version file exists, checking if it matches the requested version.\n";
-			open (my $file_handle, "<", "./version") or die "Failed to read: [./version], the error was: $!\n";
+			open (my $file_handle, "<", "./version") or die "$THIS_FILE ".__LINE__."; Failed to read: [./version], the error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3715,7 +3681,7 @@ sub download_striker
 		{
 			my $shell_call = "$conf->{executable}{wget} -c $download";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			print "==============================================================================\n";
 			while(<$file_handle>)
 			{
@@ -3759,7 +3725,7 @@ sub download_striker
 				$shell_call = "$conf->{executable}{unzip} $extract";
 			}
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3816,7 +3782,7 @@ sub configure_iptables
 	print "- Reading the current firewall configuration.\n";
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3845,7 +3811,7 @@ sub configure_iptables
 		print "- Opening access for trivial FTP (needed for PXE booting).\n";
 		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 69 -j ACCEPT && ";
 		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 69 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3858,7 +3824,7 @@ sub configure_iptables
 	{
 		print "- Opening access for standard web access.\n";
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3871,7 +3837,7 @@ sub configure_iptables
 	{
 		print "- Opening access for secure web access.\n";
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3885,7 +3851,7 @@ sub configure_iptables
 		# Save the changes.
 		print "- Saving the new iptables configuration.\n";
 		my $shell_call = "/etc/init.d/iptables save";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3923,7 +3889,7 @@ sub configure_ssh
 	# Read in and then write out the server.xml file to enable UTF-8
 	my $sshd_config = "";
 	print "- Reading in the existing ssh daemon configuration file.\n";
-	open (my $file_handle, "<", $conf->{path}{sshd_config}) or die "Failed to read: [$conf->{path}{sshd_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{sshd_config}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3939,7 +3905,7 @@ sub configure_ssh
 	close $file_handle;
 	# Next, write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{sshd_config}) or die "Failed to write: [$conf->{path}{sshd_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{sshd_config}], the error was: $!\n";
 	print $file_handle $sshd_config;
 	close $file_handle;
 	
@@ -3953,7 +3919,7 @@ sub configure_ssh
 		print "- [ Note ] Please be patient! It might take time to collect entropy.\n";
 		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3968,57 +3934,57 @@ sub configure_ssh
 }
 
 # This configures Tomcat, which we use for Guacamole.
-sub configure_tomcat
-{
-	my ($conf) = @_;
-	
-	print "Configuring Tomcat.\n";
-	        
-	if (-e "$conf->{path}{backups}/server.xml")
-	{
-		print "- Backup already made, skipping.\n";
-	}
-	else
-	{
-		print "- Backing up: [$conf->{path}{tomcat_server}].\n";
-		backup_file($conf, $conf->{path}{tomcat_server});
-	}
-	
-	# Read in and then write out the server.xml file to enable UTF-8
-	my $tomcat_config = "";
-	print "- Reading in the existing tomcat server configuration server.\n";
-	#print "[ Debug ] - Reading: [$conf->{path}{tomcat_server}]\n";
-	open (my $file_handle, "<", $conf->{path}{tomcat_server}) or die "Failed to read: [$conf->{path}{tomcat_server}], the error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		
-		# Avoid multiple 'URIEncoding="UTF-8"' entries
-		#print "[ Debug ] >> line: [$line]\n";
-		next if $line =~ /^\s+URIEncoding="UTF-8"$/;
-		
-		# Insert the UTF-8 string
-		if ($line =~ /<Connector port="8080" protocol="HTTP\/1.1"/)
-		{
-			$tomcat_config .= "$line\n";
-			$tomcat_config .= "               URIEncoding=\"UTF-8\"\n";
-		}
-		else
-		{
-			$tomcat_config .= "$line\n";
-		}
-	}
-	close $file_handle;
-	# Next, write it out.
-	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{tomcat_server}) or die "Failed to write: [$conf->{path}{tomcat_server}], the error was: $!\n";
-	print $file_handle $tomcat_config;
-	close $file_handle;
-	print "Done.\n\n";
-	
-	return(0);
-}
+# sub configure_tomcat
+# {
+# 	my ($conf) = @_;
+# 	
+# 	print "Configuring Tomcat.\n";
+# 	        
+# 	if (-e "$conf->{path}{backups}/server.xml")
+# 	{
+# 		print "- Backup already made, skipping.\n";
+# 	}
+# 	else
+# 	{
+# 		print "- Backing up: [$conf->{path}{tomcat_server}].\n";
+# 		backup_file($conf, $conf->{path}{tomcat_server});
+# 	}
+# 	
+# 	# Read in and then write out the server.xml file to enable UTF-8
+# 	my $tomcat_config = "";
+# 	print "- Reading in the existing tomcat server configuration server.\n";
+# 	#print "[ Debug ] - Reading: [$conf->{path}{tomcat_server}]\n";
+# 	open (my $file_handle, "<", $conf->{path}{tomcat_server}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{tomcat_server}], the error was: $!\n";
+# 	while(<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		
+# 		# Avoid multiple 'URIEncoding="UTF-8"' entries
+# 		#print "[ Debug ] >> line: [$line]\n";
+# 		next if $line =~ /^\s+URIEncoding="UTF-8"$/;
+# 		
+# 		# Insert the UTF-8 string
+# 		if ($line =~ /<Connector port="8080" protocol="HTTP\/1.1"/)
+# 		{
+# 			$tomcat_config .= "$line\n";
+# 			$tomcat_config .= "               URIEncoding=\"UTF-8\"\n";
+# 		}
+# 		else
+# 		{
+# 			$tomcat_config .= "$line\n";
+# 		}
+# 	}
+# 	close $file_handle;
+# 	# Next, write it out.
+# 	print "- Writing out the new version.\n";
+# 	open ($file_handle, ">", $conf->{path}{tomcat_server}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{tomcat_server}], the error was: $!\n";
+# 	print $file_handle $tomcat_config;
+# 	close $file_handle;
+# 	print "Done.\n\n";
+# 	
+# 	return(0);
+# }
 
 # This makes sure that selinux is enabled.
 sub configure_selinux
@@ -4042,7 +4008,7 @@ sub configure_selinux
 	my $current_policy = "";
 	my $selinux_config = "";
 	print "- Reading in the existing selinux config file.\n";
-	open (my $file_handle, "<", $conf->{path}{selinux_config}) or die "Failed to read: [$conf->{path}{selinux_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{selinux_config}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4078,7 +4044,7 @@ sub configure_selinux
 		# Set enforcing to 0.
 		print "- Setting selinux to 'permissive'.\n";
 		my $shell_call = "$conf->{executable}{setenforce} 0";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4090,7 +4056,7 @@ sub configure_selinux
 	
 	# Next, write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "Failed to write: [$conf->{path}{selinux_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{selinux_config}], the error was: $!\n";
 	print $file_handle $selinux_config;
 	close $file_handle;
 	print "Done.\n\n";
@@ -4109,7 +4075,7 @@ sub set_hostname
 	print "Configuring this system's host name.\n";
 	print "- Reading in the existing hostname file.\n";
 	my $hostname = "";
-	open (my $file_handle, "<", $conf->{path}{hostname}) or die "Failed to read: [$conf->{path}{hostname}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hostname}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4130,7 +4096,7 @@ sub set_hostname
 	
 	# Next, write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{hostname}) or die "Failed to write: [$conf->{path}{hostname}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{hostname}], the error was: $!\n";
 	print $file_handle $hostname;
 	close $file_handle;
 	print "Done.\n\n";
@@ -4170,9 +4136,9 @@ sub configure_apache
 	
 	# Now to start updating.
 	print "- Reading in the existing config file and adjusting as needed.\n";
-	my $in_guacamole  = 0;
+	#my $in_guacamole  = 0;
 	my $apache_config = "";
-	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4186,16 +4152,16 @@ sub configure_apache
 		next if $line =~ /^\s+Require user /;
 		
 		# Skip prior proxy entries.
-		if ($line =~ /^<Location \/guacamole\/>/)
-		{
-			$in_guacamole = 1;
-		}
-		if ($line =~ /CustomLog \/var\/log\/httpd\/guac.log/)
-		{
-			$in_guacamole = 0;
-			next;
-		}
-		next if $in_guacamole;
+# 		if ($line =~ /^<Location \/guacamole\/>/)
+# 		{
+# 			$in_guacamole = 1;
+# 		}
+# 		if ($line =~ /CustomLog \/var\/log\/httpd\/guac.log/)
+# 		{
+# 			$in_guacamole = 0;
+# 			next;
+# 		}
+# 		next if $in_guacamole;
 		
 		### TODO: Set SSL as default and add an option for a user to
 		###       load their own certs.
@@ -4210,18 +4176,18 @@ sub configure_apache
 			$apache_config .= "    AuthUserFile $conf->{path}{apache_htpasswd}\n";
 			$apache_config .= "    Require user $conf->{sys}{striker_user}\n";
 		}
-		elsif ($line =~ /#<\/Proxy>/)
-		{
-			$apache_config .= "$line\n";
-			$apache_config .= "<Location /guacamole/>\n";
-			$apache_config .= "    Order allow,deny\n";
-			$apache_config .= "    Allow from all\n";
-			$apache_config .= "    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n";
-			$apache_config .= "    ProxyPassReverse http://localhost:8080/guacamole/\n";
-			$apache_config .= "</Location>\n";
-			$apache_config .= "SetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\n";
-			$apache_config .= "CustomLog /var/log/httpd/guac.log common env=!dontlog\n";
-		}
+# 		elsif ($line =~ /#<\/Proxy>/)
+# 		{
+# 			$apache_config .= "$line\n";
+# 			$apache_config .= "<Location /guacamole/>\n";
+# 			$apache_config .= "    Order allow,deny\n";
+# 			$apache_config .= "    Allow from all\n";
+# 			$apache_config .= "    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n";
+# 			$apache_config .= "    ProxyPassReverse http://localhost:8080/guacamole/\n";
+# 			$apache_config .= "</Location>\n";
+# 			$apache_config .= "SetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\n";
+# 			$apache_config .= "CustomLog /var/log/httpd/guac.log common env=!dontlog\n";
+# 		}
 		elsif ($line =~ /^Timeout /)
 		{
 			$apache_config .= "Timeout $conf->{sys}{apache_timeout}\n";
@@ -4235,7 +4201,7 @@ sub configure_apache
 	
 	# Now write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{apache_config}) or die "Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
 	print $file_handle $apache_config;
 	close $file_handle;
 	print "Done.\n\n";
@@ -4248,7 +4214,7 @@ sub configure_apache
 	}
 	else
 	{
-		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "Failed to write: [$conf->{path}{apache_manifest_conf}], the error was: $!\n";
+		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{apache_manifest_conf}], the error was: $!\n";
 		print $file_handle "<Directory \"/var/www/html/manifests/\">\n";
 		print $file_handle "  <FilesMatch \"\.xml\$\">\n";
 		print $file_handle "    Header set Content-Disposition attachment\n";
@@ -4268,7 +4234,7 @@ sub enable_apache_user
 	
 	print "- Reading in the existing system user file.\n";
 	my $passwd = "";
-	open (my $file_handle, "<", $conf->{path}{passwd}) or die "Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4293,7 +4259,7 @@ sub enable_apache_user
 	
 	# Now write it out.
 	print "- Writing out the new version.\n";
-	open ($file_handle, ">", $conf->{path}{passwd}) or die "Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
 	print $file_handle $passwd;
 	close $file_handle;
 	
@@ -4311,7 +4277,7 @@ sub set_root_password
 		$conf->{sys}{striker_pass} =~ s/"/\\"/g;
 		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_pass}\" | $conf->{executable}{passwd} root --stdin";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4344,7 +4310,7 @@ sub create_apache_htpasswd
 	if (-e $conf->{path}{apache_htpasswd})
 	{
 		print "- Old: [$conf->{path}{apache_htpasswd}] found, deleting it.\n";
-		unlink $conf->{path}{apache_htpasswd} or die "Failed to delete: [$conf->{path}{apache_htpasswd}], error was: $!\n";
+		unlink $conf->{path}{apache_htpasswd} or die "$THIS_FILE ".__LINE__."; Failed to delete: [$conf->{path}{apache_htpasswd}], error was: $!\n";
 	}
 	
 	# Escape any single-quotes in the user's password.
@@ -4352,7 +4318,7 @@ sub create_apache_htpasswd
 	print "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.\n";
 	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_pass}\\\"\"";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4375,7 +4341,7 @@ sub create_apache_home_directories
 	if (not -e $conf->{path}{apache_home})
 	{
 		print "- Creating: [$conf->{path}{apache_home}].\n";
-		mkdir $conf->{path}{apache_home} or die "Failed to create the directory: [$conf->{path}{apache_home}], the error was: $!\n";
+		mkdir $conf->{path}{apache_home} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{path}{apache_home}], the error was: $!\n";
 	}
 	else
 	{
@@ -4388,7 +4354,7 @@ sub create_apache_home_directories
 		if (not -e $full_path)
 		{
 			print "- Creating: [$full_path].\n";
-			mkdir $full_path or die "Failed to create the directory: [$full_path], the error was: $!\n";
+			mkdir $full_path or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$full_path], the error was: $!\n";
 		}
 		else
 		{
@@ -4400,7 +4366,7 @@ sub create_apache_home_directories
 	if (not -e $conf->{directory}{apache_manifests})
 	{
 		print "- Creating: [$conf->{directory}{apache_manifests}].\n";
-		mkdir $conf->{directory}{apache_manifests} or die "Failed to create the directory: [$conf->{directory}{apache_manifests}], the error was: $!\n";
+		mkdir $conf->{directory}{apache_manifests} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{apache_manifests}], the error was: $!\n";
 	}
 	else
 	{
@@ -4448,7 +4414,7 @@ sub verify_os
 	my $major   = -1;
 	my $minor   = -1;
 print "- We're on a RHEL (based) OS, good. Checking version.\n";
-	open (my $file_handle, "<", $conf->{path}{os_release}) or die "Failed to read: [$conf->{path}{os_release}], error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{os_release}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{os_release}], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4520,7 +4486,7 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 			#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
 			my $registered = 0;
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -4552,7 +4518,7 @@ print "- We're on a RHEL (based) OS, good. Checking version.\n";
 				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]\n";
 				#print "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]\n";
 				#print "[ Debug ] - shell_call: [$shell_call]\n";
-				open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -4655,7 +4621,7 @@ sub install_missing_packages
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
 		#print "[ Debug ] - shell_call: [$shell_call]\n";
 		print "==============================================================================\n";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -4713,7 +4679,7 @@ sub update_os
 	#print "- [ Note ] really think nothing is happening, please open a new terminal and\n";
 	#print "- [ Note ] look for activity using 'top' or 'ps aux'.\n";
 	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} -y update";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print "==============================================================================\n";
 	while(<$file_handle>)
 	{
@@ -4741,7 +4707,7 @@ sub get_list_of_installed_packages
 	my $dots = 0;
 	print "Getting a list of currently installed packages.\n- ";
 	my $shell_call = "$conf->{executable}{yum} list installed";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4840,7 +4806,7 @@ sub configure_an_repo
 	{
 		# Create the repo
 		print "- The AN!Repo hasn't been added yet, adding it now.\n";
-		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
+		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
 		print $file_handle "[an-repo]\n";
 		print $file_handle "name=AN! Repo for Anvil! stuff\n";
 		print $file_handle "baseurl=https://alteeve.ca/repo/el6/\n";
@@ -4852,7 +4818,7 @@ sub configure_an_repo
 		# No clear yum's cache
 		print "- Added. Clearing yum's cache.\n";
 		my $shell_call = "$conf->{executable}{yum} clean all";
-		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4881,7 +4847,7 @@ sub configure_striker_rhel_repo
 	{
 		# Create the repo
 		print "- The local Striker RHEL repo hasn't been added yet, adding it now.\n";
-		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
+		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
 		print $file_handle "[striker-$conf->{sys}{hostname}-bcn_rhel]\n";
 		print $file_handle "name=Striker $conf->{sys}{hostname}'s RHEL repo.\n";
 		print $file_handle "baseurl=http://$conf->{network}{bcn}{ip}/rhel6/x86_64/img/\n";
@@ -4898,7 +4864,7 @@ sub configure_striker_rhel_repo
 		# No clear yum's cache
 		print "- Added. Clearing yum's cache.\n";
 		my $shell_call = "$conf->{executable}{yum} clean all";
-		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4935,7 +4901,7 @@ sub start_all_nics
 		{
 			print "- New device, writing a skeleton config file... ";
 			my $shell_call = $nic_file;
-			open (my $file_handle, '>', "$shell_call") || die "\nFailed to write: [$shell_call], error was: $!\n";
+			open (my $file_handle, '>', "$shell_call") or die "\nFailed to write: [$shell_call], error was: $!\n";
 			print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 			print $file_handle "# Temporary configuration file for discovered NIC.\n";
 			print $file_handle "HWADDR=\"$mac\"\n" if $mac;
@@ -4951,7 +4917,7 @@ sub start_all_nics
 			print "- Config file exists, changing BOOTPROTO to 'none'.\n";
 			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
 			#print "[ Debug ] - Calling: [$shell_call]\n";
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				# TODO: Should this cause the installer to bail?
@@ -4966,7 +4932,7 @@ sub start_all_nics
 		# Now start the nic.
 		print "- Attempting to bring up: [$nic]...\n";
 		my $shell_call = "$conf->{executable}{ifup} $nic";
-		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4981,7 +4947,7 @@ sub start_all_nics
 		sleep 2;
 		my $is_up   = 0;
 		$shell_call = "$conf->{executable}{ip} link show $nic";
-		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5175,7 +5141,7 @@ sub update_network_config_files
 		my $bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
 		print "- BCN Link 1: [$bcn_link1_file]\n";
 		my $shell_call = $bcn_link1_file;
-		open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		print $file_handle "# Back-Channel Network - Link 1\n";
 		print $file_handle "DEVICE=\"bcn_link1\"\n";
@@ -5190,7 +5156,7 @@ sub update_network_config_files
 		my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn_link1";
 		print "- IFN Link 1: [$ifn_link1_file]\n";
 		$shell_call = $ifn_link1_file;
-		open ($file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		print $file_handle "# Internet-Facing Network - Link 1\n";
 		print $file_handle "DEVICE=\"ifn_link1\"\n";
@@ -5248,7 +5214,7 @@ sub write_udev_persistent_net
 	
 	my $shell_call = "$conf->{path}{persistent_net}";
 	print "Writing the new udev rules file: [$conf->{path}{persistent_net}]\n";
-	open (my $file_handle, '>', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 	foreach my $nic (@{$conf->{nics}})
 	{
@@ -5278,7 +5244,7 @@ sub daemon_control
 	
 	my $message    = "";
 # 	my $shell_call = "$conf->{executable}{systemctl} $task $service";
-# 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+# 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 # 	while(<$file_handle>)
 # 	{
 # 		chomp;
@@ -5389,7 +5355,7 @@ sub backup_file
 	
 	my $shell_call = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
 	print "- Copying: [$file] to: [$conf->{path}{backups}]\n";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5429,7 +5395,7 @@ sub sanity_check_switches
 	{
 		print "[ Note ] - No network details given. Skipping Network config!\n";
 		my $shell_call = "$conf->{executable}{ip} addr show bcn_link1";
-		open (my $file_handle, "$shell_call 2>&1 |") || die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -6543,7 +6509,7 @@ sub check_nic_states
 	my $this_link_state = "";
 	my $this_ip         = "";
 	my $shell_call = "$conf->{executable}{ip} addr";
-	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;

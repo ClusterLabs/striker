@@ -25,9 +25,9 @@ package AN::Striker;
 
 use strict;
 use warnings;
+use IO::Handle;
 use CGI;
 use Encode;
-use IO::Handle;
 use CGI::Carp "fatalsToBrowser";
 
 use AN::Cluster;
@@ -370,98 +370,97 @@ sub process_task
 }
 
 # This restarts tomcat on the local machine.
-sub restart_tomcat
-{
-	my ($conf, $quiet) = @_;
-	   $quiet     = 0 if not defined $quiet;
-	my $tries     = 0;
-	my $max_tries = 3;
-	
-	if (not $quiet)
-	{
-		# Open the table for telling the user that tomcat is restarting.
-		print AN::Common::template($conf, "common.html", "restart-guacamole-header");
-	}
-	
-	# Call the restart. It will return '1' if there was a failure and a
-	# retry is needed.
-	while (call_restart_tomcat_guacd($conf, $quiet))
-	{
-		$tries++;
-		if ($tries > $max_tries)
-		{
-			if ($quiet)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
-			}
-			else
-			{
-				print AN::Common::template($conf, "common.html", "shell-call-output", {
-					line	=>	"message_0336",
-				});
-			}
-			last;
-		}
-		else
-		{
-			if ($quiet)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
-			}
-			else
-			{
-				print AN::Common::template($conf, "common.html", "shell-call-output", {
-					line	=>	"message_0335",
-				});
-			}
-		}
-		sleep 5;
-	}
-	
-	# Done.
-	if (not $quiet)
-	{
-		print AN::Common::template($conf, "common.html", "restart-guacamole-footer");
-	}
-	
-	return(0);
-}
+# sub restart_tomcat
+# {
+# 	my ($conf, $quiet) = @_;
+# 	   $quiet     = 0 if not defined $quiet;
+# 	my $tries     = 0;
+# 	my $max_tries = 3;
+# 	
+# 	if (not $quiet)
+# 	{
+# 		# Open the table for telling the user that tomcat is restarting.
+# 		print AN::Common::template($conf, "common.html", "restart-guacamole-header");
+# 	}
+# 	
+# 	# Call the restart. It will return '1' if there was a failure and a
+# 	# retry is needed.
+# 	while (call_restart_tomcat_guacd($conf, $quiet))
+# 	{
+# 		$tries++;
+# 		if ($tries > $max_tries)
+# 		{
+# 			if ($quiet)
+# 			{
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+# 			}
+# 			else
+# 			{
+# 				print AN::Common::template($conf, "common.html", "shell-call-output", {
+# 					line	=>	"message_0336",
+# 				});
+# 			}
+# 			last;
+# 		}
+# 		else
+# 		{
+# 			if ($quiet)
+# 			{
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
+# 			}
+# 			else
+# 			{
+# 				print AN::Common::template($conf, "common.html", "shell-call-output", {
+# 					line	=>	"message_0335",
+# 				});
+# 			}
+# 		}
+# 		sleep 5;
+# 	}
+# 	
+# 	# Done.
+# 	if (not $quiet)
+# 	{
+# 		print AN::Common::template($conf, "common.html", "restart-guacamole-footer");
+# 	}
+# 	
+# 	return(0);
+# }
 
 # This handles the actual restart calls.
-sub call_restart_tomcat_guacd
-{
-	my ($conf, $quiet) = @_;
-	
-	my $retry = 0;
-	my $sc = "$conf->{path}{restart_tomcat} restart && $conf->{path}{restart_guacd} restart";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		if (($line =~ /Starting/i) && ($line =~ /Failed/i))
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
-			$retry = 1;
-		}
-		if ($quiet)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		}
-		else
-		{
-			$line = parse_text_line($conf, $line);
-			print AN::Common::template($conf, "common.html", "shell-call-output", {
-				line	=>	$line,
-			});
-		}
-	}
-	$fh->close();
-
-	return($retry);
-}
+# sub call_restart_tomcat_guacd
+# {
+# 	my ($conf, $quiet) = @_;
+# 	
+# 	my $retry = 0;
+# 	my $shell_call = "$conf->{path}{restart_tomcat} restart && $conf->{path}{restart_guacd} restart";
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+# 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 	while(<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		if (($line =~ /Starting/i) && ($line =~ /Failed/i))
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
+# 			$retry = 1;
+# 		}
+# 		if ($quiet)
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+# 		}
+# 		else
+# 		{
+# 			$line = parse_text_line($conf, $line);
+# 			print AN::Common::template($conf, "common.html", "shell-call-output", {
+# 				line	=>	$line,
+# 			});
+# 		}
+# 	}
+# 	close $file_handle;
+# 
+# 	return($retry);
+# }
 
 # This unmarks a disk as a hot spare.
 sub lsi_control_unmake_disk_as_hot_spare
@@ -2484,7 +2483,7 @@ sub change_vm
 			}});
 			my $new_definition = "";
 			my $in_os          = 0;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -3357,115 +3356,116 @@ sub manage_vm
 	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; (<span class=\"subtle_text\">Maximum $say_max_ram</span>) <input type=\"input\" name=\"ram\" value=\"$conf->{cgi}{ram}\" style=\"width: 100px;\"> $select_ram_suffix\n");
 	
-	# Setup Guacamole, if installed.
+	### Disabled now.
+# 	# Setup Guacamole, if installed.
 	my $message     = "";
 	my $remote_icon = "";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::guacamole_config: [$conf->{path}{guacamole_config}]\n");
-	if (-e $conf->{path}{guacamole_config})
-	{
-		# Installed.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Guacamole installed, getting VNC info.\n");
-		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
-		
-		# See if I need to update the XML definition file.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
-		if ((not $conf->{sys}{use_spice_graphics}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
-		{
-			# Rewrite the XML definition. The 'graphics' section should look like:
-			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
-			#       <listen type='address' address='0.0.0.0'/>
-			#     </graphics>
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file: [$conf->{vm}{$vm}{definition_file}] is not using VNC, updating it via: [$node].\n");
-			print AN::Common::template($conf, "server.html", "switch-to-vnc-header");
-			my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
-			switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
-			print AN::Common::template($conf, "server.html", "switch-to-vnc-footer");
-		}
-		
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type]\n");
-		if ($type ne "vnc")
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
-			# Check the recorded XML file and is necesary, update
-			# it. In any case, disable VNC and tell the user they
-			# will need to power off and restart the server before
-			# this will work.
-			$message     = "#!string!message_0076!#";
-			$remote_icon = AN::Common::template($conf, "common.html", "image", {
-				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-				alt_text	=>	"",
-				id		=>	"remote_icon",
-			}, "", 1);
-		}
-		else
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
-			update_guacamole_config($conf, $say_vm, $node, $port);
-		}
-		
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
-		if (not $message)
-		{
-			my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-			$message = "#!string!message_0077!#";	# Connect to the desktop
-			if (not $node)
-			{
-				$message     = "#!string!message_0078!#";	# Server is off
-				$remote_icon = AN::Common::template($conf, "common.html", "image", {
-					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
-					alt_text	=>	"",
-					id		=>	"remote_icon",
-				}, "", 1);
-			}
-			elsif (($node =~ /n01/) || ($node =~ /node01/))
-			{
-				my $image = AN::Common::template($conf, "common.html", "image", {
-					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
-					alt_text	=>	"",
-					id		=>	"server-desktop_n01",
-				}, "", 1);
-				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-					button_text	=>	"$image",
-					id		=>	"guacamole_url_$say_vm",
-				}, "", 1);
-			}
-			elsif (($node =~ /n02/) || ($node =~ /node02/))
-			{
-				my $image = AN::Common::template($conf, "common.html", "image", {
-					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
-					alt_text	=>	"",
-					id		=>	"server-desktop_n02",
-				}, "", 1);
-				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-					button_text	=>	"$image",
-					id		=>	"guacamole_url_$say_vm",
-				}, "", 1);
-			}
-			else
-			{
-				$message     = "#!string!message_0079!#";	# Think the server is running, but unknown where.
-				$remote_icon = AN::Common::template($conf, "common.html", "image", {
-					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-					alt_text	=>	"",
-					id		=>	"server-desktop_oops",
-				}, "", 1);
-			}
-		}
-	}
-	else
-	{
-		# Not installed.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole does not appear to be installed.\n");
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::guacamole_config: [$conf->{path}{guacamole_config}]\n");
+# 	if (-e $conf->{path}{guacamole_config})
+# 	{
+# 		# Installed.
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Guacamole installed, getting VNC info.\n");
+# 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+# 		
+# 		# See if I need to update the XML definition file.
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
+# 		if ((not $conf->{sys}{use_spice_graphics}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
+# 		{
+# 			# Rewrite the XML definition. The 'graphics' section should look like:
+# 			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
+# 			#       <listen type='address' address='0.0.0.0'/>
+# 			#     </graphics>
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file: [$conf->{vm}{$vm}{definition_file}] is not using VNC, updating it via: [$node].\n");
+# 			print AN::Common::template($conf, "server.html", "switch-to-vnc-header");
+# 			my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
+# 			switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
+# 			print AN::Common::template($conf, "server.html", "switch-to-vnc-footer");
+# 		}
+# 		
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type]\n");
+# 		if ($type ne "vnc")
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
+# 			# Check the recorded XML file and is necesary, update
+# 			# it. In any case, disable VNC and tell the user they
+# 			# will need to power off and restart the server before
+# 			# this will work.
+# 			$message     = "#!string!message_0076!#";
+# 			$remote_icon = AN::Common::template($conf, "common.html", "image", {
+# 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 				alt_text	=>	"",
+# 				id		=>	"remote_icon",
+# 			}, "", 1);
+# 		}
+# 		else
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
+# 			update_guacamole_config($conf, $say_vm, $node, $port);
+# 		}
+# 		
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+# 		if (not $message)
+# 		{
+# 			my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
+# 			$message = "#!string!message_0077!#";	# Connect to the desktop
+# 			if (not $node)
+# 			{
+# 				$message     = "#!string!message_0078!#";	# Server is off
+# 				$remote_icon = AN::Common::template($conf, "common.html", "image", {
+# 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
+# 					alt_text	=>	"",
+# 					id		=>	"remote_icon",
+# 				}, "", 1);
+# 			}
+# 			elsif (($node =~ /n01/) || ($node =~ /node01/))
+# 			{
+# 				my $image = AN::Common::template($conf, "common.html", "image", {
+# 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+# 					alt_text	=>	"",
+# 					id		=>	"server-desktop_n01",
+# 				}, "", 1);
+# 				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 					button_text	=>	"$image",
+# 					id		=>	"guacamole_url_$say_vm",
+# 				}, "", 1);
+# 			}
+# 			elsif (($node =~ /n02/) || ($node =~ /node02/))
+# 			{
+# 				my $image = AN::Common::template($conf, "common.html", "image", {
+# 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+# 					alt_text	=>	"",
+# 					id		=>	"server-desktop_n02",
+# 				}, "", 1);
+# 				$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 					button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 					button_text	=>	"$image",
+# 					id		=>	"guacamole_url_$say_vm",
+# 				}, "", 1);
+# 			}
+# 			else
+# 			{
+# 				$message     = "#!string!message_0079!#";	# Think the server is running, but unknown where.
+# 				$remote_icon = AN::Common::template($conf, "common.html", "image", {
+# 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 					alt_text	=>	"",
+# 					id		=>	"server-desktop_oops",
+# 				}, "", 1);
+# 			}
+# 		}
+# 	}
+# 	else
+# 	{
+# 		# Not installed.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole is disabled.\n");
 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
 		$remote_icon = AN::Common::template($conf, "common.html", "image", {
 			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
 			alt_text	=>	"",
 			id		=>	"server-desktop_oops",
 		}, "", 1);
-	}
+# 	}
 	
 	# Finally, print it all
 	# The variable hash feeds 'title_0032'.
@@ -3725,183 +3725,181 @@ sub switch_vm_xml_to_vnc
 	return(0);
 }
 
-# This reads the current guacamole configuration file and, if necessary,
-# updates it to add/modify the given VM's host and port.
-sub update_guacamole_config
-{
-	my ($conf, $say_vm, $node, $port) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_guacamole_config; say_vm: [$say_vm], node: [$node], port: [$port]\n");
-	
-	# Read the guacamole config file.
-	$conf->{guacamole}{config}{old} = [];
-	my $sc = $conf->{path}{guacamole_config};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
-	while(<$fh>)
-	{
-		chomp;
-		my $line = $_;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		next if not $line;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		push @{$conf->{guacamole}{config}{old}}, $line;
-	}
-	$fh->close();
-	
-	my $match_found    = 0;
-	my $rewrite_needed = 0;
-	my $this_vm        = "";
-	my $this_host      = "";
-	my $this_port      = "";
-	foreach my $line (@{$conf->{guacamole}{config}{old}})
-	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /^<\/config>/)
-		{
-			# Save the data.
-			$conf->{guacamole}{vm}{$this_vm}{host} = $this_host;
-			$conf->{guacamole}{vm}{$this_vm}{port} = $this_port;
-			
-			# See of this entry matches my current VM and, if so,
-			# see if the port or host needs to be updated.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
-			if ($this_vm eq $say_vm)
-			{
-				$match_found = 1;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
-				if (($node ne $this_host) || ($port ne $this_port))
-				{
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
-					$rewrite_needed                        = 1;
-					$conf->{guacamole}{vm}{$this_vm}{host} = $node;
-					$conf->{guacamole}{vm}{$this_vm}{port} = $port;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${this_vm}::host: [$conf->{guacamole}{vm}{$this_vm}{host}], guacamole::vm::${this_vm}::port: [$conf->{guacamole}{vm}{$this_vm}{port}]!\n");
-				}
-				else
-				{
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
-				}
-			}
-			else
-			{
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
-				# See if this VM still exists on the cluster.
-				my $exists =  0;
-				foreach my $existing_vm (sort {$a cmp $b} keys %{$conf->{vm}})
-				{
-					$existing_vm =~ s/^vm://;
-					if ($existing_vm eq $this_vm)
-					{
-						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
-						$exists = 1;
-					}
-				}
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
-				if ((not $exists) && ($this_vm ne $say_vm))
-				{
-					# Delete it so that it's removed from guacamole.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
-					delete $conf->{guacamole}{vm}{$this_vm};
-					$rewrite_needed = 1;
-				}
-			}
-			
-			$this_vm   = "";
-			$this_host = "";
-			$this_port = "";
-			next;
-		}
-		
-		if ($line =~ /^<config /)
-		{
-			($this_vm) = ($line =~ /name="(.*?)"/);
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm]\n");
-		}
-		
-		next if not $this_vm;
-		if (($line =~ /^<param /) && ($line =~ /name="hostname"/))
-		{
-			($this_host) = ($line =~ /value="(.*?)"/);
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
-		}
-		if (($line =~ /^<param /) && ($line =~ /name="port"/))
-		{
-			($this_port) = ($line =~ /value="(.*?)"/);
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_port: [$this_port]\n");
-		}
-	}
-	if (not $match_found)
-	{
-		$rewrite_needed                       = 1;
-		$conf->{guacamole}{vm}{$say_vm}{host} = $node;
-		$conf->{guacamole}{vm}{$say_vm}{port} = $port;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
-	}
-	
-	# Now look to see if we need to update the config.
-	if ($rewrite_needed)
-	{
-		my ($date) = AN::Cluster::get_date($conf);
-		my $say_warning = AN::Common::get_string($conf, {key => "text_0006"});
-		my $say_updated = AN::Common::get_string($conf, {key => "text_0007", variables => {
-				date	=>	$date,
-			}});
-		my $new_config;
-		$new_config .= "<configs>\n";
-		$new_config .= "	<!-- $say_warning -->\n";
-		$new_config .= "	<!-- $say_updated -->\n";
-		foreach my $this_vm (sort {$a cmp $b} keys %{$conf->{guacamole}{vm}})
-		{
-			my $this_host = $conf->{guacamole}{vm}{$this_vm}{host};
-			my $this_port = $conf->{guacamole}{vm}{$this_vm}{port};
-			$new_config .= "	<config name=\"$this_vm\" protocol=\"vnc\">\n";
-			$new_config .= "		<param name=\"hostname\" value=\"$this_host\" />\n";
-			$new_config .= "		<param name=\"port\" value=\"$this_port\" />\n";
-			$new_config .= "	</config>\n";
-		}
-		$new_config .= "</configs>\n";
-		
-		# Save the new config.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new guacamole config:\n===\n$new_config\n===\n");
-		
-		# Backup the last config.
-		my $backup_file =  "$conf->{path}{guacamole_config}.$date";
-		   $backup_file =~ s/ /_/;
-		my $fh = IO::Handle->new();
-		my $sc = "cp $conf->{path}{guacamole_config} $backup_file";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
-		{
-			chomp;
-			my $line = $_;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		}
-		$fh->close();
-		
-		# Save the new config.
-		$fh = IO::Handle->new();
-		$sc = "$conf->{path}{guacamole_config}";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
-		print $fh $new_config;
-		$fh->close();
-	}
-	else
-	{
-		# Rewrite not needed.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole config update is not needed.\n");
-	}
-	
-	return(0);
-}
+### Disabled
+# # This reads the current guacamole configuration file and, if necessary,
+# # updates it to add/modify the given VM's host and port.
+# sub update_guacamole_config
+# {
+# 	my ($conf, $say_vm, $node, $port) = @_;
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_guacamole_config; say_vm: [$say_vm], node: [$node], port: [$port]\n");
+# 	
+# 	# Read the guacamole config file.
+# 	$conf->{guacamole}{config}{old} = [];
+# 	my $shell_call = $conf->{path}{guacamole_config};
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+# 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+# 	while(<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		$line =~ s/^\s+//;
+# 		$line =~ s/\s+$//;
+# 		$line =~ s/\s+/ /g;
+# 		next if not $line;
+# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+# 		push @{$conf->{guacamole}{config}{old}}, $line;
+# 	}
+# 	close $file_handle;
+# 	
+# 	my $match_found    = 0;
+# 	my $rewrite_needed = 0;
+# 	my $this_vm        = "";
+# 	my $this_host      = "";
+# 	my $this_port      = "";
+# 	foreach my $line (@{$conf->{guacamole}{config}{old}})
+# 	{
+# 		$line =~ s/^\s+//;
+# 		$line =~ s/\s+$//;
+# 		$line =~ s/\s+/ /g;
+# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+# 		if ($line =~ /^<\/config>/)
+# 		{
+# 			# Save the data.
+# 			$conf->{guacamole}{vm}{$this_vm}{host} = $this_host;
+# 			$conf->{guacamole}{vm}{$this_vm}{port} = $this_port;
+# 			
+# 			# See of this entry matches my current VM and, if so,
+# 			# see if the port or host needs to be updated.
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
+# 			if ($this_vm eq $say_vm)
+# 			{
+# 				$match_found = 1;
+# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
+# 				if (($node ne $this_host) || ($port ne $this_port))
+# 				{
+# 					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
+# 					$rewrite_needed                        = 1;
+# 					$conf->{guacamole}{vm}{$this_vm}{host} = $node;
+# 					$conf->{guacamole}{vm}{$this_vm}{port} = $port;
+# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${this_vm}::host: [$conf->{guacamole}{vm}{$this_vm}{host}], guacamole::vm::${this_vm}::port: [$conf->{guacamole}{vm}{$this_vm}{port}]!\n");
+# 				}
+# 				else
+# 				{
+# 					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
+# 				}
+# 			}
+# 			else
+# 			{
+# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
+# 				# See if this VM still exists on the cluster.
+# 				my $exists =  0;
+# 				foreach my $existing_vm (sort {$a cmp $b} keys %{$conf->{vm}})
+# 				{
+# 					$existing_vm =~ s/^vm://;
+# 					if ($existing_vm eq $this_vm)
+# 					{
+# 						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
+# 						$exists = 1;
+# 					}
+# 				}
+# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
+# 				if ((not $exists) && ($this_vm ne $say_vm))
+# 				{
+# 					# Delete it so that it's removed from guacamole.
+# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
+# 					delete $conf->{guacamole}{vm}{$this_vm};
+# 					$rewrite_needed = 1;
+# 				}
+# 			}
+# 			
+# 			$this_vm   = "";
+# 			$this_host = "";
+# 			$this_port = "";
+# 			next;
+# 		}
+# 		
+# 		if ($line =~ /^<config /)
+# 		{
+# 			($this_vm) = ($line =~ /name="(.*?)"/);
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm]\n");
+# 		}
+# 		
+# 		next if not $this_vm;
+# 		if (($line =~ /^<param /) && ($line =~ /name="hostname"/))
+# 		{
+# 			($this_host) = ($line =~ /value="(.*?)"/);
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
+# 		}
+# 		if (($line =~ /^<param /) && ($line =~ /name="port"/))
+# 		{
+# 			($this_port) = ($line =~ /value="(.*?)"/);
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_port: [$this_port]\n");
+# 		}
+# 	}
+# 	if (not $match_found)
+# 	{
+# 		$rewrite_needed                       = 1;
+# 		$conf->{guacamole}{vm}{$say_vm}{host} = $node;
+# 		$conf->{guacamole}{vm}{$say_vm}{port} = $port;
+# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
+# 	}
+# 	
+# 	# Now look to see if we need to update the config.
+# 	if ($rewrite_needed)
+# 	{
+# 		my ($date) = AN::Cluster::get_date($conf);
+# 		my $say_warning = AN::Common::get_string($conf, {key => "text_0006"});
+# 		my $say_updated = AN::Common::get_string($conf, {key => "text_0007", variables => {
+# 				date	=>	$date,
+# 			}});
+# 		my $new_config;
+# 		$new_config .= "<configs>\n";
+# 		$new_config .= "	<!-- $say_warning -->\n";
+# 		$new_config .= "	<!-- $say_updated -->\n";
+# 		foreach my $this_vm (sort {$a cmp $b} keys %{$conf->{guacamole}{vm}})
+# 		{
+# 			my $this_host = $conf->{guacamole}{vm}{$this_vm}{host};
+# 			my $this_port = $conf->{guacamole}{vm}{$this_vm}{port};
+# 			$new_config .= "	<config name=\"$this_vm\" protocol=\"vnc\">\n";
+# 			$new_config .= "		<param name=\"hostname\" value=\"$this_host\" />\n";
+# 			$new_config .= "		<param name=\"port\" value=\"$this_port\" />\n";
+# 			$new_config .= "	</config>\n";
+# 		}
+# 		$new_config .= "</configs>\n";
+# 		
+# 		# Save the new config.
+# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new guacamole config:\n===\n$new_config\n===\n");
+# 		
+# 		# Backup the last config.
+# 		my $backup_file =  "$conf->{path}{guacamole_config}.$date";
+# 		   $backup_file =~ s/ /_/;
+# 		my $shell_call  =  "cp $conf->{path}{guacamole_config} $backup_file";
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+# 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+# 		}
+# 		close $file_handle;
+# 		
+# 		# Save the new config.
+# 		$shell_call = "$conf->{path}{guacamole_config}";
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+# 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 		print $file_handle $new_config;
+# 		close $file_handle;
+# 	}
+# 	else
+# 	{
+# 		# Rewrite not needed.
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole config update is not needed.\n");
+# 	}
+# 	
+# 	return(0);
+# }
 
 # This figures out which node a VM is running on, calls 'virsh dumpxml $vm',
 # parses out the currently used VNC port and returns the host and port.
@@ -3972,7 +3970,6 @@ sub read_live_xml
 	my ($conf, $vm, $say_vm, $node) = @_;
 	
 	$conf->{vm}{$vm}{live_xml} = [];
-	my $fh = IO::Handle->new();
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4136,8 +4133,25 @@ sub add_vm_to_cluster
 		{
 			my $node_suffix = $1;
 			my $alt_suffix  = $node_suffix eq "n01" ? "node01" : "node02";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
-			if (($node =~ /$node_suffix/) || ($node =~ /$alt_suffix/))
+			
+			# If the user has named their nodes 'nX' or 'nodeX',
+			# the 'n0X'/'node0X' won't match, so we fudge it here.
+			my $say_node = $node;
+			if (($node !~ /node0\d/) && ($node !~ /n0\d/))
+			{
+				if ($node =~ /node(\d)/)
+				{
+					my $integer = $1;
+					$say_node = "node0".$integer;
+				}
+				elsif ($node =~ /n(\d)/)
+				{
+					my $integer = $1;
+					$say_node = "n0".$integer;
+				}
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], say_node: [$say_node], node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
+			if (($say_node =~ /$node_suffix/) || ($say_node =~ /$alt_suffix/))
 			{
 				$failover_domain = $fod;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
@@ -4668,7 +4682,6 @@ sub provision_vm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0115", variables => {
 			server	=>	$conf->{new_vm}{name},
 		}});
-
 	print AN::Common::template($conf, "server.html", "provision-server-header", {
 		title	=>	$say_title,
 	});
@@ -4679,26 +4692,30 @@ sub provision_vm
 	
 	# Create the LVs
 	my $provision = "";
-	my $i = 0;
+	my @logical_volumes;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::vg: [$conf->{new_vm}{vg}]\n");
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
 	{
-		if (lc($conf->{new_vm}{vg}{$vg}{lvcreate_size}) eq "all")
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vg: [$vg]\n");
+		for (my $i = 0; $i < @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}; $i++)
 		{
+			my $lv_size   = $conf->{new_vm}{vg}{$vg}{lvcreate_size}->[$i];
+			my $lv_device = "/dev/$vg/$conf->{new_vm}{name}_$i";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i], vg: [$vg], lv_size: [$lv_size], lv_device: [$lv_device]\n");
 			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
 			$provision .= "then\n";
 			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
 			$provision .= "fi\n";
-			$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+			if (lc($lv_size) eq "all")
+			{
+				$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+			}
+			else
+			{
+				$provision .= "lvcreate -L ${lv_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
+			}
+			push @logical_volumes, $lv_device;
 		}
-		else
-		{
-			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
-			$provision .= "then\n";
-			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
-			$provision .= "fi\n";
-			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
-		}
-		$i++;
 	}
 	
 	# Setup the 'virt-install' call.
@@ -4713,15 +4730,16 @@ sub provision_vm
 		$provision .= "  --disk path='/shared/files/$conf->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
 	}
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
-	# VNC doesn't show the mouse pointer properly on the default 'qxl'
-	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
-	# use 'cirrus'. if the user has requested 'spice', then this doesn't
-	# matter.
-	if ((not $conf->{sys}{use_spice_graphics}) && ($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
-	{
-		#$provision .= "  --video cirrus \\\\\n";
-		$provision .= "  --video vga \\\\\n";
-	}
+	### Disabled
+# 	# VNC doesn't show the mouse pointer properly on the default 'qxl'
+# 	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
+# 	# use 'cirrus'. if the user has requested 'spice', then this doesn't
+# 	# matter.
+# 	if ((not $conf->{sys}{use_spice_graphics}) && ($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
+# 	{
+# 		#$provision .= "  --video cirrus \\\\\n";
+# 		$provision .= "  --video vga \\\\\n";
+# 	}
 	# Connect to the discovered bridge
 	if ($conf->{new_vm}{virtio}{nic})
 	{
@@ -4731,29 +4749,28 @@ sub provision_vm
 	{
 		$provision .= "  --network bridge=$bridge,model=e1000 \\\\\n";
 	}
-	$i = 0;
-	foreach my $vg (keys %{$conf->{new_vm}{vg}})
+	foreach my $lv_device (@logical_volumes)
 	{
-		my $path = "/dev/$vg/$conf->{new_vm}{name}_$i";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LV: [$path], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");
-		$provision .= "  --disk path=$path";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lv_device: [$lv_device], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");
+		$provision .= "  --disk path=$lv_device";
 		if ($conf->{new_vm}{virtio}{disk})
 		{
 			$provision .= ",bus=virtio";
 		}
 		$provision .= " \\\\\n";
 	}
+	### We're always using spice now.
+# 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+# 	if ($conf->{sys}{use_spice_graphics})
+# 	{
+		$provision .= "  --graphics spice \\\\\n";
+# 	}
+# 	else
+# 	{
+# 		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
+# 	}
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
-	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	if ($conf->{sys}{use_spice_graphics})
-	{
-		$provision .= "  --graphics spice \\\\\n";
-	}
-	else
-	{
-		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
-	}
 	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
@@ -4761,11 +4778,11 @@ sub provision_vm
 	###       good node.
 	
 	# Push the provision script into a file.
-	my $script = "/shared/provision/$conf->{new_vm}{name}.sh";
+	my $shell_callript = "/shared/provision/$conf->{new_vm}{name}.sh";
 	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0118!#",
 	}, {
-		script	=>	$script,
+		script	=>	$shell_callript,
 	});
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4774,7 +4791,7 @@ sub provision_vm
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"echo \"$provision\" > $script && chmod 755 $script",
+		shell_call	=>	"echo \"$provision\" > $shell_callript && chmod 755 $shell_callript",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4790,7 +4807,7 @@ sub provision_vm
 	}, {
 		server	=>	$conf->{new_vm}{name},
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$script]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$shell_callript]\n");
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4798,7 +4815,7 @@ sub provision_vm
 		password	=>	$conf->{'system'}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	1,
-		shell_call	=>	"$script",
+		shell_call	=>	"$shell_callript",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	$error = 0;
@@ -4810,7 +4827,7 @@ sub provision_vm
 		{
 			 # Failed to write the provision file.
 			$error = AN::Common::get_string($conf, {key => "message_0330", variables => {
-				provision_script	=>	$script,
+				provision_script	=>	$shell_callript,
 			}});
 		}
 		print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
@@ -4831,73 +4848,74 @@ sub provision_vm
 		
 	}
 	
-	if (-e $conf->{path}{guacamole_config})
-	{
-		# Get the VNC port and add an entry to Guacamole.
-		my $node   = $conf->{new_vm}{host_node};
-		my $say_vm = $conf->{new_vm}{name};
-		my $vm     = "vm:$say_vm";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
-		my $icon   = "";
-		# This needs to be set manually as this server didn't exist
-		# when the cluster was scanned last.
-		$conf->{vm}{$vm}{current_host} = $node;
-		sleep 3;
-		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
-		update_guacamole_config($conf, $say_vm, $node, $port);
-		
-		### FIXME: This is a dirty nasty hack. Fix this by managing
-		###        guacamole's cookies better.
-		restart_tomcat($conf, "1");
-		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-		if (($node =~ /n01/) || ($node =~ /node01/))
-		{
-			my $image = AN::Common::template($conf, "common.html", "image", {
-				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
-				alt_text	=>	"",
-				id		=>	"server-desktop_n01",
-			}, "", 1);
-			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-				button_text	=>	"$image",
-				id		=>	"guacamole_url_$say_vm",
-			}, "", 1);
-		}
-		elsif (($node =~ /n02/) || ($node =~ /node02/))
-		{
-			my $image = AN::Common::template($conf, "common.html", "image", {
-				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
-				alt_text	=>	"",
-				id		=>	"server-desktop_n02",
-			}, "", 1);
-			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-				button_text	=>	"$image",
-				id		=>	"guacamole_url_$say_vm",
-			}, "", 1);
-		}
-		else
-		{
-			# Failed to find the host, tell the user to use virt-manager.
-			$icon = "<span class=\"highlight_warning\">#!string!message_0121!#";
-		}
-		
-		# Add the restart guac button.
-		my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
-				reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
-			}});
-		
-		print AN::Common::template($conf, "server.html", "provision-server-install-started", {
-			icon		=>	$icon,
-			restart_tomcat	=>	$restart_tomcat,
-		});
-	}
-	else
-	{
-		# No guacamole, so tell the user to use virt-manager.
-		print AN::Common::template($conf, "server.html", "provision-server-install-started-no-guacamole");
-	}
+	### Disabled.
+# 	if (-e $conf->{path}{guacamole_config})
+# 	{
+# 		# Get the VNC port and add an entry to Guacamole.
+# 		my $node   = $conf->{new_vm}{host_node};
+# 		my $say_vm = $conf->{new_vm}{name};
+# 		my $vm     = "vm:$say_vm";
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
+# 		my $icon   = "";
+# 		# This needs to be set manually as this server didn't exist
+# 		# when the cluster was scanned last.
+# 		$conf->{vm}{$vm}{current_host} = $node;
+# 		sleep 3;
+# 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+# 		update_guacamole_config($conf, $say_vm, $node, $port);
+# 		
+# 		### FIXME: This is a dirty nasty hack. Fix this by managing
+# 		###        guacamole's cookies better.
+# 		restart_tomcat($conf, "1");
+# 		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
+# 		if (($node =~ /n01/) || ($node =~ /node01/))
+# 		{
+# 			my $image = AN::Common::template($conf, "common.html", "image", {
+# 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+# 				alt_text	=>	"",
+# 				id		=>	"server-desktop_n01",
+# 			}, "", 1);
+# 			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 				button_text	=>	"$image",
+# 				id		=>	"guacamole_url_$say_vm",
+# 			}, "", 1);
+# 		}
+# 		elsif (($node =~ /n02/) || ($node =~ /node02/))
+# 		{
+# 			my $image = AN::Common::template($conf, "common.html", "image", {
+# 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+# 				alt_text	=>	"",
+# 				id		=>	"server-desktop_n02",
+# 			}, "", 1);
+# 			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 				button_text	=>	"$image",
+# 				id		=>	"guacamole_url_$say_vm",
+# 			}, "", 1);
+# 		}
+# 		else
+# 		{
+# 			# Failed to find the host, tell the user to use virt-manager.
+# 			$icon = "<span class=\"highlight_warning\">#!string!message_0121!#";
+# 		}
+# 		
+# 		# Add the restart guac button.
+# 		my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
+# 				reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
+# 			}});
+# 		
+# 		print AN::Common::template($conf, "server.html", "provision-server-install-started", {
+# 			icon		=>	$icon,
+# 			restart_tomcat	=>	$restart_tomcat,
+# 		});
+# 	}
+# 	else
+# 	{
+# 		# No guacamole, so tell the user to use virt-manager.
+# 		print AN::Common::template($conf, "server.html", "provision-server-install-started-no-guacamole");
+# 	}
 	
 	# Done!
 	# the variables hash feeds 'message_0126'.
@@ -4912,6 +4930,7 @@ sub provision_vm
 sub verify_vm_config
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_vm_config()\n");
 	
 	# First, get a current view of the cluster.
 	my $proceed = 1;
@@ -4924,13 +4943,14 @@ sub verify_vm_config
 	if ($conf->{'system'}{up_nodes})
 	{
 		# Did the user name the VM?
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::name: [$conf->{cgi}{name}]\n");
 		if ($conf->{cgi}{name})
 		{
 			$conf->{cgi}{name} =~ s/^\s+//;
 			$conf->{cgi}{name} =~ s/\s+$//;
 			if ($conf->{cgi}{name} =~ /\s/)
 			{
-				# Bad name
+				# Bad name, no spaces allowed.
 				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
 				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
 				push @errors, "$say_row#!#$say_message";
@@ -4950,7 +4970,9 @@ sub verify_vm_config
 				}
 				else
 				{
+					# Name is OK
 					$conf->{new_vm}{name} = $vm;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::name: [$conf->{new_vm}{name}]\n");
 				}
 			}
 		}
@@ -4963,6 +4985,7 @@ sub verify_vm_config
 		}
 		
 		# Did the user ask for too many cores?
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cpu_cores: [$conf->{cgi}{cpu_cores}], resources::total_threads: [$conf->{resources}{total_threads}]\n");
 		if ($conf->{cgi}{cpu_cores} =~ /\D/)
 		{
 			# Not a digit.
@@ -4985,9 +5008,11 @@ sub verify_vm_config
 		else
 		{
 			$conf->{new_vm}{cpu_cores} = $conf->{cgi}{cpu_cores};
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::cpu_cores: [$conf->{new_vm}{cpu_cores}]\n");
 		}
 		
 		# Now what about RAM?
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::ram: [$conf->{cgi}{ram}]\n");
 		if ($conf->{cgi}{ram} =~ /\D/)
 		{
 			# RAM amount isn't a digit...
@@ -5000,6 +5025,7 @@ sub verify_vm_config
 		my $requested_ram = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
 		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
 		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram], available_ram: [$available_ram]\n");
 		if ($requested_ram > $available_ram)
 		{
 			# Requested too much RAM.
@@ -5017,52 +5043,44 @@ sub verify_vm_config
 			# RAM is specified as a number of MiB.
 			my $say_ram = sprintf("%.0f", ($requested_ram /= (2 ** 20)));
 			$conf->{new_vm}{ram} = $say_ram;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::ram: [$conf->{new_vm}{ram}]\n");
 		}
 		
 		# Look at the selected storage. if VGs named for two separate
 		# nodes are defined, error.
 		$conf->{new_vm}{host_node} = "";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}], vg_list: [$conf->{cgi}{vg_list}]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}], vg_list: [$conf->{cgi}{vg_list}]\n");
 		foreach my $vg (split /,/, $conf->{cgi}{vg_list})
 		{
 			my $short_vg   = $vg;
 			my $short_node = $vg;
-			# Sometimes 'cXXnYY_vgZ' is used, sometimes
-			# 'cXXnYY-vgZ' is used.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node], vg: [$vg]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node], vg: [$vg]\n");
 			if ($vg =~ /^(.*?)_(vg\d+)$/)
 			{
 				$short_node = $1;
 				$short_vg   = $2;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
-			elsif ($vg =~ /^(.*?)-(vg\d+)$/)
-			{
-				$short_node = $1;
-				$short_vg   = $2;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
-			}
-			#my $say_node      = $short_vg;
 			my $say_node      = $short_node;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
 			next if not $conf->{cgi}{$vg_key};
 			foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 			{
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short_node: [$short_node]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short_node: [$short_node]\n");
 				if ($node =~ /$short_node/)
 				{
 					$say_node = $node;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 					last;
 				}
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			if (not $conf->{new_vm}{host_node})
 			{
 				$conf->{new_vm}{host_node} = $say_node;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 			}
 			elsif ($conf->{new_vm}{host_node} ne $say_node)
 			{
@@ -5073,30 +5091,37 @@ sub verify_vm_config
 			}
 			
 			# Setup the 'lvcreate' call
-			if ($conf->{cgi}{$vg_key} eq "all")
+			foreach my $lv_size (split/:/, $conf->{cgi}{$vg_key})
 			{
-				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "all";
-			}
-			else
-			{
-				# Make to lvcreate command a GiB value.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::${vg_key}: [$conf->{cgi}{$vg_key}], cgi::${vg_suffix_key}: [$conf->{cgi}{$vg_suffix_key}]\n");
-				my $lv_size = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{$vg_key}, $conf->{cgi}{$vg_suffix_key});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; > lv_size: [$lv_size]\n");
-				#$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 20)));
-				$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 30)));
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; < lv_size: [$lv_size]\n");
-				$conf->{new_vm}{vg}{$vg}{lvcreate_size} = "$lv_size";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lv_size: [$lv_size]\n");
+				if ($lv_size eq "all")
+				{
+					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "all";
+				}
+				else
+				{
+					# Make to lvcreate command a GiB value.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::${vg_key}: [$lv_size], cgi::${vg_suffix_key}: [$conf->{cgi}{$vg_suffix_key}]\n");
+					
+					my $lv_size = AN::Cluster::hr_to_bytes($conf, $lv_size, $conf->{cgi}{$vg_suffix_key});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; > lv_size: [$lv_size]\n");
+					$lv_size    = sprintf("%.0f", ($lv_size /= (2 ** 30)));
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; < lv_size: [$lv_size]\n");
+					
+					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "$lv_size";
+				}
 			}
 		}
 		
 		# Make sure the user specified an install disc.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::install_iso: [$conf->{cgi}{install_iso}]\n");
 		if ($conf->{cgi}{install_iso})
 		{
 			my $file_name = $conf->{cgi}{install_iso};
 			if (exists $conf->{files}{shared}{$file_name})
 			{
 				$conf->{new_vm}{install_iso} = $conf->{cgi}{install_iso};
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::install_iso: [$conf->{new_vm}{install_iso}]\n");
 			}
 			else
 			{
@@ -5129,14 +5154,17 @@ sub verify_vm_config
 			$conf->{new_vm}{virtio}{disk} = 1;
 			$conf->{new_vm}{virtio}{nic}  = 1;
 		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::virtio::disk: [$conf->{new_vm}{virtio}{disk}], new_vm::virtio::nic: [$conf->{new_vm}{virtio}{nic}]\n");
 		
 		# Optional driver disk, enables virtio when appropriate
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::driver_iso: [$conf->{cgi}{driver_iso}]\n");
 		if ($conf->{cgi}{driver_iso})
 		{
 			my $file_name = $conf->{cgi}{driver_iso};
 			if (exists $conf->{files}{shared}{$file_name})
 			{
 				$conf->{new_vm}{driver_iso} = $conf->{cgi}{driver_iso};
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::driver_iso: [$conf->{new_vm}{driver_iso}]\n");
 			}
 			else
 			{
@@ -5150,10 +5178,12 @@ sub verify_vm_config
 			{
 				$conf->{new_vm}{virtio}{disk} = 1;
 				$conf->{new_vm}{virtio}{nic}  = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::virtio::disk: [$conf->{new_vm}{virtio}{disk}], new_vm::virtio::nic: [$conf->{new_vm}{virtio}{nic}]\n");
 			}
 		}
 		
 		# Make sure a valid os-variant was passed.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::os_variant: [$conf->{cgi}{os_variant}]\n");
 		if ($conf->{cgi}{os_variant})
 		{
 			my $match = 0;
@@ -5205,6 +5235,7 @@ sub verify_vm_config
 	}
 	# Check the currently available resources on the cluster.
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed]\n");
 	return ($proceed);
 }
 
@@ -5779,125 +5810,127 @@ sub start_vm
 		
 		if ($show_remote_desktop_link)
 		{
-			# Show the link to the server's desktop.
-			# If guac is installed, of course...
-			if (-e $conf->{path}{guacamole_config})
-			{
-				# Installed.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
-				# Give time for the server to actually come up.
-				if ($show_remote_desktop_link == 1)
-				{
-					sleep 3;
-				}
-				($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
-				if ($type ne "vnc")
-				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
-					# Check the recorded XML file and is necesary, update
-					# it. In any case, disable VNC and tell the user they
-					# will need to power off and restart the server before
-					# this will work.
-					$remote_message = AN::Common::get_string($conf, {key => "message_0076"});
-					$remote_icon    = AN::Common::template($conf, "common.html", "image", {
-						image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-						alt_text	=>	"",
-						id		=>	"server-desktop_oops",
-					}, "", 1);
-					
-					# See if I need to update the XML definition file.
-					if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
-					{
-						# Rewrite the XML definition. The 'graphics' section should look like:
-						#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
-						#       <listen type='address' address='0.0.0.0'/>
-						#     </graphics>
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
-						my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
-						switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
-					}
-				}
-				else
-				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
-					update_guacamole_config($conf, $say_vm, $node, $port);
-				}
-				if (not $remote_message)
-				{
-					my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-					$remote_message     = AN::Common::get_string($conf, {key => "message_0077"});
-					if (not $node)
-					{
-						$remote_message = AN::Common::get_string($conf, {key => "message_0078"});
-						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
-							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
-							alt_text	=>	"",
-							id		=>	"server-desktop_offline",
-						}, "", 1);
-					}
-					elsif (($node =~ /n01/) || ($node =~ /node01/))
-					{
-						my $image = AN::Common::template($conf, "common.html", "image", {
-							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
-							alt_text	=>	"",
-							id		=>	"server-desktop_n01",
-						}, "", 1);
-						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-							button_text	=>	"$image",
-							id		=>	"guacamole_url_$say_vm",
-						}, "", 1);
-					}
-					elsif (($node =~ /n02/) || ($node =~ /node02/))
-					{
-						my $image = AN::Common::template($conf, "common.html", "image", {
-							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
-							alt_text	=>	"",
-							id		=>	"server-desktop_n02",
-						}, "", 1);
-						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-							button_text	=>	"$image",
-							id		=>	"guacamole_url_$say_vm",
-						}, "", 1);
-					}
-					else
-					{
-						$remote_message = AN::Common::get_string($conf, {key => "message_0079"});
-						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
-							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-							alt_text	=>	"",
-							id		=>	"server-desktop_oops",
-						}, "", 1);
-					}
-				}
-			}
-			else
-			{
-				# Not installed.
-				$remote_message = "#!string!message_0080!#";
-				$remote_icon    = AN::Common::template($conf, "common.html", "image", {
-					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-					alt_text	=>	"",
-					id		=>	"server-desktop_oops",
-				}, "", 1);
-			}
+			### Disabled
+# 			# Show the link to the server's desktop.
+# 			# If guac is installed, of course...
+# 			if (-e $conf->{path}{guacamole_config})
+# 			{
+# 				# Installed.
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
+# 				# Give time for the server to actually come up.
+# 				if ($show_remote_desktop_link == 1)
+# 				{
+# 					sleep 3;
+# 				}
+# 				($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
+# 				if ($type ne "vnc")
+# 				{
+# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is not using VNC, can't use Guacamole.\n");
+# 					# Check the recorded XML file and is necesary, update
+# 					# it. In any case, disable VNC and tell the user they
+# 					# will need to power off and restart the server before
+# 					# this will work.
+# 					$remote_message = AN::Common::get_string($conf, {key => "message_0076"});
+# 					$remote_icon    = AN::Common::template($conf, "common.html", "image", {
+# 						image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 						alt_text	=>	"",
+# 						id		=>	"server-desktop_oops",
+# 					}, "", 1);
+# 					
+# 					# See if I need to update the XML definition file.
+# 					if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
+# 					{
+# 						# Rewrite the XML definition. The 'graphics' section should look like:
+# 						#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
+# 						#       <listen type='address' address='0.0.0.0'/>
+# 						#     </graphics>
+# 						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm]'s definition file is not using VNC, updating it.\n");
+# 						my ($backup_file) = archive_file($conf, $node, $conf->{vm}{$vm}{definition_file}, 0, "hidden_table");
+# 						switch_vm_xml_to_vnc($conf, $node, $vm, $backup_file);
+# 					}
+# 				}
+# 				else
+# 				{
+# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; VM: [$say_vm] is using VNC, we can offer remote desktop access.\n");
+# 					update_guacamole_config($conf, $say_vm, $node, $port);
+# 				}
+# 				if (not $remote_message)
+# 				{
+# 					my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
+# 					$remote_message     = AN::Common::get_string($conf, {key => "message_0077"});
+# 					if (not $node)
+# 					{
+# 						$remote_message = AN::Common::get_string($conf, {key => "message_0078"});
+# 						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
+# 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_offline.png",
+# 							alt_text	=>	"",
+# 							id		=>	"server-desktop_offline",
+# 						}, "", 1);
+# 					}
+# 					elsif (($node =~ /n01/) || ($node =~ /node01/))
+# 					{
+# 						my $image = AN::Common::template($conf, "common.html", "image", {
+# 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
+# 							alt_text	=>	"",
+# 							id		=>	"server-desktop_n01",
+# 						}, "", 1);
+# 						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 							button_text	=>	"$image",
+# 							id		=>	"guacamole_url_$say_vm",
+# 						}, "", 1);
+# 					}
+# 					elsif (($node =~ /n02/) || ($node =~ /node02/))
+# 					{
+# 						my $image = AN::Common::template($conf, "common.html", "image", {
+# 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
+# 							alt_text	=>	"",
+# 							id		=>	"server-desktop_n02",
+# 						}, "", 1);
+# 						$remote_icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+# 							button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
+# 							button_text	=>	"$image",
+# 							id		=>	"guacamole_url_$say_vm",
+# 						}, "", 1);
+# 					}
+# 					else
+# 					{
+# 						$remote_message = AN::Common::get_string($conf, {key => "message_0079"});
+# 						$remote_icon    = AN::Common::template($conf, "common.html", "image", {
+# 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 							alt_text	=>	"",
+# 							id		=>	"server-desktop_oops",
+# 						}, "", 1);
+# 					}
+# 				}
+# 			}
+# 			else
+# 			{
+# 				# Not installed.
+# 				$remote_message = "#!string!message_0080!#";
+# 				$remote_icon    = AN::Common::template($conf, "common.html", "image", {
+# 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 					alt_text	=>	"",
+# 					id		=>	"server-desktop_oops",
+# 				}, "", 1);
+# 			}
 		}
 		
 		print AN::Common::template($conf, "server.html", "start-server-output-footer");
 		if ($show_remote_desktop_link)
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
-			my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
-					reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
-				}});
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_tomcat: [$restart_tomcat]\n");
-			print AN::Common::template($conf, "server.html", "start-server-show-guacamole-link", {
-				remote_icon	=>	$remote_icon,
-				remote_message	=>	$remote_message,
-				restart_tomcat	=>	$restart_tomcat,
-			});
+			### Disabled
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
+# 			my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
+# 					reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
+# 				}});
+# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_tomcat: [$restart_tomcat]\n");
+# 			print AN::Common::template($conf, "server.html", "start-server-show-guacamole-link", {
+# 				remote_icon	=>	$remote_icon,
+# 				remote_message	=>	$remote_message,
+# 				restart_tomcat	=>	$restart_tomcat,
+# 			});
 		}
 		print AN::Common::template($conf, "server.html", "start-server-footer");
 	}
@@ -7198,7 +7231,7 @@ sub dual_boot
 	
 	my $proceed = 1;
 	my $cluster = $conf->{cgi}{cluster};
-	my $sc      = "";
+	my $shell_call      = "";
 	# TODO: Provide an option to boot just one node if one node fails for
 	# some reason but the other node is fine.
 	AN::Cluster::scan_cluster($conf);
@@ -7264,7 +7297,7 @@ sub dual_boot
 		}
 		
 		# Still alive?
-		$sc .= "$conf->{node}{$node}{info}{power_check_command} -o on; ";
+		$shell_call .= "$conf->{node}{$node}{info}{power_check_command} -o on; ";
 	}
 	
 	# Let's go
@@ -7276,10 +7309,9 @@ sub dual_boot
 		print AN::Common::template($conf, "server.html", "dual-boot-header", {
 			message	=>	$say_message,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-		while(<$fh>)
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -7297,7 +7329,7 @@ sub dual_boot
 				message	=>	$message,
 			});
 		}
-		$fh->close();
+		close $file_handle;
 		print AN::Common::template($conf, "server.html", "dual-boot-footer");
 	}
 	else
@@ -7428,11 +7460,10 @@ sub poweron_node
 				if ($local_access)
 				{
 					# I can reach it directly
-					my $sc = "$conf->{node}{$node}{info}{power_check_command} -o on";
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-					my $fh = IO::Handle->new();
-					open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-					while(<$fh>)
+					my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
 					{
 						chomp;
 						my $line = $_;
@@ -7441,7 +7472,7 @@ sub poweron_node
 							message	=>	$line,
 						});
 					}
-					$fh->close();
+					close $file_handle;
 					print AN::Common::template($conf, "server.html", "poweron-node-close-tr");
 				}
 				else
@@ -7600,8 +7631,8 @@ sub fence_node
 			# Make the off attempt.
 			my $output = [];
 			my $ssh_fh;
-			my $sc = "$off_command";
-			if ($sc =~ /ssh:(.*?),(.*)$/)
+			my $shell_call = "$off_command";
+			if ($shell_call =~ /ssh:(.*?),(.*)$/)
 			{
 				my $node    = $1;
 				my $command = $2;
@@ -7618,15 +7649,14 @@ sub fence_node
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-				while(<$fh>)
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
 				{
 					chomp;
 					push @{$output}, $_;
 				}
-				$fh->close()
+				$file_handle->close()
 			}
 			foreach my $line (@{$output})
 			{
@@ -7676,8 +7706,8 @@ sub fence_node
 			
 			# If I'm here, I can try the unfence command.
 			print AN::Common::template($conf, "server.html", "fence-node-unfence-header");
-			$sc = "$on_command";
-			if ($sc =~ /ssh:(.*?),(.*)$/)
+			$shell_call = "$on_command";
+			if ($shell_call =~ /ssh:(.*?),(.*)$/)
 			{
 				my $node    = $1;
 				my $command = $2;
@@ -7694,15 +7724,14 @@ sub fence_node
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-				while(<$fh>)
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
 				{
 					chomp;
 					push @{$output}, $_;
 				}
-				$fh->close()
+				$file_handle->close()
 			}
 			foreach my $line (@{$output})
 			{

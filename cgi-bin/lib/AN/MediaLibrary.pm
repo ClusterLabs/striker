@@ -18,12 +18,9 @@ package AN::MediaLibrary;
 
 use strict;
 use warnings;
-
-use strict;
-use warnings;
+use IO::Handle;
 use CGI;
 use Encode;
-use IO::Handle;
 use CGI::Carp "fatalsToBrowser";
 
 # Setup for UTF-8 mode.
@@ -306,13 +303,13 @@ sub save_file_to_disk
 		$out_file    =~ s/\/\//\//g;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Writing out_file: [$out_file] with cgi fh: [$in_fh].\n");
 		
-		open (my $fh, ">", $out_file) or die "$THIS_FILE ".__LINE__."; Failed to open for writing: [$out_file], error was: $!\n";
-		binmode $fh;
+		open (my $file_handle, ">", $out_file) or die "$THIS_FILE ".__LINE__."; Failed to open for writing: [$out_file], error was: $!\n";
+		binmode $file_handle;
 		while(<$in_fh>)
 		{
-			print $fh $_;
+			print $file_handle $_;
 		}
-		close $fh;
+		close $file_handle;
 		
 		# Tell the user we're starting.
 		print AN::Common::template($conf, "media-library.html", "save-to-disk-starting");
@@ -439,14 +436,13 @@ sub image_and_upload
 				message		=>	$message,
 			});
 			
-			my $sc = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $shell_call = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			
 			my $header_printed = 0;
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $error;
-			while(<$fh>)
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
@@ -465,7 +461,7 @@ sub image_and_upload
 					line	=>	$line,
 				});
 			}
-			$fh->close;
+			$file_handle->close;
 			if ($header_printed)
 			{
 				print AN::Common::template($conf, "common.html", "close-shell-call-output");
@@ -747,12 +743,11 @@ sub check_local_dvd
 {
 	my ($conf) = @_;
 	
-	my $dev = "";
-	my $sc  = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh  = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $dev        = "";
+	my $shell_call = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -790,7 +785,7 @@ sub check_local_dvd
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:$line\n");
 		}
 	}
-	$fh->close;
+	$file_handle->close;
 
 	return(0);
 }

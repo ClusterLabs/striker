@@ -5,7 +5,7 @@ package AN::Configure;
 
 use strict;
 use warnings;
-
+use IO::Handle;
 use AN::Cluster;
 use AN::Common;
 
