@@ -8,15 +8,12 @@ use 5.010;
 use version;
 our $VERSION = '1.0.0';    # update POD to match
 
-use English '-no_match_vars';
 use Carp;
-
-use File::Basename;
-use Sys::Hostname ();
-
-use FindBin qw($Bin);
-use Proc::Background;
 use Const::Fast;
+use English '-no_match_vars';
+use File::Basename;
+use Proc::Background;
+use Sys::Hostname ();
 
 # ======================================================================
 # CONSTANTS
@@ -73,8 +70,7 @@ sub new_bg_process {
         if $verbose;
     my $bg_obj = ( @args
                    ? Proc::Background->new( $TERMINATE_FLAG, $process, @args )
-                   : Proc::Background->new( $TERMINATE_FLAG, $process )
-                 );
+                   : Proc::Background->new( $TERMINATE_FLAG, $process ) );
     my $bg_pid = $bg_obj->pid;
     return { process => $bg_obj, pid => $bg_pid };
 }
@@ -167,15 +163,11 @@ Provides meaningful names for Perl 'punctuation' variables.
 
 Parses paths and file suffixes.
 
-=item B<FindBin> I<core>
-
-Determine which directory contains the current program.
-
 =item B<Proc::Background> 
 
 Run processes in the background.
 
-=item B<version> I<core since 5.9.0>
+=item B<version> I<core>
 
 Parses version strings.
 
