@@ -6,6 +6,15 @@ package AN::MediaLibrary;
 # pushing it to a cluster's /shared/files/ directory. It also allows for 
 # connecting and disconnecting these ISOs to and from VMs.
 # 
+# BUG:
+# - Uploading fails if the SSH fingerprint isn't recorded
+# - Upload fails if /shared/files/ doesn't exist.
+# 
+# TODO:
+# - Make uploads have a progress bar.
+# - When an upload fails, do NOT clear the previous selection
+# - Show file time-stamps
+#
 
 use strict;
 use warnings;
@@ -20,7 +29,7 @@ use CGI::Carp "fatalsToBrowser";
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
-my $THIS_FILE = "an-mc.lib";
+my $THIS_FILE = "mediaLibrary.pm";
 
 
 # Do whatever the user has asked.
@@ -503,10 +512,12 @@ sub image_and_upload
 sub upload_to_shared
 {
 	my ($conf, $node, $source_file) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; upload_to_shared(); source_file: [$source_file]\n");
 	
 	# Some prep work.
 	my $failed = 0;
 	($failed) = AN::Common::test_ssh_fingerprint($conf, $node);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failed: [$failed]\n");
 	
 	if ($failed)
 	{
@@ -520,31 +531,34 @@ sub upload_to_shared
 	}
 	else
 	{
-		my $sc = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
-		# This is a dumb way to check, try a test upload and see if it fails.
+		my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+		
+		### TODO: This is a dumb way to check, try a test upload and
+		###       see if it fails.
 		if (-e $conf->{path}{expect})
 		{
 			#print "Creating 'expect' rsync wrapper.<br />";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
 			AN::Common::create_rsync_wrapper($conf, $node);
-			$sc = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$sc].\n");
+			
+			$shell_call = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
 		}
 		else
 		{
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-expect-not-found");
 		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
 		
 		my $header_printed = 0;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-		my $no_key = 0;
-		while(<$fh>)
+		my $no_key         = 0;
+		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /Permission denied/i)
 			{
 				$failed = 1;
@@ -558,7 +572,7 @@ sub upload_to_shared
 				line	=>	$line,
 			});
 		}
-		$fh->close;
+		close $file_handle;
 		
 		if ($header_printed)
 		{

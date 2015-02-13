@@ -1,0 +1,331 @@
+#!/usr/bin/perl
+# 
+# This will search a machine for secured drives/virtual disks and destroy via
+# Instant Secure Erase (ISE).
+# 
+# As the name implies, this is a rather dangerous operation. The system data
+# will be rendered irrevocably wiped upon completion.
+#
+# TODO: Read a hashed file, require a user pass a password, hash it and see
+#       that it matches the read hash.
+#
+
+use strict;
+use warnings;
+
+my $conf = {
+	drives		=>	{
+		all_drives	=>	{
+			adapter		=>	{},
+		},
+		physical_drive	=>	{},
+	},
+	path		=>	{
+		ramdisk		=>	"/ram",
+		storcli64	=>	"/opt/MegaRAID/storcli/storcli64",
+	},
+	sys		=>	{
+		debug		=>	0,
+		ramdisk		=>	"1G",
+		start_time	=>	time,
+	},
+};
+
+system ('clear');
+print "\nInitiating self-destruct sequence...\n";
+
+# Create the ramdisk
+create_ramdisk($conf);
+
+# Find the VDs and PDs
+find_physical_drives($conf);
+
+# Destroy the data.
+destroy_physical_drives($conf);
+
+# This will never be hit unless we failed to die.
+exit;
+
+# This creates the ramdisk and copies the storcli command line tool to it.
+sub create_ramdisk
+{
+	my ($conf) = @_;
+	
+	print "- Creating ramdisk.\n";
+	$conf->{path}{ramdisk} = "/mnt/ram" if not $conf->{path}{ramdisk};
+	if (-e $conf->{path}{ramdisk})
+	{
+		my $i  = 0;
+		my $ok = 0;
+		while (not $ok)
+		{
+			my $test_path = $conf->{path}{ramdisk}.$i;
+			if (-e $test_path)
+			{
+				$i++;
+			}
+			else
+			{
+				$ok         = 1;
+				$conf->{path}{ramdisk} = $test_path;
+			}
+		}
+	}
+	my $shell_call = "/bin/mkdir $conf->{path}{ramdisk} && mount -o size=1G -t tmpfs none $conf->{path}{ramdisk}";
+	#my $shell_call = "/bin/mkdir $conf->{path}{ramdisk} && mount -t ramfs ramfs $conf->{path}{ramdisk}";
+	print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+	open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+	}
+	close $file_handle;
+	
+	# Copy files I need into ramdisk now. (This made more sense when I was
+	# copying multiple files, which I may do in the future again).
+	print "- Copying required binaries to ramdisk: [$conf->{path}{ramdisk}/].\n";
+	foreach my $file ("storcli64")
+	{
+		my $shell_call = "/bin/cp $conf->{path}{$file} $conf->{path}{ramdisk}/";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+		$conf->{path}{$file} = "$conf->{path}{ramdisk}/$file";
+		print "  - $file: [$conf->{path}{$file}]\n";
+	}
+	
+	return(0);
+}
+
+# This does the drive destruction using storcli64
+sub destroy_physical_drives
+{
+	my ($conf) = @_;
+	
+	# This is a few steps;
+	# 1. Switch the cache policy to write-through (storcli64 /cX /vall set wrcache=wt)
+	# 2. flush the cache                          (storcli64 /cX flushcache)
+	# 3. Delete the VD                            (storcli64 /cX /vall del force)
+	# 4. ISE the drives                           (storcli64 /cX /eall /sall secureerase force)
+	# 5. Delete key from controller               (storcli64 /cX delete securitykey)
+	# 6. Force power off                          (echo o > /proc/sysrq-trigger).
+	
+	# Open a file handle to /proc/sysrq-trigger now to ensure it is
+	# available after the disk is gone.
+	open (my $file_handle, '>', "/proc/sysrq-trigger") || warn "Failed to write to '/proc/sysrq-trigger', error was: $!\n";
+	
+	# Start killing things
+	change_cache_policy($conf);
+	flush_cache($conf);
+	delete_vd($conf);
+	ise_drives($conf);
+	delete_keys($conf);
+	
+	# That's all she wrote....
+	my $took = time - $conf->{sys}{start_time};
+	print "Self destruct completed in: [$took] seconds.\n";
+	
+	print "\nHoratio, I am dead;\n";
+	print "Thou livest; report me and my cause aright\n";
+	print "To the unsatisfied...\n\n";
+	sleep 3;
+	# Down we go!
+	print $file_handle "o";
+	close $file_handle;
+	
+	return(0);
+}
+
+# This deletes the encryption keys from the controller(s)
+sub delete_keys
+{
+	my ($conf) = @_;
+	
+	### TODO
+	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+	{
+		print "- Deleting encryption keys from adapter: [$adapter]\n";
+		my $shell_call = "$conf->{path}{storcli64} /c$adapter delete securitykey";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+	
+}
+
+# This ISEs the drives
+sub ise_drives
+{
+	my ($conf) = @_;
+	
+	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+	{
+		print "- ISE'ing drives on adapter: [$adapter]\n";
+		my $shell_call = "$conf->{path}{storcli64} /c$adapter /eall /sall secureerase force";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+	
+}
+
+# This deletes all VDs. After this, the data on the system is no longer
+# accessible except for what we're copied to the ramdisk
+sub delete_vd
+{
+	my ($conf) = @_;
+	
+	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+	{
+		print "- Deleting virtual disks on adapter: [$adapter]\n";
+		my $shell_call = "$conf->{path}{storcli64} /c$adapter /vall del force";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+	
+}
+
+# This flushes anything that might still be in cache
+sub flush_cache
+{
+	my ($conf) = @_;
+	
+	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+	{
+		print "- Flushing cache on adapter: [$adapter]\n";
+		my $shell_call = "$conf->{path}{storcli64} /c$adapter flushcache";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+	
+}
+
+# This switches all VDs to use write-through caching
+sub change_cache_policy
+{
+	my ($conf) = @_;
+	
+	### TODO
+	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+	{
+		print "- Changing cache policy to 'write-through' on adapter: [$adapter]\n";
+		my $shell_call = "$conf->{path}{storcli64} /c$adapter /vall set wrcache=wt";
+		print "[ DEBUG ] - shell call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+	
+}
+
+# This lists all drives by controller.
+sub find_physical_drives
+{
+	my ($conf) = @_;
+	
+	my $in_pd_list  = 0;
+	my $pd_count    = 0;
+	my $adapter     = "";
+	my $enclosure   = "";
+	my $slot        = "";
+	my $device_id   = "";
+	my $drive_group = "";
+	my $shell_call  = "$conf->{path}{storcli64} /call show";
+	open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#print "[ DEBUG ] - output: [$line]\n" if $conf->{sys}{debug};
+		if ($line =~ /Controller = (\d+)$/)
+		{
+			$adapter = $1;
+			next;
+		}
+		if ($line =~ /EID:Slt DID State DG/)
+		{
+			$in_pd_list = 1;
+			next;
+		}
+		if ($in_pd_list)
+		{
+			if (($pd_count > 0) && ($line =~ /^------/))
+			{
+				$in_pd_list = 0;
+				next;
+			}
+			elsif ($line =~ /^(\d+):(\d+)\s+(\d+)\s+Onln\s+(\d+)\s/)
+			{
+				$enclosure   = $1;
+				$slot        = $2;
+				$device_id   = $3;
+				$drive_group = $4;
+				$conf->{physical_drive}{adapter}{$adapter}{enclosure}{$enclosure}{slot}{$slot}{device_id}   = $device_id;
+				$conf->{physical_drive}{adapter}{$adapter}{enclosure}{$enclosure}{slot}{$slot}{drive_group} = $drive_group;
+			}
+		}
+	}
+	close $file_handle;
+	
+# 	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
+# 	{
+# 		foreach my $enclusure (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}{$adapter}{enclosure}})
+# 		{
+# 			foreach my $slot (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}{$adapter}{enclosure}{$enclosure}{slot}})
+# 			{
+# 				print "Adapter: [$adapter], Physical Drive: [$enclosure:$slot]\n";
+# 			}
+# 		}
+# 	}
+
+	return(0);
+}

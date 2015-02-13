@@ -6,41 +6,38 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
 use English '-no_match_vars';
-use Carp;
-
 use File::Basename;
 use File::Spec::Functions 'catdir';
-
-use FindBin qw($Bin);
-use Clone 'clone';
 use Const::Fast;
-
 use AN::Common;
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw(agents msg_dir language pid program string strings sys );
 
 # ======================================================================
 # CONSTANTS
 #
-const my $COMMA => q{,};
-
+const my $COMMA      => q{,};
 const my $XML_SUFFIX => q{.xml};
-
-const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
-
-# ======================================================================
-# Subroutines
-#
+const my $PROG       => ( fileparse($PROGRAM_NAME) )[0];
 
 # ======================================================================
-# Methods
+# METHODS
 #
 
+# ----------------------------------------------------------------------
+# Report whether or not, the strings table for a particular process
+# (pid) has been loaded. If not, initalize the 'string' and 'strings'
+# hashes, and make them availablke as attributes of the object.
+#
 sub strings_table_loaded {
-    my ( $self, $pid ) = @_;
+    my $self = shift;
+    my ($pid) = @_;
 
     my $exists = exists $self->agents->{$pid}->{strings};
 
@@ -52,6 +49,10 @@ sub strings_table_loaded {
     return $exists;
 }
 
+# ----------------------------------------------------------------------
+# Read the message file, and create a hash listing all languages
+# defined in the file.
+#
 sub load_strings_table {
     my $self = shift;
     my ($metadata) = @_;
@@ -69,6 +70,10 @@ sub load_strings_table {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Look up a string in a specified language. Load the message file if
+# necessary.
+#
 sub lookup_msg {
     my $self = shift;
     my ( $src, $tag, $agent ) = @_;
@@ -96,22 +101,19 @@ __END__
 
 =head1 NAME
 
-    Mdg_xlator.pm - Fetch messages by tag in appropriate language
+    Msg_xlator.pm - Fetch messages by tag in appropriate language
 
 =head1 VERSION
 
-    This document describes Msg_xlator.pm version 0.0.1
+    This document describes Msg_xlator.pm version 1.0.0
 
 =head1 SYNOPSIS
 
     use AN::Msg_xlator;
-    use English 'no_match_vars';
-    use File::Basename;
 
-    my $pid = $PID;
     my $agent = { PID      => $PID,
                   filename => basename $PROGRAM_NAME,
-                  msg_dir  => '/path/to/messages/xml/files/',
+                  sys => { error_limit => $max_retries },
                 };
     my $msg_xlator = AN::Msg_xlator->new($pid, $agent);
     my $fmt_str = $msg_xlator->lookup_msg($PID, 'POWER SUPPLY INPUT VOLTAGE LOW MSG')
@@ -126,6 +128,10 @@ language.
 
 =head1 METHODS
 
+Objects of this class take succint message tags and look them up in a
+message file, extracting a lengthier message string in the specified
+language.
+
 =over 4
 
 =item B<new>
@@ -135,21 +141,22 @@ value pairs. The key list must include :
 
 =over 4
 
-=item B<PID =E<gt> N>
+=item B<PID N>
 
 This is a unique identifying number or string. Since the process id of
 a running program is guaranteed to be unique on a given system, this
 is the natural value to use.
 
-=item B<msg_dir =E<gt> '/path/to/dir/containing/message/files/'>
+=item B<agents { pid_num =E<gt> $agent_hash }>
 
-The directory where message files will be found. 
+The agent_hash contains the name of the program which originated the
+message tag we are looking up, and the directory in which the
+program's message xml file is located. 
 
-=item B<filename =E<gt> string>
+=item B<sys =E<gt> { error_limit =E<gt> number } >
 
-The name of a particular subsystem. Message strings for this program /
-subsystem will be found in the msg_dir directory in a file whose name
-is "filename" with a ".xml" suffix.
+The number of times the AN::Common routines should attemp to look up the
+string, before giving up.
 
 =back
 
@@ -164,17 +171,15 @@ in the specified language. If no lannguage is specified, use some default langua
 
 =over 4
 
-=item B<Carp> I<core>
+=item B<AN::Common>
 
-Complain about arguments from the caller, not the callee.
-
-=item B<Clone>
-
-Make deep copies of data structures.
+Predefined packages containing routines to read message files and look
+up strings.
 
 =item B<Const::Fast>
 
-Make constants that run faster than Readonly, and are more flexible and more useable than C<use constant>.
+Make constants that run faster than Readonly, and are more flexible
+and more useable than C<use constant>.
 
 =item B<English> I<core>
 
@@ -184,15 +189,11 @@ Provides meaningful names for Perl 'punctuation' variables.
 
 Parses paths and file suffixes.
 
-=item B<FileHandle> I<code>
+=item B<File::Spec::Functions> I<code>
 
-Provides access to FileHandle / IO::* attributes.
+Portably perform operations on file names.
 
-=item B<FindBin> I<core>
-
-Determine which directory contains the current program.
-
-=item B<version> I<core since 5.9.0>
+=item B<version> I<core>
 
 Parses version strings.
 

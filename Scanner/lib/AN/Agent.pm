@@ -10,15 +10,13 @@ use 5.010;
 use version;
 our $VERSION = '1.0.0';      # Update POD to match
 
-use English '-no_match_vars';
 use Carp;
+use Const::Fast;
 use Cwd;
-
+use English '-no_match_vars';
 use File::Basename;
-
 use File::Spec::Functions 'catdir';
 use FindBin qw($Bin);
-use Const::Fast;
 use Time::HiRes qw(time alarm sleep);
 
 use AN::Common;
@@ -27,6 +25,9 @@ use AN::FlagFile;
 use AN::Unix;
 use AN::DBS;
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw( datatable_name alerts_table_name dbconf );
 
 # ======================================================================
@@ -44,8 +45,8 @@ const my $NOT_WORDCHAR      => qr{\W};
 const my $UNDERSCORE        => q{_};
 
 # ......................................................................
+# CONSTRUCTOR
 #
-
 sub BUILD {
     my $self = shift;
 
@@ -61,16 +62,10 @@ sub BUILD {
     return;
 }
 
-sub non_blank_lines {
-    my ($str) = @_;
-
-    # Split the string into lines, Accept any lines which have
-    # non-blank characters.  Join lines back together into a
-    # single 'paragraph'.
-    #
-    return join q{ }, grep {/\S/} split $NEWLINE, $str;
-}
-
+# ----------------------------------------------------------------------
+# API - Generate contents for metadata file defining this process's
+# output. Used unchanged by subclasses.
+#
 sub dump_metadata {
     my $self = shift;
 
@@ -88,6 +83,9 @@ EODUMP
     return $metadata;
 }
 
+# ----------------------------------------------------------------------
+# API - delegate database storage to DBS object.
+#
 sub insert_raw_record {
     my $self = shift;
     my ($args) = @_;
@@ -95,6 +93,9 @@ sub insert_raw_record {
     $self->dbs()->insert_raw_record($args);
 }
 
+# ----------------------------------------------------------------------
+# Generate randomly varying value to explore OK/WARNING/CRISIS range.
+#
 sub generate_random_record {
     my $self = shift;
 
@@ -137,14 +138,25 @@ sub generate_random_record {
     return;
 }
 
+# ----------------------------------------------------------------------
+# API - class-specific behaviour within timed infinite loop.
+#
 sub loop_core {
     my $self = shift;
 
     $self->generate_random_record();
 }
 
-sub prep_for_loop { }    # placeaholder for subclasses.
+# ----------------------------------------------------------------------
+# API - placeholder for subclasses ... initialioze prior to infinite
+# loop.
+#
+sub prep_for_loop { }
 
+# ----------------------------------------------------------------------
+# Prepare for and clean up after main infinite loop. Used unchanged by
+# subclasses; uses some characteristics of AN::Scanner parent class.
+#
 sub run {
     my $self = shift;
 
@@ -201,9 +213,37 @@ which generates random numbers.
 
 =head1 METHODS
 
-This module provides assorted unrelated subroutines.
+The AN::Agent class provides a number of methods that are essential 
+to subclasses which generate data and store it into the database.
 
 =over 4
+
+=item API B<dump_metadata> => multi-line string
+
+Generate contents for metadata file defining this process's
+output. Used unchanged by subclasses
+
+=item API B<insert_raw_record $args>
+
+Delegate database storage to DBS object.
+
+=item API B<generate_random_record>
+
+Demonstration functionality: Generate randomly varying value to
+explore OK/WARNING/CRISIS range.
+
+=item API B<loop_core>
+
+Class-specific behaviour within timed infinite loop.
+
+=item API B<prep_for_loop>
+
+Placeholder for subclasses ... initialioze prior to infinite loop.
+
+=item API B<run>
+
+Prepare for and clean up after main infinite loop. Used unchanged by
+subclasses; uses some characteristics of AN::Scanner parent class.
 
 The only routine called from the main program is C<run> which prepares
 for and runs a loop which runs every B<rate> seconds until

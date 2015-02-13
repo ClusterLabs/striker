@@ -54,17 +54,27 @@
 		<key name="button_0047">Generate</key>
 		<key name="button_0048">Load</key>
 		<key name="button_0049">Run</key>
-		<key name="button_0050">New Install</key>	<!-- Also used as a row value -->
+		<key name="button_0050">Please Note</key>
 		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
 		<key name="button_0052">Begin Install</key>
 		<key name="button_0053">Install</key>
 		<key name="button_0054">Remap Network</key>
 		<key name="button_0055">Modify Manifest</key>
-		<key name="button_0056"></key>
-		<key name="button_0057"></key>
-		<key name="button_0058"></key>
-		<key name="button_0059"></key>
-		<key name="button_0060"></key>
+		<key name="button_0056">Install Target</key>
+		<key name="button_0057">Enable Install Target</key>
+		<key name="button_0058">Disable Install Target</key>
+		<key name="button_0059">Global Settings</key>
+		<key name="button_0060">Install Manifests</key>
+		<key name="button_0061">Add a New #!string!brand_0004!#</key>
+		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
+		<key name="button_0063"></key>
+		<key name="button_0064"></key>
+		<key name="button_0065"></key>
+		<key name="button_0066"></key>
+		<key name="button_0067"></key>
+		<key name="button_0068"></key>
+		<key name="button_0069"></key>
+		<key name="button_0070"></key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -80,6 +90,7 @@
 		<key name="brand_0011"><![CDATA[Please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="brand_0012">https://alteeve.ca/w/Support</key> <!-- Support URL -->
 		<key name="brand_0013">anvil</key>
+		<key name="brand_0014"><![CDATA[If you aren't sure what to do, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		
 		<!-- Text messages used in config files and such. -->
 		<key name="text_0001">
@@ -110,7 +121,7 @@ smtp::port				=	#!variable!smtp__port!#
 # the address used in the 'From: ' field for emails sent from this machine.
 # NOTE: If you IMAP user name is not an email address, this may not work (it
 # has not been tested). If you have trouble, please let us know:
-# - https://alteeve.ca/w/Support
+# - #!string!brand_0012!#
 smtp::username				=	#!variable!smtp__username!#
 
 # This is the password used for the email account above. This can be the
@@ -135,6 +146,13 @@ mail_data::to				=	#!variable!mail_data__to!#
 # This sets the 'sending domain' when sending email. It should match
 # smtp::server in most cases.
 mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
+
+# When set to '1', this forces the use of 'spice' graphics in newly provisioned
+# servers. This also disables automatic convertion of 'spice' based servers to
+# VNC. This prevents the in-browser remote server viewer from working, but
+# allows for higher resolutions on some guest desktops, like RHEL 6.
+sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
+
 
 ### Per-#!string!brand_0004!# Configurations
 
@@ -185,13 +203,13 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="text_0010"></key>
 		
 		<!-- These are strings used to explain things to the user. Generally they follow form fields. -->
-		<key name="explain_0001"><![CDATA[This is the name of your #!string!brand_0003!#'s cluster name.<br />This is set in <span class="fixed_width">cluster.conf</span> in the <span class="fixed_width"><cluster ...></span> element's <span class="fixed_width">name="..."</span> attribute.]]></key>
+		<key name="explain_0001"><![CDATA[This is the name of your #!string!brand_0003!#'s cluster name.<br />This is set in <span class="fixed_width">cluster.conf</span> in the <span class="fixed_width">&lt;cluster ...&gt;</span> element's <span class="fixed_width">name="..."</span> attribute.]]></key>
 		<key name="explain_0002">This is a free-form text field where you can put in any description you would like for the #!string!brand_0003!#.</key>
 		<key name="explain_0003">If you have an internal tracking or documentation system, and if you track the given #!string!brand_0003!# there, you can enter the URL for it here.</key>
 		<key name="explain_0004"><![CDATA[This is the name of the company, person or group that owns the specified #!string!brand_0003!#.<br />This is a purely descriptive field and you can set it to whatever you want.]]></key>
 		<key name="explain_0005"><![CDATA[When your #!string!brand_0003!# was built, a '<span class="highlight_note">ricci</span>' password was set.<br />Your dashboard needs this password in order to add, edit and remove servers from the given #!string!brand_0003!#.]]></key>
 		<key name="explain_0006"><![CDATA[On most #!string!brand_0003!# systems, the same password is used for both the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users.<br />If this is the case for you, you can leave this blank.<br />If you set a different '<span class="highlight_note">root</span>' password though, please enter that password here.<br />Please note that both nodes must have the same root password.]]></key>
-		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-cYYnZZ</span>.]]></key>
+		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-aYYnZZ</span>.]]></key>
 		<key name="explain_0008"><![CDATA[Generally, if this machine is in the same place as the the #!string!brand_0003!#, the name you set here will resolve to the '#!string!brand_0005!#' of the node.<br />If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />If you use DNS (or similar) to do name to IP translation, leave this blank.]]></key>
 		<key name="explain_0009"><![CDATA[This is the TCP port used to connect to the node over SSH. If you do not specify this, port <span class="fixed_width">22</span> will be used.<br />If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />When in doubt, leave this blank.]]></key>
 		<key name="explain_0010"><![CDATA[The dashboard does not send email, but your #!string!brand_0003!# nodes will.<br />The <span class="fixed_width">#!conf!path::striker_conf!#</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.]]></key>
@@ -220,8 +238,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0033">Please use only one node's storage pool.</key>
 		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
-		<key name="explain_0036">Save the current configuration of this #!string!brand_0002!# to a file on your computer. This can be used to restore the configuration should this dashboard get reset or replaced.</key>
-		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration. If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
+		<key name="explain_0036"><![CDATA[Save the current configuration of this #!string!brand_0002!# to a file on your computer.<br />This can be used to restore the configuration should this dashboard get reset or replaced.]]></key>
+		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration.<br />If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
 		<key name="explain_0038">It would appear that no file was uploaded.</key>
 		<key name="explain_0039"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> does not appear to be a valid backup file.]]></key>
 		<key name="explain_0040"><![CDATA[The mimetype detected was <span class="fixed_width">#!variable!mimetype!#</span>. The backup file should be '<span class="fixed_width">text/plain</span>'.]]></key>
@@ -244,7 +262,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0057"><![CDATA[#!string!symbol_0012!# By default, <span class="subtle_text_fixed_width">~256 MiB</span> is set aside for the file system journals.]]></key>
 		<key name="explain_0058"><![CDATA[Once a file transfer starts, it will continue even if you close the page<br />or the connection times out. If you wish to end the transfer, at this time,<br />you will need to restart the web server or reboot the dashboard server.]]></key>
 		<key name="explain_0059"><![CDATA[Asking <span class="fixed_width">dd</span> to create an image of: [<span class="fixed_width">#!variable!device!#</span>] called: [<span class="fixed_width">#!variable!name!#</span>] in the: [<span class="fixed_width">#!variable!directory!#</span>] directory.]]></key>
-		<key name="explain_0060"><![CDATA[This form is used for creating an #!string!brand_0003!# installation manifest file.<br />Once generated, you can pass this file to the <span class="code">#!string!app_0001!#</span> and the information in it will be used to configure the node.<br />The one manifest can be used for both nodes in the #!string!brand_0003!# and to configure replacement nodes.]]></key>
+		<key name="explain_0060"><![CDATA[This form is used for creating an #!string!brand_0003!# installation manifest file.<br />The manifest will be saved locally and can be used later to build new #!string!brand_0003!# system or rebuild/replace a node.]]></key>
 		<key name="explain_0061"><![CDATA[This is a short prefix that describes the owner or department of this #!string!brand_0003!#.<br />Generally it is two or three characters long and often is an acronym for the company or department.<br />This is, ultimately, a free-form field to set as you wish. <b>Please only use alphanumeric characters</b>.]]></key>
 		<key name="explain_0062"><![CDATA[This is the company or department domain name. It will be appended to all host names.]]></key>
 		<key name="explain_0063"><![CDATA[This is a sequence number for this #!string!brand_0003!#.<br />It is combined with the prefix above and, combined, must be unique across your network(s).<br /><span class="highlight_note_bold">Note</span>: Auto-generating IPs only works up to '<span class="code">25</span>. Beyond that, you need to manually specify the node IPs.]]></key>
@@ -276,7 +294,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0089"><![CDATA[This is the host name for the second <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard, if you have one.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
 		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
 		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">dafault gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
+		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">default gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file. It must be 15 <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters or less.<br />Generally it will be in the format "<span class="code">&lt;prefix&gt;-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
@@ -323,8 +341,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0136"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It is a copy of: [<span class="code">#!variable!old_manifest!#</span>] but with the network mapping recorded.<br />Use this new one in the future to avoid the manual network mapping step.]]></key>
 		<key name="explain_0137"><![CDATA[The install is now beginning. Sanity checks will re-run, just to be safe.<br />Configuration will begin automatically after that.<br />Now is a good time to go have a <span class="code">$drink</span>.]]></key>
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
-		<key name="explain_0139"><![CDATA[]]></key>
-		<key name="explain_0140"><![CDATA[]]></key>
+		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
+		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.<br />After this step, re-loading the page may not work anymore.<br />Please <a href="#!variable!url!#">click here</a> to re-run the installer using the password set in the install manifest.]]></key>
+		<key name="explain_0142"><![CDATA[The next step will update the <span class="highlight_detail">root</span> user's password.<br />After this, if the password changed, reloading this page will fail.<br />Please <a href="#!variable!url!#">click here</a> to re-run the installer using the password set in the install manifest.]]></key>
+		<key name="explain_0143"><![CDATA[]]></key>
+		<key name="explain_0144"><![CDATA[]]></key>
+		<key name="explain_0145"><![CDATA[]]></key>
+		<key name="explain_0146"><![CDATA[]]></key>
+		<key name="explain_0147"><![CDATA[]]></key>
+		<key name="explain_0148"><![CDATA[]]></key>
+		<key name="explain_0149"><![CDATA[]]></key>
+		<key name="explain_0150"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -545,10 +573,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0216">Ready?</key>
 		<key name="row_0217">Current Address [:port]</key>
 		<key name="row_0218">Current root Password</key>
-		<key name="row_0219">Testing Connection</key>
+		<key name="row_0219">Testing access to nodes</key>
 		<key name="row_0220">Checking OS Version</key>
-		<key name="row_0221">Checking for Existing Config</key>
-		<key name="row_0222">Checking for Free Space</key>
+		<key name="row_0221">Configuring Cluster</key>
+		<key name="row_0222">Checking Storage</key>
 		<key name="row_0223">Checking Internet Access</key>
 		<key name="row_0224">Note!</key>
 		<key name="row_0225"><![CDATA[Adding <span class="code">an-repo</span>]]></key>
@@ -569,14 +597,44 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0240">Install Manifest</key>
 		<key name="row_0241">OK, Go!</key>
 		<key name="row_0242">Registration failed</key>
-		<key name="row_0243"></key>
-		<key name="row_0244"></key>
-		<key name="row_0245"></key>
-		<key name="row_0246"></key>
-		<key name="row_0247"></key>
-		<key name="row_0248"></key>
-		<key name="row_0249"></key>
-		<key name="row_0250"></key>
+		<key name="row_0243"><![CDATA[Checking for Execution Environment]]></key>
+		<key name="row_0244">Repositories</key>
+		<key name="row_0245"><![CDATA[Adding repository: <span class="code">#!variable!repo!#</span>]]></key>
+		<key name="row_0246">Partitioning Pool 1</key>
+		<key name="row_0247">Rebooting</key>
+		<key name="row_0248">Partitioning Pool 2</key>
+		<key name="row_0249">Pool 1 Meta-data</key>
+		<key name="row_0250">Pool 2 Meta-data</key>
+		<key name="row_0251">Configuring Clustered LVM</key>
+		<key name="row_0252">Configure Daemons</key>
+		<key name="row_0253">Configuring IPMI</key>
+		<key name="row_0254">Backing up original files</key>
+		<key name="row_0255"><![CDATA[Updating system password]]></key>
+		<key name="row_0256">Cluster membership first start</key>
+		<key name="row_0257">Configuring inter-node SSH</key>
+		<key name="row_0258">DRBD first start</key>
+		<key name="row_0259">Start Clustered LVM</key>
+		<key name="row_0260">Create Physical Volumes</key>
+		<key name="row_0261">Create Volume Groups</key>
+		<key name="row_0262">Create LV for cluster FS</key>
+		<key name="row_0263">Create Cluster Filesystem</key>
+		<key name="row_0264">Starting the storage service</key>
+		<key name="row_0265">Starting the hypervisor</key>
+		<key name="row_0266">Success!</key>
+		<key name="row_0267"><![CDATA[Updating cluster password]]></key>
+		<key name="row_0268">Configure FS Table</key>
+		<key name="row_0269">Unconfigured</key>
+		<key name="row_0270">Stopping Server</key>
+		<key name="row_0271">Withdrawing Node</key>
+		<key name="row_0272">Powering down Node</key>
+		<key name="row_0273">In progress</key>
+		<key name="row_0274"></key>
+		<key name="row_0275"></key>
+		<key name="row_0276"></key>
+		<key name="row_0277"></key>
+		<key name="row_0278"></key>
+		<key name="row_0279"></key>
+		<key name="row_0280"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -652,10 +710,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0034"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Unable to bring up the interface: [<span class="code">#!variable!nic!#</span>]!]]></key>
 		<key name="script_0035"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Please bring it up manually and try again.]]></key>
 		<key name="script_0036"><![CDATA[Configuring network to enable access to #!string!brand_0003!# systems.<br />]]></key>
-		<key name="script_0037"><![CDATA[Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
+		<key name="script_0037"><![CDATA[<span class="highlight_ready_bold">Ready</span>: Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
 		<key name="script_0039"><![CDATA[<b>#!variable!nic!#</b>: ]]></key>
-		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]]]></key>
+		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]<br />]]></key>
 		<key name="script_0041"><![CDATA[[<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>]<br />]]></key>
 		<key name="script_0042">Identification summary:</key>
 		<key name="script_0043"><![CDATA[[ <span class="highlight_bad">Error</span> ] - There seems to be a problem.]]></key>
@@ -775,7 +833,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0066"><![CDATA[#!variable!name!#: [<span class="code">#!variable!file!#</span>]]]></key>
 		<key name="script_0067">Interface summary:</key>
 		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
-		<key name="script_0069"></key>
+		<key name="script_0069"><![CDATA[<span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />Please be patient and wait for the prompt before reseating the next cable.<br />]]></key>
 		<key name="script_0070"></key>
 		
 		<!-- Symbols, digits, etc. -->
@@ -823,46 +881,116 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="suffix_0020"></key>
 		
 		<!-- These are 'state' messages and reflect the state of a given resource. -->
-		<key name="state_0001">unknown</key>
+		<key name="state_0001">Unknown</key>
 		<key name="state_0002">none</key> <!-- name used for a host when no node is found/available -->
 		<key name="state_0003">Running</key>
 		<key name="state_0004">Offline</key>
 		<key name="state_0005">Success</key>
 		<key name="state_0006">Not Ready</key>
-		<key name="state_0007">no disc</key>
+		<key name="state_0007">No disc</key>
 		<key name="state_0008">Error</key>
 		<key name="state_0009">Ready</key>
 		<key name="state_0010">Mounted</key>
 		<key name="state_0011">Unmounted</key>
 		<key name="state_0012">Foreign</key>
 		<key name="state_0013">Local</key>
-		<key name="state_0014">started</key>
-		<key name="state_0015">stopped</key>
+		<key name="state_0014">Started</key>
+		<key name="state_0015">Stopped</key>
 		<key name="state_0016">n/a</key> <!-- Not applicable -->
 		<key name="state_0017">OK</key>
-		<key name="state_0018">Failed!</key>
+		<key name="state_0018">Failed</key>
 		<key name="state_0019">Not Found</key>
-		<key name="state_0020">Exists!</key>
+		<key name="state_0020">Already exists</key>
 		<key name="state_0021">No Access</key>
 		<key name="state_0022">Online</key>
 		<key name="state_0023">Added</key>
 		<key name="state_0024">Everything Installed</key>
-		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span>]]></key>
+		<key name="state_0025"><![CDATA[Packages Missing:<br /><span class="code">#!variable!missing!#</span> on node: [#!variable!node!#].]]></key>
 		<key name="state_0026">Updated</key>
 		<key name="state_0027">Already up to Date</key>
 		<key name="state_0028">Already Configured</key>
-		<key name="state_0029">Configured!</key>
+		<key name="state_0029">Configured</key>
 		<key name="state_0030">Interfaces Identified</key>
 		<key name="state_0031">Network Remap Required</key>
 		<key name="state_0032">Network Remap Requested</key>
 		<key name="state_0033">Registered</key>
-		<key name="state_0034">Failed</key>
-		<key name="state_0035"></key>
-		<key name="state_0036"></key>
-		<key name="state_0037"></key>
-		<key name="state_0038"></key>
-		<key name="state_0039"></key>
-		<key name="state_0040"></key>
+		<key name="state_0034">Failed</key>	<!-- Duplicate of state_0018 -->
+		<key name="state_0035">Installed</key>
+		<key name="state_0036">Not Installed</key>
+		<key name="state_0037">Unable to proceed</key>
+		<key name="state_0038">Script Failure</key>
+		<key name="state_0039">Parse Error</key>
+		<key name="state_0040">Missing Repo</key>
+		<key name="state_0041">Unmatched Disks</key>
+		<key name="state_0042">Partition Error</key>
+		<key name="state_0043">Partition Resized</key>
+		<key name="state_0044">DRBD Metadata Error</key>
+		<key name="state_0045">Created</key>
+		<key name="state_0046">Rebooted</key>
+		<key name="state_0047">Not Needed</key>
+		<key name="state_0048">Failed, but pingable</key>
+		<key name="state_0049">Failed, can't ping</key>
+		<key name="state_0050">Aborted</key>
+		<key name="state_0051">Didn't shut down</key>
+		<key name="state_0052">Storage Pool Mismatch</key>
+		<key name="state_0053">Not enough space</key>
+		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key>
+		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>] Not Found.]]></key>
+		<key name="state_0056">No backing device specified</key>
+		<key name="state_0057"><![CDATA[Non-DRBD data found on [<span class="highlight_detail">#!variable!device!#</span>]]]></key>
+		<key name="state_0058"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>]<br />doesn't correspond to a DRBD resource]]></key>
+		<key name="state_0059">DRBD resource not defined</key>
+		<key name="state_0060">Disabled in Manifest</key>
+		<key name="state_0061">Conflicting custom filter!</key>
+		<key name="state_0062"><![CDATA[Failed to enable: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0063"><![CDATA[Failed to start: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0064"><![CDATA[Failed to disable: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0065"><![CDATA[Failed to stop: [<span class="highlight_detail">#!variable!daemon!#</span>]<br />]]></key>
+		<key name="state_0066"><![CDATA[<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Finding_our_IPMI_LAN_Channel" target="_new">LAN Channel</span> not found!]]></key>
+		<key name="state_0067"><![CDATA[<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Find_the_IPMI_User_ID" target="_new">User ID</span> for: [<span class="highlight_detail">#!variable!user!#</span>] not found!]]></key>
+		<key name="state_0068">Failed to set IP to static</key>
+		<key name="state_0069">Failed to set IP address</key>
+		<key name="state_0070">Failed to set netmask</key>
+		<key name="state_0071">Failed to set IPMI password</key>
+		<key name="state_0072">Failed to read lvm.conf</key>
+		<key name="state_0073">Done</key>
+		<key name="state_0074">Failed to update the root passowrd</key>
+		<key name="state_0075">Missing MAC address</key>
+		<key name="state_0076"><![CDATA[The written [<span class="highlight_detail">#!conf!path::nodes::cluster_conf!#</span>] file failed to validate. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0077"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0006!#</a>]]></key>
+		<key name="state_0078">Already running</key>
+		<key name="state_0079">Failed to read or generate RSA key</key>
+		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>]]></key>
+		<key name="state_0081"><![CDATA[Failed to populate: <span class="highlight_detail">authorized_keys</span>]]></key>
+		<key name="state_0082"><![CDATA[Testing <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Concept.3B_Fencing" target="_new">fencing</span> failed! The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote><br />Please check your fence device(s) to ensure they've been configured properly.]]></key>
+		<key name="state_0083"><![CDATA[Failed to '<span class="highlight_detail">attach</span>' a resource. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0084"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0008!#</a>]]></key>
+		<key name="state_0085"><![CDATA[Failed to enter '<span class="highlight_detail">connect</span>' state. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0086">Entered connecting state but failed to connect</key>
+		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
+		<key name="state_0088">Failed; Please see logs</key>
+		<key name="state_0089">Failed to format the logical volume as a gfs2 partition</key>
+		<key name="state_0090"><![CDATA[Failed to append '<span class="highlight_detail">/shared</span>' to '<span class="highlight_detail">/etc/fstab</span>']]></key>
+		<key name="state_0091"><![CDATA[Failed to mount '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0092"><![CDATA[GFS2 check of '<span class="highlight_detail">/shared</span>' failed]]></key>
+		<key name="state_0093"><![CDATA[Failed to create subdirectories under '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
+		<key name="state_0096">Timed out</key>
+		<key name="state_0097">Manual Reboot Needed</key>
+		<key name="state_0098"><![CDATA[Error parsing: [<span class="highlight_detail">cluster.conf</span>]]]></key>
+		<key name="state_0099">Partition Warning</key>
+		<key name="state_0100"></key>
+		<key name="state_0101"></key>
+		<key name="state_0102"></key>
+		<key name="state_0103"></key>
+		<key name="state_0104"></key>
+		<key name="state_0105"></key>
+		<key name="state_0106"></key>
+		<key name="state_0107"></key>
+		<key name="state_0108"></key>
+		<key name="state_0109"></key>
+		<key name="state_0110"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -921,7 +1049,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
 		<key name="title_0055"><![CDATA[Joining of both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>
 		<key name="title_0056"><![CDATA[Forcibly shutting down <span class="fixed_width">#!variable!server!#</span> now...]]></key>
-		<key name="title_0057"><![CDATA[Begining the process of deleting <span class="fixed_width">#!variable!server!#</span> now...]]></key>
+		<key name="title_0057"><![CDATA[Beginning the process of deleting <span class="fixed_width">#!variable!server!#</span> now...]]></key>
 		<key name="title_0058">Removing the server from the #!string!brand_0003!#'s management:</key>
 		<key name="title_0059">The server appears to still be running. I will force it off now.</key>
 		<key name="title_0060">Freeing up the server's storage now.</key>
@@ -1042,12 +1170,22 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0175"><![CDATA[]]></key>
 		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177">Almost ready to install!</key>
-		<key name="title_0178"></key>
-		<key name="title_0179"></key>
-		<key name="title_0180"></key>
+		<key name="title_0178">Install Target control</key>
+		<key name="title_0179">About to Cold-Stop the entire #!string!brand_0003!#!</key>
+		<key name="title_0180"><![CDATA[Cold-Stop of [<span class="fixed_width">#!variable!anvil!#</span>] aborted!]]></key>
+		<key name="title_0181"><![CDATA[Cold-Stop of: [<span class="highlight_detail">#!variable!anvil!#</span>] under way.]]></key>
+		<key name="title_0182"></key>
+		<key name="title_0183"></key>
+		<key name="title_0184"></key>
+		<key name="title_0185"></key>
+		<key name="title_0186"></key>
+		<key name="title_0187"></key>
+		<key name="title_0188"></key>
+		<key name="title_0189"></key>
+		<key name="title_0190"></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
-		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click <span class="highlight_ready">#!string!row_0017!#</span> to add your first one!]]></key>
+		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
 		<key name="message_0002">Configure the common variables that are used for all #!string!brand_0003!# systems.</key>
 		<key name="message_0003"><![CDATA[I am sorry, but I can not find an #!string!brand_0003!# called <span class="fixed_width">#!variable!anvil!#</span> in the configuration file.<br /><br />Please update <span class="fixed_width">#!conf!path::striker_conf!#</span> in order to add a new #!string!brand_0003!# to this dashboard server.]]></key>
 		<key name="message_0004"><![CDATA[You appear to have tried to save an empty new #!string!brand_0003!#.<br />At minimum, the '<span class="highlight_ready">#!string!row_0005!#</span>', '<span class="highlight_ready">#!string!row_0006!#</span> and '<span class="highlight_ready">#!string!row_0007!#</span>' must be specified.]]></key>
@@ -1091,7 +1229,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
 		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
-		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="https://alteeve.ca/w/Support" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
+		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
 		<key name="message_0047"><![CDATA[I was asked to check the power staus of <span class="fixed_width">#!variable!node!#</span> via it's peer <span class="fixed_width">#!variable!peer!#</span>, but the power check command is empty.<br />This is likely a program error.]]></key>
 		<key name="message_0048"><![CDATA[I was trying to resolve the host name <span class="fixed_width">#!variable!target_host!#</span> but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your <span class="fixed_width">/etc/hosts</span> file?]]></key>
@@ -1319,6 +1457,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
+		<key name="message_0272"><![CDATA[Gathering information...]]></key>
 		<key name="message_0273">This could take a minute to complete.</key>
 		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and we will try to help fix this.]]></key>
 		<key name="message_0275"><![CDATA[Unable to connect to either node in the #!string!brand_0003!#.]]></key>
@@ -1332,7 +1471,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"></key>	<!-- free -->
+		<key name="message_0286"><![CDATA[The #!string!brand_0004!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# dashboard, so you're all set!]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
@@ -1397,46 +1536,96 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
 		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
 		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
-		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, select which node to run the installer against.]]></key>
+		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />It's data will be used to populate the other node (overriding manifest values as needed).]]></key>
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
 		<key name="message_0353">Are you replacing a node in an existing #!string!brand_0004!#?</key>
 		<key name="message_0354"><![CDATA[If so, please select "<span class="highlight_ready_bold">#!string!button_0051!#</span>" below.<br /><br />The other node must be online and reachable. It will be queried and if anything in the install manifest does not match up with what is found on the peer, the peer's values will be used.]]></key>
 		<key name="message_0355"><![CDATA[If this is a fresh install, please select "<span class="highlight_ready_bold">#!string!button_0050!#</span>" below.<br /><br />Both nodes must be available for the configuration to run. Storage will be initialized, causing <span class="highlight_warning_bold">any existing data to be lost</span>, on node 1 and fresh configuration files will be written.]]></key>
-		<key name="message_0356"><![CDATA[Both nodes will be configured, new configuration files will be written and <span class="highlight_warning_bold">any existing data will be erased</span>.]]></key>
+		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
 		<key name="message_0358"><![CDATA[The [<span class="fixed_width">#!variable!node!#</span>] node's ssh fingerprint conflicts with another recorded key.<br />The problem is in the file: [<span class="fixed_width">#!variable!file!#</span>] at line: [<span class="fixed_width">#!variable!line!#</span>].<br /><br />#!string!brand_0011!#]]></key>
 		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
 		<key name="message_0360"><![CDATA[I am sorry, but the host key identification failed for node: [<span class="fixed_width">#!variable!node!#</span>]. #!string!brand_0011!#]]></key>
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
-		<key name="message_0363"><![CDATA[It would appear that the node is already in a cluster, or a previous install attempt made it very close to the end.<br />If you really want to re-run the install, please manually delete the file(s) <span class="code">/etc/cluster/cluster.conf</span> from each node.]]></key>
-		<key name="message_0364"><![CDATA[I am sorry, but both nodes must have free space.]]></key>
+		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this file properly in place, installation can not proceed.]]></key>
+		<key name="message_0364"><![CDATA[]]></key>	<!-- free -->
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
 		<key name="message_0367"><![CDATA[Failed to add the AN!Repo.<br />This is not strictly required, but may mean some packages will not be installed automatically.]]></key>
-		<key name="message_0368"><![CDATA[There appears to be no internet connection, and the program <span class="code">parted</span> is not installed.]]></key>
+		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
 		<key name="message_0371"><![CDATA[One or more packages failed to install.<br />It looks like you're using Red Hat, have you registered your nodes?<br />#!string!message_0372!#]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
-		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="fixed_width">#!variable!size!#</span>] or more.]]></key>
-		<key name="message_0375">Checks complete.</key>
+		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="highlight_detail">#!variable!size!#</span>] or more.<br />Will try to proceed, though partitioning may fail later.]]></key>
+		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376">Not needed</key>
 		<key name="message_0377">Already registered</key>
 		<key name="message_0378">Registration needed</key>
-		<key name="message_0379">Yes, but no Internet</key>
+		<key name="message_0379">No, but no Internet</key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0383"><![CDATA[I was asked to remap the network for a node I do not recognize.<br />(Sorry about that)]]></key>
 		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
-		<key name="message_0386"></key>
-		<key name="message_0387"></key>
-		<key name="message_0388"></key>
-		<key name="message_0389"></key>
-		<key name="message_0390"></key>
+		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
+		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
+		<key name="message_0388"><![CDATA[Unable to partition the drives on the nodes!<br />Both nodes should have matching disk configurations, but the largest disk on node 1 is: [<span class="fixed_width">#!variable!disk1!#</span>] and on node 2 it is: [<span class="fixed_width">#!variable!disk2!#</span>]]]></key>
+		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
+		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
+		<key name="message_0391"><![CDATA[I was asked to create a partition, but I had to shrink the partition's end size to make it fit.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], original end: [<span class="fixed_width">#!variable!old_end!#</span>], new end: [<span class="fixed_width">#!variable!new_end!#</span>].]]></key>
+		<key name="message_0392"><![CDATA[By my calculations, we'll need more space on node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>] than is available.<br />Needed: [<span class="fixed_width">#!variable!space_needed!#</span>] but only have: [<span class="fixed_width">#!variable!free_space!#</span>].<br />We'll try to continue and adjust the space used by the last partition to fit.]]></key>
+		<key name="message_0393"><![CDATA[There is a very odd problem with partitioning node: [<span class="fixed_width">#!variable!node!#</span>]'s disk: [<span class="fixed_width">#!variable!disk!#</span>].<br />The second storage pool appears to exist already, but the first one does not. Did someone manually delete it?]]></key>
+		<key name="message_0394"><![CDATA[I tried to create the DRBD meta-data on node: [<span class="fixed_width">#!variable!node!#</span>]'s partition: [<span class="fixed_width">#!variable!partition!#</span>], but it appears to have failed.]]></key>
+		<key name="message_0395"><![CDATA[I found existing partitions for storage pool one on both nodes, but they are not the same size.<br />Installation will attempt to continue, but it might fail later when trying to start DRBD.<br />Node 1: [<span class="fixed_width">#!variable!node1!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node1_device!#</span>] is <span class="fixed_width">#!variable!node1_size!#</span>] and Node 2: [<span class="fixed_width">#!variable!node2!#</span>]'s pool 1 device: [<span class="fixed_width">#!variable!node2_device!#</span>] is <span class="fixed_width">#!variable!node2_size!#</span>]]]></key>
+		<key name="message_0396"><![CDATA[I wasn't able to find enough free space to create either storage pool.<br />I need at least: [<span class="fixed_width">#!variable!minimum_space!#</span>] but I only have: [<span class="fixed_width">#!variable!available_space!#</span>].]]></key>
+		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
+		<key name="message_0398"><![CDATA[Configuration of DRBD (the replicated storage used in the #!string!brand_0003!#) failed.<br />Proceeding would could put existing data at risk!]]></key>
+		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
+		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
+		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
+		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
+		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
+		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />#!string!brand_0014!#]]></key>
+		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">install target</a>.]]></key>
+		<key name="message_0406"><![CDATA[The "Install Target" service is currently running.]]></key>
+		<key name="message_0407"><![CDATA[The "Install Target" service is currently stopped.]]></key>
+		<key name="message_0408"><![CDATA[The "Install Target" service is in an unknown state ('<span class="code">/etc/init.d/dhcpd status</span>' returns an unexpected return code).<br />#!string!brand_0014!#]]></key>
+		<key name="message_0409"><![CDATA[Enabling the "Install Target" feature may cause network problems!<br /><br />By default, #!string!brand_0002!# tries to minimize the risk of interfering with your network<br />by enabling the install manifest feature on the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0005!#</a> only.<br />However, if the confiuration was manually changed, or if your network doesn't use <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">VLANs</a> to isolate the #!string!brand_0005!#,<br />this feature could interrupt other machines on your network when they request a <a href="https://alteeve.ca/w/DHCP_on_an_RPM-based_OS" target="_new">DHCP</a> lease renewal.<br />Likewise, if the #!string!brand_0005!# is not isolated, your new node or #!string!brand_0002!# machine<br />may get an <a href="https://alteeve.ca/w/IP" target="_new">IP address</a> from another machine on your network and fail to install off of this #!string!brand_0002!# machine.<br />If you're having trouble with this feature, please feel free to <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
+		<key name="message_0410"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
+		<key name="message_0411"><![CDATA[The "Install Target" function is now enabled. Please remember to turn this off once you are done.<br />Remember to <a href="https://alteeve.ca/w/Configuring_Network_Boot_on_Fujitsu_Primergy" target="_new">network boot</a> your new machine using the one of the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0006!#</a>-connected interfaces.]]></key>
+		<key name="message_0412"><![CDATA[Failed to start the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be started, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
+		<key name="message_0413"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log!#</span>]. #!string!brand_0014!#]]></key>
+		<key name="message_0414"><![CDATA[The "Install Target" function has been stopped.]]></key>
+		<key name="message_0415"><![CDATA[Failed to stop the "Install Target" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
+		<key name="message_0416"><![CDATA[The "Install Target" service depends on '<span class="code">dhcpd</span>' which is configured via the: [<span class="code">#!conf!path::dhcpd_conf!#</span>] file.<br />It looks like the directory this file is in can't be read by the system user with user ID: [<span class="code">#!conf!sys::striker_uid!#].<br />#!string!brand_0014!#]]></key>
+		<key name="message_0417"><![CDATA[It looks like this #!string!brand_0002!# dashboard has not yet been configured.<br />Click on "<span class="highlight_ready">#!string!button_0059!#</span>" to configure!]]></key>
+		<key name="message_0418"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br />Is this really what you want to do?]]></key>
+		<key name="message_0419"><![CDATA[Cold-Stopping the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# was aborted because it is already offline, or connection was lost.]]></key>
+		<key name="message_0420"><![CDATA[Starting the graceful shut down of the [<span class="highlight_detail">#!variable!server!#</span>] server...<br />If it doesn't shut down promptly, please log in and, if necessary, initiate the shut down.]]></key>
+		<key name="message_0421"><![CDATA[Failed to graceful shut down: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
+		<key name="message_0422"><![CDATA[All servers are now offline. Proceeding with withdrawl...]]></key>
+		<key name="message_0423"><![CDATA[Cold-stop has been aborted.]]></key>
+		<key name="message_0424"><![CDATA[The node: [<span class="highlight_detail">#!variable!node!#</span>] is already withdrawn.]]></key>
+		<key name="message_0425"><![CDATA[Starting to withdraw: [<span class="highlight_detail">#!variable!node!#</span>] from the cluster.<br />Please be patient! This can sometimes take a few minutes!]]></key>
+		<key name="message_0426"><![CDATA[One of the nodes didn't cleanly withdraw from the cluster.]]></key>
+		<key name="message_0427"><![CDATA[Both nodes have been withdrawn! Powering down now...]]></key>
+		<key name="message_0428"><![CDATA[Power-down initiated. The node should offline in a few moments.]]></key>
+		<key name="message_0429"><![CDATA[Cold-Stop completed successfully!]]></key>
+		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
+		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
+		<key name="message_0432"><![CDATA[]]></key>
+		<key name="message_0433"><![CDATA[]]></key>
+		<key name="message_0434"><![CDATA[]]></key>
+		<key name="message_0435"><![CDATA[]]></key>
+		<key name="message_0436"><![CDATA[]]></key>
+		<key name="message_0437"><![CDATA[]]></key>
+		<key name="message_0438"><![CDATA[]]></key>
+		<key name="message_0439"><![CDATA[]]></key>
+		<key name="message_0440"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
@@ -1494,7 +1683,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2014]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 	</lang>

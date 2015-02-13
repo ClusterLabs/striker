@@ -10,24 +10,16 @@ use 5.010;
 use version;
 our $VERSION = '0.0.1';
 
-use English '-no_match_vars';
 use Carp;
-
+use Const::Fast;
+use English '-no_match_vars';
 use File::Basename;
 use File::Temp 'tempfile';
-use FileHandle;
-use IO::Select;
-use Time::Local;
-use FindBin qw($Bin);
 
-use Const::Fast;
-
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw( owner );
-
-sub BUILD {
-
-    $MAIL::Sendmail::mailcfg{from} = 'tom@alteeve.ca';
-}
 
 # ======================================================================
 # CONSTANTS
@@ -37,10 +29,11 @@ const my $USRBIN => '/usr/bin/mailx';
 const my $BIN    => '/bin/mailx';
 
 # ======================================================================
-# Subroutines
+# METHODS
 #
 
-# ......................................................................
+# ----------------------------------------------------------------------
+# Save the body of the email to a file.
 #
 sub write_to_temp {
     my ($msgs) = @_;
@@ -52,6 +45,10 @@ sub write_to_temp {
     return $file;
 }
 
+# ----------------------------------------------------------------------
+# The mailx program is either in /usr/bin/mailx or in /bin/mailx. Find
+# the one that exists, and use it to send an email.
+#
 sub send_msg {
     my ( $file, $to, $subject ) = @_;
 
@@ -68,6 +65,10 @@ sub send_msg {
     return system $cmd;
 }
 
+# ----------------------------------------------------------------------
+# Generate a message, save it to a file, send off the email, and finally
+# delete the file.
+#
 sub dispatch {
     my $self = shift;
     my ( $msgs, $listener, $sumweight ) = @_;
@@ -99,51 +100,41 @@ __END__
 
 =head1 NAME
 
-     Alerts.pm - package to handle alerts
+     Email.pm - package to handle email messages.
 
 =head1 VERSION
 
-This document describes Alerts.pm version 0.0.1
+This document describes Email.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use AN::Alerts;
-    my $scanner = AN::Scanner->new({agents => $agents_data });
-
+    use AN::Email;
+    my $email = AN::Email->new();
+    $email->dispatch( \@msgs, $listener, $weight );
 
 =head1 DESCRIPTION
 
-This module provides the Alerts handling system. It is intended for a
-time-based loop system.  Various subsystems ( packages, subroutines )
-report problems of various severity during a single loop. At the end,
-a single report email is sent to report all new errors. Errors are
-reported once, continued existence of the problem is taken for granted
-until the problem goes away. When an alert ceases to be a problem, a
-new message is sent, but other problems continue to be monitored.
+This module provides a mechanism for sending email messages.
 
 =head1 METHODS
 
-An object of this class represents an alert tracking system.
+The module provides a single method, B<dispatch>, which takes three arguments:
 
 =over 4
 
-=item B<new>
+=item B<msgs array_ref>
 
-The constructor takes a hash reference or a list of scalars as key =>
-value pairs. The key list must include :
+An array of strings, aka paragraphs, to send to the recipient.
 
-=over 4
+=item B<listener recipient>
 
-=item B<agentdir>
+The email address defining a recipient.
 
-The directory that is scanned for scanning plug-ins.
+=item B<weighted sum>
 
-=item B<rate>
-
-How often the loop should scan.
+Weighted sum of all alerts.
 
 =back
-
 
 =back
 
@@ -151,9 +142,23 @@ How often the loop should scan.
 
 =over 4
 
+=item B<Carp> I<core>
+
+Report errors as occuring at caller site.
+
+=item B<Const::Fast>
+
+Provides fast constants.
+
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
+
+=item B<File::Basename> I<core>
+
+Parses paths and file suffixes.
+
+
 
 =item B<version> I<core since 5.9.0>
 
@@ -167,9 +172,9 @@ Parses paths and file suffixes.
 
 Provides access to FileHandle / IO::* attributes.
 
-=item B<FindBin> I<core>
+=item B<File::Temp> I<core>
 
-Determine which directory contains the current program.
+Return name and handle of a temporary file safely.
 
 =back
 

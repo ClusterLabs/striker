@@ -6,19 +6,16 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
-use Carp;
-
-use File::Basename;
-use FileHandle;
-use IO::Select;
-use Time::Local;
-use FindBin qw($Bin);
-use Module::Load qw(load);
 use Const::Fast;
+use English '-no_match_vars';
+use File::Basename;
+use Module::Load qw(load);
 
+# ======================================================================
+# Class Attributes
+#
 use Class::Tiny qw( id language level mode name updated added_by
     contact_info db db_type dispatcher owner);
 
@@ -45,14 +42,11 @@ const my $LISTENS_TO => {
                         };
 
 # ======================================================================
-# Subroutines
-#
-
-# ======================================================================
 # Methods
 #
 
-# ......................................................................
+# ----------------------------------------------------------------------
+# Has the dispatcher been created yet for this Listener?
 #
 sub has_dispatcher {
     my $self = shift;
@@ -60,6 +54,9 @@ sub has_dispatcher {
     return $self->dispatcher();
 }
 
+# ======================================================================
+# Load the dispatcher for this listener.
+#
 sub add_dispatcher {
     my $self = shift;
 
@@ -70,6 +67,9 @@ sub add_dispatcher {
     return;
 }
 
+# ======================================================================
+# Delegate to the dispatcher to handle alert messages.
+#
 sub dispatch_msg {
     my $self = shift;
     my ( $msgs, $sumweight ) = @_;
@@ -90,48 +90,35 @@ __END__
 
 =head1 NAME
 
-     Alerts.pm - package to handle alerts
+     Listener.pm - package to handle a single alert listener
 
 =head1 VERSION
 
-This document describes Alerts.pm version 0.0.1
+This document describes Listener.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use AN::Alerts;
-    my $scanner = AN::Scanner->new({agents => $agents_data });
-
+    use AN::Listener;
+    my $listener = AN::Listener->new($args);
+    $listener->dispatch_msg( \@msgs, $sum );
 
 =head1 DESCRIPTION
 
-This module provides the Alerts handling system. It is intended for a
-time-based loop system.  Various subsystems ( packages, subroutines )
-report problems of various severity during a single loop. At the end,
-a single report email is sent to report all new errors. Errors are
-reported once, continued existence of the problem is taken for granted
-until the problem goes away. When an alert ceases to be a problem, a
-new message is sent, but other problems continue to be monitored.
+This module defines a class to handle alert messages addressed to a
+single recipient. Recipients are listed in the alert_listeners table,
+each record defining a single recipient. Each record lists a single
+dispatch mode, which is the mechanism to actually deliver the message.
 
 =head1 METHODS
 
-An object of this class represents an alert tracking system.
+An object of this class delivers messages to a single listener using a
+single transmission mechanism..
 
 =over 4
 
-=item B<new>
+=item B<dispatch_msg msgs sum>
 
-The constructor takes a hash reference or a list of scalars as key =>
-value pairs. The key list must include :
-
-=over 4
-
-=item B<agentdir>
-
-The directory that is scanned for scanning plug-ins.
-
-=item B<rate>
-
-How often the loop should scan.
+Deliver a set of message with specified weighted sum to the recipient.
 
 =back
 
@@ -142,29 +129,25 @@ How often the loop should scan.
 
 =over 4
 
+=item B<Const::Fast>
+
+Provide fast constants.
+
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
-
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
 
 =item B<File::Basename> I<core>
 
 Parses paths and file suffixes.
 
-=item B<FileHandle> I<code>
-
-Provides access to FileHandle / IO::* attributes.
-
-=item B<FindBin> I<core>
-
-Determine which directory contains the current program.
-
 =item B<Module::Load> I<core>
 
 Install modules at run-time, based on dynamic requirements.
+
+=item B<version> I<core>
+
+Parses version strings.
 
 =back
 
