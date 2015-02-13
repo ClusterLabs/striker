@@ -6,20 +6,14 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
 use Carp;
-
 use Const::Fast;
-use Cwd;
+use English '-no_match_vars';
 use File::Basename;
 use File::Spec::Functions 'catdir';
-use FileHandle;
-use FindBin qw($Bin);
-use IO::Select;
 use POSIX 'strftime';
-use List::MoreUtils;
 use Time::HiRes qw( time alarm sleep);
 use Time::Local;
 
@@ -31,16 +25,17 @@ use AN::Listener;
 use AN::MonitorAgent;
 use AN::Unix;
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
+
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
-# is_recent == 0              is_running == 0       is_running == 1
-const my @OLD_PROC_MSG => (
-    [ 'OLD_PROCESS_CRASH', 'OLD_PROCESS_STALLED' ],
-
-    # is_recent == 1              is_running == 0       is_running == 1
-    [ 'OLD_PROCESS_RECENT_CRASH', undef ], );
-
-use subs 'alert_num';    # manually define accessor.
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+# 'alert_num' accessor is defined later. Initialize it to the letter
+# 'a' and increment the value each time it is called.
+#
+use subs 'alert_num';
 
 use Class::Tiny qw(
     agentdir     commandlineargs confdata confpath dashboard
@@ -75,14 +70,30 @@ use Class::Tiny qw(
     sumweight => sub {0}
        };
 
-# ----------------------------------------------------------------------
+# ======================================================================
+# CONSTANTS
+#
+# is_recent == 0              is_running == 0       is_running == 1
+const my @OLD_PROC_MSG => (
+    [ 'OLD_PROCESS_CRASH', 'OLD_PROCESS_STALLED' ],
+
+    # is_recent == 1              is_running == 0       is_running == 1
+    [ 'OLD_PROCESS_RECENT_CRASH', undef ], );
+
+# ======================================================================
 # METHODS
+#
+# ----------------------------------------------------------------------
+# Are we associated with a terminal, or is this a background or cron job?
 #
 sub interactive {
     my $self = shift;
     return -t STDIN && -t STDOUT;
 }
 
+# ----------------------------------------------------------------------
+# Replace STDOUT / STDERR with a log file, .
+#
 sub begin_logging {
     my $self = shift;
     close STDOUT;
@@ -92,6 +103,9 @@ sub begin_logging {
     open STDERR, '>&STDOUT';    # '>&', is followed by a file handle.
 }
 
+# ----------------------------------------------------------------------
+# Set a flag to exit the timed loop.
+#
 sub restart {
     my $self = shift;
 
@@ -99,6 +113,9 @@ sub restart {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Restart the program with the same arguments.
+#
 sub restart_scanCore_now {
     my $self = shift;
 
@@ -108,6 +125,9 @@ sub restart_scanCore_now {
         or die "Failed: $!.\n";
 }
 
+# ----------------------------------------------------------------------
+# Read the configuration file.
+#
 sub read_configuration_file {
     my $self = shift;
 
@@ -119,6 +139,9 @@ sub read_configuration_file {
     return;
 }
 
+# ----------------------------------------------------------------------
+# CLASS CONSTRUCTOR
+#
 sub BUILD {
     my $self = shift;
     my ($args) = @_;
@@ -138,7 +161,7 @@ sub BUILD {
 
     my @files = split ' ', $self->confdata->{ignorefile}
         if exists $self->confdata->{ignorefile};
-    $self->ignore({ map { $_ => 1 } @files });
+    $self->ignore( { map { $_ => 1 } @files } );
 
     $self->monitoragent( AN::MonitorAgent->new(
                                                { core     => $self,
@@ -201,7 +224,9 @@ const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
 # ======================================================================
 # Subroutines
 #
-
+# ----------------------------------------------------------------------
+# Determine whether it is quitting time.
+#
 sub run_until_data_is_valid {
     my ($value) = @_;
 
@@ -217,8 +242,12 @@ sub run_until_data_is_valid {
              && $3 < $SECONDS_IN_A_MINUTE );
 }
 
-# ......................................................................
+# ======================================================================
 # Private Accessors
+#
+# ----------------------------------------------------------------------
+# Add and remove elements from the process list, representing programs
+# found and removed from the agents directory.
 #
 sub add_processes {
     my $self = shift;
@@ -228,6 +257,7 @@ sub add_processes {
     return;
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub drop_processes {
     my $self = shift;
     my (@value) = @_;
@@ -238,6 +268,10 @@ sub drop_processes {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Add and remove elements from the agents list, representing running
+# agent processes.
+#
 sub add_agents {
     my $self = shift;
     my (@values) = @_;
@@ -246,6 +280,7 @@ sub add_agents {
     return;
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub drop_agents {
     my $self = shift;
     my (@values) = @_;
@@ -255,23 +290,8 @@ sub drop_agents {
     return;
 }
 
-sub process_id {
-    my $self = shift;
-    my ( $dbh, $new_value ) = @_;
-
-    die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) not enough args." )
-        if scalar @_ <= 1;
-    die( __PACKAGE__ . " method _process_id( \$dbh, \$id ) too many args." )
-        if scalar @_ > 3;
-
-    return $self->{process_id}{$dbh} if not defined $new_value;
-
-    $self->{process_id}{$dbh} = $new_value;
-    return;
-}
-
-# ......................................................................
-# Private Methods
+# ----------------------------------------------------------------------
+# Create a AN::FlagFile object
 #
 sub create_flagfile {
     my $self = shift;
@@ -286,30 +306,37 @@ sub create_flagfile {
     $self->flagfile( AN::FlagFile->new($args) );
 }
 
+# ----------------------------------------------------------------------
+# Delegate to FlagFile methods.
+#
 sub create_pid_file {
     my $self = shift;
 
     $self->flagfile()->create_pid_file();
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub delete_pid_file {
     my $self = shift;
 
     $self->flagfile()->delete_pid_file();
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub touch_pid_file {
     my $self = shift;
 
     $self->flagfile()->touch_pid_file();
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub old_pid_file_exists {
     my $self = shift;
 
     return $self->flagfile()->old_pid_file_exists();
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub pid_file_is_recent {
     my $self = shift;
 
@@ -318,6 +345,7 @@ sub pid_file_is_recent {
         && $file_age < $self->rate * $self->max_loops_unrefreshed;
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub create_marker_file {
     my $self = shift;
     my ( $tag, $data ) = @_;
@@ -325,12 +353,21 @@ sub create_marker_file {
     $self->flagfile()->create_marker_file( $tag, $data );
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub touch_marker_file {
     my $self = shift;
 
     $self->flagfile()->touch_marker_file();
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+sub find_marker_files {
+    my $self = shift;
+
+    return $self->flagfile()->find_marker_files(@_);
+}
+
+# ----------------------------------------------------------------------
 # Look up whether the process id specified in the pidfile refers to
 # a running process, make sure it's the same name as we are. Otherwise
 # could be another process re-using that pid.
@@ -349,7 +386,8 @@ sub pid_file_process_is_running {
     return $previous && $previous eq $PROG;
 }
 
-# return true if less than 5 minutes until midnight, otherwise return
+# ----------------------------------------------------------------------
+# Return true if less than 5 minutes until midnight, otherwise return
 # false.  In fact, the 'true' value is an arrayref containing the
 # current hour, minute and second time, to avoid a second call to
 # localtime.
@@ -363,6 +401,7 @@ sub almost_quitting_time {
     return;
 }
 
+# ----------------------------------------------------------------------
 # Given the current seconds, minutes, hour, time remaining until
 # midnight is (60 - current minute) minutes plus (60 - current
 # seconds) seconds. Multiple the minutes by 60 to convert to seconds.
@@ -376,6 +415,7 @@ sub sleep_until_quitting_time {
     return;
 }
 
+# ----------------------------------------------------------------------
 sub tell_old_job_to_quit {
     my $self = shift;
     my ($old_pid) = @_;
@@ -387,9 +427,8 @@ sub tell_old_job_to_quit {
 }
 
 # ......................................................................
-# Methods
+# Delegate announcement of server shutdown.
 #
-
 sub tell_db_Im_dying {
     my $self = shift;
 
@@ -397,12 +436,19 @@ sub tell_db_Im_dying {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Fetch list of alert listeners.
+#
 sub fetch_alert_listeners {
     my $self = shift;
 
     return $self->dbs()->fetch_alert_listeners($self);
 }
 
+# ----------------------------------------------------------------------
+# Does the status from evaluating the earlier process's pid file indicate
+# that this instance should exit?
+#
 sub ok_to_exit {
     my $self = shift;
     my ($status) = @_;
@@ -410,12 +456,17 @@ sub ok_to_exit {
     return $status eq $EXIT_OK;
 }
 
+# ----------------------------------------------------------------------
+# Delegate to Alerts object - set or clear an alert, handle all  current
+# alerts.
+#
 sub set_alert {
     my $self = shift;
 
     $self->alerts()->set_alert(@_);
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub clear_alert {
     my $self = shift;
 
@@ -423,6 +474,7 @@ sub clear_alert {
     return;
 }
 
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 sub handle_alerts {
     my $self = shift;
 
@@ -431,6 +483,10 @@ sub handle_alerts {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Evaluate presence of absence of pid file from previous instance, age
+# of file, verify process is running.
+#
 sub check_for_previous_instance {
     my $self = shift;
 
@@ -474,6 +530,9 @@ sub check_for_previous_instance {
     return $RUN;
 }
 
+# ----------------------------------------------------------------------
+# Create a DBS object and have it connect to databases.
+#
 sub connect_dbs {
     my $self = shift;
     my ($node_args) = @_;
@@ -491,6 +550,9 @@ sub connect_dbs {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Delegate - set node table entry for this process to status 'halted'.
+#
 sub finalize_node_table_status {
     my $self = shift;
 
@@ -498,15 +560,7 @@ sub finalize_node_table_status {
     return;
 }
 
-sub process {
-    my $self = shift;
-    my ($fh) = @_;
-
-    my ($text) = <$fh>;
-    print "Read '$text'.\n";
-    return;
-}
-
+# ----------------------------------------------------------------------
 # Want to launch all agents, except don't launch the node_monitor,
 # except on the dashboard, only when a node server has unespectedly
 # gone down.
@@ -536,12 +590,13 @@ sub launch_new_agents {
 AGENT:
     for my $agent (@$new) {
         next AGENT
-            if (exists $self->ignore()->{$agent}  # ignore these agents
-                && ! ($extra	                  # call-by-call override
-		      && 'HASH' eq ref $extra
-		      && exists $extra->{ignore_ignorefile}
-		      && $extra->{ignore_ignorefile}{$agent}
-		));
+            if (
+            exists $self->ignore()->{$agent}    # ignore these agents
+            && !(
+                $extra                                   # call-by-call override
+                && 'HASH' eq ref $extra
+                && exists $extra->{ignore_ignorefile}
+                && $extra->{ignore_ignorefile}{$agent} ) );
         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
         say "launching: @args." if $self->verbose;
         my $pid = AN::Unix::new_bg_process(@args);
@@ -553,6 +608,10 @@ AGENT:
     return \@new_agents;
 }
 
+# ----------------------------------------------------------------------
+# Interface routine - check for changes in the agents directorry, and
+# handle additions or deletions.
+#
 sub scan_for_agents {
     my $self = shift;
 
@@ -583,6 +642,9 @@ sub scan_for_agents {
     return $retval;
 }
 
+# ----------------------------------------------------------------------
+# Delete all metadata files.
+#
 sub clean_up_metadata_files {
     my $self = shift;
 
@@ -597,6 +659,12 @@ sub clean_up_metadata_files {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Public interface to the scanning process. This is the routine
+# invoked to run the main loop. It performs some initialization and
+# enters the almost-infite loop. When it exits, it performs some final
+# clean-up.
+#
 sub run {
     my $self = shift;
 
@@ -606,22 +674,19 @@ sub run {
     $self->connect_dbs();
     $self->create_pid_file();
 
-    #    $self->handle_alerts();	# process any alerts from initialization stage
-
     # process until quitting time
     #
     $self->run_timed_loop_forever();
 
     # clean up and exit.
     #
-
     $self->finalize_node_table_status();
     $self->delete_pid_file();
 
     return;
 }
 
-# ......................................................................
+# ----------------------------------------------------------------------
 # If the current time is between 00:00:00 and the specified quitting
 # time, quitting time is today; between quitting time and 23:59:59 + 1
 # second, quitting time is tomorrow.
@@ -657,6 +722,11 @@ sub calculate_end_epoch {
     return $end_epoch;
 }
 
+# ----------------------------------------------------------------------
+# Print a message identifying the loop iteration and run time. In
+# verbose mode, add a separator to differentiate distinct loop
+# iterations.
+#
 sub print_loop_msg {
     my $self = shift;
     my ( $elapsed, $pending ) = @_;
@@ -673,12 +743,10 @@ sub print_loop_msg {
     return;
 }
 
-sub find_marker_files {
-    my $self = shift;
-
-    return $self->flagfile()->find_marker_files(@_);
-}
-
+# ----------------------------------------------------------------------
+# Interface routine to drop processes for agents which have been
+# removed from the agents directory.
+#
 sub handle_deletions {
     my $self = shift;
     my ($deletions) = @_;
@@ -688,6 +756,9 @@ sub handle_deletions {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Fetch node entries for currently running agent processes.
+#
 sub fetch_node_entries {
     my $self = shift;
     my ($pids) = shift;
@@ -697,6 +768,12 @@ sub fetch_node_entries {
     return $nodes;
 }
 
+# ----------------------------------------------------------------------
+# Wait to read metadata file for all newly launched agents. If not all
+# of them have created a file by the end of reading all the files,
+# sleep one second and look for additional files. Give up after 15
+# seconds.
+#
 sub wait_for_all_metadata_files {
     my $self = shift;
     my ( $additions, $tag ) = @_;
@@ -723,6 +800,10 @@ sub wait_for_all_metadata_files {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Fetch node table entries for all currently running agent processes.
+# Update node table id archives.
+#
 sub update_process_node_id_entries {
     my $self = shift;
 
@@ -746,6 +827,11 @@ sub update_process_node_id_entries {
     }
 }
 
+# ----------------------------------------------------------------------
+# For all newly launched agents, fetch the metadata file, archive in
+# the processes table as well as in the AN::Alerts object. Update node
+# table id entries.
+#
 sub handle_additions {
     my $self = shift;
     my ($additions) = @_;
@@ -776,6 +862,10 @@ FILEPATH:
     return $N;
 }
 
+# ----------------------------------------------------------------------
+# Handle changes in the Agents directory by invoking handle_additions()
+# and handle_deletions().
+#
 sub handle_changes {
     my $self = shift;
     my ($changes) = @_;
@@ -789,6 +879,9 @@ sub handle_changes {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Ask DBS to fetch current alert table entries.
+#
 sub fetch_alert_data {
     my $self = shift;
     my ($proc_info) = @_;
@@ -796,15 +889,10 @@ sub fetch_alert_data {
     return $self->dbs()->fetch_alert_data($proc_info);
 }
 
-sub lookup_process {
-    my $self = shift;
-    my ($node_id) = @_;
-
-    for my $process ( $self->processes ) {
-
-    }
-}
-
+# ----------------------------------------------------------------------
+# For a given alert table record, set an alert if it has a 'WARNING'
+# or 'CRISIS' record, otherwise clear the associated alert.
+#
 sub detect_status {
     my $self = shift;
     my ( $process, $db_record, ) = @_;
@@ -841,6 +929,9 @@ sub detect_status {
     return;
 }
 
+# ----------------------------------------------------------------------
+# If an alert table record is a 'summary', update the weighted sum.
+#
 sub process_summary_record {
     my $self = shift;
     my ( $process, $alert ) = @_;
@@ -852,28 +943,20 @@ sub process_summary_record {
         if $weighted;
 }
 
+# ----------------------------------------------------------------------
+# Reset weighted sum to zero in preparation for next loop interation.
+#
 sub reset_summary_weight {
     my $self = shift;
 
     $self->sumweight(0);
 }
 
-sub get_latest_user_intervention {
-    my $self = shift;
-    my ($host) = @_;
-
-    my $intervention = $self->dbs->get_latest_user_intervention;
-    return $intervention;
-}
-
-sub handle_dead_server {
-    my $self = shift;
-    my ($alert) = @_;
-
-    my $intervention = $self->get_latest_user_intervention( $alert->value );
-
-}
-
+# ----------------------------------------------------------------------
+# For each running agent process, fetch all recent alert table
+# entries.  Update weighted sum based on summary records, and pass the
+# other records to the detect_status() method.
+#
 sub process_agent_data {
     my $self = shift;
 
@@ -915,6 +998,7 @@ PROCESS:
     return;
 }
 
+# ----------------------------------------------------------------------
 # Things to do in the core for a $PROG core object
 #
 sub loop_core {
@@ -935,9 +1019,10 @@ sub loop_core {
     return;
 }
 
-# ......................................................................
-# run a loop once every $options->{rate} seconds, to check $options->{agentdir}
-# for new files, ignoring files with a suffix listed in $options->{ignore}
+# ----------------------------------------------------------------------
+# Run a loop once every $options->{rate} seconds, to check
+# $options->{agentdir} for new files, ignoring files with a suffix
+# listed in $options->{ignore}
 #
 sub run_timed_loop_forever {
     my $self = shift;
@@ -999,7 +1084,7 @@ This document describes Scanner.pm version 0.0.1
 
     use AN::Scanner;
     my $scanner = AN::Scanner->new();
-
+    $scanner->run();
 
 =head1 DESCRIPTION
 
@@ -1008,53 +1093,62 @@ HA system to ensure the system is working properly.
 
 =head1 METHODS
 
-An object of this class represents a scanner object.
-
-=over 4
-
-=item B<new>
-
-The constructor takes a hash reference or a list of scalars as key =>
-value pairs. The key list must include :
-
-=over 4
-
-=item B<agentdir>
-
-The directory that is scanned for scanning plug-ins.
-
-=item B<rate>
-
-How often the loop should scan.
-
-=back
-
-
-=back
+An object of this class represents a scanner object. Once an instance
+is created, the run() method is invoked. Subclasses can define their
+own interpretation of loop_core to define it's own interpretation of
+what should happen once each loop iteration.
 
 =head1 DEPENDENCIES
 
 =over 4
 
-=item B<English> I<core>
+=item B<Carp>
+
+Complain about user errors as if they occur in caller, rather than in
+the module.
+
+=item B<Const::Fast>
+
+Provides fast constants.
+
+=item B<English>
 
 Provides meaningful names for Perl 'punctuation' variables.
 
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
-
-=item B<File::Basename> I<core>
+=item B<File::Basename>
 
 Parses paths and file suffixes.
 
-=item B<FileHandle> I<code>
+=item B<File::Spec::Functions>
 
-Provides access to FileHandle / IO::* attributes.
+Portably perform operations on file names.
 
-=item B<FindBin> I<core>
+=item B<POSIX> 
 
-Determine which directory contains the current program.
+Provide date-time formatting routine C<strftime>.
+
+=item B<Time::HiRes>
+
+sub-second precision version of time, alarm & sleep,
+
+=item B<Time::Local>
+
+Parse hours, minutes, seconds to an epoch value. 
+
+=item B<version> I<core>
+
+Parses version strings.
+
+
+=item B<AN::Alerts>
+=item B<AN::Common>
+=item B<AN::DBS>
+=item B<AN::FlagFile>
+=item B<AN::Listener>
+=item B<AN::MonitorAgent>
+=item B<AN::Unix>
+
+Utilites and components for scanCore system.
 
 =back
 
