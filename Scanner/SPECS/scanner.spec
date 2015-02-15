@@ -27,7 +27,7 @@ Requires :      perl-List-MoreUtils
 Requires :      perl-Net-SNMP
 Requires :      perl-Net-SSH2
 Requires :      perl-Proc-Background
-Requires :      perl-Term-ReadKey
+Requires :      perl-TermReadKey
 Requires :      perl-Test-Output
 Requires :      perl-XML-Simple
 Requires :      perl-YAML
