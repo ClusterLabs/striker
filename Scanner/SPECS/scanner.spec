@@ -19,19 +19,20 @@ Source:         scanner.tar.gz
 PACKAGER:       Tom Legrady <tom@alteeve.ca> 
 BuildArch:      noarch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-Requires :      perl-Class-Tiny 
-Requires :      perl-Clone
-Requires :      perl-Const-Fast
-Requires :      perl-DBI
-Requires :      perl-List-MoreUtils
-Requires :      perl-Net-SNMP
-Requires :      perl-Net-SSH2
-Requires :      perl-Proc-Background
-Requires :      perl-Term-ReadKey
-Requires :      perl-Test-Output
-Requires :      perl-XML-Simple
-Requires :      perl-YAML
+Requires :      Class::Tiny 
+Requires :      Clone
+Requires :      Const::Fast
+Requires :      DBI
+Requires :      List::MoreUtils
+Requires :      Net::SNMP
+Requires :      Net::SSH2
+Requires :      Proc::Background
+Requires :      Term::ReadKey
+Requires :      Test::Output
+Requires :      XML::Simple
+Requires :      YAML
 BuildRequires:  perl
+BuildRequires:  perl-macros
 
 %description
 'scanner' is a system-monitoring package for HA systems. On the servers
