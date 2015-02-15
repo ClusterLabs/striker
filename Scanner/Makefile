@@ -58,7 +58,7 @@ $(RPMDIRS) :
 $(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
-files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
+files 	: scanner dashboard agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
 
 
@@ -79,6 +79,9 @@ $(SHUTDOWN): wrapper $(TOOLDIR)
 	chmod u+s  $(TOOLDIR)/$@;
 
 scanner	:
+	cp scanner $(BINDIR)
+
+dashboard :
 	cp scanner $(BINDIR)
 
 agents	: 
