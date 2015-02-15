@@ -1,4 +1,4 @@
-gpackage AN::RAID::Temperature;
+package AN::RAID::Temperature;
 
 use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
