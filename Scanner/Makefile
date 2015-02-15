@@ -97,7 +97,7 @@ messages:
 
 install: wrapper dirs libs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
-	    cp scanner wipmi_power  $(BINDIR);		\
+	    cp dashboard scanner wipmi_power  $(BINDIR);\
             chmod 777 /var/log/striker;			\
             chmod 777 /shared/status;			\
 	else						\
@@ -117,7 +117,7 @@ distclean: clean
 uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
 
-Scanner.files:
+Scanner.files: $(BINDIR) $(AGENTDIR) $(LIBDIR)
 	@echo "If you have to rebuild 'Scanner.files' list"
 	@echo "The first do a "make install", so the files"
 	@echo "are delivered to /usr/share/strike, etc. Then"
