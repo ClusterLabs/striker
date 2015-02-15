@@ -130,6 +130,8 @@ RPM: distclean $(RPMDIRS) $(RPMBUILD)
 test:
 	prove t/*.t
 
+tags:
+	ctags -e --language-force=perl scanner dashboard Agents/* t/*.t lib/AN/*.pm lib/AN/*/*.pm
 # ----------------------------------------------------------------------
 # End of file
 

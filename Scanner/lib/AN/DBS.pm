@@ -248,7 +248,7 @@ sub print_debug_msgs_re_current_db {
         warn "\$current_db->dbconf is undef" unless defined $cdb->dbconf;
         warn "\$current_db->dbconf is not a hashref."
             unless 'HASH' eq ref $cdb->dbconf;
-        warn "$current_db dbh isa ", ref $self->dbh, "\n";
+        warn "\$current_db dbh isa ", ref $self->dbh, "\n";
     }
     say "DBS::fetch_alert_data reading from @{[$cdb->dbconf->{host}]}.";
     return;
@@ -261,9 +261,10 @@ sub fetch_data {
     my $self = shift;
     my ($proc_info) = @_;
 
-    $self->print_debug_msgs_re_current_db( $self->dbs()->[ $self->current ] )
-        if $self->verbose;
+    my $current_db = $self->dbs()->[ $self->current ];
 
+    $self->print_debug_msgs_re_current_db( $current_db )
+        if $self->verbose;
     my $db_data = $current_db->fetch_alert_data($proc_info);
 
     return $db_data;
