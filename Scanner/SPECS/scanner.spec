@@ -17,7 +17,7 @@ Url:            https://alteeve.ca
 #Source:         http://github.com/digimer/striker/tree/scanner/Scanner
 Source:         scanner.tar.gz
 PACKAGER:       Tom Legrady <tom@alteeve.ca> 
-BuildArch:      noarch
+BuildArch:      x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires :      perl-Class-Tiny 
 Requires :      perl-Clone
