@@ -56,7 +56,7 @@ do so.
 %files -f %{name}.files
 %defattr(-,root,root,755)
 %attr(777,root,root) /var/log/striker
-%doc Doc/Writing_an_agent Doc/Writing_an_agent_by_extending_existing_perl_classes.
+%doc Docs/Writing_an_agent Docs/Writing_an_agent_by_extending_existing_perl_classes.
 %config /etc/striker/Config/db.conf
 %config /etc/striker/Config/ipmi.conf
 %config /etc/striker/Config/raid.conf
