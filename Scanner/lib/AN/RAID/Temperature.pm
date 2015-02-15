@@ -1,4 +1,4 @@
-package AN::RAID::Temperature;
+gpackage AN::RAID::Temperature;
 
 use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
@@ -8,6 +8,7 @@ use strict;
 use 5.010;
 
 use version;
+use English '-no_match_vars';
 our $VERSION = '1.0.0';
 
 use Data::Dumper;
