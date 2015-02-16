@@ -129,7 +129,18 @@ sub connect_dbs {
 
     return;
 }
+# ----------------------------------------------------------------------
+# Delegate to databases to load from file if there are unloaded records.
+#
+sub load_db_from_files {
+    my $self = shift;
 
+    for my $db ( @{ $self->dbs } ) {
+        $db->load_db_from_file
+            if $db->connected();
+    }
+    return;
+}
 # ----------------------------------------------------------------------
 # Called from AN::OneDB::fail_read, to handle a OneDB database
 # communication failure. The program restarts and connects to another
