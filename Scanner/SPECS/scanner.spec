@@ -17,22 +17,21 @@ Url:            https://alteeve.ca
 #Source:         http://github.com/digimer/striker/tree/scanner/Scanner
 Source:         scanner.tar.gz
 PACKAGER:       Tom Legrady <tom@alteeve.ca> 
-BuildArch:      noarch
+BuildArch:      x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-Requires :      Class::Tiny 
-Requires :      Clone
-Requires :      Const::Fast
-Requires :      DBI
-Requires :      List::MoreUtils
-Requires :      Net::SNMP
-Requires :      Net::SSH2
-Requires :      Proc::Background
-Requires :      Term::ReadKey
-Requires :      Test::Output
-Requires :      XML::Simple
-Requires :      YAML
+Requires :      perl-Class-Tiny 
+Requires :      perl-Clone
+Requires :      perl-Const-Fast
+Requires :      perl-DBI
+Requires :      perl-List-MoreUtils
+Requires :      perl-Net-SNMP
+Requires :      perl-Net-SSH2
+Requires :      perl-Proc-Background
+Requires :      perl-TermReadKey
+Requires :      perl-Test-Output
+Requires :      perl-XML-Simple
+Requires :      perl-YAML
 BuildRequires:  perl
-BuildRequires:  perl-macros
 
 %description
 'scanner' is a system-monitoring package for HA systems. On the servers
@@ -57,7 +56,7 @@ do so.
 %files -f %{name}.files
 %defattr(-,root,root,755)
 %attr(777,root,root) /var/log/striker
-%doc Doc/Writing_an_agent Doc/Writing_an_agent_by_extending_existing_perl_classes.
+%doc Docs/Writing_an_agent Docs/Writing_an_agent_by_extending_existing_perl_classes.
 %config /etc/striker/Config/db.conf
 %config /etc/striker/Config/ipmi.conf
 %config /etc/striker/Config/raid.conf
