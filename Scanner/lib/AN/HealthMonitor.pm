@@ -10,6 +10,7 @@ our $VERSION = '1.0.0';
 
 use Const::Fast;
 use English '-no_match_vars';
+use File::Basename;
 use File::Path 'make_path';
 
 # ======================================================================
@@ -167,6 +168,10 @@ Provide fast constants.
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
+
+=item B<File::Basename> I<core>
+
+Parse file paths into directory, filename and suffix.
 
 =item B<File::Path> I<core>
 
