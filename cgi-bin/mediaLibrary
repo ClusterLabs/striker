@@ -71,13 +71,13 @@ AN::Cluster::header($conf, "mediaLibrary");
 #AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
 if ($conf->{cgi}{cluster})
 {
-	my $cluster                      = $conf->{cgi}{cluster};
-	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	$conf->{nodes}                   = $conf->{clusters}{$cluster}{nodes};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; nodes: [$conf->{nodes}], task: [$conf->{cgi}{task}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	my $cluster                 = $conf->{cgi}{cluster};
+	$conf->{sys}{root_password} = $conf->{clusters}{$cluster}{root_pw};
+	$conf->{nodes}              = $conf->{clusters}{$cluster}{nodes};
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; nodes: [$conf->{nodes}], task: [$conf->{cgi}{task}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	if ($conf->{cgi}{task})
 	{
-		$conf->{'system'}{show_refresh} = 0;
+		$conf->{sys}{show_refresh} = 0;
 		AN::MediaLibrary::process_task($conf);
 	}
 	else

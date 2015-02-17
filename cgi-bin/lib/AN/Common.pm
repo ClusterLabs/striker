@@ -639,6 +639,7 @@ sub initialize_conf
 				iptables		=>	"/etc/sysconfig/iptables",
 				lvm_conf		=>	"/etc/lvm/lvm.conf",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
+				ntp_conf		=>	"/etc/ntp.conf",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
@@ -653,35 +654,9 @@ sub initialize_conf
 		},
 		sys			=>	{
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
-			default_password	=>	"Initial1",
-			error_limit		=>	10000,
-			language		=>	"en_CA",
-			cluster_conf		=>	"",
-			lvm_conf		=>	"",
-			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
-			html_lang		=>	"en",
-			skin			=>	"alteeve",
-			version			=>	"1.2.0 β",
-			log_level		=>	3,
-			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
-			date_seperator		=>	"-",			# Should put these in the strings.xml file
-			time_seperator		=>	":",
-			log_language		=>	"en_CA",
-			system_timezone		=>	"America/Toronto",
-			output			=>	"web",
-			reboot_timeout		=>	600,
 			clustat_timeout		=>	120,
-			pool1_shrunk		=>	0,
-			striker_uid		=>	$<,
-			# This tells the install manifest generator how many
-			# ports to open on the IFN for incoming VNC connections
-			open_vnc_ports		=>	100,
-			# If a user wants to use spice + qxl for video in VMs,
-			# set this to '1'. NOTE: This disables web-based VNC!
-			use_spice_graphics	=>	1,
-			# This allows for custom MTU sizes in an Install Manifest
-			mtu_size		=>	1500,
-			update_os		=>	1,
+			cluster_conf		=>	"",
+			config_read		=>	0,
 			daemons			=>	{
 				enable			=>	[
 					"gpm",		# LSB compliant
@@ -703,39 +678,54 @@ sub initialize_conf
 					"rgmanager",	# 
 				],
 			},
-			# This is filled later and used to populate
-			# ~/.ssh/known_hosts on each node.
-			node_names		=>	[],
-			shared_fs_uuid		=>	"",
-		},
-		# Config values needed to managing strings
-		strings				=>	{
-			encoding			=>	"",
-			force_utf8			=>	0,
-			xml_version			=>	"",
-		},
-		# The actual strings
-		string				=>	{},
-		url				=>	{
-			skins				=>	"/skins",
-			cgi				=>	"/cgi-bin",
-		},
-		'system'		=>	{
+			date_seperator		=>	"-",			# Should put these in the strings.xml file
 			dd_block_size		=>	"1M",
 			debug			=>	1,
-			username		=>	getpwuid( $< ),
-			config_read		=>	0,
-			up_nodes		=>	0,
-			online_nodes		=>	0,
-			show_nodes		=>	0,
+			default_password	=>	"Initial1",
+			error_limit		=>	10000,
+			# This will significantly cut down on the text shown
+			# on the screen to make information more digestable for
+			# experts. It also disabled external links.
+			expert_ui		=>	0,
 			footer_printed		=>	0,
-			show_refresh		=>	1,
-			root_password		=>	"",
+			html_lang		=>	"en",
 			ignore_missing_vm	=>	0,
-			# ~3 GiB, but in practice more because it will round down the
-			# available RAM before subtracting this to leave the user with
-			# an even number of GiB or RAM to allocate to servers.
-			unusable_ram		=>	(3 * (1024 ** 3)),
+			# These options control some of the Install Manifest options.
+			install_manifest	=>	{
+				'default'		=>	{
+					bcn_network		=>	"10.20.0.0",
+					bcn_subnet		=>	"255.255.0.0",
+					dns1			=>	"8.8.8.8",
+					dns2			=>	"8.8.4.4",
+					ntp1			=>	"",
+					ntp2			=>	"",
+					ifn_network		=>	"10.255.0.0",
+					ifn_subnet		=>	"255.255.0.0",
+					library_size		=>	"40",
+					library_unit		=>	"GiB",
+					pool1_size		=>	"50",
+					pool1_unit		=>	"%",
+					sn_network		=>	"10.10.0.0",
+					sn_subnet		=>	"255.255.0.0",
+				},
+				open_vnc_ports		=>	100,
+				# If the user wants to build install manifests for
+				# environments with 4 PDUs, this will be set to '4'.
+				pdu_count		=>	2,
+				show_repo_field		=>	1,
+				show_ntp_fields		=>	1,
+			},
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	3,
+			lvm_conf		=>	"",
+			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
+			# This allows for custom MTU sizes in an Install Manifest
+			mtu_size		=>	1500,
+			# This tells the install manifest generator how many
+			# ports to open on the IFN for incoming VNC connections
+			node_names		=>	[],
+			online_nodes		=>	0,
 			os_variant		=>	[
 				"win7#!#Microsoft Windows 7",
 				"win7#!#Microsoft Windows 8",
@@ -806,6 +796,41 @@ sub initialize_conf
 				"generic26#!#Generic 2.6.x kernel",
 				"generic24#!#Generic 2.4.x kernel",
 			],
+			output			=>	"web",
+			pool1_shrunk		=>	0,
+			reboot_timeout		=>	600,
+			root_password		=>	"",
+			shared_fs_uuid		=>	"",
+			show_nodes		=>	0,
+			show_refresh		=>	1,
+			skin			=>	"alteeve",
+			striker_uid		=>	$<,
+			system_timezone		=>	"America/Toronto",
+			time_seperator		=>	":",
+			# ~3 GiB, but in practice more because it will round down the
+			# available RAM before subtracting this to leave the user with
+			# an even number of GiB or RAM to allocate to servers.
+			unusable_ram		=>	(3 * (1024 ** 3)),
+			up_nodes		=>	0,
+			update_os		=>	1,
+			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
+			username		=>	getpwuid( $< ),
+			# If a user wants to use spice + qxl for video in VMs,
+			# set this to '1'. NOTE: This disables web-based VNC!
+# 			use_spice_graphics	=>	1,
+			version			=>	"2.0.0α",
+		},
+		# Config values needed to managing strings
+		strings				=>	{
+			encoding			=>	"",
+			force_utf8			=>	0,
+			xml_version			=>	"",
+		},
+		# The actual strings
+		string				=>	{},
+		url				=>	{
+			skins				=>	"/skins",
+			cgi				=>	"/cgi-bin",
 		},
 	};
 	
@@ -1220,6 +1245,7 @@ sub process_string_replace
 		my $key   =  $1;
 		my $value =  defined $replace->{$key} ? $replace->{$key} : "!! Undefined replacement key: [$key] !!\n";
 		$string   =~ s/#!replace!$key!#/$value/;
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; string: [$string]\n");
 		
 		# Die if I've looped too many times.
 		if ($i > $conf->{sys}{error_limit})

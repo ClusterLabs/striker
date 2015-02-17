@@ -98,11 +98,11 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil",
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
+	"anvil_dns1",
+	"anvil_dns2",
 	"anvil_domain",
 	"anvil_fence_order",
 	"anvil_id",
-	"anvil_ifn_dns1",
-	"anvil_ifn_dns2",
 	"anvil_ifn_gateway",
 	"anvil_ifn_network",
 	"anvil_ifn_subnet",
@@ -126,6 +126,8 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_node1_name",
 	"anvil_node1_pdu1_outlet",
 	"anvil_node1_pdu2_outlet",
+	"anvil_node1_pdu3_outlet",
+	"anvil_node1_pdu4_outlet",
 	"anvil_node1_sn_ip",
 	"anvil_node1_sn_link1_mac",
 	"anvil_node1_sn_link2_mac",
@@ -145,15 +147,23 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_node2_name",
 	"anvil_node2_pdu1_outlet",
 	"anvil_node2_pdu2_outlet",
+	"anvil_node2_pdu3_outlet",
+	"anvil_node2_pdu4_outlet",
 	"anvil_node2_sn_ip",
 	"anvil_node2_sn_link1_mac",
 	"anvil_node2_sn_link2_mac",
+	"anvil_ntp1", 
+	"anvil_ntp2", 
 	"anvil_open_vnc_ports",
 	"anvil_password",
 	"anvil_pdu1_ip",
 	"anvil_pdu1_name",
 	"anvil_pdu2_ip",
 	"anvil_pdu2_name",
+	"anvil_pdu3_ip",
+	"anvil_pdu3_name",
+	"anvil_pdu4_ip",
+	"anvil_pdu4_name",
 	"anvil_prefix",
 	"anvil_repositories",
 	"anvil_ricci_password",
@@ -326,8 +336,8 @@ elsif ($conf->{cgi}{'system'})
 elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
-	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	$conf->{sys}{root_password} = $conf->{clusters}{$cluster}{root_pw};
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
@@ -347,7 +357,7 @@ elsif ($conf->{cgi}{cluster})
 	{
 		if ($conf->{cgi}{task})
 		{
-			$conf->{'system'}{show_refresh} = 0;
+			$conf->{sys}{show_refresh} = 0;
 			AN::Striker::process_task($conf);
 		}
 		else

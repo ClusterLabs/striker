@@ -50,7 +50,7 @@
 		<key name="button_0043">Try Again</key>
 		<key name="button_0044">Configure</key>
 		<key name="button_0045">Save</key>
-		<key name="button_0046">Set Below Values</key>
+		<key name="button_0046">Set Values Below</key>
 		<key name="button_0047">Generate</key>
 		<key name="button_0048">Load</key>
 		<key name="button_0049">Run</key>
@@ -272,47 +272,47 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0067"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.255.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
 		<key name="explain_0068"><![CDATA[This is the host name for the first #!string!brand_0003!# node.]]></key>
 		<key name="explain_0069"><![CDATA[This is the host name for the second #!string!brand_0003!# node.]]></key>
-		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0071"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a> interface.<br />This is the network that all storage data is replicated over.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0072"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />This is the network all the traffic to and from your servers will travel over.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0073"><![CDATA[This is the IP address and subnet of the node's <a href="https://alteeve.ca/w/IPMI" target="_new">IPMI</a> Interface.<br />It may be called by other names, like "iRMC", "iLO", "iDRAC", "RSA" or so on, depending on your hardware vendor.<br />This will be the node's primary fence method.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.]]></key>
+		<key name="explain_0071"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a> interface.<br />This is the network that all storage data is replicated over.]]></key>
+		<key name="explain_0072"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />This is the network all the traffic to and from your servers will travel over.]]></key>
+		<key name="explain_0073"><![CDATA[This is the The IP address of the node's <a href="https://alteeve.ca/w/IPMI" target="_new">IPMI</a> Interface.<br />It may be called by other names, like "iRMC", "iLO", "iDRAC", "RSA" or so on, depending on your hardware vendor.<br />This will be the node's primary fence method.]]></key>
 		<key name="explain_0074"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/UPS" target="_new">UPS</a>.]]></key>
-		<key name="explain_0075"><![CDATA[This is the IP address and subnet of the first UPS.<br />If you don't have a UPS, or your UPS does not have a network card, you can leave this blank.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0075"><![CDATA[This is the The IP address of the first UPS.<br />If you don't have a UPS, or your UPS does not have a network card, you can leave this blank.]]></key>
 		<key name="explain_0076"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/UPS" target="_new">UPS</a>.]]></key>
-		<key name="explain_0077"><![CDATA[This is the IP address and subnet of the second UPS.<br />If you don't have two UPSes, or your UPSes do not have network cards, you can leave this blank.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0077"><![CDATA[This is the The IP address of the second UPS.<br />If you don't have two UPSes, or your UPSes do not have network cards, you can leave this blank.]]></key>
 		<key name="explain_0078"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0079"><![CDATA[This is the IP address and subnet of the first switched PDU.<br />This is part of the backup fence method, so making sure this is right is very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0079"><![CDATA[This is the The IP address of the first switched PDU.<br />This is part of the backup fence method, so making sure this is right is very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0080"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0081"><![CDATA[This is the IP address and subnet of the second switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0081"><![CDATA[This is the The IP address of the second switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0082"><![CDATA[This is the host name for the first network switch.<br />If you manage your switches using a serial interface, or if your switches are unmanaged, you can leave this blank.]]></key>
-		<key name="explain_0083"><![CDATA[This is the IP address and subnet of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0083"><![CDATA[This is the The IP address of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
 		<key name="explain_0084"><![CDATA[This is the host name for the second network switch.<br />It may only be useful if you break the switch stack, and can often be safely omitted.]]></key>
-		<key name="explain_0085"><![CDATA[This is the IP address and subnet of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0086"><![CDATA[This is the host name for the first <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
-		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0089"><![CDATA[This is the host name for the second <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard, if you have one.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
-		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
-		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.<br />Please use the format "<span class="code">&lt;ip&gt;/&lt;subnet&gt;</span>".]]></key>
+		<key name="explain_0085"><![CDATA[This is the The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
+		<key name="explain_0086"><![CDATA[This is the host name for the first <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
+		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.]]></key>
+		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.]]></key>
+		<key name="explain_0089"><![CDATA[This is the host name for the second <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard, if you have one.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
+		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.]]></key>
+		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.]]></key>
 		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">default gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file. It must be 15 <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters or less.<br />Generally it will be in the format "<span class="code">&lt;prefix&gt;-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
-		<key name="explain_0096"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
-		<key name="explain_0097"><![CDATA[This is the outlet on the <b>second</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the first node's <b>second</b> power supply is plugged in.<br />That is; <span class="code">Node 1</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
-		<key name="explain_0098"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 1</span> -&gt; <span class="code">PDU 1 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
-		<key name="explain_0099"><![CDATA[This is the outlet on the <b>first</b> <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a> into which the second node's <b>first</b> power supply is plugged in.<br />That is; <span class="code">Node 2</span>; <span class="code">PSU 2</span> -&gt; <span class="code">PDU 2 Outlet ?</span><br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
+		<key name="explain_0096"><![CDATA[If one of the node's power supplies are plugged into this PDU, enter the outlet number that the power cord is plugged into here.<br /><span class="highlight_warning_bold">WARNING</span>: It is very important that this is correct!]]></key>
+		<key name="explain_0097"><![CDATA[This can be used to specify a primary (or sole) internal NTP server if your #!string!brand_0003!# doesn't have access to external time servers.<br />If you don't have an internal NTP server, leave this blank.]]></key>
+		<key name="explain_0098"><![CDATA[This can be used to specify a backup NTP server, if available.]]></key>
+		<key name="explain_0099"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address or domain name.<br />Please enter the value as a <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a> or <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0100"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0101"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters.]]></key>
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
-		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
+		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0105"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
-		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid domain name.]]></key>
-		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
+		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
+		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
 		<key name="explain_0109"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address with subnet mask.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address followed by a <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">subnet mask</a> in either <a href="http://en.wikipedia.org/wiki/Dot-decimal_notation" target="_new">dotted-decimal</a> or <a href="http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing" target="_new">CIDR</a> format.<br />The format should be either "<span class="code">a.b.c.d/x</span>" or "<span class="code">a.b.c.d/w.x.y.z</span>".]]></key>
-		<key name="explain_0110"><![CDATA[This will set the password for multiple components of the #!string!brand_0003!#;<br />It will set each node's "<span class="code">root</span>" and "<span class="code"><a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci" target="_new">ricci</a></span>" users and the <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Reading_IPMI_Data_2" target="_new">IPMI user</a>'s password.<br />This doesn't have to match the password you set for this #!string!brand_0002!#, but generally it sould.<br /><span class="highlight_note_bold">Note</span>: <b>The password will be echoed back to you, and it will be stored in the manifest in plain text!</b><br />This is needed because the different passwords to set do not share a common encryption form.]]></key>
+		<key name="explain_0110"><![CDATA[This will set the password for multiple components of the #!string!brand_0003!#;<br />It will set each node's "<span class="code">root</span>" and "<span class="code"><a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci" target="_new">ricci</a></span>" users and the <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Reading_IPMI_Data_2" target="_new">IPMI user</a>'s password.<br />This doesn't have to match the password you set for this #!string!brand_0002!#, but generally it sould.<br /><span class="highlight_note_bold">Note</span>: <b>The password will be echoed back to you!</b><br />This is needed because the different passwords to set do not share a common encryption form.]]></key>
 		<key name="explain_0111"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty when the IP address is set.]]></key>
 		<key name="explain_0112"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty when the host name is set.]]></key>
 		<key name="explain_0113"><![CDATA[Review the values above. Once you are happy that they are accurate,<br />press <b>#!string!button_0047!#</b> and the install manifest will be created for you.]]></key>
@@ -341,18 +341,28 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0136"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It is a copy of: [<span class="code">#!variable!old_manifest!#</span>] but with the network mapping recorded.<br />Use this new one in the future to avoid the manual network mapping step.]]></key>
 		<key name="explain_0137"><![CDATA[The install is now beginning. Sanity checks will re-run, just to be safe.<br />Configuration will begin automatically after that.<br />Now is a good time to go have a <span class="code">$drink</span>.]]></key>
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
-		<key name="explain_0139"><![CDATA[If you have cutom or local reposiroties for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
+		<key name="explain_0139"><![CDATA[If you have custom or local repositories for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
 		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
-		<key name="explain_0142"><![CDATA[]]></key>
-		<key name="explain_0143"><![CDATA[]]></key>
-		<key name="explain_0144"><![CDATA[]]></key>
-		<key name="explain_0145"><![CDATA[]]></key>
-		<key name="explain_0146"><![CDATA[]]></key>
-		<key name="explain_0147"><![CDATA[]]></key>
-		<key name="explain_0148"><![CDATA[]]></key>
-		<key name="explain_0149"><![CDATA[]]></key>
+		<key name="explain_0142"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty if the field "<span class="highlight_good_bold"">#!variable!dependent_field!#</span>" is set.]]></key>
+		<key name="explain_0143"><![CDATA[In a two-PDU environment, then both must be defined. In a four PDU environment, at least two must be defined.]]></key>
+		<key name="explain_0144"><![CDATA[<span class="">#!variable!node!#</span> is set to use an outlet on "<span class="highlight_good_bold"">#!variable!field!#</span>", but that PDU doesn't have a name and IP set.]]></key>
+		<key name="explain_0145"><![CDATA[<span class="">#!variable!node!#</span> needs to have outlets set for two PDUs.]]></key>
+		<key name="explain_0146"><![CDATA[This is the host name for the third <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
+		<key name="explain_0147"><![CDATA[This is the The IP address of the third switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
+		<key name="explain_0148"><![CDATA[This is the host name for the fourth <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
+		<key name="explain_0149"><![CDATA[This is the The IP address of the fourth switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0150"><![CDATA[]]></key>
+		<key name="explain_0151"><![CDATA[]]></key>
+		<key name="explain_0152"><![CDATA[]]></key>
+		<key name="explain_0153"><![CDATA[]]></key>
+		<key name="explain_0154"><![CDATA[]]></key>
+		<key name="explain_0155"><![CDATA[]]></key>
+		<key name="explain_0156"><![CDATA[]]></key>
+		<key name="explain_0157"><![CDATA[]]></key>
+		<key name="explain_0158"><![CDATA[]]></key>
+		<key name="explain_0159"><![CDATA[]]></key>
+		<key name="explain_0160"><![CDATA[]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -528,10 +538,10 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0171">UPS 1 IP Address</key>
 		<key name="row_0172">UPS 2 Host Name</key>
 		<key name="row_0173">UPS 2 IP Address</key>
-		<key name="row_0174">PDU 1 Host Name</key>
-		<key name="row_0175">PDU 1 IP Address</key>
-		<key name="row_0176">PDU 2 Host Name</key>
-		<key name="row_0177">PDU 2 IP Address</key>
+		<key name="row_0174">PDU #!variable!say_pdu!# Host Name</key>
+		<key name="row_0175">PDU #!variable!say_pdu!# IP Address</key>
+		<key name="row_0176">PDU #!variable!say_pdu!# Outlet</key>
+		<key name="row_0177"></key> <!-- free -->
 		<key name="row_0178">Switch 1 Host Name</key>
 		<key name="row_0179">Switch 1 IP Address</key>
 		<key name="row_0180">Switch 2 Host Name</key>
@@ -543,11 +553,11 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0186">#!string!brand_0002!# 2 BCN IP</key>
 		<key name="row_0187">#!string!brand_0002!# 2 IFN IP</key>
 		<key name="row_0188">IFN Default Gateway</key>
-		<key name="row_0189">IFN Primary DNS</key>
-		<key name="row_0190">IFN Secondary DNS</key>
+		<key name="row_0189">Primary DNS</key>
+		<key name="row_0190">Secondary DNS</key>
 		<key name="row_0191">Media Library Size</key>
-		<key name="row_0192"><![CDATA[PDU <span class="highlight_bad_bold">1</span> Outlet]]></key>
-		<key name="row_0193"><![CDATA[PDU <span class="highlight_bad_bold">2</span> Outlet]]></key>
+		<key name="row_0192">NTP Server 1</key>
+		<key name="row_0193">NTP Server 2</key>
 		<key name="row_0194">#!string!brand_0003!# Password</key>
 		<key name="row_0195">Switches</key>
 		<key name="row_0196">PDUs</key>
@@ -629,7 +639,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0272">Powering down Node</key>
 		<key name="row_0273">In progress</key>
 		<key name="row_0274">Try Again</key>
-		<key name="row_0275"></key>
+		<key name="row_0275">Alternate NTP Servers</key>
 		<key name="row_0276"></key>
 		<key name="row_0277"></key>
 		<key name="row_0278"></key>
@@ -668,10 +678,20 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="device_0004">Virtual Machine Manager</key> <!-- ok, so this isn't a 'device' per-se, whatev'... -->
 		<key name="device_0005">Node 1</key>
 		<key name="device_0006">Node 2</key>
-		<key name="device_0007"></key>
-		<key name="device_0008"></key>
-		<key name="device_0009"></key>
-		<key name="device_0010"></key>
+		<key name="device_0007">1A</key>	<!-- PDU 1 Name, 4-PDU setup -->
+		<key name="device_0008">1B</key>	<!-- PDU 2 Name, 4-PDU setup -->
+		<key name="device_0009">2A</key>	<!-- PDU 3 Name -->
+		<key name="device_0010">2B</key>	<!-- PDU 4 Name -->
+		<key name="device_0011">1</key>		<!-- PDU 1 Name, 2-PDU setup -->
+		<key name="device_0012">2</key>		<!-- PDU 2 Name, 2-PDU setup -->
+		<key name="device_0013"></key>
+		<key name="device_0014"></key>
+		<key name="device_0015"></key>
+		<key name="device_0016"></key>
+		<key name="device_0017"></key>
+		<key name="device_0018"></key>
+		<key name="device_0019"></key>
+		<key name="device_0020"></key>
 		
 		<!-- Strings coming from scripts. -->
 		<key name="script_0001">Backing up some network related system files.</key>
@@ -896,7 +916,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="state_0013">Local</key>
 		<key name="state_0014">Started</key>
 		<key name="state_0015">Stopped</key>
-		<key name="state_0016">n/a</key> <!-- Not applicable -->
+		<key name="state_0016">n/a</key> <!-- n/a == Not applicable -->
 		<key name="state_0017">OK</key>
 		<key name="state_0018">Failed</key>
 		<key name="state_0019">Not Found</key>
@@ -1144,12 +1164,12 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="title_0149">Create an #!string!brand_0003!# Install Manifest</key>
 		<key name="title_0150">Primary Configuration Values</key>
 		<key name="title_0151">Secondary Configuration Values</key>
-		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">1</span> Variables]]></key>
-		<key name="title_0153"><![CDATA[Node <span class="highlight_bad_bold">2</span> Variables]]></key>
+		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span> Variables]]></key>
+		<key name="title_0153"></key> <!-- free -->
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155">Problem with the specified form values.</key>
-		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
-		<key name="title_0157"><![CDATA[Node <span class="highlight_bad_bold">2</span>]]></key>
+		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">#!replace!node_number!#</span>]]></key>
+		<key name="title_0157"></key> <!-- free -->
 		<key name="title_0158">#!string!brand_0003!# Install Manifest Summary</key>
 		<key name="title_0159">Compute Nodes</key>
 		<key name="title_0160">Foundation Pack</key>
@@ -1205,13 +1225,13 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0018">Please fix the issues found above. Once ready, please try again.</key>
 		<key name="message_0019"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />It is on an accessible subnet, so the node is likely off or there is a network problem.<br />If you just powered on the node, please be patient, it might still be booting.]]></key>
 		<key name="message_0020"><![CDATA[Unable to connect to <span class="fixed_width">#!variable!node!#</span>.<br />The server running #!string!brand_0002!# is not currently on the same subnet as the node.]]></key>
-		<key name="message_0021"><![CDATA[SSH host key validation failed.<br />Have you saved <span class="fixed_width">#!variable!node!#</span>'s fingerprint in <span class="fixed_width">$conf->{'system'}{username}</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.]]></key>
+		<key name="message_0021"><![CDATA[SSH host key validation failed.<br />Have you saved <span class="fixed_width">#!variable!node!#</span>'s fingerprint in <span class="fixed_width">#!conf!sys::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file?<br />If this is a new issue, the physical node may have changed, requiring the old fingerprint be deleted and the new fingerprint be saved.<br />If the machine has not changed, then this might be a sign of an attempt to intercept your connection to the node.]]></key>
 		<key name="message_0022"><![CDATA[Could not resolve the hostname: <span class="fixed_width">#!variable!node!#</span>. Have you setup your <span class="fixed_width">/etc/hosts</span> file or DNS server properly?]]></key>
 		<key name="message_0023"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. Is the "#!string!row_0025!#" correct in this #!string!brand_0003!#? Check <span class="fixed_width">/var/log/secure</span> on <span class="fixed_width">#!variable!node!#</span> for errors.]]></key>
 		<key name="message_0024"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />If you just powered the node on or off, it may not be allowing connections.<br />Please try again shortly.]]></key>
 		<key name="message_0025"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />The connection timed out.]]></key>
 		<key name="message_0026"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?]]></key>
-		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!system::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
+		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!sys::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
 		<key name="message_0028"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.]]></key>
 		<key name="message_0029"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.<br />There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />In either case, please manually power on the nodes when you are ready to use them.<br />If they are on and you are seeing this message, then there might be a network problem.<br />Is this machine on the #!string!brand_0003!#'s <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>?]]></key>
 		<key name="message_0030"><![CDATA[The number <span class="fixed_width">#!variable!number!#</span> passed into the 'comma()' function contains a non-digit character or too many decimals.]]></key>
@@ -1311,7 +1331,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0124">Once the installation is complete, please return here and click the link below.</key>
 		<key name="message_0125"><![CDATA[Please complete the install using the <span class="fixed_width">#!string!device_0004!#</span> on the dashboard's desktop.]]></key>
 		<key name="message_0126"><![CDATA[<b>After</b> the first reboot, <a href="#!variable!url!#" class="bold_button">#!string!button_0020!#</a> to add the server to the #!string!brand_0003!#.]]></key>
-		<key name="message_0127">The server name can't have spaces in the name.</key>
+		<key name="message_0127"><![CDATA[The server name can't have spaces or any of the following characters in the name: [<span class="highlight_detail">; &amp; | $ ^ &lt; &gt; [ ] ( ) { } !</span>].]]></key>
 		<key name="message_0128"><![CDATA[The server name <span class="fixed_width">#!variable!server!#</span> is already in use.]]></key>
 		<key name="message_0129"><![CDATA[All servers need to have a name. This is usally something like <span class="fixed_width">vmXX-purpose</span>.]]></key>
 		<key name="message_0130"><![CDATA[Somehow, the number of requested CPUs <span class="fixed_width">#!variable!cpu_cores!#</span> has a non-digit in it. This is probably a program error.]]></key>
@@ -1633,7 +1653,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 						Where '/dev/X' is replaced by the device in the error(s) above.<br />
 						<span class="highlight_dangerous_bold">BE WARNED!</span><br />
 						The above command, if misused, can destroy all data on the node!<br />]]></key>
-		<key name="message_0434"><![CDATA[]]></key>
+		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked manually.]]></key>
 		<key name="message_0435"><![CDATA[]]></key>
 		<key name="message_0436"><![CDATA[]]></key>
 		<key name="message_0437"><![CDATA[]]></key>

@@ -1388,7 +1388,7 @@
 <br />
 <!-- end install-manifest-footer -->
 
-<!-- start install-manifest-form -->
+<!-- start install-manifest-form-header -->
 <table>
 	<form action="#!replace!form_file!#" method="post" name="config">
 	<tr>
@@ -1419,162 +1419,69 @@
 			#!string!title_0150!#
 		</td>
 	</tr>
-	<!-- Anvil! Prefix -->
+<!-- end install-manifest-form-header -->
+
+<!-- start install-manifest-form-text-entry -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0159!#<span class="highlight_bad_star">#!replace!anvil_prefix_star!#</span>
+			#!replace!row!#<span class="highlight_bad_star">#!replace!star!#</span>
 		</td>
 		<td>
-			<input type="text" name="anvil_prefix" id="anvil_prefix" value="#!replace!anvil_prefix!#" style="width: 200px;" />
+			<input type="text" name="#!replace!name!#" id="#!replace!id!#" value="#!replace!value!#" style="width: 220px;" />
 		</td>
 		<td style="text-align: left;">
-			#!string!explain_0061!#<br />
+			#!replace!explain!#<br />
 		</td>
 		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" targer="_new">#!string!button_0003!#</a><br />
+			#!replace!more_info!#<br />
 		</td>
 	</tr>
-	<!-- Anvil! Sequence -->
+<!-- end install-manifest-form-text-entry -->
+
+<!-- start install-manifest-form-subnet-entry -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0161!#<span class="highlight_bad_star">#!replace!anvil_sequence_star!#</span>
+			#!replace!row!#<span class="highlight_bad_star">#!replace!star!#</span>
 		</td>
 		<td>
-			<input type="text" name="anvil_sequence" id="anvil_sequence" value="#!replace!anvil_sequence!#" style="width: 200px;" />
+			<input type="text" name="#!replace!network_name!#" id="#!replace!network_id!#" value="#!replace!network_value!#" style="width: 100px;" /> / 
+			<input type="text" name="#!replace!subnet_name!#" id="#!replace!subnet_id!#" value="#!replace!subnet_value!#" style="width: 100px;" />
 		</td>
 		<td style="text-align: left;">
-			#!string!explain_0063!#<br />
+			#!replace!explain!#<br />
 		</td>
 		<td>
-			&nbsp;<br />
+			#!replace!more_info!#<br />
 		</td>
 	</tr>
-	<!-- User's Domain Name -->
+<!-- end install-manifest-form-subnet-entry -->
+
+<!-- start install-manifest-form-text-and-select-entry -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0160!#<span class="highlight_bad_star">#!replace!anvil_domain_star!#</span>
+			#!replace!row!#<span class="highlight_bad_star">#!replace!star!#</span>
 		</td>
 		<td>
-			<input type="text" name="anvil_domain" id="anvil_domain" value="#!replace!anvil_domain!#" style="width: 200px;" />
+			<input type="text" name="#!replace!name!#" id="#!replace!id!#" value="#!replace!value!#" style="width: 40px;" />#!replace!select!#
 		</td>
 		<td style="text-align: left;">
-			#!string!explain_0062!#<br />
+			#!replace!explain!#<br />
 		</td>
 		<td>
-			&nbsp;<br />
+			#!replace!more_info!#<br />
 		</td>
 	</tr>
-	<!-- Cluster Password -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0194!#<span class="highlight_bad_star">#!replace!anvil_password_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_password" id="anvil_password" value="#!replace!anvil_password!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0110!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<!-- BCN Network -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0162!#<span class="highlight_bad_star">#!replace!anvil_bcn_network_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_bcn_network" id="anvil_bcn_network" value="#!replace!anvil_bcn_network!#" style="width: 90px;" /> / <input type="text" name="anvil_bcn_subnet" id="anvil_bcn_subnet" value="#!replace!anvil_bcn_subnet!#" style="width: 90px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0065!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<!-- SN Network -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0163!#<span class="highlight_bad_star">#!replace!anvil_sn_network_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_sn_network" id="anvil_sn_network" value="#!replace!anvil_sn_network!#" style="width: 90px;" /> / <input type="text" name="anvil_sn_subnet" id="anvil_sn_subnet" value="#!replace!anvil_sn_subnet!#" style="width: 90px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0066!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<!-- IFN Network -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0164!#<span class="highlight_bad_star">#!replace!anvil_ifn_network_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ifn_network" id="anvil_ifn_network" value="#!replace!anvil_ifn_network!#" style="width: 90px;" /> / <input type="text" name="anvil_ifn_subnet" id="anvil_ifn_subnet" value="#!replace!anvil_ifn_subnet!#" style="width: 90px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0067!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<!-- Media Library -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0191!#<span class="highlight_bad_star">#!replace!anvil_media_library_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_media_library_size" id="anvil_media_library_size" value="#!replace!anvil_media_library_size!#" style="width: 60px;" />#!replace!say_anvil_media_library_unit!#
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0114!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<!-- Storage Pool -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0199!#<span class="highlight_bad_star">#!replace!anvil_storage_pool1_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_storage_pool1_size" id="anvil_storage_pool1_size" value="#!replace!anvil_storage_pool1_size!#" style="width: 60px;" />#!replace!say_anvil_storage_pool1_unit!#
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0115!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Determining_Storage_Pool_Sizes" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- Custom Repositories -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0244!#<span class="highlight_bad_star">#!replace!anvil_repositories_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_repositories" id="anvil_repositories" value="#!replace!anvil_repositories!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0139!#<br />
-		</td>
-		<td>
-			<a href="https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
+<!-- end install-manifest-form-text-and-select-entry -->
+
+<!-- start install-manifest-form-spacer -->
 	<tr>
 		<td colspan="4">
 			&nbsp;
 		</td>
 	</tr>
-	<!-- Button to auto-fill secondary options -->
+<!-- end install-manifest-form-spacer -->
+
+<!-- start install-manifest-form-set-values -->
 	<tr>
 		<td>
 			&nbsp;
@@ -1586,24 +1493,17 @@
 			#!string!explain_0064!#
 		</td>
 	</tr>
-	<tr>
-		<td colspan="4">
-			&nbsp;
-		</td>
-	</tr>
-	
-	<!-- Secondary configuration variables. -->
+<!-- end install-manifest-form-set-values -->
+
+<!-- start install-manifest-form-secondary-header -->
 	<tr>
 		<td colspan="4" class="highlight_ready_bold">
 			#!string!title_0151!#
 		</td>
 	</tr>
-	<tr>
-		<td colspan="4">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- Common Variables -->
+<!-- end install-manifest-form-secondary-header -->
+
+<!-- start install-manifest-form-common-header -->
 	<tr>
 		<td colspan="2" class="highlight_good_bold" colspan="2">
 			#!string!title_0154!#
@@ -1612,68 +1512,9 @@
 			&nbsp;
 		</td>
 	</tr>
-	<!-- Cluster name -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0005!#<span class="highlight_bad_star">#!replace!anvil_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_name" id="anvil_name" value="#!replace!anvil_name!#" style="width: 200px;" maxlength="15" />
-			<input type="hidden" name="anvil_cluster_name" id="anvil_cluster_name" value="#!string!brand_0013!#">
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0095!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IFN Default Gateway -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0188!#<span class="highlight_bad_star">#!replace!anvil_ifn_gateway_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ifn_gateway" id="anvil_ifn_gateway" value="#!replace!anvil_ifn_gateway!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0092!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IFN Primary DNS -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0189!#<span class="highlight_bad_star">#!replace!anvil_ifn_dns1_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ifn_dns1" id="anvil_ifn_dns1" value="#!replace!anvil_ifn_dns1!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0093!#<br />
-		</td>
-		<td>
-			<a href="http://en.wikipedia.org/wiki/Domain_Name_System" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IFN Secondary DNS -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0190!#<span class="highlight_bad_star">#!replace!anvil_ifn_dns2_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ifn_dns2" id="anvil_ifn_dns2" value="#!replace!anvil_ifn_dns2!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0094!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
+<!-- end install-manifest-form-common-header -->
 
+<!-- start install-manifest-form-foundation-pack-header -->
 	<!-- Foundation Pack Variables -->
 	<tr>
 		<td colspan="2" class="highlight_good_bold">
@@ -1683,497 +1524,24 @@
 			&nbsp;
 		</td>
 	</tr>
-	<!-- Switches -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0178!#<span class="highlight_bad_star">#!replace!anvil_switch1_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_switch1_name" id="anvil_switch1_name" value="#!replace!anvil_switch1_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0082!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0179!#<span class="highlight_bad_star">#!replace!anvil_switch1_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_switch1_ip" id="anvil_switch1_ip" value="#!replace!anvil_switch1_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0083!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Switches" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0180!#<span class="highlight_bad_star">#!replace!anvil_switch2_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_switch2_name" id="anvil_switch2_name" value="#!replace!anvil_switch2_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0084!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0181!#<span class="highlight_bad_star">#!replace!anvil_switch2_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_switch2_ip" id="anvil_switch2_ip" value="#!replace!anvil_switch2_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0085!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Switches" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- PDUs -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0174!#<span class="highlight_bad_star">#!replace!anvil_pdu1_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_pdu1_name" id="anvil_pdu1_name" value="#!replace!anvil_pdu1_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0078!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0175!#<span class="highlight_bad_star">#!replace!anvil_pdu1_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_pdu1_ip" id="anvil_pdu1_ip" value="#!replace!anvil_pdu1_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0079!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0176!#<span class="highlight_bad_star">#!replace!anvil_pdu2_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_pdu2_name" id="anvil_pdu2_name" value="#!replace!anvil_pdu2_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0080!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0177!#<span class="highlight_bad_star">#!replace!anvil_pdu2_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_pdu2_ip" id="anvil_pdu2_ip" value="#!replace!anvil_pdu2_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0081!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- UPSes -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0170!#<span class="highlight_bad_star">#!replace!anvil_ups1_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ups1_name" id="anvil_ups1_name" value="#!replace!anvil_ups1_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0074!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0171!#<span class="highlight_bad_star">#!replace!anvil_ups1_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ups1_ip" id="anvil_ups1_ip" value="#!replace!anvil_ups1_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0075!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Managed_UPSes_Are_Worth_It" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0172!#<span class="highlight_bad_star">#!replace!anvil_ups2_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ups2_name" id="anvil_ups2_name" value="#!replace!anvil_ups2_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0076!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0173!#<span class="highlight_bad_star">#!replace!anvil_ups2_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_ups2_ip" id="anvil_ups2_ip" value="#!replace!anvil_ups2_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0077!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Managed_UPSes_Are_Worth_It" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- Striker dashboards -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0182!#<span class="highlight_bad_star">#!replace!anvil_striker1_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker1_name" id="anvil_striker1_name" value="#!replace!anvil_striker1_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0086!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0183!#<span class="highlight_bad_star">#!replace!anvil_striker1_bcn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker1_bcn_ip" id="anvil_striker1_bcn_ip" value="#!replace!anvil_striker1_bcn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0087!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/Striker" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0184!#<span class="highlight_bad_star">#!replace!anvil_striker1_ifn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker1_ifn_ip" id="anvil_striker1_ifn_ip" value="#!replace!anvil_striker1_ifn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0088!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0185!#<span class="highlight_bad_star">#!replace!anvil_striker2_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker2_name" id="anvil_striker2_name" value="#!replace!anvil_striker2_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0089!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0186!#<span class="highlight_bad_star">#!replace!anvil_striker2_bcn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker2_bcn_ip" id="anvil_striker2_bcn_ip" value="#!replace!anvil_striker2_bcn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0090!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/Striker" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0187!#<span class="highlight_bad_star">#!replace!anvil_striker2_ifn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_striker2_ifn_ip" id="anvil_striker2_ifn_ip" value="#!replace!anvil_striker2_ifn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0091!#<br />
-		</td>
-		<td>
-			&nbsp;<br />
-		</td>
-	</tr>
-	
-	<tr>
-		<td colspan="4">
-			&nbsp;
-		</td>
-	</tr>
-	
-	<!-- Node 1 -->
+<!-- end install-manifest-form-foundation-pack-header -->
+
+<!-- start install-manifest-form-nodes-header -->
 	<tr>
 		<td colspan="2" class="highlight_good_bold" colspan="2">
-			#!string!title_0152!#
+			#!replace!title!#
 		</td>
 		<td colspan="2">
 			&nbsp;
 		</td>
 	</tr>
-	<!-- Host Name -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0165!#<span class="highlight_bad_star">#!replace!anvil_node1_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_name" id="anvil_node1_name" value="#!replace!anvil_node1_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0068!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- BCN IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0166!#<span class="highlight_bad_star">#!replace!anvil_node1_bcn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_bcn_ip" id="anvil_node1_bcn_ip" value="#!replace!anvil_node1_bcn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0070!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IPMI IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0168!#<span class="highlight_bad_star">#!replace!anvil_node1_ipmi_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_ipmi_ip" id="anvil_node1_ipmi_ip" value="#!replace!anvil_node1_ipmi_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0073!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- SN IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0167!#<span class="highlight_bad_star">#!replace!anvil_node1_sn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_sn_ip" id="anvil_node1_sn_ip" value="#!replace!anvil_node1_sn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0071!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IFN IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0169!#<span class="highlight_bad_star">#!replace!anvil_node1_ifn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_ifn_ip" id="anvil_node1_ifn_ip" value="#!replace!anvil_node1_ifn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0072!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- PDU 1 Outlet ? -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0192!#<span class="highlight_bad_star">#!replace!anvil_node1_pdu1_outlet_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_pdu1_outlet" id="anvil_node1_pdu1_outlet" value="#!replace!anvil_node1_pdu1_outlet!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0096!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- PDU 2 Outlet ? -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0193!#<span class="highlight_bad_star">#!replace!anvil_node1_pdu2_outlet_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node1_pdu2_outlet" id="anvil_node1_pdu2_outlet" value="#!replace!anvil_node1_pdu2_outlet!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0097!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- Node 2 -->
-	<tr>
-		<td colspan="2" class="highlight_good_bold" colspan="2">
-			#!string!title_0153!#
-		</td>
-		<td colspan="2">
-			&nbsp;
-		</td>
-	</tr>
-	<!-- Host Name -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0165!#<span class="highlight_bad_star">#!replace!anvil_node2_name_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_name" id="anvil_node2_name" value="#!replace!anvil_node2_name!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0069!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- BCN IP Address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0166!#<span class="highlight_bad_star">#!replace!anvil_node2_bcn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_bcn_ip" id="anvil_node2_bcn_ip" value="#!replace!anvil_node2_bcn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0070!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IPMI IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0168!#<span class="highlight_bad_star">#!replace!anvil_node2_ipmi_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_ipmi_ip" id="anvil_node2_ipmi_ip" value="#!replace!anvil_node2_ipmi_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0073!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- SN IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0167!#<span class="highlight_bad_star">#!replace!anvil_node2_sn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_sn_ip" id="anvil_node2_sn_ip" value="#!replace!anvil_node2_sn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0071!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- IFN IP address -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0169!#<span class="highlight_bad_star">#!replace!anvil_node2_ifn_ip_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_ifn_ip" id="anvil_node2_ifn_ip" value="#!replace!anvil_node2_ifn_ip!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0072!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- PDU 1 Outlet ? -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0192!#<span class="highlight_bad_star">#!replace!anvil_node2_pdu1_outlet_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_pdu1_outlet" id="anvil_node2_pdu1_outlet" value="#!replace!anvil_node2_pdu1_outlet!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0098!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
-	<!-- PDU 2 Outlet ? -->
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0193!#<span class="highlight_bad_star">#!replace!anvil_node2_pdu2_outlet_star!#</span>
-		</td>
-		<td>
-			<input type="text" name="anvil_node2_pdu2_outlet" id="anvil_node2_pdu2_outlet" value="#!replace!anvil_node2_pdu2_outlet!#" style="width: 200px;" />
-		</td>
-		<td style="text-align: left;">
-			#!string!explain_0099!#<br />
-		</td>
-		<td>
-			<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" target="_new">#!string!button_0003!#</a><br />
-		</td>
-	</tr>
+<!-- end install-manifest-form-nodes-header -->
+
+<!-- start install-manifest-more-info-url -->
+<a href="#!replace!url!#" target="_new" class="bold_button">#!string!button_0003!#</a>
+<!-- end install-manifest-more-info-url -->
+
+<!-- start install-manifest-form-footer -->
 	<tr>
 		<td colspan="4">
 			&nbsp;
@@ -2199,7 +1567,7 @@
 	</form>
 </table>
 <br />
-<!-- end install-manifest-form -->
+<!-- end install-manifest-form-footer -->
 
 <!-- start anvil-variables -->
 				<!-- Anvil! Name -->

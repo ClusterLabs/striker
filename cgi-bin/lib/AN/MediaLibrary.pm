@@ -111,7 +111,7 @@ sub download_url
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
@@ -272,7 +272,7 @@ sub confirm_download_url
 		title		=>	$say_title,
 		base		=>	$base,
 		download	=>	$say_download,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -380,7 +380,7 @@ sub image_and_upload
 				device	=>	$dev,
 			}});
 			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
-				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-drive-gone", {
@@ -395,7 +395,7 @@ sub image_and_upload
 				device	=>	$dev,
 			}});
 			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
-				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-reload-needed", {
@@ -410,7 +410,7 @@ sub image_and_upload
 				device	=>	$dev,
 			}});
 			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
-				button_link	=>	"$conf->{'system'}{cgi_string}",
+				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-no-disc", {
@@ -436,7 +436,7 @@ sub image_and_upload
 				message		=>	$message,
 			});
 			
-			my $shell_call = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{'system'}{dd_block_size}";
+			my $shell_call = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{sys}{dd_block_size}";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			
 			my $header_printed = 0;
@@ -664,7 +664,7 @@ sub confirm_delete_file
 	}});
 	my $confirm_button = AN::Common::template($conf, "common.html", "enabled-button", {
 		button_class	=>	"bold_button",
-		button_link	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		button_link	=>	"$conf->{sys}{cgi_string}&confirm=true",
 		button_text	=>	"#!string!button_0004!#",
 		id		=>	"delete_file_confirmed",
 	}, "", 1);
@@ -703,7 +703,7 @@ sub delete_file
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"rm -f \"/shared/files/$name\"",

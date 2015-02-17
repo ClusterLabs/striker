@@ -238,6 +238,9 @@ sub run_new_install_manifest
 		# Configure the network
 		configure_network($conf) or return(1);
 		
+		# Configure the NTP on the servers, if set.
+		configure_ntp($conf) or return(1);
+		
 		# Add user-specified repos
 		add_user_repositories($conf);
 		
@@ -7196,7 +7199,7 @@ sub summarize_build_plan
 		partition1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}),
 		partition2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}),
 		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",
-		remap_network_url		=>	"$conf->{'system'}{cgi_string}&remap_network=true",
+		remap_network_url		=>	"$conf->{sys}{cgi_string}&remap_network=true",
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
@@ -7220,10 +7223,74 @@ sub summarize_build_plan
 	return(0);
 }
 
+# This reads in the /etc/ntp.conf file and adds custom NTP server if they
+# aren't already there.
+sub configure_ntp_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp_on_node(); node: [$node]\n");
+	
+	# We're going to do a grep for each defined NTP IP and, if the IP isn't
+	# found, it will be added.
+	my $return_code = 0;
+	my @ntp_servers;
+	push @ntp_servers, $conf->{cgi}{anvil_ntp1} if $conf->{cgi}{anvil_ntp1};
+	push @ntp_servers, $conf->{cgi}{anvil_ntp2} if $conf->{cgi}{anvil_ntp2};
+	foreach my $ntp_server (@ntp_servers)
+	{
+		# Look for/add NTP server
+		my $shell_call = "if $(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
+				then 
+					echo exists; 
+				else 
+					echo adding $ntp_server;
+					echo 'server $ntp_server iburst' >> $conf->{path}{nodes}{ntp_conf}
+					if $(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
+					then
+						echo added OK
+					else
+						echo failed to add!
+					fi;
+				fi";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		$conf->{node}{$node}{internet} = 0;
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			if ($line =~ /OK/i)
+			{
+				$return_code = 1;
+			}
+			elsif ($line =~ /failed/i)
+			{
+				$return_code = 2;
+				last;
+			}
+		}
+	}
+	
+	# 0 = NTP server(s) already defined.
+	# 1 = Added OK
+	# 2 = problem adding NTP server
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+}
+
 # This downloads and runs the 'anvil-configure-network' script
 sub configure_network_on_node
 {
 	my ($conf, $node, $password, $node_number) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network_on_node(); node: [$node], node_number: [$node_number]\n");
 	
 	# I need to make the node keys.
 	my $return_code       = 0;
@@ -7391,8 +7458,8 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
 	   $ifcfg_ifn_bridge1 .= "NETMASK=\"$conf->{cgi}{anvil_ifn_subnet}\"\n";
 	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"$conf->{cgi}{anvil_ifn_gateway}\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_ifn_dns1}\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_ifn_dns2}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_dns1}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_dns2}\"\n";
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	
 	my $vnc_range = 5900 + $conf->{cgi}{anvil_open_vnc_ports};
@@ -7428,8 +7495,10 @@ sub configure_network_on_node
 	my ($node2_short_name)    = ($conf->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
 	my ($switch1_short_name)  = ($conf->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
 	my ($switch2_short_name)  = ($conf->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
-	my ($pdu1_short_name)     = ($conf->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
-	my ($pdu2_short_name)     = ($conf->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+	my ($pdu1a_short_name)    = ($conf->{cgi}{anvil_pdu1a_name}    =~ /^(.*?)\./);
+	my ($pdu1b_short_name)    = ($conf->{cgi}{anvil_pdu1b_name}    =~ /^(.*?)\./);
+	my ($pdu2a_short_name)    = ($conf->{cgi}{anvil_pdu2a_name}    =~ /^(.*?)\./);
+	my ($pdu2b_short_name)    = ($conf->{cgi}{anvil_pdu2b_name}    =~ /^(.*?)\./);
 	my ($ups1_short_name)     = ($conf->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
 	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
@@ -7457,8 +7526,10 @@ sub configure_network_on_node
 	   $hosts .="$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}\n";
 	   $hosts .="\n";
 	   $hosts .="# Switched PDUs\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu1a_ip}	$pdu1a_short_name $conf->{cgi}{anvil_pdu1a_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu1b_ip}	$pdu1b_short_name $conf->{cgi}{anvil_pdu1b_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu2a_ip}	$pdu2a_short_name $conf->{cgi}{anvil_pdu2a_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu2b_ip}	$pdu2b_short_name $conf->{cgi}{anvil_pdu2b_name}\n";
 	   $hosts .="\n";
 	   $hosts .="# UPSes\n";
 	   $hosts .="$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}\n";
@@ -7832,10 +7903,72 @@ sub configure_network_on_node
 	return($return_code);
 }
 
+# If NTP servers are set, this will read in each node's '/etc/ntp.conf' and
+# look to see if the defined NTP servers need to be added. It will add any that
+# are missing.
+sub configure_ntp
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp()\n");
+	
+	my $ok = 1;
+	# Only proceed if at least one NTP server is defined.
+	if (($conf->{cgi}{anvil_ntp1}) || ($conf->{cgi}{anvil_ntp2}))
+	{
+		my ($node1_ok) = configure_ntp_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($node2_ok) = configure_ntp_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		# 0 = NTP server(s) already defined.
+		# 1 = Added OK
+		# 2 = problem adding NTP server
+		
+		# Default was "already added"
+		my $node1_class   = "highlight_good_bold";
+		my $node1_message = "#!string!state_0028!#";
+		my $node2_class   = "highlight_good_bold";
+		my $node2_message = "#!string!state_0028!#";
+		my $message       = "";
+		if ($node1_ok eq "1")
+		{
+			# One or both added
+			$node1_message = "#!string!state_0029!#",
+		}
+		if ($node1_ok eq "2")
+		{
+			# Failed to add.
+			$node1_class   = "highlight_note_bold";
+			$node1_message = "#!string!state_0018!#",
+			$ok            = 0;
+		}
+		if ($node2_ok eq "1")
+		{
+			# One or both added
+			$node2_message = "#!string!state_0029!#",
+		}
+		if ($node2_ok eq "2")
+		{
+			# Failed to add.
+			$node2_class   = "highlight_note_bold";
+			$node2_message = "#!string!state_0018!#",
+			$ok            = 0;
+		}
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+			row		=>	"#!string!row_0275!#",
+			node1_class	=>	$node1_class,
+			node1_message	=>	$node1_message,
+			node2_class	=>	$node2_class,
+			node2_message	=>	$node2_message,
+		});
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
 # This configures the network.
 sub configure_network
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network()\n");
 	
 	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
 	my ($node2_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 2, "#!string!device_0006!#");

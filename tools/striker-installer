@@ -586,8 +586,8 @@ if (not $conf->{sys}{skip_network})
 # If the user should reboot, tell them.
 if ($conf->{sys}{reboot_needed})
 {
-	print "\n[ Warning ] - Please confirm the network settings match what you expect and\n";
-	print "              then reboot this machine.\n\n";
+	print "\n[ Note ] - Some of the changes require a reboot to take effect.\n";
+	print "[ Note ]   When you are ready, type 'reboot' and press <enter>.\n\n";
 }
 print "Installation of Striker is complete!\n\n";
 exit(0);

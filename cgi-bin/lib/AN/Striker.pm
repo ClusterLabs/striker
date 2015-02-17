@@ -479,7 +479,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -542,7 +542,7 @@ sub lsi_control_clear_foreign_state
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}",
@@ -603,7 +603,7 @@ sub lsi_control_make_disk_hot_spare
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -665,7 +665,7 @@ sub lsi_control_mark_disk_missing
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -746,7 +746,7 @@ sub lsi_control_spin_disk_up
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -807,7 +807,7 @@ sub lsi_control_spin_disk_down
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -891,7 +891,7 @@ sub lsi_control_get_rebuild_progress
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter",
@@ -985,7 +985,7 @@ sub lsi_control_put_disk_offline
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -1052,7 +1052,7 @@ sub lsi_control_put_disk_online
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -1113,7 +1113,7 @@ sub lsi_control_add_disk_to_array
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}",
@@ -1180,7 +1180,7 @@ sub lsi_control_get_missing_disks
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter",
@@ -1220,7 +1220,7 @@ sub lsi_control_make_disk_good
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -1291,7 +1291,7 @@ sub lsi_control_disk_id_led
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
@@ -1751,7 +1751,7 @@ sub get_storage_data
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		#shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
@@ -1845,7 +1845,7 @@ sub get_storage_data_lsi
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$shell_call",
@@ -2396,7 +2396,7 @@ sub change_vm
 	# rewrite the definition file and tell the user to stop/start
 	# their server for the changes to take effect.
 	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
-	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	   $current_ram           /= 1024;
 	my $requested_ram         =  AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
 	   $requested_ram         /= 1024;
@@ -2488,7 +2488,7 @@ sub change_vm
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	0,
 				shell_call	=>	"cat $definition_file",
@@ -2587,7 +2587,7 @@ sub change_vm
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	1,
 				shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
@@ -2666,7 +2666,7 @@ sub vm_insert_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?",
@@ -2730,7 +2730,7 @@ sub vm_insert_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"cat $definition_file",
@@ -2759,7 +2759,7 @@ sub vm_insert_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
 			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
@@ -2813,7 +2813,7 @@ sub vm_eject_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
@@ -2879,7 +2879,7 @@ sub vm_eject_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"cat $definition_file",
@@ -2934,7 +2934,7 @@ sub vm_eject_media
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
 			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
@@ -2987,7 +2987,7 @@ sub manage_vm
 	{
 		next if $vm !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
-		if ($conf->{'system'}{gfs2_down})
+		if ($conf->{sys}{gfs2_down})
 		{
 			$conf->{resources}{allocated_ram}   = "--";
 			$conf->{resources}{allocated_cores} = "--";
@@ -3163,7 +3163,7 @@ sub manage_vm
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"df -P && ls -l /shared/files/",
@@ -3342,7 +3342,7 @@ sub manage_vm
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
 
 	my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
-	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	my $max_ram       = $available_ram;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
 	
@@ -3633,7 +3633,7 @@ sub switch_vm_xml_to_vnc
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"cat > $definition_file << EOF\n$new_definition\nEOF",
@@ -3652,7 +3652,7 @@ sub switch_vm_xml_to_vnc
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"chmod 644 $definition_file",
@@ -3670,7 +3670,7 @@ sub switch_vm_xml_to_vnc
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"cat $definition_file",
@@ -3700,7 +3700,7 @@ sub switch_vm_xml_to_vnc
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	0,
 				shell_call	=>	"cp -f $backup_file $definition_file && chmod 644 $definition_file",
@@ -3974,7 +3974,7 @@ sub read_live_xml
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"virsh dumpxml $say_vm",
@@ -4053,7 +4053,7 @@ sub update_vm_definition
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
@@ -4123,7 +4123,7 @@ sub add_vm_to_cluster
 	my $failover_domain;
 	
 	# First, find the failover domain...
-	$conf->{'system'}{ignore_missing_vm} = 1;
+	$conf->{sys}{ignore_missing_vm} = 1;
 	AN::Cluster::scan_cluster($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
 	foreach my $fod (keys %{$conf->{failoverdomain}})
@@ -4202,7 +4202,7 @@ sub add_vm_to_cluster
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"virsh start $vm; echo virsh:\$?",
@@ -4241,7 +4241,7 @@ sub add_vm_to_cluster
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	1,
 				shell_call	=>	"virsh create /shared/definitions/${vm}.xml; echo virsh:\$?",
@@ -4313,7 +4313,7 @@ sub add_vm_to_cluster
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	"virsh dumpxml $vm > $definition; echo virsh:\$?",
@@ -4360,7 +4360,7 @@ sub add_vm_to_cluster
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	0,
 		shell_call	=>	"virsh undefine $vm; echo virsh:\$?",
@@ -4426,7 +4426,7 @@ sub add_vm_to_cluster
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	0,
 		shell_call	=>	"$ccs_call"
@@ -4501,7 +4501,7 @@ sub add_vm_to_cluster
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	1,
 		shell_call	=>	"clusvcadm -e vm:$vm; echo clusvcadm:\$?",
@@ -4562,7 +4562,7 @@ sub find_vm_host
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"virsh list --all",
@@ -4601,7 +4601,7 @@ sub find_vm_host
 			node		=>	$peer,
 			port		=>	$conf->{node}{$peer}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"virsh list --all",
@@ -4653,7 +4653,7 @@ sub get_bridge_name
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
@@ -4730,16 +4730,7 @@ sub provision_vm
 		$provision .= "  --disk path='/shared/files/$conf->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
 	}
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
-	### Disabled
-# 	# VNC doesn't show the mouse pointer properly on the default 'qxl'
-# 	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
-# 	# use 'cirrus'. if the user has requested 'spice', then this doesn't
-# 	# matter.
-# 	if ((not $conf->{sys}{use_spice_graphics}) && ($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
-# 	{
-# 		#$provision .= "  --video cirrus \\\\\n";
-# 		$provision .= "  --video vga \\\\\n";
-# 	}
+	
 	# Connect to the discovered bridge
 	if ($conf->{new_vm}{virtio}{nic})
 	{
@@ -4759,16 +4750,7 @@ sub provision_vm
 		}
 		$provision .= " \\\\\n";
 	}
-	### We're always using spice now.
-# 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-# 	if ($conf->{sys}{use_spice_graphics})
-# 	{
-		$provision .= "  --graphics spice \\\\\n";
-# 	}
-# 	else
-# 	{
-# 		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
-# 	}
+	$provision .= "  --graphics spice \\\\\n";
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
@@ -4778,20 +4760,20 @@ sub provision_vm
 	###       good node.
 	
 	# Push the provision script into a file.
-	my $shell_callript = "/shared/provision/$conf->{new_vm}{name}.sh";
+	my $shell_script = "/shared/provision/$conf->{new_vm}{name}.sh";
 	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0118!#",
 	}, {
-		script	=>	$shell_callript,
+		script	=>	$shell_script,
 	});
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"echo \"$provision\" > $shell_callript && chmod 755 $shell_callript",
+		shell_call	=>	"echo \"$provision\" > $shell_script && chmod 755 $shell_script",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4807,15 +4789,15 @@ sub provision_vm
 	}, {
 		server	=>	$conf->{new_vm}{name},
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$shell_callript]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$shell_script]\n");
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	1,
-		shell_call	=>	"$shell_callript",
+		shell_call	=>	"$shell_script",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	$error = 0;
@@ -4827,95 +4809,73 @@ sub provision_vm
 		{
 			 # Failed to write the provision file.
 			$error = AN::Common::get_string($conf, {key => "message_0330", variables => {
-				provision_script	=>	$shell_callript,
+				provision_script	=>	$shell_script,
 			}});
 		}
 		print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
 			message	=>	"$line",
 		});
 	}
-	if (not $error)
-	{
-		print AN::Common::template($conf, "server.html", "one-line-message", {
-			message	=>	"#!string!message_0120!#",
-		});
-	}
-	else
+	if ($error)
 	{
 		print AN::Common::template($conf, "server.html", "provision-server-problem", {
 			message	=>	$error,
 		});
+	}
+	else
+	{
+		print AN::Common::template($conf, "server.html", "one-line-message", {
+			message	=>	"#!string!message_0120!#",
+		});
 		
+		# Verify that the new VM is running.
+		my $shell_script = "sleep 3; virsh list | grep -q '$conf->{new_vm}{name}'; echo rc:\$?";
+		print AN::Common::template($conf, "server.html", "one-line-message", {
+			message	=>	"#!string!message_0118!#",
+		}, {
+			script	=>	$shell_script,
+		});
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	"echo \"$provision\" > $shell_script && chmod 755 $shell_script",
+		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			chomp;
+			my $line = $_;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /^rc:(\d+)/)
+			{
+				# 0 == found
+				# 1 == not found
+				my $rc = $1;
+				if ($rc)
+				{
+					# Server wasn't created, it seems.
+					print AN::Common::template($conf, "server.html", "provision-server-problem", {
+						message	=>	"#!string!message_0434!#",
+					});
+					$error = 1;
+				}
+			}
+		}
 	}
 	
-	### Disabled.
-# 	if (-e $conf->{path}{guacamole_config})
-# 	{
-# 		# Get the VNC port and add an entry to Guacamole.
-# 		my $node   = $conf->{new_vm}{host_node};
-# 		my $say_vm = $conf->{new_vm}{name};
-# 		my $vm     = "vm:$say_vm";
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], say_vm: [$say_vm]\n");
-# 		my $icon   = "";
-# 		# This needs to be set manually as this server didn't exist
-# 		# when the cluster was scanned last.
-# 		$conf->{vm}{$vm}{current_host} = $node;
-# 		sleep 3;
-# 		($node, my $type, my $listen, my $port) = get_current_vm_vnc_info($conf, $vm, $node);
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], type: [$type], listen: [$listen], port: [$port]\n");
-# 		update_guacamole_config($conf, $say_vm, $node, $port);
-# 		
-# 		### FIXME: This is a dirty nasty hack. Fix this by managing
-# 		###        guacamole's cookies better.
-# 		restart_tomcat($conf, "1");
-# 		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-# 		if (($node =~ /n01/) || ($node =~ /node01/))
-# 		{
-# 			my $image = AN::Common::template($conf, "common.html", "image", {
-# 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
-# 				alt_text	=>	"",
-# 				id		=>	"server-desktop_n01",
-# 			}, "", 1);
-# 			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-# 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-# 				button_text	=>	"$image",
-# 				id		=>	"guacamole_url_$say_vm",
-# 			}, "", 1);
-# 		}
-# 		elsif (($node =~ /n02/) || ($node =~ /node02/))
-# 		{
-# 			my $image = AN::Common::template($conf, "common.html", "image", {
-# 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
-# 				alt_text	=>	"",
-# 				id		=>	"server-desktop_n02",
-# 			}, "", 1);
-# 			$icon = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-# 				button_link	=>	"$guacamole_url?id=c\%2F$say_vm",
-# 				button_text	=>	"$image",
-# 				id		=>	"guacamole_url_$say_vm",
-# 			}, "", 1);
-# 		}
-# 		else
-# 		{
-# 			# Failed to find the host, tell the user to use virt-manager.
-# 			$icon = "<span class=\"highlight_warning\">#!string!message_0121!#";
-# 		}
-# 		
-# 		# Add the restart guac button.
-# 		my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
-# 				reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
-# 			}});
-# 		
-# 		print AN::Common::template($conf, "server.html", "provision-server-install-started", {
-# 			icon		=>	$icon,
-# 			restart_tomcat	=>	$restart_tomcat,
-# 		});
-# 	}
-# 	else
-# 	{
-# 		# No guacamole, so tell the user to use virt-manager.
-# 		print AN::Common::template($conf, "server.html", "provision-server-install-started-no-guacamole");
-# 	}
+	# Add the server to the cluster if no errors exist.
+	if ($error)
+	{
+		# Well poo.
+	}
+	else
+	{
+		# Add it and then change the boot device to 'hd'.
+	}
 	
 	# Done!
 	# the variables hash feeds 'message_0126'.
@@ -4940,17 +4900,42 @@ sub verify_vm_config
 	# If we connected, start parsing.
 	my $cluster = $conf->{cgi}{cluster};
 	my @errors;
-	if ($conf->{'system'}{up_nodes})
+	if ($conf->{sys}{up_nodes})
 	{
 		# Did the user name the VM?
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::name: [$conf->{cgi}{name}]\n");
 		if ($conf->{cgi}{name})
 		{
+			# Normally, it's safer to only allow a subset of
+			# characters, but it would be nice to allow users to 
+			# name their servers using non-latin characters, so for
+			# now, we look for bad characters only.
 			$conf->{cgi}{name} =~ s/^\s+//;
 			$conf->{cgi}{name} =~ s/\s+$//;
 			if ($conf->{cgi}{name} =~ /\s/)
 			{
 				# Bad name, no spaces allowed.
+				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
+				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
+				push @errors, "$say_row#!#$say_message";
+			}
+			# If this changes, remember to update message_0127!
+			elsif (($conf->{cgi}{name} =~ /;/) || 
+			       ($conf->{cgi}{name} =~ /&/) || 
+			       ($conf->{cgi}{name} =~ /\|/) || 
+			       ($conf->{cgi}{name} =~ /\$/) || 
+			       ($conf->{cgi}{name} =~ />/) || 
+			       ($conf->{cgi}{name} =~ /</) || 
+			       ($conf->{cgi}{name} =~ /\[/) || 
+			       ($conf->{cgi}{name} =~ /\]/) || 
+			       ($conf->{cgi}{name} =~ /\(/) || 
+			       ($conf->{cgi}{name} =~ /\)/) || 
+			       ($conf->{cgi}{name} =~ /}/) || 
+			       ($conf->{cgi}{name} =~ /{/) || 
+			       ($conf->{cgi}{name} =~ /!/) || 
+			       ($conf->{cgi}{name} =~ /\^/))
+			{
+				# Illegal characters.
 				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
 				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
 				push @errors, "$say_row#!#$say_message";
@@ -5024,7 +5009,7 @@ sub verify_vm_config
 		}
 		my $requested_ram = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
 		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
-		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
+		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; requested_ram: [$requested_ram], available_ram: [$available_ram]\n");
 		if ($requested_ram > $available_ram)
 		{
@@ -5187,7 +5172,7 @@ sub verify_vm_config
 		if ($conf->{cgi}{os_variant})
 		{
 			my $match = 0;
-			foreach my $os_variant (@{$conf->{'system'}{os_variant}})
+			foreach my $os_variant (@{$conf->{sys}{os_variant}})
 			{
 				my ($short_name, $desc) = ($os_variant =~ /^(.*?)#!#(.*)$/);
 				if ($conf->{cgi}{os_variant} eq $short_name)
@@ -5351,7 +5336,7 @@ sub confirm_provision_vm
 	$conf->{cgi}{os_variant} = "generic" if not $conf->{cgi}{os_variant};
 	my $select_install_iso   = AN::Cluster::build_select($conf, "install_iso", 1, 1, 300, $conf->{cgi}{install_iso}, $images);
 	my $select_driver_iso    = AN::Cluster::build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
-	my $select_os_variant    = AN::Cluster::build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{'system'}{os_variant});
+	my $select_os_variant    = AN::Cluster::build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{sys}{os_variant});
 	
 	my $say_title = AN::Common::get_string($conf, {key => "message_0142", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
@@ -5394,7 +5379,7 @@ sub confirm_withdraw_node
 	print AN::Common::template($conf, "server.html", "confirm-withdrawl", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5416,7 +5401,7 @@ sub confirm_join_cluster
 	print AN::Common::template($conf, "server.html", "confirm-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5437,7 +5422,7 @@ sub confirm_dual_join
 	print AN::Common::template($conf, "server.html", "confirm-dual-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5458,7 +5443,7 @@ sub confirm_fence_node
 	print AN::Common::template($conf, "server.html", "confirm-fence-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5479,7 +5464,7 @@ sub confirm_poweroff_node
 	print AN::Common::template($conf, "server.html", "confirm-poweroff-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5500,7 +5485,7 @@ sub confirm_poweron_node
 	print AN::Common::template($conf, "server.html", "confirm-poweron-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5517,7 +5502,7 @@ sub confirm_dual_boot
 	}});
 	print AN::Common::template($conf, "server.html", "confirm-dual-poweron-node", {
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5534,7 +5519,7 @@ sub confirm_cold_stop_anvil
 	}});
 	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5557,7 +5542,7 @@ sub confirm_start_vm
 	print AN::Common::template($conf, "server.html", "confirm-start-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5587,7 +5572,7 @@ sub confirm_stop_vm
 		message		=>	$say_message,
 		warning		=>	$say_warning,
 		precaution	=>	$say_precaution,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 
 	return (0);
@@ -5609,7 +5594,7 @@ sub confirm_force_off_vm
 	print AN::Common::template($conf, "server.html", "confirm-force-off-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5630,7 +5615,7 @@ sub confirm_delete_vm
 	print AN::Common::template($conf, "server.html", "confirm-delete-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5659,7 +5644,7 @@ sub confirm_migrate_vm
 	print AN::Common::template($conf, "server.html", "confirm-migrate-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
 	});
 	
 	return (0);
@@ -5698,7 +5683,7 @@ sub start_vm
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
@@ -5733,7 +5718,7 @@ sub start_vm
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	$ssh_fh,
 					'close'		=>	0,
 					shell_call	=>	"clusvcadm -d vm:$vm",
@@ -5763,7 +5748,7 @@ sub start_vm
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	$ssh_fh,
 					'close'		=>	1,
 					shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
@@ -6008,7 +5993,7 @@ sub migrate_vm
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"$conf->{path}{clusvcadm} -M vm:$vm -m $target",
@@ -6077,7 +6062,7 @@ sub stop_vm
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"$conf->{path}{clusvcadm} -d vm:$vm",
@@ -6145,7 +6130,7 @@ sub join_cluster
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
@@ -6251,7 +6236,7 @@ sub dual_join
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	"",
 					'close'		=>	1,
 					shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
@@ -6370,7 +6355,7 @@ sub force_off_vm
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"virsh destroy $vm",
@@ -6419,9 +6404,9 @@ sub delete_vm
 	my $say_host     = "";
 	my $host         = "";
 	my $abort_reason = "";
-	my $node         = $conf->{'system'}{cluster}{node1_name};
-	my $node1        = $conf->{'system'}{cluster}{node1_name};
-	my $node2        = $conf->{'system'}{cluster}{node2_name};
+	my $node         = $conf->{sys}{cluster}{node1_name};
+	my $node1        = $conf->{sys}{cluster}{node1_name};
+	my $node2        = $conf->{sys}{cluster}{node2_name};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::host: [$conf->{vm}{$vm}{host}]\n");
 	if (not $conf->{vm}{$vm}{host})
 	{
@@ -6481,7 +6466,7 @@ sub delete_vm
 			node		=>	$host,
 			port		=>	$conf->{node}{$host}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?",
@@ -6535,7 +6520,7 @@ sub delete_vm
 				node		=>	$host,
 				port		=>	$conf->{node}{$host}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	0,
 				shell_call	=>	"virsh destroy $say_vm; echo virsh:\$?",
@@ -6594,7 +6579,7 @@ sub delete_vm
 					node		=>	$host,
 					port		=>	$conf->{node}{$host}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	$ssh_fh,
 					'close'		=>	1,
 					shell_call	=>	"lvremove -f $lv; echo lvremove:\$?",
@@ -6679,7 +6664,7 @@ sub remove_vm_definition
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"rm -f $file; ls $file; echo ls:\$?",
@@ -6745,7 +6730,7 @@ sub archive_file
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"cp $file $destination; echo cp:\$?",
@@ -6874,7 +6859,7 @@ sub poweroff_node
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"poweroff && echo \"Power down initiated. Please return to the main page now.\"",
@@ -6935,7 +6920,7 @@ sub cold_stop_anvil
 	AN::Cluster::scan_cluster($conf);
 	
 	# Abort if the system is down already.
-	if ($conf->{'system'}{up_nodes} > 0)
+	if ($conf->{sys}{up_nodes} > 0)
 	{
 		my $say_title = AN::Common::get_string($conf, {key => "title_0181", variables => {
 			anvil	=>	$anvil,
@@ -6973,7 +6958,7 @@ sub cold_stop_anvil
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	"",
 					'close'		=>	1,
 					shell_call	=>	$shell_call,
@@ -7080,7 +7065,7 @@ sub cold_stop_anvil
 						node		=>	$node,
 						port		=>	$conf->{node}{$node}{port},
 						user		=>	"root",
-						password	=>	$conf->{'system'}{root_password},
+						password	=>	$conf->{sys}{root_password},
 						ssh_fh		=>	"",
 						'close'		=>	1,
 						shell_call	=>	$shell_call,
@@ -7151,7 +7136,7 @@ sub cold_stop_anvil
 						node		=>	$node,
 						port		=>	$conf->{node}{$node}{port},
 						user		=>	"root",
-						password	=>	$conf->{'system'}{root_password},
+						password	=>	$conf->{sys}{root_password},
 						ssh_fh		=>	"",
 						'close'		=>	1,
 						shell_call	=>	$shell_call,
@@ -7408,8 +7393,8 @@ sub poweron_node
 		# The node is still off. Now can I call it from it's peer?
 		my $peer  = "";
 		my $is_on = 2;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-		if ($conf->{'system'}{up_nodes} == 1)
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}]\n");
+		if ($conf->{sys}{up_nodes} == 1)
 		{
 			# It has to be the peer of this node.
 			$peer = @{$conf->{up_nodes}}[0];
@@ -7433,7 +7418,7 @@ sub poweron_node
 				node		=>	$peer,
 				port		=>	$conf->{node}{$peer}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	1,
 				shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o on",
@@ -7640,7 +7625,7 @@ sub fence_node
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	"",
 					'close'		=>	0,
 					shell_call	=>	"$command",
@@ -7715,7 +7700,7 @@ sub fence_node
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	$ssh_fh,
 					'close'		=>	1,
 					shell_call	=>	"$command",
@@ -7835,7 +7820,7 @@ sub withdraw_node
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	"/etc/init.d/rgmanager stop",
@@ -7873,7 +7858,7 @@ sub withdraw_node
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	0,
 				shell_call	=>	"/etc/init.d/cman stop",
@@ -7913,7 +7898,7 @@ sub withdraw_node
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	$ssh_fh,
 					'close'		=>	1,
 					shell_call	=>	"/etc/init.d/cman start",
@@ -7997,7 +7982,7 @@ sub recover_rgmanager
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
 		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
+		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
 		shell_call	=>	"/etc/init.d/rgmanager start",
@@ -8059,7 +8044,7 @@ sub recover_rgmanager
 					node		=>	$node,
 					port		=>	$conf->{node}{$node}{port},
 					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
+					password	=>	$conf->{sys}{root_password},
 					ssh_fh		=>	"",
 					'close'		=>	0,
 					shell_call	=>	"$conf->{path}{clusvcadm} -d $storage_service",
@@ -8104,7 +8089,7 @@ sub recover_rgmanager
 						node		=>	$node,
 						port		=>	$conf->{node}{$node}{port},
 						user		=>	"root",
-						password	=>	$conf->{'system'}{root_password},
+						password	=>	$conf->{sys}{root_password},
 						ssh_fh		=>	"",
 						'close'		=>	1,
 						shell_call	=>	"$conf->{path}{clusvcadm} -e $storage_service",
@@ -8211,8 +8196,8 @@ sub display_details
 	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
 	# calls are available. IE: enable this when the cache exists and the
 	# fence command addresses are reachable.
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{'system'}{show_nodes}], up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
-#	if ($conf->{'system'}{show_nodes})
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; show nodes: [$conf->{sys}{show_nodes}], up nodes: [$conf->{sys}{up_nodes}] ($up_nodes)\n");
+#	if ($conf->{sys}{show_nodes})
 	if (1)
 	{
 		my $node_control_panel = display_node_controls($conf);
@@ -8227,8 +8212,8 @@ sub display_details
 		my $no_access_panel            = "";
 
 		# I don't show below here unless at least one node is up.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}] ($up_nodes)\n");
-		if ($conf->{'system'}{up_nodes} > 0)
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}] ($up_nodes)\n");
+		if ($conf->{sys}{up_nodes} > 0)
 		{
 			# Show the user the current VM states and the control buttons.
 			$vm_state_and_control_panel = display_vm_state_and_controls($conf);
@@ -8309,7 +8294,7 @@ sub display_free_resources
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
-		if (not $conf->{'system'}{clvmd_down})
+		if (not $conf->{sys}{clvmd_down})
 		{
 			$enough_storage =  1 if $conf->{resources}{vg}{$vg}{free_space} > (2**30);
 			$vg_link        .= "$vg:$conf->{resources}{vg}{$vg}{free_space},";
@@ -8324,7 +8309,7 @@ sub display_free_resources
 	{
 		next if $vm !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
-		if ($conf->{'system'}{gfs2_down})
+		if ($conf->{sys}{gfs2_down})
 		{
 			$allocated_ram   = "#!string!symbol_0011!#";
 			$allocated_cores = "#!string!symbol_0011!#";
@@ -8345,17 +8330,17 @@ sub display_free_resources
 	# plus the reserved RAM to get an even left-over amount of memory for
 	# the user to allocate to their servers.
 	my $diff                      = $conf->{resources}{total_ram} % (1024 ** 3);
-	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{'system'}{unusable_ram};
+	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
-	my $free_ram                  =  $conf->{'system'}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  $conf->{'system'}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $free_ram);
+	my $free_ram                  =  $conf->{sys}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
+	my $say_free_ram              =  $conf->{sys}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $free_ram);
 	my $say_total_ram             =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
-	my $say_allocated_ram         =  $conf->{'system'}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $allocated_ram);
-	my $say_vg_size               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_size[0]);
-	my $say_vg_used               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_used[0]);
-	my $say_vg_free               =  $conf->{'system'}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_free[0]);
-	my $say_vg                    =  $conf->{'system'}{clvmd_down} ? "--" : $vg[0];
-	my $say_pv_name               =  $conf->{'system'}{clvmd_down} ? "--" : $pv_name[0];
+	my $say_allocated_ram         =  $conf->{sys}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $allocated_ram);
+	my $say_vg_size               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_size[0]);
+	my $say_vg_used               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_used[0]);
+	my $say_vg_free               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_free[0]);
+	my $say_vg                    =  $conf->{sys}{clvmd_down} ? "--" : $vg[0];
+	my $say_pv_name               =  $conf->{sys}{clvmd_down} ? "--" : $pv_name[0];
 	
 	# Show the main info.
 	$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-entry", {
@@ -8394,8 +8379,8 @@ sub display_free_resources
 	### NOTE: Disabled in this release.
 	# If I found enough free disk space, have at least 1 GiB of free RAM 
 	# and both nodes are up, enable the "provision new server" button.
-	my $node1   = $conf->{'system'}{cluster}{node1_name};
-	my $node2   = $conf->{'system'}{cluster}{node2_name};
+	my $node1   = $conf->{sys}{cluster}{node1_name};
+	my $node2   = $conf->{sys}{cluster}{node2_name};
 	#my $say_bns = "<span class=\"disabled_button\">#!string!button_0022!#</span>";
 	#my $say_mc  = "<span class=\"disabled_button\">#!string!button_0023!#</span>";
 	my $say_bns = AN::Common::template($conf, "common.html", "disabled-button", {
@@ -8481,8 +8466,8 @@ sub display_vm_details
 {
 	my ($conf) = @_;
 	
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	my $server_details_panel = AN::Common::template($conf, "server.html", "display-server-details-header");
 	
 	# Pull up the server details.
@@ -8491,7 +8476,7 @@ sub display_vm_details
 		next if $vm !~ /^vm/;
 		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $conf->{'system'}{gfs2_down} ? "#!string!symbol_0011!#" : AN::Cluster::bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
+		my $say_ram = $conf->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : AN::Cluster::bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_ram: [$say_ram], ram: [$conf->{vm}{$vm}{details}{ram}]\n");
 		
 		# Get the LV arrays populated.
@@ -8560,11 +8545,11 @@ sub display_vm_details
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
-		$conf->{vm}{$vm}{details}{cpu_count} = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
-		$lv_path[0]                          = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
-		$lv_size[0]                          = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
-		$type[0]                             = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
-		$mac[0]                              = "#!string!symbol_0011!#" if $conf->{'system'}{gfs2_down};
+		$conf->{vm}{$vm}{details}{cpu_count} = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
+		$lv_path[0]                          = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
+		$lv_size[0]                          = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
+		$type[0]                             = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
+		$mac[0]                              = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
 		$conf->{vm}{$vm}{details}{cpu_count} = "--" if not defined $conf->{vm}{$vm}{details}{cpu_count};
 		$say_ram                             = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
 		$lv_path[0]                          = "--" if not defined $lv_path[0];
@@ -8758,7 +8743,7 @@ sub read_vm_definition
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
-			password	=>	$conf->{'system'}{root_password},
+			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	"cat $conf->{vm}{$vm}{definition_file}",
@@ -8968,8 +8953,8 @@ sub check_vms
 	my ($conf) = @_;
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node 1: n[$node1] s[$conf->{node}{$node1}{info}{short_host_name}] l[$conf->{node}{$node1}{info}{host_name}], node 2: n[$node2] s[$conf->{node}{$node2}{info}{short_host_name}] l[$conf->{node}{$node2}{info}{host_name}]\n");
 	my $short_node1 = "$conf->{node}{$node1}{info}{short_host_name}";
@@ -9010,7 +8995,7 @@ sub check_vms
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$conf->{vm}{$vm}{host}]\n");
-		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{'system'}{ignore_missing_vm}))
+		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{sys}{ignore_missing_vm}))
 		{
 			# Pull the host node and current state out of the hash.
 			my $host_node = "";
@@ -9101,7 +9086,7 @@ sub check_vms
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
 				user		=>	"root",
-				password	=>	$conf->{'system'}{root_password},
+				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	1,
 				shell_call	=>	"virsh dumpxml $say_vm",
@@ -9186,9 +9171,9 @@ sub set_node_names
 	
 	# First pull the names into easier to follow variables.
 	my $this_cluster = $conf->{cgi}{cluster};
-	$conf->{'system'}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
-	$conf->{'system'}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{'system'}{cluster}{node1_name}], node2: [$conf->{'system'}{cluster}{node2_name}]\n");
+	$conf->{sys}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
+	$conf->{sys}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], node1: [$conf->{sys}{cluster}{node1_name}], node2: [$conf->{sys}{cluster}{node2_name}]\n");
 	
 	return (0);
 }
@@ -9200,8 +9185,8 @@ sub display_vm_state_and_controls
 	my ($conf) = @_;
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node1_long: [$node1_long]\n");
@@ -9385,8 +9370,8 @@ sub display_drbd_details
 	my ($conf) = @_;
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	my $drbd_details_panel = AN::Common::template($conf, "server.html", "display-replicated-storage-header", {
@@ -9518,8 +9503,8 @@ sub display_gfs2_details
 	my ($conf) = @_;
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
 	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
 	my $gfs2_details_panel = AN::Common::template($conf, "server.html", "display-cluster-storage-header", {
@@ -9548,8 +9533,8 @@ sub display_gfs2_details
 		# Neither node has the GFS2 partition mounted. Use the data
 		# from /etc/fstab. This is what will be stored in either node's
 		# hash. So pick a node that's online and use it.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-		if ($conf->{'system'}{up_nodes} == 1)
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}]\n");
+		if ($conf->{sys}{up_nodes} == 1)
 		{
 			$node      = @{$conf->{up_nodes}}[0];
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Neither node has the GFS2 partition mounted.\n");
@@ -9622,8 +9607,8 @@ sub display_node_details
 	my ($conf) = @_;
 	
 	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
 	
@@ -9693,8 +9678,8 @@ sub display_node_controls
 	# I want to map storage service to nodes for the "Withdraw" buttons.
 	my $disable_join = 0;
 	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{'system'}{cluster}{node1_name};
-	my $node2 = $conf->{'system'}{cluster}{node2_name};
+	my $node1 = $conf->{sys}{cluster}{node1_name};
+	my $node2 = $conf->{sys}{cluster}{node2_name};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2]\n");
 	my $node1_long = $conf->{node}{$node1}{info}{host_name};
 	my $node2_long = $conf->{node}{$node2}{info}{host_name};
@@ -9702,8 +9687,8 @@ sub display_node_controls
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-	my $cold_stop  = ($conf->{'system'}{up_nodes} > 0)                                                    ? 1 : 0;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; system::up_nodes: [$conf->{'system'}{up_nodes}], dual_boot: [$dual_boot], dual_join: [$dual_join], cold_stop: [$cold_stop]\n");
+	my $cold_stop  = ($conf->{sys}{up_nodes} > 0)                                                    ? 1 : 0;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::up_nodes: [$conf->{sys}{up_nodes}], dual_boot: [$dual_boot], dual_join: [$dual_join], cold_stop: [$cold_stop]\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
