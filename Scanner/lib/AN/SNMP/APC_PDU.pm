@@ -118,27 +118,68 @@ sub BUILD {
 
     return;
 }
+# ----------------------------------------------------------------------
+# 
+sub eval_discrete_status {
+    my $self = shift;
+    my ($args) = @_;
+
+    state $is_digit = { 0 => 1, 1 => 1, 2 => 1, 3 => 1, 4 => 1,
+                        5 => 1, 6 => 1, 7 => 1, 8 => 1, 9 => 1 };
+    my $msg = { args => '', tag => '', label => '', newval => '',
+                status => '' };
+    $args->{prev_status} ||= '';
 
 
+    if ( $args->{tag} =~ m{\Aoutlet_is_on_(\d)} ) {
+        my $num = $1;
+        $msg->{newval} = $args->{rec_meta}{values}{ $args->{value} } || '';
+        my $unchanged = ( $is_digit->{ $args->{value} }
+                          && $is_digit->{ $args->{prev_value}}
+                          ? $args->{value} == $args->{prev_value}
+                          : $msg->{newval} eq $args->{prev_value}
+            );
+        if ( $unchanged ) {
+            $msg->{status} = 'OK'
+        }
+        else {
+            $msg->{status} = 'WARNING';
+            $msg->{tag} = 'PDU Outlet status changed';
+            my $from = ( $is_digit->{ $args->{prev_value} }
+                         ? $args->{rec_meta}{values}{ $args->{prev_value} }
+                         : $args->{prev_value}
+                );
+            $msg->{args} = "outlet=$num;from=$from;to=$msg->{newval}";
+        }
+    }
+
+    $self->compare_sides_or_report_record( $args, $msg );
+
+    return ( $msg->{status}, $msg->{newval} || $args->{value} );
+}
+
+# ----------------------------------------------------------------------
+#
 sub process_all_oids {
     my $self = shift;
     my ( $received, $target, $metadata ) = @_;
 
     my ( $info, $prev ) = ( $self->confdata, $self->prev );
+    state $first = 1;
 
     for my $oid ( keys %$received ) {
         my ( $value, $tag ) = ( $received->{$oid}, $metadata->{roid}{$oid} );
         my $rec_meta = $metadata->{$tag};
         my $label = $rec_meta->{label} || $tag;
 
-        my $prev_value = $prev->{$target}{$tag}{value};
+        my $prev_value  = $prev->{$target}{$tag}{value}  || $value;
         my $prev_status = $prev->{$target}{$tag}{status} || 'OK';
 
         # Calculate status and message; convert numeric codes to strings.
         #
         state $i = 1;
         say Data::Dumper->Dump(
-                    [ $i, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
+            [ $i, $tag, $value, $rec_meta, $prev_status, $prev_value ] )
             if grep {/grocess_all_opids/} ( $ENV{VERBOSE} || 0 );
         $i++;
 
@@ -153,6 +194,7 @@ sub process_all_oids {
         $prev->{$target}{$tag}{value} = $newvalue || $value;
         $prev->{$target}{$tag}{status} = $status;
     }
+    $first = 0;
 }
 
 1;

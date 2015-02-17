@@ -659,17 +659,17 @@ sub eval_nested_status {
 sub eval_status {
     my ( $self, $args ) = @_;
 
-    return &eval_discrete_status
+    return $self->eval_discrete_status( $args )
         unless (    exists $args->{rec_meta}{ok}
                  or exists $args->{rec_meta}{ok_min} );    # not range data.
 
-    return &eval_nested_status
+    return $self->eval_nested_status( $args)
         if exists $args->{rec_meta}{ok_min};
 
-    return &eval_rising_status
+    return $self->eval_rising_status($args)
         if $args->{rec_meta}{warn} >= $args->{rec_meta}{ok};
 
-    return &eval_falling_status
+    return $self->eval_falling_status($args)
         if $args->{rec_meta}{warn} <= $args->{rec_meta}{ok};
 
     return;
