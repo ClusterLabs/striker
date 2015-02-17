@@ -6,16 +6,13 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
 use Carp;
-
 use Clone 'clone';
+use English '-no_match_vars';
 use File::Basename;
 use FileHandle;
-use IO::Select;
-use Time::Local;
 use FindBin qw($Bin);
 use Module::Load;
 use POSIX 'strftime';
@@ -25,15 +22,46 @@ use AN::OneAlert;
 use Const::Fast;
 use Data::Dumper;
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
+# Constants used in constructor
+#
 const my $AGENT_KEY  => 'agents';
 const my $PID_SUBKEY => 'pid';
 const my $OWNER_KEY  => 'owner';
 
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw( xlator owner listeners),
     { alerts  => sub { return {} },
       agents  => sub { return {} },
       handled => sub { return {} }, };
 
+# ......................................................................
+#
+sub is_hash_ref {
+
+    return 'HASH' eq ref $_[0];
+}
+
+# ......................................................................
+#
+sub has_agents_key {
+
+    return exists $_[0]->{$AGENT_KEY};
+}
+
+# ......................................................................
+#
+sub has_pid_subkey {
+
+    return exists $_[0]->{$AGENT_KEY}{$PID_SUBKEY};
+}
+
+# ......................................................................
+# CONSTRUCTOR
+#
 sub BUILD {
     my $self = shift;
 
@@ -64,7 +92,6 @@ sub BUILD {
 # ======================================================================
 # CONSTANTS
 #
-
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
 const my $ALERT_MSG_FORMAT_STR => 'id %s | %s: %s->%s (%s);%s %s: %s';
@@ -83,53 +110,6 @@ const my $LISTENS_TO => {
 # ======================================================================
 # Subroutines
 #
-# ......................................................................
-# Standard constructor. In subclasses, 'inherit' this constructor, but
-# write a new _init()
-#
-
-# ......................................................................
-#
-sub is_hash_ref {
-
-    return 'HASH' eq ref $_[0];
-}
-
-sub has_agents_key {
-
-    return exists $_[0]->{$AGENT_KEY};
-}
-
-sub has_pid_subkey {
-
-    return exists $_[0]->{$AGENT_KEY}{$PID_SUBKEY};
-}
-
-sub handled_alert {
-    my $self = shift;
-    my ( $key1, $key2 ) = @_;
-
-    return (    exists $self->handled()->{$key1}
-             && exists $self->handled()->{$key1}{$key2}
-             && $self->handled()->{$key1}{$key2} );
-}
-
-sub set_alert_handled {
-    my $self = shift;
-    my ( $key1, $key2 ) = @_;
-
-    $self->handled()->{$key1}{$key2} = 1;
-    return;
-}
-
-sub clear_alert_handled {
-    my $self = shift;
-    my ( $key1, $key2 ) = @_;
-
-    $self->handled()->{$key1}{$key2} = 0;
-    return;
-}
-
 {
     no warnings;
     sub DEBUG   { return $LEVEL{DEBUG}; }
@@ -140,10 +120,56 @@ sub clear_alert_handled {
 # ======================================================================
 # Methods
 #
-
-# ......................................................................
+# ----------------------------------------------------------------------
+# Internal utility; Has this key combination been handled?
 #
+sub handled_alert {
+    my $self = shift;
+    my ( $key1, $key2 ) = @_;
 
+    return (    exists $self->handled()->{$key1}
+             && exists $self->handled()->{$key1}{$key2}
+             && $self->handled()->{$key1}{$key2} );
+}
+
+# ----------------------------------------------------------------------
+# Internal utility; Set this key combination as having been handled.
+#
+sub set_alert_handled {
+    my $self = shift;
+    my ( $key1, $key2 ) = @_;
+
+    $self->handled()->{$key1}{$key2} = 1;
+    return;
+}
+
+# ----------------------------------------------------------------------
+# Internal utility; Set this key combination as not handled.
+#
+sub clear_alert_handled {
+    my $self = shift;
+    my ( $key1, $key2 ) = @_;
+
+    $self->handled()->{$key1}{$key2} = 0;
+    return;
+}
+
+# ----------------------------------------------------------------------
+# Add an alert ( AN::OneAlert ) to the current set of alerts, based on
+# the process id ($key1) and field ($key2), i.e., the variable being
+# described. If there already exists an alert with this ID
+# combination, identical timestamps indicates the arrival of an
+# already-seen message. A message with the same status and same
+# message tag similarly is a new alert for an existing condition.
+#
+# An exception occurs with the dashboard system, which generates
+# alerts with message tag NODE_SERVER_STATUS, which may represent an
+# out-of-service server, a timeout attempting to restore the server,
+# or success restoring it.
+#
+# When an alert is added, it is 'cleared' to indicate the alert is new
+# and needs to be handled.
+#
 sub add_alert {
     my $self = shift;
     my ( $key1, $key2, $value ) = @_;
@@ -162,30 +188,21 @@ sub add_alert {
         if ($old                                          # return if no change.
             && $value->status eq $old->status
             && $value->message_tag eq $old->message_tag )
-            && $value->target_extra ne 'override';
+        && $value->target_extra ne 'override';
     $self->alerts()->{$key1}{$key2} = $value;
     $self->clear_alert_handled( $key1, $key2 );
     return 1;
 }
 
-sub add_agent {
-    my $self = shift;
-    my ( $pid, $value ) = @_;
-
-    die("pid = $pid, value = $value, caller = @{[caller]}")
-        unless $pid && $value;
-    $self->agents()->{$pid} = $value;
-    return;
-}
-
-sub fetch_agent {
-    my $self = shift;
-    my ($key) = @_;
-
-    return unless $self->agents()->{$key};
-    return $self->agents()->{$key};
-}
-
+# ----------------------------------------------------------------------
+# Remove any alert associated with key1 & key2. If key2 is not provided,
+# remove all alerts associated with key1.
+#
+# In a sense, the 'alert_handled' structure for key1/key2 should be
+# deleted, but it will be taken care of when the replacement alerts
+# are assigned. Until then, it will be simply surplus crud hanging
+# around.
+#
 sub delete_alert {
     my $self = shift;
     my ( $key1, $key2 ) = @_;
@@ -202,6 +219,25 @@ sub delete_alert {
     return;
 }
 
+# ......................................................................
+# A higher-level method utilizing delete_alert(). This clear_alert()
+# sets key2 to '+' if it hasn't been defined, corresponding to the way
+# add_alert() works.
+#
+sub clear_alert {
+    my $self = shift;
+    my ( $key1, $key2 ) = @_;
+
+    $key2 ||= '+';
+    return unless $self->alert_exists( $key1, $key2 );
+    $self->delete_alert( $key1, $key2 );
+    return;
+}
+
+# ----------------------------------------------------------------------
+# Is any alert associated with key1 / key2? Use a default value of '+'
+# for key2, if it hasn't been set.
+#
 sub alert_exists {
     my $self = shift;
     my ( $key1, $key2 ) = @_;
@@ -218,6 +254,11 @@ sub alert_exists {
 }
 
 # ......................................................................
+# If the set_alert 'other' array contains a hash including a
+# timestamp, extract and return the timestamp. Remove the entire hash
+# if there's nothing left.
+#
+# If no timestamp was provided, use the current time.
 #
 sub extract_time_and_modify_array {
     my ($array) = @_;
@@ -237,6 +278,10 @@ sub extract_time_and_modify_array {
     return $timestamp || strftime '%F %T%z', localtime;
 }
 
+# ----------------------------------------------------------------------
+# Receive a list of fields, and turn it into a hash to pass to the
+# AN::OneAlert constructor.
+#
 sub set_alert {
     my $self = shift;
     my ( $id,          $src,         $field,        $value,
@@ -263,43 +308,36 @@ sub set_alert {
     return;
 }
 
-# ......................................................................
+# ----------------------------------------------------------------------
+# Invoked from An::Scanner::handle_additions(), to archive information
+# concerning launched agent processes. The value being stored consists
+# of the process 'pid', 'program' name, 'hostname', and 'msg_dir'.
 #
-sub clear_alert {
+sub add_agent {
     my $self = shift;
-    my ( $key1, $key2 ) = @_;
+    my ( $pid, $value ) = @_;
 
-    $key2 ||= '+';
-    return unless $self->alert_exists( $key1, $key2 );
-    $self->delete_alert( $key1, $key2 );
+    die("pid = $pid, value = $value, caller = @{[caller]}")
+        unless $pid && $value;
+    $self->agents()->{$pid} = $value;
     return;
 }
 
-# ......................................................................
+# ----------------------------------------------------------------------
+# Lookup the process information for the agent with the specified pid.
 #
+sub fetch_agent {
+    my $self = shift;
+    my ($key) = @_;
 
-sub has_dispatcher {
-    my ($listener) = @_;
-
-    die( "Alerts::has_dispatcher() was invoked by " . caller() );
-    return $listener->dispatcher;
+    return unless $self->agents()->{$key};
+    return $self->agents()->{$key};
 }
 
-sub add_dispatcher {
-    my ($listener) = @_;
-
-    die( "Alerts::add_dispatcher() was invoked by " . caller() );
-    $listener->dispatcher('asd');
-    return;
-}
-
-sub dispatch {
-    my ( $listener, $msgs ) = @_;
-
-    die( "Alerts::dispatch() was invoked by " . caller() );
-    $listener->{dispatcher}->dispatch($msgs);
-}
-
+# ----------------------------------------------------------------------
+# Used by handle_alerts() - Pass on the current alert messages to a
+# single listener to be delivered or displayed.
+#
 sub dispatch_msg {
     my $self = shift;
     my ( $listener, $msgs, $sumweight ) = @_;
@@ -309,6 +347,9 @@ sub dispatch_msg {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Used by handle_alerts() - Format a single message for delivery.
+#
 sub format_msg {
     my $self = shift;
     my ( $alert, $msg ) = @_;
@@ -336,6 +377,10 @@ sub format_msg {
     return $formatted;
 }
 
+# ----------------------------------------------------------------------
+# Used by handle_alerts() - Mark all stored alerts as hanving been
+# handled.
+#
 sub mark_alerts_as_reported {
     my $self = shift;
 
@@ -349,6 +394,14 @@ sub mark_alerts_as_reported {
     return;
 }
 
+# ----------------------------------------------------------------------
+# API - Back-end infrastructure implementing AN::Scanner:set_alert().
+# When invoked at end of each processing loop, it collects all the
+# current alerts and all the current listeners. For each listener, it
+# goes through alerts, skips over old ones, I18N's and formats the
+# messages, and sends them to be delivered. Finnally, all alerts are
+# marked as handled.
+#
 sub handle_alerts {
     my $self = shift;
 
@@ -369,9 +422,10 @@ sub handle_alerts {
             for my $subkey ( keys %{ $alerts->{$key} } ) {
                 my $alert = $alerts->{$key}{$subkey};
                 next ALERT if $alert->has_this_alert_been_reported_yet();
-                if ( ! $alert->override ) {
-                    next ALERT if $self->handled_alert( $key, $subkey ); 
-                    next ALERT unless $alert->listening_at_this_level($listener);
+                if ( !$alert->override ) {
+                    next ALERT if $self->handled_alert( $key, $subkey );
+                    next ALERT
+                        unless $alert->listening_at_this_level($listener);
                 }
                 $lookup->{key} = $alert->message_tag();
                 if ( $alert->message_arguments()
@@ -408,12 +462,26 @@ __END__
 
 =head1 VERSION
 
-This document describes Alerts.pm version 0.0.1
+This document describes Alerts.pm version 1.0.0
 
 =head1 SYNOPSIS
 
     use AN::Alerts;
-    my $scanner = AN::Scanner->new({agents => $agents_data });
+    my $alerts = AN::Alerts( { agents => { pid      => $PID,
+                                           program  => $PROG,
+                                           hostname => AN::UNix::hostname(),
+                                           msg_dir  => $self->msg_dir,
+                                         },
+                               owner => $self,
+                             } );
+    $alerts->add_agent( $cfg{db}{pid},
+                        {  pid      => $cfg{db}{pid},
+                           program  => $cfg{db}{name},
+                           hostname => $cfg{db}{hostname},
+                           msg_dir  => $self->msg_dir,
+                        } );
+    $alerts->set_alert(@alert_args);
+    $alerts->handle_alerts();
 
 
 =head1 DESCRIPTION
@@ -428,7 +496,7 @@ new message is sent, but other problems continue to be monitored.
 
 =head1 METHODS
 
-An object of this class represents an alert tracking system.
+An object of this class represents an alert tracking and reporting system.
 
 =over 4
 
@@ -439,15 +507,120 @@ value pairs. The key list must include :
 
 =over 4
 
-=item B<agentdir>
+=item B<agents>
 
-The directory that is scanned for scanning plug-ins.
+The agents attribute will keep track of the alert sources. Since the
+mainline program can generate alerts on its own, the program provides
+information about itself when constructing the AN::Alerts object, in
+the form of a hash:
 
-=item B<rate>
+        { pid      => $PID,
+          program  => $PROG,
+          hostname => AN::Unix::hostname(),
+          msg_dir  => $self->msg_dir,
+        }
 
-How often the loop should scan.
+In the constructor, this hash is stored as the value associated with
+the process id, or PID. Since program and its agents are all running
+on the same computer, they must by definition have distinct Process
+ids.
+
+The C<msg_dir> is the path to the directory containing an XML file
+with the same name as the program name specified, with the suffix,
+C<.xml>. The top-level C<scanner> program has a file associated with
+it, C<scanner.xml>, which expands message 'tags' into longer messages
+in a number of languages.
+
+=item B<owner>
+
+This is a link back to the top-level program. It is used to provide
+the Alerts object with a list of C<Listeners>; Alerts has no means of
+looking up that information on its own, it asks the owner for it. The
+owner also provides the weighted sum of all the alerts, used in
+dispatching alerts.
 
 =back
+
+=item B<add_agent( $pid, $agent_hashref )>
+
+When the top-level program launches agents which may send alerts, it
+informs the AN::Alerts object, which archives the information. The
+program name and msg_dir are passed to a message translator, to
+convert C<tags> into messages.
+
+=item B<set_alert( @alert_args )>
+
+Takes a list of arguments, creates a corresponding AN::OneAlert
+object, and archives it based on the source program / agent process
+id, and the data field involved. The fields involved are:
+
+=over 4
+
+=item B<id>
+
+Normally the record id in the C<alerts> table.
+
+=item B<pid>
+
+The process id of the generating program.
+
+=item B<field>
+
+The identification of the data value being stored, eg. C<battery temperature>
+
+=item B<value>
+
+The value associated with the field, eg. C<28>.
+
+=item B<units>
+
+Units defining the stored value, eg. C<degrees C>.
+
+=item B<status aka level>
+
+The scanCore and agents use one of C<OK>, C<WARNING>, C<CRISIS>. The
+dashboard can also generate different values, when dealing with a
+server that has gone down, C<OK>, C<DEAD> or C<TIMEOUT>,
+i.e. message_tag of NODE_SERVER_STATUS.  As well, there may be records
+with a message_tag of C<AUTO_BOOT> with status values of C<TRUE> or
+C<FALSE>. These indicate whether a down server should be automatically
+rebooted. Obviously a server that is down for service should not be
+rebooted.
+
+=item B<message_tag>
+
+The tag to be looked up in the message file.
+
+=item B<message_arguments>
+
+A semi-colon separated list of C<key>=C<value> pairs. These are
+substituted into the message string looked up from the message file.
+
+Example: B<value=76;controller=0>
+
+=item B<target_name>
+
+Generally, the host or software system  reporting the problem.
+
+=item B<target_type>
+
+The hardware system experiencing the problem, eg. C<RAID subsystem>,
+C<APC UPS>.
+
+=item B<tartget_extra>
+
+Additional information about the system experiencing the problem,
+typically the IP number.  Example: C<10.255.4.251>, C<10.20.3.251>.
+
+=back
+
+=item B<handle_alerts>
+
+When invoked at end of each processing loop, this method collects all
+the current alerts and all the current listeners. For each listener,
+it goes through alerts, skips over old ones, I18N's and formats the
+messages, and sends them to be delivered. Finnally, all alerts are
+marked as handled.
 
 
 =back
@@ -455,14 +628,17 @@ How often the loop should scan.
 =head1 DEPENDENCIES
 
 =over 4
+=item B<Carp> I<core>
+
+Report errors as originating at the call site.
+
+=item B<Clone>
+
+Recursively copy Perl data structures
 
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
-
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
 
 =item B<File::Basename> I<core>
 
@@ -479,6 +655,14 @@ Determine which directory contains the current program.
 =item B<Module::Load> I<core>
 
 Install modules at run-time, based on dynamic requirements.
+
+=item B<POSIX> I<core>
+
+provides C<strftime> for string representations of date-times.
+
+=item B<version> I<core since 5.9.0>
+
+Parses version strings.
 
 =back
 

@@ -45,7 +45,7 @@ const my $TEXTBASE => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" )
 const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
 const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
 const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/nodemonitor.conf";
-const my $MSG_DIR             => "${TEXTBASE}/MESSAGES";
+const my $MSG_DIR             => "${TEXTBASE}/Messages";
 
 const my $BRIEF     => 1;
 const my $COMMA     => q{,};

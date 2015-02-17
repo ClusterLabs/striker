@@ -8,6 +8,10 @@
 # Devel::Cover files
 Scanner/t/cover_db
 
+# ignore the ctags / etags file
+tags
+TAGS
+
 # ignore compiled and object files
 wipmi
 wstorcli

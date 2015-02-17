@@ -36,7 +36,7 @@ use AN::Striker;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "AN::Cluster.pm";
-our $VERSION  = "1.1.7";
+our $VERSION  = "1.2.0 β";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.
@@ -89,10 +89,10 @@ sub call_gather_system_info
 	
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
 	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
-	binmode $fh, ":utf8:";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	binmode $file_handle, ":utf8:";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -110,7 +110,7 @@ sub call_gather_system_info
 			#record($conf, "$THIS_FILE ".__LINE__."; interface::${interface}::$key: [$conf->{interface}{$interface}{$key}]\n");
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	record($conf, "$THIS_FILE ".__LINE__."; sys::hostname: [$conf->{sys}{hostname}]\n");
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
@@ -582,6 +582,7 @@ sub sanity_check_striker_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
+			$conf->{sys}{use_spice_graphics}   = $conf->{cgi}{anvil_use_spice_graphics};
 		}
 	}
 
@@ -641,6 +642,27 @@ sub write_new_striker_conf
 		}
 	}
 	
+	# This forces spice graphics when provisioning and disables in-browser
+	# VNC.
+	$conf->{sys}{use_spice_graphics} = $conf->{cgi}{anvil_use_spice_graphics} ? $conf->{cgi}{anvil_use_spice_graphics} : 0;
+	
+	# The user doesn't currently set the 'smtp::helo_domain' or 
+	# 'mail_data::sending_domain', so for now we'll devine it from the user's 
+	# 'smtp::username'.
+	record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]\n");
+	if ($conf->{smtp}{helo_domain} eq "example.com")
+	{
+		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+		$conf->{smtp}{helo_domain} = $domain if $domain;
+		record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], domain: [$domain]\n");
+	}
+	if ($conf->{mail_data}{sending_domain} eq "example.com")
+	{
+		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+		$conf->{mail_data}{sending_domain} = $domain if $domain;
+		record($conf, "$THIS_FILE ".__LINE__."; mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]: domain: [$domain]\n");
+	}
+	
 	# Write out the global values.
 	my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
 		smtp__server			=>	$conf->{smtp}{server},
@@ -652,6 +674,7 @@ sub write_new_striker_conf
 		smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
 		mail_data__to			=>	$conf->{mail_data}{to},
 		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
+		use_spice_graphics		=>	$conf->{sys}{use_spice_graphics},
 	}});
 	print $striker_conf $say_body;
 	
@@ -707,10 +730,10 @@ sub read_hosts
 	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	$conf->{raw}{hosts} = [];
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{hosts}";
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{hosts}";
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -739,7 +762,7 @@ sub read_hosts
 			}
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -753,11 +776,11 @@ sub read_ssh_config
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ssh_config}";
-	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$sc]\n");
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{ssh_config}";
+	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$shell_call]\n");
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -784,7 +807,7 @@ sub read_ssh_config
 			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> port: [$conf->{hosts}{$this_host}{port}]\n");
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -795,19 +818,19 @@ sub copy_file
 	my ($conf, $source, $destination) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; copy_file(); source: [$source], destination: [$destination]\n");
 	
-	my $output = "";
-	my $sc     = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $output     = "";
+	my $shell_call = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		$output .= "$line\n";
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	if (not -e $destination)
 	{
@@ -1013,6 +1036,7 @@ sub load_configuration_defaults
 	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+	$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 	
 	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
@@ -1133,15 +1157,27 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
 	if ($this_cluster eq "new")
 	{
-		# New Anvil!
-		$say_this_cluster = "";
-		$clear_icon       = "";
+		# New Anvil! If the user is finishing an Install Manifest run,
+		# some values will be set.
+		$say_this_cluster  = $conf->{cgi}{cluster__new__name}         if $conf->{cgi}{cluster__new__name};
+		$this_description  = $conf->{cgi}{cluster__new__description}  if $conf->{cgi}{cluster__new__description};
+		$this_url          = $conf->{cgi}{cluster__new__url}          if $conf->{cgi}{cluster__new__url};
+		$this_company      = $conf->{cgi}{cluster__new__company}      if $conf->{cgi}{cluster__new__company};
+		$this_ricci_pw     = $conf->{cgi}{cluster__new__ricci_pw}     if $conf->{cgi}{cluster__new__ricci_pw};
+		$this_root_pw      = $conf->{cgi}{cluster__new__root_pw}      if $conf->{cgi}{cluster__new__root_pw};
+		$this_nodes_1_name = $conf->{cgi}{cluster__new__nodes_1_name} if $conf->{cgi}{cluster__new__nodes_1_name};
+		$this_nodes_2_name = $conf->{cgi}{cluster__new__nodes_2_name} if $conf->{cgi}{cluster__new__nodes_2_name};
+		$this_nodes_1_ip   = $conf->{cgi}{cluster__new__nodes_1_ip}   if $conf->{cgi}{cluster__new__nodes_1_ip};
+		$this_nodes_2_ip   = $conf->{cgi}{cluster__new__nodes_2_ip}   if $conf->{cgi}{cluster__new__nodes_2_ip};
+		$this_nodes_1_port = $conf->{cgi}{cluster__new__nodes_1_port} if $conf->{cgi}{cluster__new__nodes_1_port};
+		$this_nodes_2_port = $conf->{cgi}{cluster__new__nodes_2_port} if $conf->{cgi}{cluster__new__nodes_2_port};
+		$clear_icon        = "";
 		print AN::Common::template($conf, "config.html", "config-header", {
 			title_1	=>	"#!string!title_0003!#",
 			title_2	=>	"#!string!title_0004!#",
@@ -1255,6 +1291,7 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
+		$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
@@ -1302,7 +1339,7 @@ sub show_common_config_section
 	#record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
 	# If both nodes are up, enable the 'Push' button.
 	my $push_button = "";
-	if ($conf->{cgi}{anvil})
+	if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 	{
 		$push_button =  "&nbsp; ";
 		$push_button .= AN::Common::template($conf, "common.html", "enabled-button", {
@@ -1348,6 +1385,9 @@ sub show_common_config_section
 		mail_data__to_name		=>	$mail_data__to_key,
 		mail_data__to_id		=>	$mail_data__to_key,
 		mail_data__to_value		=>	$conf->{cgi}{$mail_data__to_key},
+		sys__use_spice_graphics		=>	"sys__use_spice_graphics",
+		sys__use_spice_graphics_id	=>	"sys__use_spice_graphics",
+		sys__use_spice_graphics_value	=>	$conf->{cgi}{anvil_use_spice_graphics},
 		push_button			=>	$push_button,
 	}); 
 	
@@ -1394,8 +1434,6 @@ sub show_global_anvil_list
 			description	=>	$this_description,
 			url		=>	$this_url,
 		});
-		print "
-";
 	}
 
 	print AN::Common::template($conf, "config.html", "anvil-column-footer");
@@ -1461,8 +1499,15 @@ sub push_config_to_anvil
 			
 			# Make sure there is an '/etc/an' directory on the node
 			# and create it, if not.
-			my $sc = "if [ ! -e '/etc/an' ]; then mkdir /etc/an; fi; ls /etc/an";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			my $striker_directory = ($conf->{path}{striker_conf} =~ /^(.*)\/.*$/)[0];
+			record($conf, "$THIS_FILE ".__LINE__."; striker_directory: [$striker_directory]\n");
+			my $shell_call        = "if [ ! -e '$striker_directory' ]; 
+						then 
+							mkdir -p $striker_directory;
+							echo 'Create: [$striker_directory]';
+						fi;
+						ls $striker_directory";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			my ($error, $ssh_fh, $output) = remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -1470,7 +1515,7 @@ sub push_config_to_anvil
 				password	=>	$conf->{'system'}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	0,
-				shell_call	=>	$sc,
+				shell_call	=>	$shell_call,
 			});
 			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -1488,14 +1533,18 @@ sub push_config_to_anvil
 					});
 				}
 			}
-			$error  = "";
-			$output = "";
-			$sc     = "";
+			$error      = "";
+			$output     = "";
+			$shell_call = "";
 			
 			# Backup, but don't care if it fails.
 			my $backup_file = "$config_file.$date";
-			$sc = "if [ -e \"$config_file\" ]; then cp $config_file $backup_file; fi; ls $backup_file";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
+			   $shell_call  = "if [ -e \"$config_file\" ]; 
+					then 
+						cp $config_file $backup_file; 
+					fi; 
+					ls $backup_file";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			($error, $ssh_fh, $output) = remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -1503,7 +1552,7 @@ sub push_config_to_anvil
 				password	=>	$conf->{'system'}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	1,
-				shell_call	=>	$sc,
+				shell_call	=>	$shell_call,
 			});
 			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -1537,19 +1586,19 @@ sub push_config_to_anvil
 				row	=>	"#!string!row_0131!#",
 				message	=>	"$message",
 			});
-			$sc = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
+			$shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			# This is a dumb way to check, try a test upload and see if it fails.
 			if ( -e "/usr/bin/expect" )
 			{
 				record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
 				AN::Common::create_rsync_wrapper($conf, $node);
-				$sc = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
+				$shell_call = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-			my $fh = IO::Handle->new();
-			open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			my $file_handle = IO::Handle->new();
+			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $no_key = 0;
-			while(<$fh>)
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
@@ -1557,7 +1606,7 @@ sub push_config_to_anvil
 					line	=>	$line,
 				});
 			}
-			$fh->close;
+			$file_handle->close;
 			print AN::Common::template($conf, "config.html", "close-push-entry");
 		}
 		print AN::Common::template($conf, "config.html", "close-table");
@@ -1594,20 +1643,37 @@ sub create_backup_file
 	   $config_data .= "<!-- Striker version $conf->{sys}{version} -->\n";
 	   $config_data .= "<!-- Backup created ".get_date($conf, time)." -->\n\n";
 	
+	# Get a list of install manifests on this machine.
+	my @manifests;
+	my $manifest_directory =  $conf->{path}{apache_manifests_dir};
+	   $manifest_directory =~ s/\/$//g;
+	record($conf, "$THIS_FILE ".__LINE__."; manifest_directory: [$manifest_directory]\n");
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $manifest_directory);
+	while(my $file = readdir(DIRECTORY))
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; file: [$file]\n");
+		if ($file =~ /^install-manifest_(.*?).xml$/)
+		{
+			my $full_path = "$manifest_directory/$file";
+			push @manifests, $full_path;
+			record($conf, "$THIS_FILE ".__LINE__."; full_path: [$full_path]\n");
+		}
+	}
+	   
 	# Read the three config files and write them out to a file.
-	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config})
+	foreach my $file ($conf->{path}{striker_conf}, $conf->{path}{hosts}, $conf->{path}{ssh_config}, @manifests)
 	{
 		# Read in /etc/striker/striker.conf.
 		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
 		$config_data .= "<!-- start $file -->\n";
-		my $fh = IO::Handle->new();
-		my $sc = "$file";
-		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-		while (<$fh>)
+		my $shell_call = "$file";
+		open (my $file_handle, "<:encoding(UTF-8)", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
 		{
 			$config_data .= $_;
 		}
-		$fh->close();
+		close $file_handle;
 		$config_data .= "<!-- end $file -->\n\n";
 	}
 	#record($conf, "$THIS_FILE ".__LINE__."; config_data: [\n$config_data]\n");
@@ -1623,12 +1689,12 @@ sub create_backup_file
 	   $conf->{sys}{backup_url} =~ s/#!date!#/$date/;
 	
 	# Now write out the file.
-	my $fh = IO::Handle->new();
-	my $sc = "$backup_file";
-	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$sc]\n");
-	open ($fh, ">$sc") or die "$THIS_FILE ".__LINE__."; Failed to write: [$sc], error was: $!\n";
-	print $fh $config_data;
-	$fh->close();
+	my $file_handle         = IO::Handle->new();
+	my $shell_call = "$backup_file";
+	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$shell_call]\n");
+	open ($file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $config_data;
+	$file_handle->close();
 	
 	return(0);
 }
@@ -1644,7 +1710,7 @@ sub load_backup_configuration
 	my $in_fh = $conf->{cgi_fh}{file};
 	
 	# Some variables.
-	my $this_file    = "";
+	my $file         = "";
 	my $striker_conf = "";
 	my $hosts        = "";
 	my $ssh_config   = "";
@@ -1671,12 +1737,13 @@ sub load_backup_configuration
 	}
 	else
 	{
-		# If the first line of the file isn't '<!-- Striker Backup -->',
-		# do not proceed.
+		# Parse the incoming file.
 		while (<$in_fh>)
 		{
 			chomp;
 			my $line = $_;
+			# If the first line of the file isn't 
+			# '<!-- Striker Backup -->', do not proceed.
 			if ($line =~ /<!-- Striker Backup -->/)
 			{
 				# Looks like a valid file.
@@ -1697,30 +1764,38 @@ sub load_backup_configuration
 				# Where in a valid file.
 				if ($line =~ /<!-- end (.*?) -->/)
 				{
-					$this_file = "";
+					$file = "";
 					next;
 				}
 				if ($line =~ /<!-- start (.*?) -->/)
 				{
-					$this_file = $1;
+					$file = $1;
+					if ($file =~ /install-manifest/)
+					{
+						$conf->{install_manifest}{$file}{config} = "";
+					}
 					next;
 				}
-				if ($this_file eq $conf->{path}{striker_conf})
+				if ($file eq $conf->{path}{striker_conf})
 				{
 					$striker_conf .= "$line\n";
 				}
-				elsif ($this_file eq $conf->{path}{hosts})
+				elsif ($file eq $conf->{path}{hosts})
 				{
 					$hosts .= "$line\n";
 				}
-				elsif ($this_file eq $conf->{path}{ssh_config})
+				elsif ($file eq $conf->{path}{ssh_config})
 				{
 					$ssh_config .= "$line\n";
 				}
-				elsif ($this_file)
+				elsif ($file =~ /install-manifest/)
+				{
+					$conf->{install_manifest}{$file}{config} .= "$line\n";
+				}
+				elsif ($file)
 				{
 					# Unknown file...
-					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$this_file], line: [$line]\n");
+					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$file], line: [$line]\n");
 				}
 			}
 		}
@@ -1733,20 +1808,27 @@ sub load_backup_configuration
 	{
 		### TODO: examine the contents of each file to ensure it looks sane.
 		# Looks good, write them out.
-		my $an_fh = IO::Handle->new();
-		open ($an_fh, ">$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
+		open (my $an_fh, ">", "$conf->{path}{striker_conf}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{striker_conf}], error: $!\n";
 		print $an_fh $striker_conf;
-		$an_fh->close();
+		close $an_fh;
 		
-		my $hosts_fh = IO::Handle->new();
-		open ($hosts_fh, ">$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
+		open (my $hosts_fh, ">", "$conf->{path}{hosts}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{hosts}], error: $!\n";
 		print $hosts_fh $hosts;
-		$hosts_fh->close();
+		close $hosts_fh;
 		
-		my $ssh_fh = IO::Handle->new();
-		open ($ssh_fh, ">$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
+		open (my $ssh_fh, ">", "$conf->{path}{ssh_config}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{ssh_config}], error: $!\n";
 		print $ssh_fh $ssh_config;
-		$ssh_fh->close();
+		close $ssh_fh;
+		
+		# Load any manifests.
+		foreach my $file (sort {$a cmp $b} keys %{$conf->{install_manifest}})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; writing manifest file: [$file]\n");
+			open (my $manifest_fh, ">", "$file") or die "$THIS_FILE ".__LINE__."; Can't write to: [$file], error: $!\n";
+			print $manifest_fh $conf->{install_manifest}{$file}{config};
+			close $manifest_fh;
+		}
+		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file		=>	$conf->{cgi}{file},
 			});
@@ -1798,6 +1880,7 @@ sub create_install_manifest
 	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
 	$conf->{form}{anvil_media_library_star}     = "";
 	$conf->{form}{anvil_storage_pool1_star}     = "";
+	$conf->{form}{anvil_repositories_star}      = "";
 	$conf->{form}{anvil_node1_name_star}        = "";
 	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
 	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
@@ -1812,6 +1895,7 @@ sub create_install_manifest
 	$conf->{form}{anvil_node2_ifn_ip_star}      = "";
 	$conf->{form}{anvil_node2_pdu1_outlet_star} = "";
 	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
+	$conf->{form}{anvil_open_vnc_ports}         = "";
 	if ($conf->{cgi}{'delete'})
 	{
 		if ($conf->{cgi}{confirm})
@@ -1888,14 +1972,13 @@ sub create_install_manifest
 		{
 			# Do it.
 			$show_form = 0;
-			if ($conf->{cgi}{'do'} eq "new")
+			my ($return_code) = AN::InstallManifest::run_new_install_manifest($conf);
+			# 0 == success
+			# 1 == failed
+			if ($return_code)
 			{
-				# New install
-				AN::InstallManifest::run_new_install_manifest($conf);
-			}
-			else
-			{
-				# Replacing a node.
+				# Something went wrong.
+				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer");
 			}
 		}
 		else
@@ -1919,8 +2002,9 @@ sub create_install_manifest
 		}
 		elsif (not $conf->{cgi}{generate})
 		{
-			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = "xx"; }
-			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = "localdomain"; }
+			my ($default_prefix, $default_demain) = get_striker_prefix_and_domain($conf);
+			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = $default_prefix; }
+			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
 			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = "01"; }
 			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = "10.20.0.0"; }
 			if (not $conf->{cgi}{anvil_bcn_subnet})         { $conf->{cgi}{anvil_bcn_subnet}         = "255.255.0.0"; }
@@ -1934,6 +2018,7 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_media_library_unit}) { $conf->{cgi}{anvil_media_library_unit} = "GiB"; }
 			if (not $conf->{cgi}{anvil_storage_pool1_size}) { $conf->{cgi}{anvil_storage_pool1_size} = "50"; }
 			if (not $conf->{cgi}{anvil_storage_pool1_unit}) { $conf->{cgi}{anvil_storage_pool1_unit} = "%"; }
+			if (not $conf->{cgi}{anvil_open_vnc_ports})     { $conf->{cgi}{anvil_open_vnc_ports}     = $conf->{sys}{open_vnc_ports}; }
 		}
 		
 		# Show the manifest form.
@@ -1962,6 +2047,8 @@ sub create_install_manifest
 			anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
 			anvil_storage_pool1_star	=>	$conf->{form}{anvil_storage_pool1_star},
 			say_anvil_storage_pool1_unit	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
+			anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
+			anvil_repositories_star		=>	$conf->{form}{anvil_repositories_star},
 			anvil_name			=>	$conf->{cgi}{anvil_name},
 			anvil_name_star			=>	$conf->{form}{anvil_name_star},
 			anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
@@ -2040,6 +2127,28 @@ sub create_install_manifest
 	return(0);
 }
 
+# This parses this Striker dashboard's hostname and returns the prefix and
+# domain name.
+sub get_striker_prefix_and_domain
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
+	
+	my ($hostname) = get_hostname($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	
+	my $default_prefix = "";
+	if ($hostname =~ /^(\w+)-/)
+	{
+		$default_prefix = $1;
+		record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
+	}
+	my $default_demain = ($hostname =~ /\.(.*)$/)[0];
+	
+	record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
+	return($default_prefix, $default_demain);
+}
+
 # This reads in the passed in install manifest file name and loads it into the
 # appropriate cgi variables for use in the install manifest form.
 sub load_install_manifest
@@ -2049,7 +2158,7 @@ sub load_install_manifest
 	
 	# Read in the install manifest file.
 	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
-	#record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
 	if (-e $manifest_file)
 	{
 		# Load it!
@@ -2059,6 +2168,7 @@ sub load_install_manifest
 		# Nodes.
 		foreach my $node (keys %{$data->{node}})
 		{
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 			foreach my $a (keys %{$data->{node}{$node}})
 			{
 				if ($a eq "interfaces")
@@ -2067,64 +2177,102 @@ sub load_install_manifest
 					{
 						foreach my $c (@{$data->{node}{$node}{interfaces}->[0]->{$b}})
 						{
-							my $name = $c->{name};
-							my $mac  = $c->{mac};
-							$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = $mac;
+							my $name = $c->{name} ? $c->{name} : "";
+							my $mac  = $c->{mac}  ? $c->{mac}  : "";
+							$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = "";
+							if (($mac) && ($mac =~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i))
+							{
+								$conf->{install_manifest}{$file}{node}{$node}{interface}{$name}{mac} = $mac;
+							}
+							elsif ($mac)
+							{
+								# Malformed MAC
+								record($conf, "$THIS_FILE ".__LINE__."; Install Manifest: [$file], Node: [$node], interface: [$name] has a malformed MAC address: [$mac], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.\n");
+							}
 						}
 					}
 				}
-				elsif ($a eq "ipmi")
-				{
-					my $name     = $data->{node}{$node}{$a}->[0]->{name};
-					my $ip       = $data->{node}{$node}{$a}->[0]->{address}->[0]->{ip};
-					my $on       = $data->{node}{$node}{$a}->[0]->{address}->[0]->{on};
-					my $user     = $data->{node}{$node}{$a}->[0]->{auth}->[0]->{user};
-					my $password = $data->{node}{$node}{$a}->[0]->{auth}->[0]->{password};
-					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{name}     = $name;
-					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip}       = $ip;
-					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{on}       = $on;
-					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{user}     = $user;
-					$conf->{install_manifest}{$file}{node}{$node}{ipmi}{password} = $password;
-					#print "Node: [$node], IPMI: [$name], IP: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{ip}], on: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{on}], user: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{user}], password: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$name}{password}]\n";
-				}
 				elsif ($a eq "network")
 				{
-					#print "a: [$a], -> b: [$data->{node}{$node}{network}->[0]]\n";
-					#print Dumper $data->{node}{$node}{network}->[0];
+					#record($conf, "$THIS_FILE ".__LINE__."; a: [$a], -> b: [$data->{node}{$node}{network}->[0]]\n");
 					foreach my $network (keys %{$data->{node}{$node}{network}->[0]})
 					{
 						my $ip = $data->{node}{$node}{network}->[0]->{$network}->[0]->{ip};
-						$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip} = $ip;
-						#print "Node: [$node], Network: [$network], IP: [$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip}]\n";
+						$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip} = $ip ? $ip : "";
+						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], Network: [$network], IP: [$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip}]\n");
 					}
 				}
 				elsif ($a eq "pdu")
 				{
 					foreach my $b (@{$data->{node}{$node}{pdu}->[0]->{on}})
 					{
-						my $name     = $b->{name};
-						my $port     = $b->{port};
-						my $agent    = $b->{agent};
-						my $user     = $b->{user};
-						my $password = $b->{password};
+						my $reference       = $b->{reference};
+						my $name            = $b->{name};
+						my $port            = $b->{port};
+						my $user            = $b->{user};
+						my $password        = $b->{password};
+						my $password_script = $b->{password_script};
 						
-						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}     = $port;
-						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{agent}    = $agent;
-						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}     = $user;
-						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password} = $password;
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name}            = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port}            = $port            ? $port            : ""; 
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
+						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], PDU: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}], Password Script: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script}]\n");
+					}
+				}
+				elsif ($a eq "kvm")
+				{
+					foreach my $b (@{$data->{node}{$node}{kvm}->[0]->{on}})
+					{
+						my $reference       = $b->{reference};
+						my $name            = $b->{name};
+						my $port            = $b->{port};
+						my $user            = $b->{user};
+						my $password        = $b->{password};
+						my $password_script = $b->{password_script};
 						
-						#print "Node: [$node], PDU: [$name], Agent: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{agent}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$name}{password}]\n";
+						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{name}            = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{port}            = $port            ? $port            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script} = $password_script ? $password_script : "";
+						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], KVM: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script}]\n");
+					}
+				}
+				elsif ($a eq "ipmi")
+				{
+					foreach my $b (@{$data->{node}{$node}{ipmi}->[0]->{on}})
+					{
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ipmi b: [$b]\n");
+						#foreach my $key (keys %{$b}) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ipmi b: [$b], key: [$key] -> [$b->{$key}]\n"); }
+						my $reference       = $b->{reference};
+						my $name            = $b->{name};
+						my $ip              = $b->{ip};
+						my $gateway         = $b->{gateway};
+						my $netmask         = $b->{netmask};
+						my $user            = $b->{user};
+						my $password        = $b->{password};
+						my $password_script = $b->{password_script};
+						
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}            = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway}         = $gateway         ? $gateway         : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
+						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script}]\n");
 					}
 				}
 				else
 				{
 					# What's this?
 					record($conf, "$THIS_FILE ".__LINE__."; Extra element in node: [$node]'s install manifest file: [$file]; a: [$a]\n");
-					#foreach my $b (@{$data->{node}{$node}{$a}})
-					#{
-						#print "- b: [$b] -> [$data->{node}{$node}{$a}->[$b]]\n";
-						#print Dumper $data->{node}{$node}{$a}->[$b];
-					#}
+					foreach my $b (@{$data->{node}{$node}{$a}})
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; - b: [$b] -> [$data->{node}{$node}{$a}->[$b]]\n");
+					}
 				}
 			}
 		}
@@ -2140,30 +2288,33 @@ sub load_install_manifest
 					# Only ever one entry in the array 
 					# reference, so we can safely 
 					# dereference immediately.
-					$conf->{install_manifest}{$file}{common}{anvil}{prefix}   = $a->{$b}->[0]->{prefix};
-					$conf->{install_manifest}{$file}{common}{anvil}{domain}   = $a->{$b}->[0]->{domain};
-					$conf->{install_manifest}{$file}{common}{anvil}{sequence} = $a->{$b}->[0]->{sequence};
-					$conf->{install_manifest}{$file}{common}{anvil}{password} = $a->{$b}->[0]->{password};
+					my $prefix   = $a->{$b}->[0]->{prefix};
+					my $domain   = $a->{$b}->[0]->{domain};
+					my $sequence = $a->{$b}->[0]->{sequence};
+					my $password = $a->{$b}->[0]->{password};
+					$conf->{install_manifest}{$file}{common}{anvil}{prefix}   = $prefix   ? $prefix   : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{domain}   = $domain   ? $domain   : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{sequence} = $sequence ? $sequence : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{password} = $password ? $password : "";
 				}
 				elsif ($b eq "cluster")
 				{
 					# Cluster Name
-					$conf->{install_manifest}{$file}{common}{cluster}{name} = $a->{$b}->[0]->{name};
+					my $name = $a->{$b}->[0]->{name};
+					$conf->{install_manifest}{$file}{common}{cluster}{name} = $name ? $name : "";
 					
 					# Fencing stuff
-					$conf->{install_manifest}{$file}{common}{cluster}{fence}{post_join_delay} = $a->{$b}->[0]->{fence}->[0]->{post_join_delay};
-					$conf->{install_manifest}{$file}{common}{cluster}{fence}{order}           = $a->{$b}->[0]->{fence}->[0]->{order};
+					my $post_join_delay = $a->{$b}->[0]->{fence}->[0]->{post_join_delay};
+					my $order           = $a->{$b}->[0]->{fence}->[0]->{order};
+					my $delay           = $a->{$b}->[0]->{fence}->[0]->{delay};
+					my $delay_node      = $a->{$b}->[0]->{fence}->[0]->{delay_node};
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{post_join_delay} = $post_join_delay ? $post_join_delay : "";
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{order}           = $order           ? $order           : "";
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{delay}           = $delay           ? $delay           : "";
+					$conf->{install_manifest}{$file}{common}{cluster}{fence}{delay_node}      = $delay_node      ? $delay_node      : "";
 				}
-				elsif ($b eq "daemons")
-				{
-					foreach my $c (@{$a->{$b}->[0]->{daemon}})
-					{
-						my $name          = $c->{name};
-						my $start_on_boot = $c->{start_on_boot};
-						$conf->{install_manifest}{$file}{common}{daemon}{$name}{start_on_boot} = $start_on_boot;
-						#print "Daemon: [$name] -> Start on Boot? [$conf->{install_manifest}{$file}{common}{daemon}{$name}{start_on_boot}]\n";
-					}
-				}
+				### This is currently not used, may not have a
+				### use-case in the future.
 				elsif ($b eq "file")
 				{
 					foreach my $c (@{$a->{$b}})
@@ -2174,29 +2325,35 @@ sub load_install_manifest
 						my $group   = $c->{group};
 						my $content = $c->{content};
 						
-						$conf->{install_manifest}{$file}{common}{file}{$name}{mode}    = $mode;
-						$conf->{install_manifest}{$file}{common}{file}{$name}{owner}   = $owner;
-						$conf->{install_manifest}{$file}{common}{file}{$name}{group}   = $group;
-						$conf->{install_manifest}{$file}{common}{file}{$name}{content} = $content;
+						$conf->{install_manifest}{$file}{common}{file}{$name}{mode}    = $mode    ? $mode    : "";
+						$conf->{install_manifest}{$file}{common}{file}{$name}{owner}   = $owner   ? $owner   : "";
+						$conf->{install_manifest}{$file}{common}{file}{$name}{group}   = $group   ? $group   : "";
+						$conf->{install_manifest}{$file}{common}{file}{$name}{content} = $content ? $content : "";
 					}
 				}
 				elsif ($b eq "iptables")
 				{
-					foreach my $c (@{$a->{$b}->[0]->{rule}})
-					{
-						my $sequence = $c->{sequence};
-						my $rule     = $c->{rule};
-						if (exists $conf->{install_manifest}{$file}{common}{iptables}{rule}{$sequence})
-						{
-							die "Duplicate 'iptables' rule sequence in install manifest: [$file]\n"; 
-						}
-						$conf->{install_manifest}{$file}{common}{iptables}{rule}{$sequence}{rule} = $rule;
-					}
+					my $ports = $a->{$b}->[0]->{vnc}->[0]->{ports};
+					$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports} = $ports ? $ports : 100;
+					#record($conf, "$THIS_FILE ".__LINE__."; Firewall iptables; VNC port count: [$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports}]\n");
+				}
+				elsif ($b eq "servers")
+				{
+					my $use_spice_graphics = $a->{$b}->[0]->{provision}->[0]->{use_spice_graphics};
+					$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
+					record($conf, "$THIS_FILE ".__LINE__."; Server provisioning; Use spice graphics: [$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics}]\n");
 				}
 				elsif ($b eq "media_library")
 				{
-					$conf->{install_manifest}{$file}{common}{media_library}{size}  = $a->{$b}->[0]->{size};
-					$conf->{install_manifest}{$file}{common}{media_library}{units} = $a->{$b}->[0]->{units};
+					my $size  = $a->{$b}->[0]->{size};
+					my $units = $a->{$b}->[0]->{units};
+					$conf->{install_manifest}{$file}{common}{media_library}{size}  = $size  ? $size  : "";
+					$conf->{install_manifest}{$file}{common}{media_library}{units} = $units ? $units : "";
+				}
+				elsif ($b eq "repository")
+				{
+					my $urls = $a->{$b}->[0]->{urls};
+					$conf->{install_manifest}{$file}{common}{anvil}{repositories} = $urls ? $urls : "";
 				}
 				elsif ($b eq "networks")
 				{
@@ -2209,8 +2366,9 @@ sub load_install_manifest
 								if ($d eq "opts")
 								{
 									# Global bonding options.
-									$conf->{install_manifest}{$file}{common}{network}{bond}{options} = $a->{$b}->[0]->{$c}->[0]->{opts};
-									#print "Common bonding options: [$conf->{install_manifest}{$file}{common}{network}{bonds}{options}]\n";
+									my $options = $a->{$b}->[0]->{$c}->[0]->{opts};
+									$conf->{install_manifest}{$file}{common}{network}{bond}{options} = $options ? $options : "";
+									#record($conf, "$THIS_FILE ".__LINE__."; Common bonding options: [$conf->{install_manifest}{$file}{common}{network}{bonds}{options}]\n");
 								}
 								else
 								{
@@ -2218,9 +2376,9 @@ sub load_install_manifest
 									my $name      = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{name};
 									my $primary   = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{primary};
 									my $secondary = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{secondary};
-									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}   = $primary;
-									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary} = $secondary;
-									#print "Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary}]\n";
+									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}   = $primary   ? $primary   : "";
+									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary} = $secondary ? $secondary : "";
+									#record($conf, "$THIS_FILE ".__LINE__."; Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary}]\n");
 								}
 							}
 						}
@@ -2230,9 +2388,15 @@ sub load_install_manifest
 							{
 								my $name = $d->{name};
 								my $on   = $d->{on};
-								$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on} = $on;
-								#print "Bridge; name: [$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}]\n";
+								$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on} = $on ? $on : "";
+								#record($conf, "$THIS_FILE ".__LINE__."; Bridge; name: [$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}]\n");
 							}
+						}
+						elsif ($c eq "mtu")
+						{
+							#<mtu size=\"$conf->{cgi}{anvil_mtu_size}\" />
+							my $size = $a->{$b}->[0]->{$c}->[0]->{size};
+							$conf->{install_manifest}{$file}{common}{network}{mtu}{size} = $size ? $size : 1500;
 						}
 						else
 						{
@@ -2243,14 +2407,13 @@ sub load_install_manifest
 							my $dns1     = $a->{$b}->[0]->{$c}->[0]->{dns1};
 							my $dns2     = $a->{$b}->[0]->{$c}->[0]->{dns2};
 							
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock} = $netblock;
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}  = $netmask;
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}  = $gateway;
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute} = $defroute;
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}     = $dns1;
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}     = $dns2;
-							
-							#print "Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}]\n";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock} = $netblock ? $netblock : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}  = $netmask  ? $netmask  : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}  = $gateway  ? $gateway  : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute} = $defroute ? $defroute : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}     = $dns1     ? $dns1     : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}     = $dns2     ? $dns2     : "";
+							#record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}]\n");
 						}
 					}
 				}
@@ -2258,25 +2421,82 @@ sub load_install_manifest
 				{
 					foreach my $c (@{$a->{$b}->[0]->{pdu}})
 					{
-						my $name = $c->{name};
-						my $ip   = $c->{ip};
-						my $on   = $c->{on};
+						my $reference       = $c->{reference};
+						my $name            = $c->{name};
+						my $ip              = $c->{ip};
+						my $user            = $c->{user};
+						my $password        = $c->{password};
+						my $password_script = $c->{password_script};
+						my $agent           = $c->{agent};
 						
-						$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip} = $ip;
-						$conf->{install_manifest}{$file}{common}{pdu}{$name}{on} = $on;
-						#print "PDU: [$name], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{pdu}{$name}{on}]\n";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}            = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}              = $ip              ? $ip              : "";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_apc_snmp";
+						record($conf, "$THIS_FILE ".__LINE__."; PDU: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
+					}
+				}
+				elsif ($b eq "kvm")
+				{
+					foreach my $c (@{$a->{$b}->[0]->{kvm}})
+					{
+						my $reference       = $c->{reference};
+						my $name            = $c->{name};
+						my $ip              = $c->{ip};
+						my $user            = $c->{user};
+						my $password        = $c->{password};
+						my $password_script = $c->{password_script};
+						my $agent           = $c->{agent};
+						
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{name}            = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{ip}              = $ip              ? $ip              : "";
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script} = $password_script ? $password_script : "";
+						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent}           = $agent           ? $agent           : "fence_virsh";
+						record($conf, "$THIS_FILE ".__LINE__."; KVM: [$reference], Name: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent}]\n");
+					}
+				}
+				elsif ($b eq "ipmi")
+				{
+					foreach my $c (@{$a->{$b}->[0]->{ipmi}})
+					{
+						my $reference       = $c->{reference};
+						my $name            = $c->{name};
+						my $ip              = $c->{ip};
+						my $netmask         = $c->{netmask};
+						my $gateway         = $c->{gateway};
+						my $user            = $c->{user};
+						my $password        = $c->{password};
+						my $password_script = $c->{password_script};
+						my $agent           = $c->{agent};
+						
+						$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}          = $name            ? $name            : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}         = $gateway         ? $gateway         : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}            = $user            ? $user            : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}        = $password        ? $password        : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
+						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}           = $agent           ? $agent           : "fence_ipmilan";
+						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ssh")
 				{
-					$conf->{install_manifest}{$file}{common}{ssh}{keysize} = $a->{$b}->[0]->{keysize};
-					#print "SSH keysize: [$conf->{install_manifest}{$file}{common}{ssh}{keysize}] bytes\n";
+					my $keysize = $a->{$b}->[0]->{keysize};
+					$conf->{install_manifest}{$file}{common}{ssh}{keysize} = $keysize ? $keysize : "";
+					#record($conf, "$THIS_FILE ".__LINE__."; SSH keysize: [$conf->{install_manifest}{$file}{common}{ssh}{keysize}] bytes\n");
 				}
 				elsif ($b eq "storage_pool_1")
 				{
-					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size}  = $a->{$b}->[0]->{size};
-					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{units} = $a->{$b}->[0]->{units};
-					#print "Storage Pool 1: [$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size} $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units}]\n";
+					my $size  = $a->{$b}->[0]->{size};
+					my $units = $a->{$b}->[0]->{units};
+					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size}  = $size  ? $size  : "";
+					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{units} = $units ? $units : "";
+					#record($conf, "$THIS_FILE ".__LINE__."; Storage Pool 1: [$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size} $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units}]\n");
 				}
 				elsif ($b eq "striker")
 				{
@@ -2286,9 +2506,9 @@ sub load_install_manifest
 						my $bcn_ip = $c->{bcn_ip};
 						my $ifn_ip = $c->{ifn_ip};
 						
-						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip} = $bcn_ip;
-						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip} = $ifn_ip;
-						#print "Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}]\n";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip} = $bcn_ip ? $bcn_ip : "";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip} = $ifn_ip ? $ifn_ip : "";
+						#record($conf, "$THIS_FILE ".__LINE__."; Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}]\n");
 					}
 				}
 				elsif ($b eq "switch")
@@ -2297,16 +2517,15 @@ sub load_install_manifest
 					{
 						my $name = $c->{name};
 						my $ip   = $c->{ip};
-						my $on   = $c->{on};
-						$conf->{install_manifest}{$file}{common}{switch}{$name}{ip} = $ip;
-						$conf->{install_manifest}{$file}{common}{switch}{$name}{on} = $on;
-						#print "Switch: [$name], IP: [$conf->{install_manifest}{$file}{common}{switch}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{switch}{$name}{on}]\n";
+						$conf->{install_manifest}{$file}{common}{switch}{$name}{ip} = $ip ? $ip : "";
+						#record($conf, "$THIS_FILE ".__LINE__."; Switch: [$name], IP: [$conf->{install_manifest}{$file}{common}{switch}{$name}{ip}]\n");
 					}
 				}
 				elsif ($b eq "update")
 				{
-					$conf->{install_manifest}{$file}{common}{update}{os} = $a->{$b}->[0]->{os};
-					#print "Update OS: [$conf->{install_manifest}{$file}{common}{update}{os}]\n";
+					my $os = $a->{$b}->[0]->{os};
+					$conf->{install_manifest}{$file}{common}{update}{os} = $os ? $os : "";
+					#record($conf, "$THIS_FILE ".__LINE__."; Update OS: [$conf->{install_manifest}{$file}{common}{update}{os}]\n");
 				}
 				elsif ($b eq "ups")
 				{
@@ -2314,14 +2533,12 @@ sub load_install_manifest
 					{
 						my $name = $c->{name};
 						my $ip   = $c->{ip};
-						my $on   = $c->{on};
 						my $type = $c->{type};
 						my $port = $c->{port};
-						$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}   = $ip;
-						$conf->{install_manifest}{$file}{common}{ups}{$name}{on}   = $on;
-						$conf->{install_manifest}{$file}{common}{ups}{$name}{type} = $type;
-						$conf->{install_manifest}{$file}{common}{ups}{$name}{port} = $port;
-						#print "UPS: [$name], IP: [$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}], on: [$conf->{install_manifest}{$file}{common}{ups}{$name}{on}], type: [$conf->{install_manifest}{$file}{common}{ups}{$name}{type}], port: [$conf->{install_manifest}{$file}{common}{ups}{$name}{port}]\n";
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}   = $ip   ? $ip   : "";
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{type} = $type ? $type : "";
+						$conf->{install_manifest}{$file}{common}{ups}{$name}{port} = $port ? $port : "";
+						#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$name], IP: [$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}], type: [$conf->{install_manifest}{$file}{common}{ups}{$name}{type}], port: [$conf->{install_manifest}{$file}{common}{ups}{$name}{port}]\n");
 					}
 				}
 				else
@@ -2332,14 +2549,19 @@ sub load_install_manifest
 		}
 		
 		# Load the common variables.
-		$conf->{cgi}{anvil_prefix}   = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
-		$conf->{cgi}{anvil_domain}   = $conf->{install_manifest}{$file}{common}{anvil}{domain};
-		$conf->{cgi}{anvil_sequence} = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
-		$conf->{cgi}{anvil_password} = $conf->{install_manifest}{$file}{common}{anvil}{password};
+		$conf->{cgi}{anvil_prefix}       = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
+		$conf->{cgi}{anvil_domain}       = $conf->{install_manifest}{$file}{common}{anvil}{domain};
+		$conf->{cgi}{anvil_sequence}     = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
+		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}     ? $conf->{install_manifest}{$file}{common}{anvil}{password}     : $conf->{sys}{default_password};
+		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories} ? $conf->{install_manifest}{$file}{common}{anvil}{repositories} : "";
+		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}        ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}        : 8191;
+		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  : 1500;
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}]\n");
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
 		$conf->{cgi}{anvil_media_library_unit} = $conf->{install_manifest}{$file}{common}{media_library}{units};
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_size: [$conf->{cgi}{anvil_media_library_size}], cgi::anvil_media_library_unit: [$conf->{cgi}{anvil_media_library_unit}]\n");
 		
 		# Networks
 		$conf->{cgi}{anvil_bcn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock};
@@ -2348,16 +2570,26 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_sn_subnet}   = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netmask};
 		$conf->{cgi}{anvil_ifn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
 		$conf->{cgi}{anvil_ifn_subnet}  = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
+		
+		# iptables
+		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_open_vnc_ports: [$conf->{cgi}{anvil_open_vnc_ports}]\n");
+		
+		# Server provisioning
+		$conf->{cgi}{anvil_use_spice_graphics} = $conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics};
 		
 		# Storage Pool 1
 		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
 		$conf->{cgi}{anvil_storage_pool1_unit} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units};
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_size: [$conf->{cgi}{anvil_storage_pool1_size}], cgi::anvil_storage_pool1_unit: [$conf->{cgi}{anvil_storage_pool1_unit}]\n");
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
 		$conf->{cgi}{anvil_ifn_gateway} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{gateway};
 		$conf->{cgi}{anvil_ifn_dns1}    = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{dns1};
 		$conf->{cgi}{anvil_ifn_dns2}    = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{dns2};
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cgi::anvil_ifn_gateway: [$conf->{cgi}{anvil_ifn_gateway}], cgi::anvil_ifn_dns1: [$conf->{cgi}{anvil_ifn_dns1}], cgi::anvil_ifn_dns2: [$conf->{cgi}{anvil_ifn_dns2}]\n");
 		
 		### Foundation Pack
 		# Switches
@@ -2370,20 +2602,22 @@ sub load_install_manifest
 			my $ip_key   = "anvil_switch".$i."_ip";
 			$conf->{cgi}{$name_key} = $switch;
 			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{switch}{$switch}{ip};
-			#print "Switch: [$switch], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; Switch: [$switch], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
 			$i++;
 		}
 		# PDUs
 		$i = 1;
-		foreach my $pdu (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{pdu}})
+		foreach my $reference (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{pdu}})
 		{
 			# Probably an autovivication bug or something... getting empty hash references.
-			next if $pdu =~ /^HASH/;
+			next if $reference =~ /^HASH/;
 			my $name_key = "anvil_pdu".$i."_name";
 			my $ip_key   = "anvil_pdu".$i."_ip";
-			$conf->{cgi}{$name_key} = $pdu;
-			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{pdu}{$pdu}{ip};
-			#print "PDU: [$pdu], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			my $name     = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{name};
+			my $ip       = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip};
+			$conf->{cgi}{$name_key} = $name ? $name : "";
+			$conf->{cgi}{$ip_key}   = $ip   ? $ip   : "";
+			record($conf, "$THIS_FILE ".__LINE__."; name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
 			$i++;
 		}
 		# UPSes
@@ -2396,7 +2630,7 @@ sub load_install_manifest
 			my $ip_key   = "anvil_ups".$i."_ip";
 			$conf->{cgi}{$name_key} = $ups;
 			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{ups}{$ups}{ip};
-			#print "UPS: [$ups], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n";
+			#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
 			$i++;
 		}
 		# Striker Dashboards
@@ -2411,6 +2645,7 @@ sub load_install_manifest
 			$conf->{cgi}{$name_key}   = $striker;
 			$conf->{cgi}{$bcn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{bcn_ip};
 			$conf->{cgi}{$ifn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{ifn_ip};
+			#record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}]\n");
 			$i++;
 		}
 		
@@ -2418,38 +2653,342 @@ sub load_install_manifest
 		$i = 1;
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}})
 		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], i: [$i]\n");
 			my $name_key          = "anvil_node".$i."_name";
 			my $bcn_ip_key        = "anvil_node".$i."_bcn_ip";
 			my $bcn_link1_mac_key = "anvil_node".$i."_bcn_link1_mac";
 			my $bcn_link2_mac_key = "anvil_node".$i."_bcn_link2_mac";
-			my $ipmi_ip_key       = "anvil_node".$i."_ipmi_ip";
 			my $sn_ip_key         = "anvil_node".$i."_sn_ip";
 			my $sn_link1_mac_key  = "anvil_node".$i."_sn_link1_mac";
 			my $sn_link2_mac_key  = "anvil_node".$i."_sn_link2_mac";
 			my $ifn_ip_key        = "anvil_node".$i."_ifn_ip";
 			my $ifn_link1_mac_key = "anvil_node".$i."_ifn_link1_mac";
 			my $ifn_link2_mac_key = "anvil_node".$i."_ifn_link2_mac";
+			
+			my $ipmi_ip_key       = "anvil_node".$i."_ipmi_ip";
+			my $ipmi_netmask_key  = "anvil_node".$i."_ipmi_netmask",
+			my $ipmi_gateway_key  = "anvil_node".$i."_ipmi_gateway",
+			my $ipmi_password_key = "anvil_node".$i."_ipmi_password",
+			my $ipmi_user_key     = "anvil_node".$i."_ipmi_user",
 			my $pdu1_key          = "anvil_node".$i."_pdu1_outlet";
 			my $pdu2_key          = "anvil_node".$i."_pdu2_outlet";
 			my $pdu1_name         = $conf->{cgi}{anvil_pdu1_name};
 			my $pdu2_name         = $conf->{cgi}{anvil_pdu2_name};
 			
+			# IPMI is, by default, tempremental about passwords. If
+			# the manifest doesn't specify the password to use, 
+			# we'll copy the cluster password but then strip out
+			# special characters and shorten it to 16 characters or
+			# less.
+			my $default_ipmi_pw =  $conf->{cgi}{anvil_password};
+			   $default_ipmi_pw =~ s/!//g;
+			if (length($default_ipmi_pw) > 16)
+			{
+				$default_ipmi_pw = substr($default_ipmi_pw, 0, 16);
+			}
+			
+			# Find the IPMI, PDU and KVM reference names
+			my $ipmi_reference = "";
+			my $pdu1_reference = "";
+			my $pdu2_reference = "";
+			my $kvm_reference  = "";
+			foreach my $reference (keys %{$conf->{install_manifest}{$file}{node}{$node}{ipmi}})
+			{
+				# There should only be one entry
+				$ipmi_reference = $reference;
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ipmi_reference: [$ipmi_reference]\n");
+			my $j = 1;
+			foreach my $reference (keys %{$conf->{install_manifest}{$file}{node}{$node}{pdu}})
+			{
+				# There should be two PDUs
+				if ($j == 1)
+				{
+					$pdu1_reference = $reference;
+				}
+				elsif ($j == 2)
+				{
+					$pdu2_reference = $reference;
+				}
+				$j++;
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu1_reference: [$pdu1_reference], pdu2_reference: [$pdu2_reference]\n");
+			foreach my $reference (keys %{$conf->{install_manifest}{$file}{node}{$node}{kvm}})
+			{
+				# There should only be one entry
+				$kvm_reference = $reference;
+			}
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; kvm_reference: [$kvm_reference]\n");
+			
 			$conf->{cgi}{$name_key}          = $node;
 			$conf->{cgi}{$bcn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{bcn}{ip};
-			$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac};
-			$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac};
-			$conf->{cgi}{$ipmi_ip_key}       = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{ip};
 			$conf->{cgi}{$sn_ip_key}         = $conf->{install_manifest}{$file}{node}{$node}{network}{sn}{ip};
-			$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac};
-			$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
 			$conf->{cgi}{$ifn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{ifn}{ip};
-			$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
-			$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
-			$conf->{cgi}{$pdu1_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu1_name}{port};
-			$conf->{cgi}{$pdu2_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_name}{port};
 			
-			#print Dumper $conf->{install_manifest}{$file}{node}{$node};
+			$conf->{cgi}{$ipmi_ip_key}       = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{ip};
+			$conf->{cgi}{$ipmi_netmask_key}  = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{netmask}  ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{netmask}  : $conf->{cgi}{anvil_bcn_subnet};
+			$conf->{cgi}{$ipmi_gateway_key}  = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{gateway}  ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{gateway}  : "";
+			$conf->{cgi}{$ipmi_password_key} = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{password} ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{password} : $default_ipmi_pw;
+			$conf->{cgi}{$ipmi_user_key}     = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{user}     ? $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$ipmi_reference}{user}     : "admin";
+			$conf->{cgi}{$pdu1_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu1_reference}{port};
+			$conf->{cgi}{$pdu2_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_reference}{port};
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}]\n");
+			
+			# If the user remapped their network, we don't want to
+			# undo the results.
+			if (not $conf->{cgi}{perform_install})
+			{
+				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link1'}{mac};
+				$conf->{cgi}{$bcn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'bcn-link2'}{mac};
+				$conf->{cgi}{$sn_link1_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link1'}{mac};
+				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{'sn-link2'}{mac};
+				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link1'}{mac};
+				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{'ifn-link2'}{mac};
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
+			}
 			$i++;
+		}
+		
+		### Now to build the fence strings.
+		my $fence_order = $conf->{install_manifest}{$file}{common}{cluster}{fence}{order};
+		$conf->{cgi}{anvil_fence_order} = $fence_order;
+		
+		# Nodes
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+		my $node1_name = $conf->{cgi}{anvil_node1_name};
+		my $node2_name = $conf->{cgi}{anvil_node2_name};
+		my $delay_set  = 0;
+		my $delay_node = $conf->{install_manifest}{$file}{common}{cluster}{fence}{delay_node};
+		my $delay_time = $conf->{install_manifest}{$file}{common}{cluster}{fence}{delay};
+		foreach my $node ($conf->{cgi}{anvil_node1_name}, $conf->{cgi}{anvil_node2_name})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+			my $i = 1;
+			foreach my $method (split/,/, $fence_order)
+			{
+				if ($method eq "kvm")
+				{
+					# Only ever one, but...
+					my $j = 1;
+					foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{kvm}})
+					{
+						my $port            = $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{port};
+						my $user            = $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user};
+						my $password        = $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password};
+						my $password_script = $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script};
+						
+						# Build the string.
+						my $string =  "<device name=\"$reference\"";
+						   $string .= " port=\"$port\""  if $port;
+						   $string .= " login=\"$user\"" if $user;
+						# One or the other, not both.
+						if ($password)
+						{
+							$string .= " passwd=\"$password\"";
+						}
+						elsif ($password_script)
+						{
+							$string .= " passwd_script=\"$password_script\"";
+						}
+						if (($node eq $delay_node) && (not $delay_set))
+						{
+							$string    .= " delay=\"$delay_time\"";
+							$delay_set =  1;
+						}
+						$string .= " action=\"reboot\" />";
+						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
+						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$j++;
+					}
+				}
+				elsif ($method eq "ipmi")
+				{
+					# Only ever one, but...
+					my $j = 1;
+					foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{ipmi}})
+					{
+						my $name            = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name};
+						my $ip              = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip};
+						my $user            = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user};
+						my $password        = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password};
+						my $password_script = $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script};
+						if ((not $name) && ($ip))
+						{
+							$name = $ip;
+						}
+						# Build the string
+						my $string =  "<device name=\"$reference\"";
+						   $string .= " ipaddr=\"$name\"" if $name;
+						   $string .= " login=\"$user\""  if $user;
+						# One or the other, not both.
+						if ($password)
+						{
+							$string .= " passwd=\"$password\"";
+						}
+						elsif ($password_script)
+						{
+							$string .= " passwd_script=\"$password_script\"";
+						}
+						if (($node eq $delay_node) && (not $delay_set))
+						{
+							$string    .= " delay=\"$delay_time\"";
+							$delay_set =  1;
+						}
+						$string .= " action=\"reboot\" />";
+						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
+						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$j++;
+					}
+				}
+				elsif ($method eq "pdu")
+				{
+					# Here we can have > 1.
+					my $j = 1;
+					foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{pdu}})
+					{
+						my $port            = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port};
+						my $user            = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user};
+						my $password        = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password};
+						my $password_script = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script};
+						
+						# Build the string
+						my $string = "<device name=\"$reference\" ";
+						   $string .= " port=\"$port\""  if $port;
+						   $string .= " login=\"$user\"" if $user;
+						# One or the other, not both.
+						if ($password)
+						{
+							$string .= " passwd=\"$password\"";
+						}
+						elsif ($password_script)
+						{
+							$string .= " passwd_script=\"$password_script\"";
+						}
+						if (($node eq $delay_node) && (not $delay_set))
+						{
+							$string    .= " delay=\"$delay_time\"";
+							$delay_set =  1;
+						}
+						$string .= " action=\"reboot\" />";
+						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
+						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$j++;
+					}
+				}
+				$i++;
+			}
+		}
+		
+		# Devices
+		foreach my $device (split/,/, $fence_order)
+		{
+			if ($device eq "kvm")
+			{
+				foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{kvm}})
+				{
+					my $name            = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{name};
+					my $ip              = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{ip};
+					my $user            = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{user};
+					my $password        = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{password};
+					my $password_script = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script};
+					my $agent           = $conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent};
+					if ((not $name) && ($ip))
+					{
+						$name = $ip;
+					}
+					
+					# Build the string
+					my $string =  "<fencedevice name=\"$reference\" agent=\"$agent\"";
+					   $string .= " ipaddr=\"$name\"" if $name;
+					   $string .= " login=\"$user\""  if $user;
+					# One or the other, not both.
+					if ($password)
+					{
+						$string .= " passwd=\"$password\"";
+					}
+					elsif ($password_script)
+					{
+						$string .= " passwd_script=\"$password_script\"";
+					}
+					$string .= " />";
+					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
+					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+				}
+			}
+			if ($device eq "ipmi")
+			{
+				foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{ipmi}})
+				{
+					my $name            = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{name};
+					my $ip              = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip};
+					my $user            = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user};
+					my $password        = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password};
+					my $password_script = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script};
+					my $agent           = $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent};
+					if ((not $name) && ($ip))
+					{
+						$name = $ip;
+					}
+					   
+					# Build the string
+					my $string =  "<fencedevice name=\"$reference\" agent=\"$agent\"";
+					   $string .= " ipaddr=\"$name\"" if $name;
+					   $string .= " login=\"$user\""  if $user;
+					if ($password)
+					{
+						$string .= " passwd=\"$password\"";
+					}
+					elsif ($password_script)
+					{
+						$string .= " passwd_script=\"$password_script\"";
+					}
+					$string .= " />";
+					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
+					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+				}
+			}
+			if ($device eq "pdu")
+			{
+				foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{pdu}})
+				{
+					my $name            = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{name};
+					my $ip              = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip};
+					my $user            = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{user};
+					my $password        = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{password};
+					my $password_script = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script};
+					my $agent           = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent};
+					if ((not $name) && ($ip))
+					{
+						$name = $ip;
+					}
+					   
+					# Build the string
+					my $string =  "<fencedevice name=\"$reference\" agent=\"$agent\" ";
+					   $string .= " ipaddr=\"$name\"" if $name;
+					   $string .= " login=\"$user\""  if $user;
+					if ($password)
+					{	
+						$string .= "passwd=\"$password\"";
+					}
+					elsif ($password_script)
+					{
+						$string .= "passwd_script=\"$password_script\"";
+					}
+					$string .= " />";
+					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
+					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+				}
+			}
+		}
+		
+		# Some system stuff.
+		$conf->{sys}{post_join_delay} = $conf->{install_manifest}{$file}{common}{cluster}{fence}{post_join_delay};
+		$conf->{sys}{update_os}       = $conf->{install_manifest}{$file}{common}{update}{os};
+		record($conf, "$THIS_FILE ".__LINE__."; sys::post_join_delay: [$conf->{sys}{post_join_delay}], sys::update_os: [$conf->{sys}{update_os}]\n");
+		if ((lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "false") || (lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "no"))
+		{
+			$conf->{sys}{update_os} = 0;
+			record($conf, "$THIS_FILE ".__LINE__."; sys::update_os: [$conf->{sys}{update_os}]\n");
 		}
 	}
 	else
@@ -2471,7 +3010,7 @@ sub show_existing_install_manifests
 {
 	my ($conf) = @_;
 	
-	print AN::Common::template($conf, "config.html", "install-manifest-header");
+	my $header_printed = 0;
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
 	while (my $file = readdir(DIR))
@@ -2479,6 +3018,11 @@ sub show_existing_install_manifests
 		next if (($file eq ".") or ($file eq ".."));
 		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+:\d+:\d+).xml/)
 		{
+			if (not $header_printed)
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-header");
+				$header_printed = 1;
+			}
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
@@ -2499,7 +3043,10 @@ sub show_existing_install_manifests
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
 		});
 	}
-	print AN::Common::template($conf, "config.html", "install-manifest-footer");
+	if ($header_printed)
+	{
+		print AN::Common::template($conf, "config.html", "install-manifest-footer");
+	}
 	
 	return(0);
 }
@@ -2525,6 +3072,21 @@ sub generate_install_manifest
 	my $file_date =  $date;
 	   $file_date =~ s/ /_/g;
 	
+	# Note yet supported but will be later.
+	$conf->{cgi}{anvil_node1_ipmi_password} = $conf->{cgi}{anvil_node1_ipmi_password} ? $conf->{cgi}{anvil_node1_ipmi_password} : $conf->{cgi}{anvil_password};
+	$conf->{cgi}{anvil_node1_ipmi_user}     = $conf->{cgi}{anvil_node1_ipmi_user}     ? $conf->{cgi}{anvil_node1_ipmi_user}     : "admin";
+	$conf->{cgi}{anvil_node2_ipmi_password} = $conf->{cgi}{anvil_node2_ipmi_password} ? $conf->{cgi}{anvil_node2_ipmi_password} : $conf->{cgi}{anvil_password};
+	$conf->{cgi}{anvil_node2_ipmi_user}     = $conf->{cgi}{anvil_node2_ipmi_user}     ? $conf->{cgi}{anvil_node2_ipmi_user}     : "admin";
+	
+	### TODO: This isn't set for some reason, fix
+	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
+	
+	# This is currently not set by the program, but will be later.
+	$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{mtu_size} if not $conf->{cgi}{anvil_mtu_size};
+	
+	### KVM-based fencing is supported but not documented. Sample entries
+	### are here for those who might ask for it when building test Anvil!
+	### systems later.
 	# Many things are currently static but might be made configurable later.
 	my $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 
@@ -2540,21 +3102,24 @@ Striker Version: $conf->{sys}{version}
 			<sn ip=\"$conf->{cgi}{anvil_node1_sn_ip}\" />
 			<ifn ip=\"$conf->{cgi}{anvil_node1_ifn_ip}\" />
 		</network>
-		<ipmi name=\"${node1_short_name}.ipmi\">
-			<address ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" on=\"bcn\" />
-			<auth user=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+		<ipmi>
+			<on reference=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
-			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
-			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+			<on reference=\"pdu01\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" />
+			<on reference=\"pdu02\" port=\"$conf->{cgi}{anvil_node1_pdu2_outlet}\" />
 		</pdu>
+		<kvm>
+			<!-- port == virsh name of VM -->
+			<on reference=\"kvm_host\" port=\"\" />
+		</kvm>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"--\" />
-			<interface name=\"bcn-link2\" mac=\"--\" />
-			<interface name=\"sn-link1\" mac=\"--\" />
-			<interface name=\"sn-link2\" mac=\"--\" />
-			<interface name=\"ifn-link1\" mac=\"--\" />
-			<interface name=\"ifn-link2\" mac=\"--\" />
+			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node1_bcn_link1_mac}\" />
+			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node1_bcn_link2_mac}\" />
+			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node1_sn_link1_mac}\" />
+			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node1_sn_link2_mac}\" />
+			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node1_ifn_link1_mac}\" />
+			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<node name=\"$conf->{cgi}{anvil_node2_name}\">
@@ -2563,21 +3128,23 @@ Striker Version: $conf->{sys}{version}
 			<sn ip=\"$conf->{cgi}{anvil_node2_sn_ip}\" />
 			<ifn ip=\"$conf->{cgi}{anvil_node2_ifn_ip}\" />
 		</network>
-		<ipmi name=\"${node2_short_name}.ipmi\">
-			<address ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" on=\"bcn\" />
-			<auth user=\"admin\" password=\"$conf->{cgi}{anvil_password}\" />
+		<ipmi>
+			<on reference=\"ipmi_n02\" ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node2_ipmi_user}\" password=\"$conf->{cgi}{anvil_node2_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
-			<on name=\"$conf->{cgi}{anvil_pdu1_name}\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
-			<on name=\"$conf->{cgi}{anvil_pdu2_name}\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" agent=\"fence_apc_snmp\" user=\"\" password=\"\" />
+			<on reference=\"pdu01\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" />
+			<on reference=\"pdu02\" port=\"$conf->{cgi}{anvil_node2_pdu2_outlet}\" />
 		</pdu>
+		<kvm>
+			<on reference=\"kvm_host\" port=\"\" />
+		</kvm>
 		<interfaces>
-			<interface name=\"bcn-link1\" mac=\"--\" />
-			<interface name=\"bcn-link2\" mac=\"--\" />
-			<interface name=\"sn-link1\" mac=\"--\" />
-			<interface name=\"sn-link2\" mac=\"--\" />
-			<interface name=\"ifn-link1\" mac=\"--\" />
-			<interface name=\"ifn-link2\" mac=\"--\" />
+			<interface name=\"bcn-link1\" mac=\"$conf->{cgi}{anvil_node2_bcn_link1_mac}\" />
+			<interface name=\"bcn-link2\" mac=\"$conf->{cgi}{anvil_node2_bcn_link2_mac}\" />
+			<interface name=\"sn-link1\" mac=\"$conf->{cgi}{anvil_node2_sn_link1_mac}\" />
+			<interface name=\"sn-link2\" mac=\"$conf->{cgi}{anvil_node2_sn_link2_mac}\" />
+			<interface name=\"ifn-link1\" mac=\"$conf->{cgi}{anvil_node2_ifn_link1_mac}\" />
+			<interface name=\"ifn-link2\" mac=\"$conf->{cgi}{anvil_node2_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
 	<common>
@@ -2593,99 +3160,53 @@ Striker Version: $conf->{sys}{version}
 			<bridges>
 				<bridge name=\"ifn-bridge1\" on=\"ifn\" />
 			</bridges>
+			<mtu size=\"$conf->{cgi}{anvil_mtu_size}\" />
 		</networks>
+		<repository urls=\"$conf->{cgi}{anvil_repositories}\" />
 		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
 		<storage_pool_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
 		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" />
 		<ssh keysize=\"8191\" />
 		<cluster name=\"$conf->{cgi}{anvil_name}\">
-			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" />
+			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
+			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" delay=\"15\" delay_node=\"$conf->{cgi}{anvil_node1_name}\" />
 		</cluster>
 		<switch>
-			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" on=\"bcn\" />
+			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" />
 ";
-	if ($conf->{cgi}{anvil_switch2_name} ne "--")
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
+	if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
 	{
-		print "			<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" on=\"bcn\" />";
+		$xml .= "\t\t\t<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
 	}
 	$xml .="
 		</switch>
 		<ups>
-			<ups name=\"$conf->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$conf->{cgi}{anvil_ups1_ip}\" on=\"bcn\" />
-			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" on=\"bcn\" />
+			<ups name=\"$conf->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$conf->{cgi}{anvil_ups1_ip}\" />
+			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" />
 		</ups>
 		<pdu>
-			<pdu name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" on=\"bcn\" />
-			<pdu name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" on=\"bcn\" />
+			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"fence_apc_snmp\" />
+			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"fence_apc_snmp\" />
 		</pdu>
+		<ipmi>
+			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />
+			<ipmi reference=\"ipmi_n02\" agent=\"fence_ipmilan\" />
+		</ipmi>
+		<kvm>
+			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password_script=\"\" agent=\"fence_virsh\" />
+		</kvm>
 		<striker>
 			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" />
 			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" />
 		</striker>
 		<update os=\"true\" />
-		<daemons>
-			<daemon name=\"network\" start_on_boot=\"true\" />
-			<daemon name=\"ntpd\" start_on_boot=\"true\" />
-			<daemon name=\"ricci\" start_on_boot=\"true\" />
-			<daemon name=\"modclusterd\" start_on_boot=\"true\" />
-			<daemon name=\"ipmi\" start_on_boot=\"true\" />
-			<daemon name=\"iptables\" start_on_boot=\"true\" />
-			<daemon name=\"acpid\" start_on_boot=\"false\" />
-			<daemon name=\"ip6tables\" start_on_boot=\"false\" />
-			<daemon name=\"clvmd\" start_on_boot=\"false\" />
-			<daemon name=\"gfs2\" start_on_boot=\"false\" />
-			<daemon name=\"libvirtd\" start_on_boot=\"false\" />
-			<daemon name=\"cman\" start_on_boot=\"false\" />
-			<daemon name=\"rgmanager\" start_on_boot=\"false\" />
-		</daemons>
 		<iptables>
-			<!-- It is up to the generating script to set the right IPs, subnets and port ranges! -->
-			<rule sequence=\"01\" rule=\"iptables -I INPUT -m state --state NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT\" />
-			<rule sequence=\"02\" rule=\"iptables -I INPUT -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT\" />
-			<rule sequence=\"03\" rule=\"iptables -I INPUT -p igmp -j ACCEPT\" />
-			<rule sequence=\"04\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 21064 -j ACCEPT \" />
-			<rule sequence=\"05\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 11111 -j ACCEPT\" />
-			<rule sequence=\"06\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 16851 -j ACCEPT\" />
-			<rule sequence=\"07\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dport 7788 -j ACCEPT\" />
-			<rule sequence=\"08\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dport 7789 -j ACCEPT\" />
-			<rule sequence=\"09\" rule=\"iptables -I INPUT -p tcp -m tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 49152:49216 -j ACCEPT\" />
-			<rule sequence=\"10\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dport 5900:5999 -j ACCEPT\" />
-			<rule sequence=\"11\" rule=\"iptables -I INPUT -m state --state NEW -p tcp -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} --dport 5900:5999 -j ACCEPT\" />
+			<vnc ports=\"$conf->{cgi}{anvil_open_vnc_ports}\" />
 		</iptables>
-		<file name=\"/etc/hosts\" owner=\"root\" group=\"root\" mode=\"0644\">
-127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-
-# Anvil! $conf->{cgi}{anvil_sequence}, Node 01
-$conf->{cgi}{anvil_node1_bcn_ip}	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}
-$conf->{cgi}{anvil_node1_ipmi_ip}	$node1_short_name.ipmi
-$conf->{cgi}{anvil_node1_sn_ip}	$node1_short_name.sn
-$conf->{cgi}{anvil_node1_ifn_ip}	$node1_short_name.ifn
-
-# Anvil! $conf->{cgi}{anvil_sequence}, Node 02
-$conf->{cgi}{anvil_node2_bcn_ip}	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}
-$conf->{cgi}{anvil_node2_ipmi_ip}	$node2_short_name.ipmi
-$conf->{cgi}{anvil_node2_sn_ip}	$node2_short_name.sn
-$conf->{cgi}{anvil_node2_ifn_ip}	$node2_short_name.ifn
-
-# Network switches
-$conf->{cgi}{anvil_switch1_ip}	$switch1_short_name $conf->{cgi}{anvil_switch1_name}
-$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}
-
-# Switched PDUs
-$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}
-$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}
-
-# UPSes
-$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}
-$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups1_name}
-
-# Striker dashboards
-$conf->{cgi}{anvil_striker1_bcn_ip}	$striker1_short_name.bcn $striker1_short_name $conf->{cgi}{anvil_striker1_name}
-$conf->{cgi}{anvil_striker1_ifn_ip}	$striker1_short_name.ifn
-$conf->{cgi}{anvil_striker2_bcn_ip}	$striker2_short_name.bcn $striker2_short_name $conf->{cgi}{anvil_striker2_name}
-$conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
-		</file>
+		<servers>
+			<provision use_spice_graphics=\"0\" />
+		</servers>
 	</common>
 </config>
 ";
@@ -2706,111 +3227,107 @@ $conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn
 sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; confirm_install_manifest_run()\n");
 	
-	# Ask if we're replacing a failed node or doing a fresh install.
-	if (not $conf->{cgi}{'do'})
+	# Show the manifest form.
+	$conf->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_bcn_link1_mac};
+	$conf->{cgi}{anvil_node1_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_bcn_link2_mac};
+	$conf->{cgi}{anvil_node1_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_sn_link1_mac};
+	$conf->{cgi}{anvil_node1_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_sn_link2_mac};
+	$conf->{cgi}{anvil_node1_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_ifn_link1_mac};
+	$conf->{cgi}{anvil_node1_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_ifn_link2_mac};
+	$conf->{cgi}{anvil_node2_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_bcn_link1_mac};
+	$conf->{cgi}{anvil_node2_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_bcn_link2_mac};
+	$conf->{cgi}{anvil_node2_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_sn_link1_mac};
+	$conf->{cgi}{anvil_node2_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_sn_link2_mac};
+	$conf->{cgi}{anvil_node2_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_ifn_link1_mac};
+	$conf->{cgi}{anvil_node2_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node2_ifn_link2_mac};
+	
+	$conf->{cgi}{anvil_node1_pdu1_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node1_pdu1_outlet};
+	$conf->{cgi}{anvil_node1_pdu2_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node1_pdu2_outlet};
+	$conf->{cgi}{anvil_node2_pdu1_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node2_pdu1_outlet};
+	$conf->{cgi}{anvil_node2_pdu2_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node2_pdu2_outlet};
+	
+	# If the first storage pool is a percentage, calculate
+	# the percentage of the second. Otherwise, set storage
+	# pool 2 to just same 'remainder'.
+	my $say_storage_pool_1 = "$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}";
+	my $say_storage_pool_2 = "<span class=\"highlight_unavailable\">#!string!message_0357!#</span>";
+	if ($conf->{cgi}{anvil_storage_pool1_unit} eq "%")
 	{
-		print AN::Common::template($conf, "config.html", "ask-new-or-replace-run-install-manifest", {
-			new_link	=>	"$conf->{'system'}{cgi_string}&do=new",
-			replace_link	=>	"$conf->{'system'}{cgi_string}&do=replace",
-		});
+		$say_storage_pool_2 = (100 - $conf->{cgi}{anvil_storage_pool1_size})." %";
 	}
-	else
-	{
-		if ($conf->{cgi}{'do'} eq "new")
-		{
-			# Show the manifest form.
-			$conf->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_bcn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node1_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_bcn_link2_mac} eq "--";
-			$conf->{cgi}{anvil_node1_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_sn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node1_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_sn_link2_mac} eq "--";
-			$conf->{cgi}{anvil_node1_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_ifn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node1_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node1_ifn_link2_mac} eq "--";
-			$conf->{cgi}{anvil_node2_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_bcn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node2_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_bcn_link2_mac} eq "--";
-			$conf->{cgi}{anvil_node2_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_sn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node2_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_sn_link2_mac} eq "--";
-			$conf->{cgi}{anvil_node2_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_ifn_link1_mac} eq "--";
-			$conf->{cgi}{anvil_node2_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if $conf->{cgi}{anvil_node2_ifn_link2_mac} eq "--";
-			
-			# If the first storage pool is a percentage, calculate
-			# the percentage of the second. Otherwise, set storage
-			# pool 2 to just same 'remainder'.
-			my $say_storage_pool_1 = "$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}";
-			my $say_storage_pool_2 = "<span class=\"highlight_unavailable\">#!string!message_0357!#</span>";
-			if ($conf->{cgi}{anvil_storage_pool1_unit} eq "%")
-			{
-				$say_storage_pool_2 = (100 - $conf->{cgi}{anvil_storage_pool1_size})." %";
-			}
-			
-			# Grab the hosts file.
-			my $manifest   = $conf->{cgi}{run};
-			my $hosts_file = $conf->{install_manifest}{$manifest}{common}{file}{'/etc/hosts'}{content};
-			   $hosts_file =~ s/\n/<br \/>/g;
-			
-			# If this is the first load, the use the current IP and
-			# password.
-			$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip} if not $conf->{cgi}{anvil_node1_current_ip};;
-			$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node1_current_password};
-			$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip} if not $conf->{cgi}{anvil_node2_current_ip};
-			$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
-			
-			print AN::Common::template($conf, "config.html", "confirm-new-anvil-creation", {
-				form_file			=>	"/cgi-bin/striker",
-				say_storage_pool_1		=>	$say_storage_pool_1,
-				say_storage_pool_2		=>	$say_storage_pool_2,
-				say_hosts_file			=>	$hosts_file,
-				anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
-				anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
-				anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
-				anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
-				anvil_password			=>	$conf->{cgi}{anvil_password},
-				anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
-				anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
-				anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
-				anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
-				anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
-				anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
-				anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
-				anvil_media_library_unit	=>	$conf->{cgi}{anvil_media_library_unit},
-				anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
-				anvil_storage_pool1_unit	=>	$conf->{cgi}{anvil_storage_pool1_unit},
-				anvil_name			=>	$conf->{cgi}{anvil_name},
-				anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
-				anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
-				anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
-				anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
-				anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
-				anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
-				anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
-				anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
-				anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
-				anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
-				anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
-				anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
-				anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
-				anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
-				anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
-				anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
-				anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
-				anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
-				anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
-				anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
-				anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
-				anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
-				anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
-				anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
-				anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
-				anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
-				anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
-				anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
-				anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
-				anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
-				anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
-				run				=>	$conf->{cgi}{run},
-			});
-		}
-	}
+	
+	# If this is the first load, the use the current IP and
+	# password.
+	$conf->{cgi}{anvil_node1_current_ip}       = $conf->{cgi}{anvil_node1_bcn_ip} if not $conf->{cgi}{anvil_node1_current_ip};;
+	$conf->{cgi}{anvil_node1_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node1_current_password};
+	$conf->{cgi}{anvil_node2_current_ip}       = $conf->{cgi}{anvil_node2_bcn_ip} if not $conf->{cgi}{anvil_node2_current_ip};
+	$conf->{cgi}{anvil_node2_current_password} = $conf->{cgi}{anvil_password}     if not $conf->{cgi}{anvil_node2_current_password};
+	# I don't ask the user for the port range at this time,
+	# so it's possible the number of ports to open isn't in
+	# the manifest.
+	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
+	my $say_repos =  $conf->{cgi}{anvil_repositories};
+		$say_repos =~ s/,/<br \/>/;
+		$say_repos =  "--" if not $say_repos;
+	
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
+		form_file			=>	"/cgi-bin/striker",
+		say_storage_pool_1		=>	$say_storage_pool_1,
+		say_storage_pool_2		=>	$say_storage_pool_2,
+		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+		anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
+		anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
+		anvil_password			=>	$conf->{cgi}{anvil_password},
+		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
+		anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
+		anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
+		anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
+		anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
+		anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
+		anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
+		anvil_media_library_unit	=>	$conf->{cgi}{anvil_media_library_unit},
+		anvil_storage_pool1_size	=>	$conf->{cgi}{anvil_storage_pool1_size},
+		anvil_storage_pool1_unit	=>	$conf->{cgi}{anvil_storage_pool1_unit},
+		anvil_name			=>	$conf->{cgi}{anvil_name},
+		anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
+		anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
+		anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+		anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
+		anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
+		anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
+		anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+		anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
+		anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
+		anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+		anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
+		anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
+		anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
+		anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
+		anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
+		anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+		anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
+		anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
+		anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
+		anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+		anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
+		anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
+		anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+		anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
+		anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
+		anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
+		anvil_ifn_gateway		=>	$conf->{cgi}{anvil_ifn_gateway},
+		anvil_ifn_dns1			=>	$conf->{cgi}{anvil_ifn_dns1},
+		anvil_ifn_dns2			=>	$conf->{cgi}{anvil_ifn_dns2},
+		anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
+		anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
+		anvil_open_vnc_ports		=>	$conf->{cgi}{anvil_open_vnc_ports},
+		say_anvil_repos			=>	$say_repos,
+		run				=>	$conf->{cgi}{run},
+	});
 	
 	return(0);
 }
@@ -2822,6 +3339,10 @@ sub show_summary_manifest
 	my ($conf) = @_;
 	
 	# Show the manifest form.
+	my $say_repos =  $conf->{cgi}{anvil_repositories};
+	   $say_repos =~ s/,/<br \/>/;
+	   $say_repos = "--" if not $say_repos;
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
 	print AN::Common::template($conf, "config.html", "install-manifest-summay", {
 		form_file			=>	"/cgi-bin/striker",
 		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
@@ -2874,6 +3395,8 @@ sub show_summary_manifest
 		anvil_striker2_name		=>	$conf->{cgi}{anvil_striker2_name},
 		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
 		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
+		anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
+		say_anvil_repositories		=>	$say_repos,
 	});
 	
 	return(0);
@@ -2888,24 +3411,24 @@ sub sanity_check_manifest_answers
 	my $problem = 0;
 	
 	# Make sure the Anvil! prefix is valid. This is used in the generated host's file.
-	if (not $conf->{cgi}{anvil_prefix})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif ($conf->{cgi}{anvil_prefix} =~ /\W/)
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
-		});
-		$problem = 1;
-	}
+# 	if (not $conf->{cgi}{anvil_prefix})
+# 	{
+# 		# Not allowed to be blank.
+# 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+# 		print AN::Common::template($conf, "config.html", "form-error", {
+# 			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0159!#"}}),
+# 		});
+# 		$problem = 1;
+# 	}
+# 	elsif ($conf->{cgi}{anvil_prefix} =~ /\W/)
+# 	{
+# 		# Not allowed to be blank.
+# 		$conf->{form}{anvil_prefix_star} = "#!string!symbol_0012!#";
+# 		print AN::Common::template($conf, "config.html", "form-error", {
+# 			message	=>	AN::Common::get_string($conf, {key => "explain_0101", variables => { field => "#!string!row_0159!#"}}),
+# 		});
+# 		$problem = 1;
+# 	}
 	
 	# Make sure the sequence number is valid.
 	if (not $conf->{cgi}{anvil_sequence})
@@ -3111,6 +3634,24 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
+	
+	# Check the repositor{y,ies} if passed.
+	if ($conf->{cgi}{anvil_repositories})
+	{
+		foreach my $url (split/,/, $conf->{cgi}{anvil_repositories})
+		{
+			$url =~ s/^\s+//;
+			$url =~ s/\s+$//;
+			if (not is_string_url($conf, $url))
+			{
+				$conf->{form}{anvil_repositories_star} = "#!string!symbol_0012!#";
+				print AN::Common::template($conf, "config.html", "form-error", {
+					message	=>	AN::Common::get_string($conf, {key => "explain_0140", variables => { field => "#!string!row_0244!#"}}),
+				});
+				$problem = 1;
+			}
+		}
+	}
 
 	# Check the gateway
 	if (not $conf->{cgi}{anvil_name})
@@ -3138,6 +3679,32 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
+	
+	### Convery anything with the value '--' to ''.
+	$conf->{cgi}{anvil_ifn_gateway}     = "" if $conf->{cgi}{anvil_ifn_gateway}     eq "--";
+	$conf->{cgi}{anvil_ifn_dns1}        = "" if $conf->{cgi}{anvil_ifn_dns1}        eq "--";
+	$conf->{cgi}{anvil_ifn_dns2}        = "" if $conf->{cgi}{anvil_ifn_dns1}        eq "--";
+	$conf->{cgi}{anvil_switch1_name}    = "" if $conf->{cgi}{anvil_switch1_name}    eq "--";
+	$conf->{cgi}{anvil_switch1_ip}      = "" if $conf->{cgi}{anvil_switch1_ip}      eq "--";
+	$conf->{cgi}{anvil_switch2_name}    = "" if $conf->{cgi}{anvil_switch2_name}    eq "--";
+	$conf->{cgi}{anvil_switch2_ip}      = "" if $conf->{cgi}{anvil_switch2_ip}      eq "--";
+	$conf->{cgi}{anvil_pdu1_name}       = "" if $conf->{cgi}{anvil_pdu1_name}       eq "--";
+	$conf->{cgi}{anvil_pdu1_ip}         = "" if $conf->{cgi}{anvil_pdu1_ip}         eq "--";
+	$conf->{cgi}{anvil_pdu2_name}       = "" if $conf->{cgi}{anvil_pdu2_name}       eq "--";
+	$conf->{cgi}{anvil_pdu2_ip}         = "" if $conf->{cgi}{anvil_pdu2_ip}         eq "--";
+	$conf->{cgi}{anvil_ups1_name}       = "" if $conf->{cgi}{anvil_ups1_name}       eq "--";
+	$conf->{cgi}{anvil_ups1_ip}         = "" if $conf->{cgi}{anvil_ups1_ip}         eq "--";
+	$conf->{cgi}{anvil_ups2_name}       = "" if $conf->{cgi}{anvil_ups2_name}       eq "--";
+	$conf->{cgi}{anvil_ups2_ip}         = "" if $conf->{cgi}{anvil_ups2_ip}         eq "--";
+	$conf->{cgi}{anvil_striker1_name}   = "" if $conf->{cgi}{anvil_striker1_name}   eq "--";
+	$conf->{cgi}{anvil_striker1_bcn_ip} = "" if $conf->{cgi}{anvil_striker1_bcn_ip} eq "--";
+	$conf->{cgi}{anvil_striker1_ifn_ip} = "" if $conf->{cgi}{anvil_striker1_ifn_ip} eq "--";
+	$conf->{cgi}{anvil_striker2_name}   = "" if $conf->{cgi}{anvil_striker2_name}   eq "--";
+	$conf->{cgi}{anvil_striker2_bcn_ip} = "" if $conf->{cgi}{anvil_striker2_bcn_ip} eq "--";
+	$conf->{cgi}{anvil_striker2_ifn_ip} = "" if $conf->{cgi}{anvil_striker2_ifn_ip} eq "--";
+	$conf->{cgi}{anvil_node1_ipmi_ip}   = "" if $conf->{cgi}{anvil_node1_ipmi_ip}   eq "--";
+	$conf->{cgi}{anvil_node2_ipmi_ip}   = "" if $conf->{cgi}{anvil_node2_ipmi_ip}   eq "--";
+	$conf->{cgi}{anvil_open_vnc_ports}  = "" if $conf->{cgi}{anvil_open_vnc_ports}  eq "--";
 	
 	## Check the common IFN values.
 	# Check the gateway
@@ -3902,6 +4469,65 @@ sub sanity_check_manifest_answers
 	return($problem);
 }
 
+# Checks to see if the passed string is a URL or not.
+sub is_string_url
+{   
+	my ($conf, $string) = @_;
+	my $valid = 1;
+	
+	if ($string =~ /^(.*?):\/\/(.*?)\/(.*)$/)
+	{
+		my $protocol = $1;
+		my $host     = $2;
+		my $path     = $3;
+		my $port     = "";
+		#print "[ Debug ] - >> protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+		if ($protocol eq "http")
+		{
+			$port = 80;
+		}
+		elsif ($protocol eq "https")
+		{
+			$port = 443;
+		}
+		elsif ($protocol eq "ftp")
+		{
+			$port = 21;
+		}
+		else
+		{
+			# Invalid protocol
+			$valid = 0;
+		}
+		if ($host =~ /^(.*?):(\d+)$/)
+		{
+			$host = $1;
+			$port = $2;
+		}
+		if ($host =~ /^\d+\.\d+\.\d+\.\d+/)
+		{
+			if (not is_string_ipv4($conf, $host))
+			{
+				$valid = 0;
+			}
+		}
+		else
+		{
+			if (not is_domain_name($conf, $host))
+			{
+				$valid = 0;
+			}
+		}
+		#print "[ Debug ] - << protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+	}
+	else
+	{   
+		$valid = 0;
+	}
+	
+	return($valid);
+}
+
 # Check if the passed string is an unsigned floating point number. A whole
 # number is allowed.
 sub is_string_integer_or_unsigned_float
@@ -4024,7 +4650,7 @@ sub is_string_ipv4
 sub configure_dashboard
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
@@ -4061,6 +4687,7 @@ sub configure_dashboard
 	});
 	
 	# If showing an Anvil!, display it's details first.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
 	if ($conf->{cgi}{anvil})
 	{
 		# Show Anvil! header and node settings.
@@ -4402,15 +5029,16 @@ sub convert_html_to_text
 sub ask_which_cluster
 {
 	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
 	
 	print AN::Common::template($conf, "select-anvil.html", "open-table");
 	
+	# Now see if we have any Anvil! systems configured.
 	my $anvil_count = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{clusters}})
 	{
 		$anvil_count++;
 	}
-
 	if (not $anvil_count)
 	{
 		print AN::Common::template($conf, "select-anvil.html", "no-anvil-configured");
@@ -4457,17 +5085,296 @@ sub ask_which_cluster
 			});
 		}
 	}
-	# Print the 'Manage' button.
-	print AN::Common::template($conf, "select-anvil.html", "close-table");
+	
+	# See if the global options have been configured yet.
+	my ($global_set) = AN::Common::check_global_settings($conf);
+	record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	if (not $global_set)
+	{
+		# Looks like the user hasn't configured the global values yet.
+		print AN::Common::template($conf, "select-anvil.html", "global-not-configured");
+	}
 	
 	return (0);
+}
+
+# This toggles the dhcpd server on and off.
+sub control_dhcpd
+{
+	my ($conf, $action) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; control_dhcpd(); action: [$action]\n");
+	
+	my $ok = 1;
+	my $shell_call = "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $rc = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+			if ($rc eq "4")
+			{
+				# setuid failed
+				$ok = 2;
+			}
+			elsif ($rc eq "0")
+			{
+				# Running
+				$ok = 0;
+			}
+			else
+			{
+				# Unknown state.
+				$ok = 3;
+			}
+		}
+	}
+	close $file_handle;
+	
+	# 0 == Success
+	# 1 == Failed
+	# 2 == setuid failure
+	# 3 == unknown state
+	record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# Show the "select Anvil!" menu and Striker config and control options.
+sub show_anvil_selection_and_striker_options
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
+	
+	# If I'm toggling the install target (dhcpd), process it first.
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
+	if ($conf->{cgi}{install_target})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::confirm: [$conf->{cgi}{confirm}]\n");
+		if (($conf->{cgi}{install_target} eq "start") && (not $conf->{cgi}{confirm}))
+		{
+			# Warn the user about possible DHCPd conflicts and ask
+			# them to confirm.
+			my $confirm_url = "?logo=true&install_target=start&confirm=true";
+			print AN::Common::template($conf, "select-anvil.html", "confirm-dhcpd-start", {
+				confirm_url	=>	$confirm_url,
+			});
+		}
+		elsif ($conf->{cgi}{install_target} eq "start")
+		{
+			# Enable it.
+			my ($ok) = control_dhcpd($conf, "start");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			# 0 == Success
+			# 1 == Failed
+			# 2 == setuid failure
+			# 3 == unknown state
+			# For now, 1 and 3 are treated the same.
+			my $message = "#!string!message_0410!#";
+			my $class   = "highlight_failed_bold";
+			if ($ok eq "0")
+			{
+				$message = "#!string!message_0411!#";
+				$class   = "highlight_good_bold";
+			}
+			if ($ok eq "2")
+			{
+				$message = "#!string!message_0412!#";
+				$class   = "highlight_good_bold";
+			}
+			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+				class	=>	$class,
+				message	=>	$message,
+			});
+		}
+		elsif ($conf->{cgi}{install_target} eq "stop")
+		{
+			# Disable it.
+			my ($ok) = control_dhcpd($conf, "stop");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			# 0 == Success
+			# 1 == Failed
+			# 2 == setuid failure
+			# 3 == unknown state
+			# For now, 1 and 3 are treated the same.
+			my $message = "#!string!message_0413!#";
+			my $class   = "highlight_failed_bold";
+			if ($ok eq "0")
+			{
+				$message = "#!string!message_0414!#";
+				$class   = "highlight_good_bold";
+			}
+			if ($ok eq "2")
+			{
+				$message = "#!string!message_0415!#";
+				$class   = "highlight_good_bold";
+			}
+			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+				class	=>	$class,
+				message	=>	$message,
+			});
+		}
+	}
+	
+	# Show the list of configured Anvil! systems.
+	ask_which_cluster($conf);
+	
+	# See if this machine is configured as a boot target and, if so,
+	# whether dhcpd is running or not (so we can offer a toggle.
+	my ($dhcpd_state) = get_dhcpd_state($conf);
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
+	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	
+	# No decide what to show for the "Boot Target" button.
+	my $install_target_template = "disabled-install-target-button";
+	my $install_target_button   = "#!string!button_0056!#";
+	my $install_target_message  = "#!string!message_0405!#";
+	my $install_target_url      = "";
+	if ($dhcpd_state eq "0")
+	{
+		# dhcpd is running, offer the button to disable it.
+		$install_target_template = "enabled-install-target-button";
+		$install_target_button   = "#!string!button_0058!#";
+		$install_target_message  = "#!string!message_0406!#";
+		$install_target_url      = "?logo=true&install_target=stop";
+	}
+	elsif ($dhcpd_state eq "1")
+	{
+		# dhcpd is stopped, offer the button to enable it.
+		$install_target_template = "enabled-install-target-button";
+		$install_target_button   = "#!string!button_0057!#";
+		$install_target_message  = "#!string!message_0407!#";
+		$install_target_url      = "?logo=true&install_target=start";
+	}
+	elsif ($dhcpd_state eq "3")
+	{
+		# Unknown state, tell them to get help.
+		$install_target_template = "disabled-install-target-button";
+		$install_target_button   = "#!string!button_0056!#";
+		$install_target_message  = "#!string!message_0408!#";
+		$install_target_url      = "";
+	}
+	elsif ($dhcpd_state eq "4")
+	{
+		# DHCP directory is probably not readable
+		$install_target_template = "disabled-install-target-button";
+		$install_target_button   = "#!string!button_0056!#";
+		$install_target_message  = "#!string!message_0416!#";
+		$install_target_url      = "";
+	}
+	
+	# Now show the other configuration options
+	#record($conf, "$THIS_FILE ".__LINE__."; install_target_template: [$install_target_template], install_target_button: [$install_target_button], install_target_message: [$install_target_message], install_target_url: [$install_target_url]\n");
+	my $install_manifest_tr = AN::Common::template($conf, "select-anvil.html", $install_target_template, {
+		install_target_button	=>	$install_target_button,
+		install_target_message	=>	$install_target_message,
+		install_target_url	=>	$install_target_url,
+	});
+	#record($conf, "$THIS_FILE ".__LINE__."; install_manifest_tr: [$install_manifest_tr]\n");
+	print AN::Common::template($conf, "select-anvil.html", "close-table", {
+		install_manifest_tr	=>	$install_manifest_tr,
+	});
+	
+	return(0);
+}
+
+# This checks to see if dhcpd is configured to be an install target target and,
+# if so, see if dhcpd is running or not.
+sub get_dhcpd_state
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
+	
+	# First, read the dhcpd.conf file, if it exists, and look for the
+	# 'next-server' option.
+	my $dhcpd_state = 2;
+	my $boot_target = 0;
+	record($conf, "$THIS_FILE ".__LINE__."; path::dhcpd_conf: [$conf->{path}{dhcpd_conf}]\n");
+	if (-e $conf->{path}{dhcpd_conf})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
+		my $shell_call = "$conf->{path}{dhcpd_conf}";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open (my $file_handle, "<", "$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
+			{
+				$boot_target = 1;
+				record($conf, "$THIS_FILE ".__LINE__."; We're an install target!\n");
+				last;
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
+		$dhcpd_state = 4;
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
+	if ($boot_target)
+	{
+		### NOTE: Don't use the setuid wrapper as 'root' isn't needed
+		###       for a status check anyway.
+		# See if dhcpd is running.
+		my $shell_call = "/etc/init.d/dhcpd status; echo rc:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+				if ($rc eq "3")
+				{
+					# Stopped
+					$dhcpd_state = 1;
+				}
+				elsif ($rc eq "0")
+				{
+					# Running
+					$dhcpd_state = 0;
+				}
+				else
+				{
+					# Unknown state.
+					$dhcpd_state = 4;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
+	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	return($dhcpd_state);
 }
 
 # I need to convert the global configuration of the clusters to the format I use here.
 sub convert_cluster_config
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
@@ -4596,6 +5503,19 @@ sub header
 			elsif ($conf->{cgi}{task} eq "push")
 			{
 				$say_refresh = "";
+			}
+			elsif ($conf->{cgi}{task} eq "archive")
+			{
+				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?config=true&task=archive",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}, "", 1);
+				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?logo=true",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}, "", 1);
 			}
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
@@ -4732,7 +5652,7 @@ sub header
 		}, "", 1);
 		$say_back    = "";
 	}
-	elsif ($caller eq "an-mc")
+	elsif ($caller eq "mediaLibrary")
 	{
 		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 			button_link	=>	"/cgi-bin/striker?cluster=$conf->{cgi}{cluster}",
@@ -4845,7 +5765,7 @@ sub get_guacamole_link
 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
 	return ($guacamole_url);
 }
 
@@ -4869,8 +5789,9 @@ sub footer
 # stamp
 sub get_date
 {
-	my ($conf, $time) = @_;
-	$time = time if not defined $time;
+	my ($conf, $time, $time_only) = @_;
+	$time      = time if not defined $time;
+	$time_only = 0 if not $time_only;
 	
 	my @time   = localtime($time);
 	my $year   = ($time[5] + 1900);
@@ -4881,7 +5802,7 @@ sub get_date
 	my $second = sprintf("%.2d", $time[0]);
 	
 	# this returns "yyyy-mm-dd_hh:mm:ss".
-	my $date = "$year-$month-$day $hour:$minute:$second";
+	my $date = $time_only ? "$hour:$minute:$second" : "$year-$month-$day $hour:$minute:$second";
 	
 	return ($date);
 }
@@ -4907,6 +5828,7 @@ sub get_cgi_vars
 		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
 		{
 			$conf->{'system'}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n");
 			next;
 		}
 		
@@ -4940,7 +5862,6 @@ sub get_cgi_vars
 		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{'system'}{cgi_string} =~ s/&$//;
-	
 	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "system::cgi_string: [$conf->{'system'}{cgi_string}]\n"});
 	
 	return (0);
@@ -4952,10 +5873,10 @@ sub read_conf
 	my ($conf) = @_;
 	
 	$conf->{raw}{striker_conf} = [];
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{striker_conf}";
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc], error was: $!\n";
-	while (<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{striker_conf}";
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -4974,7 +5895,7 @@ sub read_conf
 		next if (not $var);
 		AN::Common::_make_hash_reference($conf, $var, $val);
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	return(0);
 }
@@ -5248,17 +6169,18 @@ sub read_files_on_shared
 sub record
 {
 	my ($conf, $message)=@_;
-
-	my $fh = $conf->{handles}{'log'};
-	if (not $fh)
+	
+	my $file_handle = $conf->{handles}{'log'};
+	if (not $file_handle)
 	{
-		$fh = IO::Handle->new();
-		$conf->{handles}{'log'} = $fh;
-		open ($fh, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
-		print $fh "======\nOpening AN!CM - Cluster Monitor log at ".get_date($conf, time)."\n";
+		$file_handle = IO::Handle->new();
+		$conf->{handles}{'log'} = $file_handle;
+		open ($file_handle, ">>$conf->{path}{'log'}") or die "$THIS_FILE ".__LINE__."; Can't write to: [$conf->{path}{'log'}], error: $!\n";
+		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
 	}
-	print $fh $message;
-	$fh->flush;
+	my $time = get_date($conf, time, 1);
+	print $file_handle "$time $message";
+	$file_handle->flush;
 	
 	return (0);
 }
@@ -5270,20 +6192,6 @@ sub scan_cluster
 	record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
 	AN::Striker::set_node_names ($conf);
-	check_nodes    ($conf);
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
-	if ($conf->{'system'}{up_nodes} > 0)
-	{
-		AN::Striker::check_vms($conf);
-	}
-
-	return(0);
-}
-
-sub check_nodes
-{
-	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; check_nodes()\n");
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -5294,7 +6202,13 @@ sub check_nodes
 	# Start your engines!
 	check_node_status($conf);
 	
-	return (0);
+	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{'system'}{up_nodes}]\n");
+	if ($conf->{'system'}{up_nodes} > 0)
+	{
+		AN::Striker::check_vms($conf);
+	}
+
+	return(0);
 }
 
 # This attempts to gather all information about a node in one SSH call. It's
@@ -5578,6 +6492,7 @@ sub bytes_to_hr
 	# Die if either the 'time' or 'float' has a non-digit character in it.  
 	if ($hr_size =~ /\D/)
 	{
+		return("--");
 		my $message = AN::Common::get_string($conf, {key => "message_0031", variables => {
 			size	=>	$size,
 		}});
@@ -5791,11 +6706,11 @@ sub ping_node
 	my ($conf, $node) = @_;
 	
 	my $exit;
-	my $fh = IO::Handle->new;
-	my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new;
+	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -5805,7 +6720,7 @@ sub ping_node
 			$exit = $1;
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 	
 	if ($exit)
@@ -5819,10 +6734,10 @@ sub ping_node
 		{
 			$node .= ".remote";
 		}
-		my $sc = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
+		my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -5832,7 +6747,7 @@ sub ping_node
 				$exit = $1;
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 		record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 		
 		if ($exit)
@@ -6099,7 +7014,23 @@ sub gather_node_details
 			password	=>	$conf->{'system'}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"for i in \$(ls /proc/net/bonding/bond*); do echo \"start: \$i\"; cat \$i; done",
+			shell_call	=>	"if [ -e '/proc/net/bonding/ifn-bond1' ];
+						then
+							for i in \$(ls /proc/net/bonding/); 
+							do 
+								if [ \$i != 'bond0' ];
+								then
+									echo 'start: \$i';
+									cat /proc/net/bonding/\$i;
+								fi
+							done
+						else
+							for i in \$(ls /proc/net/bonding/bond*);
+							do
+								echo 'start: \$i';
+								cat \$i;
+							done;
+						fi;",
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
 		
@@ -6125,7 +7056,7 @@ sub gather_node_details
 	else
 	{
 		check_if_on($conf, $node);
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 0)
 		{
 			$conf->{'system'}{show_nodes}         = 1;
@@ -6255,17 +7186,17 @@ sub get_rsa_public_key
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; rsa_public_file: [$rsa_public_file] doesn't exist, trying to create it now.\n");
 		
-		my $sc = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-		while(<$fh>)
+		my $shell_call = "$conf->{path}{'ssh-keygen'} -t rsa -N \"\" -b 4095 -f $conf->{path}{'striker_files'}/.ssh/id_rsa";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		}
-		$fh->close();
+		$file_handle->close();
 		
 		if (not -e $rsa_public_file)
 		{
@@ -6273,11 +7204,11 @@ sub get_rsa_public_key
 		}
 	}
 	
-	my $sc = $rsa_public_file;
-	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]. Error was: $!\n";
-	while(<$fh>)
+	my $shell_call = $rsa_public_file;
+	record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]. Error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line =  $_;
@@ -6301,17 +7232,17 @@ sub get_hostname
 	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
 
 	my $hostname;
-	my $sc = "$conf->{path}{hostname}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $shell_call = "$conf->{path}{hostname}";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		$hostname = $_;
 		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	return($hostname);
@@ -6439,7 +7370,7 @@ sub remote_call
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
 			}
 		}
 	}
@@ -6460,61 +7391,69 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
-		$channel->exec("$shell_call");
-		
-		# This keeps the connection open when the remote side is slow
-		# to return data, like in '/etc/init.d/rgmanager stop'.
-		my @poll = {
-			handle => $channel,
-			events => [qw/in err/],
-		};
-		
-		# We'll store the STDOUT and STDERR data here.
-		my $stdout = "";
-		my $stderr = "";
-		
-		# Not collect the data.
-		while(1)
+		if (not $channel)
 		{
-			$ssh_fh->poll(250, \@poll);
-			
-			# Read in anything from STDOUT
-			while($channel->read(my $chunk, 80))
-			{
-				$stdout .= $chunk;
-			}
-			while ($stdout =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
-				push @{$stdout_output}, $line;
-			}
-			
-			# Read in anything from STDERR
-			while($channel->read(my $chunk, 80, 1))
-			{
-				$stderr .= $chunk;
-			}
-			while ($stderr =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
-				push @{$stderr_output}, $line;
-			}
-			
-			# Exit when we get the end-of-file.
-			last if $channel->eof;
+			$error  = "Failed to establish channel to node: [$node] for shell call: [$shell_call]\n";
+			$ssh_fh = "";
 		}
-		if ($stdout)
+		else
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
-			push @{$stdout_output}, $stdout;
-		}
-		if ($stderr)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
-			push @{$stderr_output}, $stderr;
+			#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+			$channel->exec("$shell_call");
+			
+			# This keeps the connection open when the remote side is slow
+			# to return data, like in '/etc/init.d/rgmanager stop'.
+			my @poll = {
+				handle => $channel,
+				events => [qw/in err/],
+			};
+			
+			# We'll store the STDOUT and STDERR data here.
+			my $stdout = "";
+			my $stderr = "";
+			
+			# Not collect the data.
+			while(1)
+			{
+				$ssh_fh->poll(250, \@poll);
+				
+				# Read in anything from STDOUT
+				while($channel->read(my $chunk, 80))
+				{
+					$stdout .= $chunk;
+				}
+				while ($stdout =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+					push @{$stdout_output}, $line;
+				}
+				
+				# Read in anything from STDERR
+				while($channel->read(my $chunk, 80, 1))
+				{
+					$stderr .= $chunk;
+				}
+				while ($stderr =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+					push @{$stderr_output}, $line;
+				}
+				
+				# Exit when we get the end-of-file.
+				last if $channel->eof;
+			}
+			if ($stdout)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+				push @{$stdout_output}, $stdout;
+			}
+			if ($stderr)
+			{
+				#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+				push @{$stderr_output}, $stderr;
+			}
 		}
 	}
 	
@@ -6525,6 +7464,17 @@ sub remote_call
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Merge; line: [$line]\n");
 		push @{$output}, $line;
+	}
+	
+	# Close the connection if requested.
+	if ($close)
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
+		$ssh_fh->disconnect();
+		
+		# For good measure, blank both variables.
+		$conf->{node}{$node}{ssh_fh} = "";
+		$ssh_fh                      = "";
 	}
 	
 	$error = "" if not defined $error;
@@ -7506,7 +8456,7 @@ sub parse_clustat
 sub parse_cluster_conf
 {
 	my ($conf, $node, $array) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
 	
 	my $in_fod          = 0;
 	my $current_fod     = "";
@@ -7612,13 +8562,19 @@ sub parse_cluster_conf
 		}
 		if (($in_method) && ($line =~ /<device\s/))
 		{
-			my $name   = $line =~ /name="(.*?)"/   ? $1 : "";
-			my $port   = $line =~ /port="(.*?)"/   ? $1 : "";
-			my $action = $line =~ /action="(.*?)"/ ? $1 : "";
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}   = $name;
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}   = $port;
-			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action} = $action;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
+			my $name     = $line =~ /name="(.*?)"/   ? $1 : "";
+			my $port     = $line =~ /port="(.*?)"/   ? $1 : "";
+			my $action   = $line =~ /action="(.*?)"/ ? $1 : "";
+			my $address  = $line =~ /ipaddr="(.*?)"/ ? $1 : "";
+			my $login    = $line =~ /login="(.*?)"/  ? $1 : "";
+			my $password = $line =~ /passwd="(.*?)"/ ? $1 : "";
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}     = $name;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}     = $port;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}   = $action;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}  = $address;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}    = $login;
+			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password} = $password;
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}], address: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}], login: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}], password: [".length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long]\n");
 			$device_count++;
 		}
 		
@@ -7637,16 +8593,18 @@ sub parse_cluster_conf
 		{
 			my $name     = $line =~ /name="(.*?)"/   ? $1 : "";
 			my $agent    = $line =~ /agent="(.*?)"/  ? $1 : "";
+			my $action   = $line =~ /action="(.*?)"/ ? $1 : "";
 			my $address  = $line =~ /ipaddr="(.*?)"/ ? $1 : "";
 			my $login    = $line =~ /login="(.*?)"/  ? $1 : "";
 			my $password = $line =~ /passwd="(.*?)"/ ? $1 : "";
 			# If the password has a single-quote, ricci changes it to &apos;. We need to change it back.
 			$password =~ s/&apos;/'/g;
 			$conf->{fence}{$name}{agent}    = $agent;
+			$conf->{fence}{$name}{action}   = $action;
 			$conf->{fence}{$name}{address}  = $address;
 			$conf->{fence}{$name}{login}    = $login;
 			$conf->{fence}{$name}{password} = $password;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}], action: [$conf->{fence}{$name}{action}]\n");
 		}
 		
 		# Find VMs.
@@ -7699,6 +8657,21 @@ sub parse_cluster_conf
 						my $login    = $conf->{fence}{$name}{login};
 						my $password = $conf->{fence}{$name}{password};
 						my $port     = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port};
+						
+						# See if we need to use values from the per-node definitions.
+						# These override the general fence device configs if needed.
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address})
+						{
+							$address = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address};
+						}
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login})
+						{
+							$login = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login};
+						}
+						if ($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})
+						{
+							$password = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password};
+						}
 						#my $action   = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action};
 						#   $action   = "reboot" if not $action;
 						my $command  = "$agent -a $address ";
@@ -7732,6 +8705,7 @@ sub parse_cluster_conf
 		}
 		$conf->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
+	### NOTE: These expose passwords!
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence command: [$conf->{node}{$node}{info}{fence_methods}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer], fence command: [$conf->{node}{$peer}{info}{fence_methods}]\n");
 	
@@ -8102,7 +9076,7 @@ sub check_if_on
 		$peer = @{$conf->{up_nodes}}[0];
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	if ($peer)
 	{
 		# Check the power state using the peer node.
@@ -8133,10 +9107,10 @@ sub check_if_on
 			'close'		=>	0,
 			shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o status",
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
@@ -8166,11 +9140,11 @@ sub check_if_on
 			if ($local_access)
 			{
 				# I can reach it directly
-				my $sc = "$conf->{node}{$node}{info}{power_check_command} -o status";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-				my $fh = IO::Handle->new();
-				open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-				while(<$fh>)
+				my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				my $file_handle = IO::Handle->new();
+				open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+				while(<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
@@ -8191,7 +9165,7 @@ sub check_if_on
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
 					}
 				}
-				$fh->close();
+				$file_handle->close();
 			}
 			else
 			{
@@ -8232,11 +9206,11 @@ sub on_same_network
 	my $local_access = 0;
 	my $target_ip;
 	
-	my $sc = "$conf->{path}{gethostip} -d $target_host";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-	my $fh = IO::Handle->new();
-	open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-	while(<$fh>)
+	my $shell_call = "$conf->{path}{gethostip} -d $target_host";
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -8281,7 +9255,7 @@ sub on_same_network
 			error($conf, $error);
 		}
 	}
-	$fh->close();
+	$file_handle->close();
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
 	if ($target_ip)
@@ -8291,11 +9265,11 @@ sub on_same_network
 		my $this_ip      = "";
 		my $this_nm      = "";
 		
-		my $sc           = "$conf->{path}{ifconfig}";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "$sc 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$sc]\n";
-		while(<$fh>)
+		my $shell_call           = "$conf->{path}{ifconfig}";
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -8380,7 +9354,7 @@ sub on_same_network
 				}
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 	}
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
@@ -8391,7 +9365,7 @@ sub on_same_network
 sub write_node_cache
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
@@ -8403,7 +9377,7 @@ sub write_node_cache
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		push @lines, "host_name = $conf->{node}{$node}{info}{host_name}\n";
 		push @lines, "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
 		push @lines, "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
@@ -8428,18 +9402,18 @@ sub write_node_cache
 	
 	if (@lines > 0)
 	{
-		my $fh         = IO::Handle->new();
-		#record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
-		open ($fh, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
+		my $file_handle         = IO::Handle->new();
+		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
+		open ($file_handle, "> $cache_file") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
 				uid		=>	$<,
 				error		=>	$!,
 			}}));
 		foreach my $line (@lines)
 		{
-			print $fh $line;
+			print $file_handle $line;
 		}
-		$fh->close();
+		$file_handle->close();
 	}
 	
 	return(0);
@@ -8449,13 +9423,13 @@ sub write_node_cache
 sub read_node_cache
 {
 	my ($conf, $node) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
 	
 	# Write the command to disk so that I can check the power state
 	# in the future when both nodes are offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
 	if (not -e $cache_file)
 	{
 		# See if there is a version with or without '<node>.remote'
@@ -8474,11 +9448,11 @@ sub read_node_cache
 	{
 		# It exists! Read it.
 		my $in_hosts = 0;
-		my $sc       = $cache_file;
-		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
-		my $fh = IO::Handle->new();
-		open ($fh, "<$sc") or die "$THIS_FILE ".__LINE__."; Failed to read: [$sc]\n";
-		while(<$fh>)
+		my $shell_call       = $cache_file;
+		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call]\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
@@ -8516,7 +9490,7 @@ sub read_node_cache
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 			}
 		}
-		$fh->close();
+		$file_handle->close();
 		$conf->{clusters}{$cluster}{cache_exists} = 1;
 	}
 	else
@@ -8524,7 +9498,7 @@ sub read_node_cache
 		$conf->{clusters}{$cluster}{cache_exists} = 0;
 		$conf->{node}{$node}{info}{host_name}     = $node;
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 	
 	return(0);
 }

@@ -6,6 +6,7 @@
 /usr/share/striker/bin/scanner
 /usr/share/striker/bin/wstorcli
 /usr/share/striker/bin/wipmi
+/usr/share/striker/bin/dashboard
 /usr/share/striker/lib/AN/Dashboard.pm
 /usr/share/striker/lib/AN/MonitorAgent.pm
 /usr/share/striker/lib/AN/RAID/Temperature.pm

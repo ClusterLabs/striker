@@ -132,7 +132,7 @@ sub init_args {
     my $parent = dirname $Bin;
     return { 'dbconf'    => "$parent/Config/db.conf",
              'filepath'  => '/tmp/agents',
-             'msg_file'  => "$parent/MESSAGES/random-agent.xml",
+             'msg_file'  => "$parent/Messages/random-agent.xml",
              'rate'      => 30,
              'run_until' => '23:59:59', 
 	     logdir      => '/tmp',
@@ -173,20 +173,6 @@ sub test_connect_dbs {
     isa_ok( $db, 'AN::OneDB', 'dbs db is an AN::OneDB');
 
     return;
-}
-
-sub test_non_blank_lines {
-    my $agent = shift;
-
-    my $args = <<"ARGS";
-line 1
-
-line 3
-ARGS
-
-    my $std = 'line 1 line 3';
-    is( AN::Agent::non_blank_lines( $args ), $std, 
-	'non_blank_lines OK' );
 }
 
 sub test_dump_metadata {
@@ -248,7 +234,6 @@ sub main {
 
     test_connect_dbs( $agent );
     test_dump_metadata($agent);
-    test_non_blank_lines($agent);
     test_generate_random_record($agent);
 }
 

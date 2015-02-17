@@ -6,13 +6,16 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
 use Carp;
-use File::Spec::Functions 'catdir';
 use Const::Fast;
+use English '-no_match_vars';
+use File::Spec::Functions 'catdir';
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw( pidfile dir ), { data      => sub { default_data() },
                                      old_files => sub { {} }
                                    };
@@ -35,7 +38,7 @@ my %TAG = ( PIDFILE   => 'pidfile',
             CRISIS    => 'crisis' );
 
 # ======================================================================
-# Subroutines
+# SUBROUTINES
 #
 
 sub default_data {
@@ -46,9 +49,11 @@ starttime:$now
 EODATA
 }
 
-# ......................................................................
-# Methods
+# ======================================================================
+# METHODS
 #
+
+# ----------------------------------------------------------------------
 # Merge path, and the specified prefix tag and filename into a full
 # path.
 #
@@ -107,6 +112,9 @@ sub get_tag {
     }
 }
 
+# ----------------------------------------------------------------------
+# Add custom tags to the pre-defined list.
+#
 sub add_tag {
     shift if @_ && scalar @_ && ref $_[0] eq __PACKAGE__;
 
@@ -118,6 +126,11 @@ sub add_tag {
     return;
 }
 
+# ----------------------------------------------------------------------
+# Find marker files for the specified marker file, or all posible
+# marker files.  Check for all files with those prefixes, and return
+# the full list.
+#
 sub find_marker_files {
     my $self = shift;
     my (@markers) = @_;
@@ -304,8 +317,6 @@ sub old_pid_file_data {
 1;
 __END__
 
-
-
 # ======================================================================
 =pod
 
@@ -315,13 +326,11 @@ __END__
 
 =head1 VERSION
 
-This document describes AN::FlagFile.pm version 0.0.1
+This document describes AN::FlagFile.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use English '-no_match_var';
     use AN::FlagFile;
-
     my $flagfile = AN::FlagFile->new({ dir      => $dir,
                                        pidfile  => $filename,
                                        data     => $data_to_store_in_pidfile,
@@ -335,8 +344,12 @@ This document describes AN::FlagFile.pm version 0.0.1
     $flagfile->delete_pid_file();
 
     $flagfile->create_marker_file();
+    $flagfile->touch_marker_file();
     $flagfile->delete_marker_file();
 
+    my $exists  = $flagfile->old_pid_file_exists();
+    my $seconds = $flagfile->old_pid_file_age();
+    my $data    = $flagfile->old_pid_file_data();
 
 =head1 DESCRIPTION
 
@@ -346,7 +359,8 @@ identify key events. it also cleans up these files when instructed.
 
 =head1 SUBROUTINES/METHODS
 
-An object of this class represents a scanner object.
+An object of this class provides methods to create, read and delete
+marker files and pid files.
 
 =over 4
 
@@ -402,9 +416,27 @@ Delete the file to indicate a clean shutdown.
 Similar to creating a pidfile, except with an alternate marker
 tag. Intended for cross-peer communication.
 
+=item B<touch_marker_file>
+
+Modify the mtime and atime values for the marker file, to demonstrate the
+program is running currently.
+
 =item B<delete_marker_file>
 
 Delete the specified marker file.
+
+=item B<old_pid_file_exists>
+
+Investigates whether a pid file exists from an existing previous
+instance of the scanner program.
+
+=item B<old_pid_file_age>
+
+Returns the age in seconds of the existing pid file.
+
+=item B<old_pid_file_data>
+
+Returns the data from the old pid file.
 
 =back
 
@@ -412,21 +444,7 @@ Delete the specified marker file.
 
 =over 4
 
-=item B<Perl 5.10>
-
-Versions prior to Perl 5.10 are not supported. In particular, the
-'say' and 'state' features are utilized. Anything before 5.10 belongs
-in a museum, anyway.
-
-=item B<English> I<core>
-
-Provides meaningful names for Perl 'punctuation' variables.
-
-=item B<version> I<core since 5.9.0>
-
-Parses version strings.
-
-=item B<Carp> I<core since perl 5>
+=item B<Carp> I<core>
 
 Complain about user errors as if they occur in caller, rather than in
 the module.
@@ -435,6 +453,14 @@ the module.
 
 Store magic values. More powerful than the module B<constant>, much
 faster than B<Readonly>.
+
+=item B<English> I<core>
+
+Provides meaningful names for Perl 'punctuation' variables.
+
+=item B<version> I<core>
+
+Parses version strings.
 
 =back
 
@@ -474,16 +500,6 @@ There are no current incompatabilities.
 =head1 USAGE
 
 =end unused
-
-=head1 TODO
-
-=over 4
-
-=item Allow data in marker files.
-
-=item Merge pid file and marker file implementation.
-
-=back
 
 =head1 AUTHOR
 

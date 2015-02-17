@@ -6,27 +6,32 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
-
-use autodie qw(open close);
-use English '-no_match_vars';
-use Carp;
-
-use File::Basename;
-use FileHandle;
-use File::Path 'make_path';
-use IO::Select;
-use Time::Local;
-use FindBin qw($Bin);
+our $VERSION = '1.0.0';
 
 use Const::Fast;
+use English '-no_match_vars';
+use File::Basename;
+use File::Path 'make_path';
 
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw(owner), { firsttime => sub {1}
                            };
 
+# ======================================================================
+# CONSTANTS
+#
 const my @HEALTH => ( 'ok', 'warning', 'critical' );
 
-# ......................................................................
+# ======================================================================
+# METHODS
+#
+
+# ----------------------------------------------------------------------
+# Convert a weighted sum of alerts to an overal status, 'OK',
+# 'WARNING' or 'CRISIS', based on ranges defined in the configuration
+# file.
 #
 sub weight2health {
     my $self = shift;
@@ -38,6 +43,11 @@ sub weight2health {
         :                        $HEALTH[2];
 }
 
+# ----------------------------------------------------------------------
+# Determine the overall health of the system. Generate a health file
+# and update it every time the health changes; touch the file every
+# loop, so it should never be 'older' than 30 seconds.
+#
 sub dispatch {
     my $self = shift;
     my ( $msgs, $listener, $sumweight ) = @_;
@@ -80,7 +90,6 @@ sub dispatch {
         system( '/bin/touch', $healthfile );
     }
     if ( $sumweight >= $crisis ) {
-
         say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
             "\nInvoking shutdown script $shutdown\n"
             if $verbose;
@@ -89,17 +98,19 @@ sub dispatch {
         $listener->owner->shutdown(1);
         system($shutdown );
     }
-
     return;
 }
 
+# ----------------------------------------------------------------------
+# Create a file path hierarchy.
+#
 sub create_parent_dirs {
     my $self = shift;
     my ($path) = @_;
 
     my $dir = dirname $path;
     make_path $dir
-	unless -e $dir;
+        unless -e $dir;
 }
 
 # ======================================================================
@@ -112,51 +123,37 @@ __END__
 
 =head1 NAME
 
-     Alerts.pm - package to handle alerts
+     HealthMonitor.pm - Dispatcher module to monitor overall server health
 
 =head1 VERSION
 
-This document describes Alerts.pm version 0.0.1
+This document describes HealthMonitor.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use AN::Alerts;
-    my $scanner = AN::Scanner->new({agents => $agents_data });
-
+    use HealthMonitor;
+    my $hm = HealthMonitor->new({owner => $owner });
+    $hm->dispatch( \@msgs, $listener, $healthweight );
 
 =head1 DESCRIPTION
 
-This module provides the Alerts handling system. It is intended for a
-time-based loop system.  Various subsystems ( packages, subroutines )
-report problems of various severity during a single loop. At the end,
-a single report email is sent to report all new errors. Errors are
-reported once, continued existence of the problem is taken for granted
-until the problem goes away. When an alert ceases to be a problem, a
-new message is sent, but other problems continue to be monitored.
+This module implements the HealthMonitor.
 
 =head1 METHODS
 
-An object of this class represents an alert tracking system.
+This class provides a single method, B<dispatch>, which is invoked one
+a loop to handle the aggregated alert messages. Unlike other
+dispatchers, HealthMonitor looks at the weighted sum, rather than the
+individual messages, and shuts down the system, when the value exceeds
+a specified limit.
 
 =over 4
 
-=item B<new>
+=item B<dispatch msgs, recipient, sum>
 
-The constructor takes a hash reference or a list of scalars as key =>
-value pairs. The key list must include :
-
-=over 4
-
-=item B<agentdir>
-
-The directory that is scanned for scanning plug-ins.
-
-=item B<rate>
-
-How often the loop should scan.
-
-=back
-
+Determine the overall health of the system. Generate a health file and
+update it every time the health changes; touch the file every loop, so
+it should never be 'older' than 30 seconds.
 
 =back
 
@@ -164,25 +161,25 @@ How often the loop should scan.
 
 =over 4
 
+=item B<Const::Fast>
+
+Provide fast constants.
+
 =item B<English> I<core>
 
 Provides meaningful names for Perl 'punctuation' variables.
 
+=item B<File::Basename> I<core>
+
+Parse file paths into directory, filename and suffix.
+
+=item B<File::Path> I<core>
+
+Create or remove directory trees.
+
 =item B<version> I<core since 5.9.0>
 
 Parses version strings.
-
-=item B<File::Basename> I<core>
-
-Parses paths and file suffixes.
-
-=item B<FileHandle> I<code>
-
-Provides access to FileHandle / IO::* attributes.
-
-=item B<FindBin> I<core>
-
-Determine which directory contains the current program.
 
 =back
 

@@ -36,7 +36,7 @@ use AN::Common;
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
-my $THIS_FILE = "Striker.pm";
+my $THIS_FILE = "AN::Striker.pm";
 
 # This takes a node name and returns the peer node.
 sub get_peer_node
@@ -147,6 +147,18 @@ sub process_task
 		else
 		{
 			confirm_dual_boot($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "cold_stop")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			cold_stop_anvil($conf);
+		}
+		else
+		{
+			confirm_cold_stop_anvil($conf);
 		}
 	}
 	elsif ($conf->{cgi}{task} eq "start_vm")
@@ -3358,7 +3370,7 @@ sub manage_vm
 		
 		# See if I need to update the XML definition file.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::graphics::type: [$conf->{vm}{$vm}{graphics}{type}],  vm::${vm}::graphics::listen: [$conf->{vm}{$vm}{graphics}{'listen'}]\n");
-		if (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0"))
+		if ((not $conf->{sys}{use_spice_graphics}) && (($conf->{vm}{$vm}{graphics}{type} ne "vnc") || ($conf->{vm}{$vm}{graphics}{'listen'} ne "0.0.0.0")))
 		{
 			# Rewrite the XML definition. The 'graphics' section should look like:
 			#     <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
@@ -3406,7 +3418,7 @@ sub manage_vm
 					id		=>	"remote_icon",
 				}, "", 1);
 			}
-			elsif ($node =~ /n01/)
+			elsif (($node =~ /n01/) || ($node =~ /node01/))
 			{
 				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -3419,7 +3431,7 @@ sub manage_vm
 					id		=>	"guacamole_url_$say_vm",
 				}, "", 1);
 			}
-			elsif ($node =~ /n02/)
+			elsif (($node =~ /n02/) || ($node =~ /node02/))
 			{
 				my $image = AN::Common::template($conf, "common.html", "image", {
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -4092,6 +4104,9 @@ sub add_vm_to_cluster
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
 	
+	### TODO: Auto-add the server and then immediately change the boot
+	###       device to "hd".
+	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
 	my $cluster    = $conf->{cgi}{cluster};
@@ -4120,8 +4135,9 @@ sub add_vm_to_cluster
 		if ($fod =~ /primary_(.*?)$/)
 		{
 			my $node_suffix = $1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix]\n");
-			if ($node =~ /$node_suffix/)
+			my $alt_suffix  = $node_suffix eq "n01" ? "node01" : "node02";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
+			if (($node =~ /$node_suffix/) || ($node =~ /$alt_suffix/))
 			{
 				$failover_domain = $fod;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failover_domain: [$failover_domain]\n");
@@ -4611,6 +4627,39 @@ sub find_vm_host
 	return ($host);
 }
 
+# This gets the name of the bridge on the target node.
+sub get_bridge_name
+{
+	my ($conf, $node) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_bridge_name(); node: [$node]\n");
+	
+	my $bridge     = "";
+	my $shell_call = "brctl show";
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{'system'}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /^(.*?)\s+\d/)
+		{
+			$bridge = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; found bridge: [$bridge]\n");
+			last;
+		}
+	}
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bridge: [$bridge]\n");
+	return($bridge);
+}
+
 # This actually kicks off the VM.
 sub provision_vm
 {
@@ -4624,19 +4673,29 @@ sub provision_vm
 		title	=>	$say_title,
 	});
 	
+	# I need to know what the bridge is called.
+	my $node   = $conf->{new_vm}{host_node};
+	my $bridge = get_bridge_name($conf, $node);
+	
 	# Create the LVs
-	my $provision;
+	my $provision = "";
 	my $i = 0;
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
 	{
 		if (lc($conf->{new_vm}{vg}{$vg}{lvcreate_size}) eq "all")
 		{
-			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "then\n";
+			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "fi\n";
 			$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
 		}
 		else
 		{
-			$provision .= "lvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "then\n";
+			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
+			$provision .= "fi\n";
 			$provision .= "lvcreate -L $conf->{new_vm}{vg}{$vg}{lvcreate_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
 		}
 		$i++;
@@ -4656,18 +4715,21 @@ sub provision_vm
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
 	# VNC doesn't show the mouse pointer properly on the default 'qxl'
 	# video driver. So if the OS is Windows, stick with 'qxl', otherwise
-	# use 'cirrus'.
-	if (($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
+	# use 'cirrus'. if the user has requested 'spice', then this doesn't
+	# matter.
+	if ((not $conf->{sys}{use_spice_graphics}) && ($conf->{cgi}{os_variant} ne "vista") && ($conf->{cgi}{os_variant} !~ /^win/))
 	{
-		$provision .= "  --video cirrus \\\\\n";
+		#$provision .= "  --video cirrus \\\\\n";
+		$provision .= "  --video vga \\\\\n";
 	}
+	# Connect to the discovered bridge
 	if ($conf->{new_vm}{virtio}{nic})
 	{
-		$provision .= "  --network bridge=vbr2,model=virtio \\\\\n";
+		$provision .= "  --network bridge=$bridge,model=virtio \\\\\n";
 	}
 	else
 	{
-		$provision .= "  --network bridge=vbr2,model=e1000 \\\\\n";
+		$provision .= "  --network bridge=$bridge,model=e1000 \\\\\n";
 	}
 	$i = 0;
 	foreach my $vg (keys %{$conf->{new_vm}{vg}})
@@ -4684,8 +4746,15 @@ sub provision_vm
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	#$provision .= "  --graphics vnc --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	$provision .= "  --graphics vnc,listen=0.0.0.0 --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
-	#$provision .= "  --graphics vnc,listen=127.0.0.1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	if ($conf->{sys}{use_spice_graphics})
+	{
+		$provision .= "  --graphics spice \\\\\n";
+	}
+	else
+	{
+		$provision .= "  --graphics vnc,listen=0.0.0.0 \\\\\n";
+	}
+	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; provision:\n$provision\n");
 	
 	### TODO: Make sure the desired node is up and, if not, use the one
@@ -4698,7 +4767,6 @@ sub provision_vm
 	}, {
 		script	=>	$script,
 	});
-	my $node = $conf->{new_vm}{host_node};
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4736,6 +4804,7 @@ sub provision_vm
 	$error = 0;
 	foreach my $line (@{$output})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
 		if ($line =~ /No such file or directory/i)
 		{
@@ -4782,7 +4851,7 @@ sub provision_vm
 		###        guacamole's cookies better.
 		restart_tomcat($conf, "1");
 		my ($guacamole_url) = AN::Cluster::get_guacamole_link($conf, $node);
-		if ($node =~ /n01/)
+		if (($node =~ /n01/) || ($node =~ /node01/))
 		{
 			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -4795,7 +4864,7 @@ sub provision_vm
 				id		=>	"guacamole_url_$say_vm",
 			}, "", 1);
 		}
-		elsif ($node =~ /n02/)
+		elsif (($node =~ /n02/) || ($node =~ /node02/))
 		{
 			my $image = AN::Common::template($conf, "common.html", "image", {
 				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -4973,7 +5042,8 @@ sub verify_vm_config
 				$short_vg   = $2;
 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; short_vg: [$short_vg], short_node: [$short_node]\n");
 			}
-			my $say_node      = $short_vg;
+			#my $say_node      = $short_vg;
+			my $say_node      = $short_node;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node], vg_key: [$vg_key], vg_suffix_key: [$vg_suffix_key]\n");
@@ -5172,6 +5242,7 @@ sub confirm_provision_vm
 	my $select_cpu_cores     = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
 	foreach my $storage (sort {$a cmp $b} split/,/, $conf->{cgi}{max_storage})
 	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; storage: [$storage]\n");
 		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
 		my $say_max_storage          =  AN::Cluster::bytes_to_hr($conf, $space);
 		$say_max_storage             =~ s/\.(\d+)//;
@@ -5258,7 +5329,7 @@ sub confirm_provision_vm
 		title			=>	$say_title,
 		name			=>	$conf->{cgi}{name},
 		select_os_variant	=>	$select_os_variant,
-		media_library_url	=>	"an-mc?cluster=$conf->{cgi}{cluster}",
+		media_library_url	=>	"mediaLibrary?cluster=$conf->{cgi}{cluster}",
 		select_install_iso	=>	$select_install_iso,
 		select_driver_iso	=>	$select_driver_iso,
 		say_max_ram		=>	$say_max_ram,
@@ -5420,6 +5491,24 @@ sub confirm_dual_boot
 
 	return (0);
 }
+
+# Confirm that the user wants to cold-stop the Anvil!.
+sub confirm_cold_stop_anvil
+{
+	my ($conf) = @_;
+	
+	# Ask the user to confirm
+	my $say_message = AN::Common::get_string($conf, {key => "message_0418", variables => {
+		anvil	=>	$conf->{cgi}{cluster},
+	}});
+	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
+		message		=>	$say_message,
+		confirm_url	=>	"$conf->{'system'}{cgi_string}&confirm=true",
+	});
+
+	return (0);
+}
+
 # Confirm that the user wants to start a VM.
 sub confirm_start_vm
 {
@@ -5747,7 +5836,7 @@ sub start_vm
 							id		=>	"server-desktop_offline",
 						}, "", 1);
 					}
-					elsif ($node =~ /n01/)
+					elsif (($node =~ /n01/) || ($node =~ /node01/))
 					{
 						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n01.png",
@@ -5760,7 +5849,7 @@ sub start_vm
 							id		=>	"guacamole_url_$say_vm",
 						}, "", 1);
 					}
-					elsif ($node =~ /n02/)
+					elsif (($node =~ /n02/) || ($node =~ /node02/))
 					{
 						my $image = AN::Common::template($conf, "common.html", "image", {
 							image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_n02.png",
@@ -6795,7 +6884,309 @@ sub poweroff_node
 	}
 	
 	AN::Cluster::footer($conf);
+	return(0);
+}
+
+# This sequentially stops all servers, withdraws both nodes and powers down the
+# Anvil!.
+sub cold_stop_anvil
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_stop()\n");
 	
+	my $anvil   = $conf->{cgi}{cluster};
+	my $proceed = 1;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
+	
+	# Make sure we've got an up-to-date view of the cluster.
+	AN::Cluster::scan_cluster($conf);
+	
+	# Abort if the system is down already.
+	if ($conf->{'system'}{up_nodes} > 0)
+	{
+		my $say_title = AN::Common::get_string($conf, {key => "title_0181", variables => {
+			anvil	=>	$anvil,
+		}});
+		print AN::Common::template($conf, "server.html", "cold-stop-header", {
+			title		=>	$say_title,
+		});
+		
+		# Pick a node to use to stop servers.
+		my $node = $conf->{up_nodes}->[0];
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+		
+		# Now find and stop all servers.
+		foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; server: [$server], host: [$conf->{vm}{$server}{host}], state: [$conf->{vm}{$server}{'state'}]\n");
+			if ($conf->{vm}{$server}{'state'} eq "started")
+			{
+				# Stop the server
+				my $say_server  =  $server;
+				   $say_server  =~ s/^vm://;
+				my $say_message =  AN::Common::get_string($conf, {key => "message_0420", variables => {
+					server	=>	$say_server,
+				}});
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"highlight_detail_bold",
+					row		=>	"#!string!row_0270!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"$say_message",
+				});
+				
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling server: [$server]...\n");
+				my $shell_call = "$conf->{path}{clusvcadm} -d $server";
+				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	$conf->{node}{$node}{port},
+					user		=>	"root",
+					password	=>	$conf->{'system'}{root_password},
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				my $shell_output = "";
+				foreach my $line (@{$output})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$line =~ s/Local machine/$node/;
+					$line =  parse_text_line($conf, $line);
+					$shell_output .= "$line<br />\n";
+					if ($line =~ /success/i)
+					{
+						$conf->{vm}{$server}{'state'} = "disabled";
+					}
+				}
+				$shell_output =~ s/\n$//;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_output: [$shell_output]\n");
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"code",
+					row		=>	"#!string!row_0127!#",
+					message_class	=>	"quoted_text",
+					message		=>	$shell_output,
+				});
+			}
+		}
+		# Servers down?
+		my $proceed = 1;
+		foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; server: [$server], host: [$conf->{vm}{$server}{host}], state: [$conf->{vm}{$server}{'state'}]\n");
+			if ($conf->{vm}{$server}{'state'} eq "started")
+			{
+				# Well crap...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; server: [$server] is still up!\n");
+				   $proceed     =  0;
+				my $say_server  =  $server;
+				   $say_server  =~ s/^vm://;
+				my $say_message =  AN::Common::get_string($conf, {key => "message_0421", variables => {
+					server	=>	$say_server,
+				}});
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"highlight_detail_bold",
+					row		=>	"#!string!row_0270!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"$say_message",
+				});
+			}
+			else
+			{
+				# Server is down.
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; server: [$server] is down.\n");
+			}
+		}
+		if ($proceed)
+		{
+			# All servers are down.
+			print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+				row_class	=>	"highlight_good_bold",
+				row		=>	"#!string!row_0083!#",
+				message_class	=>	"td_hidden_white",
+				message		=>	"#!string!message_0422!#",
+			});
+			
+			# Now withdraw both nodes from the cluster, if they're
+			# up.
+			foreach my $node (@{$conf->{up_nodes}})
+			{
+				# rc == 0 -> up
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if I need to withdraw node: [$node], cman's exit code: [$conf->{node}{$node}{daemon}{cman}{exit_code}]\n");
+				if ($conf->{node}{$node}{daemon}{cman}{exit_code})
+				{
+					# Was already withdrawn.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Not in the cluster.\n");
+					my $say_message = AN::Common::get_string($conf, {key => "message_0424", variables => {
+						node	=>	$node,
+					}});
+					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+						row_class	=>	"highlight_good_bold",
+						row		=>	"#!string!row_0271!#",
+						message_class	=>	"td_hidden_white",
+						message		=>	"$say_message",
+					});
+				}
+				else
+				{
+					# Withdraw
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Withdrawing...\n");
+					my $say_message = AN::Common::get_string($conf, {key => "message_0425", variables => {
+						node	=>	$node,
+					}});
+					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+						row_class	=>	"highlight_good_bold",
+						row		=>	"#!string!row_0271!#",
+						message_class	=>	"td_hidden_white",
+						message		=>	"$say_message",
+					});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
+					my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop; echo rc:\$?";
+					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+						node		=>	$node,
+						port		=>	$conf->{node}{$node}{port},
+						user		=>	"root",
+						password	=>	$conf->{'system'}{root_password},
+						ssh_fh		=>	"",
+						'close'		=>	1,
+						shell_call	=>	$shell_call,
+					});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+					my $shell_output = "";
+					foreach my $line (@{$output})
+					{
+						$line =~ s/^\s+//;
+						$line =~ s/\s+$//;
+						$line =~ s/\s+/ /g;
+						$line =~ s/Local machine/$node/;
+						if ($line =~ /rc:(\d+)/i)
+						{
+							my $rc = $1;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+							if ($rc)
+							{
+								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] failed to withdraw! Return code was: [$rc], expected '0'.\n");
+								$proceed = 0;
+							}
+						}
+						else
+						{
+							$line =  parse_text_line($conf, $line);
+							$shell_output .= "$line<br />\n";
+						}
+					}
+					$shell_output =~ s/\n$//;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_output: [$shell_output]\n");
+					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+						row_class	=>	"code",
+						row		=>	"#!string!row_0127!#",
+						message_class	=>	"quoted_text",
+						message		=>	$shell_output,
+					});
+				}
+			}
+			
+			# Safe to power off?
+			if ($proceed)
+			{
+				# Yup!
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"highlight_good_bold",
+					row		=>	"#!string!row_0083!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"#!string!message_0427!#",
+				});
+				
+				# Now withdraw both nodes from the cluster, if they're
+				# up.
+				foreach my $node (@{$conf->{up_nodes}})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Powering down node: [$node]...\n");
+					my $say_message = AN::Common::get_string($conf, {key => "message_0430", variables => {
+						node	=>	$node,
+					}});
+					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+						row_class	=>	"highlight_good_bold",
+						row		=>	"#!string!row_0272!#",
+						message_class	=>	"td_hidden_white",
+						message		=>	"$say_message",
+					});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
+					my $shell_call = "poweroff";
+					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+						node		=>	$node,
+						port		=>	$conf->{node}{$node}{port},
+						user		=>	"root",
+						password	=>	$conf->{'system'}{root_password},
+						ssh_fh		=>	"",
+						'close'		=>	1,
+						shell_call	=>	$shell_call,
+					});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+					foreach my $line (@{$output})
+					{
+						# No output expected.
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					}
+					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+						row_class	=>	"highlight_detail_bold",
+						row		=>	"#!string!row_0273!#",
+						message_class	=>	"td_hidden_white",
+						message		=>	"#!string!message_0428!#",
+					});
+				}
+				# All done!
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"highlight_good_bold",
+					row		=>	"#!string!row_0083!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"#!string!message_0429!#",
+				});
+			}
+			else
+			{
+				# Nope. :(
+				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+					row_class	=>	"highlight_warning_bold",
+					row		=>	"#!string!row_0129!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"#!string!message_0426!#",
+				});
+			}
+		}
+		else
+		{
+			# One or more nodes are still up...
+			print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+				row_class	=>	"highlight_warning_bold",
+				row		=>	"#!string!row_0129!#",
+				message_class	=>	"td_hidden_white",
+				message		=>	"#!string!message_0423!#",
+			});
+		}
+		
+		# All done.
+		print AN::Common::template($conf, "server.html", "cold-stop-footer", {
+			title		=>	$say_title,
+		});
+	}
+	else
+	{
+		# Already down, abort.
+		my $say_title = AN::Common::get_string($conf, {key => "title_0180", variables => {
+			anvil	=>	$anvil,
+		}});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0419", variables => {
+			anvil	=>	$anvil,
+		}});
+		print AN::Common::template($conf, "server.html", "cold-stop-aborted", {
+			title	=>	$say_title,
+			message	=>	$say_message,
+		});
+	}
+	
+	AN::Cluster::footer($conf);
 	return(0);
 }
 
@@ -7987,11 +8378,11 @@ sub display_free_resources
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
-	($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
+	    ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
 		# The cluster is running, so enable the media library link.
 		$say_mc = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
+			button_link	=>	"/cgi-bin/mediaLibrary?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"#!string!button_0023!#",
 			id		=>	"media_library_$conf->{cgi}{cluster}",
 		}, "", 1);
@@ -8307,10 +8698,12 @@ sub check_node_readiness
 sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_vm_definition(); node: [$node], vm: [$vm]\n");
 	if (not $vm)
 	{
 		AN::Cluster::error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
 	}
+	
 	my $say_vm = $vm;
 	if ($vm =~ /vm:(.*)/)
 	{
@@ -8323,7 +8716,7 @@ sub read_vm_definition
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm]\n");
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in read_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], say_vm: [$say_vm], definition_file: [$conf->{vm}{$vm}{definition_file}], XML array? [".ref($conf->{vm}{$vm}{xml})."]\n");
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
@@ -9255,7 +9648,8 @@ sub display_node_details
 sub display_node_controls
 {
 	my ($conf) = @_;
-	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; display_node_controls()\n");
+
 	# Variables for the full template.
 	my $i = 0;
 	my @say_node_name;
@@ -9279,6 +9673,8 @@ sub display_node_controls
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
+	my $cold_stop  = ($conf->{'system'}{up_nodes} > 0)                                                    ? 1 : 0;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; system::up_nodes: [$conf->{'system'}{up_nodes}], dual_boot: [$dual_boot], dual_join: [$dual_join], cold_stop: [$cold_stop]\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
@@ -9349,22 +9745,38 @@ sub display_node_controls
 		}, "", 1);
 		$say_fence[$i] = $conf->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
 		
-		# Dual-boot button.
+		# Dual-boot/Cold-Stop button.
 		if ($i == 0)
 		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i]\n");
 			my $say_dual_boot_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0035!#",
 			}, "", 1);
 			$say_dual_boot_disabled_button =~ s/\n$//;
-			$say_dual_boot = $say_dual_boot_disabled_button;
+			$say_dual_boot                 =  $say_dual_boot_disabled_button;
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+			
+			# If either node is up, offer the 'Cold-Stop Anvil!'
+			# button.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_stop: [$cold_stop]\n");
+			if ($cold_stop)
+			{
+				$say_dual_boot = AN::Common::template($conf, "common.html", "enabled-button", {
+					button_class	=>	"bold_button",
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop",
+					button_text	=>	"#!string!button_0062!#",
+					id		=>	"dual_boot",
+				}, "", 1);
+				$say_dual_boot =~ s/\n$//;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
+			}
 			
 			# Dual-Join button
 			my $say_dual_join_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 				button_text	=>	"#!string!button_0036!#",
 			}, "", 1);
 			$say_dual_join_disabled_button =~ s/\n$//;
-			$say_dual_join = $say_dual_join_disabled_button;
+			$say_dual_join                 =  $say_dual_join_disabled_button;
 			if ($rowspan)
 			{
 				# First row.
@@ -9376,6 +9788,7 @@ sub display_node_controls
 						button_text	=>	"#!string!button_0035!#",
 						id		=>	"dual_boot",
 					}, "", 1);
+					$say_dual_boot =~ s/\n$//;
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_dual_boot: [$say_dual_boot].\n");
 				}
 				if ($dual_join)

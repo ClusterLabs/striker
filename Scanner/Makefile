@@ -10,17 +10,22 @@
 
 USER  := ${shell /usr/bin/whoami}
 
+PREFIX = $(if $(RPM_BUILD_ROOT), $(RPM_BUILD_ROOT),)
+
 SYSTEMNAME = striker
-TEXTBASE   = /etc/$(SYSTEMNAME)
+
+TEXTBASE   = $(PREFIX)/etc/$(SYSTEMNAME)
 CONFDIR    = $(TEXTBASE)/Config
 MSGDIR     = $(TEXTBASE)/Messages
-CODEBASE   = /usr/share/$(SYSTEMNAME)
+
+CODEBASE   = $(PREFIX)/usr/share/$(SYSTEMNAME)
 BINDIR     = $(CODEBASE)/bin
 AGENTDIR   = $(CODEBASE)/agents
 LIBDIR     = $(CODEBASE)/lib
-LOGDIR     = /var/log/$(SYSTEMNAME)
-TOOLDIR    = /var/www/tools
-SHAREDDIR  = /shared/status
+
+LOGDIR     = $(PREFIX)/var/log/$(SYSTEMNAME)
+TOOLDIR    = $(PREFIX)/var/www/tools
+SHAREDDIR  = $(PREFIX)/shared/status
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
 	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR) $(TOOLDIR) 
@@ -37,6 +42,8 @@ RPMBUILD   = $(HOME)/rpmbuild/BUILD/Scanner
 WRAPPERS   = wipmi wstorcli 
 SHUTDOWN   = wshutdown
 
+TAR_EXCLUDE = --exclude='*.rpm' --exclude='25-an-screen.t' --exclude='30-an-email.t' --exclude='45-an-listener.t'
+
 wrapper: 
 	cd Src && $(MAKE) 
 
@@ -51,7 +58,7 @@ $(RPMDIRS) :
 $(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
-files 	: scanner agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
+files 	: scanner dashboard agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
 
 
@@ -74,6 +81,9 @@ $(SHUTDOWN): wrapper $(TOOLDIR)
 scanner	:
 	cp scanner $(BINDIR)
 
+dashboard :
+	cp scanner $(BINDIR)
+
 agents	: 
 	cp Agents/* $(AGENTDIR)
 	rm -f $(AGENTDIR)/random-agent
@@ -88,9 +98,9 @@ configs	:
 messages:
 	cp Messages/* $(MSGDIR)
 
-install: wrapper dirs files scanner  $(SHUTDOWN)
+install: wrapper dirs libs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
-	    cp scanner wipmi_power  $(BINDIR);		\
+	    cp dashboard scanner wipmi_power  $(BINDIR);\
             chmod 777 /var/log/striker;			\
             chmod 777 /shared/status;			\
 	else						\
@@ -110,26 +120,28 @@ distclean: clean
 uninstall: clean distclean
 	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
 
-RPM: distclean $(RPMDIRS) $(RPMBUILD)
-	rm -f Scanner.files
-	find . -type d                \
-		     -name RPMS  -o   \
-	             -name cover_db   \
-	                  -prune -o   \
-		 -type f              \
-	             -name '*.rpm'              -o \
-	             -name load_rpm_packages.sh -o \
-		     -name '*.c'      \
-	                  -prune -o   \
-	         -print             | \
-	perl -n -e 's{\A\.}{};       \
-                     print if length' > Scanner.files
-	tar --exclude='*.rpm' -czf $(SOURCESDIR)/scanner.tar.gz .
+Scanner.files: $(BINDIR) $(AGENTDIR) $(LIBDIR)
+	@echo "If you have to rebuild 'Scanner.files' list"
+	@echo "The first do a "make install", so the files"
+	@echo "are delivered to /usr/share/strike, etc. Then"
+	@echo "run 'make RPM' to generate and deliver the file."
+	@echo "Finally, perform 'make uninstall' to remove"
+	@echo "the installed files."
+	@echo ""
+	find /usr/share/striker/* /etc/striker/Messages \
+		-type f   -print 	       | \
+	egrep '/agents/|/bin/|/lib/|/Config/|/Messages/' > Scanner.files
+	echo "/var/www/tools/wshutdown" >> Scanner.files
+
+RPM: distclean $(RPMDIRS) $(RPMBUILD) Scanner.files
+	tar $(TAR_EXCLUDE) -czf $(SOURCESDIR)/scanner.tar.gz .
 	cp SPECS/scanner.spec $(SPECSDIR)
 
 test:
 	prove t/*.t
 
+tags:
+	ctags -e --language-force=perl scanner dashboard Agents/* t/*.t lib/AN/*.pm lib/AN/*/*.pm
 # ----------------------------------------------------------------------
 # End of file
 

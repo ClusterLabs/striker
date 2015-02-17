@@ -286,6 +286,19 @@ select {
 	background-color: #ffffff;
 }
 
+.quoted_text {
+	border-top: 1px dotted #7f7f7f;
+	border-bottom: 1px dotted #7f7f7f;
+	border-right: 1px dotted #7f7f7f;
+	border-left: 3px solid #7f7f7f;
+	font-size: 12px;
+	color: #1f1f1f;
+	font-style: normal;
+	font-weight: normal;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	text-align: center;
+}
+
 /* Links */
 a {
 	color: #7f117f;
@@ -320,7 +333,7 @@ img {
 }
 
 /* 
- * 
+ Tooltip stuff 
  */
 #tt {
 	position:absolute;

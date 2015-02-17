@@ -112,6 +112,7 @@ my $conf = {
 		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.
 		check_bbu_health_after	=>	10800,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU. Typical recharge is a little over 2.5 hours. The default setting here is 10,800s (3h).
 		check_bbu_health	=>	0,		# This gets set to 'time + check_bbu_health_after' after a learn cycle completes. Once this unix time passes, the health of the BBU is checked and then this is 0'ed out.
+		new_style_network	=>	0,		# This is used to ignore 'bond0' when the new network naming is in place.
 	},
 	mail_data		=>	{
 		debug_to		=>	"debug\@alteeve.ca",
@@ -132,7 +133,7 @@ if (not $conf->{this_cluster})
 	# defined and cluster.conf does not yet exist.
 	$conf->{mail_data}{subject} = "Anvil! Monitor Start - Unknown Anvil!";
 	$conf->{mail_data}{body}    = "
-The AN!CM monitor has started, but no Anvil! is defined in 
+The Anvil! monitor has started, but no Anvil! is defined in 
 $conf->{path}{striker_conf} and there is no $conf->{path}{cluster_conf} file to
 refer to. Entering loop and will wait for one of these to appear.
 

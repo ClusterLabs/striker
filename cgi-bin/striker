@@ -92,6 +92,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
 	"anvil_domain",
+	"anvil_fence_order",
 	"anvil_id",
 	"anvil_ifn_dns1",
 	"anvil_ifn_dns2",
@@ -100,6 +101,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_ifn_subnet",
 	"anvil_media_library_size",
 	"anvil_media_library_unit",
+	"anvil_mtu_size",
 	"anvil_name",
 	"anvil_node1_bcn_ip",
 	"anvil_node1_bcn_link1_mac",
@@ -110,6 +112,10 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_node1_ifn_link1_mac",
 	"anvil_node1_ifn_link2_mac",
 	"anvil_node1_ipmi_ip",
+	"anvil_node1_ipmi_gateway",
+	"anvil_node1_ipmi_netmask",
+	"anvil_node1_ipmi_password",
+	"anvil_node1_ipmi_user",
 	"anvil_node1_name",
 	"anvil_node1_pdu1_outlet",
 	"anvil_node1_pdu2_outlet",
@@ -125,19 +131,28 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_node2_ifn_link1_mac",
 	"anvil_node2_ifn_link2_mac",
 	"anvil_node2_ipmi_ip",
+	"anvil_node1_ipmi_gateway",
+	"anvil_node2_ipmi_netmask",
+	"anvil_node2_ipmi_password",
+	"anvil_node2_ipmi_user",
 	"anvil_node2_name",
 	"anvil_node2_pdu1_outlet",
 	"anvil_node2_pdu2_outlet",
 	"anvil_node2_sn_ip",
 	"anvil_node2_sn_link1_mac",
 	"anvil_node2_sn_link2_mac",
+	"anvil_open_vnc_ports",
 	"anvil_password",
 	"anvil_pdu1_ip",
 	"anvil_pdu1_name",
 	"anvil_pdu2_ip",
 	"anvil_pdu2_name",
 	"anvil_prefix",
+	"anvil_repositories",
+	"anvil_ricci_password",
+	"anvil_root_password",
 	"anvil_sequence",
+	"anvil_ssh_keysize",
 	"anvil_sn_network",
 	"anvil_sn_subnet",
 	"anvil_storage_partition_1_byte_size",
@@ -158,6 +173,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_ups1_name",
 	"anvil_ups2_ip",
 	"anvil_ups2_name",
+	"anvil_use_spice_graphics",
 	"boot_device",
 	"change",
 	"cluster",
@@ -175,6 +191,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"host",
 	"insert",
 	"install_iso",
+	"install_target",
 	"load",
 	"logical_disk",
 	"logo",
@@ -217,7 +234,8 @@ AN::Cluster::get_cgi_vars($conf, [
 ]);
 
 # If 'anvil' was passed, get it's ID and then check for CGI variables.
-if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
+#if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
+if ($conf->{cgi}{anvil_id})
 {
 	my $this_id = $conf->{cgi}{anvil_id};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
@@ -284,7 +302,9 @@ if ($conf->{cgi}{logo})
 	}
 	else
 	{
-		AN::Cluster::ask_which_cluster($conf);
+		# This is also where we provide options for backup/restore, 
+		# install manifests, etc.
+		AN::Cluster::show_anvil_selection_and_striker_options($conf);
 	}
 }
 elsif ($conf->{cgi}{config})
@@ -335,7 +355,7 @@ elsif ($conf->{cgi}{cluster})
 else
 {
 	# Ask the user which cluster they want to look at.
-    AN::Cluster::ask_which_cluster($conf);
+	AN::Cluster::show_anvil_selection_and_striker_options($conf);
 }
 AN::Cluster::footer($conf);
 

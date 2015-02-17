@@ -26,6 +26,11 @@
 # - If /shared's dm device differs on the two nodes, VMs won't start is both
 #   nodes will think the other is not healthy.
 #
+# TODO:
+# - Check the health status file and do not initiate start up until the health
+#   is "OK" on at least one node. When deciding which node to power a server
+#   on, check if one node is "warning" and do not use it if so.
+#
 
 use strict;
 use warnings;

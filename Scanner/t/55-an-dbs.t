@@ -283,7 +283,9 @@ sub main {
     # test_add_db( $dbs );
     # test_connect_dbs( $dbs );
 
-    test_is_pw_field($dbs);
+#    No longer used
+#
+#    test_is_pw_field($dbs);
     test_insert_raw_record($dbs);
     test_fetch_alert_data($dbs);
     test_fetch_alert_listeners($dbs);

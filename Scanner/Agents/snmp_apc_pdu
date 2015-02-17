@@ -17,11 +17,10 @@ use Pod::Usage;
 use FindBin qw($Bin);
 use Time::HiRes qw( time alarm sleep );
 use DBI;
-use Net::SNMP;
 
 use lib $Bin . '/lib';    # When called by scanner core pre-install
 use lib ( dirname $Bin) . '/lib';   # When run post-install, or during dev/test.
-use AN::SNMP::APC_UPS;
+use AN::SNMP::APC_PDU;
 
 use Const::Fast;
 
@@ -44,7 +43,7 @@ const my $TEXTBASE => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" )
 
 const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
 const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
-const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/snmp_apc_ups.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/snmp_apc_pdu.conf";
 const my $MSG_DIR             => "${TEXTBASE}/Messages";
 
 const my $BRIEF      => 1;
@@ -132,7 +131,7 @@ sub main {
 
     my $options = process_args();
 
-    my $agent = AN::SNMP::APC_UPS->new($options);
+    my $agent = AN::SNMP::APC_PDU->new($options);
     $agent->create_flagfile();
 
     my @node_args = @{ $agent->confdata()->{1} }{qw(name ip type)};
@@ -157,11 +156,11 @@ __END__
 
 =head1 NAME
 
-     snmp_apc_upd - a scanner agent to query APC UPSes via SNMP
+     snmp_apc_pdu - a scanner agent to query APC PDUes via SNMP
 
 =head1 SYNOPSIS
 
-     snmp_apc_ups [options]
+     snmp_apc_pdu [options]
 
      Options:
          -rate     N         How often test is performed, by default

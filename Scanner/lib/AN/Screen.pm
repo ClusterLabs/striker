@@ -6,22 +6,18 @@ use strict;
 use 5.010;
 
 use version;
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 
-use English '-no_match_vars';
-use Carp;
-
-use File::Basename;
-use FileHandle;
-use IO::Select;
-use Time::Local;
-use FindBin qw($Bin);
-
-use Const::Fast;
-
+# ======================================================================
+# CLASS ATTRIBUTES
+#
 use Class::Tiny qw( attr );
 
-# ......................................................................
+# ======================================================================
+# METHODS
+#
+# ----------------------------------------------------------------------
+# display alert messages on the screen.
 #
 sub dispatch {
     my $self = shift;
@@ -41,48 +37,41 @@ __END__
 
 =head1 NAME
 
-     Alerts.pm - package to handle alerts
+     AN::Screen.pm - Display alert messages on the screen
 
 =head1 VERSION
 
-This document describes Alerts.pm version 0.0.1
+This document describes AN::Screen.pm version 1.0.0
 
 =head1 SYNOPSIS
 
-    use AN::Alerts;
-    my $scanner = AN::Scanner->new({agents => $agents_data });
-
+    use AN::Screen;
+    my $screen = AN::Screen->new();
+    $screen->dispatch( \@msgs, $listener, $weight );
 
 =head1 DESCRIPTION
 
-This module provides the Alerts handling system. It is intended for a
-time-based loop system.  Various subsystems ( packages, subroutines )
-report problems of various severity during a single loop. At the end,
-a single report email is sent to report all new errors. Errors are
-reported once, continued existence of the problem is taken for granted
-until the problem goes away. When an alert ceases to be a problem, a
-new message is sent, but other problems continue to be monitored.
+This module provides a mechanism for displaying alert messages on the
+screen.
 
 =head1 METHODS
 
-An object of this class represents an alert tracking system.
+The module provides a single method, B<dispatch>, which takes three
+arguments:
 
 =over 4
 
-=item B<new>
+=item B<msgs array_ref>
 
-The constructor takes a hash reference or a list of scalars as key =>
-value pairs. The key list must include :
+An array of strings, aka paragraphs, to send to the recipient.
 
-=over 4
+=item B<listener recipient>
 
-=item B<agentdir>
+The email address defining a recipient.
 
-The directory that is scanned for scanning plug-ins.
+=item B<weighted sum>
 
-=item B<rate>
-
-How often the loop should scan.
+Weighted sum of all alerts.
 
 =back
 
@@ -93,25 +82,9 @@ How often the loop should scan.
 
 =over 4
 
-=item B<English> I<core>
-
-Provides meaningful names for Perl 'punctuation' variables.
-
-=item B<version> I<core since 5.9.0>
+=item B<version> I<core>
 
 Parses version strings.
-
-=item B<File::Basename> I<core>
-
-Parses paths and file suffixes.
-
-=item B<FileHandle> I<code>
-
-Provides access to FileHandle / IO::* attributes.
-
-=item B<FindBin> I<core>
-
-Determine which directory contains the current program.
 
 =back
 
