@@ -149,7 +149,8 @@ sub eval_discrete_status {
                          ? $args->{rec_meta}{values}{ $args->{prev_value} }
                          : $args->{prev_value}
                 );
-            $msg->{args} = "outlet=$num;from=$from;to=$msg->{newval}";
+	    my $pdu = $args->{metadata}{name};
+            $msg->{args} = "pdu=$pdu;outlet=$num;from=$from;to=$msg->{newval}";
         }
     }
 
