@@ -4732,14 +4732,17 @@ sub provision_vm
 	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
 	
 	# Connect to the discovered bridge
-	if ($conf->{new_vm}{virtio}{nic})
+	my $nic_driver = "virtio";
+	if (not $conf->{new_vm}{virtio}{nic})
 	{
-		$provision .= "  --network bridge=$bridge,model=virtio \\\\\n";
+		$nic_driver = $conf->{sys}{server}{alternate_nic_model} ? $conf->{sys}{server}{alternate_nic_model} : "e1000";
 	}
-	else
+	$conf->{sys}{server}{nic_count} = 1 if not $conf->{sys}{server}{nic_count};
+	for (1..$conf->{sys}{server}{nic_count})
 	{
-		$provision .= "  --network bridge=$bridge,model=e1000 \\\\\n";
+		$provision .= "  --network bridge=$bridge,model=$nic_driver \\\\\n";
 	}
+	
 	foreach my $lv_device (@logical_volumes)
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lv_device: [$lv_device], use virtio: [$conf->{new_vm}{virtio}{disk}]\n");

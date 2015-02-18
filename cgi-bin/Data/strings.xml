@@ -91,6 +91,7 @@
 		<key name="brand_0012">https://alteeve.ca/w/Support</key> <!-- Support URL -->
 		<key name="brand_0013">anvil</key>
 		<key name="brand_0014"><![CDATA[If you aren't sure what to do, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
+		<key name="brand_0015"><![CDATA[<i>Scan Core</i>]]></key>
 		
 		<!-- Text messages used in config files and such. -->
 		<key name="text_0001">
@@ -364,6 +365,53 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0159"><![CDATA[]]></key>
 		<key name="explain_0160"><![CDATA[]]></key>
 		
+		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
+		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
+		<key name="terse_0062"><![CDATA[Uses to set hostnames.]]></key>
+		<key name="terse_0063"><![CDATA[Used to set default IPs and hostnames.]]></key>
+		<key name="terse_0065"><![CDATA[#!string!brand_0006!# network definition. Example: <span class="highlight_detail">10.20.0.0</span> / <span class="highlight_detail">255.255.0.0</span>.]]></key>
+		<key name="terse_0066"><![CDATA[#!string!brand_0008!# network definition. Example: <span class="highlight_detail">10.10.0.0</span> / <span class="highlight_detail">255.255.0.0</span>.]]></key>
+		<key name="terse_0067"><![CDATA[#!string!brand_0010!# network definition. Example: <span class="highlight_detail">10.255.0.0</span> / <span class="highlight_detail">255.255.0.0</span>.]]></key>
+		<key name="terse_0068"><![CDATA[The first node's hostname will be changed to this value.]]></key>
+		<key name="terse_0069"><![CDATA[The second node's hostname will be changed to this value.]]></key>
+		<key name="terse_0070"><![CDATA[Sets the IP on the <span class="highlight_detail">bcn_bond1</span> interface.]]></key>
+		<key name="terse_0071"><![CDATA[Sets the IP on the <span class="highlight_detail">sn_bond1</span> interface.]]></key>
+		<key name="terse_0072"><![CDATA[Sets the IP on the <span class="highlight_detail">ifn_bridge1</span> interface.]]></key>
+		<key name="terse_0073"><![CDATA[Sets the IP of the IPMI BMC. Used for the primary fence method.]]></key>
+		<key name="terse_0074"><![CDATA[Used to populate <span class="highlight_detail">/etc/hosts</span>. UPSes are monitored by #!string!brand_0015!#.]]></key>
+		<key name="terse_0075"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0076"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0077"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0078"><![CDATA[Used to populate <span class="highlight_detail">/etc/hosts</span>. PDUs are used for backup fence actions.]]></key>
+		<key name="terse_0079"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0080"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0081"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0082"><![CDATA[Used to populate <span class="highlight_detail">/etc/hosts</span>.]]></key>
+		<key name="terse_0083"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0084"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0085"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0086"><![CDATA[Used to populate <span class="highlight_detail">/etc/hosts</span>.]]></key>
+		<key name="terse_0087"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0088"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0089"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0090"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0091"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0092"><![CDATA[Must be set.]]></key>
+		<key name="terse_0093"><![CDATA[Optional.]]></key>
+		<key name="terse_0094"><![CDATA[Optional.]]></key>
+		<key name="terse_0095"><![CDATA[Cluster name, 15 characters or less.]]></key>
+		<key name="terse_0096"><![CDATA[If this node plugs into this PDU, enter the outlet number.]]></key>
+		<key name="terse_0097"><![CDATA[Optional.]]></key>
+		<key name="terse_0098"><![CDATA[Optional.]]></key>
+		<key name="terse_0110"><![CDATA[Sets the OS, cluster and IPMI passwords.]]></key>
+		<key name="terse_0114"><![CDATA[Size of <span class="highlight_detail">/shared</span>.]]></key>
+		<key name="terse_0115"><![CDATA[Size (static or relative) of storage for node 1's servers. Balance, if any, allocated to node 2.]]></key>
+		<key name="terse_0139"><![CDATA[Additional software repositories, if desired.]]></key>
+		<key name="terse_0146"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0147"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0148"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0149"><![CDATA[&nbsp;]]></key>
+		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
 		<key name="row_0002">Global Settings</key>
@@ -552,7 +600,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0185">#!string!brand_0002!# 2 Host Name</key>
 		<key name="row_0186">#!string!brand_0002!# 2 BCN IP</key>
 		<key name="row_0187">#!string!brand_0002!# 2 IFN IP</key>
-		<key name="row_0188">IFN Default Gateway</key>
+		<key name="row_0188">Default Gateway</key>
 		<key name="row_0189">Primary DNS</key>
 		<key name="row_0190">Secondary DNS</key>
 		<key name="row_0191">Media Library Size</key>
@@ -640,8 +688,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0273">In progress</key>
 		<key name="row_0274">Try Again</key>
 		<key name="row_0275">Alternate NTP Servers</key>
-		<key name="row_0276"></key>
-		<key name="row_0277"></key>
+		<key name="row_0276">PDU Pair 1</key>
+		<key name="row_0277">PDU Pair 2</key>
 		<key name="row_0278"></key>
 		<key name="row_0279"></key>
 		<key name="row_0280"></key>
@@ -663,8 +711,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="header_0011">Used For</key>
 		<key name="header_0012">Allocated Space</key>
 		<key name="header_0013">Partition Size</key>
-		<key name="header_0014"></key>
-		<key name="header_0015"></key>
+		<key name="header_0014"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">1</span>]]></key>
+		<key name="header_0015"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="header_0016"></key>
 		<key name="header_0017"></key>
 		<key name="header_0018"></key>
@@ -678,7 +726,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="device_0004">Virtual Machine Manager</key> <!-- ok, so this isn't a 'device' per-se, whatev'... -->
 		<key name="device_0005">Node 1</key>
 		<key name="device_0006">Node 2</key>
-		<key name="device_0007">1A</key>	<!-- PDU 1 Name, 4-PDU setup -->
+		<key name="device_0007">1A</key>	<!-- PDU 1 Name, 4-PDU setup - These six values are set statically in the 'config.js' file. Change it there, too! Look for: var pdu4 = $("#anvil_pdu4_name").val() -->
 		<key name="device_0008">1B</key>	<!-- PDU 2 Name, 4-PDU setup -->
 		<key name="device_0009">2A</key>	<!-- PDU 3 Name -->
 		<key name="device_0010">2B</key>	<!-- PDU 4 Name -->
@@ -867,7 +915,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="symbol_0008">8</key>
 		<key name="symbol_0009">9</key>
 		<key name="symbol_0010">0</key>
-		<key name="symbol_0011"><![CDATA[<span class="fixed_width">--</span>]]></key> <!-- This is used in columns where no value was found -->
+		<key name="symbol_0011"><![CDATA[<span class="subtle_text">--</span>]]></key> <!-- This is used in columns where no value was found -->
 		<key name="symbol_0012">*</key>		<!-- Used to denote conditions (ie: "read below for details" type conditions) -->
 		<key name="symbol_0013"></key>
 		<key name="symbol_0014"></key>
@@ -1128,7 +1176,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="title_0113">Please be patient.</key>
 		<key name="title_0114">Program Error</key>
 		<key name="title_0115"><![CDATA[Provisioning the new <span class="fixed_width">#!variable!server!#</span> server...]]></key>
-		<key name="title_0116"><![CDATA[Unable to connect to the <span class="highlight_detail">#!replace!anvil!#</span> cluster!]]></key>
+		<key name="title_0116"><![CDATA[Unable to connect to the <span class="highlight_detail">#!variable!anvil!#</span> cluster!]]></key>
 		<key name="title_0117">Backup your current configuration or load a saved configuration</key>
 		<key name="title_0118">Upload of #!string!brand_0002!# failed</key>
 		<key name="title_0119">Upload of #!string!brand_0002!# successful</key>
@@ -1168,7 +1216,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="title_0153"></key> <!-- free -->
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155">Problem with the specified form values.</key>
-		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">#!replace!node_number!#</span>]]></key>
+		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span>]]></key>
 		<key name="title_0157"></key> <!-- free -->
 		<key name="title_0158">#!string!brand_0003!# Install Manifest Summary</key>
 		<key name="title_0159">Compute Nodes</key>
@@ -1548,7 +1596,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0337"><![CDATA[It looks like there was a program error!]]></key>
 		<key name="message_0338"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are empty.]]></key>
 		<key name="message_0339"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are not formed properly.]]></key>
-		<key name="message_0340"><![CDATA[After trying to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />a check was made and the file was deemed to be corrupt. The original file was restored from backup file: [<span class="fixed_width">#!replace!backup_file!#</span>], which was created just before the new file was written.]]></key>
+		<key name="message_0340"><![CDATA[After trying to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />a check was made and the file was deemed to be corrupt. The original file was restored from backup file: [<span class="fixed_width">#!variable!backup_file!#</span>], which was created just before the new file was written.]]></key>
 		<key name="message_0341"><![CDATA[I was asked to uptade the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears that I don't have the original definition file's contents.]]></key>
 		<key name="message_0342">The definition file needs to be updated to switch the Server's graphics to VNC.</key>
 		<key name="message_0343">Add an existing #!string!brand_0004!# to this #!string!brand_0002!# dashboard.</key>

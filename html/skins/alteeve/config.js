@@ -70,7 +70,10 @@ $("#set_secondary_values").click(function(){
 	{
 		var anvil_name = anvil_cluster_name + '-' + padded_sequence;
 	}
-	$("#anvil_name").val(anvil_name);
+	if (!$("#anvil_name").val())
+	{
+		$("#anvil_name").val(anvil_name);
+	}
 	
 	// Switch 1
 	var switch1_name = prefix + '-switch01.' + domain;
@@ -78,86 +81,223 @@ $("#set_secondary_values").click(function(){
 	{
 		var switch1_name = 'switch01.' + domain;
 	}
-	$("#anvil_switch1_name").val(switch1_name);
+	if (!$("#anvil_switch1_name").val())
+	{
+		$("#anvil_switch1_name").val(switch1_name);
+	}
 	// Switch 2
 	var switch2_name = prefix + '-switch02.' + domain;
 	if (!prefix)
 	{
 		var switch2_name = 'switch02.' + domain;
 	}
-	$("#anvil_switch2_name").val(switch2_name);
-	// PDU 1
-	var pdu1_name = prefix + '-pdu01.' + domain;
-	if (!prefix)
+	if (!$("#anvil_switch2_name").val())
 	{
-		var pdu1_name = 'pdu01.' + domain;
+		$("#anvil_switch2_name").val(switch2_name);
 	}
-	$("#anvil_pdu1_name").val(pdu1_name);
-	// PDU 2
-	var pdu2_name = prefix + '-pdu02.' + domain;
-	if (!prefix)
+	
+	// It's possible that there are two or four PDUs. If four, we set the
+	// names to pdu1a, pdu1b, pdu2a and pdu2b. If only two, the host names
+	// will be pdu01 and pdu02.
+	var pdu4 = $("#anvil_pdu4_name").val();
+	if (pdu4 != undefined)
 	{
-		var pdu2_name = 'pdu02.' + domain;
+		//alert('Four PDUs: ['+pdu4+']');
+		// PDU 1
+		var pdu1_name = prefix + '-pdu1a.' + domain;
+		if (!prefix)
+		{
+			var pdu1_name = 'pdu1a.' + domain;
+		}
+		if (!$("#anvil_pdu1_name").val())
+		{
+			$("#anvil_pdu1_name").val(pdu1_name);
+		}
+		// PDU 2
+		var pdu2_name = prefix + '-pdu1b.' + domain;
+		if (!prefix)
+		{
+			var pdu2_name = 'pdu1b.' + domain;
+		}
+		if (!$("#anvil_pdu2_name").val())
+		{
+			$("#anvil_pdu2_name").val(pdu2_name);
+		}
+		// PDU 3
+		var pdu3_name = prefix + '-pdu2a.' + domain;
+		if (!prefix)
+		{
+			var pdu3_name = 'pdu2a.' + domain;
+		}
+		if (!$("#anvil_pdu3_name").val())
+		{
+			$("#anvil_pdu3_name").val(pdu3_name);
+		}
+		// PDU 4
+		var pdu4_name = prefix + '-pdu2b.' + domain;
+		if (!prefix)
+		{
+			var pdu4_name = 'pdu2b.' + domain;
+		}
+		if (!$("#anvil_pdu4_name").val())
+		{
+			$("#anvil_pdu4_name").val(pdu4_name);
+		}
 	}
-	$("#anvil_pdu2_name").val(pdu2_name);
+	else
+	{
+		//alert('Two PDUs: ['+pdu4+']');
+		// PDU 1
+		var pdu1_name = prefix + '-pdu01.' + domain;
+		if (!prefix)
+		{
+			var pdu1_name = 'pdu01.' + domain;
+		}
+		if (!$("#anvil_pdu1_name").val())
+		{
+			$("#anvil_pdu1_name").val(pdu1_name);
+		}
+		// PDU 2
+		var pdu2_name = prefix + '-pdu02.' + domain;
+		if (!prefix)
+		{
+			var pdu2_name = 'pdu02.' + domain;
+		}
+		if (!$("#anvil_pdu2_name").val())
+		{
+			$("#anvil_pdu2_name").val(pdu2_name);
+		}
+	}
 	// UPS 1
 	var ups1_name = prefix + '-ups01.' + domain;
 	if (!prefix)
 	{
 		var ups1_name = 'ups01.' + domain;
 	}
-	$("#anvil_ups1_name").val(ups1_name);
+	if (!$("#anvil_ups1_name").val())
+	{
+		$("#anvil_ups1_name").val(ups1_name);
+	}
 	// UPS 2
 	var ups2_name = prefix + '-ups02.' + domain;
 	if (!prefix)
 	{
 		var ups2_name = 'ups02.' + domain;
 	}
-	$("#anvil_ups2_name").val(ups2_name);
+	if (!$("#anvil_ups2_name").val())
+	{
+		$("#anvil_ups2_name").val(ups2_name);
+	}
 	// Striker 1
 	var striker1_name = prefix + '-striker01.' + domain;
 	if (!prefix)
 	{
 		var striker1_name = 'striker01.' + domain;
 	}
-	$("#anvil_striker1_name").val(striker1_name);
+	if (!$("#anvil_striker1_name").val())
+	{
+		$("#anvil_striker1_name").val(striker1_name);
+	}
 	// Striker 2
 	var striker2_name = prefix + '-striker02.' + domain;
 	if (!prefix)
 	{
 		var striker2_name = 'striker02.' + domain;
 	}
-	$("#anvil_striker2_name").val(striker2_name);
+	if (!$("#anvil_striker2_name").val())
+	{
+		$("#anvil_striker2_name").val(striker2_name);
+	}
 	
 	// Set the PDU outlet numbers
-	var remainder = (integer_sequence % 4);
-	if (remainder == 1)
+	if (pdu4 != undefined)
 	{
-		$("#anvil_node1_pdu1_outlet").val(1);
-		$("#anvil_node1_pdu2_outlet").val(1);
-		$("#anvil_node2_pdu1_outlet").val(2);
-		$("#anvil_node2_pdu2_outlet").val(2);
+		//alert('Four PDUs: ['+pdu4+']');
+		// Four PDU configuration, which is much harder to predict what
+		// outlets will be used. So for now, we do nothing.
 	}
-	else if (remainder == 2)
+	else
 	{
-		$("#anvil_node1_pdu1_outlet").val(3);
-		$("#anvil_node1_pdu2_outlet").val(3);
-		$("#anvil_node2_pdu1_outlet").val(4);
-		$("#anvil_node2_pdu2_outlet").val(4);
-	}
-	else if (remainder == 3)
-	{
-		$("#anvil_node1_pdu1_outlet").val(5);
-		$("#anvil_node1_pdu2_outlet").val(5);
-		$("#anvil_node2_pdu1_outlet").val(6);
-		$("#anvil_node2_pdu2_outlet").val(6);
-	}
-	else if (remainder == 0)
-	{
-		$("#anvil_node1_pdu1_outlet").val(7);
-		$("#anvil_node1_pdu2_outlet").val(7);
-		$("#anvil_node2_pdu1_outlet").val(8);
-		$("#anvil_node2_pdu2_outlet").val(8);
+		//alert('Two PDUs: ['+pdu4+'], integer_sequence: ['+integer_sequence+']');
+		// Two PDU configuration, both PDUs will be used for both
+		// nodes and we can easily(ish) predict what outlets to use.
+		var remainder = (integer_sequence % 4);
+		if ((remainder == 1) || (!integer_sequence))
+		{
+			if (!$("#anvil_node1_pdu1_outlet").val())
+			{
+				$("#anvil_node1_pdu1_outlet").val(1);
+			}
+			if (!$("#anvil_node1_pdu2_outlet").val())
+			{
+				$("#anvil_node1_pdu2_outlet").val(1);
+			}
+			if (!$("#anvil_node2_pdu1_outlet").val())
+			{
+				$("#anvil_node2_pdu1_outlet").val(2);
+			}
+			if (!$("#anvil_node2_pdu2_outlet").val())
+			{
+				$("#anvil_node2_pdu2_outlet").val(2);
+			}
+		}
+		else if (remainder == 2)
+		{
+			if (!$("#anvil_node1_pdu1_outlet").val())
+			{
+				$("#anvil_node1_pdu1_outlet").val(3);
+			}
+			if (!$("#anvil_node1_pdu2_outlet").val())
+			{
+				$("#anvil_node1_pdu2_outlet").val(3);
+			}
+			if (!$("#anvil_node2_pdu1_outlet").val())
+			{
+				$("#anvil_node2_pdu1_outlet").val(4);
+			}
+			if (!$("#anvil_node2_pdu2_outlet").val())
+			{
+				$("#anvil_node2_pdu2_outlet").val(4);
+			}
+		}
+		else if (remainder == 3)
+		{
+			if (!$("#anvil_node1_pdu1_outlet").val())
+			{
+				$("#anvil_node1_pdu1_outlet").val(5);
+			}
+			if (!$("#anvil_node1_pdu2_outlet").val())
+			{
+				$("#anvil_node1_pdu2_outlet").val(5);
+			}
+			if (!$("#anvil_node2_pdu1_outlet").val())
+			{
+				$("#anvil_node2_pdu1_outlet").val(6);
+			}
+			if (!$("#anvil_node2_pdu2_outlet").val())
+			{
+				$("#anvil_node2_pdu2_outlet").val(6);
+			}
+		}
+		else if (remainder == 0)
+		{
+			if (!$("#anvil_node1_pdu1_outlet").val())
+			{
+				$("#anvil_node1_pdu1_outlet").val(7);
+			}
+			if (!$("#anvil_node1_pdu2_outlet").val())
+			{
+				$("#anvil_node1_pdu2_outlet").val(7);
+			}
+			if (!$("#anvil_node2_pdu1_outlet").val())
+			{
+				$("#anvil_node2_pdu1_outlet").val(8);
+			}
+			if (!$("#anvil_node2_pdu2_outlet").val())
+			{
+				$("#anvil_node2_pdu2_outlet").val(8);
+			}
+		}
 	}
 	
 	// IPs; *if* prefixes are passed.
@@ -178,11 +318,17 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IPs are sane.
 		if (regex_ipv4.test(node1_bcn_ip))
 		{
-			$("#anvil_node1_bcn_ip").val(node1_bcn_ip);
+			if (!$("#anvil_node1_bcn_ip").val())
+			{
+				$("#anvil_node1_bcn_ip").val(node1_bcn_ip);
+			}
 		}
 		if (regex_ipv4.test(node1_ipmi_ip))
 		{
-			$("#anvil_node1_ipmi_ip").val(node1_ipmi_ip);
+			if (!$("#anvil_node1_ipmi_ip").val())
+			{
+				$("#anvil_node1_ipmi_ip").val(node1_ipmi_ip);
+			}
 		}
 		
 		// Node 2
@@ -193,11 +339,17 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node2_bcn_ip))
 		{
-			$("#anvil_node2_bcn_ip").val(node2_bcn_ip);
+			if (!$("#anvil_node2_bcn_ip").val())
+			{
+				$("#anvil_node2_bcn_ip").val(node2_bcn_ip);
+			}
 		}
 		if (regex_ipv4.test(node2_ipmi_ip))
 		{
-			$("#anvil_node2_ipmi_ip").val(node2_ipmi_ip);
+			id (!$("#anvil_node2_ipmi_ip").val())
+			{
+				$("#anvil_node2_ipmi_ip").val(node2_ipmi_ip);
+			}
 		}
 		
 		// Switches
@@ -207,11 +359,17 @@ $("#set_secondary_values").click(function(){
 		    switch2_ip = switch2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(switch1_ip))
 		{
-			$("#anvil_switch1_ip").val(switch1_ip);
+			if (!$("#anvil_switch1_ip").val())
+			{
+				$("#anvil_switch1_ip").val(switch1_ip);
+			}
 		}
 		if (regex_ipv4.test(switch2_ip))
 		{
-			$("#anvil_switch2_ip").val(switch2_ip);
+			if (!$("#anvil_switch2_ip").val())
+			{
+				$("#anvil_switch2_ip").val(switch2_ip);
+			}
 		}
 		
 		// PDUs
@@ -221,11 +379,17 @@ $("#set_secondary_values").click(function(){
 		    pdu2_ip = pdu2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(pdu1_ip))
 		{
-			$("#anvil_pdu1_ip").val(pdu1_ip);
+			if (!$("#anvil_pdu1_ip").val())
+			{
+				$("#anvil_pdu1_ip").val(pdu1_ip);
+			}
 		}
 		if (regex_ipv4.test(pdu2_ip))
 		{
-			$("#anvil_pdu2_ip").val(pdu2_ip);
+			if (!$("#anvil_pdu2_ip").val())
+			{
+				$("#anvil_pdu2_ip").val(pdu2_ip);
+			}
 		}
 		
 		// UPSes
@@ -235,11 +399,17 @@ $("#set_secondary_values").click(function(){
 		    ups2_ip = ups2_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ups1_ip))
 		{
-			$("#anvil_ups1_ip").val(ups1_ip);
+			if (!$("#anvil_ups1_ip").val())
+			{
+				$("#anvil_ups1_ip").val(ups1_ip);
+			}
 		}
 		if (regex_ipv4.test(ups2_ip))
 		{
-			$("#anvil_ups2_ip").val(ups2_ip);
+			if (!$("#anvil_ups2_ip").val())
+			{
+				$("#anvil_ups2_ip").val(ups2_ip);
+			}
 		}
 		
 		// Striker Dashboards
@@ -249,11 +419,17 @@ $("#set_secondary_values").click(function(){
 		    striker2_bcn_ip = striker2_bcn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_bcn_ip))
 		{
-			$("#anvil_striker1_bcn_ip").val(striker1_bcn_ip);
+			if (!$("#anvil_striker1_bcn_ip").val())
+			{
+				$("#anvil_striker1_bcn_ip").val(striker1_bcn_ip);
+			}
 		}
 		if (regex_ipv4.test(striker2_bcn_ip))
 		{
-			$("#anvil_striker2_bcn_ip").val(striker2_bcn_ip);
+			if (!$("#anvil_striker2_bcn_ip").val())
+			{
+				$("#anvil_striker2_bcn_ip").val(striker2_bcn_ip);
+			}
 		}
 	}
 	// SN
@@ -265,7 +441,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node1_sn_ip))
 		{
-			$("#anvil_node1_sn_ip").val(node1_sn_ip);
+			if (!$("#anvil_node1_sn_ip").val())
+			{
+				$("#anvil_node1_sn_ip").val(node1_sn_ip);
+			}
 		}
 		
 		// Node 2
@@ -274,7 +453,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node2_sn_ip))
 		{
-			$("#anvil_node2_sn_ip").val(node2_sn_ip);
+			if (!$("#anvil_node2_sn_ip").val())
+			{
+				$("#anvil_node2_sn_ip").val(node2_sn_ip);
+			}
 		}
 	}
 	// IFN
@@ -286,7 +468,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node1_ifn_ip))
 		{
-			$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
+			if (!$("#anvil_node1_ifn_ip").val())
+			{
+				$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
+			}
 		}
 		
 		// Node 2
@@ -295,7 +480,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node2_ifn_ip))
 		{
-			$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
+			if (!$("#anvil_node2_ifn_ip").val())
+			{
+				$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
+			}
 		}
 		
 		// Striker Dashboards
@@ -305,11 +493,17 @@ $("#set_secondary_values").click(function(){
 		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_ifn_ip))
 		{
-			$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
+			if (!$("#anvil_striker1_ifn_ip").val())
+			{
+				$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
+			}
 		}
 		if (regex_ipv4.test(striker2_ifn_ip))
 		{
-			$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
+			if (!$("#anvil_striker2_ifn_ip").val())
+			{
+				$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
+			}
 		}
 		
 		// IFN Default Gateway
@@ -317,7 +511,10 @@ $("#set_secondary_values").click(function(){
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ifn_gateway))
 		{
-			$("#anvil_ifn_gateway").val(ifn_gateway);
+			if (!$("#anvil_ifn_gateway").val())
+			{
+				$("#anvil_ifn_gateway").val(ifn_gateway);
+			}
 		}
 	}
 	else if (regex_three_octal.test(ifn_root))
@@ -328,7 +525,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node1_ifn_ip))
 		{
-			$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
+			if (!$("#anvil_node1_ifn_ip").val())
+			{
+				$("#anvil_node1_ifn_ip").val(node1_ifn_ip);
+			}
 		}
 		
 		// Node 2
@@ -337,7 +537,10 @@ $("#set_secondary_values").click(function(){
 		// Make sure the generated IP is sane.
 		if (regex_ipv4.test(node2_ifn_ip))
 		{
-			$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
+			if (!$("#anvil_node2_ifn_ip").val())
+			{
+				$("#anvil_node2_ifn_ip").val(node2_ifn_ip);
+			}
 		}
 		
 		// Striker Dashboards
@@ -347,11 +550,17 @@ $("#set_secondary_values").click(function(){
 		    striker2_ifn_ip = striker2_ifn_ip.replace(/\.\./g, ".");
 		if (regex_ipv4.test(striker1_ifn_ip))
 		{
-			$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
+			if (!$("#anvil_striker1_ifn_ip").val())
+			{
+				$("#anvil_striker1_ifn_ip").val(striker1_ifn_ip);
+			}
 		}
 		if (regex_ipv4.test(striker2_ifn_ip))
 		{
-			$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
+			if (!$("#anvil_striker2_ifn_ip").val())
+			{
+				$("#anvil_striker2_ifn_ip").val(striker2_ifn_ip);
+			}
 		}
 		
 		// IFN Default Gateway
@@ -359,7 +568,10 @@ $("#set_secondary_values").click(function(){
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ifn_gateway))
 		{
-			$("#anvil_ifn_gateway").val(ifn_gateway);
+			if (!$("#anvil_ifn_gateway").val())
+			{
+				$("#anvil_ifn_gateway").val(ifn_gateway);
+			}
 		}
 	}
 

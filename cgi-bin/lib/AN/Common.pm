@@ -682,38 +682,94 @@ sub initialize_conf
 			dd_block_size		=>	"1M",
 			debug			=>	1,
 			default_password	=>	"Initial1",
+			# When set to '1', (almost) all external links will be
+			# disabled. Useful for sites without an Internet
+			# connection.
+			disable_links		=>	0,
 			error_limit		=>	10000,
 			# This will significantly cut down on the text shown
 			# on the screen to make information more digestable for
-			# experts. It also disabled external links.
+			# experts.
 			expert_ui		=>	0,
 			footer_printed		=>	0,
 			html_lang		=>	"en",
 			ignore_missing_vm	=>	0,
-			# These options control some of the Install Manifest options.
+			# These options control some of the Install Manifest
+			# options. They can be overwritten by adding matching 
+			# entries is striker.conf.
 			install_manifest	=>	{
 				'default'		=>	{
+					cluster_name		=>	"anvil",
+					prefix			=>	"",
+					domain			=>	"",
+					sequence		=>	"01",
 					bcn_network		=>	"10.20.0.0",
 					bcn_subnet		=>	"255.255.0.0",
 					dns1			=>	"8.8.8.8",
 					dns2			=>	"8.8.4.4",
-					ntp1			=>	"",
-					ntp2			=>	"",
+					ifn_gateway		=>	"",
 					ifn_network		=>	"10.255.0.0",
 					ifn_subnet		=>	"255.255.0.0",
 					library_size		=>	"40",
 					library_unit		=>	"GiB",
+					ntp1			=>	"",
+					ntp2			=>	"",
+					pdu1_name		=>	"",
+					pdu1_ip			=>	"",
+					pdu2_name		=>	"",
+					pdu2_ip			=>	"",
+					pdu3_name		=>	"",
+					pdu3_ip			=>	"",
+					pdu4_name		=>	"",
+					pdu4_ip			=>	"",
 					pool1_size		=>	"50",
 					pool1_unit		=>	"%",
 					sn_network		=>	"10.10.0.0",
 					sn_subnet		=>	"255.255.0.0",
+					ups1_name		=>	"",
+					ups1_ip			=>	"",
+					ups2_name		=>	"",
+					ups2_ip			=>	"",
+					node1_name		=>	"",
+					node1_bcn_ip		=>	"",
+					node1_ipmi_ip		=>	"",
+					node1_sn_ip		=>	"",
+					node1_ifn_ip		=>	"",
+					node2_name		=>	"",
+					node2_bcn_ip		=>	"",
+					node2_ipmi_ip		=>	"",
+					node2_sn_ip		=>	"",
+					node2_ifn_ip		=>	"",
+					striker1_name		=>	"",
+					striker1_bcn_ip		=>	"",
+					striker1_ifn_ip		=>	"",
+					striker2_name		=>	"",
+					striker2_bcn_ip		=>	"",
+					striker2_ifn_ip		=>	"",
+					# PDU 1A in 4-PDU setups
+					node1_pdu1_outlet	=>	"",
+					node2_pdu1_outlet	=>	"",
+					# PDU 1B in 4-PDU setups
+					node1_pdu2_outlet	=>	"",
+					node2_pdu2_outlet	=>	"",
+					# PDU 2A in 4-PDU setups
+					node1_pdu3_outlet	=>	"",
+					node2_pdu3_outlet	=>	"",
+					# PDU 2B in 4-PDU setups
+					node1_pdu4_outlet	=>	"",
+					node2_pdu4_outlet	=>	"",
+					open_vnc_ports		=>	100,
 				},
-				open_vnc_ports		=>	100,
 				# If the user wants to build install manifests for
 				# environments with 4 PDUs, this will be set to '4'.
 				pdu_count		=>	2,
-				show_repo_field		=>	1,
+				# Setting the 'show_X' fields to '0' will hide
+				# their form entries, which makes sense for
+				# users totally off the Internet.
+				show_dns_fields		=>	1,
+				show_repository_field	=>	1,
 				show_ntp_fields		=>	1,
+				show_prefix_field	=>	1,
 			},
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
@@ -800,6 +856,12 @@ sub initialize_conf
 			pool1_shrunk		=>	0,
 			reboot_timeout		=>	600,
 			root_password		=>	"",
+			# These options allow customization of newly provisioned
+			# servers.
+			server			=>	{
+				nic_count		=>	1,
+				alternate_nic_model	=>	"e1000",
+			},
 			shared_fs_uuid		=>	"",
 			show_nodes		=>	0,
 			show_refresh		=>	1,

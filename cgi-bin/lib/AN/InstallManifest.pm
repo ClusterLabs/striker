@@ -7458,8 +7458,8 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
 	   $ifcfg_ifn_bridge1 .= "NETMASK=\"$conf->{cgi}{anvil_ifn_subnet}\"\n";
 	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"$conf->{cgi}{anvil_ifn_gateway}\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_dns1}\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_dns2}\"\n";
+	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_dns1}\"\n" if $conf->{cgi}{anvil_dns1};
+	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_dns2}\"\n" if $conf->{cgi}{anvil_dns2};
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	
 	my $vnc_range = 5900 + $conf->{cgi}{anvil_open_vnc_ports};
