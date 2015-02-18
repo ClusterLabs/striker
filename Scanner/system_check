@@ -159,6 +159,7 @@ sub verify_args {
 
 sub main {
     my $options = process_args();
+    $options->{isa_scanner} = 1;
 
     my $now = strftime( "%F %T", localtime );
     say "Starting system_check at $now with log saved in $options->{logdir}.";
