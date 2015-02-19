@@ -4049,6 +4049,10 @@ sub confirm_install_manifest_run
 	$conf->{cgi}{anvil_node2_pdu2_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node2_pdu2_outlet};
 	$conf->{cgi}{anvil_node2_pdu3_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node2_pdu3_outlet};
 	$conf->{cgi}{anvil_node2_pdu4_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_node2_pdu4_outlet};
+	$conf->{cgi}{anvil_dns1}                = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_dns1};
+	$conf->{cgi}{anvil_dns2}                = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_dns2};
+	$conf->{cgi}{anvil_ntp1}                = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_ntp1};
+	$conf->{cgi}{anvil_ntp2}                = "<span class=\"highlight_unavailable\">--</span>" if not $conf->{cgi}{anvil_ntp2};
 	
 	# If the first storage pool is a percentage, calculate
 	# the percentage of the second. Otherwise, set storage
@@ -4514,17 +4518,9 @@ sub sanity_check_manifest_answers
 	my $problem = 0;
 	
 	# Make sure the sequence number is valid.
-	if (not $conf->{cgi}{anvil_sequence})
+	if (($conf->{cgi}{anvil_sequence}) && ($conf->{cgi}{anvil_sequence} =~ /\D/))
 	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0161!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif ($conf->{cgi}{anvil_sequence} =~ /\D/)
-	{
+		# If it's defined, it can only be a digit.
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
 			message	=>	AN::Common::get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0161!#"}}),

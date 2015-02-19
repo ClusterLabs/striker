@@ -42,7 +42,7 @@
 # 26 - BCN not specified or found and DHCP server config requested.
 # 27 - BCN not specified and IP not defined in ifcfg file.
 # 28 - Failed to install one or more required packaged for the GUI.
-# 29 - 
+# 29 - Failed to download a GPG key for a repo that was just added.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -75,7 +75,6 @@ my $conf = {
 		# 'disable' is processes.
 		# NOTE: 'haldaemon' needs to restart before 'acpid' will work,
 		#       if 'acpid' was just installed.
-		#enable			=>	["iptables", "httpd", "haldaemon", "acpid", "tomcat6", "guacd", "network", "ntpd", "xinetd"],
 		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "network", "ntpd", "xinetd"],
 		# These will be both chkconfig off'ed and stopped.
 		disable			=>	["dhcpd", "ip6tables", "NetworkManager"],
@@ -87,10 +86,6 @@ my $conf = {
 		centos_pxe_web		=>	"html/c6",			# Appeanded to 'document_root' + arch appended after
 		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
 		document_root		=>	"/var/www/",
-# 		guac_classpath		=>	"/var/lib/guacamole/classpath",
-# 		guac_etc		=>	"/etc/guacamole",
-# 		guac_lib		=>	"/var/lib/guacamole",
-# 		guac_tomcat		=>	"/usr/share/tomcat6/.guacamole",
 		media			=>	"/var/www/home/media",
 		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
 		pxelinux_boot		=>	"/var/lib/tftpboot/boot",	# TODO: Make this and _config subdirtories of 'pxelinux'
@@ -116,6 +111,7 @@ my $conf = {
 		'iptables-save'		=>	"/sbin/iptables-save",
 		ln			=>	"/bin/ln",
 		lspci			=>	"/sbin/lspci",
+		'lwp-download'		=>	"/usr/bin/lwp-download",
 		mount			=>	"/bin/mount",
 		passwd			=>	"/usr/bin/passwd",
 		restorecon		=>	"/sbin/restorecon",
@@ -145,12 +141,8 @@ my $conf = {
 			dhcp				=>	0,
 			expect				=>	0, 
 			'fence-agents'			=>	0, 
-			#guacd				=>	0, 
 			httpd				=>	0, 
 			libcdio				=>	0, 
-			#'libguac-client-rdp'		=>	0,
-			#'libguac-client-ssh'		=>	0, 
-			#'libguac-client-vnc'		=>	0, 
 			man				=>	0, 
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
@@ -158,6 +150,9 @@ my $conf = {
 			pciutils			=>	0,
 			'perl-CGI'			=>	0, 
 			'perl-CPAN'			=>	0, 
+			'perl-Crypt-SSLeay'		=>	0,
+			'perl-IO-Socket-SSL'		=>	0,
+			'perl-libwww-perl'		=>	0,
 			'perl-Net-SSH2'			=>	0,
 			'perl-Net-SSLeay'		=>	0, 
 			'perl-TermReadKey'		=>	0,
@@ -171,7 +166,6 @@ my $conf = {
 			'syslinux-tftpboot'		=>	0,
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
-			#tomcat6				=>	0, 
 			unzip				=>	0,
 			'vim-common'			=>	0, 
 			'vim-enhanced'			=>	0, 
@@ -275,7 +269,6 @@ my $conf = {
 		installed	=>	{},
 	},
 	path		=>	{
-		an_repo			=>	"/etc/yum.repos.d/an.repo",
 		apache_config		=>	"/etc/httpd/conf/httpd.conf",
 		apache_home		=>	"/var/www/home",
 		apache_htpasswd		=>	"/var/www/home/htpasswd",
@@ -283,12 +276,6 @@ my $conf = {
 		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
-		#guac_noauth		=>	"/var/lib/guacamole/classpath/guacamole-auth-noauth-#!guac_version!#.jar",
-		#guac_noauth_config	=>	"/etc/guacamole/noauth-config.xml",
-		#guac_properties		=>	"/etc/guacamole/guacamole.properties",
-		#guac_properties_symlink	=>	"/usr/share/tomcat6/.guacamole/guacamole.properties",
-		#guac_war		=>	"/var/lib/guacamole/guacamole-#!guac_version!#.war",
-		#guac_war_symlink	=>	"/var/lib/tomcat6/webapps/guacamole.war",
 		hostname		=>	"/etc/sysconfig/network",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
@@ -304,7 +291,6 @@ my $conf = {
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		striker_config		=>	"/etc/striker/striker.conf",
 		striker_log		=>	"/var/log/striker.log",
-		#tomcat_server		=>	"/etc/tomcat6/server.xml",
 		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
 	},
 	permissions	=>	{
@@ -361,14 +347,6 @@ my $conf = {
 			recursive		=>	0,
 			selinux			=>	"httpd_sys_content_t",
 		},
-# 		guac_noauth_config	=>	{
-# 			path			=>	"/etc/guacamole/noauth-config.xml",
-# 			owner			=>	"root",
-# 			group			=>	"apache",
-# 			mode			=>	"0664",
-# 			recursive		=>	0,
-# 			selinux			=>	"httpd_sys_content_t",
-# 		},
 		pxelinux		=>	{
 			path			=>	"/var/lib/tftpboot/pxelinux.cfg",
 			owner			=>	"root",
@@ -385,20 +363,6 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
-# 		z_restart_tomcat	=>	{
-# 			path			=>	"/var/www/tools/restart_tomcat6",
-# 			owner			=>	"root",
-# 			group			=>	"root",
-# 			mode			=>	"6755",
-# 			recursive		=>	0,
-# 		},
-# 		z_restart_guacd	=>	{
-# 			path			=>	"/var/www/tools/restart_guacd",
-# 			owner			=>	"root",
-# 			group			=>	"root",
-# 			mode			=>	"6755",
-# 			recursive		=>	0,
-# 		},
 		z_check_dvd		=>	{
 			path			=>	"/var/www/tools/check_dvd",
 			owner			=>	"root",
@@ -432,9 +396,9 @@ my $conf = {
 		apache_group		=>	"apache",
 		apache_timeout		=>	"60000",	# This will go away with AJAX
 		apache_user		=>	"apache",
+		bonds_exist		=>	0,		# We can't currently remap interfaces when bonds are in use because MACs aren't displayed properly in 'ip addr'.
 		create_bonds		=>	0,		# Gets set to '1' if 4 NICs are found.
 		customer		=>	"Striker Dashboard",
-		#guac_version		=>	"0.9.2",
 		hostname		=>	"",
 		ipmi_gateway		=>	"",
 		ipmi_ip			=>	"",
@@ -457,6 +421,7 @@ my $conf = {
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
 		tarball_dir		=>	"striker-#!striker_version!#",
+		repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
 	},
 	url		=>	{
 		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
@@ -539,6 +504,10 @@ verify_os($conf);
 # Add the user's repo if specified
 if ($conf->{switches}{r})
 {
+	if ($conf->{switches}{'no-an-repo'})
+	{
+		remove_an_repo($conf);
+	}
 	add_repo($conf);
 }
 
@@ -556,9 +525,12 @@ if (not $conf->{sys}{skip_network})
 	start_all_nics($conf);
 	
 	# Now ask the user to map their network.
-	until(select_nics($conf))
+	if (not $conf->{sys}{bonds_exist})
 	{
-		sleep 1;
+		until(select_nics($conf))
+		{
+			sleep 1;
+		}
 	}
 }
 
@@ -735,11 +707,16 @@ sub add_repo
 	my ($conf) = @_;
 	
 	print "Adding custom repositories:\n";
+	if ($conf->{switches}{r})
+	{
+		$conf->{sys}{repositories} .= ",$conf->{switches}{r}";
+	}
 	#print "[ Debug ] - repositories: [$conf->{switches}{r}]\n";
 	foreach my $url (split/,/, $conf->{switches}{r})
 	{
-		my $repo_file = ($url =~ /^.*\/(.*?)$/)[0];
-		#print "[ Debug ] - repo_file: [$repo_file], url: [$url]\n";
+		next if not $url;
+		my ($repo_url, $repo_file) = ($url =~ /^(.*)\/(.*?)$/);
+		print "[ Debug ] - repo_url: [$repo_url], repo_file: [$repo_file], url: [$url]\n";
 		if (not $repo_file)
 		{
 			print "[ Error ] - Unable to parse repository file from path:\n";
@@ -747,7 +724,8 @@ sub add_repo
 			exit(24);
 		}
 		
-		if (-e "$conf->{directory}{yum_repos}/$repo_file")
+		my $full_repo_path = "$conf->{directory}{yum_repos}/$repo_file";
+		if (-e $full_repo_path)
 		{
 			print "- Already downloaded, skipping.\n";
 			next;
@@ -755,7 +733,7 @@ sub add_repo
 		else
 		{
 			print "- Downloading: [$url]\n";
-			my $shell_call = "$conf->{executable}{curl} $url > $conf->{directory}{yum_repos}/$repo_file && $conf->{executable}{yum} clean all";
+			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean all";
 			#print "[ Debbug ] - shell_call: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			print "==============================================================================\n";
@@ -768,9 +746,67 @@ sub add_repo
 			print "==============================================================================\n";
 			close $file_handle;
 			
-			if (-e "$conf->{directory}{yum_repos}/$repo_file")
+			if (-e $full_repo_path)
 			{
 				print "- Success!\n";
+				# If it's using a GPG key, make sure it exits.
+				open (my $file_handle, "<", $full_repo_path) or die "$THIS_FILE ".__LINE__."; Failed to read: [$full_repo_path], the error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					
+					# Update the apache user entry.
+					if ($line =~ /^gpgkey=(.*)$/)
+					{
+						my $gpg_file = $1;
+						if ($gpg_file =~ /^file:\/\/(\/.*)$/)
+						{
+							my $local_key = $1;
+							if (not -e $local_key)
+							{
+								print "- This repository uses GPG, which is good, but the key isn't on the local\n";
+								print "  system. I will try to find: [$local_key] now.\n";
+								my $key_name = ($local_key =~ /^.*\/(.*?)$/)[0];
+								my $key_url  = "$repo_url/$key_name";
+								
+								print "- Trying to download: [$key_url].\n";
+								my $shell_call = "$conf->{executable}{'lwp-download'} $key_url $local_key";
+								#print "[ Debbug ] - shell_call: [$shell_call]\n";
+								open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+								print "==============================================================================\n";
+								while(<$file_handle>)
+								{
+									chomp;
+									my $line = $_;
+									print "- Output: [$line]\n";
+								}
+								print "==============================================================================\n";
+								close $file_handle;
+								
+								if (-e $local_key)
+								{
+									print "- File was downloaded successfully!\n";
+								}
+								else
+								{
+									# Well crap...
+									print "[ Error ] - GPG key file was not downloaded and doesn't exist! The repository:\n";
+									print "[ Error ]   [$url]\n";
+									print "[ Error ]   Requires a local copy of it's GPG key to exist here:\n";
+									print "[ Error ]   [$local_key]\n";
+									print "[ Error ]   Often, this key is found in the same web address as the .repo file\n";
+									print "[ Error ]   so we tried to download:\n";
+									print "[ Error ]   [$key_url]\n";
+									print "[ Error ]   However, that didn't work. Please locate this GPG key file and copy\n";
+									print "[ Error ]   it into place, then try running the installer again.\n\n";
+									exit(29);
+								}
+							}
+						}
+					}
+				}
+				close $file_handle;
 			}
 			else
 			{
@@ -802,12 +838,6 @@ sub setup_striker
 	
 	# Configure apache.
 	configure_apache($conf);
-	
-	# Configure Tomcat
-	#configure_tomcat($conf);
-	
-	# Configure guacamole
-	#configure_guacamole($conf);
 	
 	# Configure SSH to allow faster logins when there is not Internet
 	# access. Also, create an SSH RSA keyset for apache, though it
@@ -3406,186 +3436,6 @@ sub rsync_files
 	}
 }
 
-# Configure guacamole.
-# sub configure_guacamole
-# {
-# 	my ($conf) = @_;
-# 	
-# 	print "Configuring guacamole\n";
-# 	
-# 	# Create the guacamole directory if needed.
-# 	if (-e $conf->{directory}{guac_etc})
-# 	{
-# 		print "- Guacamole configuration directory already exists.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Creating the Guacamole configuration directory.\n";
-# 		mkdir $conf->{directory}{guac_etc} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_etc}], error was: $!\n";
-# 	}
-# 	
-# 	# Make sure gacamole tomcat diretory exists
-# 	if (-e $conf->{directory}{guac_tomcat})
-# 	{
-# 		print "- Guacamole Tomcat directory already exists.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Creating the Guacamole Tomcat directory.\n";
-# 		mkdir $conf->{directory}{guac_tomcat} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_tomcat}], error was: $!\n";
-# 	}
-# 	
-# 	# Make sure the library path directory exists (before we check classpath}.
-# 	if (-e $conf->{directory}{guac_lib})
-# 	{
-# 		print "- Guacamole library directory already exists.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Creating the Guacamole library directory.\n";
-# 		mkdir $conf->{directory}{guac_lib} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_lib}], error was: $!\n";
-# 	}
-# 	
-# 	# Make sure the class path directory exists.
-# 	if (-e $conf->{directory}{guac_classpath})
-# 	{
-# 		print "- Guacamole classpath directory already exists.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Creating the Guacamole classpath directory.\n";
-# 		mkdir $conf->{directory}{guac_classpath} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{guac_classpath}], error was: $!\n";
-# 	}
-# 	
-# 	# insert guacamole version into path names.
-# 	$conf->{path}{guac_noauth} =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
-# 	$conf->{path}{guac_war}    =~ s/#!guac_version!#/$conf->{sys}{guac_version}/;
-# 	
-# 	# Now start copying things into place.
-# 	if (-e $conf->{path}{guac_noauth})
-# 	{
-# 		print "- The 'auth-noauth' module is already in place.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Copying the 'auth-noauth' module into place.\n";
-# 		my $noauth_file =  ($conf->{path}{guac_noauth} =~ /^.*\/(.*)$/)[0];
-# 		my $destination =  $conf->{path}{guac_noauth};
-# 		   $destination =~ s/$noauth_file$//;
-# 		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
-# 		print "- Copying: [$source]\n";
-# 		print "       to: [$destination]\n";
-# 		copy_file($conf, $source, $destination);
-# 	}
-# 	
-# 	# Create the noauth config, if needed.
-# 	if (-e $conf->{path}{guac_noauth_config})
-# 	{
-# 		print "- The 'noauth' config already exists.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Copying the 'auth-noauth' module into place.\n";
-# 		my $noauth_file =  ($conf->{path}{guac_noauth_config} =~ /^.*\/(.*)$/)[0];
-# 		my $destination =  $conf->{path}{guac_noauth_config};
-# 		   $destination =~ s/$noauth_file$//;
-# 		my $source      =  "$conf->{directory}{source}/guacamole/$noauth_file";
-# 		print "- Copying: [$source]\n";
-# 		print "       to: [$destination]\n";
-# 		copy_file($conf, $source, $destination);
-# 	}
-# 	
-# 	# Copy the .war file and symlink it.
-# 	if (-e $conf->{path}{guac_war})
-# 	{
-# 		print "- Guacamole web archive file already in place.\n";
-# 	}
-# 	else
-# 	{
-# 		# Delete the symlink if it exists.
-# 		if (-l $conf->{path}{guac_war_symlink})
-# 		{
-# 			print "- Deleting the existing symlink.\n";
-# 			unlink $conf->{path}{guac_war_symlink} or die "$THIS_FILE ".__LINE__."; Failed to delete the symlink: [$conf->{path}{guac_war_symlink}]\n";
-# 		}
-# 		
-# 		# Now copy.
-# 		my ($destination, $war_file) = ($conf->{path}{guac_war} =~ /^(.*)\/(.*)$/);
-# 		my $source                   = "$conf->{directory}{source}/guacamole/$war_file";
-# 		print "- Copying: [$source]\n";
-# 		print "       to: [$destination]\n";
-# 		copy_file($conf, $source, $destination);
-# 		
-# 		# If I am here, the copy succeeded.
-# 		print "- Creating guacamole web archive symlink.\n";
-# 		my $shell_call = "$conf->{executable}{ln} -s $destination/$war_file $conf->{path}{guac_war_symlink}";
-# 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			print "- Output: [$line]\n";
-# 		}
-# 		close $file_handle;
-# 		
-# 		if (-l $conf->{path}{guac_war_symlink})
-# 		{
-# 			print "- Symlink created successfully.\n";
-# 		}
-# 		else
-# 		{
-# 			print "[ Error ] - I was unable to link: [$destination/$war_file]\n";
-# 			print "[ Error ]                     to: [$conf->{path}{guac_war_symlink}]\n";
-# 			exit(20);
-# 		}
-# 	}
-# 	
-# 	# Copy the guacamoly properties file into place.
-# 	if (-e $conf->{path}{guac_properties})
-# 	{
-# 		print "- Properties file already in place.\n";
-# 	}
-# 	else
-# 	{
-# 		my $properties_file =  ($conf->{path}{guac_properties} =~ /^.*\/(.*)$/)[0];
-# 		my $destination     =  $conf->{path}{guac_properties};
-# 		   $destination     =~ s/$properties_file$//;
-# 		my $source          =  "$conf->{directory}{source}/guacamole/$properties_file";
-# 		print "- Copying: [$source]\n";
-# 		print "       to: [$destination]\n";
-# 		copy_file($conf, $source, $destination);
-# 		
-# 		# Create the symlink, if needed.
-# 		print "- Creating guacamole properties symlink.\n";
-# 		my $shell_call = "$conf->{executable}{ln} -s $destination/$properties_file $conf->{path}{guac_properties_symlink}";
-# 		#print "[ Debug ] - shell_call: [$shell_call]\n";
-# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			print "- Output: [$line]\n";
-# 		}
-# 		close $file_handle;
-# 		
-# 		if (-l $conf->{path}{guac_properties_symlink})
-# 		{
-# 			print "- Symlink created successfully.\n";
-# 		}
-# 		else
-# 		{
-# 			print "[ Error ] - I was unable to link: [$destination/$properties_file]\n";
-# 			print "[ Error ]                     to: [$conf->{path}{guac_properties_symlink}]\n";
-# 			exit(20);
-# 		}
-# 	}
-# 	
-# 	print "Done.\n\n";
-# 	
-# 	return(0);
-# }
-
 # This copies a file... Hey, what it says on the tin.
 sub copy_file
 {
@@ -3933,59 +3783,6 @@ sub configure_ssh
 	return(0);
 }
 
-# This configures Tomcat, which we use for Guacamole.
-# sub configure_tomcat
-# {
-# 	my ($conf) = @_;
-# 	
-# 	print "Configuring Tomcat.\n";
-# 	        
-# 	if (-e "$conf->{path}{backups}/server.xml")
-# 	{
-# 		print "- Backup already made, skipping.\n";
-# 	}
-# 	else
-# 	{
-# 		print "- Backing up: [$conf->{path}{tomcat_server}].\n";
-# 		backup_file($conf, $conf->{path}{tomcat_server});
-# 	}
-# 	
-# 	# Read in and then write out the server.xml file to enable UTF-8
-# 	my $tomcat_config = "";
-# 	print "- Reading in the existing tomcat server configuration server.\n";
-# 	#print "[ Debug ] - Reading: [$conf->{path}{tomcat_server}]\n";
-# 	open (my $file_handle, "<", $conf->{path}{tomcat_server}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{tomcat_server}], the error was: $!\n";
-# 	while(<$file_handle>)
-# 	{
-# 		chomp;
-# 		my $line = $_;
-# 		
-# 		# Avoid multiple 'URIEncoding="UTF-8"' entries
-# 		#print "[ Debug ] >> line: [$line]\n";
-# 		next if $line =~ /^\s+URIEncoding="UTF-8"$/;
-# 		
-# 		# Insert the UTF-8 string
-# 		if ($line =~ /<Connector port="8080" protocol="HTTP\/1.1"/)
-# 		{
-# 			$tomcat_config .= "$line\n";
-# 			$tomcat_config .= "               URIEncoding=\"UTF-8\"\n";
-# 		}
-# 		else
-# 		{
-# 			$tomcat_config .= "$line\n";
-# 		}
-# 	}
-# 	close $file_handle;
-# 	# Next, write it out.
-# 	print "- Writing out the new version.\n";
-# 	open ($file_handle, ">", $conf->{path}{tomcat_server}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{tomcat_server}], the error was: $!\n";
-# 	print $file_handle $tomcat_config;
-# 	close $file_handle;
-# 	print "Done.\n\n";
-# 	
-# 	return(0);
-# }
-
 # This makes sure that selinux is enabled.
 sub configure_selinux
 {
@@ -4136,7 +3933,6 @@ sub configure_apache
 	
 	# Now to start updating.
 	print "- Reading in the existing config file and adjusting as needed.\n";
-	#my $in_guacamole  = 0;
 	my $apache_config = "";
 	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
 	while(<$file_handle>)
@@ -4151,18 +3947,6 @@ sub configure_apache
 		next if $line =~ /^\s+AuthUserFile /;
 		next if $line =~ /^\s+Require user /;
 		
-		# Skip prior proxy entries.
-# 		if ($line =~ /^<Location \/guacamole\/>/)
-# 		{
-# 			$in_guacamole = 1;
-# 		}
-# 		if ($line =~ /CustomLog \/var\/log\/httpd\/guac.log/)
-# 		{
-# 			$in_guacamole = 0;
-# 			next;
-# 		}
-# 		next if $in_guacamole;
-		
 		### TODO: Set SSL as default and add an option for a user to
 		###       load their own certs.
 		# Now insert and/or modify things.
@@ -4176,18 +3960,6 @@ sub configure_apache
 			$apache_config .= "    AuthUserFile $conf->{path}{apache_htpasswd}\n";
 			$apache_config .= "    Require user $conf->{sys}{striker_user}\n";
 		}
-# 		elsif ($line =~ /#<\/Proxy>/)
-# 		{
-# 			$apache_config .= "$line\n";
-# 			$apache_config .= "<Location /guacamole/>\n";
-# 			$apache_config .= "    Order allow,deny\n";
-# 			$apache_config .= "    Allow from all\n";
-# 			$apache_config .= "    ProxyPass http://localhost:8080/guacamole/ max=20 flushpackets=on\n";
-# 			$apache_config .= "    ProxyPassReverse http://localhost:8080/guacamole/\n";
-# 			$apache_config .= "</Location>\n";
-# 			$apache_config .= "SetEnvIf Request_URI \"^/guacamole/tunnel\" dontlog\n";
-# 			$apache_config .= "CustomLog /var/log/httpd/guac.log common env=!dontlog\n";
-# 		}
 		elsif ($line =~ /^Timeout /)
 		{
 			$apache_config .= "Timeout $conf->{sys}{apache_timeout}\n";
@@ -4571,9 +4343,6 @@ sub install_packages
 	
 	print "Checking if anything needs to be installed.\n";
 	
-	# First up, has the 'an-repo' been added?
-	configure_an_repo($conf);
-	
 	# Check for OS updates.
 	update_os($conf);
 	
@@ -4779,59 +4548,6 @@ sub get_list_of_installed_packages
 	return(0);
 }
 
-# This installs the AN!Repo if needed.
-sub configure_an_repo
-{
-	my ($conf) = @_;
-	
-	print "Checking AN! software repository.\n";
-	if (-e $conf->{path}{an_repo})
-	{
-		if ($conf->{switches}{'no-an-repo'})
-		{
-			print "- AN! repo unselected but exists, removing it.\n";
-			unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
-			print "- removed.\n";
-		}
-		else
-		{
-			print "- The AN!Repo is already installed.\n";
-		}
-	}
-	elsif ($conf->{switches}{'no-an-repo'})
-	{
-		print "- AN! software repository not requested, skipping.\n";
-	}
-	else
-	{
-		# Create the repo
-		print "- The AN!Repo hasn't been added yet, adding it now.\n";
-		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
-		print $file_handle "[an-repo]\n";
-		print $file_handle "name=AN! Repo for Anvil! stuff\n";
-		print $file_handle "baseurl=https://alteeve.ca/repo/el6/\n";
-		print $file_handle "enabled=1\n";
-		print $file_handle "gpgcheck=0\n";
-		print $file_handle "protect=1\n";
-		close $file_handle;
-		
-		# No clear yum's cache
-		print "- Added. Clearing yum's cache.\n";
-		my $shell_call = "$conf->{executable}{yum} clean all";
-		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			print "- output: [$line]\n";
-		}
-		close $file_handle;
-	}
-	print "- Done!\n\n";
-	
-	return(0);
-}
-
 # This configures the local RHEL repo, if supported.
 sub configure_striker_rhel_repo
 {
@@ -4885,6 +4601,13 @@ sub start_all_nics
 	
 	print "Making sure all network interfaces are up.\n";
 	check_nic_states($conf);
+	
+	# If 'check_nic_state' found a bond, we're out.
+	if ($conf->{sys}{bonds_exist})
+	{
+		print "- Done.\n\n";
+		return (0);
+	}
 	foreach my $this_iface (sort {$a cmp $b} keys %{$conf->{nic}{by_name}})
 	{
 		# See if it is up already.
@@ -4985,8 +4708,11 @@ sub reconfigure_network
 	# Stop the network.
 	#daemon_control($conf, "NetworkManager.service", "stop");
 	
-	# Write the udev file
-	write_udev_persistent_net($conf);
+	# Write the udev file, if bonds don't already exist.
+	if (not $conf->{sys}{bonds_exist})
+	{
+		write_udev_persistent_net($conf);
+	}
 	
 	# Remove existing ifcfg-* files and then write the new ones.
 	update_network_config_files($conf);
@@ -5497,7 +5223,9 @@ sub sanity_check_switches
 		$conf->{sys}{install_version} =  $conf->{switches}{d};
 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		if (($conf->{switches}{d} eq "1.1.4") || ($conf->{switches}{d} eq "1.1.5"))
+		if (($conf->{switches}{d} eq "1.1.4") || 
+		    ($conf->{switches}{d} eq "1.1.5") ||
+		    ($conf->{switches}{d} eq "1.1.6"))
 		{
 			print "[ Note ] - Will install version: [$conf->{switches}{d}]\n";
 		}
@@ -6090,6 +5818,29 @@ sub convert_cidr_to_dotted_decimal
 	return($netmask);
 }
 
+# This removes the an-repo if '--no-an-repo' is used.
+sub remove_an_repo
+{
+	my ($conf) = @_;
+	
+	print "Removing AN! software repository if it exists.\n";
+	if (-e $conf->{path}{an_repo})
+	{
+		print "- Found it, removing it.\n";
+		unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
+		print "- removed.\n";
+	}
+	else
+	{
+		print "- Not found.\n";
+	}
+	$conf->{sys}{repositories} = "";
+	print "- Done!\n\n";
+	
+	return(0);
+}
+
+
 # Print the usage information.
 sub print_usage
 {
@@ -6193,10 +5944,16 @@ SWITCHES
 
 	This sets the host name of the Striker dashboard.
 
- --no-an-repo
-
 	Use this to prevent adding the AN! software repository to this striker.
 	If specified and if the repo exists, it will be removed.
+
+ --no-an-repo
+
+	By default, a repository maintained by Alteeve's Niche! is added to
+	Striker dashboards. If your dashboard machines will not have Internet
+	access, this can cause problems. This option prevents the installer
+	from configuring the repository and, if it is installed, will remove
+	it.
 
  -p <start_ip:end_ip>
  
@@ -6259,7 +6016,7 @@ Normal install, downloading ISOs from local web server:
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
                   -m mail.alteeve.ca:587 \
-                  -n an-m01.alteeve.ca \
+                  -n an-striker01.alteeve.ca \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
                   -r http://10.255.255.254/repo/rhel6/local.repo \
@@ -6273,7 +6030,7 @@ Developer install, using local copies of ISOs:
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
                   -m mail.alteeve.ca:587 \
-                  -n an-m01.alteeve.ca \
+                  -n an-striker01.alteeve.ca \
                   -d git \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
@@ -6287,7 +6044,7 @@ Install without configuring the network or PXE server:
  ./striker-installer -c "Alteeve's Niche\!" \
                   -e "foo@alteeve.ca:secret password" \
                   -m mail.alteeve.ca:587 \
-                  -n an-m01.alteeve.ca \
+                  -n an-striker01.alteeve.ca \
                   -p none \
                   -u "admin:secret password"
 
@@ -6535,6 +6292,18 @@ sub check_nic_states
 		next if not $this_iface;
 		next if $this_iface eq "lo";
 		next if $this_iface =~ /wlan/;
+		# If the user is re-running the install, bridge interfaces will
+		# exist, we ignore those.
+		if ($this_iface =~ /bond/)
+		{
+			print "- Bonded interfaces exist. This network appears to already be mapped,\n";
+			print "  skipping. If you want to force a remap, please run:\n";
+			print "  rsync -av --delete $conf->{path}{backups}/network-scripts /etc/sysconfig/\n";
+			print "  and then reboot your dashboard. This will reset the networking to how it was\n";
+			print "  before the first install, so your IP address will change!\n";
+			$conf->{sys}{bonds_exist} = 1;
+			last;
+		}
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
@@ -6566,7 +6335,7 @@ sub check_nic_states
 		}
 	}
 	close $file_handle;
-
+	
 	my $nic_count = 0;
 	foreach my $this_mac (sort {$a cmp $b} keys %{$conf->{nic}{mac}})
 	{
@@ -6575,7 +6344,8 @@ sub check_nic_states
 		next if not $this_mac;
 		my $this_iface = $conf->{nic}{mac}{$this_mac}{current_name};
 		
-		if (($this_iface eq "lo") || ($this_iface =~ /wlan/))
+		# I don't care about localhost, wireless or bonded interfaces.
+		if (($this_iface eq "lo") || ($this_iface =~ /wlan/) || ($this_iface =~ /bond/))
 		{
 			#print "[ Debug ] - Skipping interface: [$this_iface]\n";
 		}

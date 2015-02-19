@@ -13,10 +13,6 @@
 use strict;
 use warnings;
 
-my $bcn_bridge = "bcn_bridge1";
-my $sn_bridge  = "sn_bridge1";
-my $ifn_bridge = "ifn_bridge1";
-
 my $vm = $ARGV[0];
 if (not $vm)
 {
@@ -64,17 +60,17 @@ while(<$file_handle>)
 		#print "This bridge: [$this_bridge], This device: [$this_device]\n";
 		if (($this_bridge) && ($this_device))
 		{
-			#print "this_bridge: [$this_bridge], bcn_bridge: [$bcn_bridge], sn_bridge: [$sn_bridge], ifn_bridge: [$ifn_bridge]\n";
-			if    ($this_bridge eq $bcn_bridge) { push @bcn_nic, $this_device; }
-			elsif ($this_bridge eq $sn_bridge)  { push @sn_nic, $this_device; }
-			elsif ($this_bridge eq $ifn_bridge) { push @ifn_nic, $this_device; }
+			#print "this_bridge: [$this_bridge], bcn_bridge: [bcn_bridge1], sn_bridge: [sn_bridge1], ifn_bridge: [ifn_bridge1]\n";
+			if    (($this_bridge eq "bcn_bridge1") || ($this_bridge eq "bcn-bridge1")) { push @bcn_nic, $this_device; }
+			elsif (($this_bridge eq "sn_bridge1")  || ($this_bridge eq "sn-bridge1"))  { push @sn_nic, $this_device; }
+			elsif (($this_bridge eq "ifn_bridge1") || ($this_bridge eq "ifn-bridge1")) { push @ifn_nic, $this_device; }
 			else
 			{
 				print "[ Error ] - Interface: [$this_device] on unknown bridge: [$this_bridge]\n";
 				print "[ Error ]   Expected bridge names;\n";
-				print "[ Error ]   - Back-Channel Network:    [$bcn_bridge]\n";
-				print "[ Error ]   - Storage Network:         [$sn_bridge]\n";
-				print "[ Error ]   - Internet-Facing Network: [$ifn_bridge]\n";
+				print "[ Error ]   - Back-Channel Network:    [bcn_bridge1]\n";
+				print "[ Error ]   - Storage Network:         [sn_bridge1]\n";
+				print "[ Error ]   - Internet-Facing Network: [ifn_bridge1]\n";
 				exit 3;
 			}
 		}

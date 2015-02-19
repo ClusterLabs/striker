@@ -367,7 +367,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
-		<key name="terse_0062"><![CDATA[Uses to set hostnames.]]></key>
+		<key name="terse_0062"><![CDATA[Used to set hostnames.]]></key>
 		<key name="terse_0063"><![CDATA[Used to set default IPs and hostnames.]]></key>
 		<key name="terse_0065"><![CDATA[#!string!brand_0006!# network definition. Example: <span class="highlight_detail">10.20.0.0</span> / <span class="highlight_detail">255.255.0.0</span>.]]></key>
 		<key name="terse_0066"><![CDATA[#!string!brand_0008!# network definition. Example: <span class="highlight_detail">10.10.0.0</span> / <span class="highlight_detail">255.255.0.0</span>.]]></key>
@@ -690,8 +690,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0275">Alternate NTP Servers</key>
 		<key name="row_0276">PDU Pair 1</key>
 		<key name="row_0277">PDU Pair 2</key>
-		<key name="row_0278"></key>
-		<key name="row_0279"></key>
+		<key name="row_0278">NTP 1</key>
+		<key name="row_0279">NTP 2</key>
 		<key name="row_0280"></key>
 		
 		<!-- Program names -->
