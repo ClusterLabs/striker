@@ -598,6 +598,38 @@ const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
 
 #     return;
 # }
+# ----------------------------------------------------------------------
+#
+sub test_ssh_to_hosts {
+    my $self = shift;
+
+    my ($tests, $attempts) = 0;
+    for my $tag ( keys %{ $self->confdata->{servers}->{ssh} } ) {
+	$attempts++;
+	my $host = $self->confdata->{servers}->{ssh}{$tag};
+	my @cmd = ( '/usr/bin/ssh', $host, '"uname -n"' );
+	say "Running '@cmd'" if $self->verbose;
+	my $response = `@cmd`;
+	chomp $response;
+	say "Got response '$response'" if $self->verbose;
+	if ( length $response ) {
+	    $tests++;
+	    $self->confdata->{servers}->{names}{$tag} = $response;
+	}
+	say '';
+    }
+    die "Failed to connect to one of the hosts"
+	unless $tests == $attempts;
+    return;
+}
+# ......................................................................
+sub run_tests() {
+    my $self = shift;
+
+    $self->test_ssh_to_hosts();
+    
+    return;
+}
 
 # ----------------------------------------------------------------------
 # There won't be scanAgents appearing and disappearing during the
@@ -610,13 +642,12 @@ sub run {
 
     $self->connect_dbs();
     
-    my $changes = $self->scan_for_agents();
-    $self->handle_changes($changes) if $changes;
+#    my $changes = $self->scan_for_agents();
+#    $self->handle_changes($changes) if $changes;
 
-    $self->index(1);		# which test to run .. the first one.
-    $self->check($self->confdata->{check} ); # all the test info.
+    $self->run_tests();
 
-    $self->run_timed_loop_forever();
+#    $self->run_timed_loop_forever();
 
     $self->finalize_node_table_status();
 

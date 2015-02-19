@@ -167,10 +167,10 @@ sub main {
     my $system_check = AN::SystemCheck->new($options);
     $system_check->create_flagfile();
 
-
-    $system_check->begin_logging();
-    $system_check->verbose( $system_check->verbose + 1 );
-
+    if ( ! exists $ENV{EMACS} ) {
+	$system_check->begin_logging();
+	$system_check->verbose( $system_check->verbose + 1 );
+    }
 
     say "Starting system_check at $now.";
 
