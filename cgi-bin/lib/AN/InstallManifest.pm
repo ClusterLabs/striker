@@ -244,9 +244,9 @@ sub run_new_install_manifest
 		# Add user-specified repos
 		add_user_repositories($conf);
 		
-		### TODO: Merge this into the above function
-		# Add the an-repo
-		add_an_repo($conf);
+		### TODO: Move the an-repo to the function above and switch the
+		###       download tool from 'curl' to 'lwb-download'.
+		#add_an_repo($conf);
 		
 		# Install needed RPMs.
 		install_programs($conf) or return(1);

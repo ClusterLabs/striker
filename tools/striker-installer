@@ -43,6 +43,7 @@
 # 27 - BCN not specified and IP not defined in ifcfg file.
 # 28 - Failed to install one or more required packaged for the GUI.
 # 29 - Failed to download a GPG key for a repo that was just added.
+# 30 - Failed to find custom striker configuration file.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -3329,7 +3330,7 @@ sub install_striker_files
 	else
 	{
 		# Make sure the striker /etc/ directory exists.
-		my $parent_dir       = ($striker_conf_dir =~ /^.*\/(.*)$/)[0];
+		my $parent_dir = ($striker_conf_dir =~ /^.*\/(.*)$/)[0];
 		if (-d $striker_conf_dir)
 		{
 			print "- Striker configuration directory already exists.\n";
@@ -3340,13 +3341,35 @@ sub install_striker_files
 			mkdir $striker_conf_dir or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$striker_conf_dir], error was: $!\n";
 		}
 		
-		print "- Copying base Striker configuration file.\n";
-		my $source      = "$conf->{directory}{source}/$striker_conf_file";
-		my $destination = $striker_conf_dir;
-		copy_file($conf, $source, $destination);
-		print "- Copying: [$source]\n";
-		print "       to: [$destination]\n";
-		copy_file($conf, $source, $destination);
+		# If the user has specified a custom config file, use it.
+		if ($conf->{switches}{'custom-config'})
+		{
+			# They have. Does it exist?
+			print "- Custom configuration specified. Checking that it exists.\n";
+			if (-e $conf->{switches}{'custom-config'})
+			{
+				print "- It does.\n";
+				print "- Copying: [$conf->{switches}{'custom-config'}]\n";
+				print "       to: [$conf->{path}{striker_config}]\n";
+				copy_file($conf, $conf->{switches}{'custom-config'}, $conf->{path}{striker_config});
+			}
+			else
+			{
+				print "[ Error ] - I was asked to load the custom Striker configuration file:\n";
+				print "[ Error ]   [$conf->{switches}{'custom-config'}]\n";
+				print "[ Error ]   However, it doesn't seem to exist.\n\n";
+				exit(30);
+			}
+		}
+		else
+		{
+			print "- Copying base Striker configuration file.\n";
+			my $source      = "$conf->{directory}{source}/$striker_conf_file";
+			my $destination = "$striker_conf_dir/";
+			print "- Copying: [$source]\n";
+			print "       to: [$destination]\n";
+			copy_file($conf, $source, $destination);
+		}
 	}
 	
 	# Update the mail settings if the user passed any.
@@ -3453,10 +3476,23 @@ sub copy_file
 	close $file_handle;
 	
 	# Verify it copied successfully.
-	my $file = ($source =~ /^.*\/(.*)$/)[0];
-	   $file = "$destination/$file";
-	if (not -e $file)
+	# If the destination ends in '/', look for the source file appeanded to
+	# the destination. Othewise, the name changed.
+	if ($destination =~ /\/$/)
 	{
+		# Source file copied into a directory.
+		my $file = ($source =~ /^.*\/(.*)$/)[0];
+		   $file = "$destination/$file";
+		if (not -e $file)
+		{
+			print "[ Error ] - Failed to copy: [$source]\n";
+			print "[ Error ]               to: [$destination]\n";
+			exit(19);
+		}
+	}
+	elsif (not -e $destination)
+	{
+		# Copied to a new target name.
 		print "[ Error ] - Failed to copy: [$source]\n";
 		print "[ Error ]               to: [$destination]\n";
 		exit(19);
@@ -5877,6 +5913,15 @@ SWITCHES
 	If it is set to 'dvd', the disk in the optical drive will be converted
 	to an ISO and used. This option is very useful if you just installed
 	CentOS off of a physical DVD.
+
+ --custom-config /path/to/striker.conf
+
+	This is an optional way to specify a custom striker.conf file to use
+	instead of the default example striker.conf provided by the installer.
+	Note that the file name does *not* have to be 'striker.conf'. It must
+	have all core variables set though. That is, the specified file must
+	be complete because it will be used instead of, not appended to, the
+	default configuration file.
 
  -d <version>
 

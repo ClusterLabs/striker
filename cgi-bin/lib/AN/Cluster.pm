@@ -2052,14 +2052,18 @@ sub create_install_manifest
 		}
 		elsif (not $conf->{cgi}{generate})
 		{
+			# This function uses sys::install_manifest::default::x if set.
 			my ($default_prefix, $default_demain) = get_striker_prefix_and_domain($conf);
+			
+			# Primary Config values
 			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = $default_prefix; }
-			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
 			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = $conf->{sys}{install_manifest}{'default'}{sequence}; }
+			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
+			if (not $conf->{cgi}{anvil_password})           { $conf->{cgi}{anvil_password}           = $conf->{sys}{install_manifest}{'default'}{password}; }
 			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = $conf->{sys}{install_manifest}{'default'}{bcn_network}; }
 			if (not $conf->{cgi}{anvil_bcn_subnet})         { $conf->{cgi}{anvil_bcn_subnet}         = $conf->{sys}{install_manifest}{'default'}{bcn_subnet}; }
 			if (not $conf->{cgi}{anvil_sn_network})         { $conf->{cgi}{anvil_sn_network}         = $conf->{sys}{install_manifest}{'default'}{sn_network}; }
-			if (not $conf->{cgi}{anvil_sn_subnet})          { $conf->{cgi}{anvil_sn_subnet}          = $conf->{sys}{install_manifest}{'default'}{bcn_subnet}; }
+			if (not $conf->{cgi}{anvil_sn_subnet})          { $conf->{cgi}{anvil_sn_subnet}          = $conf->{sys}{install_manifest}{'default'}{sn_subnet}; }
 			if (not $conf->{cgi}{anvil_ifn_network})        { $conf->{cgi}{anvil_ifn_network}        = $conf->{sys}{install_manifest}{'default'}{ifn_network}; }
 			if (not $conf->{cgi}{anvil_ifn_subnet})         { $conf->{cgi}{anvil_ifn_subnet}         = $conf->{sys}{install_manifest}{'default'}{ifn_subnet}; }
 			if (not $conf->{cgi}{anvil_media_library_size}) { $conf->{cgi}{anvil_media_library_size} = $conf->{sys}{install_manifest}{'default'}{library_size}; }
@@ -2067,17 +2071,29 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_storage_pool1_size}) { $conf->{cgi}{anvil_storage_pool1_size} = $conf->{sys}{install_manifest}{'default'}{pool1_size}; }
 			if (not $conf->{cgi}{anvil_storage_pool1_unit}) { $conf->{cgi}{anvil_storage_pool1_unit} = $conf->{sys}{install_manifest}{'default'}{pool1_unit}; }
 			if (not $conf->{cgi}{anvil_repositories})       { $conf->{cgi}{anvil_repositories}       = $conf->{sys}{install_manifest}{'default'}{repositories}; }
-			if (not $conf->{cgi}{anvil_open_vnc_ports})     { $conf->{cgi}{anvil_open_vnc_ports}     = $conf->{sys}{install_manifest}{'default'}{open_vnc_ports}; }
-			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
 			
-			### TODO: Make sure the jquery doesn't overwrite these!
+			# Hidden fields for now.
+			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
+			if (not $conf->{cgi}{anvil_open_vnc_ports})     { $conf->{cgi}{anvil_open_vnc_ports}     = $conf->{sys}{install_manifest}{'default'}{open_vnc_ports}; }
+			
 			# It's possible for the user to set default values in
 			# the install manifest.
+			if (not $conf->{cgi}{anvil_name})               { $conf->{cgi}{anvil_name}               = $conf->{sys}{install_manifest}{'default'}{name}; }
 			if (not $conf->{cgi}{anvil_ifn_gateway})        { $conf->{cgi}{anvil_ifn_gateway}        = $conf->{sys}{install_manifest}{'default'}{ifn_gateway}; }
 			if (not $conf->{cgi}{anvil_dns1})               { $conf->{cgi}{anvil_dns1}               = $conf->{sys}{install_manifest}{'default'}{dns1}; }
 			if (not $conf->{cgi}{anvil_dns2})               { $conf->{cgi}{anvil_dns2}               = $conf->{sys}{install_manifest}{'default'}{dns2}; }
 			if (not $conf->{cgi}{anvil_ntp1})               { $conf->{cgi}{anvil_ntp1}               = $conf->{sys}{install_manifest}{'default'}{ntp1}; }
 			if (not $conf->{cgi}{anvil_ntp2})               { $conf->{cgi}{anvil_ntp2}               = $conf->{sys}{install_manifest}{'default'}{ntp2}; }
+			
+			# Foundation Pack
+			if (not $conf->{cgi}{anvil_switch1_name})       { $conf->{cgi}{anvil_switch1_name}       = $conf->{sys}{install_manifest}{'default'}{switch1_name}; }
+			if (not $conf->{cgi}{anvil_switch1_ip})         { $conf->{cgi}{anvil_switch1_ip}         = $conf->{sys}{install_manifest}{'default'}{switch1_ip}; }
+			if (not $conf->{cgi}{anvil_switch2_name})       { $conf->{cgi}{anvil_switch2_name}       = $conf->{sys}{install_manifest}{'default'}{switch2_name}; }
+			if (not $conf->{cgi}{anvil_switch2_ip})         { $conf->{cgi}{anvil_switch2_ip}         = $conf->{sys}{install_manifest}{'default'}{switch2_ip}; }
+			if (not $conf->{cgi}{anvil_ups1_name})          { $conf->{cgi}{anvil_ups1_name}          = $conf->{sys}{install_manifest}{'default'}{ups1_name}; }
+			if (not $conf->{cgi}{anvil_ups1_ip})            { $conf->{cgi}{anvil_ups1_ip}            = $conf->{sys}{install_manifest}{'default'}{ups1_ip}; }
+			if (not $conf->{cgi}{anvil_ups2_name})          { $conf->{cgi}{anvil_ups2_name}          = $conf->{sys}{install_manifest}{'default'}{ups2_name}; }
+			if (not $conf->{cgi}{anvil_ups2_ip})            { $conf->{cgi}{anvil_ups2_ip}            = $conf->{sys}{install_manifest}{'default'}{ups2_ip}; }
 			if (not $conf->{cgi}{anvil_pdu1_name})          { $conf->{cgi}{anvil_pdu1_name}          = $conf->{sys}{install_manifest}{'default'}{pdu1_name}; }
 			if (not $conf->{cgi}{anvil_pdu1_ip})            { $conf->{cgi}{anvil_pdu1_ip}            = $conf->{sys}{install_manifest}{'default'}{pdu1_ip}; }
 			if (not $conf->{cgi}{anvil_pdu2_name})          { $conf->{cgi}{anvil_pdu2_name}          = $conf->{sys}{install_manifest}{'default'}{pdu2_name}; }
@@ -2086,42 +2102,34 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_pdu3_ip})            { $conf->{cgi}{anvil_pdu3_ip}            = $conf->{sys}{install_manifest}{'default'}{pdu3_ip}; }
 			if (not $conf->{cgi}{anvil_pdu4_name})          { $conf->{cgi}{anvil_pdu4_name}          = $conf->{sys}{install_manifest}{'default'}{pdu4_name}; }
 			if (not $conf->{cgi}{anvil_pdu4_ip})            { $conf->{cgi}{anvil_pdu4_ip}            = $conf->{sys}{install_manifest}{'default'}{pdu4_ip}; }
-			if (not $conf->{cgi}{anvil_ups1_name})          { $conf->{cgi}{anvil_ups1_name}          = $conf->{sys}{install_manifest}{'default'}{ups1_name}; }
-			if (not $conf->{cgi}{anvil_ups1_ip})            { $conf->{cgi}{anvil_ups1_ip}            = $conf->{sys}{install_manifest}{'default'}{ups1_ip}; }
-			if (not $conf->{cgi}{anvil_ups2_name})          { $conf->{cgi}{anvil_ups2_name}          = $conf->{sys}{install_manifest}{'default'}{ups2_name}; }
-			if (not $conf->{cgi}{anvil_ups2_ip})            { $conf->{cgi}{anvil_ups2_ip}            = $conf->{sys}{install_manifest}{'default'}{ups2_ip}; }
-			if (not $conf->{cgi}{anvil_switch1_name})       { $conf->{cgi}{anvil_switch1_name}       = $conf->{sys}{install_manifest}{'default'}{switch1_name}; }
-			if (not $conf->{cgi}{anvil_switch1_ip})         { $conf->{cgi}{anvil_switch1_ip}         = $conf->{sys}{install_manifest}{'default'}{switch1_ip}; }
-			if (not $conf->{cgi}{anvil_switch2_name})       { $conf->{cgi}{anvil_switch2_name}       = $conf->{sys}{install_manifest}{'default'}{switch2_name}; }
-			if (not $conf->{cgi}{anvil_switch2_ip})         { $conf->{cgi}{anvil_switch2_ip}         = $conf->{sys}{install_manifest}{'default'}{switch2_ip}; }
-			if (not $conf->{cgi}{anvil_node1_name})         { $conf->{cgi}{anvil_node1_name}         = $conf->{sys}{install_manifest}{'default'}{node1_name}; }
-			if (not $conf->{cgi}{anvil_node1_bcn_ip})       { $conf->{cgi}{anvil_node1_bcn_ip}       = $conf->{sys}{install_manifest}{'default'}{node1_bcn_ip}; }
-			if (not $conf->{cgi}{anvil_node1_ipmi_ip})      { $conf->{cgi}{anvil_node1_ipmi_ip}      = $conf->{sys}{install_manifest}{'default'}{node1_ipmi_ip}; }
-			if (not $conf->{cgi}{anvil_node1_sn_ip})        { $conf->{cgi}{anvil_node1_sn_ip}        = $conf->{sys}{install_manifest}{'default'}{node1_sn_ip}; }
-			if (not $conf->{cgi}{anvil_node1_ifn_ip})       { $conf->{cgi}{anvil_node1_ifn_ip}       = $conf->{sys}{install_manifest}{'default'}{node1_ifn_ip}; }
-			if (not $conf->{cgi}{anvil_node2_name})         { $conf->{cgi}{anvil_node2_name}         = $conf->{sys}{install_manifest}{'default'}{node2_name}; }
-			if (not $conf->{cgi}{anvil_node2_bcn_ip})       { $conf->{cgi}{anvil_node2_bcn_ip}       = $conf->{sys}{install_manifest}{'default'}{node2_bcn_ip}; }
-			if (not $conf->{cgi}{anvil_node2_ipmi_ip})      { $conf->{cgi}{anvil_node2_ipmi_ip}      = $conf->{sys}{install_manifest}{'default'}{node2_ipmi_ip}; }
-			if (not $conf->{cgi}{anvil_node2_sn_ip})        { $conf->{cgi}{anvil_node2_sn_ip}        = $conf->{sys}{install_manifest}{'default'}{node2_sn_ip}; }
-			if (not $conf->{cgi}{anvil_node2_ifn_ip})       { $conf->{cgi}{anvil_node2_ifn_ip}       = $conf->{sys}{install_manifest}{'default'}{node2_ifn_ip}; }
 			if (not $conf->{cgi}{anvil_striker1_name})      { $conf->{cgi}{anvil_striker1_name}      = $conf->{sys}{install_manifest}{'default'}{striker1_name}; }
 			if (not $conf->{cgi}{anvil_striker1_bcn_ip})    { $conf->{cgi}{anvil_striker1_bcn_ip}    = $conf->{sys}{install_manifest}{'default'}{striker1_bcn_ip}; }
 			if (not $conf->{cgi}{anvil_striker1_ifn_ip})    { $conf->{cgi}{anvil_striker1_ifn_ip}    = $conf->{sys}{install_manifest}{'default'}{striker1_ifn_ip}; }
 			if (not $conf->{cgi}{anvil_striker2_name})      { $conf->{cgi}{anvil_striker2_name}      = $conf->{sys}{install_manifest}{'default'}{striker2_name}; }
 			if (not $conf->{cgi}{anvil_striker2_bcn_ip})    { $conf->{cgi}{anvil_striker2_bcn_ip}    = $conf->{sys}{install_manifest}{'default'}{striker2_bcn_ip}; }
 			if (not $conf->{cgi}{anvil_striker2_ifn_ip})    { $conf->{cgi}{anvil_striker2_ifn_ip}    = $conf->{sys}{install_manifest}{'default'}{striker2_ifn_ip}; }
-			# PDU 1A in 4-PDU setups
+			
+			# Node 1 variables
+			if (not $conf->{cgi}{anvil_node1_name})         { $conf->{cgi}{anvil_node1_name}         = $conf->{sys}{install_manifest}{'default'}{node1_name}; }
+			if (not $conf->{cgi}{anvil_node1_bcn_ip})       { $conf->{cgi}{anvil_node1_bcn_ip}       = $conf->{sys}{install_manifest}{'default'}{node1_bcn_ip}; }
+			if (not $conf->{cgi}{anvil_node1_ipmi_ip})      { $conf->{cgi}{anvil_node1_ipmi_ip}      = $conf->{sys}{install_manifest}{'default'}{node1_ipmi_ip}; }
+			if (not $conf->{cgi}{anvil_node1_sn_ip})        { $conf->{cgi}{anvil_node1_sn_ip}        = $conf->{sys}{install_manifest}{'default'}{node1_sn_ip}; }
+			if (not $conf->{cgi}{anvil_node1_ifn_ip})       { $conf->{cgi}{anvil_node1_ifn_ip}       = $conf->{sys}{install_manifest}{'default'}{node1_ifn_ip}; }
 			if (not $conf->{cgi}{anvil_node1_pdu1_outlet})  { $conf->{cgi}{anvil_node1_pdu1_outlet}  = $conf->{sys}{install_manifest}{'default'}{node1_pdu1_outlet}; }
-			if (not $conf->{cgi}{anvil_node2_pdu1_outlet})  { $conf->{cgi}{anvil_node2_pdu1_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu1_outlet}; }
-			# PDU 1B in 4-PDU setups
 			if (not $conf->{cgi}{anvil_node1_pdu2_outlet})  { $conf->{cgi}{anvil_node1_pdu2_outlet}  = $conf->{sys}{install_manifest}{'default'}{node1_pdu2_outlet}; }
-			if (not $conf->{cgi}{anvil_node2_pdu2_outlet})  { $conf->{cgi}{anvil_node2_pdu2_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu2_outlet}; }
-			# PDU 2A in 4-PDU setups
 			if (not $conf->{cgi}{anvil_node1_pdu3_outlet})  { $conf->{cgi}{anvil_node1_pdu3_outlet}  = $conf->{sys}{install_manifest}{'default'}{node1_pdu3_outlet}; }
-			if (not $conf->{cgi}{anvil_node2_pdu3_outlet})  { $conf->{cgi}{anvil_node2_pdu3_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu3_outlet}; }
-			# PDU 2B in 4-PDU setups
-			if (not $conf->{cgi}{anvil_node1_pdu4_outlet})  { $conf->{cgi}{anvil_node1_pdu4_outlet}  = $conf->{sys}{install_manifest}{'default'}{node1_pdu4_outlet}; }
 			if (not $conf->{cgi}{anvil_node2_pdu4_outlet})  { $conf->{cgi}{anvil_node2_pdu4_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu4_outlet}; }
+			
+			# Node 2 variables
+			if (not $conf->{cgi}{anvil_node2_name})         { $conf->{cgi}{anvil_node2_name}         = $conf->{sys}{install_manifest}{'default'}{node2_name}; }
+			if (not $conf->{cgi}{anvil_node2_bcn_ip})       { $conf->{cgi}{anvil_node2_bcn_ip}       = $conf->{sys}{install_manifest}{'default'}{node2_bcn_ip}; }
+			if (not $conf->{cgi}{anvil_node2_ipmi_ip})      { $conf->{cgi}{anvil_node2_ipmi_ip}      = $conf->{sys}{install_manifest}{'default'}{node2_ipmi_ip}; }
+			if (not $conf->{cgi}{anvil_node2_sn_ip})        { $conf->{cgi}{anvil_node2_sn_ip}        = $conf->{sys}{install_manifest}{'default'}{node2_sn_ip}; }
+			if (not $conf->{cgi}{anvil_node2_ifn_ip})       { $conf->{cgi}{anvil_node2_ifn_ip}       = $conf->{sys}{install_manifest}{'default'}{node2_ifn_ip}; }
+			if (not $conf->{cgi}{anvil_node2_pdu1_outlet})  { $conf->{cgi}{anvil_node2_pdu1_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu1_outlet}; }
+			if (not $conf->{cgi}{anvil_node2_pdu2_outlet})  { $conf->{cgi}{anvil_node2_pdu2_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu2_outlet}; }
+			if (not $conf->{cgi}{anvil_node2_pdu3_outlet})  { $conf->{cgi}{anvil_node2_pdu3_outlet}  = $conf->{sys}{install_manifest}{'default'}{node2_pdu3_outlet}; }
+			if (not $conf->{cgi}{anvil_node1_pdu4_outlet})  { $conf->{cgi}{anvil_node1_pdu4_outlet}  = $conf->{sys}{install_manifest}{'default'}{node1_pdu4_outlet}; }
 		}
 		
 		# Print the header
@@ -2130,7 +2138,7 @@ sub create_install_manifest
 		});
 		
 		# Anvil! prefix
-		if (not $conf->{sys}{install_manifest}{show_prefix_field})
+		if (not $conf->{sys}{install_manifest}{show}{prefix_field})
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_prefix",
@@ -2155,120 +2163,243 @@ sub create_install_manifest
 		}
 		
 		# Anvil! sequence
-		my $anvil_sequence_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0161!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0063!#" : "#!string!explain_0063!#",
-			name		=>	"anvil_sequence",
-			id		=>	"anvil_sequence",
-			value		=>	$conf->{cgi}{anvil_sequence},
-			star		=>	$conf->{form}{anvil_sequence_star},
-			more_info	=>	"$anvil_sequence_more_info",
-		});
+		if (not $conf->{sys}{install_manifest}{show}{sequence_field})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_sequence",
+				id		=>	"anvil_sequence",
+				value		=>	$conf->{cgi}{anvil_sequence},
+			});
+		}
+		else
+		{
+			my $anvil_sequence_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0161!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0063!#" : "#!string!explain_0063!#",
+				name		=>	"anvil_sequence",
+				id		=>	"anvil_sequence",
+				value		=>	$conf->{cgi}{anvil_sequence},
+				star		=>	$conf->{form}{anvil_sequence_star},
+				more_info	=>	"$anvil_sequence_more_info",
+			});
+		}
 		
 		# Anvil! domain name
-		my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0160!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0062!#" : "#!string!explain_0062!#",
-			name		=>	"anvil_domain",
-			id		=>	"anvil_domain",
-			value		=>	$conf->{cgi}{anvil_domain},
-			star		=>	$conf->{form}{anvil_domain_star},
-			more_info	=>	"$anvil_domain_more_info",
-		});
+		if (not $conf->{sys}{install_manifest}{show}{domain_field})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_domain",
+				id		=>	"anvil_domain",
+				value		=>	$conf->{cgi}{anvil_domain},
+			});
+		}
+		else
+		{
+			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0160!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0062!#" : "#!string!explain_0062!#",
+				name		=>	"anvil_domain",
+				id		=>	"anvil_domain",
+				value		=>	$conf->{cgi}{anvil_domain},
+				star		=>	$conf->{form}{anvil_domain_star},
+				more_info	=>	"$anvil_domain_more_info",
+			});
+		}
 		
-		# Anvil! password
-		my $anvil_password_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0194!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0110!#" : "#!string!explain_0110!#",
-			name		=>	"anvil_password",
-			id		=>	"anvil_password",
-			value		=>	$conf->{cgi}{anvil_password},
-			star		=>	$conf->{form}{anvil_password_star},
-			more_info	=>	"$anvil_password_more_info",
-		});
+		# Anvil! password - Skip if set and hidden.
+		if (($conf->{sys}{install_manifest}{'default'}{password}) && (not $conf->{sys}{install_manifest}{show}{password_field}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_password",
+				id		=>	"anvil_password",
+				value		=>	$conf->{cgi}{anvil_password},
+			});
+		}
+		else
+		{
+			my $anvil_password_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0194!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0110!#" : "#!string!explain_0110!#",
+				name		=>	"anvil_password",
+				id		=>	"anvil_password",
+				value		=>	$conf->{cgi}{anvil_password},
+				star		=>	$conf->{form}{anvil_password_star},
+				more_info	=>	"$anvil_password_more_info",
+			});
+		}
 		
 		# Anvil! BCN Network definition
-		my $anvil_bcn_network_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
-			row		=>	"#!string!row_0162!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0065!#" : "#!string!explain_0065!#",
-			network_name	=>	"anvil_bcn_network",
-			network_id	=>	"anvil_bcn_network",
-			network_value	=>	$conf->{cgi}{anvil_bcn_network},
-			subnet_name	=>	"anvil_bcn_subnet",
-			subnet_id	=>	"anvil_bcn_subnet",
-			subnet_value	=>	$conf->{cgi}{anvil_bcn_subnet},
-			star		=>	$conf->{form}{anvil_bcn_network_star},
-			more_info	=>	"$anvil_bcn_network_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{bcn_network}) && 
+		    ($conf->{sys}{install_manifest}{'default'}{bcn_subnet}) && 
+		    (not $conf->{sys}{install_manifest}{show}{bcn_network_fields}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_bcn_network",
+				id		=>	"anvil_bcn_network",
+				value		=>	$conf->{cgi}{anvil_bcn_network},
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_bcn_subnet",
+				id		=>	"anvil_bcn_subnet",
+				value		=>	$conf->{cgi}{anvil_bcn_subnet},
+			});
+		}
+		else
+		{
+			my $anvil_bcn_network_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+				row		=>	"#!string!row_0162!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0065!#" : "#!string!explain_0065!#",
+				network_name	=>	"anvil_bcn_network",
+				network_id	=>	"anvil_bcn_network",
+				network_value	=>	$conf->{cgi}{anvil_bcn_network},
+				subnet_name	=>	"anvil_bcn_subnet",
+				subnet_id	=>	"anvil_bcn_subnet",
+				subnet_value	=>	$conf->{cgi}{anvil_bcn_subnet},
+				star		=>	$conf->{form}{anvil_bcn_network_star},
+				more_info	=>	"$anvil_bcn_network_more_info",
+			});
+		}
 		
 		# Anvil! SN Network definition
-		my $anvil_sn_network_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
-			row		=>	"#!string!row_0163!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0066!#" : "#!string!explain_0066!#",
-			network_name	=>	"anvil_sn_network",
-			network_id	=>	"anvil_sn_network",
-			network_value	=>	$conf->{cgi}{anvil_sn_network},
-			subnet_name	=>	"anvil_sn_subnet",
-			subnet_id	=>	"anvil_sn_subnet",
-			subnet_value	=>	$conf->{cgi}{anvil_sn_subnet},
-			star		=>	$conf->{form}{anvil_sn_network_star},
-			more_info	=>	"$anvil_sn_network_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{sn_network}) && 
+		    ($conf->{sys}{install_manifest}{'default'}{sn_subnet}) && 
+		    (not $conf->{sys}{install_manifest}{show}{sn_network_fields}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_sn_network",
+				id		=>	"anvil_sn_network",
+				value		=>	$conf->{cgi}{anvil_sn_network},
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_sn_subnet",
+				id		=>	"anvil_sn_subnet",
+				value		=>	$conf->{cgi}{anvil_sn_subnet},
+			});
+		}
+		else
+		{
+			my $anvil_sn_network_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+				row		=>	"#!string!row_0163!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0066!#" : "#!string!explain_0066!#",
+				network_name	=>	"anvil_sn_network",
+				network_id	=>	"anvil_sn_network",
+				network_value	=>	$conf->{cgi}{anvil_sn_network},
+				subnet_name	=>	"anvil_sn_subnet",
+				subnet_id	=>	"anvil_sn_subnet",
+				subnet_value	=>	$conf->{cgi}{anvil_sn_subnet},
+				star		=>	$conf->{form}{anvil_sn_network_star},
+				more_info	=>	"$anvil_sn_network_more_info",
+			});
+		}
 		
 		# Anvil! IFN Network definition
-		my $anvil_ifn_network_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
-			row		=>	"#!string!row_0164!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0067!#" : "#!string!explain_0067!#",
-			network_name	=>	"anvil_ifn_network",
-			network_id	=>	"anvil_ifn_network",
-			network_value	=>	$conf->{cgi}{anvil_ifn_network},
-			subnet_name	=>	"anvil_ifn_subnet",
-			subnet_id	=>	"anvil_ifn_subnet",
-			subnet_value	=>	$conf->{cgi}{anvil_ifn_subnet},
-			star		=>	$conf->{form}{anvil_ifn_network_star},
-			more_info	=>	"$anvil_ifn_network_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{ifn_network}) && 
+		    ($conf->{sys}{install_manifest}{'default'}{ifn_subnet}) && 
+		    (not $conf->{sys}{install_manifest}{show}{ifn_network_fields}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ifn_network",
+				id		=>	"anvil_ifn_network",
+				value		=>	$conf->{cgi}{anvil_ifn_network},
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ifn_subnet",
+				id		=>	"anvil_ifn_subnet",
+				value		=>	$conf->{cgi}{anvil_ifn_subnet},
+			});
+		}
+		else
+		{
+			my $anvil_ifn_network_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+				row		=>	"#!string!row_0164!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0067!#" : "#!string!explain_0067!#",
+				network_name	=>	"anvil_ifn_network",
+				network_id	=>	"anvil_ifn_network",
+				network_value	=>	$conf->{cgi}{anvil_ifn_network},
+				subnet_name	=>	"anvil_ifn_subnet",
+				subnet_id	=>	"anvil_ifn_subnet",
+				subnet_value	=>	$conf->{cgi}{anvil_ifn_subnet},
+				star		=>	$conf->{form}{anvil_ifn_network_star},
+				more_info	=>	"$anvil_ifn_network_more_info",
+			});
+		}
 		
 		# Anvil! Media Library size
-		my $anvil_media_library_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
-			row		=>	"#!string!row_0191!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0114!#" : "#!string!explain_0114!#",
-			name		=>	"anvil_media_library_size",
-			id		=>	"anvil_media_library_size",
-			value		=>	$conf->{cgi}{anvil_media_library_size},
-			'select'	=>	build_select($conf, "anvil_media_library_unit", 0, 0, 60, $conf->{cgi}{anvil_media_library_unit}, ["GiB", "TiB"]),
-			star		=>	$conf->{form}{anvil_media_library_star},
-			more_info	=>	"$anvil_media_library_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{library_size}) && 
+		    ($conf->{sys}{install_manifest}{'default'}{library_unit}) && 
+		    (not $conf->{sys}{install_manifest}{show}{library_fields}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_media_library_size",
+				id		=>	"anvil_media_library_size",
+				value		=>	$conf->{cgi}{anvil_media_library_size},
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_media_library_unit",
+				id		=>	"anvil_media_library_unit",
+				value		=>	$conf->{cgi}{anvil_media_library_unit},
+			});
+		}
+		else
+		{
+			my $anvil_media_library_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
+				row		=>	"#!string!row_0191!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0114!#" : "#!string!explain_0114!#",
+				name		=>	"anvil_media_library_size",
+				id		=>	"anvil_media_library_size",
+				value		=>	$conf->{cgi}{anvil_media_library_size},
+				'select'	=>	build_select($conf, "anvil_media_library_unit", 0, 0, 60, $conf->{cgi}{anvil_media_library_unit}, ["GiB", "TiB"]),
+				star		=>	$conf->{form}{anvil_media_library_star},
+				more_info	=>	"$anvil_media_library_more_info",
+			});
+		}
 		
 		# Anvil! Storage Pools
-		my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
-			row		=>	"#!string!row_0199!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
-			name		=>	"anvil_storage_pool1_size",
-			id		=>	"anvil_storage_pool1_size",
-			value		=>	$conf->{cgi}{anvil_storage_pool1_size},
-			'select'	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
-			star		=>	$conf->{form}{anvil_storage_pool1_star},
-			more_info	=>	"$anvil_storage_pool1_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{pool1_size}) && 
+		    ($conf->{sys}{install_manifest}{'default'}{pool1_unit}) && 
+		    (not $conf->{sys}{install_manifest}{show}{pool1_fields}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_storage_pool1_size",
+				id		=>	"anvil_storage_pool1_size",
+				value		=>	$conf->{cgi}{anvil_storage_pool1_size},
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_storage_pool1_unit",
+				id		=>	"anvil_storage_pool1_unit",
+				value		=>	$conf->{cgi}{anvil_storage_pool1_unit},
+			});
+		}
+		else
+		{
+			my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
+				row		=>	"#!string!row_0199!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
+				name		=>	"anvil_storage_pool1_size",
+				id		=>	"anvil_storage_pool1_size",
+				value		=>	$conf->{cgi}{anvil_storage_pool1_size},
+				'select'	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
+				star		=>	$conf->{form}{anvil_storage_pool1_star},
+				more_info	=>	"$anvil_storage_pool1_more_info",
+			});
+		}
 		
 		# Anvil! extra repos
-		if (not $conf->{sys}{install_manifest}{show_repository_field})
+		if (not $conf->{sys}{install_manifest}{show}{repository_field})
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_repositories",
@@ -2306,18 +2437,30 @@ sub create_install_manifest
 		print AN::Common::template($conf, "config.html", "install-manifest-form-common-header");
 		
 		# Anvil! (cman cluster) Name
-		my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0005!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0095!#" : "#!string!explain_0095!#",
-			name		=>	"anvil_name",
-			id		=>	"anvil_name",
-			value		=>	$conf->{cgi}{anvil_name},
-			star		=>	$conf->{form}{anvil_name_star},
-			more_info	=>	"$anvil_name_more_info",
-		});
+		if (($conf->{sys}{install_manifest}{'default'}{name}) && 
+		    (not $conf->{sys}{install_manifest}{show}{name_field}))
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_name",
+				id		=>	"anvil_name",
+				value		=>	$conf->{cgi}{anvil_name},
+			});
+		}
+		else
+		{
+			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0005!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0095!#" : "#!string!explain_0095!#",
+				name		=>	"anvil_name",
+				id		=>	"anvil_name",
+				value		=>	$conf->{cgi}{anvil_name},
+				star		=>	$conf->{form}{anvil_name_star},
+				more_info	=>	"$anvil_name_more_info",
+			});
+		}
 		# The "anvil_name" is stored as a hidden field.
 		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 			name		=>	"anvil_cluster_name",
@@ -2326,30 +2469,41 @@ sub create_install_manifest
 		});
 		
 		# Anvil! IFN Gateway
-		my $anvil_ifn_gateway_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0188!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0092!#" : "#!string!explain_0092!#",
-			name		=>	"anvil_ifn_gateway",
-			id		=>	"anvil_ifn_gateway",
-			value		=>	$conf->{cgi}{anvil_ifn_gateway},
-			star		=>	$conf->{form}{anvil_ifn_gateway_star},
-			more_info	=>	"$anvil_ifn_gateway_more_info",
-		});
-		
-		# DNS entries might be hidden.
-		if (not $conf->{sys}{install_manifest}{show_dns_fields})
+		if (not $conf->{sys}{install_manifest}{show}{ifn_network_fields})
 		{
-			# Anvil! IFN Primary DNS
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ifn_gateway",
+				id		=>	"anvil_ifn_gateway",
+				value		=>	$conf->{cgi}{anvil_ifn_gateway},
+			});
+		}
+		else
+		{
+			my $anvil_ifn_gateway_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0188!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0092!#" : "#!string!explain_0092!#",
+				name		=>	"anvil_ifn_gateway",
+				id		=>	"anvil_ifn_gateway",
+				value		=>	$conf->{cgi}{anvil_ifn_gateway},
+				star		=>	$conf->{form}{anvil_ifn_gateway_star},
+				more_info	=>	"$anvil_ifn_gateway_more_info",
+			});
+		}
+		
+		# DNS
+		if (not $conf->{sys}{install_manifest}{show}{dns_fields})
+		{
+			# Anvil! Primary DNS
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_dns1",
 				id		=>	"anvil_dns1",
 				value		=>	$conf->{cgi}{anvil_dns1},
 			});
 			
-			# Anvil! IFN Secondary DNS
+			# Anvil! Secondary DNS
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_dns2",
 				id		=>	"anvil_dns2",
@@ -2358,7 +2512,7 @@ sub create_install_manifest
 		}
 		else
 		{
-			# Anvil! IFN Primary DNS
+			# Anvil! Primary DNS
 			my $anvil_dns1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
 				url	=>	"http://en.wikipedia.org/wiki/Domain_Name_System",
 			});
@@ -2372,7 +2526,7 @@ sub create_install_manifest
 				more_info	=>	"$anvil_dns1_more_info",
 			});
 			
-			# Anvil! IFN Secondary DNS
+			# Anvil! Secondary DNS
 			my $anvil_dns2_more_info = "";
 			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
 				row		=>	"#!string!row_0190!#",
@@ -2385,31 +2539,51 @@ sub create_install_manifest
 			});
 		}
 		
-		# Anvil! IFN Primary NTP
-		my $anvil_ntp1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-			url	=>	"https://en.wikipedia.org/wiki/Network_Time_Protocol",
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0192!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0097!#" : "#!string!explain_0097!#",
-			name		=>	"anvil_ntp1",
-			id		=>	"anvil_ntp1",
-			value		=>	$conf->{cgi}{anvil_ntp1},
-			star		=>	$conf->{form}{anvil_ntp1_star},
-			more_info	=>	"$anvil_ntp1_more_info",
-		});
-		
-		# Anvil! IFN Secondary NTP
-		my $anvil_ntp2_more_info = "";
-		print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-			row		=>	"#!string!row_0193!#",
-			explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0098!#" : "#!string!explain_0098!#",
-			name		=>	"anvil_ntp2",
-			id		=>	"anvil_ntp2",
-			value		=>	$conf->{cgi}{anvil_ntp2},
-			star		=>	$conf->{form}{anvil_ntp2_star},
-			more_info	=>	"$anvil_ntp2_more_info",
-		});
+		# NTP
+		if (not $conf->{sys}{install_manifest}{show}{ntp_fields})
+		{
+			# Anvil! Primary NTP
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ntp1",
+				id		=>	"anvil_ntp1",
+				value		=>	$conf->{cgi}{anvil_ntp1},
+			});
+			
+			# Anvil! Secondary NTP
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ntp2",
+				id		=>	"anvil_ntp2",
+				value		=>	$conf->{cgi}{anvil_ntp2},
+			});
+		}
+		else
+		{
+			# Anvil! Primary NTP
+			my $anvil_ntp1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://en.wikipedia.org/wiki/Network_Time_Protocol",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0192!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0097!#" : "#!string!explain_0097!#",
+				name		=>	"anvil_ntp1",
+				id		=>	"anvil_ntp1",
+				value		=>	$conf->{cgi}{anvil_ntp1},
+				star		=>	$conf->{form}{anvil_ntp1_star},
+				more_info	=>	"$anvil_ntp1_more_info",
+			});
+			
+			# Anvil! Secondary NTP
+			my $anvil_ntp2_more_info = "";
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0193!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0098!#" : "#!string!explain_0098!#",
+				name		=>	"anvil_ntp2",
+				id		=>	"anvil_ntp2",
+				value		=>	$conf->{cgi}{anvil_ntp2},
+				star		=>	$conf->{form}{anvil_ntp2_star},
+				more_info	=>	"$anvil_ntp2_more_info",
+			});
+		}
 		
 		# Now show the header for the Foundation pack section.
 		print AN::Common::template($conf, "config.html", "install-manifest-form-foundation-pack-header");
@@ -2446,33 +2620,53 @@ sub create_install_manifest
 				$say_ip_url       = "";
 			}
 			
-			# Switch name
-			my $network_switch_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_name_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_name_row",
-				explain		=>	"$say_name_explain",
-				name		=>	"$name_key",
-				id		=>	"$name_key",
-				value		=>	$conf->{cgi}{$name_key},
-				star		=>	$conf->{form}{$name_star_key},
-				more_info	=>	"$network_switch_name_more_info",
-			});
-			
-			# Switch IP
-			my $network_switch_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_ip_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_ip_row",
-				explain		=>	"$say_ip_explain",
-				name		=>	"$ip_key",
-				id		=>	"$ip_key",
-				value		=>	$conf->{cgi}{$ip_key},
-				star		=>	$conf->{form}{$ip_star_key},
-				more_info	=>	"$network_switch_ip_more_info",
-			});
+			# Switches
+			if (not $conf->{sys}{install_manifest}{show}{switch_fields})
+			{
+				# Switch name
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+				});
+				
+				# Switch IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+				});
+			}
+			else
+			{
+				# Switch name
+				my $network_switch_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_name_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_name_row",
+					explain		=>	"$say_name_explain",
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+					star		=>	$conf->{form}{$name_star_key},
+					more_info	=>	"$network_switch_name_more_info",
+				});
+				
+				# Switch IP
+				my $network_switch_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_ip_row",
+					explain		=>	"$say_ip_explain",
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+					star		=>	$conf->{form}{$ip_star_key},
+					more_info	=>	"$network_switch_ip_more_info",
+				});
+			}
 		}
 		
 		# UPSes
@@ -2507,33 +2701,53 @@ sub create_install_manifest
 				$say_ip_url       = "";
 			}
 			
-			# UPS name
-			my $network_ups_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_name_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_name_row",
-				explain		=>	"$say_name_explain",
-				name		=>	"$name_key",
-				id		=>	"$name_key",
-				value		=>	$conf->{cgi}{$name_key},
-				star		=>	$conf->{form}{$name_star_key},
-				more_info	=>	"$network_ups_name_more_info",
-			});
-			
-			# UPS IP
-			my $network_ups_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_ip_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_ip_row",
-				explain		=>	"$say_ip_explain",
-				name		=>	"$ip_key",
-				id		=>	"$ip_key",
-				value		=>	$conf->{cgi}{$ip_key},
-				star		=>	$conf->{form}{$ip_star_key},
-				more_info	=>	"$network_ups_ip_more_info",
-			});
+			# UPSes
+			if (not $conf->{sys}{install_manifest}{show}{ups_fields})
+			{
+				# UPS name
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+				});
+				
+				# UPS IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+				});
+			}
+			else
+			{
+				# UPS name
+				my $network_ups_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_name_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_name_row",
+					explain		=>	"$say_name_explain",
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+					star		=>	$conf->{form}{$name_star_key},
+					more_info	=>	"$network_ups_name_more_info",
+				});
+				
+				# UPS IP
+				my $network_ups_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_ip_row",
+					explain		=>	"$say_ip_explain",
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+					star		=>	$conf->{form}{$ip_star_key},
+					more_info	=>	"$network_ups_ip_more_info",
+				});
+			}
 		}
 		
 		# Build the two or four PDU form entries.
@@ -2582,33 +2796,57 @@ sub create_install_manifest
 						say_pdu	=>	"$say_pdu",
 					}});
 			
-			# PDU Name
-			my $pdu_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_name_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_pdu_name",
-				explain		=>	"$say_name_explain",
-				name		=>	"$pdu_name_key",
-				id		=>	"$pdu_name_key",
-				value		=>	$conf->{cgi}{$pdu_name_key},
-				star		=>	$conf->{form}{$pdu_star_name_key},
-				more_info	=>	"$pdu_name_more_info",
-			});
-			
-			# PDU IP
-			my $pdu_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_ip_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_pdu_ip",
-				explain		=>	"$say_ip_explain",
-				name		=>	"$pdu_ip_key",
-				id		=>	"$pdu_ip_key",
-				value		=>	$conf->{cgi}{$pdu_ip_key},
-				star		=>	$conf->{form}{$pdu_star_ip_key},
-				more_info	=>	"$pdu_ip_more_info",
-			});
+			# PDUs
+			my $default_pdu_name_key = "pdu${i}_name";
+			my $default_pdu_ip_key   = "pdu${i}_ip";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_pdu_name_key}) && 
+			    ($conf->{sys}{install_manifest}{'default'}{$default_pdu_ip_key}) && 
+			    (not $conf->{sys}{install_manifest}{show}{pdu_fields}))
+			{
+				# PDU name
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$pdu_name_key",
+					id		=>	"$pdu_name_key",
+					value		=>	$conf->{cgi}{$pdu_name_key},
+				});
+				
+				# PDU IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$pdu_ip_key",
+					id		=>	"$pdu_ip_key",
+					value		=>	$conf->{cgi}{$pdu_ip_key},
+				});
+			}
+			else
+			{
+				# PDU Name
+				my $pdu_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_name_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_pdu_name",
+					explain		=>	"$say_name_explain",
+					name		=>	"$pdu_name_key",
+					id		=>	"$pdu_name_key",
+					value		=>	$conf->{cgi}{$pdu_name_key},
+					star		=>	$conf->{form}{$pdu_star_name_key},
+					more_info	=>	"$pdu_name_more_info",
+				});
+				
+				# PDU IP
+				my $pdu_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_pdu_ip",
+					explain		=>	"$say_ip_explain",
+					name		=>	"$pdu_ip_key",
+					id		=>	"$pdu_ip_key",
+					value		=>	$conf->{cgi}{$pdu_ip_key},
+					star		=>	$conf->{form}{$pdu_star_ip_key},
+					more_info	=>	"$pdu_ip_more_info",
+				});
+			}
 		}
 		
 		# Dashboards
@@ -2654,47 +2892,74 @@ sub create_install_manifest
 				$say_ifn_ip_url     = "";
 			}
 			
-			# Striker name
-			my $striker_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_name_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_name_row",
-				explain		=>	"$say_name_explain",
-				name		=>	"$name_key",
-				id		=>	"$name_key",
-				value		=>	$conf->{cgi}{$name_key},
-				star		=>	$conf->{form}{$name_star_key},
-				more_info	=>	"$striker_name_more_info",
-			});
-			
-			# Striker BCN IP
-			my $striker_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_bcn_ip_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_bcn_ip_row",
-				explain		=>	"$say_bcn_ip_explain",
-				name		=>	"$bcn_ip_key",
-				id		=>	"$bcn_ip_key",
-				value		=>	$conf->{cgi}{$bcn_ip_key},
-				star		=>	$conf->{form}{$bcn_ip_star_key},
-				more_info	=>	"$striker_bcn_ip_more_info",
-			});
-			
-			# Striker IFN IP
-			my $striker_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"$say_ifn_ip_url",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"$say_ifn_ip_row",
-				explain		=>	"$say_ifn_ip_explain",
-				name		=>	"$ifn_ip_key",
-				id		=>	"$ifn_ip_key",
-				value		=>	$conf->{cgi}{$ifn_ip_key},
-				star		=>	$conf->{form}{$ifn_ip_star_key},
-				more_info	=>	"$striker_ifn_ip_more_info",
-			});
+			# Dashboards
+			if (not $conf->{sys}{install_manifest}{show}{dashboard_fields})
+			{
+				# Striker name
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+				});
+				
+				# Striker BCN IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$bcn_ip_key",
+					id		=>	"$bcn_ip_key",
+					value		=>	$conf->{cgi}{$bcn_ip_key},
+				});
+				
+				# Striker IFN IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$ifn_ip_key",
+					id		=>	"$ifn_ip_key",
+					value		=>	$conf->{cgi}{$ifn_ip_key},
+				});
+			}
+			else
+			{
+				# Striker name
+				my $striker_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_name_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_name_row",
+					explain		=>	"$say_name_explain",
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+					star		=>	$conf->{form}{$name_star_key},
+					more_info	=>	"$striker_name_more_info",
+				});
+				
+				# Striker BCN IP
+				my $striker_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_bcn_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_bcn_ip_row",
+					explain		=>	"$say_bcn_ip_explain",
+					name		=>	"$bcn_ip_key",
+					id		=>	"$bcn_ip_key",
+					value		=>	$conf->{cgi}{$bcn_ip_key},
+					star		=>	$conf->{form}{$bcn_ip_star_key},
+					more_info	=>	"$striker_bcn_ip_more_info",
+				});
+				
+				# Striker IFN IP
+				my $striker_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_ifn_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_ifn_ip_row",
+					explain		=>	"$say_ifn_ip_explain",
+					name		=>	"$ifn_ip_key",
+					id		=>	"$ifn_ip_key",
+					value		=>	$conf->{cgi}{$ifn_ip_key},
+					star		=>	$conf->{form}{$ifn_ip_star_key},
+					more_info	=>	"$striker_ifn_ip_more_info",
+				});
+			}
 		}
 		
 		# Spacer
@@ -2728,84 +2993,149 @@ sub create_install_manifest
 			}
 			
 			# Node's hostname
-			my $anvil_node_name_key       = "anvil_node${j}_name";
-			my $anvil_node_name_star_key  = "anvil_node${j}_name_star";
-			my $anvil_node_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0165!#",
-				explain		=>	$explain_name,
-				name		=>	$anvil_node_name_key,
-				id		=>	$anvil_node_name_key,
-				value		=>	$conf->{cgi}{$anvil_node_name_key},
-				star		=>	$conf->{form}{$anvil_node_name_star_key},
-				more_info	=>	"$anvil_node_name_more_info",
-			});
+			my $anvil_node_name_key      = "anvil_node${j}_name";
+			my $anvil_node_name_star_key = "anvil_node${j}_name_star";
+			my $default_node_name_key    = "node${j}_name";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_node_name_key}) && 
+			    (not $conf->{sys}{install_manifest}{show}{nodes_name_field}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	$anvil_node_name_key,
+					id		=>	$anvil_node_name_key,
+					value		=>	$conf->{cgi}{$anvil_node_name_key},
+				});
+			}
+			else
+			{
+				my $anvil_node_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"#!string!row_0165!#",
+					explain		=>	$explain_name,
+					name		=>	$anvil_node_name_key,
+					id		=>	$anvil_node_name_key,
+					value		=>	$conf->{cgi}{$anvil_node_name_key},
+					star		=>	$conf->{form}{$anvil_node_name_star_key},
+					more_info	=>	"$anvil_node_name_more_info",
+				});
+			}
 			
 			# Node's BCN IP address
-			my $anvil_node_bcn_ip_key       = "anvil_node${j}_bcn_ip";
-			my $anvil_node_bcn_ip_star_key  = "anvil_node${j}_bcn_ip_star";
-			my $anvil_node_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0166!#",
-				explain		=>	$explain_bcn_ip,
-				name		=>	$anvil_node_bcn_ip_key,
-				id		=>	$anvil_node_bcn_ip_key,
-				value		=>	$conf->{cgi}{$anvil_node_bcn_ip_key},
-				star		=>	$conf->{form}{$anvil_node_bcn_ip_star_key},
-				more_info	=>	"$anvil_node_bcn_ip_more_info",
-			});
+			my $anvil_node_bcn_ip_key      = "anvil_node${j}_bcn_ip";
+			my $anvil_node_bcn_ip_star_key = "anvil_node${j}_bcn_ip_star";
+			my $default_node_bcn_ip_key    = "node${j}_bcn_ip";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_node_bcn_ip_key}) && 
+			    (not $conf->{sys}{install_manifest}{show}{nodes_bcn_field}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	$anvil_node_bcn_ip_key,
+					id		=>	$anvil_node_bcn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_bcn_ip_key},
+				});
+			}
+			else
+			{
+				my $anvil_node_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"#!string!row_0166!#",
+					explain		=>	$explain_bcn_ip,
+					name		=>	$anvil_node_bcn_ip_key,
+					id		=>	$anvil_node_bcn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_bcn_ip_key},
+					star		=>	$conf->{form}{$anvil_node_bcn_ip_star_key},
+					more_info	=>	"$anvil_node_bcn_ip_more_info",
+				});
+			}
 			
 			# Node's IPMI IP address
-			my $anvil_node_ipmi_ip_key       = "anvil_node${j}_ipmi_ip";
-			my $anvil_node_ipmi_ip_star_key  = "anvil_node${j}_ipmi_ip_star";
-			my $anvil_node_ipmi_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0168!#",
-				explain		=>	$explain_ipmi_ip,
-				name		=>	$anvil_node_ipmi_ip_key,
-				id		=>	$anvil_node_ipmi_ip_key,
-				value		=>	$conf->{cgi}{$anvil_node_ipmi_ip_key},
-				star		=>	$conf->{form}{$anvil_node_ipmi_ip_star_key},
-				more_info	=>	"$anvil_node_ipmi_ip_more_info",
-			});
+			my $anvil_node_ipmi_ip_key      = "anvil_node${j}_ipmi_ip";
+			my $anvil_node_ipmi_ip_star_key = "anvil_node${j}_ipmi_ip_star";
+			my $default_node_ipmi_ip_key    = "node${j}_ipmi_ip";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_node_ipmi_ip_key}) && 
+			    (not $conf->{sys}{install_manifest}{show}{nodes_ipmi_field}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	$anvil_node_ipmi_ip_key,
+					id		=>	$anvil_node_ipmi_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_ipmi_ip_key},
+				});
+			}
+			else
+			{
+				my $anvil_node_ipmi_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"#!string!row_0168!#",
+					explain		=>	$explain_ipmi_ip,
+					name		=>	$anvil_node_ipmi_ip_key,
+					id		=>	$anvil_node_ipmi_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_ipmi_ip_key},
+					star		=>	$conf->{form}{$anvil_node_ipmi_ip_star_key},
+					more_info	=>	"$anvil_node_ipmi_ip_more_info",
+				});
+			}
 			
 			# Node's SN IP address
-			my $anvil_node_sn_ip_key       = "anvil_node${j}_sn_ip";
-			my $anvil_node_sn_ip_star_key  = "anvil_node${j}_sn_ip_star";
-			my $anvil_node_sn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0167!#",
-				explain		=>	$explain_sn_ip,
-				name		=>	$anvil_node_sn_ip_key,
-				id		=>	$anvil_node_sn_ip_key,
-				value		=>	$conf->{cgi}{$anvil_node_sn_ip_key},
-				star		=>	$conf->{form}{$anvil_node_sn_ip_star_key},
-				more_info	=>	"$anvil_node_sn_ip_more_info",
-			});
+			my $anvil_node_sn_ip_key      = "anvil_node${j}_sn_ip";
+			my $anvil_node_sn_ip_star_key = "anvil_node${j}_sn_ip_star";
+			my $default_node_sn_ip_key    = "node${j}_sn_ip";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_node_sn_ip_key}) && 
+			   (not $conf->{sys}{install_manifest}{show}{nodes_sn_field}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	$anvil_node_sn_ip_key,
+					id		=>	$anvil_node_sn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_sn_ip_key},
+				});
+			}
+			else
+			{
+				my $anvil_node_sn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"#!string!row_0167!#",
+					explain		=>	$explain_sn_ip,
+					name		=>	$anvil_node_sn_ip_key,
+					id		=>	$anvil_node_sn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_sn_ip_key},
+					star		=>	$conf->{form}{$anvil_node_sn_ip_star_key},
+					more_info	=>	"$anvil_node_sn_ip_more_info",
+				});
+			}
 			
 			# Node's IFN IP address
-			my $anvil_node_ifn_ip_key       = "anvil_node${j}_ifn_ip";
-			my $anvil_node_ifn_ip_star_key  = "anvil_node${j}_ifn_ip_star";
-			my $anvil_node_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0169!#",
-				explain		=>	$explain_ifn_ip,
-				name		=>	$anvil_node_ifn_ip_key,
-				id		=>	$anvil_node_ifn_ip_key,
-				value		=>	$conf->{cgi}{$anvil_node_ifn_ip_key},
-				star		=>	$conf->{form}{$anvil_node_ifn_ip_star_key},
-				more_info	=>	"$anvil_node_ifn_ip_more_info",
-			});
+			my $anvil_node_ifn_ip_key      = "anvil_node${j}_ifn_ip";
+			my $anvil_node_ifn_ip_star_key = "anvil_node${j}_ifn_ip_star";
+			my $default_node_ifn_ip_key    = "node${j}_ifn_ip";
+			if (($conf->{sys}{install_manifest}{'default'}{$default_node_ifn_ip_key}) && 
+			   (not $conf->{sys}{install_manifest}{show}{nodes_ifn_field}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	$anvil_node_ifn_ip_key,
+					id		=>	$anvil_node_ifn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_ifn_ip_key},
+				});
+			}
+			else
+			{
+				my $anvil_node_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"#!string!row_0169!#",
+					explain		=>	$explain_ifn_ip,
+					name		=>	$anvil_node_ifn_ip_key,
+					id		=>	$anvil_node_ifn_ip_key,
+					value		=>	$conf->{cgi}{$anvil_node_ifn_ip_key},
+					star		=>	$conf->{form}{$anvil_node_ifn_ip_star_key},
+					more_info	=>	"$anvil_node_ifn_ip_more_info",
+				});
+			}
 			
 			# Now we create an entry for each possible PDU (2 to 4).
 			foreach my $i (1..4)
@@ -2835,18 +3165,29 @@ sub create_install_manifest
 				# PDU entry.
 				my $pdu_outlet_key       = "anvil_node${j}_pdu${i}_outlet";
 				my $pdu_outlet_star_key  = "anvil_node${j}_pdu${i}_outlet_star";
-				my $pdu_outlet_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-					row		=>	"$say_pdu_name",
-					explain		=>	$say_explain,
-					name		=>	$pdu_outlet_key,
-					id		=>	$pdu_outlet_key,
-					value		=>	$conf->{cgi}{$pdu_outlet_key},
-					star		=>	$conf->{form}{$pdu_outlet_star_key},
-					more_info	=>	"$pdu_outlet_more_info",
-				});
+				if (not $conf->{sys}{install_manifest}{show}{nodes_ifn_field})
+				{
+					print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+						name		=>	$pdu_outlet_key,
+						id		=>	$pdu_outlet_key,
+						value		=>	$conf->{cgi}{$pdu_outlet_key},
+					});
+				}
+				else
+				{
+					my $pdu_outlet_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+						url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F",
+					});
+					print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+						row		=>	"$say_pdu_name",
+						explain		=>	$say_explain,
+						name		=>	$pdu_outlet_key,
+						id		=>	$pdu_outlet_key,
+						value		=>	$conf->{cgi}{$pdu_outlet_key},
+						star		=>	$conf->{form}{$pdu_outlet_star_key},
+						more_info	=>	"$pdu_outlet_more_info",
+					});
+				}
 			}
 			
 			print AN::Common::template($conf, "config.html", "install-manifest-form-nodes", {
@@ -4323,14 +4664,14 @@ sub show_summary_manifest
 			row		=>	"#!string!row_0276!#",
 			column1		=>	$conf->{cgi}{anvil_pdu1_name},
 			column2		=>	$conf->{cgi}{anvil_pdu1_ip},
-			column3		=>	$conf->{cgi}{anvil_pdu2_name},
-			column4		=>	$conf->{cgi}{anvil_pdu2_ip},
+			column3		=>	$conf->{cgi}{anvil_pdu3_name},
+			column4		=>	$conf->{cgi}{anvil_pdu3_ip},
 		});
 		# 'PDU 2' will be for '2A' and '2B'.
 		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
 			row		=>	"#!string!row_0277!#",
-			column1		=>	$conf->{cgi}{anvil_pdu3_name},
-			column2		=>	$conf->{cgi}{anvil_pdu3_ip},
+			column1		=>	$conf->{cgi}{anvil_pdu2_name},
+			column2		=>	$conf->{cgi}{anvil_pdu2_ip},
 			column3		=>	$conf->{cgi}{anvil_pdu4_name},
 			column4		=>	$conf->{cgi}{anvil_pdu4_ip},
 		});
@@ -4360,13 +4701,6 @@ sub show_summary_manifest
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
 		row		=>	"#!string!row_0191!#",
 		column1		=>	"$conf->{cgi}{anvil_media_library_size} $conf->{cgi}{anvil_media_library_unit}",
-		column2		=>	"&nbsp;",
-	});
-	
-	# Storage Pool 1 size
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
-		row		=>	"#!string!row_0199!#",
-		column1		=>	"$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}",
 		column2		=>	"&nbsp;",
 	});
 	
@@ -4518,9 +4852,17 @@ sub sanity_check_manifest_answers
 	my $problem = 0;
 	
 	# Make sure the sequence number is valid.
-	if (($conf->{cgi}{anvil_sequence}) && ($conf->{cgi}{anvil_sequence} =~ /\D/))
+	if (not $conf->{cgi}{anvil_sequence})
 	{
-		# If it's defined, it can only be a digit.
+		# Not allowed to be blank.
+		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0161!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_sequence} =~ /\D/)
+	{
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
 			message	=>	AN::Common::get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0161!#"}}),
