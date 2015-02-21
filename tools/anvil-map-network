@@ -902,21 +902,20 @@ sub select_nics
 	{
 		print "#!string!script_0036!#\n" if $conf->{debug};
 		print "#!string!script_0069!#\n";
-		print "#!string!script_0037!#\n";
 	}
 	else
 	{
 		print "-=] Configuring network to enable access to Anvil! systems.\n\n" if $conf->{debug};
-		print "Please unplug, wait a moment, and plug back in the interface you want to make:\n";
 	}
 	foreach my $nic (@{$conf->{nics}})
 	{
+		#print "[ Debug ] ".__LINE__."; - nic: [$nic]\n";
 		my $timer = 0;
 		my $plug_in_message_printed = 0;
 		while (my $down_links = check_nic_states($conf))
 		{
-			#print "[ Debug ] - time: [$timer]\n";
-			if ($timer > 10)
+			#print "[ Debug ] ".__LINE__."; - time: [$timer]\n";
+			if ($timer > 5)
 			{
 				if (not $plug_in_message_printed)
 				{
@@ -930,10 +929,19 @@ sub select_nics
 					}
 					$plug_in_message_printed = 1;
 				}
-				#print "MAC address of down links: [$down_links]\n";
+				#print "[ Debug ] ".__LINE__."; - MAC address of down links: [$down_links]\n";
 				sleep 1;
-				$timer++;
 			}
+			$timer++;
+			sleep 1;
+		}
+		if ($conf->{script})
+		{
+			print "#!string!script_0037!#\n";
+		}
+		else
+		{
+			print "Please unplug, wait a moment, and plug back in the interface you want to make:\n";
 		}
 		my $say_nic = $nic;
 		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }

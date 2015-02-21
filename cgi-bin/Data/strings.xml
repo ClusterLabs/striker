@@ -657,7 +657,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0242">Registration failed</key>
 		<key name="row_0243"><![CDATA[Checking for Execution Environment]]></key>
 		<key name="row_0244">Repositories</key>
-		<key name="row_0245"><![CDATA[Adding repository: <span class="code">#!variable!repo!#</span>]]></key>
+		<key name="row_0245"><![CDATA[Adding local repository]]></key>
 		<key name="row_0246">Partitioning Pool 1</key>
 		<key name="row_0247">Rebooting</key>
 		<key name="row_0248">Partitioning Pool 2</key>
@@ -1048,8 +1048,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="state_0097">Manual Reboot Needed</key>
 		<key name="state_0098"><![CDATA[Error parsing: [<span class="highlight_detail">cluster.conf</span>]]]></key>
 		<key name="state_0099">Partition Warning</key>
-		<key name="state_0100"></key>
-		<key name="state_0101"></key>
+		<key name="state_0100">Local IPs unknown</key>
+		<key name="state_0101">No local repos found</key>
 		<key name="state_0102"></key>
 		<key name="state_0103"></key>
 		<key name="state_0104"></key>

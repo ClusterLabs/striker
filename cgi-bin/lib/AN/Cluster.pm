@@ -2727,9 +2727,9 @@ sub create_install_manifest
 				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
 					row		=>	"$say_name_row",
 					explain		=>	"$say_name_explain",
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
-					value		=>	$conf->{cgi}{$ip_key},
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
 					star		=>	$conf->{form}{$name_star_key},
 					more_info	=>	"$network_ups_name_more_info",
 				});

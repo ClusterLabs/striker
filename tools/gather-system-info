@@ -14,9 +14,9 @@ my $conf = {
 		hostname	=>	"--",
 	},
 	paths	=>	{
-		ethtool		=>	"/usr/sbin/ethtool",
-		hostnamectl	=>	"/usr/bin/hostnamectl",
-		ip		=>	"/usr/sbin/ip",
+		ethtool		=>	"/sbin/ethtool",
+		hostname	=>	"/bin/hostname",
+		ip		=>	"/sbin/ip",
 		interfaces	=>	"/etc/sysconfig/network-scripts/",
 	},
 };
@@ -139,7 +139,7 @@ sub read_hostname
 {
 	my ($conf) = @_;
 
-	my $shell_call  = "$conf->{paths}{hostnamectl}";
+	my $shell_call  = "$conf->{paths}{hostname}";
 	my $file_handle = IO::Handle->new();
 	open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
 	while (<$file_handle>)
@@ -151,6 +151,11 @@ sub read_hostname
 			my $hostname = $1;
 			print "hostname,$hostname\n";
 			$conf->{data}{hostname} = $hostname;
+		}
+		else
+		{
+			print "hostname,$line\n";
+			$conf->{data}{hostname} = $line;
 		}
 	}
 	$file_handle->close();
@@ -178,7 +183,8 @@ sub read_ip
 			$interface_number = $1;
 			$interface        = $2;
 			#print "DEBUG: $THIS_FILE ".__LINE__."; interface number: [$interface_number], interface: [$interface]\n";
-			if ($interface eq "lo")
+			# bond0 shows up when bonding is used with other names.
+			if (($interface eq "lo") || ($interface eq "bond0"))
 			{
 				$interface        = "";
 				$interface_number = "";
@@ -213,6 +219,7 @@ sub read_ip
 		{
 			$conf->{interface}{$interface}{ip}     = $1;
 			$conf->{interface}{$interface}{subnet} = $2;
+			#print "DEBUG: $THIS_FILE ".__LINE__."; interface::${interface}::ip: [$conf->{interface}{$interface}{ip}], interface::${interface}::subnet: [$conf->{interface}{$interface}{subnet}]\n";
 		}
 		if ($line =~ /inet6 (.*?)\/(\d+) /)
 		{
@@ -278,10 +285,9 @@ sub report_interfaces
 	my ($conf) = @_;
 	
 	# Before I print
-	
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
 	{
-		next if $interface eq "lo";
+		next if (($interface eq "lo") || ($interface eq "bond0"));
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
 		{
 			if ($key eq "subnet")

@@ -2057,29 +2057,57 @@ sub configure_iso_source
 			
 			# Write out the files.
 			print "- Writing out CentOS node 01 kickstart file.\n";
-			open (my $file_handle, ">", $centos_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node1_ks_file], the error was: $!\n";
-			print $file_handle $centos_node1_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_node1_ks_file].\n";
+			if (-e $centos_node1_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open (my $file_handle, ">", $centos_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node1_ks_file], the error was: $!\n";
+				print $file_handle $centos_node1_ks;
+				close $file_handle;
+				print "- Wrote: [$centos_node1_ks_file].\n";
+			}
 			
 			print "- Writing out CentOS node 02 kickstart file.\n";
-			open ($file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
-			print $file_handle $centos_node2_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_node2_ks_file].\n";
+			if (-e $centos_node2_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
+				print $file_handle $centos_node2_ks;
+				close $file_handle;
+				print "- Wrote: [$centos_node2_ks_file].\n";
+			}
 
 			print "- Writing out CentOS striker 01 kickstart file.\n";
-			open ($file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
-			print $file_handle $centos_striker1_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_striker1_ks_file].\n";
+			if (-e $centos_striker1_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
+				print $file_handle $centos_striker1_ks;
+				close $file_handle;
+				print "- Wrote: [$centos_striker1_ks_file].\n";
+			}
 
 			print "- Writing out CentOS striker 02 kickstart file.\n";
-			open ($file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
-			print $file_handle $centos_striker2_ks;
-			close $file_handle;
-			print "- Wrote: [$centos_striker2_ks_file].\n";
-			print "- CentOS PXE configuration complete.\n";
+			if (-e $centos_striker2_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
+				print $file_handle $centos_striker2_ks;
+				close $file_handle;
+				print "- Wrote: [$centos_striker2_ks_file].\n";
+				print "- CentOS PXE configuration complete.\n";
+			}
 		}
 	}
 
@@ -2223,28 +2251,56 @@ sub configure_iso_source
 			
 			# Write out the files.
 			print "- Writing out RHEL node 01 kickstart file.\n";
-			open (my $file_handle, ">", $rhel_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
-			print $file_handle $rhel_node1_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_node1_ks_file].\n";
+			if (-e $rhel_node1_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open (my $file_handle, ">", $rhel_node1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node1_ks_file], the error was: $!\n";
+				print $file_handle $rhel_node1_ks;
+				close $file_handle;
+				print "- Wrote: [$rhel_node1_ks_file].\n";
+			}
 			
 			print "- Writing out RHEL node 02 kickstart file.\n";
-			open ($file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
-			print $file_handle $rhel_node2_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_node2_ks_file].\n";
+			if (-e $rhel_node2_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
+				print $file_handle $rhel_node2_ks;
+				close $file_handle;
+				print "- Wrote: [$rhel_node2_ks_file].\n";
+			}
 
 			print "- Writing out RHEL striker 01 kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
-			print $file_handle $rhel_striker1_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_striker1_ks_file].\n";
+			if (-e $rhel_striker1_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
+				print $file_handle $rhel_striker1_ks;
+				close $file_handle;
+				print "- Wrote: [$rhel_striker1_ks_file].\n";
+			}
 
 			print "- Writing out RHEL striker 02 kickstart file.\n";
-			open ($file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
-			print $file_handle $rhel_striker2_ks;
-			close $file_handle;
-			print "- Wrote: [$rhel_striker2_ks_file].\n";
+			if (-e $rhel_striker2_ks_file)
+			{
+				print "- Already exists, skipping.\n";
+			}
+			else
+			{
+				open ($file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
+				print $file_handle $rhel_striker2_ks;
+				close $file_handle;
+				print "- Wrote: [$rhel_striker2_ks_file].\n";
+			}
 			print "- RHEL PXE configuration complete.\n";
 		}
 	}
@@ -2605,23 +2661,22 @@ plymouth-set-default-theme details -R
 		$os_directory = "rhel6";
 		$say_os       = "RHEL";
 	}
-	### TODO: Enable an option to setup this machine as a local repo
+	### NOTE: Striker's Install Manifest should handle adding repos as
+	###       needed now.
 	if (0)
 	{
 		$kickstart .= "
+### Note: dual 'baseurl=' definitions work, but are not defined so it might
+###       be worth approaching this differently later.
 # Add local repos
-cat > /etc/yum.repos.d/striker-$conf->{sys}{hostname}-$os.repo << EOF
-[striker-$conf->{sys}{hostname}-bcn_$os]
-name=Striker $conf->{sys}{hostname}'s $say_os 6 BCN repo.
+cat > /etc/yum.repos.d/$conf->{sys}{hostname}_$os.repo << EOF
+[$conf->{sys}{hostname}-$os]
+name=Striker $conf->{sys}{hostname}'s $say_os 6 repository
 baseurl=http://$conf->{network}{bcn}{ip}/$os_directory/x86_64/img/
-enabled=1
-gpgcheck=0
-
-[striker-$conf->{sys}{hostname}-ifn_$os]
-name=Striker $conf->{sys}{hostname}'s $say_os 6 IFN repo.
 baseurl=http://$conf->{network}{ifn}{ip}/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
+skip_if_unavailable=1
 EOF
 ";
 	}
@@ -2727,7 +2782,10 @@ sub configure_pxe_config
 	print "Configuring PXE server configuration files.\n";
 	if (-e $conf->{path}{pxe_default_config})
 	{
-		backup_file($conf, $conf->{path}{pxe_default_config});
+		# Exit, don't overwrite existing configs.
+		print "- PXE configurtion file already exists, skipping.\n";
+		print "Done.\n\n";
+		return(0);
 	}
 	
 	my $pxe_background = ($conf->{path}{pxe_background_source} =~ /^.*\/(.*)$/)[0];
@@ -2791,7 +2849,7 @@ MENU COLOR help        0  #c0ffffff #00000000 std      # Help text, if set via '
 LABEL next
 	MENU LABEL ^1) Boot the next device as configured in your BIOS
 	MENU DEFAULT
-	localboot
+	localboot -1
 ";
 	my $centos_short = $conf->{pxe}{centos}{short_name};
 	my $rhel_short   = $conf->{pxe}{rhel}{short_name};
@@ -5988,9 +6046,6 @@ SWITCHES
  -n <hostname>
 
 	This sets the host name of the Striker dashboard.
-
-	Use this to prevent adding the AN! software repository to this striker.
-	If specified and if the repo exists, it will be removed.
 
  --no-an-repo
 

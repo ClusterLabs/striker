@@ -124,6 +124,10 @@ sub run_new_install_manifest
 		}
 	}
 	
+	# If the node(s) are not online, we'll set up a repo pointing at this
+	# maching *if* we're configured to be a repo.
+	check_local_repo($conf);
+	
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
 	
@@ -244,9 +248,9 @@ sub run_new_install_manifest
 		# Add user-specified repos
 		add_user_repositories($conf);
 		
-		### TODO: Move the an-repo to the function above and switch the
-		###       download tool from 'curl' to 'lwb-download'.
-		#add_an_repo($conf);
+		# If not online, and if the local dashboard is a compatible
+		# repository, this will add the repo to the node.
+		add_local_repo($conf);
 		
 		# Install needed RPMs.
 		install_programs($conf) or return(1);
@@ -334,6 +338,71 @@ sub run_new_install_manifest
 		
 		# Enough of that, now everyone go home.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
+	}
+	
+	return(0);
+}
+
+# This checks to see if we're configured to be a repo for RHEL and/or CentOS.
+# If so, it gets the local IPs to be used later when setting up the repos on
+# the nodes.
+sub check_local_repo
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_local_repo()\n");
+	
+	# Call the gather system info tool to get the BCN and IFN IPs.
+	my $shell_call = "$conf->{path}{'call_gather-system-info'}";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /hostname,(.*)$/)
+		{
+			$conf->{sys}{'local'}{hostname} = $1;
+		}
+		elsif ($line =~ /interface,(.*?),(.*?),(.*?)$/)
+		{
+			my $interface = $1;
+			my $variable  = $2;
+			my $value     = $3;
+			
+			# For now, I'm only looking for IPs and subnets.
+			if (($variable eq "ip") && ($interface =~ /ifn/))
+			{
+				$conf->{sys}{'local'}{ifn}{ip} = $value;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found IFN IP: [$conf->{sys}{'local'}{ifn}{ip}]\n");
+			}
+			if (($variable eq "ip") && ($interface =~ /bcn/))
+			{
+				$conf->{sys}{'local'}{bcn}{ip} = $value;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found IFN IP: [$conf->{sys}{'local'}{bcn}{ip}]\n");
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Now see if we have RHEL, CentOS and/or generic repos setup.
+	$conf->{sys}{'local'}{repo}{centos}  = 0;
+	$conf->{sys}{'local'}{repo}{generic} = 0;
+	$conf->{sys}{'local'}{repo}{rhel}    = 0;
+	if (-e $conf->{path}{repo_centos})
+	{
+		$conf->{sys}{'local'}{repo}{centos} = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local CentOS repo.\n");
+	}
+	if (-e $conf->{path}{repo_generic})
+	{
+		$conf->{sys}{'local'}{repo}{generic} = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local generic repo.\n");
+	}
+	if (-e $conf->{path}{repo_rhel})
+	{
+		$conf->{sys}{'local'}{repo}{rhel} = 1;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local RHEL repo.\n");
 	}
 	
 	return(0);
@@ -7239,13 +7308,13 @@ sub configure_ntp_on_node
 	foreach my $ntp_server (@ntp_servers)
 	{
 		# Look for/add NTP server
-		my $shell_call = "if $(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
+		my $shell_call = "if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
 				then 
 					echo exists; 
 				else 
 					echo adding $ntp_server;
 					echo 'server $ntp_server iburst' >> $conf->{path}{nodes}{ntp_conf}
-					if $(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
+					if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
 					then
 						echo added OK
 					else
@@ -8737,26 +8806,74 @@ sub get_installed_package_list
 	return(0);
 }
 
-# This add the AN!Repo if needed to each node.
-sub add_an_repo
+### NOTE: Unfinished!
+# This add the local machine's repo to the node so that this machine can be
+# used for the install if there is no internet connection.
+sub add_local_repo
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo()\n");
 	
-	my ($node1_rc) = add_an_repo_to_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = add_an_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	# If I don't know my local IPs and if I don't have any local repos,
+	# return.
+	my $node1_rc    = 0;
+	my $node2_rc    = 0;
+	my $repo_target = 1;
+	if ((not $conf->{sys}{'local'}{ifn}{ip}) && (not $conf->{sys}{'local'}{bcn}{ip}))
+	{
+		# I don't know my IPs.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I don't know my IPs, so I can't setup repos.\n");
+		$repo_target = 0;
+		$node1_rc    = 3;
+		$node2_rc    = 3;
+	}
+	if ((not $conf->{sys}{'local'}{repo}{centos}) && 
+	    (not $conf->{sys}{'local'}{repo}{generic}) &&
+	    ($conf->{sys}{'local'}{repo}{rhel}))
+	{
+		# I have no repos.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I do not appear to have any local repositories.\n");
+		$repo_target = 0;
+		$node1_rc    = 4;
+		$node2_rc    = 4;
+	}
+	if ($repo_target)
+	{
+		my ($node1_rc) = add_local_repo_to_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($node2_rc) = add_local_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	}
 	
+	# 0 == Node online, local repo not needed.  
 	# 1 == Repo already exists, 
 	# 2 == Repo was added and yum cache was cleaned
+	# 3 == (From above) Local IPs now known.
+	# 4 == (From above) Not a repo target.
 	# 9 == Something went wrong.
 	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "#!string!state_0020!#";
+	my $node1_message = "#!string!state_0047!#";
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "#!string!state_0020!#";
+	my $node2_message = "#!string!state_0047!#";
 	my $message       = "";
-	if ($node1_rc eq "2")
+	if ($node1_rc eq "1")
+	{
+		$node1_message = "#!string!state_0020!#",
+	}
+	elsif ($node1_rc eq "2")
 	{
 		$node1_message = "#!string!state_0023!#",
+	}
+	elsif ($node1_rc eq "3")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0100!#",
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "4")
+	{
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0101!#",
+		$ok            = 0;
 	}
 	elsif ($node1_rc eq "9")
 	{
@@ -8764,9 +8881,25 @@ sub add_an_repo
 		$node1_message = "#!string!state_0018!#",
 		$ok            = 0;
 	}
-	if ($node2_rc eq "2")
+	if ($node2_rc eq "1")
+	{
+		$node2_message = "#!string!state_0020!#",
+	}
+	elsif ($node2_rc eq "2")
 	{
 		$node2_message = "#!string!state_0023!#",
+	}
+	elsif ($node2_rc eq "3")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0100!#",
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "4")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0101!#",
+		$ok            = 0;
 	}
 	elsif ($node2_rc eq "9")
 	{
@@ -8776,7 +8909,7 @@ sub add_an_repo
 	}
 
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	AN::Common::get_string($conf, {key => "row_0245", variables => { repo => "an.repo" }}),
+		row		=>	"#!string!row_0245!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
@@ -8794,38 +8927,113 @@ sub add_an_repo
 	return(0);
 }
 
-# This does the actual work of adding the AN!Repo to a specifc node.
-sub add_an_repo_to_node
+# This adds the local repo(s) to the node if the node doesn't have an Internet
+# connection.
+sub add_local_repo_to_node
 {
 	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo_to_node(); node: [$node]\n");
 	
-	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	"if [ -e '/etc/yum.repos.d/an.repo' ];
-					then 
-						echo 1; 
-					else 
-						curl --silent https://alteeve.ca/repo/el6/an.repo --output /etc/yum.repos.d/an.repo; 
-						if [ -e '/etc/yum.repos.d/an.repo' ]; 
-						then 
-							yum clean all --quiet; 
-							echo 2; 
-						else 
-							echo 9; 
-						fi; 
-					fi",
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	my $rc = 0;
-	foreach my $line (@{$return})
+	if ($conf->{node}{$node}{internet})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
-		$rc = $line;
+		# Online, we don't need to use ourselves as an install target.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node is online, skipping.\n");
+	}
+	else
+	{
+		### TODO: sanity check that the repos were written properly.
+		# For each repo I have locally, add it.
+		if (($conf->{sys}{'local'}{repo}{centos}) && ($conf->{node}{$node}{os}{brand} =~ /CentOS/i))
+		{
+			# Add the CentOS repo.
+			my $repo_file = "/etc/yum.repos.d/$conf->{sys}{'local'}{hostname}_centos.repo";
+			my $repo =  "[$conf->{sys}{'local'}{hostname}_centos]\n";
+			   $repo .= "name=$conf->{sys}{'local'}{hostname} 1's CentOS 6 repository\n";
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{ifn}{ip}$conf->{path}{repo_centos_path}\n" if $conf->{sys}{'local'}{ifn}{ip};
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{bcn}{ip}$conf->{path}{repo_centos_path}\n" if $conf->{sys}{'local'}{bcn}{ip};
+			   $repo .= "enabled=1\n";
+			   $repo .= "gpgcheck=0\n";
+			   $repo .= "skip_if_unavailable=1\n";
+			my $shell_call =  "cat > $repo_file << EOF\n";
+			   $shell_call .= "$repo\n";
+			   $shell_call .= "EOF\n";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	"$shell_call",
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+		}
+		if (($conf->{sys}{'local'}{repo}{rhel}) && ($conf->{node}{$node}{os}{brand} =~ /Red Hat/i))
+		{
+			# Add the RHEL repo.
+			my $repo_file = "/etc/yum.repos.d/$conf->{sys}{'local'}{hostname}_rhel.repo";
+			my $repo =  "[$conf->{sys}{'local'}{hostname}_rhel]\n";
+			   $repo .= "name=$conf->{sys}{'local'}{hostname} 1's RHEL 6 repository\n";
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{ifn}{ip}$conf->{path}{repo_rhel_path}\n" if $conf->{sys}{'local'}{ifn}{ip};
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{bcn}{ip}$conf->{path}{repo_rhel_path}\n" if $conf->{sys}{'local'}{bcn}{ip};
+			   $repo .= "enabled=1\n";
+			   $repo .= "gpgcheck=0\n";
+			   $repo .= "skip_if_unavailable=1\n";
+			my $shell_call =  "cat > $repo_file << EOF\n";
+			   $shell_call .= "$repo\n";
+			   $shell_call .= "EOF\n";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	"$shell_call",
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+		}
+		if ($conf->{sys}{'local'}{repo}{generic})
+		{
+			# Add the common/generic repo.
+			my $repo_file = "/etc/yum.repos.d/$conf->{sys}{'local'}{hostname}.repo";
+			my $repo =  "[$conf->{sys}{'local'}{hostname}]\n";
+			   $repo .= "name=$conf->{sys}{'local'}{hostname} 1's RPM repository\n";
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{ifn}{ip}$conf->{path}{repo_generic_path}\n" if $conf->{sys}{'local'}{ifn}{ip};
+			   $repo .= "baseurl=http://$conf->{sys}{'local'}{bcn}{ip}$conf->{path}{repo_generic_path}\n" if $conf->{sys}{'local'}{bcn}{ip};
+			   $repo .= "enabled=1\n";
+			   $repo .= "gpgcheck=0\n";
+			   $repo .= "skip_if_unavailable=1\n";
+			my $shell_call =  "cat > $repo_file << EOF\n";
+			   $shell_call .= "$repo\n";
+			   $shell_call .= "EOF\n";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	"$shell_call",
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			}
+		}
 	}
 	
 	return($rc);
