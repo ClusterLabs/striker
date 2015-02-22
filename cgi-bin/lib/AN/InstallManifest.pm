@@ -14,6 +14,7 @@ package AN::InstallManifest;
 # - Back-button doesn't work after creating a new manifest.
 # - parted created an unaligned partition... Need to find a way to say "adjust
 #   to the closest aligned block"
+# - keys are being added in duplicate to ~/.ssh/authorized_keys
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -221,11 +222,6 @@ sub run_new_install_manifest
 	{
 		# Now summarize and ask the user to confirm.
 		summarize_build_plan($conf);
-		
-		# Now ask the user to confirm the storage and networm mapping. If the
-		# OS is 'Red Hat Enterprise Linux Server' and it is unregistered,
-		# provide input fields for RHN registration.
-		### if (not $conf->{node}{$node1}{os}{registered})...
 		return(0);
 	}
 	else
@@ -363,12 +359,15 @@ sub check_local_repo
 		if ($line =~ /hostname,(.*)$/)
 		{
 			$conf->{sys}{'local'}{hostname} = $1;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; hostname: [$conf->{sys}{'local'}{hostname}]\n");
 		}
 		elsif ($line =~ /interface,(.*?),(.*?),(.*?)$/)
 		{
 			my $interface = $1;
 			my $variable  = $2;
 			my $value     = $3;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface], variable: [$variable], value: [$value]\n");
+			next if not $value;
 			
 			# For now, I'm only looking for IPs and subnets.
 			if (($variable eq "ip") && ($interface =~ /ifn/))
@@ -379,7 +378,7 @@ sub check_local_repo
 			if (($variable eq "ip") && ($interface =~ /bcn/))
 			{
 				$conf->{sys}{'local'}{bcn}{ip} = $value;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found IFN IP: [$conf->{sys}{'local'}{bcn}{ip}]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found BCN IP: [$conf->{sys}{'local'}{bcn}{ip}]\n");
 			}
 		}
 	}
@@ -389,16 +388,19 @@ sub check_local_repo
 	$conf->{sys}{'local'}{repo}{centos}  = 0;
 	$conf->{sys}{'local'}{repo}{generic} = 0;
 	$conf->{sys}{'local'}{repo}{rhel}    = 0;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Looking for: [$conf->{path}{repo_centos}]\n");
 	if (-e $conf->{path}{repo_centos})
 	{
 		$conf->{sys}{'local'}{repo}{centos} = 1;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local CentOS repo.\n");
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Looking for: [$conf->{path}{repo_generic}]\n");
 	if (-e $conf->{path}{repo_generic})
 	{
 		$conf->{sys}{'local'}{repo}{generic} = 1;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local generic repo.\n");
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Looking for: [$conf->{path}{repo_rhel}]\n");
 	if (-e $conf->{path}{repo_rhel})
 	{
 		$conf->{sys}{'local'}{repo}{rhel} = 1;
@@ -6961,6 +6963,13 @@ sub setup_drbd_on_node
 sub register_with_rhn
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; register_with_rhn();\n");
+	
+	if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User has skipped RHN checks.\n");
+		return(0);
+	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::rhn_user: [$conf->{cgi}{rhn_user}], cgi::rhn_password: [$conf->{cgi}{rhn_password}]\n");
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -7147,8 +7156,8 @@ sub summarize_build_plan
 	
 	my $node1                = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2                = $conf->{cgi}{anvil_node2_current_ip};
-	my $say_node1_registered = "#!string!message_0376!#";
-	my $say_node2_registered = "#!string!message_0376!#";
+	my $say_node1_registered = "#!string!state_0047!#";
+	my $say_node2_registered = "#!string!state_0047!#";
 	my $say_node1_class      = "highlight_detail";
 	my $say_node2_class      = "highlight_detail";
 	my $enable_rhn           = 0;
@@ -7160,7 +7169,7 @@ sub summarize_build_plan
 		if ($conf->{node}{$node1}{os}{registered})
 		{
 			# Already registered.
-			$say_node1_registered = "#!string!message_0377!#";
+			$say_node1_registered = "#!string!state_0105!#";
 			$say_node1_class      = "highlight_good";
 		}
 		else
@@ -7168,17 +7177,23 @@ sub summarize_build_plan
 			# Registration required, but do we have internet
 			# access?
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::internet: [$conf->{node}{$node1}{internet}]\n");
-			if ($conf->{node}{$node1}{internet})
+			if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+			{
+				# User has disabled RHN checks/registration.
+				$say_node1_registered = "#!string!state_0102!#";
+				$enable_rhn           = 0;
+			}
+			elsif ($conf->{node}{$node1}{internet})
 			{
 				# We're good.
-				$say_node1_registered = "#!string!message_0378!#";
-				$say_node1_class      = "highlight_warning";
+				$say_node1_registered = "#!string!state_0103!#";
+				$say_node1_class      = "highlight_detail";
 				$enable_rhn           = 1;
 			}
 			else
 			{
 				# Lets hope they have the DVD image...
-				$say_node1_registered = "#!string!message_0379!#";
+				$say_node1_registered = "#!string!state_0104!#";
 				$say_node1_class      = "highlight_warning";
 			}
 		}
@@ -7191,7 +7206,7 @@ sub summarize_build_plan
 		if ($conf->{node}{$node2}{os}{registered})
 		{
 			# Already registered.
-			$say_node2_registered = "#!string!message_0377!#";
+			$say_node2_registered = "#!string!state_0105!#";
 			$say_node2_class      = "highlight_good";
 		}
 		else
@@ -7199,17 +7214,23 @@ sub summarize_build_plan
 			# Registration required, but do we have internet
 			# access?
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node2}::internet: [$conf->{node}{$node2}{internet}]\n");
-			if ($conf->{node}{$node2}{internet})
+			if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+			{
+				# User has disabled RHN checks/registration.
+				$say_node2_registered = "#!string!state_0102!#";
+				$enable_rhn           = 0;
+			}
+			elsif ($conf->{node}{$node2}{internet})
 			{
 				# We're good.
-				$say_node2_registered = "#!string!message_0378!#";
+				$say_node2_registered = "#!string!state_0103!#";
 				$say_node2_class      = "highlight_warning";
 				$enable_rhn           = 1;
 			}
 			else
 			{
 				# Lets hope they have the DVD image...
-				$say_node2_registered = "#!string!message_0379!#";
+				$say_node2_registered = "#!string!state_0104!#";
 				$say_node2_class      = "highlight_warning";
 			}
 		}
@@ -7564,10 +7585,10 @@ sub configure_network_on_node
 	my ($node2_short_name)    = ($conf->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
 	my ($switch1_short_name)  = ($conf->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
 	my ($switch2_short_name)  = ($conf->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
-	my ($pdu1a_short_name)    = ($conf->{cgi}{anvil_pdu1a_name}    =~ /^(.*?)\./);
-	my ($pdu1b_short_name)    = ($conf->{cgi}{anvil_pdu1b_name}    =~ /^(.*?)\./);
-	my ($pdu2a_short_name)    = ($conf->{cgi}{anvil_pdu2a_name}    =~ /^(.*?)\./);
-	my ($pdu2b_short_name)    = ($conf->{cgi}{anvil_pdu2b_name}    =~ /^(.*?)\./);
+	my ($pdu1_short_name)     = ($conf->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
+	my ($pdu2_short_name)     = ($conf->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+	my ($pdu3_short_name)     = ($conf->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
+	my ($pdu4_short_name)     = ($conf->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
 	my ($ups1_short_name)     = ($conf->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
 	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
@@ -7595,10 +7616,10 @@ sub configure_network_on_node
 	   $hosts .="$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}\n";
 	   $hosts .="\n";
 	   $hosts .="# Switched PDUs\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu1a_ip}	$pdu1a_short_name $conf->{cgi}{anvil_pdu1a_name}\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu1b_ip}	$pdu1b_short_name $conf->{cgi}{anvil_pdu1b_name}\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu2a_ip}	$pdu2a_short_name $conf->{cgi}{anvil_pdu2a_name}\n";
-	   $hosts .="$conf->{cgi}{anvil_pdu2b_ip}	$pdu2b_short_name $conf->{cgi}{anvil_pdu2b_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu3_ip}	$pdu3_short_name $conf->{cgi}{anvil_pdu3_name}\n";
+	   $hosts .="$conf->{cgi}{anvil_pdu4_ip}	$pdu4_short_name $conf->{cgi}{anvil_pdu4_name}\n";
 	   $hosts .="\n";
 	   $hosts .="# UPSes\n";
 	   $hosts .="$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}\n";
@@ -8842,9 +8863,9 @@ sub add_local_repo
 		my ($node1_rc) = add_local_repo_to_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 		my ($node2_rc) = add_local_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc].\n");
 	
 	# 0 == Node online, local repo not needed.  
-	# 1 == Repo already exists, 
 	# 2 == Repo was added and yum cache was cleaned
 	# 3 == (From above) Local IPs now known.
 	# 4 == (From above) Not a repo target.
@@ -8944,6 +8965,7 @@ sub add_local_repo_to_node
 	{
 		### TODO: sanity check that the repos were written properly.
 		# For each repo I have locally, add it.
+		$rc = 2;
 		if (($conf->{sys}{'local'}{repo}{centos}) && ($conf->{node}{$node}{os}{brand} =~ /CentOS/i))
 		{
 			# Add the CentOS repo.
@@ -9033,6 +9055,24 @@ sub add_local_repo_to_node
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 			}
+		}
+		
+		# Make sure the cache is up to date.
+		my $shell_call = "yum clean expire-cache\n";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	"$shell_call",
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		}
 	}
 	
@@ -9243,10 +9283,19 @@ sub verify_perl_is_installed_on_node
 sub verify_internet_access
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_internet_access()\n");
 	
-	### TODO: If there is no internet access, see if there is a disk in
-	###       /dev/sr0 and, if so, mount it and if it has packages, make
-	###       sure/create a yum repo file for it. Don't abort the install.
+	# If the user knows they will never be online, they may have set to
+	# hide the Internet check. In this case, don't waste time checking.
+	if (not $conf->{sys}{install_manifest}{show}{internet_check})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User has disabled checking for an internet connection.\n");
+		my $node1 = $conf->{cgi}{anvil_node1_current_ip};
+		my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+		$conf->{node}{$node1}{internet} = 0;
+		$conf->{node}{$node2}{internet} = 0;
+		return(0);
+	}
 	
 	my ($node1_online) = ping_website($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_online) = ping_website($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -9320,7 +9369,6 @@ sub ping_website
 		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	$conf->{node}{$node}{internet} = 0;
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
@@ -10737,7 +10785,7 @@ sub read_cluster_conf
 sub verify_os
 {
 	my ($conf) = @_;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
 	
 	my $ok = 1;
 	my ($node1_major_version, $node1_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});

@@ -394,54 +394,50 @@
 <br />
 <!-- end update-definition-failed-bad-exit-code -->
 
-<!-- start add-server-to-anvil-no-ricci-password -->
-<table>
+<!-- start general-message -->
 	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0090!#
+		<td class="highlight_good_bold">
+			#!replace!row!#
 		</td>
 		<td>
-			#!string!message_0087!#
+			#!replace!message!#
 		</td>
 	</tr>
-	<tr>
-		<td class="highlight_warning">
-			#!string!row_0091!#
-		</td>
-		<td>
-			#!string!message_0088!#
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-no-ricci-password -->
+<!-- end general-message -->
 
-<!-- start add-server-to-anvil-no-failover-domain -->
-<table>
+<!-- start general-warning-message -->
 	<tr>
-		<td colspan="2">
-			<b>#!string!title_0120!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_bad_bold">
-			#!string!state_0008!#
+		<td class="highlight_warning_bold">
+			#!replace!row!#
 		</td>
 		<td>
 			<br />
-			#!string!message_0089!#<br />
+			#!replace!message!#<br />
 			<br />
-			#!string!explain_0022!#<br />
-			#!string!brand_0011!#<br />
+		</td>
+	</tr>
+<!-- end general-warning-message -->
+
+<!-- start general-error-message -->
+	<tr>
+		<td class="highlight_bad_bold">
+			#!replace!row!#
+		</td>
+		<td>
+			<br />
+			#!replace!message!#<br />
 			<br />
 		</td>
 	</tr>
 </table>
 <br />
-<!-- end add-server-to-anvil-no-failover-domain -->
+<!-- end general-error-message -->
 
 <!-- start add-server-to-anvil-header -->
 <table>
+<!-- end add-server-to-anvil-header -->
+
+<!-- start add-server-to-anvil-header-details -->
 	<tr>
 		<td colspan="2">
 			<b>#!string!title_0033!#</b>
@@ -455,7 +451,22 @@
 			<br />
 			#!string!message_0090!#<br />
 			<br />
-<!-- end add-server-to-anvil-header -->
+		</td>
+	</tr>
+<!-- end add-server-to-anvil-header-details -->
+
+<!-- start add-server-to-anvil-short-header -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0092!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0090!#<br />
+			<br />
+		</td>
+	</tr>
+<!-- end add-server-to-anvil-short-header -->
 
 <!-- start one-line-message-header -->
 <table>
@@ -510,189 +521,7 @@
 			<span class="fixed_width">#!replace!message!#</span><br />
 <!-- end one-line-message-fixed-width -->
 
-<!-- start add-server-to-anvil-failed-to-boot -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0044!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0068!#<br />
-			#!replace!error!#<br />
-			#!string!brand_0011!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-failed-to-boot -->
-
-<!-- start add-server-to-anvil-write-definition -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0093!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0097!#<br />
-<!-- end add-server-to-anvil-write-definition -->
-
-<!-- start add-server-to-anvil-no-server-name -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0044!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0068!#<br />
-			#!replace!error!#<br />
-			#!string!brand_0011!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-no-server-name -->
-
-<!-- start add-server-to-anvil-failed-to-write-definition -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0044!#
-		</td>
-		<td>
-			#!string!message_0068!#<br />
-			#!replace!error!#<br />
-			#!string!brand_0011!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-failed-to-write-definition -->
-
-<!-- start add-server-to-anvil-undefine-server -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0094!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0101!#<br />
-<!-- end add-server-to-anvil-undefine-server -->
-
-<!-- start add-server-to-anvil-failed-to-undefine-server -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0044!#
-		</td>
-		<td>
-			<br />
-			#!replace!error!#<br />
-			<br />
-			#!string!message_0104!#<br />
-<!-- end add-server-to-anvil-failed-to-undefine-server -->
-
-<!-- start add-server-to-anvil-add-to-rgmanager -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0095!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0105!#<br />
-			<i>#!string!message_0106!#</i><br />
-			#!string!message_0107!#<br />
-			<br />
-<!-- end add-server-to-anvil-add-to-rgmanager -->
-
-<!-- start add-server-to-anvil-ccs-call-failed -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0096!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0068!#<br />
-			#!replace!error!#<br />
-			#!string!brand_0011!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-ccs-call-failed -->
-
-<!-- start add-server-to-anvil-enable-service -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			#!string!row_0097!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0113!#<br />
-			<br />
-<!-- end add-server-to-anvil-enable-service -->
-
-<!-- start add-server-to-anvil-clusvcadm-call-failed -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0096!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0068!#<br />
-			#!replace!error!#<br />
-			#!string!message_0088!#<br />
-			#!string!brand_0011!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end add-server-to-anvil-clusvcadm-call-failed -->
-
 <!-- start add-server-to-anvil-footer -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_good_bold">
-			Success!
-		</td>
-		<td>
-			The new virtual machine has been added to the cluster.
-		</td>
-	</tr>
 	<tr>
 		<td colspan="2">
 			&nbsp;
@@ -715,18 +544,6 @@
 		</td>
 		<td>
 			#!string!message_0116!#<br />
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0032!#
-		</td>
-		<td>
-			<br />
-			<i>#!string!message_0117!#</i><br />
-			<br />
-			#!string!explain_0023!#<br />
-			<br />
 		</td>
 	</tr>
 	<tr>
@@ -803,7 +620,7 @@
 	</tr>
 	<tr>
 		<td colspan="2">
-			<div class="align_right" style="white-space: nowrap;">#!string!message_0126!#</div>
+			&nbsp;
 		</td>
 	</tr>
 </table>

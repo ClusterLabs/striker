@@ -808,6 +808,12 @@ sub initialize_conf
 					nodes_sn_field		=>	1,
 					nodes_ifn_field		=>	1,
 					nodes_pdu_fields	=>	1,
+					
+					# Control tests/output shown when the
+					# install runs. Mainly useful when a
+					# site will never have Internet access.
+					internet_check		=>	1,
+					rhn_checks		=>	1,
 				}
 			},
 			language		=>	"en_CA",

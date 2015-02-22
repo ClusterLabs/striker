@@ -226,7 +226,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0020">The physical disks below are not currently a member of any logical disk.</key>
 		<key name="explain_0021">The server is shut off.</key>
 		<key name="explain_0022">I am sorry, but without this information, I can not continue.</key>
-		<key name="explain_0023"><![CDATA[If you add the server to the #!string!brand_0003!# too early, it will be set to boot off of the #!string!device_0002!# by default, requiring you to update the boot device manually.<br />If you wait until after the server has rebooted for the first time, then the server will boot off of the #!string!device_0001!# by default.]]></key>
+		<key name="explain_0023"></key> <!-- free -->
 		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It's good to keep this short.]]></key>
 		<key name="explain_0025"><![CDATA[This fine-tunes the hypervisor for your operating system.<br />If your OS is not listed, choose the one that is the closest match.]]></key>
 		<key name="explain_0026"><![CDATA[This will open a new window where you can upload new disc images.<br />Once finished, please reload this page to see them.]]></key>
@@ -504,7 +504,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0089">Trouble?</key>
 		<key name="row_0090">Failure</key>
 		<key name="row_0091">Password</key>
-		<key name="row_0092">Checking VM State</key>
+		<key name="row_0092">Checking Server State</key>
 		<key name="row_0093">Creating Definition</key>
 		<key name="row_0094">Removing libvirtd definition</key>
 		<key name="row_0095">Configuring #!string!brand_0003!#</key>
@@ -692,7 +692,17 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0277">PDU Pair 2</key>
 		<key name="row_0278">NTP 1</key>
 		<key name="row_0279">NTP 2</key>
-		<key name="row_0280"></key>
+		<key name="row_0280">Booting Server</key>
+		<key name="row_0281">Adding</key>
+		<key name="row_0282"></key>
+		<key name="row_0283"></key>
+		<key name="row_0284"></key>
+		<key name="row_0285"></key>
+		<key name="row_0286"></key>
+		<key name="row_0287"></key>
+		<key name="row_0288"></key>
+		<key name="row_0289"></key>
+		<key name="row_0290"></key>
 		
 		<!-- Program names -->
 		<key name="app_0001">tools/anvil-setup-node</key>
@@ -1050,10 +1060,10 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="state_0099">Partition Warning</key>
 		<key name="state_0100">Local IPs unknown</key>
 		<key name="state_0101">No local repos found</key>
-		<key name="state_0102"></key>
-		<key name="state_0103"></key>
-		<key name="state_0104"></key>
-		<key name="state_0105"></key>
+		<key name="state_0102">Disabled</key>
+		<key name="state_0103">Registration needed</key>
+		<key name="state_0104">No, but no Internet</key>
+		<key name="state_0105">Already registered</key>
 		<key name="state_0106"></key>
 		<key name="state_0107"></key>
 		<key name="state_0108"></key>
@@ -1266,7 +1276,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0011"><![CDATA[The email address <span class="highlight_detail">#!variable!email!#</span> does not appear to be valid.]]></key>
 		<key name="message_0012"><![CDATA[The mail server port needs to be a number between '<span class="highlight_detail">1</span>' and '<span class="highlight_detail">65535</span>'.]]></key>
 		<key name="message_0013"><![CDATA[You need to specify what TCP your mail server is listening on.<br />Usually this is either '<span class="highlight_detail">25</span>' or '<span class="highlight_detail">587</span>'.]]></key>
-		<key name="message_0014"></key>		<!-- Free -->
+		<key name="message_0014">The new virtual machine has been added to the cluster.</key>
 		<key name="message_0015">Everything seems sensible, ready to save.</key>
 		<key name="message_0016"><![CDATA[Failed to copy the file <span class="highlight_detail">#!variable!file!#</span> to <span class="highlight_detail">#!variable!destination!#</span>.<br />Shell call output:<br /><hr /><span class="highlight_detail">#!variable!output!#</span><hr />]]></key>
 		<key name="message_0017"><![CDATA[Saved. <a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#!]]></key>
@@ -1341,37 +1351,50 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0086"><![CDATA[I tried to update the definition file for <span class="fixed_width">#!variable!server!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0087"><![CDATA[Unable to add the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!# without a <span class="fixed_width">ricci</span> password!]]></key>
 		<key name="message_0088"><![CDATA[Please update the <a href="#!variable!manage_url!#" target="_new">#!string!row_0024!#</a> for this #!string!brand_0003!# and then try again by pressing '<span class="fixed_width">&lt;ctrl&gt;</span> + <span class="fixed_width">r</span>'.]]></key>
-		<key name="message_0089"><![CDATA[I was unable to determine which failover domain to use for this new machine.<br />Were the <span class="fixed_width">primary_n0*</span> <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Creating_the_Ordered_Fail-Over_Domains" target="_new">failover domains</a> added to the #!string!brand_0003!#'s <span class="fixed_width">/etc/cluster/cluster.conf</span> configuration?]]></key>
+		<key name="message_0089"><![CDATA[I was unable to determine which failover domain to use for this new machine.<br />
+			Were the <span class="fixed_width">primary_n0*</span> <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Creating_the_Ordered_Fail-Over_Domains" target="_new">failover domains</a> added to the #!string!brand_0003!#'s <span class="fixed_width">/etc/cluster/cluster.conf</span> configuration?<br />
+			#!string!explain_0022!#<br />
+			#!string!brand_0011!#]]></key>
 		<key name="message_0090">Checking now to make sure the new server is up and running.</key>
 		<key name="message_0091">It is not running at the moment, I will now boot the server.</key>
 		<key name="message_0092">It should now be booting up.</key>
 		<key name="message_0093">It didn't start on the first try. Trying again specifying the definition file.</key>
-		<key name="message_0094"><![CDATA[The new <span class="fixed_width">#!variable!server!#</span> server didn't start on reboot.<br />I tried to start it, but the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
+		<key name="message_0094"><![CDATA[#!string!message_0068!#<br />
+			The new <span class="fixed_width">#!variable!server!#</span> server didn't start on reboot.<br />
+			I tried to start it, but the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.<br />
+			#!string!brand_0011!#]]></key>
 		<key name="message_0095">It is already running, as expected.</key>
 		<key name="message_0096">The server is now running on the peer. I will use that node for the next steps.</key>
 		<key name="message_0097"><![CDATA[The #!string!brand_0003!# needs to know what "hardware" to create for the new server when it starts.<br />This is done using a "definition" file, which we will record now.]]></key>
-		<key name="message_0098">I was about to add a server to the #!string!brand_0003!# but I don't have the new server's name. This is likely a software error.</key>
+		<key name="message_0098"><![CDATA[#!string!message_0068!#<br />I was about to add a server to the #!string!brand_0003!# but I don't have the new server's name. This is likely a software error.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0099"><![CDATA[Saved successfully as <span class="fixed_width">#!variable!definition!#</span>.]]></key>
 		<key name="message_0100"><![CDATA[I tried to record the definition file and the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
 		<key name="message_0101"><![CDATA[To ensure only the Anvil! can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
 		<key name="message_0102"><![CDATA[Successfully removed the <span class="fixed_width">libvirtd</span> definition.]]></key>
-		<key name="message_0103"><![CDATA[I tried to remove the <span class="fixed_width">libvirtd</span> definition, which should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
-		<key name="message_0104">This is a non-fatal error. Proceeding.</key>
-		<key name="message_0105">I will now add the new server to the #!string!brand_0003!#.</key>
+		<key name="message_0103"><![CDATA[I tried to remove the <span class="fixed_width">libvirtd</span> definition, which should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.<br />#!string!message_0104!#]]></key>
+		<key name="message_0104"><![CDATA[This is a non-fatal error. Proceeding.]]></key>
+		<key name="message_0105"><![CDATA[I will now add the new server to the #!string!brand_0003!#.<br />
+			<i>#!string!message_0106!#</i><br />
+			#!string!message_0107!#]]></key>
 		<key name="message_0106">Please be patient!</key>
 		<key name="message_0107">This can take several minutes to complete.</key>
-		<key name="message_0108"><![CDATA[<span class="highlight_bad">#!string!row_0044!#</span>: The <span class="fixed_width">ricci</span> daemon is not running on <span class="fixed_width">$node</span>.]]></key>
+		<key name="message_0108"><![CDATA[The <span class="fixed_width">ricci</span> daemon is not running on <span class="fixed_width">#!variable!node!#</span>.]]></key>
 		<key name="message_0109">This is probably a mis-configuration of the #!string!brand_0003!# node.</key>
 		<key name="message_0110"><![CDATA[Please ensure that <span class="fixed_width">ricci</span> is running and is set to start on boot.]]></key>
 		<key name="message_0111">The server has been added successfully.</key>
-		<key name="message_0112"><![CDATA[The call to add the new server to the #!string!brand_0003!# should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.]]></key>
+		<key name="message_0112"><![CDATA[#!string!message_0068!#<br />
+			The call to add the new server to the #!string!brand_0003!# should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.<br />
+			#!string!brand_0011!#]]></key>
 		<key name="message_0113">Informing the #!string!brand_0003!# that the server is running.</key>
 		<key name="message_0114">The server has been added to the #!string!brand_0003!#.</key>
-		<key name="message_0115"><![CDATA[The call to tell the #!string!brand_0003!# that the new server is running should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!clusvcadm_exit_code!#</span> was received.]]></key>
+		<key name="message_0115"><![CDATA[#!string!message_0068!#<br />
+			The call to tell the #!string!brand_0003!# that the new server is running should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!clusvcadm_exit_code!#</span> was received.<br />
+			#!variable!instructions!#<br />
+			#!string!brand_0011!#]]></key>
 		<key name="message_0116">In just a moment, your new server should begin installing.</key>
-		<key name="message_0117">Please leave this window open until you have rebooted the new server for the first time!</key>
+		<key name="message_0117"></key> <!-- free -->
 		<key name="message_0118"><![CDATA[Writing provision script to <span class="fixed_width">#!variable!script!#</span>]]></key>
-		<key name="message_0119"><![CDATA[#!string!message_0120!#<br />Starting the installation of <span class="fixed_width">#!variable!server!#</span> now.]]></key>
+		<key name="message_0119"><![CDATA[Written.<br />Starting the installation of <span class="fixed_width">#!variable!server!#</span> now.]]></key>
 		<key name="message_0120">Done.</key>
 		<key name="message_0121"><![CDATA[Failed to locate the host node!</span><br />Please use <span class="fixed_width">#!string!device_0004!#</span> on the dashboard machine to locate this server and finish the install. Sorry for the inconvenience.]]></key>
 		<key name="message_0122">If there were no errors, the installation should now have started.</key>
@@ -1623,7 +1646,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0364"><![CDATA[]]></key>	<!-- free -->
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
-		<key name="message_0367"><![CDATA[Failed to add the AN!Repo.<br />This is not strictly required, but may mean some packages will not be installed automatically.]]></key>
+		<key name="message_0367"><![CDATA[Failed to add the local repositories.]]></key>
 		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
@@ -1632,10 +1655,10 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
 		<key name="message_0374"><![CDATA[Insufficient free space! Need: [<span class="highlight_detail">#!variable!size!#</span>] or more.<br />Will try to proceed, though partitioning may fail later.]]></key>
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
-		<key name="message_0376">Not needed</key>
-		<key name="message_0377">Already registered</key>
-		<key name="message_0378">Registration needed</key>
-		<key name="message_0379">No, but no Internet</key>
+		<key name="message_0376"></key>
+		<key name="message_0377"></key>
+		<key name="message_0378"></key> <!-- free -->
+		<key name="message_0379"></key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
@@ -1701,7 +1724,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 						Where '/dev/X' is replaced by the device in the error(s) above.<br />
 						<span class="highlight_dangerous_bold">BE WARNED!</span><br />
 						The above command, if misused, can destroy all data on the node!<br />]]></key>
-		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked manually.]]></key>
+		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
 		<key name="message_0435"><![CDATA[]]></key>
 		<key name="message_0436"><![CDATA[]]></key>
 		<key name="message_0437"><![CDATA[]]></key>

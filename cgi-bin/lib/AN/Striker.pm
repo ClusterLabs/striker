@@ -248,7 +248,7 @@ sub process_task
 	{
 		# This is called after provisioning a VM usually, so no need to
 		# confirm
-		add_vm_to_cluster($conf);
+		add_vm_to_cluster($conf, 0);
 	}
 	elsif ($conf->{cgi}{task} eq "manage_vm")
 	{
@@ -4098,11 +4098,11 @@ sub update_vm_definition
 
 sub add_vm_to_cluster
 {
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster()\n");
+	my ($conf, $skip_scan) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster(); skip_scan: [$skip_scan]\n");
 	
-	### TODO: Auto-add the server and then immediately change the boot
-	###       device to "hd".
+	# If this is being called after provisioning a VM, we'll skip scanning
+	# the cluster and we'll not print the opening header. 
 	
 	# Two steps needed; Dump the definition and use ccs to add it to the 
 	# cluster.
@@ -4120,12 +4120,23 @@ sub add_vm_to_cluster
 		}
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
-	my $failover_domain;
 	
 	# First, find the failover domain...
+	my $failover_domain;
 	$conf->{sys}{ignore_missing_vm} = 1;
-	AN::Cluster::scan_cluster($conf);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
+	
+	if ($skip_scan)
+	{
+		# Table is open.
+	}
+	else
+	{
+		AN::Cluster::scan_cluster($conf);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; finished scan of Anvil!.\n");
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-header");
+	}
+	
+	# Find the failover domain.
 	foreach my $fod (keys %{$conf->{failoverdomain}})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; fod: [$fod]\n");
@@ -4161,14 +4172,50 @@ sub add_vm_to_cluster
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Using failover domain: [$failover_domain]\n");
 	
+	# How I print the next message depends on whether I'm doing a 
+	# stand-alone addition or on the heels of a new provisioning.
+	if ($skip_scan)
+	{
+		# Running on the heels of a server provision, so the table is already opened.
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0281!#",
+			message	=>	"#!string!message_0090!#",
+		});
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0092!#",
+			message	=>	AN::Common::get_string($conf, {key => "title_0033", variables => {
+				server		=>	$vm,
+				failover_domain	=>	$failover_domain,
+			}}),
+		});
+	}
+	else
+	{
+		# Doing a stand-alone addition of a server to the Anvil!, so
+		# we need a title.
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-header-detail", {}, {
+			server		=>	$vm,
+			failover_domain	=>	$failover_domain,
+		});
+	}
+	
+	
 	# If there is no password set, abort.
 	if (not $conf->{clusters}{$cluster}{ricci_pw})
 	{
-		# The variables hash feeds 'server' into 'message_0087' and 
-		# 'manage_url' into 'message_0088'.
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-ricci-password", {}, {
-			server		=>	$vm,
-			manage_url	=>	"?config=true&anvil=$cluster",
+		# No ricci user, so we can't add it. Tell the user and give 
+		# them a link to the config for this Anvil!.
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0090!#",
+			message	=>	AN::Common::get_string($conf, {key => "message_0087", variables => {
+				server		=>	$vm,
+			}}),
+		});
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0091!#",
+			message	=>	AN::Common::get_string($conf, {key => "message_0088", variables => {
+				manage_url	=>	"?config=true&anvil=$cluster",
+			}}),
 		});
 		return(1);
 	}
@@ -4176,28 +4223,30 @@ sub add_vm_to_cluster
 	if (not $failover_domain)
 	{
 		# No failover domain found
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-failover-domain");
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0096!#",
+			message	=>	"#!string!message_0089!#",
+		});
 		return (1);
 	}
 	
 	# Lets get started!
-	# The variable hash feeds into 'title_0033'.
-	print AN::Common::template($conf, "server.html", "add-server-to-anvil-header", {}, {
-		server		=>	$vm,
-		failover_domain	=>	$failover_domain,
-	});
 
 	# On occasion, the installed VM will power off, not reboot. So this
 	# checks to see if the VM needs to be kicked awake.
 	my ($host) = find_vm_host($conf, $node, $peer, $vm);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host: [$host]\n");
 	if ($host eq "none")
 	{
 		# Server isn't running yet.
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0280!#",
 			message	=>	"#!string!message_0091!#",
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
 		my $virsh_exit_code;
+		my $shell_call      = "virsh start $vm; echo virsh:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -4205,7 +4254,7 @@ sub add_vm_to_cluster
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"virsh start $vm; echo virsh:\$?",
+			shell_call	=>	$shell_call,
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -4223,7 +4272,8 @@ sub add_vm_to_cluster
 		if ($virsh_exit_code eq "0")
 		{
 			# Server has booted.
-			print AN::Common::template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "general-message", {
+				row	=>	"&nbsp;",
 				message	=>	"#!string!message_0092!#",
 			});
 		}
@@ -4232,11 +4282,14 @@ sub add_vm_to_cluster
 			# If something undefined the VM already and the server
 			# is not running, this will fail. Try to start the
 			# server using the definition file before giving up.
-			print AN::Common::template($conf, "server.html", "one-line-message", {
+			print AN::Common::template($conf, "server.html", "general-message", {
+				row	=>	"&nbsp;",
 				message	=>	"#!string!message_0093!#",
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
 			my $virsh_exit_code;
+			my $shell_call      = "virsh create /shared/definitions/${vm}.xml; echo virsh:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	$conf->{node}{$node}{port},
@@ -4244,7 +4297,7 @@ sub add_vm_to_cluster
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	1,
-				shell_call	=>	"virsh create /shared/definitions/${vm}.xml; echo virsh:\$?",
+				shell_call	=>	$shell_call,
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -4262,19 +4315,21 @@ sub add_vm_to_cluster
 			if ($virsh_exit_code eq "0")
 			{
 				# Should now be booting.
-				print AN::Common::template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "general-message", {
+					row	=>	"&nbsp;",
 					message	=>	"#!string!message_0092!#",
 				});
 			}
 			else
 			{
 				# Failed to boot.
-				my $say_error = AN::Common::get_string($conf, {key => "message_0094", variables => {
+				my $say_message = AN::Common::get_string($conf, {key => "message_0094", variables => {
 					server		=>	$vm,
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-				print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-boot", {
-					error	=>	$say_error,
+				print AN::Common::template($conf, "server.html", "general-error-message", {
+					row	=>	"#!string!row_0044!#",
+					message	=>	$say_message,
 				});
 				return (1);
 			}
@@ -4283,32 +4338,41 @@ sub add_vm_to_cluster
 	elsif ($host eq $node)
 	{
 		# Already running
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"&nbsp;",
 			message	=>	"#!string!message_0095!#",
 		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VM is now running on this node: [$node].\n");
 	}
 	else
 	{
 		# Already running, but on the peer.
 		$node = $host;
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"&nbsp;",
 			message	=>	"#!string!message_0096!#",
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VM is now running on the peer. Will proceed using: [$node].\n");
 	}
 	
 	# Dump the VM's XML definition.
-	print AN::Common::template($conf, "server.html", "add-server-to-anvil-write-definition");
-
+	print AN::Common::template($conf, "server.html", "general-message", {
+		row	=>	"#!string!row_0093!#",
+		message	=>	"#!string!message_0097!#",
+	});
 	if (not $vm)
 	{
 		# No server name... wth?
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-no-server-name", {
-			error	=>	"#!string!message_0098!#",
+		print AN::Common::template($conf, "server.html", "general-error-message", {
+			row	=>	"#!string!row_0044!#",
+			message	=>	"#!string!message_0098!#",
 		});
 		return (1);
 	}
+	my @new_vm_xml;
 	my $virsh_exit_code;
+	my $shell_call = "virsh dumpxml $vm; echo virsh:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4316,28 +4380,34 @@ sub add_vm_to_cluster
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"virsh dumpxml $vm > $definition; echo virsh:\$?",
+		shell_call	=>	$shell_call,
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
+		#$line =~ s/^\s+//;
+		#$line =~ s/\s+$//;
 		next if not $line;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
 		}
+		else
+		{
+			push @new_vm_xml, $line;
+		}
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
 		# Wrote the definition.
-		print AN::Common::template($conf, "server.html", "one-line-message", {
-			message	=>	"#!string!message_0099!#",
-		}, {
+		my $say_message = AN::Common::get_string($conf, {key => "message_0099", variables => {
 			definition	=>	$definition,
+		}});
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"&nbsp;",
+			message	=>	$say_message,
 		});
 	}
 	else
@@ -4346,14 +4416,87 @@ sub add_vm_to_cluster
 		my $say_error = AN::Common::get_string($conf, {key => "message_0100", variables => {
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-write-definition", {
-			error	=>	$say_error,
+		print AN::Common::template($conf, "server.html", "general-error-message", {
+			row	=>	"&nbsp;",
+			message	=>	$say_error,
 		});
 		return (1);
 	}
-
+	
+	# We'll switch to boot the 'hd' first if needed and add a cdrom if it
+	# doesn't exist.
+	my $new_xml = "";
+	my $hd_seen = 0;
+	my $cd_seen = 0;
+	my $in_os   = 0;
+	foreach my $line (@new_vm_xml)
+	{
+		next if not $line;
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /<boot dev='(.*?)'/)
+		{
+			my $device = $1;
+			if ($device eq "hd")
+			{
+				next if $hd_seen;
+				$hd_seen = 1;
+			}
+			if ($device eq "cdrom")
+			{
+				$cd_seen = 1;
+				if (not $hd_seen)
+				{
+					# Inject the hd first.
+					$new_xml .= "    <boot dev='hd'/>\n";
+					$hd_seen =  1;
+				}
+			}
+		}
+		if ($line =~ /<\/os>/)
+		{
+			if (not $cd_seen)
+			{
+				# Inject an optical drive.
+				$new_xml .= "    <boot dev='cdrom'/>\n";
+			}
+		}
+		$new_xml .= "$line\n";
+	}
+	
+	# Now write out the XML.
+	$shell_call = "cat > $definition << EOF\n$new_xml\nEOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{sys}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
+	{
+		#$line =~ s/^\s+//;
+		#$line =~ s/\s+$//;
+		next if not $line;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /virsh:(\d+)/)
+		{
+			$virsh_exit_code = $1;
+		}
+		else
+		{
+			push @new_vm_xml, $line;
+		}
+	}
+	
 	# Undefine the new VM
-	print AN::Common::template($conf, "server.html", "add-server-to-anvil-undefine-server");
+	print AN::Common::template($conf, "server.html", "general-message", {
+		row	=>	"#!string!row_0094!#",
+		message	=>	"#!string!message_0101!#",
+	});
 
 	undef $virsh_exit_code;
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -4390,7 +4533,8 @@ sub add_vm_to_cluster
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
 	if ($virsh_exit_code eq "0")
 	{
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"&nbsp;",
 			message	=>	"#!string!message_0102!#",
 		});
 	}
@@ -4401,13 +4545,17 @@ sub add_vm_to_cluster
 		my $say_error = AN::Common::get_string($conf, {key => "message_0103", variables => {
 			virsh_exit_code	=>	$virsh_exit_code,
 		}});
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-failed-to-undefine-server", {
-			error	=>	$say_error,
+		print AN::Common::template($conf, "server.html", "general-warning-message", {
+			row	=>	"#!string!row_0044!#",
+			message	=>	$say_error,
 		});
 	}
 	
 	# If I've made it this far, I am ready to add it to the cluster configuration.
-	print AN::Common::template($conf, "server.html", "add-server-to-anvil-add-to-rgmanager");
+	print AN::Common::template($conf, "server.html", "general-message", {
+		row	=>	"#!string!row_0095!#",
+		message	=>	"#!string!message_0105!#",
+	});
 	
 	my $ccs_exit_code;
 	my $ccs_call =  "ccs ";
@@ -4445,15 +4593,18 @@ sub add_vm_to_cluster
 			if ($line =~ /make sure the ricci server is started/)
 			{
 				# Tell the user that 'ricci' isn't running.
-				print AN::Common::template($conf, "server.html", "one-line-message", {
-					message	=>	"#!string!message_0108!#",
-				}, {
-					node	=>	$node,
+				print AN::Common::template($conf, "server.html", "general-message", {
+					row	=>	"#!string!row_0044!#",
+					message	=>	AN::Common::get_string($conf, {key => "message_0108", variables => {
+						node	=>	$node,
+					}}),
 				});
-				print AN::Common::template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "general-message", {
+					row	=>	"&nbsp;",
 					message	=>	"#!string!message_0109!#",
 				});
-				print AN::Common::template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "general-message", {
+					row	=>	"&nbsp;",
 					message	=>	"#!string!message_0110!#",
 				});
 			}
@@ -4461,7 +4612,8 @@ sub add_vm_to_cluster
 			{
 				# Show any output from the call.
 				$line = parse_text_line($conf, $line);
-				print AN::Common::template($conf, "server.html", "one-line-message", {
+				print AN::Common::template($conf, "server.html", "general-message", {
+					row	=>	"#!string!row_0127!#",
 					message	=>	"<span class=\"fixed_width\">$line</span>",
 				});
 			}
@@ -4471,7 +4623,8 @@ sub add_vm_to_cluster
 	$ccs_exit_code = "--" if not defined $ccs_exit_code;
 	if ($ccs_exit_code eq "0")
 	{
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0083!#",
 			message	=>	"#!string!message_0111!#",
 		});
 		
@@ -4481,16 +4634,19 @@ sub add_vm_to_cluster
 	else
 	{
 		# ccs call failed
-		my $say_error = AN::Common::get_string($conf, {key => "message_0112", variables => {
-			ccs_exit_code	=>	$ccs_exit_code,
-		}});
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-ccs-call-failed", {
-			error	=>	$say_error,
+		print AN::Common::template($conf, "server.html", "general-error-message", {
+			row	=>	"#!string!row_0096!#",
+			message	=>	AN::Common::get_string($conf, {key => "message_0112", variables => {
+				ccs_exit_code	=>	$ccs_exit_code,
+			}}),
 		});
 		return (1);
 	}
 	# Enable/boot the server.
-	print AN::Common::template($conf, "server.html", "add-server-to-anvil-enable-service");
+	print AN::Common::template($conf, "server.html", "general-message", {
+		row	=>	"#!string!row_0097!#",
+		message	=>	"#!string!message_0113!#",
+	});
 	
 	### TODO: Get the cluster's idea of the node name and use '-m ...'.
 	# Tell the cluster to start the VM. I don't bother to check for 
@@ -4518,8 +4674,9 @@ sub add_vm_to_cluster
 		else
 		{
 			$line = parse_text_line($conf, $line);
-			print AN::Common::template($conf, "server.html", "one-line-message", {
-				message	=>	"$line",
+			print AN::Common::template($conf, "server.html", "general-message", {
+				row	=>	"#!string!row_0127!#",
+				message	=>	"<span class=\"fixed_width\">$line</span>",
 			});
 		}
 	}
@@ -4527,21 +4684,24 @@ sub add_vm_to_cluster
 	if ($clusvcadm_exit_code eq "0")
 	{
 		# Server added succcessfully.
-		print AN::Common::template($conf, "server.html", "one-line-message", {
+		print AN::Common::template($conf, "server.html", "general-message", {
+			row	=>	"#!string!row_0083!#",
 			message	=>	"#!string!message_0114!#",
 		});
 	}
 	else
 	{
-		# 
-		my $say_error = AN::Common::get_string($conf, {key => "message_0115", variables => {
-			clusvcadm_exit_code	=>	$clusvcadm_exit_code,
+		# Appears to have failed.
+		my $say_instruction = AN::Common::get_string($conf, {key => "message_0088", variables => {
+			manage_url		=>	"?config=true&anvil=$cluster",
 		}});
-		# The variable feeds 'message_0088'
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-clusvcadm-call-failed", {
-			error		=>	$say_error,
-		}, {
-			manage_url	=>	"?config=true&anvil=$cluster",
+		my $say_message = AN::Common::get_string($conf, {key => "message_0115", variables => {
+			clusvcadm_exit_code	=>	$clusvcadm_exit_code,
+			instructions		=>	$say_instruction,
+		}});
+		print AN::Common::template($conf, "server.html", "general-error-message", {
+			row	=>	"#!string!row_0096!#",
+			message	=>	$say_message,
 		});
 		return (1);
 	}
@@ -4781,17 +4941,15 @@ sub provision_vm
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
-		### I now detach this so I won't be here log enough to see the
-		### install complete.
-		#chomp;
-		#my $line = $_;
-		#print "\t\t\t<span class=\"code\">$line</span><br />\n";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
 	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0119!#",
 	}, {
 		server	=>	$conf->{new_vm}{name},
 	});
+	
+	# Run the script.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$shell_script]\n");
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4815,9 +4973,11 @@ sub provision_vm
 				provision_script	=>	$shell_script,
 			}});
 		}
-		print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
-			message	=>	"$line",
-		});
+		### Supressing output to clean-up what the user sees.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
+		#	message	=>	"$line",
+		#});
 	}
 	if ($error)
 	{
@@ -4832,12 +4992,8 @@ sub provision_vm
 		});
 		
 		# Verify that the new VM is running.
-		my $shell_script = "sleep 3; virsh list | grep -q '$conf->{new_vm}{name}'; echo rc:\$?";
-		print AN::Common::template($conf, "server.html", "one-line-message", {
-			message	=>	"#!string!message_0118!#",
-		}, {
-			script	=>	$shell_script,
-		});
+		my $shell_call = "sleep 3; virsh list | grep -q '$conf->{new_vm}{name}'; echo rc:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -4845,7 +5001,7 @@ sub provision_vm
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"echo \"$provision\" > $shell_script && chmod 755 $shell_script",
+			shell_call	=>	$shell_call,
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -4858,7 +5014,7 @@ sub provision_vm
 				# 0 == found
 				# 1 == not found
 				my $rc = $1;
-				if ($rc)
+				if ($rc eq "1")
 				{
 					# Server wasn't created, it seems.
 					print AN::Common::template($conf, "server.html", "provision-server-problem", {
@@ -4870,21 +5026,15 @@ sub provision_vm
 		}
 	}
 	
+	# Done!
+	#print AN::Common::template($conf, "server.html", "provision-server-footer");
+	
 	# Add the server to the cluster if no errors exist.
-	if ($error)
-	{
-		# Well poo.
-	}
-	else
+	if (not $error)
 	{
 		# Add it and then change the boot device to 'hd'.
+		add_vm_to_cluster($conf, 1);
 	}
-	
-	# Done!
-	# the variables hash feeds 'message_0126'.
-	print AN::Common::template($conf, "server.html", "provision-server-footer", {}, {
-		url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$conf->{new_vm}{name}&node=$conf->{new_vm}{host_node}",
-	});
 	
 	return (0);
 }
