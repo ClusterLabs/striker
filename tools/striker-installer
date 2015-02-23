@@ -2076,7 +2076,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $centos_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_node2_ks_file], the error was: $!\n";
 				print $file_handle $centos_node2_ks;
 				close $file_handle;
 				print "- Wrote: [$centos_node2_ks_file].\n";
@@ -2089,7 +2089,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $centos_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker1_ks_file], the error was: $!\n";
 				print $file_handle $centos_striker1_ks;
 				close $file_handle;
 				print "- Wrote: [$centos_striker1_ks_file].\n";
@@ -2102,7 +2102,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $centos_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$centos_striker2_ks_file], the error was: $!\n";
 				print $file_handle $centos_striker2_ks;
 				close $file_handle;
 				print "- Wrote: [$centos_striker2_ks_file].\n";
@@ -2270,7 +2270,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $rhel_node2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_node2_ks_file], the error was: $!\n";
 				print $file_handle $rhel_node2_ks;
 				close $file_handle;
 				print "- Wrote: [$rhel_node2_ks_file].\n";
@@ -2283,7 +2283,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $rhel_striker1_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker1_ks_file], the error was: $!\n";
 				print $file_handle $rhel_striker1_ks;
 				close $file_handle;
 				print "- Wrote: [$rhel_striker1_ks_file].\n";
@@ -2296,7 +2296,7 @@ sub configure_iso_source
 			}
 			else
 			{
-				open ($file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
+				open (my $file_handle, ">", $rhel_striker2_ks_file) or die "$THIS_FILE ".__LINE__."; Failed to write: [$rhel_striker2_ks_file], the error was: $!\n";
 				print $file_handle $rhel_striker2_ks;
 				close $file_handle;
 				print "- Wrote: [$rhel_striker2_ks_file].\n";

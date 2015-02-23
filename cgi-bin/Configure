@@ -89,6 +89,9 @@ if (($conf->{cgi}{manifest}) && ($conf->{cgi}{manifest} ne "new"))
 	# Load!
 }
 
+AN::Configure::testing($conf);
+
+
 AN::Cluster::footer($conf);
 
 exit(0);

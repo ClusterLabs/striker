@@ -12,8 +12,6 @@ package AN::InstallManifest;
 # - Install Manifests can be created with IFN networks not matching the per-node/
 #   striker IFN IPs assigned...
 # - Back-button doesn't work after creating a new manifest.
-# - parted created an unaligned partition... Need to find a way to say "adjust
-#   to the closest aligned block"
 # - keys are being added in duplicate to ~/.ssh/authorized_keys
 # 
 # TODO:
@@ -9551,6 +9549,7 @@ then
 baseurl=file:///mnt/$mount_name/
 enabled=1
 gpgcheck=0
+skip_if_unavailable=1
 EOF
                 echo \"Cleaning repo data\"
                 yum clean all
