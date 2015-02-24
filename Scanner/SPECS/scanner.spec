@@ -9,7 +9,7 @@
 
 Name:           Scanner
 Version:        1.0
-Release:        1.0
+Release:        2%{?dist}.anvil
 Summary:        System to monitor HA system resources
 License:        GPL-2.0
 Group:          Development/Libraries/Perl
