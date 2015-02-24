@@ -30,7 +30,7 @@ Requires :      perl-Proc-Background
 Requires :      perl-TermReadKey
 Requires :      perl-Test-Output
 Requires :      perl-XML-Simple
-Requires :      perl-YAML
+Requires :      perl-YAML-noarch
 BuildRequires:  perl
 
 %description
@@ -59,8 +59,6 @@ do so.
 
 %files -f %{name}.files
 %defattr(-,root,root,755)
-%dir /var/log/striker
-%dir /shared/status
 %attr(777,root,root) /var/log/striker
 %attr(777,root,root) /shared/status
 %doc Docs/Writing_an_agent Docs/Writing_an_agent_by_extending_existing_perl_classes.
