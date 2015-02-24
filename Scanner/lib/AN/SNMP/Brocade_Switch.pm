@@ -1,4 +1,4 @@
-package AN::SNMP::APC_PDU;
+package AN::SNMP::Brocade_Switch;
 
 use parent 'AN::SNMP::APC_UPS';    # inherit from AN::SNMP_APC_UPS
 
@@ -92,10 +92,8 @@ sub prep_reverse_cache_and_prev_values {
     for my $target ( keys %{ $self->confdata() } ) {
         my $dataset = $self->confdata()->{$target};
         my @oids;
-      MIB:
         for my $mib ( keys %{ $dataset->{oid} } ) {
             my $oid = $dataset->{oid}{$mib};
-	    next MIB unless $oid;
             push @oids, $oid;
             $dataset->{roid}{$oid} = $mib;
             $prev{$target}{$mib} = undef;
@@ -136,7 +134,6 @@ sub eval_discrete_status {
     if ( $args->{tag} =~ m{\Aoutlet_is_on_(\d)} ) {
         my $num = $1;
         $msg->{newval} = $args->{rec_meta}{values}{ $args->{value} } || '';
-	$msg->{tag}    = $args->{tag};
         my $unchanged = ( $is_digit->{ $args->{value} }
                           && $is_digit->{ $args->{prev_value}}
                           ? $args->{value} == $args->{prev_value}
@@ -173,9 +170,8 @@ sub process_all_oids {
 
     for my $oid ( keys %$received ) {
         my ( $value, $tag ) = ( $received->{$oid}, $metadata->{roid}{$oid} );
-	my ( $tag_base ) = ($tag =~ m{(.*)_\d});
-        my $rec_meta = $metadata->{$tag_base};
-        my $label = $rec_meta->{label} || $tag_base;
+        my $rec_meta = $metadata->{$tag};
+        my $label = $rec_meta->{label} || $tag;
 
         my $prev_value  = $prev->{$target}{$tag}{value}  || $value;
         my $prev_status = $prev->{$target}{$tag}{status} || 'OK';
@@ -189,7 +185,6 @@ sub process_all_oids {
         $i++;
 
         my $args = { tag         => $tag,
-		     tag_base    => $tag_base,
                      value       => $value,
                      rec_meta    => $rec_meta,
                      prev_status => $prev_status,

@@ -99,8 +99,10 @@ sub begin_logging {
     close STDOUT;
     my $today = strftime '%F_%T', localtime;
     my $filename = $self->logdir . '/log.' . $PROG . '.' . $today;
-    open STDOUT, '>', $filename;
-    open STDERR, '>&STDOUT';    # '>&', is followed by a file handle.
+    open STDOUT, '>', $filename
+	or die "Could not redirect STDOUT to '$filename':\n$!";
+    open STDERR, '>&STDOUT'    # '>&', is followed by a file handle.
+	or die "Could not redirect STDERR to '$filename':\n$!";
 }
 
 # ----------------------------------------------------------------------
