@@ -101,8 +101,7 @@ messages:
 install: wrapper dirs libs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp dashboard scanner wipmi_power  $(BINDIR);\
-            chmod 777 /var/log/striker;			\
-            chmod 777 /shared/status;			\
+            chmod 777 $(LOGDIR) $(SHAREDIR);		\
 	else						\
 	    echo "Need to be root to create wrappers.";	\
 	    echo "run as: sudo make";			\
