@@ -30,7 +30,7 @@ Requires :      perl-Proc-Background
 Requires :      perl-TermReadKey
 Requires :      perl-Test-Output
 Requires :      perl-XML-Simple
-Requires :      perl-YAML-noarch
+Requires :      perl-YAML
 BuildRequires:  perl
 
 %description
