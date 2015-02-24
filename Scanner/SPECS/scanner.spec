@@ -69,6 +69,9 @@ do so.
 %config /etc/striker/Config/raid.conf
 %config /etc/striker/Config/scanner.conf
 %config /etc/striker/Config/snmp_apc_ups.conf
+%config /etc/striker/Config/snmp_apc_pdu.conf
+%config /etc/striker/Config/snmp_brocade_switch.conf
+%config /etc/striker/Config/system_check.conf
 %config /etc/striker/Config/dashboard.conf
 %config /etc/striker/Config/nodemonitor.conf
 
