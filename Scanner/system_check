@@ -8,6 +8,7 @@ use 5.010;
 our $VERSION = 1.0;
 
 use autodie qw(open close);
+use Data::Dumper;
 use English '-no_match_vars';
 use File::Basename;
 use FindBin qw($Bin);
@@ -95,7 +96,7 @@ sub process_args {
                 'run_until=s',   'confpath=s',
                 'verbose!',      'max_retries=s',
                 'ignorelist=s@', 'logdir=s',
-                'log',           'man',
+                'log!',          'man',
                 'help' )
         or pod2usage(2);
 
@@ -162,22 +163,27 @@ sub main {
     $options->{isa_scanner} = 1;
 
     my $now = strftime( "%F %T", localtime );
-    say "Starting system_check at $now with log saved in $options->{logdir}.";
 
     my $system_check = AN::SystemCheck->new($options);
     $system_check->create_flagfile();
 
-    if ( ! exists $ENV{EMACS} ) {
+    if (  $options->{log} ) {
+	say "Starting system_check at $now with log in $options->{logdir}.";
 	$system_check->begin_logging();
 	$system_check->verbose( $system_check->verbose + 1 );
     }
-
     say "Starting system_check at $now.";
 
     $system_check->run();
 
     $now = strftime( "%F %T", localtime );
     say "Completed system_check at $now.";
+
+    if ( $system_check->tmpdir && -d $system_check->tmpdir ) {
+	my $files = `ls $system_check->tmpdir`;
+	say "The following files exist in @{[$system_check->tmpdir]}\n$files"
+	    if $files;
+    }
 }
 
 # ----------------------------------------------------------------------

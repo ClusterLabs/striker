@@ -14,6 +14,7 @@ use Const::Fast;
 use English '-no_match_vars';
 use File::Basename;
 use File::Spec::Functions 'catdir';
+use File::Temp 'tempfile';
 use POSIX 'strftime';
 use Time::HiRes qw( time alarm sleep);
 use Time::Local;
@@ -32,99 +33,19 @@ use AN::Unix;
 
 const my $PROG => ( fileparse($PROGRAM_NAME) )[0];
 
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# 'alert_num' accessor is defined later. Initialize it to the letter
-# 'a' and increment the value each time it is called.
-#
-use subs 'alert_num';
+use Class::Tiny qw( check index reference ssh ipmi names root tmpfiles
+                    cluster_conf etc_hosts
+                  ), {tmpdir => sub {'/var/tmp/systemcheck'},
+};
 
-use Class::Tiny qw( check index reference );
 
 # ======================================================================
 # CONSTANTS
 #
-# is_recent == 0              is_running == 0       is_running == 1
-const my @OLD_PROC_MSG => (
-    [ 'OLD_PROCESS_CRASH', 'OLD_PROCESS_STALLED' ],
 
-    # is_recent == 1              is_running == 0       is_running == 1
-    [ 'OLD_PROCESS_RECENT_CRASH', undef ], );
-
-# ======================================================================
-# METHODS
-#
-# ----------------------------------------------------------------------
-# Are we associated with a terminal, or is this a background or cron job?
-#
-# sub interactive {
-#     my $self = shift;
-#     return -t STDIN && -t STDOUT;
-# }
-
-# ----------------------------------------------------------------------
-# Replace STDOUT / STDERR with a log file, .
-#
-# sub begin_logging {
-#     my $self = shift;
-#     close STDOUT;
-#     my $today = strftime '%F_%T', localtime;
-#     my $filename = $self->logdir . '/log.' . $PROG . '.' . $today;
-#     open STDOUT, '>', $filename
-# 	or die "Could not redirect STDOUT to '$filename':\n$!";
-#     open STDERR, '>&STDOUT'    # '>&', is followed by a file handle.
-# 	or die "Could not redirect STDERR to '$filename':\n$!";
-# }
-
-# ----------------------------------------------------------------------
-# Set a flag to exit the timed loop.
-#
-# sub restart {
-#     my $self = shift;
-
-#     $self->shutdown('restart');
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Restart the program with the same arguments.
-#
-# sub restart_scanCore_now {
-#     my $self = shift;
-
-#     my @cmd = ( $PROGRAM_NAME, @{ $self->commandlineargs } );
-#     say "Restarting with cmd '@cmd'.";
-#     exec @cmd
-#         or die "Failed: $!.\n";
-# }
-
-# ----------------------------------------------------------------------
-# Read the configuration file.
-#
-# sub read_configuration_file {
-#     my $self = shift;
-
-#     return unless $self->confpath;
-#     my %cfg = ( path => { config_file => $self->confpath } );
-#     AN::Common::read_configuration_file( \%cfg );
-
-#     $self->confdata( $cfg{ $cfg{name} } );
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# CLASS CONSTRUCTOR
-#
-# sub alert_num {    # Return current value, increment to new value.
-#     my $self = shift;
-
-#     return $self->{alert_id}++;
-# }
-
-# ======================================================================
-# CONSTANTS
-#
 const my $COLON => q{:};
 const my $COMMA => q{,};
+const my $COMMASPACE => q{, };
 const my $SPACE => q{ };
 const my $STAR  => q{*};
 const my $PIPE  => q{|};
@@ -132,502 +53,351 @@ const my $PIPE  => q{|};
 const my $READ_PROC  => q{-|};
 const my $WRITE_PROC => q{|-};
 
-const my $EP_TIME_FMT => '%8.3f ms elapsed;  %8.3f ms pending';
-
-const my $DB_NODE_TABLE       => 'node';
-const my $PROC_STATUS_NEW     => 'pre_run';
-const my $PROC_STATUS_RUNNING => 'running';
-const my $PROC_STATUS_HALTED  => 'halted';
-
-const my $HOURS_IN_A_DAY      => 24;
-const my $MINUTES_IN_AN_HOUR  => 60;
-const my $SECONDS_IN_A_MINUTE => 60;
-const my $SECONDS_IN_A_DAY =>
-    ( $HOURS_IN_A_DAY * $MINUTES_IN_AN_HOUR * $SECONDS_IN_A_MINUTE );
-
-const my $RUN     => 'run';
-const my $EXIT_OK => 'ok to exit';
-
-const my @NEW_AGENT_ARGS =>
-    qw( -o meta-data -f xlogdirx --dbconf xdbconfx -log --verbose );
-
-const my $RUN_UNTIL_FMT_RE => qr{           # regex for 'run_until' data format
-                                 \A         # beginning of string
-                                 (\d{1,2})  # 1 or 2 digits for hours 0-23
-                                 :	    # Literal colon
-                                 (\d{2})    # 2 digits for minutes 0-59
-                                 :	    # Literal colon
-                                 (\d{2})    # 2 digits for seconds 0-59
-                                 \z         # end of string
-                                 }xms;
+const my $CMD 
+    => {
+	# --------------------------------------------------
+	# Cluster test commands.
+	#
+	CLUSTAT          => '"clustat"',
+	HOSTNAME         =>  '"uname -n"',
+	JOIN_CLUSTER     => '"/etc/init.d/cman start && /etc/init.d/rgmanager start"',
+	PANIC_CRASH_HOST => '"echo c > /proc/sysrq-trigger"',
+	TAIL_MSGS_FILE   => 'ssh -o ServerAliveInterval=2 host "tail -f /var/log/messages"',
+	# --------------------------------------------------
+	# PDU test commands.
+	#
+	GET_CLUSTER_CONF => 'cat /etc/cluster/cluster.conf',
+	GET_ETC_HOSTS    => 'cat /etc/hosts',
+};
+const my $FILE => { CRASHLOG =>   'crashlog_IP_XXXX',
+		    MSGTAILLOG => 'msgtaillog_IP_XXXX',
+};
+# ======================================================================
+# GLOBAL
+#
+local $LIST_SEPARATOR = $COMMASPACE;
 
 # ======================================================================
-# Subroutines
+# METHODS
 #
+sub separator { my $self = shift; say "\n", '-' x72, "\n"; };
 # ----------------------------------------------------------------------
-# Determine whether it is quitting time.
 #
-# sub run_until_data_is_valid {
-#     my ($value) = @_;
+sub prepare_for_tests {
+    my $self = shift;
+    
+    $self->ssh( [ split $COMMA, $self->confdata->{servers}{ssh} ]);
+    $self->ipmi( [ split $COMMA, $self->confdata->{servers}{ipmi} ]);
 
-#     # string must match regular expression and
-#     # numbers must fit ranges.
-#     return unless $value =~ m{$RUN_UNTIL_FMT_RE};
+    mkdir $self->tmpdir
+	unless -d $self->tmpdir;
 
-#     return (    $1 >= 0
-#              && $1 < $HOURS_IN_A_DAY
-#              && $2 >= 0
-#              && $2 < $MINUTES_IN_AN_HOUR
-#              && $3 >= 0
-#              && $3 < $SECONDS_IN_A_MINUTE );
-# }
-
-# ======================================================================
-# Private Accessors
+}
+# ----------------------------------------------------------------------
 #
-# ----------------------------------------------------------------------
-# Add and remove elements from the process list, representing programs
-# found and removed from the agents directory.
-#
-# sub add_processes {
-#     my $self = shift;
-#     my (@value) = @_;
-
-#     push @{ $self->processes }, @value;
-#     return;
-# }
-
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub drop_processes {
-#     my $self = shift;
-#     my (@value) = @_;
-
-#     my $re = join '|', map { '\b' . $_ . '\b' } @value;
-#     $self->processes(
-#                      [ grep { ( keys %$_ ) !~ $re } @{ $self->processes() } ] );
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Add and remove elements from the agents list, representing running
-# agent processes.
-#
-# sub add_agents {
-#     my $self = shift;
-#     my (@values) = @_;
-
-#     push @{ $self->agents }, @values;
-#     return;
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub drop_agents {
-#     my $self = shift;
-#     my (@values) = @_;
-
-#     my $re = join '|', map { '\b' . $_ . '\b' } @values;
-#     $self->agents( [ grep { $_->{filename} !~ $re } @{ $self->agents() } ] );
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Create a AN::FlagFile object
-#
-# sub create_flagfile {
-#     my $self = shift;
-#     my ($data) = @_;
-
-#     my $hostname = AN::Unix::hostname('-short');
-
-#     my $args = { dir     => $self->logdir,
-#                  pidfile => "${hostname}-${PROG}", };
-#     $args->{data} = $data if $data;    # otherwise use default.
-
-#     $self->flagfile( AN::FlagFile->new($args) );
-# }
-
-# # ----------------------------------------------------------------------
-# # Delegate to FlagFile methods.
-# #
-# sub create_pid_file {
-#     my $self = shift;
-
-#     $self->flagfile()->create_pid_file();
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub delete_pid_file {
-#     my $self = shift;
-
-#     $self->flagfile()->delete_pid_file();
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub touch_pid_file {
-#     my $self = shift;
-
-#     $self->flagfile()->touch_pid_file();
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub old_pid_file_exists {
-#     my $self = shift;
-
-#     return $self->flagfile()->old_pid_file_exists();
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub pid_file_is_recent {
-#     my $self = shift;
-
-#     my $file_age = $self->flagfile()->old_pid_file_age();
-#     return $file_age
-#         && $file_age < $self->rate * $self->max_loops_unrefreshed;
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub create_marker_file {
-#     my $self = shift;
-#     my ( $tag, $data ) = @_;
-
-#     $self->flagfile()->create_marker_file( $tag, $data );
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub touch_marker_file {
-#     my $self = shift;
-
-#     $self->flagfile()->touch_marker_file();
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub find_marker_files {
-#     my $self = shift;
-
-#     return $self->flagfile()->find_marker_files(@_);
-# }
-
-# ----------------------------------------------------------------------
-# Look up whether the process id specified in the pidfile refers to
-# a running process, make sure it's the same name as we are. Otherwise
-# could be another process re-using that pid.
-#
-# sub pid_file_process_is_running {
-#     my $self = shift;
-
-#     my (%old_pid_data) = map { my ( $k, $v ) = split ':'; $k => $v }
-#         split "\n", $self->flagfile()->old_pid_file_data();
-
-#     # look up by pid, output only the command file, no header line.
-#     my $previous = AN::Unix::pid2process( $old_pid_data{pid} );
-
-#     # If a process with the specified pid is found, it's name is in $previous.
-#     # Make sure it has the right name.
-#     return $previous && $previous eq $PROG;
-# }
-
-# # ----------------------------------------------------------------------
-# # Return true if less than 5 minutes until midnight, otherwise return
-# # false.  In fact, the 'true' value is an arrayref containing the
-# # current hour, minute and second time, to avoid a second call to
-# # localtime.
-# sub almost_quitting_time {
-#     my $self = shift;
-
-#     my ( $sec, $min, $hr ) = (localtime)[ 0, 1, 2 ];
-
-#     return [ $hr, $min, $sec ]
-#         if $hr == $self->quit_hr && $min > ( $self->quit_min - 5 );
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Given the current seconds, minutes, hour, time remaining until
-# midnight is (60 - current minute) minutes plus (60 - current
-# seconds) seconds. Multiple the minutes by 60 to convert to seconds.
-# But we want to wake up 30 seconds beforehand, to tell old job to go
-# away. So subtract 30 from the calculation.
-# sub sleep_until_quitting_time {
-#     my ($now) = @_;
-
-#     my $remaining = ( 60 - $now->[0] ) + ( 60 * ( 60 - $now->[1] ) ) - 30;
-#     sleep $remaining;
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# sub tell_old_job_to_quit {
-#     my $self = shift;
-#     my ($old_pid) = @_;
-
-#     kill 'USR1', $old_pid;
-
-#     $self->monitor_old_pid_for_exit($old_pid);
-#     return;
-# }
-
-# # ......................................................................
-# # Delegate announcement of server shutdown.
-# #
-# sub tell_db_Im_dying {
-#     my $self = shift;
-
-#     $self->dbs()->tell_db_Im_dying();
-#     return;
-# }
-
-# # ----------------------------------------------------------------------
-# # Fetch list of alert listeners.
-# #
-# sub fetch_alert_listeners {
-#     my $self = shift;
-
-#     return $self->dbs()->fetch_alert_listeners($self);
-# }
-
-# # ----------------------------------------------------------------------
-# # Does the status from evaluating the earlier process's pid file indicate
-# # that this instance should exit?
-# #
-# sub ok_to_exit {
-#     my $self = shift;
-#     my ($status) = @_;
-
-#     return $status eq $EXIT_OK;
-# }
-
-# # ----------------------------------------------------------------------
-# # Delegate to Alerts object - set or clear an alert, handle all  current
-# # alerts.
-# #
-# sub set_alert {
-#     my $self = shift;
-
-#     $self->alerts()->set_alert(@_);
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub clear_alert {
-#     my $self = shift;
-
-#     $self->alerts()->clear_alert(@_);
-#     return;
-# }
-
-# # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# sub handle_alerts {
-#     my $self = shift;
-
-#     $self->alerts()->handle_alerts(@_);
-#     $self->reset_summary_weight;
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Evaluate presence of absence of pid file from previous instance, age
-# of file, verify process is running.
-#
-# sub check_for_previous_instance {
-#     my $self = shift;
-
-#     $self->create_flagfile();
-
-#     # Old process exited cleanly, take over. Return early.
-#     if ( !$self->old_pid_file_exists() ) {
-#         say "Previous $PROG exited cleanly; taking over.";
-#         return $RUN;
-#     }
-
-#     my ( $is_recent, $is_running )
-#         = ( $self->pid_file_is_recent || 0,
-#             $self->pid_file_process_is_running || 0 );
-
-#     # Old process is running and updating pid file. Return early.
-#     if ( $is_recent && $is_running ) {
-#         say "A $PROG process is already running; exiting";
-#         return $EXIT_OK;
-#     }
-
-#     # Old process exited recently without proper cleanup
-
-#     my $tag = $OLD_PROC_MSG[$is_recent][$is_running];
-#     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-#                       '', '', AN::Alerts::DEBUG(), $tag, '' )
-#         if $is_recent && !$is_running;
-
-#     # Old process has stalled; running but not updating.
-#     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-#                       '', '', AN::Alerts::DEBUG(), $tag, '' )
-#         if !$is_recent && $is_running;
-
-#     # old process exited some time ago without proper cleanup
-#     $self->set_alert( $self->alert_num(), $PID, 'pidfile check',
-#                       '', '', AN::Alerts::DEBUG(), $tag, '' )
-#         if !$is_recent && !$is_running;
-
-#     say "Replacing defective previous $PROG: ", $tag;
-
-#     return $RUN;
-# }
-
-# ----------------------------------------------------------------------
-# Create a DBS object and have it connect to databases.
-#
-# sub connect_dbs {
-#     my $self = shift;
-#     my ($node_args) = @_;
-
-#     my $args = { path    => { config_file => $self->dbconf },
-#                  logdir  => $self->logdir,
-#                  verbose => $self->verbose,
-#                  owner   => $self, };
-#     $args->{current} = 0    # In scanner, activate only one DB at a time
-#         if $self->isa_scanner;
-
-#     $args->{node_args} = $node_args if $node_args;
-
-#     $self->dbs( AN::DBS->new($args) );
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Delegate - set node table entry for this process to status 'halted'.
-#
-# sub finalize_node_table_status {
-#     my $self = shift;
-
-#     $self->dbs()->finalize_node_table_status();
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Want to launch all agents, except don't launch the node_monitor,
-# except on the dashboard, only when a node server has unespectedly
-# gone down.
-#
-# sub launch_new_agents {
-#     my $self = shift;
-#     my ( $new, $extra ) = @_;
-
-#     local $LIST_SEPARATOR = $SPACE;
-
-#     say "in launch new agents with args:",
-#         Data::Dumper::Dumper( [ $new, $extra ], [qw($new $extra)] )
-#         if grep {/debug launch_new_agents/} $ENV{VERBOSE} || '';
-
-#     my @extra_args = ( $extra && 'HASH' eq ref $extra
-#                        ? @{ $extra->{args} }
-#                        : ('') );
-#     my $args = [
-#         map {
-#                   $_ eq 'xdbconfx' ? $self->dbconf
-#                 : $_ eq 'xlogdirx' ? $self->logdir
-#                 :                    $_;
-#             } @NEW_AGENT_ARGS,
-#         @extra_args ];
-
-#     my @new_agents;
-# AGENT:
-#     for my $agent (@$new) {
-#         next AGENT
-#             if (
-#             exists $self->ignore()->{$agent}    # ignore these agents
-#             && !(
-#                 $extra                                   # call-by-call override
-#                 && 'HASH' eq ref $extra
-#                 && exists $extra->{ignore_ignorefile}
-#                 && $extra->{ignore_ignorefile}{$agent} ) );
-#         my @args = ( catdir( $self->agentdir(), $agent ), @$args );
-#         say "launching: @args." if $self->verbose;
-#         my $pid = AN::Unix::new_bg_process(@args);
-#         $pid->{filename} = $agent;
-#         push @new_agents, $pid;
-#     }
-#     $self->add_agents(@new_agents);
-
-#     return \@new_agents;
-# }
-
-# ----------------------------------------------------------------------
-# Interface routine - check for changes in the agents directorry, and
-# handle additions or deletions.
-#
-# sub scan_for_agents {
-#     my $self = shift;
-
-#     my ( $new, $deleted ) = $self->monitoragent()->scan_files();
-
-#     say "scan @{[time]} [@{$new}], [@{$deleted}]."
-#         if $self->verbose()
-#         or @{$new}
-#         or @{$deleted};
-
-#     my $retval = [];
-
-#     # If there are new agents, store its data in $retval->[0]
-#     # otherwise fill $retval->[0] with a false value, so that the
-#     # 'deleted' data still ends up in $retval->[1]
-#     #
-#     push @$retval,
-#         (   @$new
-#           ? $self->launch_new_agents($new)
-#           : undef );
-
-#     if (@$deleted) {
-#         push @$retval, $self->drop_agents(@$new);
-#     }
-
-#     sleep 1;
-
-#     return $retval;
-# }
-
-# ----------------------------------------------------------------------
-# Delete all metadata files.
-#
-# sub clean_up_metadata_files {
-#     my $self = shift;
-
-#     my $prefix = AN::FlagFile::get_tag('METADATA');
-#     my $dir    = $self->flagfile()->dir();
-
-#     for ( glob( catdir( $dir, ( $prefix . $STAR ) ) ) ) {
-#         say "deleting old file $_." if $self->verbose;
-#         unlink $_;
-#     }
-
-#     return;
-# }
+sub generic_ssh_test {
+    my $self = shift;
+    my ( $hosts, $remote_cmd ) = @_;
+
+    my (%results, @failed);
+    for my $host ( @$hosts ) {
+     	my @cmd = ( '/usr/bin/ssh', $host, $remote_cmd );
+     	say "Running '@cmd'" if $self->verbose;
+     	my $response = `@cmd`;
+     	chomp $response;
+     	say "Got response '$response'" if $self->verbose;
+     	if ( length $response ) {
+     	    $results{$host} = $response;
+     	} else {
+     	    push @failed, $host;
+     	}
+     	say '' if $self->verbose;;
+    }
+    return (\%results, \@failed );;
+}
 # ----------------------------------------------------------------------
 #
 sub test_ssh_to_hosts {
     my $self = shift;
 
-    my ($tests, $attempts) = 0;
-    for my $tag ( keys %{ $self->confdata->{servers}->{ssh} } ) {
-	$attempts++;
-	my $host = $self->confdata->{servers}->{ssh}{$tag};
-	my @cmd = ( '/usr/bin/ssh', $host, '"uname -n"' );
-	say "Running '@cmd'" if $self->verbose;
-	my $response = `@cmd`;
-	chomp $response;
-	say "Got response '$response'" if $self->verbose;
-	if ( length $response ) {
-	    $tests++;
-	    $self->confdata->{servers}->{names}{$tag} = $response;
-	}
-	say '';
+    my ( $results, $failed )
+    	= $self->generic_ssh_test( $self->ssh, $CMD->{HOSTNAME});
+
+    $self->names( $results );
+    return unless @$failed;
+
+    my $plural = @$failed > 1 ? 'hosts' : 'host';
+    die "Failed to connect to $plural @$failed.\n";
+}
+# ----------------------------------------------------------------------
+#
+sub test_host_clustat {
+    my $self = shift;
+
+    my ( $results, $failed )
+     	= $self->generic_ssh_test( $self->ssh, $CMD->{CLUSTAT});
+
+    return unless @$failed;
+
+    ( $results, $failed )
+     	= $self->generic_ssh_test( $failed, $CMD->{JOIN_CLUSTER});
+    return unless @$failed;
+    
+    my $plural = @$failed > 1 ? 'Hosts' : 'Host';
+    die "$plural not running sman /sgmanager: @$failed.\n";
+}
+# ----------------------------------------------------------------------
+#
+sub launch_msg_tail_on_host {
+    my $self = shift;
+    my ( $host ) = @_;
+
+    my $logfile = $self->logdir . '/messages.' . $host;
+#    my $logfile = $self->logdir . '/tmp/messages.' . $host;
+    my $cmd = '(/usr/bin/ssh root@'
+	. $host
+	. ' "tail -f /var/log/messages" ) > '
+	. $logfile;
+    say "Running '$cmd'" if $self->verbose;
+    my $bg = AN::Unix::new_bg_process( $cmd );
+    
+    return ( $bg, $logfile );
+}
+# ----------------------------------------------------------------------
+sub crash_host {
+    my $self = shift;
+    my ( $host ) = @_;
+
+    my $cmd = qq{ssh  -o ServerAliveInterval=2 root\@$host "echo c > /proc/sysrq-trigger" };
+    say "Running '$cmd'" if $self->verbose;
+    system( $cmd );
+
+    return;
+}
+# ----------------------------------------------------------------------
+#
+sub check_log_file_for_fenced_host {
+    my $self = shift;
+    my ( $logfile ) = @_;
+
+    my $crashed_at = time;
+    my (@lines, $has_crashed, $is_fenced);
+
+  LINE:
+    while ( time() - $crashed_at < 300 ) {
+	@lines = split "\n", `cat $logfile`;
+	$has_crashed = grep {/Connection closed/} @lines;
+
+	$is_fenced = grep { /rgmanager/ && /Restricted domain unavailable/
+	                  } @lines;
+	last LINE if $is_fenced;
     }
-    die "Failed to connect to one of the hosts"
-	unless $tests == $attempts;
+    return ($has_crashed, $is_fenced, @lines );
+}
+# ----------------------------------------------------------------------
+#
+sub wait_for_pingable {
+    my $self = shift;
+    my ( $host ) = @_;
+
+    my ( $start, $host_is_pingable, $i ) = (time(), 0, 0);
+    say "Pinging $host -> ", scalar localtime;
+  PING:
+    while ( time() - $start < 600 ) {
+	$host_is_pingable = $self->ping_host_once($host);
+	last PING if $host_is_pingable;
+	sleep 10;
+	$i++;
+	say "Pinging $host -> ", scalar localtime
+	    if 0 == $i % 4;	# approx 1 minute, including ping timeout
+    }
+    return $host_is_pingable;
+}
+# ----------------------------------------------------------------------
+#
+sub ping_host_once {
+    my $self = shift;
+    my ( $host ) = @_;
+
+    my $cmd = "/bin/ping -c 1 $host";
+    say "Running '$cmd'." if $self->verbose >= 2;
+    my $response = `$cmd`;
+
+    my ( $loss ) = ($response =~ m{\s (\d+)% \s packet \s loss}xms);
+    return $loss == 0;
+}
+# ----------------------------------------------------------------------
+#
+sub test_panic_crash {
+    my $self = shift;
+
+    my ($i, $N) = (1, scalar @{$self->ssh} )
+;
+    for my $host ( @{$self->ssh} ) {
+	# monitor /var/log/messages on other host
+	#
+	my ($otherhost) = grep { $_ ne $host } @{$self->ssh};
+	my ($bg_task, $logfile) = $self->launch_msg_tail_on_host( $otherhost );
+
+	# crash the selected hosts
+	#
+	say "Crashing host $host at ", scalar localtime;
+	$self->crash_host( $host );
+	say "Job done at ", scalar localtime;
+
+	my ( $has_crashed, $is_fenced, @lines )
+	    = $self->check_log_file_for_fenced_host( $logfile );
+
+	if ( $is_fenced ) {
+	    say "$otherhost /var/log/messages reports $host fenced.";
+	    say "\n", join( "\n", @lines), "\n";
+	    say "Waiting for reboot, at ", scalar localtime;
+	    $bg_task = undef;   # kill bg task
+	} else {
+	    say "Timed out (5 min) waiting for $otherhost to detect $host crash.";
+	    say "\n", join( "\n", @lines), "\n";
+	    say "shutting down";
+	    exit 1;
+	}
+	my ( $host_is_back ) = $self->wait_for_pingable( $host );
+	if ( $host_is_back ) {
+	    say "Host $host is pingable again, at ", scalar localtime;
+	    say "Waiting 15 seconds, then restarting cman & rgmanager."
+	} else {
+	    die "Timed out (10 min) waiting for $host to become pingable.";
+	    say "shutting down";
+	    exit 1;
+	}
+	sleep 15;
+	my ( $results, $failed )
+	    = $self->generic_ssh_test( [$host], $CMD->{JOIN_CLUSTER});
+
+	die "Host $host not running cman / rgmanager '@$failed'.\n"
+	    if 'ARRAY' eq ref $failed
+	    && @$failed;
+
+	if ( $i++ < $N ) {	# Don't bother on last time around.
+	    say "Waiting 15 seconds for rcman and rgmanager to settle in";
+	    sleep 15;
+	    say "\n", ':' x 72, "\n";
+	}
+    }
     return;
 }
 # ......................................................................
-sub run_tests() {
+sub run_cluster_tests() {
+    my $self = shift;
+    
+    say "Starting Cluster tests.";
+
+    $self->test_ssh_to_hosts; $self->separator;
+    $self->test_host_clustat; $self->separator;
+    $self->test_panic_crash; $self->separator;
+
+    say "Cluster tests complete.";
+    return;
+}
+sub init_cfg_for_parse_cluster_conf {
     my $self = shift;
 
-    $self->test_ssh_to_hosts();
-    
+    my $cfg = {cgi => {cluster => 'this_cluster'},
+               clusters => {'this_cluster' => {nodes => [sort values %{$self->names}]}}};
+    $cfg->{node}{$self->names->{$_}}{get_host_from_cluster_conf} = 1
+	for  @{$self->ssh};
+
+    return $cfg;
+}
+# ----------------------------------------------------------------------
+#
+sub load_cluster_conf_file {
+    my $self = shift;
+
+    my ( $results, $failed )
+	= $self->generic_ssh_test( $self->ssh, $CMD->{GET_CLUSTER_CONF});
+
+    die "Failed to read cluster.conf file: @$failed."
+	if @$failed;
+
+    my $cfg = $self->init_cfg_for_parse_cluster_conf;
+
+  CONF:
+    for my $host ( @{$self->ssh} ) {
+	my @conf_lines = split "\n", $results->{$host};
+	my $name = $self->names->{$host};
+	AN::Cluster::parse_cluster_conf( $cfg, $name, \@conf_lines);
+	if ( exists $cfg->{failoverdomain}
+	     && exists $cfg->{fence}
+	     && exists $cfg->{node}
+	     && exists $cfg->{vm}
+	    ) {
+	    $self->cluster_conf($cfg);
+	    last CONF;
+	}
+    }
+    return;
+}
+# ----------------------------------------------------------------------
+#
+sub load_etc_hosts {
+    my $self = shift;
+
+    my ( $results, $failed )
+	= $self->generic_ssh_test( $self->ssh, $CMD->{GET_ETC_HOSTS});
+
+    die "Failed to read /etc/hosts file: @$failed."
+	if @$failed;
+
+    my $lines = $results->{$self->ssh->[0]};
+    $lines =~ s{\t}{ }xmsg;
+    my %etc_hosts;
+  LINE:
+    for my $line ( split "\n", $lines ) {
+	next LINE unless $line;
+
+	$line = (split /#/, $line)[0]; # Discard comments
+	next LINE unless $line =~ m{\w};
+
+	my @words = split /\s+/, $line;
+	my $ip = shift @words;
+
+	if ( exists $etc_hosts{$ip} ) {
+	    push @{$etc_hosts{$ip}}, @words;
+	} else {
+	    $etc_hosts{$ip} = \@words;
+	}
+	for my $word ( @words ) {
+	    $etc_hosts{$word} ||= $ip; # Don't overwrite existswing values
+	}
+    }
+    $self->etc_hosts(\%etc_hosts);
+
+    return;
+}
+# ----------------------------------------------------------------------
+# 
+sub run_pdu_tests {
+    my $self = shift;
+
+    say "Starting PDU tests.";
+    $self->test_ssh_to_hosts
+	unless $self->names;
+
+    $self->load_cluster_conf_file;
+    $self->load_etc_hosts;
+    $self->separator;
+    for my $host ( @{$self->ssh} ) {
+	my $name = $self->names->{$host};
+	my @cmd = $self->cluster_conf->{node}{$name}{fence_method}{'1:pdu'}{device};
+	for my $cmd ( @cmds ) {
+	    my $pdu= ( $cmd =~ m{-a \s (\S+) \s -n}xms );
+	    my $ip = $self->etc_hosts->{$pdu};
+	    $cmd =~ s{$pdu}{$ip};
+	    say "Turning off PDU for $name: '$cmd'."
+		if $self->verbose;
+	}
+	say "hello";
+    }
+    say "PDU tests complete.";
     return;
 }
 
@@ -645,365 +415,12 @@ sub run {
 #    my $changes = $self->scan_for_agents();
 #    $self->handle_changes($changes) if $changes;
 
-    $self->run_tests();
-
-#    $self->run_timed_loop_forever();
+    $self->prepare_for_tests();
+#    $self->run_cluster_tests();
+    $self->run_pdu_tests();
 
     $self->finalize_node_table_status();
 
-    return;
-}
-
-# ----------------------------------------------------------------------
-# If the current time is between 00:00:00 and the specified quitting
-# time, quitting time is today; between quitting time and 23:59:59 + 1
-# second, quitting time is tomorrow.
-#
-# Adding 24 hours worth of seconds to the current time will result in
-# some time tomorrow. Use the day, month year from today or tomorrow,
-# as appropriate, with the quitting time hour, minute and second to
-# determine the future quitting.
-#
-# Subtract 1 loop duration and shut down at the end of the loop.
-#
-# sub calculate_end_epoch {
-#     my $self = shift;
-
-#     my ( $sec, $min, $hour, $day, $mon, $year ) = localtime;
-#     my ( $quit_hr, $quit_min, $quit_sec ) = split $COLON, $self->run_until();
-
-#     my $tomorrow = (        $hour > $quit_hr
-#                          || ( $hour == $quit_hr && $min > $quit_min )
-#                          || (    $hour == $quit_hr
-#                               && $min == $quit_min
-#                               && $sec > $quit_sec ) );
-
-#     ( $day, $mon, $year )
-#         = ( localtime( time() + $SECONDS_IN_A_DAY ) )[ 3, 4, 5 ]
-#         if $tomorrow;
-
-#     my $end_epoch
-#         = timelocal( $quit_sec, $quit_min, $quit_hr, $day, $mon, $year );
-
-#     $end_epoch -= $self->rate;
-
-#     return $end_epoch;
-# }
-
-# ----------------------------------------------------------------------
-# Print a message identifying the loop iteration and run time. In
-# verbose mode, add a separator to differentiate distinct loop
-# iterations.
-#
-# sub print_loop_msg {
-#     my $self = shift;
-#     my ( $elapsed, $pending ) = @_;
-
-#     state $loop = 1;
-
-#     my $now = strftime '%T', localtime;
-#     my $extra_arg = sprintf $EP_TIME_FMT, 1000 * $elapsed, 1000 * $pending;
-#     say "$PROG loop $loop at @{[$now]} -> $extra_arg.";
-#     $loop++;
-
-#     say "\n" . '-' x 70 . "\n" if $self->verbose;
-
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Interface routine to drop processes for agents which have been
-# removed from the agents directory.
-#
-# sub handle_deletions {
-#     my $self = shift;
-#     my ($deletions) = @_;
-
-#     $self->drop_processes(@$deletions)
-#         if $deletions;
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Fetch node entries for currently running agent processes.
-#
-# sub fetch_node_entries {
-#     my $self = shift;
-#     my ($pids) = shift;
-
-#     return unless $pids;
-#     my $nodes = $self->dbs->fetch_node_entries($pids);
-#     return $nodes;
-# }
-
-# # ----------------------------------------------------------------------
-# # Wait to read metadata file for all newly launched agents. If not all
-# # of them have created a file by the end of reading all the files,
-# # sleep one second and look for additional files. Give up after 15
-# # seconds.
-# #
-# sub wait_for_all_metadata_files {
-#     my $self = shift;
-#     my ( $additions, $tag ) = @_;
-
-#     my $N   = scalar @$additions;
-#     my $idx = 0;
-
-#     while ( $idx++ < 15 ) {
-#         my $files = $self->find_marker_files($tag);
-#         if (    'HASH' eq ref $files
-#              && $files->{$tag}
-#              && scalar @{ $files->{$tag} } ) {
-
-#             my $N_found = 0;
-#             for my $newfile ( @{ $files->{metadata} } ) {
-#                 for my $addition (@$additions) {
-#                     $N_found++ if 0 < index $newfile, $addition->{filename};
-#                 }
-#             }
-#             return $files if $N_found == $N;
-#         }
-#         sleep 1;
-#     }
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Fetch node table entries for all currently running agent processes.
-# Update node table id archives.
-#
-# sub update_process_node_id_entries {
-#     my $self = shift;
-
-#     state $verbose = grep {/debug node_id update/} $ENV{VERBOSE};
-
-#     my @pids = sort { $a <=> $b }
-#         map { $_->{db_data}->{pid} } @{ $self->processes };
-#     my $nodes;
-#     do {
-#         $nodes = $self->fetch_node_entries( \@pids );
-#         say "update_process_node_id_entries got:\n",
-#             Data::Dumper::Dumper $nodes
-#             if $verbose;
-#     } until scalar keys %$nodes == scalar @pids;
-
-#     my $db_idx = $self->dbs->current + 1;
-
-#     for my $process ( @{ $self->processes } ) {
-#         my $name = $process->{name};
-#         $process->{db_data}{$db_idx}{node_table_id} = $nodes->{$name}{node_id};
-#     }
-# }
-
-# # ----------------------------------------------------------------------
-# # For all newly launched agents, fetch the metadata file, archive in
-# # the processes table as well as in the AN::Alerts object. Update node
-# # table id entries.
-# #
-# sub handle_additions {
-#     my $self = shift;
-#     my ($additions) = @_;
-
-#     my $new_file_regex = join $PIPE, map {"$_->{filename}"} @{$additions};
-#     my $tag            = AN::FlagFile::get_tag('METADATA');
-#     my $files          = $self->wait_for_all_metadata_files( $additions, $tag );
-#     my $N              = 0;
-
-# FILEPATH:
-#     for my $filepath ( @{ $files->{$tag} } ) {
-#         next FILEPATH unless $filepath =~ m{($new_file_regex)};
-#         my $filename = $1;
-#         my %cfg = ( path => { config_file => $filepath } );
-#         AN::Common::read_configuration_file( \%cfg );
-
-#         my $process = { name => $filename, db_data => $cfg{db} };
-#         $self->add_processes($process);
-#         $self->alerts()->add_agent( $cfg{db}{pid},
-#                                     {  pid      => $cfg{db}{pid},
-#                                        program  => $cfg{db}{name},
-#                                        hostname => $cfg{db}{hostname},
-#                                        msg_dir  => $self->msg_dir,
-#                                     } );
-#         $N++;
-#     }
-#     $self->update_process_node_id_entries( scalar @$additions );
-#     return $N;
-# }
-
-# ----------------------------------------------------------------------
-# Handle changes in the Agents directory by invoking handle_additions()
-# and handle_deletions().
-#
-# sub handle_changes {
-#     my $self = shift;
-#     my ($changes) = @_;
-
-#     $self->handle_additions( $changes->[0] )
-#         if $changes->[0];
-
-#     $self->handle_deletions( $changes->[1] )
-#         if $changes->[1];
-
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# Ask DBS to fetch current alert table entries.
-#
-# sub fetch_alert_data {
-#     my $self = shift;
-#     my ($proc_info) = @_;
-
-#     return $self->dbs()->fetch_alert_data($proc_info);
-# }
-
-# ----------------------------------------------------------------------
-# For a given alert table record, set an alert if it has a 'WARNING'
-# or 'CRISIS' record, otherwise clear the associated alert.
-#
-# sub detect_status {
-#     my $self = shift;
-#     my ( $process, $db_record, ) = @_;
-
-#     say "Got a db_record with status @{[$db_record->{status}]}."
-#         if $self->verbose;
-#     if ( $db_record->{status} eq 'OK' ) {
-#         say "Clearing @{[$process->{db_data}{pid}]}." if $self->verbose;
-#         $self->clear_alert( $process->{db_data}{pid} );
-#     }
-#     else {
-#         my @args = ( $db_record->id,
-#                      $process->{db_data}{pid},
-#                      $db_record->field,
-#                      $db_record->value,
-#                      $db_record->units,
-#                      $db_record->status,
-#                      $db_record->message_tag,
-#                      $db_record->message_arguments,
-#                      $db_record->target_name,
-#                      $db_record->target_type,
-#                      $db_record->target_extra,
-#                      { timestamp => $db_record->timestamp }, );
-#         say "Setting alert '"
-#             . $db_record->message_tag
-#             . "' in '"
-#             . $db_record->field
-#             . "' from $process->{db_data}{pid}."
-#             . "from record @{[ $db_record->id() ]} time stamp @{[$db_record->timestamp]}"
-#             if $self->verbose;
-#         $self->set_alert(@args);
-#     }
-
-#     return;
-# }
-
-# ----------------------------------------------------------------------
-# If an alert table record is a 'summary', update the weighted sum.
-#
-# sub process_summary_record {
-#     my $self = shift;
-#     my ( $process, $alert ) = @_;
-
-#     my $weighted
-#         = $self->confdata->{weight}{ $process->{name} }
-#         * ( $alert->{value} || 0 );
-#     $self->sumweight( $self->sumweight() + $weighted )
-#         if $weighted;
-# }
-
-# # ----------------------------------------------------------------------
-# # Reset weighted sum to zero in preparation for next loop interation.
-# #
-# sub reset_summary_weight {
-#     my $self = shift;
-
-#     $self->sumweight(0);
-# }
-
-# ----------------------------------------------------------------------
-# For each running agent process, fetch all recent alert table
-# entries.  Update weighted sum based on summary records, and pass the
-# other records to the detect_status() method.
-#
-# sub process_agent_data {
-#     my $self = shift;
-
-#     state $dump = grep {/dump alerts/} $ENV{VERBOSE} || '';
-#     say "${PROG}::process_agent_data()." if $self->verbose;
-
-# PROCESS:
-#     for my $process ( @{ $self->processes } ) {
-#         my ($weight);
-#         my $alerts = $self->fetch_alert_data($process);
-
-#         next PROCESS
-#             unless 'ARRAY' eq ref $alerts
-#             && @$alerts;
-
-#         my $allN = scalar @$alerts;
-#         my $newN = 0;
-#         say Data::Dumper::Dumper( [$alerts] )
-#             if $dump;
-#         my $seen_summary = 0;
-#     ALERT:
-#         for my $alert (@$alerts) {
-#             if ( $alert->{field} eq 'summary' ) {
-#                 last ALERT
-#                     if $seen_summary++;    # this is from an earlier loop
-
-#                 $self->sumweight( $self->sumweight + $alert->{value} );
-#             }
-#             else {
-#                 $self->detect_status( $process, $alert );
-#             }
-#             $newN++;
-#         }
-#         say scalar localtime(), " Received $allN alerts for process ",
-#             "$process->{name}, $newN of them new."
-#             if $self->verbose || grep {/\balertcount\b/} $ENV{VERBOSE} || '';
-#     }
-
-#     return;
-# }
-
-sub verify_test_result {
-    my $self = shift;
-
-    my @all_alerts;
-     for my $process ( @{ $self->processes } ) {
-         my ($weight);
-         my $alerts = $self->fetch_alert_data($process);
-	 push @all_alerts, @$alerts;
-     }
-    say "Running test: ", $self->check()->{$self->index}->{name};
-    eval $self->check()->{$self->index}->{verify};
-    
-    return;
-}
-
-
-sub perform_next_test {
-    my $self = shift;
-
-    $self->index(1 + $self->index);
-    eval $self->check()->{$self->index}->{perform}
-       if exists $self->check()->{$self->index}->{perform};
-
-    return ! exists $self->check()->{$self->index}->{verify};
-}
-
-# ----------------------------------------------------------------------
-# Things to do in the core for a $PROG core object
-#
-sub loop_core {
-    my $self = shift;
-
-    $self->verify_test_result();
-
-    my $keep_performing = 1;
-    while ( $keep_performing ) {
-	$keep_performing = $self->perform_next_test();
-    }
     return;
 }
 
