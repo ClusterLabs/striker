@@ -105,6 +105,7 @@ my $conf = {
 		curl			=>	"/usr/bin/curl",
 		echo			=>	"/bin/echo",
 		git			=>	"/usr/bin/git",
+		hostname		=>	"/bin/hostname",
 		htpasswd		=>	"/usr/bin/htpasswd",
 		ifup			=>	"/sbin/ifup",
 		ip			=>	"/sbin/ip",
@@ -136,12 +137,15 @@ my $conf = {
 		to_install	=>	{
 			acpid				=>	0,
 			ccs				=>	0, 
-			'perl-YAML-Tiny'		=>	0, 
+			'cim-schema'			=>	0,
+			'cluster-cim'			=>	0,
+			cpp				=>	0,
 			'cyrus-sasl'			=>	0, 
 			'cyrus-sasl-plain'		=>	0,
 			dhcp				=>	0,
 			expect				=>	0, 
-			'fence-agents'			=>	0, 
+			'fence-agents'			=>	0,
+			gcc				=>	0,
 			httpd				=>	0, 
 			libcdio				=>	0, 
 			man				=>	0, 
@@ -159,10 +163,12 @@ my $conf = {
 			'perl-TermReadKey'		=>	0,
 			'perl-Test-Simple'		=>	0,
 			'perl-XML-Simple'		=>	0,
+			'perl-YAML-Tiny'		=>	0, 
 			'policycoreutils-python'	=>	0, 
 			postfix				=>	0, 
 			rsync				=>	0,
-			screen				=>	0, 
+			screen				=>	0,
+			sharutils			=>	0,
 			syslinux			=>	0, 
 			'syslinux-tftpboot'		=>	0,
 			'openssl-devel'			=>	0,
@@ -278,6 +284,7 @@ my $conf = {
 		backups			=>	"/root/anvil",
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 		hostname		=>	"/etc/sysconfig/network",
+		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
@@ -502,6 +509,9 @@ if (sanity_check_switches($conf))
 # Make sure we're on EL6.x
 verify_os($conf);
 
+# Get the hostname if the user didn't.
+get_hostname($conf);
+
 # Add the user's repo if specified
 if ($conf->{switches}{r})
 {
@@ -569,6 +579,33 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# Get the hostname if the user didn't set it themselves.
+sub get_hostname
+{
+	my ($conf) = @_;
+	
+	if (not $conf->{switches}{n})
+	{
+		# user didn't set it, so read it in.
+		my $shell_call = "$conf->{executable}{hostname}";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#print "[ Debug ] - line: [$line]\n";
+			$conf->{sys}{hostname} = $1;
+			last;
+		}
+		close $file_handle;
+		
+		# In case we didn't read it...
+		$conf->{sys}{hostname} = "localhost.localdomain" if not $conf->{sys}{hostname};
+	}
+	
+	return(0);
+}
 
 # This checks to see if NetworkManager is running and if the active interface
 # is NM_CONTROLLER="yes". If so, it sets it to 'no' and restarts NetworkManager
@@ -1038,7 +1075,6 @@ sub configure_gui
 		# Create the ssh key if needed.
 		if (not -e "/home/$striker_user/.ssh/id_rsa")
 		{
-			### BUG: This isn't working...
 			print "- Creating the SSH RSA key for: [$striker_user]\n";
 			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -3493,7 +3529,7 @@ sub rsync_files
 	my ($conf, $source, $destination) = @_;
 	
 	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3523,7 +3559,7 @@ sub copy_file
 	my ($conf, $source, $destination) = @_;
 	
 	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3873,6 +3909,22 @@ sub configure_ssh
 		close $file_handle;
 	}
 	print "Done.\n\n";
+	
+	# Create an SSH key for root.
+	if (not -e "/root/.ssh/id_rsa")
+	{
+		print "- Creating the SSH RSA key for 'root'.\n";
+		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+		print "- Done.\n";
+	}
 	
 	return(0);
 }
@@ -4808,8 +4860,65 @@ sub reconfigure_network
 		write_udev_persistent_net($conf);
 	}
 	
+	# Update/edit the hosts file.
+	update_hosts($conf);
+	
 	# Remove existing ifcfg-* files and then write the new ones.
 	update_network_config_files($conf);
+	
+	return(0);
+}
+
+# Update the hosts file.
+sub update_hosts
+{
+	my ($conf) = @_;
+	
+	# Read in the hosts file and look for previous entries with our
+	# hostname.
+	print "- Updating: [$conf->{path}{hosts}]\n";
+	my $new_hosts = "";
+	my $hostname  = $conf->{sys}{hostname};
+	open (my $file_handle, "<", $conf->{path}{hosts}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hosts}], the error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		next if $line =~ /$hostname/;
+		
+		$new_hosts .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Append our hostname if we have either the BCN or IFN IP.
+	my $updated = 0;
+	if ($conf->{network}{bcn}{ip})
+	{
+		print "- Using the BCN IP for the hostname: [$hostname]\n";
+		$new_hosts .= "$conf->{network}{bcn}{ip}\t$hostname\n";
+		$updated   =  1;
+	}
+	elsif ($conf->{network}{ifn}{ip})
+	{
+		print "- Using the IFN IP for the hostname: [$hostname]\n";
+		$new_hosts .= "$conf->{network}{ifn}{ip}\t$hostname\n";
+		$updated   =  1;
+	}
+	else
+	{
+		print "- Neither the BCN or IFN IP was known, skipping.\n";
+	}
+	
+	if ($updated)
+	{
+		# Write out the updated hosts file.
+		print "- Writing out the updated hosts file.\n";
+		open (my $file_handle, ">", "$conf->{path}{hosts}") or die "Failed to write to: [$conf->{path}{hosts}], error was: $!\n";
+		print $file_handle $new_hosts;
+		close $file_handle;
+	}
+	print "- Done\n\n";
 	
 	return(0);
 }

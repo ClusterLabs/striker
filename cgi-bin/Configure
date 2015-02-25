@@ -89,8 +89,17 @@ if (($conf->{cgi}{manifest}) && ($conf->{cgi}{manifest} ne "new"))
 	# Load!
 }
 
-AN::Configure::testing($conf);
-
+# Scan the local system
+if (1)
+{
+	# Show the 'scanning in progress' table.
+	# variables hash feeds 'message_0272'.
+	print AN::Common::template($conf, "common.html", "scanning-message", {}, {
+		anvil	=>	$conf->{cgi}{cluster},
+	});
+	
+	AN::Configure::verify_local_os($conf);
+}
 
 AN::Cluster::footer($conf);
 

@@ -571,6 +571,7 @@ sub initialize_conf
 			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 			do_dd			=>	"/var/www/tools/do_dd",
 			docroot			=>	"/var/www/html/",
+			echo			=>	"/bin/echo",
 			email_password_file	=>	"/var/www/tools/email_pw.txt",
 			expect			=>	"/usr/bin/expect",
 			fence_ipmilan		=>	"/sbin/fence_ipmilan",
@@ -585,12 +586,14 @@ sub initialize_conf
 			lvdisplay		=>	"/sbin/lvdisplay",
 			media			=>	"/var/www/home/media/",
 			ping			=>	"/usr/bin/ping",
+			'redhat-release'	=>	"/etc/redhat-release",
 			repo_centos		=>	"/var/www/html/c6/x86_64/img/repodata",
 			repo_centos_path	=>	"/c6/x86_64/img/",
 			repo_generic		=>	"/var/www/html/repo/repodata",
 			repo_generic_path	=>	"/repo/",
 			repo_rhel		=>	"/var/www/html/rhel6/x86_64/img/repodata",
 			repo_rhel_path		=>	"/rhel6/x86_64/img/",
+			rhn_check		=>	"/usr/sbin/rhn_check",
 			rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 			rsync			=>	"/usr/bin/rsync",
 			screen			=>	"/usr/bin/screen",
@@ -608,11 +611,6 @@ sub initialize_conf
 			virsh			=>	"/usr/bin/virsh",
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"Data/strings.xml",
-			
-			### These will go away
-# 			guacamole_config	=>	"/etc/guacamole/noauth-config.xml",
-# 			restart_guacd		=>	"/var/www/tools/restart_guacd",
-# 			restart_tomcat		=>	"/var/www/tools/restart_tomcat6",
 			
 			# These are the tools that will be copied to 'docroot'
 			# if either node doesn't have an internet connection.
