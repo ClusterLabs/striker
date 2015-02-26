@@ -3529,7 +3529,7 @@ sub rsync_files
 	my ($conf, $source, $destination) = @_;
 	
 	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
-	print "[ Debug ] - shell_call: [$shell_call]\n";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3908,13 +3908,13 @@ sub configure_ssh
 		}
 		close $file_handle;
 	}
-	print "Done.\n\n";
 	
 	# Create an SSH key for root.
 	if (not -e "/root/.ssh/id_rsa")
 	{
 		print "- Creating the SSH RSA key for 'root'.\n";
-		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
+		#print "- [ Debug ] - shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -3923,8 +3923,8 @@ sub configure_ssh
 			print "- Output: [$line]\n";
 		}
 		close $file_handle;
-		print "- Done.\n";
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -4122,7 +4122,6 @@ sub configure_apache
 	open ($file_handle, ">", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
 	print $file_handle $apache_config;
 	close $file_handle;
-	print "Done.\n\n";
 	
 	# Write out the manifest.conf file
 	print "- Writing out the apache manifest configuration file.\n";
@@ -4139,8 +4138,8 @@ sub configure_apache
 		print $file_handle "  </FilesMatch>\n";
 		print $file_handle "</Directory>\n";
 		close $file_handle;
-		print "Done.\n\n";
 	}
+	print "Done.\n\n";
 	
 	return(0);
 }
@@ -4236,7 +4235,7 @@ sub create_apache_htpasswd
 	print "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.\n";
 	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_pass}\\\"\"";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4930,7 +4929,8 @@ sub update_network_config_files
 	my ($conf) = @_;
 	
 	# First up, delete the old files.
-	print "Deleting old network configuration files:\n"; 
+	print "Reconfiguting network.\n";
+	print "- Deleting old network configuration files:\n"; 
 	$conf->{path}{network_configs} =~ s/\/$//g;
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $conf->{path}{network_configs});
@@ -4946,8 +4946,7 @@ sub update_network_config_files
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
 	}
-	print "Done.\n\n";
-	print "Writing new network configuration files.\n";
+	print "- Writing new network configuration files.\n";
 	
 	### Now write out the config files.
 	# How I proceed depends on whether I am creating bonds or not.
@@ -5099,8 +5098,8 @@ sub update_network_config_files
 		print $file_handle "DEFROUTE=\"yes\"\n";
 		close $file_handle;
 		
-		print "Done.\n\n";
 	}
+	print "Done.\n\n";
 	
 	# Reboot to make sure changes take effect.
 	$conf->{sys}{reboot_needed} = 1;

@@ -8430,7 +8430,7 @@ sub map_network_on_node
 	my $proceed = 0;
 	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ "ready")
 		{
 			# Downloaded (or already existed), ready to go.
@@ -8848,7 +8848,7 @@ sub add_local_repo
 	}
 	if ((not $conf->{sys}{'local'}{repo}{centos}) && 
 	    (not $conf->{sys}{'local'}{repo}{generic}) &&
-	    ($conf->{sys}{'local'}{repo}{rhel}))
+	    (not $conf->{sys}{'local'}{repo}{rhel}))
 	{
 		# I have no repos.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I do not appear to have any local repositories.\n");

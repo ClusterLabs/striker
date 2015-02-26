@@ -276,19 +276,19 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.]]></key>
 		<key name="explain_0071"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a> interface.<br />This is the network that all storage data is replicated over.]]></key>
 		<key name="explain_0072"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />This is the network all the traffic to and from your servers will travel over.]]></key>
-		<key name="explain_0073"><![CDATA[This is the The IP address of the node's <a href="https://alteeve.ca/w/IPMI" target="_new">IPMI</a> Interface.<br />It may be called by other names, like "iRMC", "iLO", "iDRAC", "RSA" or so on, depending on your hardware vendor.<br />This will be the node's primary fence method.]]></key>
+		<key name="explain_0073"><![CDATA[The IP address of the node's <a href="https://alteeve.ca/w/IPMI" target="_new">IPMI</a> Interface.<br />It may be called by other names, like "iRMC", "iLO", "iDRAC", "RSA" or so on, depending on your hardware vendor.<br />This will be the node's primary fence method.]]></key>
 		<key name="explain_0074"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/UPS" target="_new">UPS</a>.]]></key>
-		<key name="explain_0075"><![CDATA[This is the The IP address of the first UPS.<br />If you don't have a UPS, or your UPS does not have a network card, you can leave this blank.]]></key>
+		<key name="explain_0075"><![CDATA[The IP address of the first UPS.<br />If you don't have a UPS, or your UPS does not have a network card, you can leave this blank.]]></key>
 		<key name="explain_0076"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/UPS" target="_new">UPS</a>.]]></key>
-		<key name="explain_0077"><![CDATA[This is the The IP address of the second UPS.<br />If you don't have two UPSes, or your UPSes do not have network cards, you can leave this blank.]]></key>
+		<key name="explain_0077"><![CDATA[The IP address of the second UPS.<br />If you don't have two UPSes, or your UPSes do not have network cards, you can leave this blank.]]></key>
 		<key name="explain_0078"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0079"><![CDATA[This is the The IP address of the first switched PDU.<br />This is part of the backup fence method, so making sure this is right is very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
+		<key name="explain_0079"><![CDATA[The IP address of the first switched PDU.<br />This is part of the backup fence method, so making sure this is right is very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0080"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0081"><![CDATA[This is the The IP address of the second switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
+		<key name="explain_0081"><![CDATA[The IP address of the second switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0082"><![CDATA[This is the host name for the first network switch.<br />If you manage your switches using a serial interface, or if your switches are unmanaged, you can leave this blank.]]></key>
-		<key name="explain_0083"><![CDATA[This is the The IP address of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
+		<key name="explain_0083"><![CDATA[The IP address of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
 		<key name="explain_0084"><![CDATA[This is the host name for the second network switch.<br />It may only be useful if you break the switch stack, and can often be safely omitted.]]></key>
-		<key name="explain_0085"><![CDATA[This is the The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
+		<key name="explain_0085"><![CDATA[The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
 		<key name="explain_0086"><![CDATA[This is the host name for the first <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
 		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.]]></key>
 		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.]]></key>
@@ -350,9 +350,9 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0144"><![CDATA[<span class="">#!variable!node!#</span> is set to use an outlet on "<span class="highlight_good_bold"">#!variable!field!#</span>", but that PDU doesn't have a name and IP set.]]></key>
 		<key name="explain_0145"><![CDATA[<span class="">#!variable!node!#</span> needs to have outlets set for two PDUs.]]></key>
 		<key name="explain_0146"><![CDATA[This is the host name for the third <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0147"><![CDATA[This is the The IP address of the third switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
+		<key name="explain_0147"><![CDATA[The IP address of the third switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0148"><![CDATA[This is the host name for the fourth <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
-		<key name="explain_0149"><![CDATA[This is the The IP address of the fourth switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
+		<key name="explain_0149"><![CDATA[The IP address of the fourth switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0150"><![CDATA[]]></key>
 		<key name="explain_0151"><![CDATA[]]></key>
 		<key name="explain_0152"><![CDATA[]]></key>
@@ -655,9 +655,9 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0240">Install Manifest</key>
 		<key name="row_0241">OK, Go!</key>
 		<key name="row_0242">Registration failed</key>
-		<key name="row_0243"><![CDATA[Checking for Execution Environment]]></key>
+		<key name="row_0243">Checking for Execution Environment</key>
 		<key name="row_0244">Repositories</key>
-		<key name="row_0245"><![CDATA[Adding local repository]]></key>
+		<key name="row_0245">Adding local repository</key>
 		<key name="row_0246">Partitioning Pool 1</key>
 		<key name="row_0247">Rebooting</key>
 		<key name="row_0248">Partitioning Pool 2</key>
@@ -667,7 +667,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0252">Configure Daemons</key>
 		<key name="row_0253">Configuring IPMI</key>
 		<key name="row_0254">Backing up original files</key>
-		<key name="row_0255"><![CDATA[Updating system password]]></key>
+		<key name="row_0255">Updating system password</key>
 		<key name="row_0256">Cluster membership first start</key>
 		<key name="row_0257">Configuring inter-node SSH</key>
 		<key name="row_0258">DRBD first start</key>
@@ -679,7 +679,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0264">Starting the storage service</key>
 		<key name="row_0265">Starting the hypervisor</key>
 		<key name="row_0266">Success!</key>
-		<key name="row_0267"><![CDATA[Updating cluster password]]></key>
+		<key name="row_0267">Updating cluster password</key>
 		<key name="row_0268">Configure FS Table</key>
 		<key name="row_0269">Unconfigured</key>
 		<key name="row_0270">Stopping Server</key>
