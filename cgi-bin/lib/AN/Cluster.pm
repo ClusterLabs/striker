@@ -148,7 +148,7 @@ sub sanity_check_striker_conf
 	my ($conf, $sections) = @_;
 	
 	# This will flip to '0' if any errors are encountered.
-	my $save       = 1;
+	my $save = 1;
 	
 	# Which global values I am sanity checking depends on whether the user
 	# is modifying the global section or an anvil!.
@@ -3536,7 +3536,8 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
-						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_apc_snmp";
+						#$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_apc_snmp";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_raritan_snmp";
 						record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
 					}
 				}
@@ -4147,6 +4148,25 @@ sub show_existing_install_manifests
 	while (my $file = readdir(DIR))
 	{
 		next if (($file eq ".") or ($file eq ".."));
+		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+-\d+-\d+).xml/)
+		{
+			if (not $header_printed)
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-header");
+				$header_printed = 1;
+			}
+			my $anvil =  $1;
+			my $date  =  $2;
+			my $time  =  $3;
+			   $time  =~ s/-/:/g;
+			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
+									anvil	=>	$anvil,
+									date	=>	$date,
+									'time'	=>	$time,
+								}});
+		}
+		# Deprecated: Old-style names, will go away eventually. (these
+		# were not [V]FAT compatible)
 		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+:\d+:\d+).xml/)
 		{
 			if (not $header_printed)
@@ -4323,10 +4343,10 @@ Striker Version: $conf->{sys}{version}
 			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" />
 		</ups>
 		<pdu>
-			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"fence_apc_snmp\" />
-			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"fence_apc_snmp\" />
-			<pdu reference=\"pdu03\" name=\"$conf->{cgi}{anvil_pdu3_name}\" ip=\"$conf->{cgi}{anvil_pdu3_ip}\" agent=\"fence_apc_snmp\" />
-			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"fence_apc_snmp\" />
+			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"fence_raritan_snmp\" />
+			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"fence_raritan_snmp\" />
+			<pdu reference=\"pdu03\" name=\"$conf->{cgi}{anvil_pdu3_name}\" ip=\"$conf->{cgi}{anvil_pdu3_ip}\" agent=\"fence_raritan_snmp\" />
+			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"fence_raritan_snmp\" />
 		</pdu>
 		<ipmi>
 			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />
@@ -4351,9 +4371,10 @@ Striker Version: $conf->{sys}{version}
 ";
 	
 	# Write out the file.
-	my $xml_file    = "install-manifest_".$conf->{cgi}{anvil_name}."_".$file_date.".xml";
-	my $target_path = $conf->{path}{apache_manifests_dir}."/".$xml_file;
-	my $target_url  = $conf->{path}{apache_manifests_url}."/".$xml_file;
+	my $xml_file    =  "install-manifest_".$conf->{cgi}{anvil_name}."_".$file_date.".xml";
+	   $xml_file    =~ s/:/-/g;	# Make the filename FAT-compatible.
+	my $target_path =  $conf->{path}{apache_manifests_dir}."/".$xml_file;
+	my $target_url  =  $conf->{path}{apache_manifests_url}."/".$xml_file;
 	open (my $file_handle, ">", $target_path) or die "Failed to write: [$target_path], the error was: $!\n";
 	print $file_handle $xml;
 	close $file_handle;
@@ -5074,7 +5095,7 @@ sub sanity_check_manifest_answers
 		}
 	}
 
-	# Check the gateway
+	# Check the anvil!'s cluster name.
 	if (not $conf->{cgi}{anvil_name})
 	{
 		# Not allowed to be blank.
@@ -5556,6 +5577,15 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
+	elsif ($conf->{cgi}{anvil_striker1_name} !~ /\./)
+	{
+		# Must be a FQDN
+		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0042", variables => { field => "#!string!row_0182!#"}}),
+		});
+		$problem = 1;
+	}
 	if (not $conf->{cgi}{anvil_striker1_bcn_ip})
 	{
 		# Not allowed to be blank.
@@ -5606,6 +5636,15 @@ sub sanity_check_manifest_answers
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
 			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0185!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_striker2_name} !~ /\./)
+	{
+		# Must be a FQDN
+		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0042", variables => { field => "#!string!row_0182!#"}}),
 		});
 		$problem = 1;
 	}
@@ -5667,6 +5706,15 @@ sub sanity_check_manifest_answers
 				node	=>	"#!string!title_0156!#",
 				field	=>	"#!string!row_0165!#"
 			}}),
+		});
+		$problem = 1;
+	}
+	elsif ($conf->{cgi}{anvil_node2_name} !~ /\./)
+	{
+		# Must be a FQDN
+		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0042", variables => { field => "#!string!row_0182!#"}}),
 		});
 		$problem = 1;
 	}
@@ -5991,7 +6039,6 @@ sub is_domain_name
 	return($valid);
 }
 
-### Not currently used, but leaving it as it's likely going to be useful later.
 # Check if the passed string is a valid IP address and subnet mask (CIDR or
 # dotted-decimal).
 sub is_string_ipv4_with_subnet

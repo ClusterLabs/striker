@@ -214,6 +214,7 @@ my $conf = {
 			'gnome-screensaver'		=>	0,
 			'gnome-session'			=>	0,
 			'gnome-terminal'		=>	0,
+			'gnome-utils'			=>	0,
 			'gnome-vfs2-smb'		=>	0,
 			'google-crosextra-caladea-fonts'	=>	0,
 			'google-crosextra-carlito-fonts'	=>	0,
@@ -288,6 +289,7 @@ my $conf = {
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
+		ntp_conf		=>	"/etc/ntp.conf",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
@@ -551,6 +553,12 @@ if (not $conf->{sys}{skip_hostname})
 	set_hostname($conf);
 }
 
+# if the user has specified custom NTP servers, add them.
+if ($conf->{switches}{ntp})
+{
+	configure_ntp($conf);
+}
+
 # TODO: See if we can set contexts on files when selinux is disabled entirely.
 #       If not, and if relabeling is needed, write a run-once script to relabel
 #       our stuff on the next boot.
@@ -579,6 +587,55 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# Add the user's NTP server(s) if not already in ntp.conf.
+sub configure_ntp
+{
+	my ($conf) = @_;
+	
+	print "Adding NTP servers if needed.\n";
+	foreach my $ntp_server (split/,/, $conf->{switches}{ntp})
+	{
+		next if not $ntp_server;
+		print "- Checking to see if: [$ntp_server] needs to be added.\n";
+		my $shell_call = "if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf}); 
+				then 
+					echo exists; 
+				else 
+					echo adding $ntp_server;
+					echo 'server $ntp_server iburst' >> $conf->{path}{ntp_conf}
+					if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf});
+					then
+						echo added
+					else
+						echo failed
+					fi;
+				fi";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ Debug ] - line: [$line]\n";
+			if ($line =~ /exists/i)
+			{
+				print "- Already added, skipping.\n";
+			}
+			elsif ($line =~ /added/i)
+			{
+				print "- Added successfully.\n";
+			}
+			elsif ($line =~ /failed/i)
+			{
+				print "[ Error ] - Failed to add: [$ntp_server] to: [$conf->{path}{ntp_conf}]\n";
+			}
+		}
+		close $file_handle;
+	}
+	print "Done.\n\n";
+	
+	return(0);
+}
 
 # Get the hostname if the user didn't set it themselves.
 sub get_hostname
@@ -5602,6 +5659,20 @@ sub sanity_check_switches
 			}
 		}
 	}
+	
+	# If NTP servers are set, make sure the values look like IPs.
+	if ($conf->{switches}{ntp})
+	{
+		foreach my $ntp_server (split/,/, $conf->{switches}{ntp})
+		{
+			next if not $ntp_server;
+			if (not is_string_ipv4($conf, $ntp_server))
+			{
+				print "[ Error ] - The specified NTP server: [$ntp_server] is not valid.\n";
+				$bad_value = 1;
+			}
+		}
+	}
 
 	print "Sanity checks complete.\n\n";
 	return($bad_value);
@@ -6163,6 +6234,12 @@ SWITCHES
 	from configuring the repository and, if it is installed, will remove
 	it.
 
+ --ntp <ip[,ip]>
+
+	If one or more NTP IPs are passed, they will be added to Striker's
+	NTP configuration file. Multiple NTP servers can be specified using
+	commas to separate the IPs.
+
  -p <start_ip:end_ip>
  
 	This sets the DHCP range that this Striker dashboard will offer IPs on
@@ -6579,4 +6656,81 @@ sub check_nic_states
 	$unplugged_macs =~ s/,$//;
 	#print "- DEBUG: unpluggd_macs: [$unplugged_macs]\n";
 	return($unplugged_macs);
+}
+
+# Check if the passed string is a valid IP address and subnet mask (CIDR or
+# dotted-decimal).
+sub is_string_ipv4_with_subnet
+{
+	my ($conf, $ip) = @_;
+	my $subnet = "";
+	my $valid  = 1;
+	
+	# Make sure the string has a subnet after it.
+	if ($ip =~ /^(.*?)\/(.*)$/)
+	{
+		$ip     = $1;
+		$subnet = $2;
+		
+		# Check the IP
+		if (is_string_ipv4($conf, $ip))
+		{
+			# IP is ok, not convert to dotted decimal if needed.
+			if ($subnet =~ /^\d+$/)
+			{
+				($subnet) = convert_cidr_to_dotted_decimal($conf, $subnet);
+			}
+			# Should be dotted-decimal now, check it.
+			if (not is_string_ipv4($conf, $subnet))
+			{
+				# No luck.
+				$valid = 0;
+			}
+		}
+		else
+		{
+			# IP isn't valid, no sense checking the subnet
+			$valid = 0;
+		}
+	}
+	else
+	{
+		# This isn't an 'ip/nm' string at all.
+		$valid = 0;
+	}
+	
+	return($valid);
+}
+
+# Checks if the passed-in string is an IPv4 address (with or without a subnet
+# mask). Returns '1' if OK, 0 if not.
+sub is_string_ipv4
+{
+	my ($conf, $ip) = @_;
+	my $valid  = 1;
+	
+	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+	{
+		# It's in the right format.
+		my $first_octal  = $1;
+		my $second_octal = $2;
+		my $third_octal  = $3;
+		my $fourth_octal = $4;
+		
+		if (($first_octal  < 0) || ($first_octal  > 255) ||
+		    ($second_octal < 0) || ($second_octal > 255) ||
+		    ($third_octal  < 0) || ($third_octal  > 255) ||
+		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		{
+			# One of the octals is out of range.
+			$valid = 0;
+		}
+	}
+	else
+	{
+		# Not in the right format.
+		$valid = 0;
+	}
+	
+	return($valid);
 }

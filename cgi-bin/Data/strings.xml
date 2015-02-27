@@ -245,7 +245,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="explain_0039"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> does not appear to be a valid backup file.]]></key>
 		<key name="explain_0040"><![CDATA[The mimetype detected was <span class="fixed_width">#!variable!mimetype!#</span>. The backup file should be '<span class="fixed_width">text/plain</span>'.]]></key>
 		<key name="explain_0041"><![CDATA[The backup file is expected to start with '<span class="fixed_width">&lt;!-- Striker Backup --&gt;</span>'.]]></key>
-		<key name="explain_0042"></key>	<!-- free -->
+		<key name="explain_0042"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a fully qualified domain name. If you do not want to use your domain name, use <span class="highlight_detail">x.localdomain</span> or similar.]]></key>
 		<key name="explain_0043"><![CDATA[The backup configuration has been loaded!]]></key>
 		<key name="explain_0044">Downloading a file from the internet can take a long time!</key>
 		<key name="explain_0045">Please be sure that the web address above is a direct link to the file you want to download.</key>
@@ -790,7 +790,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="script_0036"><![CDATA[Configuring network to enable access to #!string!brand_0003!# systems.<br />]]></key>
 		<key name="script_0037"><![CDATA[<span class="highlight_ready_bold">Ready</span>: Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
-		<key name="script_0039"><![CDATA[<b>#!variable!nic!#</b>: ]]></key>
+		<key name="script_0039"><![CDATA[<b>#!variable!nic!#, Link #!variable!link!#</b>: ]]></key>
 		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]<br />]]></key>
 		<key name="script_0041"><![CDATA[[<span class="code">#!variable!mac!# (<span class="code">#!variable!is!#</span>)</span>]<br />]]></key>
 		<key name="script_0042">Identification summary:</key>
@@ -912,7 +912,17 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="script_0067">Interface summary:</key>
 		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
 		<key name="script_0069"><![CDATA[<span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />Please be patient and wait for the prompt before reseating the next cable.<br />]]></key>
-		<key name="script_0070"></key>
+		<key name="script_0070">#!variable!interface!#, Link #!variable!link!#</key>
+		<key name="script_0071"></key>
+		<key name="script_0072"></key>
+		<key name="script_0073"></key>
+		<key name="script_0074"></key>
+		<key name="script_0075"></key>
+		<key name="script_0076"></key>
+		<key name="script_0077"></key>
+		<key name="script_0078"></key>
+		<key name="script_0079"></key>
+		<key name="script_0080"></key>
 		
 		<!-- Symbols, digits, etc. -->
 		<key name="symbol_0001">1</key>

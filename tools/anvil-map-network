@@ -943,13 +943,34 @@ sub select_nics
 		{
 			print "Please unplug, wait a moment, and plug back in the interface you want to make:\n";
 		}
-		my $say_nic = $nic;
-		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-		elsif ($nic =~ /^sn_link(\d)/)  { $say_nic = "Storage Network, Link $1" }
-		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		my $say_nic    = $nic;
+		my $script_nic = $nic;
+		my $link       = "";
+		if    ($nic =~ /^bcn_link(\d)/)
+		{
+			# brand_0005
+			$link       = $1;
+			$script_nic = "#!string!brand_0005!#";
+			$say_nic    = "Back-Channel Network, Link $1";
+		}
+		elsif ($nic =~ /^sn_link(\d)/)
+		{
+			# brand_0007
+			$link       = $1;
+			$script_nic = "#!string!brand_0007!#";
+			$say_nic    = "Storage Network, Link $1";
+		}
+		elsif ($nic =~ /^ifn_link(\d)/)
+		{
+			# brand_0009
+			$link       = $1;
+			$script_nic = "#!string!brand_0009!#";
+			$say_nic    = "Internet-Facing Network, Link $1";
+		}
 		if ($conf->{script})
 		{
-			print "#!string!script_0039!#,,nic=$nic\n";
+			# Translate the NIC's short names.
+			print "#!string!script_0039!#,,nic=$script_nic,,link=$link\n";
 		}
 		else
 		{

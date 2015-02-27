@@ -205,14 +205,10 @@ sub run_new_install_manifest
 	}
 	elsif ($update_manifest)
 	{
-		### TODO: I need a way to link the current IP of each node to
-		###       the name set in the install manifest. This should be
-		###       easy enough.
-		# Write a new install manifest and then switch to it.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::run: [$conf->{cgi}{run}]\n");
-		#my ($target_url, $xml_file) = AN::Cluster::generate_install_manifest($conf);
-		#$conf->{cgi}{run} = $xml_file;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::run: [$conf->{cgi}{run}]\n");
+		# Update the running install manifest to record the MAC
+		# addresses the user selected.
+		#update_install_manifest($conf) or return(1);
+		#die "testing...\n";
 	}
 
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::perform_install: [$conf->{cgi}{perform_install}].\n");
@@ -333,6 +329,27 @@ sub run_new_install_manifest
 		# Enough of that, now everyone go home.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	}
+	
+	return(0);
+}
+
+# This takes the current install manifest up rewrites it to record the user's
+# MAC addresses selected during the network remap.
+sub update_install_manifest
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_install_manifest()\n");
+	
+	my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	close $file_handle;
 	
 	return(0);
 }
@@ -3030,6 +3047,7 @@ sub populate_known_hosts_on_node
 		# If a node is being replaced, the old entries will no longer
 		# match. So as a precaution, existing keys are removed if
 		# found.
+		next if not $name;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; checking/adding fingerprint for: [$name]\n");
 		my $shell_call = "if \$(grep -q $name ~/.ssh/known_hosts);
 				then 
@@ -3252,6 +3270,8 @@ sub start_cman
 		($node1_fence_ok, $node1_return_message) = check_fencing_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 		($node2_fence_ok, $node2_return_message) = check_fencing_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_fence_ok: [$node1_fence_ok], node2_fence_ok: [$node2_fence_ok]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_return_message: [$node1_return_message]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2_return_message: [$node2_return_message]\n");
 	}
 	# 1 = Can't ping peer on BCN
 	# 2 = Started
@@ -3269,10 +3289,6 @@ sub start_cman
 		$node1_message = "#!string!state_0077!#",
 		$ok            = 0;
 	}
-	elsif ($node1_rc eq "3")
-	{
-		$node1_message = "#!string!state_0078!#",
-	}
 	elsif ($node1_rc eq "4")
 	{
 		$node1_class   = "highlight_warning_bold";
@@ -3284,6 +3300,11 @@ sub start_cman
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = AN::Common::get_string($conf, {key => "state_0082", variables => { message => "$node1_return_message" }});
 		$ok            = 0;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_fence_ok bad, setting 'ok': [$ok]\n");
+	}
+	elsif ($node1_rc eq "3")
+	{
+		$node1_message = "#!string!state_0078!#",
 	}
 	# Node 2
 	if ($node2_rc eq "1")
@@ -3291,10 +3312,6 @@ sub start_cman
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0077!#",
 		$ok            = 0;
-	}
-	elsif ($node2_rc eq "3")
-	{
-		$node2_message = "#!string!state_0078!#",
 	}
 	elsif ($node2_rc eq "4")
 	{
@@ -3307,6 +3324,11 @@ sub start_cman
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = AN::Common::get_string($conf, {key => "state_0082", variables => { message => "$node2_return_message" }});
 		$ok            = 0;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_fence_ok bad, setting 'ok': [$ok]\n");
+	}
+	elsif ($node2_rc eq "3")
+	{
+		$node2_message = "#!string!state_0078!#",
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0256!#",
@@ -3360,10 +3382,10 @@ sub check_fencing_on_node
 		}
 		else
 		{
-			$message .= "$line\n";
+			$message .= "$line<br />\n";
 		}
 	}
-	$message =~ s/\n$//;
+	$message =~ s/<br \/>\n$//;
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok, $message);
@@ -7247,9 +7269,9 @@ sub summarize_build_plan
 	}
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2].\n");
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}]\n");
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}]\n");
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}).")], cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}).")]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}).")], cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}).")]\n");
 	if (not $conf->{cgi}{anvil_storage_partition_1_byte_size})
 	{
 		$conf->{cgi}{anvil_storage_partition_1_byte_size} = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
@@ -7567,6 +7589,13 @@ sub configure_network_on_node
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
+	   # TODO: Open up VNC now, but make it an option later.
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT \n";
 	   $iptables .= "-A INPUT -p icmp -j ACCEPT \n";
 	   $iptables .= "-A INPUT -i lo -j ACCEPT \n";
@@ -8182,42 +8211,42 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_bcn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
 		}
 		else
 		{
@@ -8228,38 +8257,42 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_bcn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}].\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
 		}
 		else
 		{
@@ -8528,14 +8561,14 @@ sub map_network_on_node
 			while ($stdout =~ s/^(.*)\n//)
 			{
 				my $line = $1;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
 				if ($line =~ /nic=(.*?),,mac=(.*)$/)
 				{
 					my $nic = $1;
 					my $mac = $2;
 					$conf->{conf}{node}{$node}{current_nic}{$nic} = $mac;
 					$nics_seen++;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::current_nics::$nic: [$conf->{conf}{node}{$node}{current_nic}{$nic}].\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node}::current_nics::$nic: [$conf->{conf}{node}{$node}{current_nic}{$nic}].\n");
 				}
 				else
 				{
