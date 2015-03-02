@@ -146,7 +146,7 @@ sub generic_ssh_test {
      	} else {
      	    push @failed, $host;
      	}
-        say "\n";
+        say "";
     }
     return (\%results, \@failed );;
 }
@@ -532,13 +532,14 @@ sub connect_snmp {
 	my $name = $config->{$unit}{pdu};
 	say "Processing PSU $unit - $name.";
 	my $ip = $self->etc_hosts->{$name};
+	my $pw = $self->confdata->{switch}{pw};
 	die sprintf $MSG->{NO_IP_FOR_NAME}, $name
 	    unless defined $ip;
 	my $outlet = $config->{$unit}{outlet};
 
 	my ( $session, $error )
 	    = Net::SNMP->session( -hostname     => $ip,
-				  -community    => 'public',
+				  -community    => $pw,
 				  -version      => 'snmpv2c', );
 
 	die sprintf $MSG->{SNMP_CONNECT_FAILED}, $name, $ip, $error
@@ -577,7 +578,7 @@ sub bounce_both_outlets {
 	my $outlet = $config->{$unit}{outlet};
 	my $oid = $oids->{outlet_status}[$outlet - 1];
 	my @args = ($oid, INTEGER, $BOUNCE);
-	say "\t@args";
+	say "Bouncing outlet $outlet on $unit:\n\t@args";
 	my $result = $session->set_request( -varbindlist => \@args);
 	say $result
 	    ? "\t\tModification succeeded: $result->{$oid}."
@@ -593,7 +594,9 @@ sub monitor_proc_net_bonding {
     my $cmd = 'cat /proc/net/bonding/bcn-bond1';
     my $start = time();
     while ( time() - $start < 300 ) {
-	say "\n", '-' x 72, "\n", scalar localtime;
+        my $now = scalar localtime;
+	my $remaining = 300 - (time() - $start);
+	say "\n", '-' x 72, "\n$now - monitoring for another $remaining seconds.";
 	my ($results, $failed)
 	    = $self->generic_ssh_test( $self->ssh, $cmd, $QUICK_DROP );
 	sleep 15;
@@ -631,7 +634,6 @@ sub run_network_switch_pdu_tests {
     };
   SWITCH:
     for my $switch ( grep {/\d+/} keys %{ $self->confdata->{switch} } ) {
-	last SWITCH if $switch != 1;
 	$self->snmp_both_outlets_off( $self->confdata->{switch}{$switch}, $pw, $oids);
     }
 }
