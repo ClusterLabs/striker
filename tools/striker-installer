@@ -139,6 +139,7 @@ my $conf = {
 			ccs				=>	0, 
 			'cim-schema'			=>	0,
 			'cluster-cim'			=>	0,
+			'compat-libstdc++-33.i686'	=>	0,
 			cpp				=>	0,
 			'cyrus-sasl'			=>	0, 
 			'cyrus-sasl-plain'		=>	0,
@@ -146,8 +147,13 @@ my $conf = {
 			expect				=>	0, 
 			'fence-agents'			=>	0,
 			gcc				=>	0,
+			'gcc-c++'			=>	0,
 			httpd				=>	0, 
+			'kernel-devel'			=>	0,
+			'kernel-headers'		=>	0,
 			libcdio				=>	0, 
+			'libstdc++.i686' 		=>	0,
+			'libstdc++-devel.i686'		=>	0,
 			man				=>	0, 
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
@@ -167,9 +173,11 @@ my $conf = {
 			'policycoreutils-python'	=>	0, 
 			postfix				=>	0, 
 			rsync				=>	0,
+			Scanner				=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
 			syslinux			=>	0, 
+			sysstat				=>	0,
 			'syslinux-tftpboot'		=>	0,
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
@@ -1264,248 +1272,249 @@ sub configure_gui
 		print "- Done.\n";
 	}
 	
-	# Configure virt-manager to not connect to localhost on start.
-	if (1)
-	{
-		# Make the parent directories if needed.
-		print "- Configuring Virtual Machine Manager:\n";
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
-			$conf->{permissions}{user_gconf}{path}      = "/home/$conf->{sys}{striker_user}/.gconf";
-			$conf->{permissions}{user_gconf}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{user_gconf}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{user_gconf}{mode}      = "700";
-			$conf->{permissions}{user_gconf}{recursive} = 0;
-		}
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
-			$conf->{permissions}{user_apps}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps";
-			$conf->{permissions}{user_apps}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{user_apps}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{user_apps}{mode}      = "700";
-			$conf->{permissions}{user_apps}{recursive} = 0;
-		}
-		# This file has to exist, but it's created empty.
-		my $apps_gconf = "/home/$conf->{sys}{striker_user}/.gconf/apps/\%gconf.xml";
-		if (not -e $apps_gconf)
-		{
-			print "- Touching file: [$apps_gconf]\n";
-			my $shell_call = "$apps_gconf";
-			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			close $file_handle;
-			$conf->{permissions}{apps_conf}{path}      = "$apps_gconf";
-			$conf->{permissions}{apps_conf}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{apps_conf}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{apps_conf}{mode}      = "600";
-			$conf->{permissions}{apps_conf}{recursive} = 0;
-		}
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
-			$conf->{permissions}{user_virt_manager_dir}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager";
-			$conf->{permissions}{user_virt_manager_dir}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{user_virt_manager_dir}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{user_virt_manager_dir}{mode}      = "700";
-			$conf->{permissions}{user_virt_manager_dir}{recursive} = 1;
-		}
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
-		}
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats], error was: $!\n";
-		}
-		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields")
-		{
-			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields]\n";
-			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields], error was: $!\n";
-		}
-		
-		# First up, the main virt-manager gconf
-		my $vm_connections_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections/\%gconf.xml";
-		if (not -e $vm_connections_file)
-		{
-			my $vm_connections_config =  "<?xml version=\"1.0\"?>\n";
-			   $vm_connections_config .= "<gconf>\n";
-			   $vm_connections_config .= "	<entry name=\"autoconnect\" mtime=\"1422033743\" type=\"list\" ltype=\"string\">\n";
-			   $vm_connections_config .= "	</entry>\n";
-			   $vm_connections_config .= "	<entry name=\"uris\" mtime=\"1422033710\" type=\"list\" ltype=\"string\">\n";
-			   $vm_connections_config .= "		<li type=\"string\">\n";
-			   $vm_connections_config .= "			<stringvalue>qemu:///system</stringvalue>\n";
-			   $vm_connections_config .= "		</li>\n";
+	### Disabled for now.
+# 	# Configure virt-manager to not connect to localhost on start.
+# 	if (1)
+# 	{
+# 		# Make the parent directories if needed.
+# 		print "- Configuring Virtual Machine Manager:\n";
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
+# 			$conf->{permissions}{user_gconf}{path}      = "/home/$conf->{sys}{striker_user}/.gconf";
+# 			$conf->{permissions}{user_gconf}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{user_gconf}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{user_gconf}{mode}      = "700";
+# 			$conf->{permissions}{user_gconf}{recursive} = 0;
+# 		}
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
+# 			$conf->{permissions}{user_apps}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps";
+# 			$conf->{permissions}{user_apps}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{user_apps}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{user_apps}{mode}      = "700";
+# 			$conf->{permissions}{user_apps}{recursive} = 0;
+# 		}
+# 		# This file has to exist, but it's created empty.
+# 		my $apps_gconf = "/home/$conf->{sys}{striker_user}/.gconf/apps/\%gconf.xml";
+# 		if (not -e $apps_gconf)
+# 		{
+# 			print "- Touching file: [$apps_gconf]\n";
+# 			my $shell_call = "$apps_gconf";
+# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 			close $file_handle;
+# 			$conf->{permissions}{apps_conf}{path}      = "$apps_gconf";
+# 			$conf->{permissions}{apps_conf}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{apps_conf}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{apps_conf}{mode}      = "600";
+# 			$conf->{permissions}{apps_conf}{recursive} = 0;
+# 		}
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
+# 			$conf->{permissions}{user_virt_manager_dir}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager";
+# 			$conf->{permissions}{user_virt_manager_dir}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{user_virt_manager_dir}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{user_virt_manager_dir}{mode}      = "700";
+# 			$conf->{permissions}{user_virt_manager_dir}{recursive} = 1;
+# 		}
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
+# 		}
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats], error was: $!\n";
+# 		}
+# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields")
+# 		{
+# 			print "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields]\n";
+# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields], error was: $!\n";
+# 		}
+# 		
+# 		# First up, the main virt-manager gconf
+# 		my $vm_connections_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections/\%gconf.xml";
+# 		if (not -e $vm_connections_file)
+# 		{
+# 			my $vm_connections_config =  "<?xml version=\"1.0\"?>\n";
+# 			   $vm_connections_config .= "<gconf>\n";
+# 			   $vm_connections_config .= "	<entry name=\"autoconnect\" mtime=\"1422033743\" type=\"list\" ltype=\"string\">\n";
+# 			   $vm_connections_config .= "	</entry>\n";
+# 			   $vm_connections_config .= "	<entry name=\"uris\" mtime=\"1422033710\" type=\"list\" ltype=\"string\">\n";
 # 			   $vm_connections_config .= "		<li type=\"string\">\n";
-# 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node01.cobra05.bcn/system</stringvalue>\n";
+# 			   $vm_connections_config .= "			<stringvalue>qemu:///system</stringvalue>\n";
 # 			   $vm_connections_config .= "		</li>\n";
-# 			   $vm_connections_config .= "		<li type=\"string\">\n";
-# 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node02.cobra05.bcn/system</stringvalue>\n";
-# 			   $vm_connections_config .= "		</li>\n";
-			   $vm_connections_config .= "	</entry>\n";
-			   $vm_connections_config .= "</gconf>\n";
-			
-			my $shell_call = "$vm_connections_file";
-			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			print $file_handle $vm_connections_config;
-			close $file_handle;
-			$conf->{permissions}{vm_connections}{path}      = "$vm_connections_file";
-			$conf->{permissions}{vm_connections}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{vm_connections}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{vm_connections}{mode}      = "600";
-			$conf->{permissions}{vm_connections}{recursive} = 0;
-		}
-		
-		# Second, the stats gconf
-		my $stats_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats/\%gconf.xml";
-		if (not -e $stats_file)
-		{
-			my $stats_config =  "<?xml version=\"1.0\"?>\n";
-			   $stats_config .= "<gconf>\n";
-			   $stats_config .= "	<entry name=\"enable-net-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
-			   $stats_config .= "	<entry name=\"enable-disk-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
-			   $stats_config .= "</gconf>\n";
-			
-			my $shell_call = "$stats_file";
-			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			print $file_handle $stats_config;
-			close $file_handle;
-			$conf->{permissions}{vm_stats}{path}      = "$stats_file";
-			$conf->{permissions}{vm_stats}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{vm_stats}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{vm_stats}{mode}      = "600";
-			$conf->{permissions}{vm_stats}{recursive} = 0;
-		}
-		
-		# Third, the connections file
-		my $vmlist_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields/\%gconf.xml";
-		if (not -e $vmlist_file)
-		{
-			my $vmlist_config =  "<?xml version=\"1.0\"?>\n";
-			   $vmlist_config .= "<gconf>\n";
-			   $vmlist_config .= "	<entry name=\"network_traffic\" mtime=\"1422035552\" type=\"bool\" value=\"true\"/>\n";
-			   $vmlist_config .= "	<entry name=\"disk_usage\" mtime=\"1422035549\" type=\"bool\" value=\"true\"/>\n";
-			   $vmlist_config .= "</gconf>\n";
-			
-			my $shell_call = "$vmlist_file";
-			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			print $file_handle $vmlist_config;
-			close $file_handle;
-			$conf->{permissions}{vm_vmlist}{path}      = "$vmlist_file";
-			$conf->{permissions}{vm_vmlist}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{vm_vmlist}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{vm_vmlist}{mode}      = "600";
-			$conf->{permissions}{vm_vmlist}{recursive} = 0;
-		}
-		
-		# Fourth, the main config file with the window position info.
-		my $vm_core_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/\%gconf.xml";
-		if (not -e $vm_core_file)
-		{
-			my $vm_core_config =  "<?xml version=\"1.0\"?>\n";
-			   $vm_core_config .= "<gconf>\n";
-			   $vm_core_config .= "	<entry name=\"manager_window_height\" mtime=\"1422049529\" type=\"int\" value=\"620\"/>\n";
-			   $vm_core_config .= "	<entry name=\"manager_window_width\" mtime=\"1422049529\" type=\"int\" value=\"700\"/>\n";
-			   $vm_core_config .= "</gconf>\n";
-			
-			my $shell_call = "$vm_core_file";
-			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			print $file_handle $vm_core_config;
-			close $file_handle;
-			$conf->{permissions}{vm_core}{path}      = "$vm_core_file";
-			$conf->{permissions}{vm_core}{owner}     = "$conf->{sys}{striker_user}";
-			$conf->{permissions}{vm_core}{group}     = "$conf->{sys}{striker_user}",
-			$conf->{permissions}{vm_core}{mode}      = "600";
-			$conf->{permissions}{vm_core}{recursive} = 0;
-		}
-	}
-	
-	# Configure the desktop to be 1280 x 1024 (1280 x 960 atm)
-	if (1)
-	{
-		# If this is a QXL-based VM, setup a higher resolution.
-		my $is_qxl     = 0;
-		my $shell_call = "$conf->{executable}{lspci} -m";
-		#print "[ Debug ] - shell_call: [$shell_call]\n";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			#print "[ Debug ] - line: [$line]\n";
-			if ($line =~ /QXL/i)
-			{
-				$is_qxl = 1;
-				print "- KVM server with QXL graphics detected.\n";
-				last;
-			}
-		}
-		close $file_handle;
-		
-		### TODO: This isn't working yet, fix it later.
-		if ($is_qxl)
-		{
-			print "- Configuring Desktop screen size:\n";
-			my $config_dir = "/home/$conf->{sys}{striker_user}/.config";
-			if (not -e $config_dir)
-			{
-				print "- Creating directory: [$config_dir]\n";
-				mkdir "$config_dir" or die "$THIS_FILE ".__LINE__."; Failed to create: [$config_dir], error was: $!\n";
-				$conf->{permissions}{user_config}{path}      = "$config_dir";
-				$conf->{permissions}{user_config}{owner}     = "$conf->{sys}{striker_user}";
-				$conf->{permissions}{user_config}{group}     = "$conf->{sys}{striker_user}",
-				$conf->{permissions}{user_config}{mode}      = "755";
-				$conf->{permissions}{user_config}{recursive} = 0;
-			}
-			
-			my $monitors_file = "/home/$conf->{sys}{striker_user}/.config/monitors.xml";
-			if (not -e $monitors_file)
-			{
-				print "- Creating monitor configuration file: [$monitors_file]\n";
-				# First up, the main virt-manager gconf
-				my $monitor_config =  "<monitors version=\"1\">\n";
-				   $monitor_config .= "  <configuration>\n";
-				   $monitor_config .= "      <clone>no</clone>\n";
-				   $monitor_config .= "      <output name=\"qxl-0\">\n";
-				   $monitor_config .= "          <vendor>Generic</vendor>\n";
-				   $monitor_config .= "          <product>0x0000</product>\n";
-				   $monitor_config .= "          <serial>0x00000000</serial>\n";
-				   $monitor_config .= "          <width>1280</width>\n";
-				   $monitor_config .= "          <height>960</height>\n";
-				   $monitor_config .= "          <rate>60</rate>\n";
-				   $monitor_config .= "          <x>0</x>\n";
-				   $monitor_config .= "          <y>0</y>\n";
-				   $monitor_config .= "          <rotation>normal</rotation>\n";
-				   $monitor_config .= "          <reflect_x>no</reflect_x>\n";
-				   $monitor_config .= "          <reflect_y>no</reflect_y>\n";
-				   $monitor_config .= "          <primary>no</primary>\n";
-				   $monitor_config .= "      </output>\n";
-				   $monitor_config .= "      <output name=\"qxl-1\">\n";
-				   $monitor_config .= "      </output>\n";
-				   $monitor_config .= "      <output name=\"qxl-2\">\n";
-				   $monitor_config .= "      </output>\n";
-				   $monitor_config .= "      <output name=\"qxl-3\">\n";
-				   $monitor_config .= "      </output>\n";
-				   $monitor_config .= "  </configuration>\n";
-				   $monitor_config .= "</monitors>\n";
-				
-				my $shell_call = "$monitors_file";
-				open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-				print $file_handle $monitor_config;
-				close $file_handle;
-				$conf->{permissions}{monitor_config}{path}      = "$monitors_file";
-				$conf->{permissions}{monitor_config}{owner}     = "$conf->{sys}{striker_user}";
-				$conf->{permissions}{monitor_config}{group}     = "$conf->{sys}{striker_user}",
-				$conf->{permissions}{monitor_config}{mode}      = "664";
-				$conf->{permissions}{monitor_config}{recursive} = 0;
-			}
-		}
-	}
+# # 			   $vm_connections_config .= "		<li type=\"string\">\n";
+# # 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node01.cobra05.bcn/system</stringvalue>\n";
+# # 			   $vm_connections_config .= "		</li>\n";
+# # 			   $vm_connections_config .= "		<li type=\"string\">\n";
+# # 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node02.cobra05.bcn/system</stringvalue>\n";
+# # 			   $vm_connections_config .= "		</li>\n";
+# 			   $vm_connections_config .= "	</entry>\n";
+# 			   $vm_connections_config .= "</gconf>\n";
+# 			
+# 			my $shell_call = "$vm_connections_file";
+# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 			print $file_handle $vm_connections_config;
+# 			close $file_handle;
+# 			$conf->{permissions}{vm_connections}{path}      = "$vm_connections_file";
+# 			$conf->{permissions}{vm_connections}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{vm_connections}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{vm_connections}{mode}      = "600";
+# 			$conf->{permissions}{vm_connections}{recursive} = 0;
+# 		}
+# 		
+# 		# Second, the stats gconf
+# 		my $stats_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats/\%gconf.xml";
+# 		if (not -e $stats_file)
+# 		{
+# 			my $stats_config =  "<?xml version=\"1.0\"?>\n";
+# 			   $stats_config .= "<gconf>\n";
+# 			   $stats_config .= "	<entry name=\"enable-net-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
+# 			   $stats_config .= "	<entry name=\"enable-disk-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
+# 			   $stats_config .= "</gconf>\n";
+# 			
+# 			my $shell_call = "$stats_file";
+# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 			print $file_handle $stats_config;
+# 			close $file_handle;
+# 			$conf->{permissions}{vm_stats}{path}      = "$stats_file";
+# 			$conf->{permissions}{vm_stats}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{vm_stats}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{vm_stats}{mode}      = "600";
+# 			$conf->{permissions}{vm_stats}{recursive} = 0;
+# 		}
+# 		
+# 		# Third, the connections file
+# 		my $vmlist_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields/\%gconf.xml";
+# 		if (not -e $vmlist_file)
+# 		{
+# 			my $vmlist_config =  "<?xml version=\"1.0\"?>\n";
+# 			   $vmlist_config .= "<gconf>\n";
+# 			   $vmlist_config .= "	<entry name=\"network_traffic\" mtime=\"1422035552\" type=\"bool\" value=\"true\"/>\n";
+# 			   $vmlist_config .= "	<entry name=\"disk_usage\" mtime=\"1422035549\" type=\"bool\" value=\"true\"/>\n";
+# 			   $vmlist_config .= "</gconf>\n";
+# 			
+# 			my $shell_call = "$vmlist_file";
+# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 			print $file_handle $vmlist_config;
+# 			close $file_handle;
+# 			$conf->{permissions}{vm_vmlist}{path}      = "$vmlist_file";
+# 			$conf->{permissions}{vm_vmlist}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{vm_vmlist}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{vm_vmlist}{mode}      = "600";
+# 			$conf->{permissions}{vm_vmlist}{recursive} = 0;
+# 		}
+# 		
+# 		# Fourth, the main config file with the window position info.
+# 		my $vm_core_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/\%gconf.xml";
+# 		if (not -e $vm_core_file)
+# 		{
+# 			my $vm_core_config =  "<?xml version=\"1.0\"?>\n";
+# 			   $vm_core_config .= "<gconf>\n";
+# 			   $vm_core_config .= "	<entry name=\"manager_window_height\" mtime=\"1422049529\" type=\"int\" value=\"620\"/>\n";
+# 			   $vm_core_config .= "	<entry name=\"manager_window_width\" mtime=\"1422049529\" type=\"int\" value=\"700\"/>\n";
+# 			   $vm_core_config .= "</gconf>\n";
+# 			
+# 			my $shell_call = "$vm_core_file";
+# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 			print $file_handle $vm_core_config;
+# 			close $file_handle;
+# 			$conf->{permissions}{vm_core}{path}      = "$vm_core_file";
+# 			$conf->{permissions}{vm_core}{owner}     = "$conf->{sys}{striker_user}";
+# 			$conf->{permissions}{vm_core}{group}     = "$conf->{sys}{striker_user}",
+# 			$conf->{permissions}{vm_core}{mode}      = "600";
+# 			$conf->{permissions}{vm_core}{recursive} = 0;
+# 		}
+# 	}
+# 	
+# 	# Configure the desktop to be 1280 x 1024 (1280 x 960 atm)
+# 	if (1)
+# 	{
+# 		# If this is a QXL-based VM, setup a higher resolution.
+# 		my $is_qxl     = 0;
+# 		my $shell_call = "$conf->{executable}{lspci} -m";
+# 		#print "[ Debug ] - shell_call: [$shell_call]\n";
+# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			#print "[ Debug ] - line: [$line]\n";
+# 			if ($line =~ /QXL/i)
+# 			{
+# 				$is_qxl = 1;
+# 				print "- KVM server with QXL graphics detected.\n";
+# 				last;
+# 			}
+# 		}
+# 		close $file_handle;
+# 		
+# 		### TODO: This isn't working yet, fix it later.
+# 		if ($is_qxl)
+# 		{
+# 			print "- Configuring Desktop screen size:\n";
+# 			my $config_dir = "/home/$conf->{sys}{striker_user}/.config";
+# 			if (not -e $config_dir)
+# 			{
+# 				print "- Creating directory: [$config_dir]\n";
+# 				mkdir "$config_dir" or die "$THIS_FILE ".__LINE__."; Failed to create: [$config_dir], error was: $!\n";
+# 				$conf->{permissions}{user_config}{path}      = "$config_dir";
+# 				$conf->{permissions}{user_config}{owner}     = "$conf->{sys}{striker_user}";
+# 				$conf->{permissions}{user_config}{group}     = "$conf->{sys}{striker_user}",
+# 				$conf->{permissions}{user_config}{mode}      = "755";
+# 				$conf->{permissions}{user_config}{recursive} = 0;
+# 			}
+# 			
+# 			my $monitors_file = "/home/$conf->{sys}{striker_user}/.config/monitors.xml";
+# 			if (not -e $monitors_file)
+# 			{
+# 				print "- Creating monitor configuration file: [$monitors_file]\n";
+# 				# First up, the main virt-manager gconf
+# 				my $monitor_config =  "<monitors version=\"1\">\n";
+# 				   $monitor_config .= "  <configuration>\n";
+# 				   $monitor_config .= "      <clone>no</clone>\n";
+# 				   $monitor_config .= "      <output name=\"qxl-0\">\n";
+# 				   $monitor_config .= "          <vendor>Generic</vendor>\n";
+# 				   $monitor_config .= "          <product>0x0000</product>\n";
+# 				   $monitor_config .= "          <serial>0x00000000</serial>\n";
+# 				   $monitor_config .= "          <width>1280</width>\n";
+# 				   $monitor_config .= "          <height>960</height>\n";
+# 				   $monitor_config .= "          <rate>60</rate>\n";
+# 				   $monitor_config .= "          <x>0</x>\n";
+# 				   $monitor_config .= "          <y>0</y>\n";
+# 				   $monitor_config .= "          <rotation>normal</rotation>\n";
+# 				   $monitor_config .= "          <reflect_x>no</reflect_x>\n";
+# 				   $monitor_config .= "          <reflect_y>no</reflect_y>\n";
+# 				   $monitor_config .= "          <primary>no</primary>\n";
+# 				   $monitor_config .= "      </output>\n";
+# 				   $monitor_config .= "      <output name=\"qxl-1\">\n";
+# 				   $monitor_config .= "      </output>\n";
+# 				   $monitor_config .= "      <output name=\"qxl-2\">\n";
+# 				   $monitor_config .= "      </output>\n";
+# 				   $monitor_config .= "      <output name=\"qxl-3\">\n";
+# 				   $monitor_config .= "      </output>\n";
+# 				   $monitor_config .= "  </configuration>\n";
+# 				   $monitor_config .= "</monitors>\n";
+# 				
+# 				my $shell_call = "$monitors_file";
+# 				open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+# 				print $file_handle $monitor_config;
+# 				close $file_handle;
+# 				$conf->{permissions}{monitor_config}{path}      = "$monitors_file";
+# 				$conf->{permissions}{monitor_config}{owner}     = "$conf->{sys}{striker_user}";
+# 				$conf->{permissions}{monitor_config}{group}     = "$conf->{sys}{striker_user}",
+# 				$conf->{permissions}{monitor_config}{mode}      = "664";
+# 				$conf->{permissions}{monitor_config}{recursive} = 0;
+# 			}
+# 		}
+# 	}
 	
 	# Make sure NetworkManager is disabled.
 	if (1)
@@ -3816,6 +3825,7 @@ sub configure_iptables
 	my $tftp_open  = 0;
 	my $http_open  = 0;
 	my $https_open = 0;
+	my $vnc_open   = 0;
 	print "- Reading the current firewall configuration.\n";
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
@@ -3839,6 +3849,11 @@ sub configure_iptables
 		{
 			print "- Secure web access is already enabled.\n";
 			$https_open = 1;
+		}
+		if (($line =~ /--state NEW/) && ($line =~ /--dport 5900/) && ($line =~ /ACCEPT/))
+		{
+			print "- VNC is already enabled.\n";
+			$vnc_open = 1;
 		}
 	}
 	close $file_handle;
@@ -3897,6 +3912,21 @@ sub configure_iptables
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
 			#print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	if (not $vnc_open)
+	{
+		print "- Opening access for VNC to the dashboard desktop.\n";
+		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5800 -j ACCEPT; ";
+		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5900 -j ACCEPT; ";
+		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 6000 -j ACCEPT; ";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
 		}
 		close $file_handle;
 	}

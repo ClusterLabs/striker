@@ -919,11 +919,12 @@ sub initialize_conf
 			up_nodes		=>	0,
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
+			use_drbd		=>	"8.3",			# Set to 8.3 if having trouble with 8.4
 			username		=>	getpwuid( $< ),
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
 # 			use_spice_graphics	=>	1,
-			version			=>	"2.0.0α",
+			version			=>	"2.0.0a",
 		},
 		# Config values needed to managing strings
 		strings				=>	{

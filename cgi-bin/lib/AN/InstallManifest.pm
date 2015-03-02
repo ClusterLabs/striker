@@ -19,6 +19,9 @@ package AN::InstallManifest;
 #   /root/.ssh/known_hosts
 # - Make the map NIC removal prompt order configurable.
 # 
+# 
+# Symlink MegaCli64
+# 
 
 use strict;
 use warnings;
@@ -39,28 +42,30 @@ sub run_new_install_manifest
 	
 	# Some variables we'll need.
 	$conf->{packages}{to_install} = {
-		apcupsd				=>	0,
 		acpid				=>	0,
 		'bridge-utils'			=>	0,
 		ccs				=>	0,
 		cman 				=>	0,
+		'compat-libstdc++-33.i686'	=>	0,
 		corosync			=>	0,
 		'cyrus-sasl'			=>	0,
 		'cyrus-sasl-plain'		=>	0,
 		dmidecode			=>	0,
-		#'drbd84-utils'			=>	0,
-		'drbd83-utils'			=>	0,
 		expect				=>	0,
 		'fence-agents'			=>	0,
 		freeipmi			=>	0,
 		'freeipmi-bmc-watchdog'		=>	0,
 		'freeipmi-ipmidetectd'		=>	0,
+		gcc 				=>	0,
+		'gcc-c++'			=>	0,
 		gd				=>	0,
 		'gfs2-utils'			=>	0,
 		gpm				=>	0,
 		ipmitool			=>	0,
-		#'kmod-drbd84'			=>	0,
-		'kmod-drbd83'			=>	0,
+		'kernel-headers'		=>	0,
+		'kernel-devel'			=>	0,
+		'libstdc++.i686' 		=>	0,
+		'libstdc++-devel.i686'		=>	0,
 		libvirt				=>	0,
 		'lvm2-cluster'			=>	0,
 		man				=>	0,
@@ -85,8 +90,10 @@ sub run_new_install_manifest
 		rgmanager			=>	0,
 		ricci				=>	0,
 		rsync				=>	0,
+		Scanner				=>	0,
 		screen				=>	0,
 		syslinux			=>	0,
+		sysstat				=>	0,
 		'vim-enhanced'			=>	0,
 		'virt-viewer'			=>	0,
 		wget				=>	0,
@@ -96,6 +103,18 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 		storcli				=>	0,
 	};
+	
+	if ($conf->{sys}{use_drbd} eq "8.3")
+	{
+		$conf->{packages}{to_install}{'kmod-drbd83'}  = 0;
+		$conf->{packages}{to_install}{'drbd83-utils'} = 0;
+	}
+	elsif ($conf->{sys}{use_drbd} eq "8.4")
+	{
+		$conf->{packages}{to_install}{'kmod-drbd84'}  = 0;
+		$conf->{packages}{to_install}{'drbd84-utils'} = 0;
+	}
+	
 	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	#$conf->{url}{'anvil-map-network'}  = "http://10.20.255.254/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/root/anvil-map-network";
@@ -6606,11 +6625,13 @@ sub generate_drbd_config_files
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
-	### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
-	###       the resync rate to 300M;
-	# Generate the config files we'll use if we don't find existing configs
-	# on one of the servers.
-	$conf->{drbd}{global_common} = "
+	if ($conf->{sys}{use_drbd} eq "8.3")
+	{
+		### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
+		###       the resync rate to 300M;
+		# Generate the config files we'll use if we don't find existing configs
+		# on one of the servers.
+		$conf->{drbd}{global_common} = "
 global {
 	usage-count no;
 	# minor-count dialog-refresh disable-ip-verification
@@ -6662,6 +6683,94 @@ common {
 	}
 }
 ";
+	}
+	elsif ($conf->{sys}{use_drbd} eq "8.4")
+	{
+		# Generate the config files we'll use if we don't find existing configs
+		# on one of the servers.
+		$conf->{drbd}{global_common} = "
+# These are options to set for the DRBD daemon sets the default values for
+# resources.
+global {
+	# This tells DRBD that you allow it to report this installation to 
+	# LINBIT for statistical purposes. If you have privacy concerns, set
+	# this to 'no'. The default is 'ask' which will prompt you each time
+	# DRBD is updated. Set to 'yes' to allow it without being prompted.
+	usage-count yes;
+ 
+	# minor-count dialog-refresh disable-ip-verification
+}
+ 
+common {
+	handlers {
+		# pri-on-incon-degr \"/usr/lib/drbd/notify-pri-on-incon-degr.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
+		# pri-lost-after-sb \"/usr/lib/drbd/notify-pri-lost-after-sb.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
+		# local-io-error \"/usr/lib/drbd/notify-io-error.sh; /usr/lib/drbd/notify-emergency-shutdown.sh; echo o > /proc/sysrq-trigger ; halt -f\";
+		# split-brain \"/usr/lib/drbd/notify-split-brain.sh root\";
+		# out-of-sync \"/usr/lib/drbd/notify-out-of-sync.sh root\";
+		# before-resync-target \"/usr/lib/drbd/snapshot-resync-target-lvm.sh -p 15 -- -c 16k\";
+		# after-resync-target /usr/lib/drbd/unsnapshot-resync-target-lvm.sh;
+ 
+		# Hook into cman's fencing.
+		fence-peer \"/sbin/rhcs_fence\";
+	}
+ 
+	# NOTE: this is not required or even recommended with pacemaker. remove
+	# 	this options as soon as pacemaker is setup.
+	startup {
+		# This tells DRBD to promote both nodes to 'primary' when this
+		# resource starts. However, we will let pacemaker control this
+		# so we comment it out, which tells DRBD to leave both nodes
+		# as secondary when drbd starts.
+		become-primary-on both;
+	}
+ 
+	options {
+		# cpu-mask on-no-data-accessible
+	}
+ 
+	disk {
+		# size max-bio-bvecs on-io-error fencing disk-barrier disk-flushes
+		# disk-drain md-flushes resync-rate resync-after al-extents
+                # c-plan-ahead c-delay-target c-fill-target c-max-rate
+                # c-min-rate disk-timeout
+                fencing resource-and-stonith;
+	}
+ 
+	net {
+		# protocol timeout max-epoch-size max-buffers unplug-watermark
+		# connect-int ping-int sndbuf-size rcvbuf-size ko-count
+		# allow-two-primaries cram-hmac-alg shared-secret after-sb-0pri
+		# after-sb-1pri after-sb-2pri always-asbp rr-conflict
+		# ping-timeout data-integrity-alg tcp-cork on-congestion
+		# congestion-fill congestion-extents csums-alg verify-alg
+		# use-rle
+ 
+		# Protocol \"C\" tells DRBD not to tell the operating system that
+		# the write is complete until the data has reach persistent
+		# storage on both nodes. This is the slowest option, but it is
+		# also the only one that guarantees consistency between the
+		# nodes. It is also required for dual-primary, which we will 
+		# be using.
+		protocol C;
+ 
+		# Tell DRBD to allow dual-primary. This is needed to enable 
+		# live-migration of our servers.
+		allow-two-primaries yes;
+ 
+		# This tells DRBD what to do in the case of a split-brain when
+		# neither node was primary, when one node was primary and when
+		# both nodes are primary. In our case, we'll be running
+		# dual-primary, so we can not safely recover automatically. The
+		# only safe option is for the nodes to disconnect from one
+		# another and let a human decide which node to invalidate. Of 
+		after-sb-0pri discard-zero-changes;
+		after-sb-1pri discard-secondary;
+		after-sb-2pri disconnect;
+	}
+}
+";
+	}
 	
 	### TODO: Make sure these are updated if we use a read-in resource
 	###  file.
@@ -6689,7 +6798,9 @@ common {
 	}
 	
 	# Still alive? Yay us!
-	$conf->{drbd}{r0} = "
+	if ($conf->{sys}{use_drbd} eq "8.3")
+	{
+		$conf->{drbd}{r0} = "
 # This is the resource used for the shared GFS2 partition and servers designed
 # to run on node 01.
 resource r0 {
@@ -6717,7 +6828,7 @@ resource r0 {
 }
 ";
 
-	$conf->{drbd}{r1} = "
+		$conf->{drbd}{r1} = "
 # This is the resource used for the servers designed to run on node 02.
 resource r1 {
 	# This is the block device path.
@@ -6743,6 +6854,86 @@ resource r1 {
 	}
 }
 ";
+	}
+	elsif ($conf->{sys}{use_drbd} eq "8.4")
+	{
+		$conf->{drbd}{r0} = "
+# This is the first DRBD resource. It will store the shared file systems and
+# the servers designed to run on node 01.
+resource r0 {
+	# These options here are common to both nodes. If for some reason you
+	# need to set unique values per node, you can move these to the
+	# 'on <name> { ... }' section.
+ 
+	# This sets the device name of this DRBD resouce.
+	device /dev/drbd0;
+ 
+	# This tells DRBD what the backing device is for this resource.
+	disk /dev/sda4;
+ 
+	# This controls the location of the metadata. When 'internal' is used,
+	# as we use here, a little space at the end of the backing devices is
+	# set aside (roughly 32 MB per 1 TB of raw storage). External metadata
+	# can be used to put the metadata on another partition when converting
+	# existing file systems to be DRBD backed, when there is no extra space
+	# available for the metadata.
+	meta-disk internal;
+ 
+	# NOTE: Later, make it an option in the dashboard to trigger a manual
+	# 	verify and/or schedule periodic automatic runs
+	net {
+		# TODO: Test performance differences between sha1 and md5
+		# This tells DRBD how to do a block-by-block verification of
+		# the data stored on the backing devices. Any verification
+		# failures will result in the effected block being marked
+		# out-of-sync.
+		#verify-alg md5;
+ 
+		# TODO: Test the performance hit of this being enabled.
+		# This tells DRBD to generate a checksum for each transmitted
+		# packet. If the data received data doesn't generate the same
+		# sum, a retransmit request is generated. This protects against
+		# otherwise-undetected errors in transmission, like 
+		# bit-flipping. See:
+		# http://www.drbd.org/users-guide/s-integrity-check.html
+		#data-integrity-alg md5;
+	}
+ 
+	# WARNING: Confirm that these are safe when the controller's BBU is
+	#          depleted/failed and the controller enters write-through 
+	#          mode.
+	disk {
+		# TODO: Test the real-world performance differences gained with
+		#       these options.
+		# This tells DRBD not to bypass the write-back caching on the
+		# RAID controller. Normally, DRBD forces the data to be flushed
+		# to disk, rather than allowing the write-back cachine to 
+		# handle it. Normally this is dangerous, but with BBU-backed
+		# caching, it is safe. The first option disables disk flushing
+		# and the second disabled metadata flushes.
+		disk-flushes no;
+		md-flushes no;
+	}
+ 
+	# This sets up the resource on node 01. The name used below must be the
+	# named returned by 'uname -n'.
+	on node1.ccrs.bcn {
+		# This is the address and port to use for DRBD traffic on this
+		# node. Multiple resources can use the same IP but the ports
+		# must differ. By convention, the first resource uses 7788, the
+		# second uses 7789 and so on, incrementing by one for each
+		# additional resource. 
+		address 10.10.10.1:7788;
+	}
+	on node2.ccrs.bcn {
+		address 10.10.10.2:7788;
+	}
+}
+";
+
+		$conf->{drbd}{r1} = "
+";
+	}
 	
 	# Unlike 'read_drbd_resource_files()' which only reads the 'rX.res'
 	# files and parses their contents, this function just slurps in the

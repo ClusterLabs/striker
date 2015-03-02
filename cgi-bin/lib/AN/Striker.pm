@@ -1856,7 +1856,7 @@ sub get_storage_data_lsi
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if not $line;
 		if ($line =~ /==] Start (.*)/)
 		{
@@ -2103,12 +2103,11 @@ sub get_storage_data_lsi
 		{
 			### TODO: Confirm that 'Disk Group' in fact relates to
 			###       the logical disk ID.
-			#print "in_section: [$in_section], line: [$line]\n";
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_section: [$in_section], line: [$line]\n");
 			if ($line =~ /Adapter #(\d+)/)
 			{
 				$this_adapter = $1;
-				#print "LSI Adapter number: [$this_adapter], Physical Disk.\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Physical Disk.\n");
 				next;
 			}
 			next if $this_adapter eq "";
@@ -2120,13 +2119,13 @@ sub get_storage_data_lsi
 				$this_logical_disk = "";
 				$this_span         = "";
 				$this_arm          = "";
-				#print "\nLSI Adapter number: [$this_adapter], Physical Disk, Encluse Device ID: [$this_enclosure_device_id].\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Physical Disk, Encluse Device ID: [$this_enclosure_device_id].\n");
 				next;
 			}
 			if ($line =~ /Slot Number\s*:\s*(\d+)/)
 			{
 				$this_slot_number = $1;
-				#print "LSI Adapter number: [$this_adapter], Physical Disk, Slot Number: [$this_slot_number].\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Physical Disk, Slot Number: [$this_slot_number].\n");
 				next;
 			}
 			if ($line =~ /Drive's position: DiskGroup: (\d+), Span: (\d+), Arm: (\d+)/)
@@ -2134,7 +2133,7 @@ sub get_storage_data_lsi
 				$this_logical_disk = $1;
 				$this_span         = $2;
 				$this_arm          = $3;
-				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n");
 				next;
 			}
 			if (($line =~ /Enclosure position: N\/A/) && ($this_logical_disk eq ""))
@@ -2143,7 +2142,7 @@ sub get_storage_data_lsi
 				$this_logical_disk = "9999";
 				$this_span         = "9999";
 				$this_arm          = "9999";
-				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n");
 				next;
 			}
 			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_logical_disk eq ""));
@@ -2151,54 +2150,54 @@ sub get_storage_data_lsi
 			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span})
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span} = $this_span;
-				#print "LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number].\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], this_span: [$this_span].\n");
 			}
 			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm})
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}  = $this_arm;
+				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm} = $this_arm;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Disk Group: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], this_arm: [$this_arm].\n");
 			}
 			
 			# Record the slot number.
-			
 			if ($line =~ /Device Id\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Device ID: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}].\n");
 			}
 			elsif ($line =~ /WWN\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], World Wide Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], World Wide Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn}].\n");
 			}
 			elsif ($line =~ /Sequence Number\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sequence Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sequence Number: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number}].\n");
 			}
 			elsif ($line =~ /Media Error Count\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Media Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Media Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count}].\n");
 			}
 			elsif ($line =~ /Other Error Count\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Other Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Other Error Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count}].\n");
 			}
 			elsif ($line =~ /Predictive Failure Count\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Predictive Failure Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Predictive Failure Count: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count}].\n");
 			}
 			elsif ($line =~ /PD Type\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Physical Disk Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Physical Disk Type: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type}].\n");
 			}
 			elsif ($line =~ /Raw Size: .*? \[0x(.*?) Sectors\]/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex} = "0x".$1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Raw Sector Count in Hex: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Raw Sector Count in Hex: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex}].\n");
 			}
 			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
 			{
@@ -2212,22 +2211,22 @@ sub get_storage_data_lsi
 					$sector_size = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} : 512;
 				}
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size} = $sector_size ? $sector_size : 512;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sector Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Sector Size: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size}].\n");
 			}
 			elsif ($line =~ /Firmware state\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Firmware-Reported State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], Firmware-Reported State: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state}].\n");
 			}
 			elsif ($line =~ /SAS Address\(0\)\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #0: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #0: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0}].\n");
 			}
 			elsif ($line =~ /SAS Address\(1\)\s*:\s*(.*)/)
 			{
 				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = $1;
-				#print "LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #1: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1}]\n";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LSI Adapter number: [$this_adapter], Logical Disk: [$this_logical_disk], Enclosure Device ID: [$this_enclosure_device_id], Slot Number: [$this_slot_number], SAS Address, Port #1: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1}].\n");
 			}
 			elsif ($line =~ /Connected Port Number\s*:\s*(.*)/)
 			{
