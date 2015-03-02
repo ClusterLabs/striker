@@ -146,6 +146,7 @@ sub generic_ssh_test {
      	} else {
      	    push @failed, $host;
      	}
+        say "\n";
     }
     return (\%results, \@failed );;
 }
@@ -594,7 +595,7 @@ sub monitor_proc_net_bonding {
     while ( time() - $start < 300 ) {
 	say "\n", '-' x 72, "\n", scalar localtime;
 	my ($results, $failed)
-	    = $self->generic_ssh_test( [$self->ssh->[0]], $cmd, $QUICK_DROP );
+	    = $self->generic_ssh_test( $self->ssh, $cmd, $QUICK_DROP );
 	sleep 15;
     }
     say "Stop logging at ", scalar localtime;
@@ -609,7 +610,7 @@ sub snmp_both_outlets_off {
 
 
     $self->set_delay_on_both_units( $config, $pw, $oids );
-   $self->bounce_both_outlets( $config, $pw, $oids ); # working
+    $self->bounce_both_outlets( $config, $pw, $oids );
     $self->monitor_proc_net_bonding( );
     return;
 }
@@ -662,7 +663,7 @@ sub run_pdu_tests {
 sub run {
     my $self = shift;
 
-    $self->connect_dbs();
+#    $self->connect_dbs();
     
 #    my $changes = $self->scan_for_agents();
 #    $self->handle_changes($changes) if $changes;
