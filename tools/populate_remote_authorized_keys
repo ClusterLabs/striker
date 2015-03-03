@@ -160,7 +160,7 @@ sub get_remote_user_list
 	my $shell_call = "ls /home";
 	#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
 	my ($error, $ssh_fh, $return) = remote_call($conf, {
-		node		=>	$conf->{sys}{remote},
+		remote		=>	$conf->{sys}{remote},
 		port		=>	22,
 		user		=>	"root",
 		password	=>	$conf->{sys}{password},
@@ -193,7 +193,7 @@ sub add_key_to_remote
 	my $shell_call = "echo '$conf->{sys}{rsa_key}' >> $authorized_keys && sync && cat $authorized_keys";
 	#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
 	my ($error, $ssh_fh, $return) = remote_call($conf, {
-		node		=>	$conf->{sys}{remote},
+		remote		=>	$conf->{sys}{remote},
 		port		=>	22,
 		user		=>	"root",
 		password	=>	$conf->{sys}{password},
@@ -246,7 +246,7 @@ sub check_authorized_keys
 			fi";
 	#print "[ Debug ] ".__LINE__." - shell_call: [$shell_call]\n";
 	my ($error, $ssh_fh, $return) = remote_call($conf, {
-		node		=>	$conf->{sys}{remote},
+		remote		=>	$conf->{sys}{remote},
 		port		=>	22,
 		user		=>	"root",
 		password	=>	$conf->{sys}{password},
@@ -398,7 +398,7 @@ sub remote_call
 		{
 			#print "[ Debug ] ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n";
 			$channel->exec("$shell_call");
-			"/etc/ssh/ssh_config",
+			# "/etc/ssh/ssh_config",
 			# This keeps the connection open when the remote side is slow
 			# to return data, like in '/etc/init.d/rgmanager stop'.
 			my @poll = {

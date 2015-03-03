@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-require "/bin/striker-usb.lib";
+require "/sbin/striker-usb.lib";
 
 my $THIS_FILE = "striker-usb-remove";
 
@@ -10,10 +10,10 @@ my $THIS_FILE = "striker-usb-remove";
 # and cleans up if found.
 # fusermount -u /home/alteeve/usb 
 
-my $conf = init_conf();
+my $conf = inititialize_configuration();
 
 logger($conf, __LINE__, "Striker USB Removal Script");
-read_conf($conf);
+read_configuration($conf);
 read_syslog($conf);
 parse_syslog($conf);
 cleanup_remote($conf);
@@ -56,32 +56,32 @@ sub cleanup_remote
 {
 	my ($conf) = @_;
 	
-	my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{'system'}{root_password},
-		ssh_fh		=>	"",
+	my $this_usb        = $conf->{this_usb};
+	my $remote          = $conf->{usb}{$this_usb}{sshfs}{host};
+	my $remote_user     = $conf->{usb}{$this_usb}{sshfs}{user};
+	my $remote_password = $conf->{usb}{$this_usb}{sshfs}{password};
+	my $local_mount     = $conf->{usb}{$this_usb}{local_mount};
+	my $remote_mount    = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+	my $local_host      = $conf->{'local'}{host};
+	my $local_user      = $conf->{'local'}{user};
+	my $local_password  = $conf->{'local'}{password};
+	logger($conf, __LINE__, "[ Debug ] - this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
+	logger($conf, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
+	
+	my $shell_call = "mount";
+	logger($conf, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	my ($error, $ssh_fh, $return) = remote_call($conf, {
+		remote		=>	$remote,
+		port		=>	22,
+		user		=>	$remote_user,
+		password	=>	$remote_password,
+		ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
 		'close'		=>	0,
-		shell_call	=>	"mount",
+		shell_call	=>	$shell_call,
 	});
-	#my ($stdout, $stderr, $exit) = remote_call($conf, "mount");
-	
-	my $this_usb       = $conf->{this_usb};
-	my $host           = $conf->{usb}{$this_usb}{sshfs}{host};
-	my $user           = $conf->{usb}{$this_usb}{sshfs}{user};
-	my $password       = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $remote_mount   = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	my $local_mount    = $conf->{usb}{$this_usb}{local_mount};
-	my $local_host     = $conf->{'local'}{host};
-	my $local_user     = $conf->{'local'}{user};
-	my $local_password = $conf->{'local'}{password};
-	
-	logger($conf, __LINE__, "I will clean up mounts on: [$user\@$host] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
-	
-	foreach my $line (split/\n/, $output)
+	foreach my $line (@{$return})
 	{
-		logger($conf, __LINE__, "mount line: [$line]");
+		logger($conf, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /^(.*?)\@(.*?):(.*?) on (.*?) type fuse.sshfs/)
 		{
 			my $this_local_user   = $1;
@@ -92,27 +92,22 @@ sub cleanup_remote
 			if ($this_remote_mount =~ /^$remote_mount/)
 			{
 				logger($conf, __LINE__, " - This needs to be unmounted.");
-				my ($error, $ssh_fh, $output, $exit) = remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
-					ssh_fh		=>	"",
+				
+				my $shell_call = "fusermount -u $this_remote_mount && rmdir $this_remote_mount";
+				logger($conf, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+				my ($error, $ssh_fh, $return) = remote_call($conf, {
+					remote		=>	$remote,
+					port		=>	22,
+					user		=>	$remote_user,
+					password	=>	$remote_password,
+					ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
 					'close'		=>	0,
-					shell_call	=>	"fusermount -u $this_remote_mount",
+					shell_call	=>	$shell_call,
 				});
-				#my ($stdout, $stderr, $exit) = remote_call($conf, "fusermount -u $this_remote_mount");
-				logger($conf, __LINE__, " - Should be unmounted now, removing remote mount point.");
-				($error, $ssh_fh, $output, $exit) = remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{'system'}{root_password},
-					ssh_fh		=>	"",
-					'close'		=>	0,
-					shell_call	=>	"rmdir $this_remote_mount",
-				});
-				#($stdout, $stderr, $exit) = remote_call($conf, "rmdir $this_remote_mount");
+				foreach my $line (@{$return})
+				{
+					logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+				}
 			}
 		}
 	}

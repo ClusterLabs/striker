@@ -10,12 +10,13 @@ use Net::SSH2;
 my $THIS_FILE = "striker-usb.lib";
 
 # This sets up default values in the $conf hash reference.
-sub init_conf
+sub inititialize_configuration
 {
 	# nothing read in.
 	my $conf = {
+		devices	=>	{},
 		path	=>	{
-			'striker-usb_conf'	=>	"/etc/an/striker-usb.conf",
+			'striker-usb_conf'	=>	"/etc/striker/striker-usb.conf",
 			blkid			=>	"/sbin/blkid",
 			df			=>	"/bin/df",
 			ls			=>	"/bin/ls",
@@ -24,8 +25,10 @@ sub init_conf
 			tail			=>	"/usr/bin/tail",
 			umount			=>	"/bin/umount",
 		},
+		sys	=>	{
+			remote			=>	"",
+		},
 		syslog	=>	[],
-		devices	=>	{},
 	};
 	
 	return($conf);
@@ -38,14 +41,17 @@ sub logger
 	
 	print "$line_number: $message\n";
 	open my $filehandle, '-|', "logger", "-t", $THIS_FILE , "$line_number: $message" or die "Failed to call: [logger -t $THIS_FILE $message]. Error: $!\n";
-	while (<$filehandle>) { print $_; }
+	while (<$filehandle>)
+	{
+		print $_;
+	}
 	close $filehandle;
 	
 	return(0);
 }
 
 # This reads in the configuration file.
-sub read_conf
+sub read_configuration
 {
 	my ($conf) = @_;
 	
@@ -110,106 +116,98 @@ sub read_syslog
 	return(0);
 }
 
-### NOTE: This is basically a copy of Striker's function of the same name, but
-###       with a few extra bits.
 # This calls the target machine and runs a command.
 sub remote_call
 {
 	my ($conf, $parameters) = @_;
 	
-	#logger($conf, __LINE__, "parameters->{password}: [$parameters->{password}], system::root_password: [$conf->{'system'}{root_password}]");
-	my $cluster    = $conf->{cgi}{cluster};
-	my $node       = $parameters->{node};
-	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
+	#print "[ Debug ] ".__LINE__."; parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]\n";
+	my $remote     = $parameters->{remote}           ? $parameters->{remote}   : $conf->{sys}{remote};
+	my $port       = $parameters->{port}             ? $parameters->{port}     : $conf->{sys}{ssh_port};
 	my $user       = $parameters->{user}             ? $parameters->{user}     : "root";
-	my $password   = $parameters->{password}         ? $parameters->{password} : $conf->{'system'}{root_password};
+	my $password   = $parameters->{password}         ? $parameters->{password} : $conf->{sys}{password};
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
-	my $shell_call = "$parameters->{shell_call}; echo exit:\$?";
-	#logger($conf, __LINE__, "cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
-	#logger($conf, __LINE__, "node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
+	my $shell_call = $parameters->{shell_call};
+	#print "[ Debug ] ".__LINE__."; remote: [$remote], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n";
+	#print "[ Debug ] ".__LINE__."; remote: [$remote], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n";
 	
-	# USB specific stuff
-	my $this_usb     = $conf->{this_usb};
-	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	my $exit         = -1;
-	
-	### TODO: Make this a better looking error.
-	if (not $node)
-	{
-		# No node...
-		my $say_error = AN::Common::get_string($conf, {key => "message_0274", variables => {
-				shell_call	=>	$shell_call,
-			}});
-		error($conf, "$say_error\n");
-	}
-	
+	# Break out the port, if needed.
 	my $state;
 	my $error;
+	#print "[ Debug ] ".__LINE__."; remote: [$remote]\n";
+	if ($remote =~ /^(.*):(\d+)$/)
+	{
+		#print "[ Debug ] ".__LINE__."; >> remote: [$remote], port: [$port]\n";
+		$remote = $1;
+		$port   = $2;
+		#print "[ Debug ] ".__LINE__."; << remote: [$remote], port: [$port]\n";
+		if (($port < 0) || ($port > 65536))
+		{
+			# Variables for 'message_0373'.
+			print "[ Error ] ".__LINE__."; - The TCP port: [$port] is out of range. It must be between 1 and 65536. The default is '22'.\n";
+			print "[ Error ] ".__LINE__.";   The error was hit calling: [$shell_call]\n";
+			exit(8);
+		}
+	}
+	
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
-	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
+	#print "[ Debug ] ".__LINE__."; ssh_fh: [$ssh_fh]\n";
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
+		#print "[ Debug ] ".__LINE__."; Opening an SSH connection to: [$user\@$remote:$port].\n";
 		$ssh_fh = Net::SSH2->new();
-		if (not $ssh_fh->connect($node, $port, Timeout => 10))
+		if (not $ssh_fh->connect($remote, $port, Timeout => 10))
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$@]\n");
+			print "[ Debug ] ".__LINE__."; error: [$@]\n";
 			if ($@ =~ /Bad hostname/)
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0038", variables => {
-					node	=>	$node,
-				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				exit(9);
 			}
 			elsif ($@ =~ /Connection refused/)
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0039", variables => {
-					node	=>	$node,
-					port	=>	$port,
-					user	=>	$user,
-				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				exit(10);
 			}
 			elsif ($@ =~ /No route to host/)
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0040", variables => {
-					node	=>	$node,
-				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				exit(11);
 			}
 			elsif ($@ =~ /timeout/)
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0041", variables => {
-					node	=>	$node,
-				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				exit(12);
 			}
 			else
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0042", variables => {
-					node	=>	$node,
-					error	=>	$@,
-				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				exit(13);
 			}
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+		#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n";
 		if (not $error)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; user: [$user], password: [$password]\n");
+			#print "[ Debug ] ".__LINE__."; user: [$user], password: [$password]\n";
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
-				$error = AN::Common::get_string($conf, {key => "message_0043"});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
+				print "[ Debug ] ".__LINE__.";   Please check that the password provides is the correct password for 'root' on the target machine.\n";
+				exit(14);
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+				#print "[ Debug ] ".__LINE__."; SSH session opened to: [$remote].\n";
 			}
+			$conf->{node}{$remote}{ssh_fh} = $ssh_fh;
 		}
 	}
 	
@@ -218,7 +216,7 @@ sub remote_call
 	### collection in this section.
 	#
 	# Open a channel and make the call.
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+	#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n";
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
 		# We need to open a channel every time for 'exec' calls. We
@@ -229,118 +227,95 @@ sub remote_call
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
-		$channel->exec("$shell_call");
-		
-		# This keeps the connection open when the remote side is slow
-		# to return data, like in '/etc/init.d/rgmanager stop'.
-		my @poll = {
-			handle => $channel,
-			events => [qw/in err/],
-		};
-		
-		# We'll store the STDOUT and STDERR data here.
-		my $stdout = "";
-		my $stderr = "";
-		
-		# Not collect the data.
-		while(1)
+		if (not $channel)
 		{
-			$ssh_fh->poll(250, \@poll);
-			
-			# Read in anything from STDOUT
-			while($channel->read(my $chunk, 80))
-			{
-				$stdout .= $chunk;
-			}
-			while ($stdout =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
-				push @{$stdout_output}, $line;
-			}
-			
-			# Read in anything from STDERR
-			while($channel->read(my $chunk, 80, 1))
-			{
-				$stderr .= $chunk;
-			}
-			while ($stderr =~ s/^(.*)\n//)
-			{
-				my $line = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
-				push @{$stderr_output}, $line;
-			}
-			
-			# Exit when we get the end-of-file.
-			last if $channel->eof;
-		}
-		if ($stdout)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
-			push @{$stdout_output}, $stdout;
-		}
-		if ($stderr)
-		{
-			#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
-			push @{$stderr_output}, $stderr;
-		}
-	}
-	
-	# Merge the STDOUT and STDERR into a standard variable.
-	my $output = "";
-	
-	foreach my $line (@{$stderr_output}, @{$stdout_output})
-	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Merge; line: [$line]\n");
-		if ($line =~ /^exit:(\d+)/)
-		{
-			$exit = $1;
+			$error  = "Failed to establish channel to remote: [$remote] for shell call: [$shell_call]\n";
+			$ssh_fh = "";
 		}
 		else
 		{
-			$output .= "$line\n";
+			#print "[ Debug ] ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n";
+			$channel->exec("$shell_call");
+			#"/etc/ssh/ssh_config",
+			# This keeps the connection open when the remote side is slow
+			# to return data, like in '/etc/init.d/rgmanager stop'.
+			my @poll = {
+				handle => $channel,
+				events => [qw/in err/],
+			};
+			
+			# We'll store the STDOUT and STDERR data here.
+			my $stdout = "";
+			my $stderr = "";
+			
+			# Not collect the data.
+			while(1)
+			{
+				$ssh_fh->poll(250, \@poll);
+				
+				# Read in anything from STDOUT
+				while($channel->read(my $chunk, 80))
+				{
+					$stdout .= $chunk;
+				}
+				while ($stdout =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#print "[ Debug ] ".__LINE__."; STDOUT: [$line].\n";
+					push @{$stdout_output}, $line;
+				}
+				
+				# Read in anything from STDERR
+				while($channel->read(my $chunk, 80, 1))
+				{
+					$stderr .= $chunk;
+				}
+				while ($stderr =~ s/^(.*)\n//)
+				{
+					my $line = $1;
+					#print "[ Debug ] ".__LINE__."; STDERR: [$line].\n";
+					push @{$stderr_output}, $line;
+				}
+				
+				# Exit when we get the end-of-file.
+				last if $channel->eof;
+			}
+			if ($stdout)
+			{
+				#print "[ Debug ] ".__LINE__."; stdout: [$stdout].\n";
+				push @{$stdout_output}, $stdout;
+			}
+			if ($stderr)
+			{
+				#print "[ Debug ] ".__LINE__."; stderr: [$stderr].\n";
+				push @{$stderr_output}, $stderr;
+			}
 		}
 	}
 	
-	$error = "" if not defined $error;
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	return($error, $ssh_fh, $output, $exit);
-}
-
-# This calls the target machine and runs a command.
-sub remote_call_old
-{
-	my ($conf, $sc) = @_;
+	# Merge the STDOUT and STDERR
+	my $output = [];
 	
-	my $this_usb     = $conf->{this_usb};
-	my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-	my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-	my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-	my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	
-	#logger($conf, __LINE__, "Attempting ssh: [$user\@$host] with password: [$password] and call: [$sc]...");
-	logger($conf, __LINE__, "Attempting ssh: [$user\@$host] and call: [$sc]...");
-	my $ssh = Net::SSH::Perl->new($host);
-	$ssh->login($user, $password);
-	my ($stdout, $stderr, $exit) = $ssh->cmd($sc);
-	$stdout = "" if not defined $stdout;
-	$stderr = "" if not defined $stderr;
-	$exit   = 99 if not defined $exit;
-	
-	$stdout =~ s/\n$//;
-	$stderr =~ s/\n$//;
-	
-	logger($conf, __LINE__, "Received; stdout: [$stdout], stderr: [$stderr], exit code: [$exit]");
-	
-	if ($stderr =~ /Timeout waiting for prompt/i)
+	foreach my $line (@{$stderr_output}, @{$stdout_output})
 	{
-		logger($conf, __LINE__, "The remote machine could not log into this machine. Has this machine's host key been added to the target server user's 'known_hosts' file? If not, on the: [$host] server, as the: [$user] user, run: [ssh $conf->{'local'}{user}\@$conf->{'local'}{host}] and accept the presented fingerprint. Once done, please try again. Unable to proceed.");
-		exit(13);
+		#print "[ Debug ] ".__LINE__."; Merge; line: [$line]\n";
+		push @{$output}, $line;
 	}
 	
-	return($stdout, $stderr, $exit);
+	# Close the connection if requested.
+	if ($close)
+	{
+		#print "[ Debug ] ".__LINE__."; Disconnecting from: [$remote]\n";
+		$ssh_fh->disconnect();
+		
+		# For good measure, blank both variables.
+		$conf->{remote}{$remote}{ssh_fh} = "";
+		$ssh_fh                      = "";
+	}
+	
+	$error = "" if not defined $error;
+	#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n";
+	return($error, $ssh_fh, $output);
 }
 
 ###############################################################################
