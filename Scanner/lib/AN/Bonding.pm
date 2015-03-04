@@ -184,7 +184,7 @@ sub process_section {
 	elsif ( $line =~ m{Permanent HW addr: (\S+)}) {
 	    my $tmp = $1;
 	    my ( $sec, $min ) = localtime;
-	    if ( $min == 4 ) {	# report hw addr at start of hour
+	    if ( $min == 0 ) {	# report hw addr at start of hour
 		$args->{value} = $tmp;
 		$args->{tag} = $TAG->{hw_address};
 	    }
