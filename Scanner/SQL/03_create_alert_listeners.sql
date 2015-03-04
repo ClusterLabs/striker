@@ -16,7 +16,7 @@ added_by        int     not null,
 updated         timestamp with time zone	not null	default now()
 );
 
-ALTER TABLE alert_listeners OWNER TO alteeve;
+ALTER TABLE alert_listeners OWNER TO striker;
 
 \echo Create table history.alert_listeners
 
@@ -32,7 +32,7 @@ added_by        int,
 updated         timestamp with time zone        not null default now()
 );
 
-ALTER TABLE history.alert_listeners OWNER TO alteeve;
+ALTER TABLE history.alert_listeners OWNER TO striker;
 
 \echo Create function history_nodes to populate history.alert_listeners from alert_listeners
 
@@ -68,7 +68,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_alert_listeners() OWNER TO alteeve;
+ALTER FUNCTION history_alert_listeners() OWNER TO striker;
 
 \echo Create trigger trigger_alert_listeners using function history_alert_listeners
 

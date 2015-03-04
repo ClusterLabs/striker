@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: snmp_brocade_switch; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: snmp_brocade_switch; Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE snmp_brocade_switch (
@@ -33,10 +33,10 @@ CREATE TABLE snmp_brocade_switch (
 );
 
 
-ALTER TABLE public.snmp_brocade_switch OWNER TO alteeve;
+ALTER TABLE public.snmp_brocade_switch OWNER TO striker;
 
 --
--- Name: snmp_brocade_switch_id_seq; Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Name: snmp_brocade_switch_id_seq; Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE snmp_brocade_switch_id_seq
@@ -47,24 +47,24 @@ CREATE SEQUENCE snmp_brocade_switch_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.snmp_brocade_switch_id_seq OWNER TO alteeve;
+ALTER TABLE public.snmp_brocade_switch_id_seq OWNER TO striker;
 
 --
--- Name: snmp_brocade_switch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Name: snmp_brocade_switch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE snmp_brocade_switch_id_seq OWNED BY snmp_brocade_switch.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY snmp_brocade_switch ALTER COLUMN id SET DEFAULT nextval('snmp_brocade_switch_id_seq'::regclass);
 
 
 --
--- Name: snmp_brocade_switch_pkey; Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: snmp_brocade_switch_pkey; Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY snmp_brocade_switch
@@ -72,7 +72,7 @@ ALTER TABLE ONLY snmp_brocade_switch
 
 
 --
--- Name: snmp_brocade_switch_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Name: snmp_brocade_switch_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY snmp_brocade_switch
@@ -95,7 +95,7 @@ CREATE TABLE history.snmp_brocade_switch (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.snmp_brocade_switch OWNER TO alteeve;
+ALTER TABLE history.snmp_brocade_switch OWNER TO striker;
 
 \echo Create function history_snmp_brocade_switch to populate history.snmp_brocade_switch from snmp_brocade_switch
 
@@ -133,7 +133,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_snmp_brocade_switch() OWNER TO alteeve;
+ALTER FUNCTION history_snmp_brocade_switch() OWNER TO striker;
 
 \echo Create trigger trigger_snmp_brocade_switch using function history_snmp_brocade_switchs
 

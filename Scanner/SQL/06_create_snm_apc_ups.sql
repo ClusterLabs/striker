@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: snmp_apc_ups; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: snmp_apc_ups; Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE snmp_apc_ups (
@@ -33,10 +33,10 @@ CREATE TABLE snmp_apc_ups (
 );
 
 
-ALTER TABLE public.snmp_apc_ups OWNER TO alteeve;
+ALTER TABLE public.snmp_apc_ups OWNER TO striker;
 
 --
--- Name: snmp_apc_ups_id_seq; Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Name: snmp_apc_ups_id_seq; Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE snmp_apc_ups_id_seq
@@ -47,24 +47,24 @@ CREATE SEQUENCE snmp_apc_ups_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.snmp_apc_ups_id_seq OWNER TO alteeve;
+ALTER TABLE public.snmp_apc_ups_id_seq OWNER TO striker;
 
 --
--- Name: snmp_apc_ups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Name: snmp_apc_ups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE snmp_apc_ups_id_seq OWNED BY snmp_apc_ups.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY snmp_apc_ups ALTER COLUMN id SET DEFAULT nextval('snmp_apc_ups_id_seq'::regclass);
 
 
 --
--- Name: snmp_apc_ups_pkey; Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: snmp_apc_ups_pkey; Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY snmp_apc_ups
@@ -72,7 +72,7 @@ ALTER TABLE ONLY snmp_apc_ups
 
 
 --
--- Name: snmp_apc_ups_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Name: snmp_apc_ups_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY snmp_apc_ups
@@ -95,7 +95,7 @@ CREATE TABLE history.snmp_apc_ups (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.snmp_apc_ups OWNER TO alteeve;
+ALTER TABLE history.snmp_apc_ups OWNER TO striker;
 
 \echo Create function history_snmp_apc_ups to populate history.snmp_apc_ups from snmp_apc_ups
 
@@ -133,7 +133,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_snmp_apc_ups() OWNER TO alteeve;
+ALTER FUNCTION history_snmp_apc_ups() OWNER TO striker;
 
 \echo Create trigger trigger_snmp_apc_ups using function history_snmp_apc_upss
 

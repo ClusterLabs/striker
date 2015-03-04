@@ -44,6 +44,9 @@ SHUTDOWN   = wshutdown
 
 TAR_EXCLUDE = --exclude='*.rpm' --exclude='25-an-screen.t' --exclude='30-an-email.t' --exclude='45-an-listener.t'
 
+USER       = striker
+DB         = scanner
+
 wrapper: 
 	cd Src && $(MAKE) 
 
@@ -60,7 +63,13 @@ $(RPMBUILD): $(RPMDIRS)
 
 files 	: scanner dashboard agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
-
+SQL     : 
+	if [[ -x /usr/bin/postgres ]]; then
+	    psql -U postgres -d template1 -f SQL/00_drop_db.sql
+            for sql in SQL/0[1-9]* ; do
+	        psql -U $USER -d $DB -f SQL/$SQL
+	    done
+	fi
 
 
 env:
@@ -98,7 +107,7 @@ configs	:
 messages:
 	cp Messages/* $(MSGDIR)
 
-install: wrapper dirs libs files scanner  $(SHUTDOWN)
+install: wrapper dirs libs files scanner SQL $(SHUTDOWN) 
 	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp dashboard scanner wipmi_power  $(BINDIR);\
             chmod 777 $(LOGDIR) $(SHAREDDIR);		\

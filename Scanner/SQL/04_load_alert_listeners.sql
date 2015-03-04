@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET search_path = public, pg_catalog;
 
 --
--- Data for Name: alert_listeners; Type: TABLE DATA; Schema: public; Owner: alteeve
+-- Data for Name: alert_listeners; Type: TABLE DATA; Schema: public; Owner: striker
 --
 
 insert into alert_listeners
@@ -30,7 +30,7 @@ insert into alert_listeners
 )
 VALUES
 (
-   2,'Tom Legrady','Email','DEBUG','tom@alteeve.ca','en_CA',0,'2014-12-11 16:54:25.477321-05'
+   2,'Tom Legrady','Email','DEBUG','tom@striker.ca','en_CA',0,'2014-12-11 16:54:25.477321-05'
 );
 
 insert into alert_listeners
@@ -44,7 +44,7 @@ VALUES
 
 
 --
--- Name: alert_listeners_id_seq; Type: SEQUENCE SET; Schema: public; Owner: alteeve
+-- Name: alert_listeners_id_seq; Type: SEQUENCE SET; Schema: public; Owner: striker
 --
 
 SELECT pg_catalog.setval('alert_listeners_id_seq', 4, true);
