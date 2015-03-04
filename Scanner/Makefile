@@ -101,8 +101,7 @@ messages:
 install: wrapper dirs libs files scanner  $(SHUTDOWN)
 	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp dashboard scanner wipmi_power  $(BINDIR);\
-            chmod 777 /var/log/striker;			\
-            chmod 777 /shared/status;			\
+            chmod 777 $(LOGDIR) $(SHAREDDIR);		\
 	else						\
 	    echo "Need to be root to create wrappers.";	\
 	    echo "run as: sudo make";			\
@@ -118,7 +117,7 @@ distclean: clean
 	cd Src && $(MAKE) distclean
 
 uninstall: clean distclean
-	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR)
+	rm -rf $(TEXTBASE) $(CODEBASE) $(LOGDIR) $(SHAREDDIR)
 
 Scanner.files: $(BINDIR) $(AGENTDIR) $(LIBDIR)
 	@echo "If you have to rebuild 'Scanner.files' list"

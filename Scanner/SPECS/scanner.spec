@@ -9,7 +9,7 @@
 
 Name:           Scanner
 Version:        1.0
-Release:        1.0
+Release:        2%{?dist}.anvil
 Summary:        System to monitor HA system resources
 License:        GPL-2.0
 Group:          Development/Libraries/Perl
@@ -41,6 +41,10 @@ characteristics. ON the monitoring dashboard, it runs a dashboard monitor
 which will attempt to resurrect failed servers when it becomes safe to
 do so.
 
+%define _binaries_in_noarch_packages_terminate_build   0
+%define _unpackaged_files_terminate_build 0
+   
+   
 %prep
 %setup -c -q -n %{name}
 
@@ -56,12 +60,16 @@ do so.
 %files -f %{name}.files
 %defattr(-,root,root,755)
 %attr(777,root,root) /var/log/striker
+%attr(777,root,root) /shared/status
 %doc Docs/Writing_an_agent Docs/Writing_an_agent_by_extending_existing_perl_classes.
 %config /etc/striker/Config/db.conf
 %config /etc/striker/Config/ipmi.conf
 %config /etc/striker/Config/raid.conf
 %config /etc/striker/Config/scanner.conf
 %config /etc/striker/Config/snmp_apc_ups.conf
+%config /etc/striker/Config/snmp_apc_pdu.conf
+%config /etc/striker/Config/snmp_brocade_switch.conf
+%config /etc/striker/Config/system_check.conf
 %config /etc/striker/Config/dashboard.conf
 %config /etc/striker/Config/nodemonitor.conf
 
