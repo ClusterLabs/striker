@@ -190,9 +190,9 @@ sub process_section {
 
     my $side_info = {};
     my $ident;
-SECTION_ONE:
+SECTION:
     while ( my $line = <$fh> ) {
-        last SECTION_ONE if $line !~ m{\w};
+        last SECTION if $line !~ m{\w};
         if ( $line =~ m{Slave Interface: (\S+)} ) {
             $args->{metadata}->{ident} = $1;
             $side_info->{ident} = $1;

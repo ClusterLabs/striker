@@ -8,6 +8,14 @@ delete from alerts;
 delete from snmp_apc_ups;
 
 \echo
+\echo Cleaning snmp_apc_pdu
+delete from snmp_apc_pdu;
+
+\echo
+\echo Cleaning snmp_brocade_switch
+delete from snmp_brocade_switch;
+
+\echo
 \echo Cleaning ipmi_temperatures
 delete from ipmi_temperatures;
 
@@ -18,6 +26,10 @@ delete from raid_controllers;
 \echo
 \echo Cleaning raid_drives
 delete from raid_drives;
+
+\echo
+\echo Cleaning bonding
+delete from bonding;
 
 \echo
 \echo Cleaning agent_data

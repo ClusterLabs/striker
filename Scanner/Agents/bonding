@@ -67,19 +67,19 @@ const my $VERBOSE => 2;
 # process command-line arguments
 #
 sub process_args {
-    
-    say "Raw command line arguments are ", Dumper([\@ARGV])
+
+    say "Raw command line arguments are ", Dumper( [ \@ARGV ] )
         if grep {/debug command line args/} $ENV{VERBOSE} || '';
 
     my $opt = {
         rate      => $REP_RATE,           # loop repetition rate in seconds.
         run_until => $RUN_UNTIL,          # Stop this process at appointed time.
         dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
-        confpath  => $DEFAULT_CONFIG_PATH,     # RAID configuration file.
-        msg_file  => "${MSG_DIR}/${PROG}.xml", # Message translation file
-        bindir    => $BINDIR,                  # Where the bins are
-        logdir    => $LOGDIR,                  # Where logfiles go
-        verbose   => 0,    # avoid undef in addition at line 122
+        confpath => $DEFAULT_CONFIG_PATH,        # RAID configuration file.
+        msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
+        bindir   => $BINDIR,                     # Where the bins are
+        logdir   => $LOGDIR,                     # Where logfiles go
+        verbose => 0,    # avoid undef in addition at line 122
               };
 
     GetOptions( $opt,               'rate=i',
@@ -88,11 +88,11 @@ sub process_args {
                 'run_until=s',      'confpath=s',
                 'datatable_name=s', 'verbose+',
                 'logdir=s',         'log',
-                'bindir=s',
-                'man',              'help' )
+                'bindir=s',         'man',
+                'help' )
         or pod2usage(2);
 
-    say "Processed args into: ", Dumper([$opt])
+    say "Processed args into: ", Dumper( [$opt] )
         if grep {/debug command line args/} $ENV{VERBOSE} || '';
 
     pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
@@ -144,11 +144,11 @@ __END__
 
 =head1 NAME
 
-     snmp_apc_upd - a scanner agent to query APC UPSes via SNMP
+     bonding - a scanner agent to monitor the Ethernet Channel Bonding Driver
 
 =head1 SYNOPSIS
 
-     snmp_apc_ups [options]
+     bonding [options]
 
      Options:
          -rate     N         How often test is performed, by default
@@ -202,27 +202,9 @@ Prints the manual page and exits.
 
 =head1 DESCRIPTION
 
-B<snmp_apc_ups> is one of scanning agents for the scan-core
-program. It uses Net::SNMP to connect to the specified UPSes and
-fetches information representing current running conditions.  It is
-intended to work with APC UPSes, but hopefully is general enough to
-connect to UPSes of other brands as well,
-
-When the program begins to run, it outputs a message,
-
-C<Starting ./snmp_apc_ups at Sat Nov  1 23:53:51 2014.>
-
-to report the program being run, and the start time.
-
-Similarly when the program terminates because the run duration has
-expired, a similar message is output:
-
-C<Halting ./snmp_apc_ups at Sat Nov  1 23:59:46 2014.>
-
-Immediately after the start message, the first scan is performed. A
-sample output string looks like:
-
-C<snmp_apc_ups>
+B<bonding> is one of scanning agents for the scan-core program. For
+each ethernet link, it reads, parses, saves and compares the output of
+the bonding file in /proc/net/bonding.
 
 =head1 LICENSE AND COPYRIGHT
 
@@ -266,6 +248,6 @@ There are no current incompatabilities.
 
 Alteeve's Niche!  -  https://alteeve.ca
 
-Tom Legrady       -  tom@alteeve.ca	December 2014
+Tom Legrady       -  tom@alteeve.ca	February 2015
 
 =cut
