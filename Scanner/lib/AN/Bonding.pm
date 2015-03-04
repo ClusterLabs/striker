@@ -222,6 +222,7 @@ SECTION_ONE:
         }
         if ( exists $args->{value} ) {    # If line has data to report ....
             $side_info->{ $args->{tag} } = $args->{value};
+                unless $args->{tag} eq $TAG->{hw_address};
             my ( $status, $newvalue ) = $self->eval_status($args);
             $self->prev->{$name}{ $args->{tag} }{value}  = $newvalue;
             $self->prev->{$name}{ $args->{tag} }{status} = $status;
