@@ -31,6 +31,11 @@ ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
 # 11 = The file system on the device can not be mounted locally.
 # 12 = Loop detected trying to find a mount point on the remote machine.
 # 13 = Unknown error trying to create a directory on the remote machine.
+# 14 = Asked to format an device that didn't look like a proper block device path.
+# 15 = Tried to format device as LUKS, but reported post-format FS was not 'crypto_LUKS'.
+# 16 = Failed to decrypt LUKS-encrypted device.
+# 17 = blkid called against the LUKS decrypted dm device didn't return the UUID and/or fs type.
+# 18 = Attempt to mount the local mount on the remote machine using sshfs timed out.
 # 
 
 use strict;
@@ -40,11 +45,11 @@ require "/sbin/striker-usb.lib";
 my $THIS_FILE = "striker-usb-insert";
 my $conf = inititialize_configuration();
 
-logger($conf, __LINE__, "Striker USB Insert Script started.");
+logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
 read_configuration($conf);
 read_syslog($conf);
 parse_syslog($conf);
-logger($conf, __LINE__, "Striker USB Insert Script finished.");
+logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script finished.");
 
 exit(0);
 
@@ -52,7 +57,7 @@ exit(0);
 sub parse_syslog
 {
 	my ($conf) = @_;
-	logger($conf, __LINE__, "[ Debug ] - parse_syslog().");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parse_syslog().");
 	
 	my $this_usb        = "";
 	my $is_mass_storage = 0;
@@ -60,16 +65,16 @@ sub parse_syslog
 	my $rule_found      = 0;
 	foreach my $line (@{$conf->{syslog}})
 	{
-		#logger($conf, __LINE__, "[ Debug ] - line: [$line].");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line].");
 		if ($line =~ /kernel: usb (.*?): New USB device found/)
 		{
 			$this_usb = $1;
-			logger($conf, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
 		}
 		if ($line =~ /Uniform CD-ROM driver/)
 		{
 			$block_device = 1;
-			logger($conf, __LINE__, "[ Debug ] - block_device: [$block_device].");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
 			last;
 		}
 		next if not $this_usb;
@@ -77,17 +82,17 @@ sub parse_syslog
 		if ($line =~ /SCSI emulation for USB Mass Storage devices/)
 		{
 			$is_mass_storage = 1;
-			logger($conf, __LINE__, "[ Debug ] - is_mass_storage: [$is_mass_storage].");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - is_mass_storage: [$is_mass_storage].");
 		}
 		next if not $is_mass_storage;
 		if ($line =~ /sd(\w+): sd(\w+)\d/)
 		{
 			my $lhs = $1;
 			my $rhs = $2;
-			logger($conf, __LINE__, "[ Debug ] - lhs: [$lhs], rhs: [$rhs]");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lhs: [$lhs], rhs: [$rhs]");
 			next if (($lhs) && ($lhs ne $rhs));
 			$block_device = "sd".$lhs;
-			logger($conf, __LINE__, "[ Debug ] - block_device: [$block_device].");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
 		}
 		next if not $block_device;
 		last;
@@ -95,7 +100,7 @@ sub parse_syslog
 	if ($block_device)
 	{
 		$conf->{this_usb} = $this_usb;
-		logger($conf, __LINE__, "[ Debug ] - USB device: [$this_usb], block device: [$block_device]");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - USB device: [$this_usb], block device: [$block_device]");
 		foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
 		{
 			if (exists $conf->{usb}{$this_usb})
@@ -107,18 +112,18 @@ sub parse_syslog
 				my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
 				my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
 				my $device       = "/dev/".$block_device;
-				logger($conf, __LINE__, "[ Debug ] - I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+				#logger($conf, $THIS_FILE, __LINE__, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
 				last;
 			}
 		}
 		if (not $rule_found)
 		{
-			logger($conf, __LINE__, "The inserted block device is not using a managed USB port.");
+			logger($conf, $THIS_FILE, __LINE__, "The inserted block device is not using a managed USB port.");
 		}
 	}
 	else
 	{
-		logger($conf, __LINE__, "The inserted device is not a block device.");
+		logger($conf, $THIS_FILE, __LINE__, "The inserted device is not a block device.");
 		exit(0);
 	}
 
@@ -131,7 +136,7 @@ sub parse_syslog
 		my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
 		my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
 		my $device       = "/dev/".$block_device;
-		logger($conf, __LINE__, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+		logger($conf, $THIS_FILE, __LINE__, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
 		
 		find_file_systems($conf, $device);
 		mount_filesystems($conf);
@@ -145,11 +150,209 @@ sub parse_syslog
 sub decrypt_luks
 {
 	my ($conf, $device) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - decrypt_luks(); device: [$device].");
 	
-	my $device_uuid = "";
+	# Try to decrypt the passed device using the passphrase in the config file.
+	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
+	my $dm_path     = "/dev/mapper/$device_name";
+	my $temp_file   = "/tmp/".time;
+	my $fs          = "";
+	my $uuid        = "";
+	my $label       = "";
+	my $shell_call  = "
+$conf->{path}{echo} '$conf->{luks}{passphrase}' > $temp_file
+$conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
+unlink $temp_file
+if [ -e '$dm_path' ]
+then
+    $conf->{path}{blkid} -p $dm_path
+else
+    echo 'dm path: '$dm_path' not found'
+fi
+";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line =~ /dm path: .* not found/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
+			exit(16);
+		}
+		if ($line =~ /UUID="(.*?)"/)
+		{
+			$uuid = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$dm_path]'s UUID is: [$uuid]");
+		}
+		if ($line =~ /TYPE="(.*?)"/)
+		{
+			$fs = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$dm_path]'s filesystem type is: [$fs]");
+		}
+		if ($line =~ /LABEL="(.*?)"/)
+		{
+			$label = $1;
+		}
+	}
+	close $file_handle;
 	
+	if (($fs) && ($uuid))
+	{
+		# If I am still alive, record the new details.
+		$device = $dm_path;
+		$conf->{devices}{$device}{fs}    = $fs;
+		$conf->{devices}{$device}{uuid}  = $uuid;
+		$conf->{devices}{$device}{label} = $label;
+		$conf->{devices}{$device}{path}  = $device;
+		logger($conf, $THIS_FILE, __LINE__, "Decryption was successful!");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "The decrypted device: [$dm_path] doesn't appear to have a file system on it. The UUID and/or filesystem Type were not read.");
+		exit(17);
+	}
 	
 	return($device);
+}
+
+# This will forcibly reformat the passed device as a LUKS partition with the
+# passphrase set in the config file.
+sub format_device_luks
+{
+	my ($conf, $device) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "Device: [$device].");
+	
+	# If I wasn't passed a proper device, die die die!
+	if ($device !~ /\/dev\/sd(\w+\d+)/)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] I was asked to format: [$device] as a LUKS partition, but it appears to be an invalid device. Unable to proceed.");
+		exit(14);
+	}
+	
+	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
+	my $dm_path     = "/dev/mapper/$device_name";
+	my $temp_file   = "/tmp/".time;
+	my $shell_call  = "
+$conf->{path}{echo} '$conf->{luks}{passphrase}' > $temp_file
+$conf->{path}{echo} YES | $conf->{path}{cryptsetup} luksFormat $device $temp_file
+";
+	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cryptsetup output: [$line]");
+	}
+	close $file_handle;
+	
+	# Now check to be sure the partition is now LUKS
+	$shell_call = "$conf->{path}{blkid} -c /dev/null $device";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line =~ /^$device: .* TYPE="(.*?)"/)
+		{
+			my $fs = $1;
+			if ($fs eq "crypto_LUKS")
+			{
+				my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} $dm_path";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - luks::use_filesystem: [$conf->{luks}{use_filesystem}], luks::fs_label: [$conf->{luks}{fs_label}]");
+				if ($conf->{luks}{fs_label})
+				{
+					$mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} -L '$conf->{luks}{fs_label}' $dm_path";
+				}
+				my $fs    = "";
+				my $uuid  = "";
+				my $label = "";
+				logger($conf, $THIS_FILE, __LINE__, "Successfully formatted: [$device] as a LUKS partition. Will now format the device: [$dm_path] as: [$conf->{luks}{use_filesystem}]");
+				my $shell_call = "
+$conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
+unlink $temp_file
+if [ -e '$dm_path' ]
+then
+    echo 'formatting $dm_path now'
+    $mkfs_call
+    sync
+    echo 'formatted, checking with blkid'
+    $conf->{path}{blkid} -p $dm_path
+else
+    echo 'dm path: [$dm_path] not found'
+fi
+";
+				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+				while (<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+					if ($line =~ /dm path: .* not found/)
+					{
+						logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
+						exit(16);
+					}
+					if ($line =~ /formatting .* now/)
+					{
+						logger($conf, $THIS_FILE, __LINE__, "Formatting: [$dm_path]. Please wait, this might take a few minutes...");
+					}
+					if ($line =~ /formatted/)
+					{
+						logger($conf, $THIS_FILE, __LINE__, "Format appears to be complete, checking with 'blkid' now.");
+					}
+					if ($line =~ /UUID="(.*?)"/)
+					{
+						$uuid = $1;
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem's UUID: [$uuid]");
+					}
+					if ($line =~ /TYPE="(.*?)"/)
+					{
+						$fs = $1;
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem type is: [$fs]");
+					}
+					if ($line =~ /LABEL="(.*?)"/)
+					{
+						$label = $1;
+					}
+				}
+				close $file_handle;
+				
+				if (($fs) && ($uuid))
+				{
+					# If I am still alive, record the new details.
+					$device = $dm_path;
+					$conf->{devices}{$device}{fs}    = $fs;
+					$conf->{devices}{$device}{uuid}  = $uuid;
+					$conf->{devices}{$device}{label} = $label;
+					$conf->{devices}{$device}{path}  = $device;
+					logger($conf, $THIS_FILE, __LINE__, "Format was successful!");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+				}
+				else
+				{
+					logger($conf, $THIS_FILE, __LINE__, "Format appears to have failed. The new file system type and/or UUID were not read.");
+					exit(17);
+				}
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] Failed to format: [$device] as a LUKS partition. The post-format filesystem is reported as: [$fs], 'crypto_LUKS' expected. Unable to proceed.");
+				exit(15);
+			}
+		}
+	}
+	close $file_handle;
+	
+	return($dm_path);
 }
 
 # This mounts the file system locally and then connects to the remote machine
@@ -157,6 +360,7 @@ sub decrypt_luks
 sub mount_filesystems
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_filesystems()");
 	
 	### TODO: If I can't make a directory, make an alternative.
 	### TODO: Make the failure to mount one partition not block further
@@ -164,7 +368,7 @@ sub mount_filesystems
 	my $i = 0;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
-		logger($conf, __LINE__, "Device: [$device].");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
 		my $this_usb        = $conf->{this_usb};
 		my $remote          = $conf->{usb}{$this_usb}{sshfs}{host};
 		my $remote_user     = $conf->{usb}{$this_usb}{sshfs}{user};
@@ -176,6 +380,7 @@ sub mount_filesystems
 			$local_mount  .= "-$i";
 			$remote_mount .= "-$i";
 		}
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - i: [$i], device: [$device], this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount]");
 		
 		# Check for unmountable stuff.
 		my $mountable = 0;
@@ -184,30 +389,90 @@ sub mount_filesystems
 			# We need to get the device's UUID and, if there is an
 			# entry in the config file, decrypt it and modify the
 			# $device variable with the new dm path.
-			logger($conf, __LINE__, "Device: [$device] is a LUKS encypted device. Checking if I have the passphrase.");
-			my ($new_device) = get_luks_uuid($conf, $device);
-			#: [$conf->{devices}{$device}{fs}]. Skipping it.");
-			if ($new_device)
-			{
-				# Decrypted! Copy 'device's hash to
-				# 'new_device' and then delete the old hash.
-			}
-			else
-			{
-				# Failed. ;_;
-				delete $conf->{devices}{$device};
-			}
+			logger($conf, $THIS_FILE, __LINE__, "Device: [$device] is a LUKS encypted device. Checking if I have the passphrase.");
+			($device) = decrypt_luks($conf, $device);
+			logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
+			$mountable = 1;
 		}
 		else
 		{
-			$mountable = 1;
-			logger($conf, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
+			# Start by making sure it is unmounted
+			logger($conf, $THIS_FILE, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
 			unmount($conf, $device);
+			
+			# If the user has requested 'luks::force_initialize', 
+			# then we're going to have to format this partition.
+			if ($conf->{luks}{force_initialize})
+			{
+				# Before we format, see if the user has set a
+				# protected label and, if so, if this FS is
+				# protected.
+				my $proceed = 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - About to format, but checking first for a protected label: [$conf->{luks}{protected_label}] that matches the partition's label: [$conf->{devices}{$device}{label}].");
+				if (($conf->{luks}{protected_label}) && ($conf->{devices}{$device}{label}))
+				{
+					# They have and there is a label, see 
+					# if they match.
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Label found on file system, seeing if it is protected.");
+					my $wildcard = 0;
+					my $string   = $conf->{luks}{protected_label};
+					my $label    = $conf->{devices}{$device}{label};
+					if ($conf->{luks}{protected_label} =~ /^(.*?)\*/)
+					{
+						$string   = $1;
+						$wildcard = 1;
+					}
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - label: [$label], string: [$string], wildcard: [$wildcard]");
+					if ($wildcard)
+					{
+						if ($label =~ /^($string).*/)
+						{
+							$proceed = 0;
+							logger($conf, $THIS_FILE, __LINE__, "File system label: [$label] is protected.");
+						}
+						else
+						{
+							logger($conf, $THIS_FILE, __LINE__, "Unprotected label, will proceed with format.");
+						}
+					}
+					elsif ($label eq $string)
+					{
+						$proceed = 0;
+						logger($conf, $THIS_FILE, __LINE__, "File system label: [$label] is protected.");
+					}
+					else
+					{
+						logger($conf, $THIS_FILE, __LINE__, "Unprotected label, will proceed with format.");
+					}
+				}
+				else
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No protected label set or no label found on the partition, proceeding.");
+				}
+				# Format. This will return the new device
+				# mapper path for the decrypted device. If
+				# anything goes wrong, it will exit, so we
+				# don't need to sanity check the returned
+				# device.
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - proceed: [$proceed].");
+				if ($proceed)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [$device].");
+					($device) = format_device_luks($conf, $device);
+					logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
+				}
+				$mountable = 1;
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "I will try to mount: [$device].");
+				$mountable = 1;
+			}
 		}
 		
 		if (not $mountable)
 		{
-			logger($conf, __LINE__, "No mountable devices. Exiting.");
+			logger($conf, $THIS_FILE, __LINE__, "No mountable devices. Exiting.");
 			exit(10);
 		}
 		
@@ -218,13 +483,13 @@ sub mount_filesystems
 			});
 			if (not -e $local_mount)
 			{
-				logger($conf, __LINE__, "Failed to create the local mount directory: [$local_mount]");
+				logger($conf, $THIS_FILE, __LINE__, "Failed to create the local mount directory: [$local_mount]");
 				exit(2);
 			}
 		}
 		elsif (not -d $local_mount)
 		{
-			logger($conf, __LINE__, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
+			logger($conf, $THIS_FILE, __LINE__, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
 			exit(3);
 		}
 		$i++;
@@ -235,23 +500,23 @@ sub mount_filesystems
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
-			logger($conf, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
+			logger($conf, $THIS_FILE, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
 			exit(4);
 		}
 		
 		# Finally, mount the FS.
 		my $shell_call = "$conf->{path}{mount} $device $local_mount";
-		logger($conf, __LINE__, "Calling: [$shell_call].");
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, __LINE__, "mount: [$line]");
+			logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
 			if ($line =~ /unknown filesystem type '(.*?)'/)
 			{
 				my $fs = $1;
-				logger($conf, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
+				logger($conf, $THIS_FILE, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
 				exit(11);
 			}
 		}
@@ -260,28 +525,28 @@ sub mount_filesystems
 		# Check that it actually mounted.
 		my $mounted    = 0;
 		   $shell_call = "$conf->{path}{df} -hP";
-		logger($conf, __LINE__, "Calling: [$shell_call].");
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, __LINE__, "line: [$line].");
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line].");
 			if (($line =~ /^$device /) && ($line =~ /$local_mount$/))
 			{
 				$mounted = 1;
-				logger($conf, __LINE__, " - Mounted.");
+				logger($conf, $THIS_FILE, __LINE__, " - Mounted.");
 			}
 		}
 		close $file_handle;
 		
 		if ($mounted)
 		{
-			logger($conf, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
+			logger($conf, $THIS_FILE, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
 		}
 		else
 		{
-			logger($conf, __LINE__, "Failed to mount: [$device] locally on: [$local_mount]. Unable to proceed.");
+			logger($conf, $THIS_FILE, __LINE__, "Failed to mount: [$device] locally on: [$local_mount]. Unable to proceed.");
 			exit(9);
 		}
 		
@@ -298,7 +563,7 @@ sub mount_filesystems
 				$use_directory = "${remote_mount}-$j";
 			}
 			my $shell_call = "ls -A $use_directory";
-			logger($conf, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 			my ($error, $ssh_fh, $return) = remote_call($conf, {
 				remote		=>	$remote,
 				port		=>	22,
@@ -311,12 +576,12 @@ sub mount_filesystems
 			foreach my $line (@{$return})
 			{
 				next if not $line;
-				logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 				if ($line =~ /No such file or directory/i)
 				{
 					# We're good, create the directory.
 					my $shell_call = "/bin/mkdir $use_directory; if [ -e '$use_directory' ]; then echo created; else echo failed; fi";
-					logger($conf, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 					my ($error, $ssh_fh, $return) = remote_call($conf, {
 						remote		=>	$remote,
 						port		=>	22,
@@ -328,16 +593,16 @@ sub mount_filesystems
 					});
 					foreach my $line (@{$return})
 					{
-						logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 						if ($line eq "failed")
 						{
 							# WTF?!
-							logger($conf, __LINE__, "Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
+							logger($conf, $THIS_FILE, __LINE__, "Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
 							exit(13);
 						}
 						elsif ($line eq "created")
 						{
-							logger($conf, __LINE__, "[ Debug ] - Directory created");
+							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Directory created");
 							$directory_found = 1;
 						}
 					}
@@ -346,25 +611,25 @@ sub mount_filesystems
 				{
 					# Directory exists and I got output, so
 					# something is in it.
-					logger($conf, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
 					$directory_in_use = 1;
 				}
 			}
 			if (not $directory_in_use)
 			{
 				# This directory is empty, we can use it.
-				logger($conf, __LINE__, "[ Debug ] - No data in: [$use_directory], using it.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No data in: [$use_directory], using it.");
 				$directory_found = 1;
 			}
 			$j++;
 			if ($j > 5)
 			{
-				logger($conf, __LINE__, "[ Debug ] - Loop detected trying to find a mount point on the remote machine.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Loop detected trying to find a mount point on the remote machine.");
 				exit(12);
 			}
 		}
 		$remote_mount = $use_directory;
-		logger($conf, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 		
 		# If I am still alive, I can mount.
 		my $local_host         = $conf->{'local'}{host};
@@ -376,21 +641,18 @@ sub mount_filesystems
 			$remote_known_hosts = "/root/.ssh/known_hosts";
 		}
 		
-		# TODO: Make sure this works if a stale mount exists on the
-		#       remote machine.
-		my $remote_shell_call  = "
-if [ ! -e '$remote_known_hosts' ] || \$(grep -q $local_host $remote_known_hosts)
+		# Make sure the remote machine's user has us in their
+		# known_hosts file.
+		logger($conf, $THIS_FILE, __LINE__, "Ready to mount local: [$local_mount] on remote: [$remote] at: [$remote_mount].");
+		$shell_call = "
+if [ ! -e '$remote_known_hosts' ] || ! \$(grep -q $local_host $remote_known_hosts)
 then
     ssh-keyscan $local_host >> $remote_known_hosts
-    echo key added
-fi
-echo $local_password | sshfs -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead $local_user\@$local_host:$local_mount $remote_mount";
-		logger($conf, __LINE__, "Ready to mount local: [$local_mount] on remote: [$remote] at: [$remote_mount].");
-		logger($conf, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], remote_shell_call: [$remote_shell_call].");
-		
-		#$shell_call = "echo $local_password | $remote_shell_call";
-		$shell_call = "echo $local_password | $remote_shell_call";
-		logger($conf, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+    echo 'RSA key added'
+else
+    echo 'RSA key exists'
+fi";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
 		my ($error, $ssh_fh, $return) = remote_call($conf, {
 			remote		=>	$remote,
 			port		=>	22,
@@ -402,19 +664,63 @@ echo $local_password | sshfs -o password_stdin -o idmap=user -o sshfs_sync -o no
 		});
 		foreach my $line (@{$return})
 		{
-			logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		}
+		
+		# Try the mount
+		$shell_call  = "echo $local_password | sshfs -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead $local_user\@$local_host:$local_mount $remote_mount";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+		($error, $ssh_fh, $return) = remote_call($conf, {
+			remote		=>	$remote,
+			port		=>	22,
+			user		=>	$remote_user,
+			password	=>	$remote_password,
+			ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 			if ($line =~ /sshfs: command not found/)
 			{
-				logger($conf, __LINE__, "Remote machine: [$remote] does not have 'sshfs' installed. Unable to proceed.");
+				logger($conf, $THIS_FILE, __LINE__, "Remote machine: [$remote] does not have 'sshfs' installed. Unable to proceed.");
 				unmount($conf, $device);
 				exit(7);
 			}
 			elsif ($line =~ /fuse: failed to exec fusermount: Permission denied/)
 			{
-				logger($conf, __LINE__, "Calling: [$remote_shell_call] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$remote_user' user in the 'fuse' group? If not, please run: [usermod -a -G fuse $remote_user] on the target server and try again. Unable to proceed.");
+				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$remote_user' user in the 'fuse' group? If not, please run: [usermod -a -G fuse $remote_user] on the target server and try again. Unable to proceed.");
 				unmount($conf, $device);
 				exit(8);
 			}
+			elsif ($line =~ /Timeout waiting for prompt/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a timed out. Unable to proceed.");
+				unmount($conf, $device);
+				exit(18);
+			}
+		}
+		
+		# Now call the .post_mount script, if it exists.
+		$shell_call = "
+if [ -x '/home/$remote_user/.post_mount' ]
+then
+	/home/$remote_user/.post_mount 
+fi";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+		($error, $ssh_fh, $return) = remote_call($conf, {
+			remote		=>	$remote,
+			port		=>	22,
+			user		=>	$remote_user,
+			password	=>	$remote_password,
+			ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		}
 	}
 	
@@ -429,7 +735,7 @@ sub unmount
 	my $mount_point = get_mount_point($conf, $device);
 	if ($mount_point)
 	{
-		logger($conf, __LINE__, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
+		logger($conf, $THIS_FILE, __LINE__, "device: [$device] is mounted on: [$mount_point]. Unmounting.");
 		my $shell_call = "$conf->{path}{umount} $device";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call] Error: $!\n";
 		while (<$file_handle>)
@@ -441,14 +747,14 @@ sub unmount
 		$mount_point = get_mount_point($conf, $device);
 		if ($mount_point)
 		{
-			logger($conf, __LINE__, "Failed to unmount: [$device] from: [$mount_point]");
+			logger($conf, $THIS_FILE, __LINE__, "Failed to unmount: [$device] from: [$mount_point]");
 			exit(1);
 		}
-		logger($conf, __LINE__, "Device: [$device] unmounted successfully.");
+		logger($conf, $THIS_FILE, __LINE__, "Device: [$device] unmounted successfully.");
 	}
 	else
 	{
-		logger($conf, __LINE__, "device: [$device] is not mounted.");
+		logger($conf, $THIS_FILE, __LINE__, "device: [$device] is not mounted.");
 	}
 	
 	return(0);
@@ -465,11 +771,11 @@ sub get_mount_point
 	{
 		chomp;
 		my $line = $_;
-		#logger($conf, __LINE__, "line: [$line]");
+		#logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
 		if ($line =~ /^$device on (.*?) /)
 		{
 			$mount_point = $1;
-			#logger($conf, __LINE__, "mount_point: [$mount_point]");
+			#logger($conf, $THIS_FILE, __LINE__, "mount_point: [$mount_point]");
 		}
 	}
 	close $file_handle;
@@ -483,14 +789,21 @@ sub find_file_systems
 	my @filesystems;
 	
 	my $shell_call = "$conf->{path}{ls} ${device}*";
-	logger($conf, __LINE__, "Calling: [$shell_call]");
+	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		next if not $line;
-		logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		# If there is a partition already on the device, I will need to know
+		# later if I need to encrypt the drive.
+		if ($line =~ /^$device\d+/)
+		{
+			$conf->{sys}{partition_seen} = 1;
+		}
+		# Now see if I can find out more about the drive/partition
 		if (($line eq $device) or ($line =~ /^$device\d+/))
 		{
 			call_blkid($conf, $line);
@@ -504,9 +817,11 @@ sub find_file_systems
 sub call_blkid
 {
 	my ($conf, $device) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - call_blkid; device: [$device].");
 	
-	my $uuid;
-	my $fs;
+	my $uuid  = "";
+	my $fs    = "";
+	my $label = "";
 	my $shell_call = "$conf->{path}{blkid} -c /dev/null $device";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
@@ -514,7 +829,7 @@ sub call_blkid
 		chomp;
 		my $line = $_;
 		next if not $line;
-		logger($conf, __LINE__, "[ Debug ] - line: [$line]");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /UUID="(.*?)"/)
 		{
 			$uuid = $1;
@@ -523,19 +838,24 @@ sub call_blkid
 		{
 			$fs = $1;
 		}
+		if ($line =~ /LABEL="(.*?)"/)
+		{
+			$label = $1;
+		}
 	}
 	close $file_handle;
 	
 	if ($fs)
 	{
-		$conf->{devices}{$device}{fs}   = $fs;
-		$conf->{devices}{$device}{uuid} = $uuid;
-		$conf->{devices}{$device}{path} = $device;
-		logger($conf, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+		$conf->{devices}{$device}{fs}    = $fs;
+		$conf->{devices}{$device}{uuid}  = $uuid;
+		$conf->{devices}{$device}{label} = $label;
+		$conf->{devices}{$device}{path}  = $device;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
 	}
 	else
 	{
-		logger($conf, __LINE__, "[ Debug ] - device: [$device] has no file system.");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device] has no file system.");
 	}
 	
 	return(0);

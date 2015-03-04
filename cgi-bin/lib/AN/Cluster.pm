@@ -22,8 +22,6 @@ package AN::Cluster;
 # Alteeve's Niche!  -  https://alteeve.ca
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
-# 
-# TODO: RAID that is 'Partially Degraded' needs to be 'highlight_warning_bold'
 
 use strict;
 use warnings;
@@ -38,7 +36,7 @@ use AN::Striker;
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
 my $THIS_FILE = "AN::Cluster.pm";
-our $VERSION  = "1.2.0 β";
+our $VERSION  = "1.2.0b";
 
 # This shows the user the local hostname and IP addresses. It also provides a
 # link to update the underlying OS, if updates are available.

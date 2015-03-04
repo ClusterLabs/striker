@@ -1452,8 +1452,8 @@ sub read_strings
 			# Skip blank lines.
 			next if $line =~ /^\s+$/;
 			next if $line eq "";
-			$line         =~ s/^\s+//;
-
+			$line =~ s/^\s+//;
+			
 			# Look for an inline data-structure.
 			if (($line =~ /<(.*?) (.*?)>/) && ($line =~ /<\/$1>/))
 			{

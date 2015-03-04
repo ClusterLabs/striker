@@ -98,6 +98,35 @@ sub add_rsa_to_remote
 {
 	my ($conf) = @_;
 	
+	# Make sure the remote machine's fingerprints are in our 
+	# ~/.ssh/known_hosts.
+	my $known_hosts = "$ENV{'HOME'}/.ssh/known_hosts";
+	my $shell_call  = "
+if [ -e '$known_hosts' ] && \$(grep -q $conf->{sys}{remote} $known_hosts);
+then 
+	echo exists
+else 
+	echo add
+	ssh-keyscan $conf->{sys}{remote} >> $known_hosts
+fi";
+	#print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /exists/)
+		{
+			print "- The remote machine's fingerprint is already registered.\n";
+		}
+		if ($line =~ /add/)
+		{
+			print "- Recording the remote machine's fingerprint.\n";
+		}
+		#print "[ Debug ] ".__LINE__."; - line: [$line]\n";
+	}
+	close $file_handle;
+	
 	# Read in the user's existing root user's authorized_keys file, if it
 	# exists.
 	if (check_authorized_keys($conf, "root"))
@@ -172,6 +201,7 @@ sub get_remote_user_list
 	foreach my $line (@{$return})
 	{
 		#print "[ Debug ] ".__LINE__."; - line: [$line]\n";
+		next if $line eq "lost+found";
 		push @{$conf->{remote_users}}, $line;
 	}
 	

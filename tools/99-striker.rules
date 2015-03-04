@@ -1,0 +1,6 @@
+# This triggers the insert and eject scripts to mount and unmount USB drives on
+# remote servers when a USB storage device is plugged into a managed port.
+
+ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-insert"
+
+ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
