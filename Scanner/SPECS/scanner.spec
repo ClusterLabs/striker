@@ -62,6 +62,7 @@ do so.
 %attr(777,root,root) /var/log/striker
 %attr(777,root,root) /shared/status
 %doc Docs/Writing_an_agent Docs/Writing_an_agent_by_extending_existing_perl_classes.
+%config /etc/striker/Config/bonding.conf
 %config /etc/striker/Config/db.conf
 %config /etc/striker/Config/ipmi.conf
 %config /etc/striker/Config/raid.conf
