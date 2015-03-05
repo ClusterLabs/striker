@@ -297,7 +297,7 @@ sub parse_bond_status {
 sub query_target {
     my $self = shift;
 
-    state $files = [ glob( $self->confdata->{dir} . '/*-bond1' ) ];
+    state $files = [ glob( $self->confdata->{dir} . '/*bond1' ) ];
 
     for my $file (@$files) {
         $self->parse_bond_status($file);
