@@ -17,7 +17,7 @@ SET default_with_oids = false;
 
 --
 -- Name: raid_controllers, raid_drives;
--- Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE raid_controllers (
@@ -33,7 +33,7 @@ CREATE TABLE raid_controllers (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE public.raid_controllers OWNER TO alteeve;
+ALTER TABLE public.raid_controllers OWNER TO striker;
 
 CREATE TABLE raid_drives (
     id       integer NOT NULL,
@@ -48,11 +48,11 @@ CREATE TABLE raid_drives (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE public.raid_drives OWNER TO alteeve;
+ALTER TABLE public.raid_drives OWNER TO striker;
 
 --
 -- Name: raid_controllers_id_seq, raid_drives_id_seq;
--- Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE raid_controllers_id_seq
@@ -63,7 +63,7 @@ CREATE SEQUENCE raid_controllers_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.raid_controllers_id_seq OWNER TO alteeve;
+ALTER TABLE public.raid_controllers_id_seq OWNER TO striker;
 
 CREATE SEQUENCE raid_drives_id_seq
     START WITH 1
@@ -73,11 +73,11 @@ CREATE SEQUENCE raid_drives_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.raid_drives_id_seq OWNER TO alteeve;
+ALTER TABLE public.raid_drives_id_seq OWNER TO striker;
 
 --
 -- Name: raid_controllers_id_seq, raid_drives_id_seq;
--- Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE raid_controllers_id_seq OWNED BY raid_controllers.id;
@@ -85,7 +85,7 @@ ALTER SEQUENCE raid_drives_id_seq      OWNED BY raid_drives.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY raid_controllers
@@ -99,7 +99,7 @@ SET DEFAULT nextval('raid_drives_id_seq'::regclass);
 
 --
 -- Name: raid_controllers_pkey raid_drives_pkey;
--- Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY raid_controllers
@@ -111,7 +111,7 @@ ALTER TABLE ONLY raid_drives
 
 --
 -- Name: raid_controllers_node_id_fkey, raid_drives_node_id_fkey;
--- Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY raid_controllers
@@ -139,7 +139,7 @@ CREATE TABLE history.raid_controllers (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.raid_controllers OWNER TO alteeve;
+ALTER TABLE history.raid_controllers OWNER TO striker;
 
 CREATE TABLE history.raid_drives (
     history_id serial primary key,
@@ -155,7 +155,7 @@ CREATE TABLE history.raid_drives (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.raid_drives OWNER TO alteeve;
+ALTER TABLE history.raid_drives OWNER TO striker;
 
 \echo Create functions history_raid_controllers & history_raid_drives
 \echo to populate history.raid_controllers from raid_controllers,
@@ -195,7 +195,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_raid_controllers() OWNER TO alteeve;
+ALTER FUNCTION history_raid_controllers() OWNER TO striker;
 
 CREATE FUNCTION history_raid_drives() RETURNS trigger
 AS $$
@@ -231,7 +231,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_raid_drives() OWNER TO alteeve;
+ALTER FUNCTION history_raid_drives() OWNER TO striker;
 
 \echo Create triggers trigger_raid_controllers & trigger_raid_drives
 \echo using functions history_raid_controllers & history_raid_drives

@@ -17,7 +17,7 @@ SET default_with_oids = false;
 
 --
 -- Name: bonding, bonding;
--- Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE bonding (
@@ -33,11 +33,11 @@ CREATE TABLE bonding (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE public.bonding OWNER TO alteeve;
+ALTER TABLE public.bonding OWNER TO striker;
 
 --
 -- Name: bonding_id_seq, bonding_id_seq;
--- Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE bonding_id_seq
@@ -48,17 +48,17 @@ CREATE SEQUENCE bonding_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.bonding_id_seq OWNER TO alteeve;
+ALTER TABLE public.bonding_id_seq OWNER TO striker;
 
 --
 -- Name: bonding_id_seq, bonding_id_seq;
--- Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE bonding_id_seq OWNED BY bonding.id;
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY bonding
@@ -67,7 +67,7 @@ SET DEFAULT nextval('bonding_id_seq'::regclass);
 
 --
 -- Name: bonding_pkey bonding_pkey;
--- Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY bonding
@@ -75,7 +75,7 @@ ALTER TABLE ONLY bonding
 
 --
 -- Name: bonding_node_id_fkey, bonding_drives_node_id_fkey;
--- Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY bonding
@@ -98,7 +98,7 @@ CREATE TABLE history.bonding (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.bonding OWNER TO alteeve;
+ALTER TABLE history.bonding OWNER TO striker;
 
 CREATE TABLE history.bonding (
     history_id serial primary key,
@@ -114,7 +114,7 @@ CREATE TABLE history.bonding (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.bonding OWNER TO alteeve;
+ALTER TABLE history.bonding OWNER TO striker;
 
 \echo Create functions history_bonding
 \echo to populate history.bonding from bonding.
@@ -153,7 +153,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_bonding() OWNER TO alteeve;
+ALTER FUNCTION history_bonding() OWNER TO striker;
 
 \echo Create triggers trigger_bonding using functions history_bonding
 

@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: alerts; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: alerts; Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE alerts (
@@ -35,10 +35,10 @@ CREATE TABLE alerts (
 );
 
 
-ALTER TABLE public.alerts OWNER TO alteeve;
+ALTER TABLE public.alerts OWNER TO striker;
 
 --
--- Name: alerts_id_seq; Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Name: alerts_id_seq; Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE alerts_id_seq
@@ -49,24 +49,24 @@ CREATE SEQUENCE alerts_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.alerts_id_seq OWNER TO alteeve;
+ALTER TABLE public.alerts_id_seq OWNER TO striker;
 
 --
--- Name: alerts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Name: alerts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE alerts_id_seq OWNED BY alerts.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY alerts ALTER COLUMN id SET DEFAULT nextval('alerts_id_seq'::regclass);
 
 
 --
--- Name: alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY alerts
@@ -74,7 +74,7 @@ ALTER TABLE ONLY alerts
 
 
 --
--- Name: alerts_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Name: alerts_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY alerts
@@ -100,7 +100,7 @@ message_arguments 	text,
 history_id      serial primary key
 );
 
-ALTER TABLE history.alerts OWNER TO alteeve;
+ALTER TABLE history.alerts OWNER TO striker;
 
 \echo Create function history_alerts to populate history.alerts from alerts
 
@@ -141,7 +141,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
- ALTER FUNCTION history_alerts() OWNER TO alteeve;
+ ALTER FUNCTION history_alerts() OWNER TO striker;
 
 \echo Create trigger trigger_alerts using function history_alerts
 

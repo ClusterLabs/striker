@@ -17,6 +17,7 @@ SYSTEMNAME = striker
 TEXTBASE   = $(PREFIX)/etc/$(SYSTEMNAME)
 CONFDIR    = $(TEXTBASE)/Config
 MSGDIR     = $(TEXTBASE)/Messages
+SQLDIR     = $(TEXTBASE)/SQL
 
 CODEBASE   = $(PREFIX)/usr/share/$(SYSTEMNAME)
 BINDIR     = $(CODEBASE)/bin
@@ -28,7 +29,7 @@ TOOLDIR    = $(PREFIX)/var/www/tools
 SHAREDDIR  = $(PREFIX)/shared/status
 
 DIRS       = $(TEXTBASE) $(CONFDIR) $(MSGDIR) $(CODEBASE) $(BINDIR) \
-	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR) $(TOOLDIR) 
+	     $(AGENTDIR) $(LIBDIR) $(LOGDIR) $(SHAREDDIR) $(TOOLDIR) $(SQLDIR)
 
 SPECSDIR   = $(HOME)/rpmbuild/SPECS 
 
@@ -58,10 +59,8 @@ $(RPMDIRS) :
 $(RPMBUILD): $(RPMDIRS)
 	[[ -x $@ ]] || mkdir -p $@
 
-files 	: scanner dashboard agents libs configs messages $(WRAPPERS) $(SHUTDOWN) wipmi_power
-
-
-
+files 	: scanner dashboard agents libs configs messages sqlfiles \
+	  $(WRAPPERS) $(SHUTDOWN) wipmi_power
 
 env:
 	perl -E"say "$_	= $ENV{$_} for sort keys %ENV;" > /tmp/env
@@ -95,10 +94,13 @@ libs	:
 configs	:
 	cp Config/* $(CONFDIR)
 
+sqlfiles :
+	cp SQL/* $(SQLDIR)
+
 messages:
 	cp Messages/* $(MSGDIR)
 
-install: wrapper dirs libs files scanner  $(SHUTDOWN)
+install: wrapper dirs libs files scanner SQL $(SHUTDOWN) 
 	if [[ "$(USER)" == "root" ]] ; then		\
 	    cp dashboard scanner wipmi_power  $(BINDIR);\
             chmod 777 $(LOGDIR) $(SHAREDDIR);		\
@@ -127,9 +129,9 @@ Scanner.files: $(BINDIR) $(AGENTDIR) $(LIBDIR)
 	@echo "Finally, perform 'make uninstall' to remove"
 	@echo "the installed files."
 	@echo ""
-	find /usr/share/striker/* /etc/striker/Messages \
+	find /usr/share/striker/* /etc/striker/Messages /etc/striker/SQL \
 		-type f   -print 	       | \
-	egrep '/agents/|/bin/|/lib/|/Config/|/Messages/' > Scanner.files
+	egrep '/agents/|/bin/|/lib/|/Config/|/Messages/|/SQL/' > Scanner.files
 	echo "/var/www/tools/wshutdown" >> Scanner.files
 
 RPM: distclean $(RPMDIRS) $(RPMBUILD) Scanner.files

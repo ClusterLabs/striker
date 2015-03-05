@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: agent_data; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: agent_data; Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE agent_data (
@@ -32,10 +32,10 @@ CREATE TABLE agent_data (
 );
 
 
-ALTER TABLE public.agent_data OWNER TO alteeve;
+ALTER TABLE public.agent_data OWNER TO striker;
 
 --
--- Name: agent_data_id_seq; Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Name: agent_data_id_seq; Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE agent_data_id_seq
@@ -46,24 +46,24 @@ CREATE SEQUENCE agent_data_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.agent_data_id_seq OWNER TO alteeve;
+ALTER TABLE public.agent_data_id_seq OWNER TO striker;
 
 --
--- Name: agent_data_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Name: agent_data_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE agent_data_id_seq OWNED BY agent_data.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY agent_data ALTER COLUMN id SET DEFAULT nextval('agent_data_id_seq'::regclass);
 
 
 --
--- Name: agent_data_pkey; Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: agent_data_pkey; Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY agent_data
@@ -71,7 +71,7 @@ ALTER TABLE ONLY agent_data
 
 
 --
--- Name: agent_data_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Name: agent_data_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY agent_data
@@ -93,7 +93,7 @@ CREATE TABLE history.agent_data (
     "timestamp"	timestamp with time zone	not null	default now()
 );
 
-ALTER TABLE history.agent_data OWNER TO alteeve;
+ALTER TABLE history.agent_data OWNER TO striker;
 
 \echo Create function history_agent_data to populate history.agent_data from agent_data
 
@@ -128,7 +128,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
- ALTER FUNCTION history_agent_data() OWNER TO alteeve;
+ ALTER FUNCTION history_agent_data() OWNER TO striker;
 
 \echo Create trigger trigger_agent_data using function history_agent_data
 

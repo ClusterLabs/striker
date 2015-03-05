@@ -16,7 +16,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: ipmi_temperatures; Type: TABLE; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: ipmi_temperatures; Type: TABLE; Schema: public; Owner: striker; Tablespace: 
 --
 
 CREATE TABLE ipmi_temperatures (
@@ -33,10 +33,10 @@ CREATE TABLE ipmi_temperatures (
 );
 
 
-ALTER TABLE public.ipmi_temperatures OWNER TO alteeve;
+ALTER TABLE public.ipmi_temperatures OWNER TO striker;
 
 --
--- Name: ipmi_temperatures_id_seq; Type: SEQUENCE; Schema: public; Owner: alteeve
+-- Name: ipmi_temperatures_id_seq; Type: SEQUENCE; Schema: public; Owner: striker
 --
 
 CREATE SEQUENCE ipmi_temperatures_id_seq
@@ -47,24 +47,24 @@ CREATE SEQUENCE ipmi_temperatures_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.ipmi_temperatures_id_seq OWNER TO alteeve;
+ALTER TABLE public.ipmi_temperatures_id_seq OWNER TO striker;
 
 --
--- Name: ipmi_temperatures_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: alteeve
+-- Name: ipmi_temperatures_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: striker
 --
 
 ALTER SEQUENCE ipmi_temperatures_id_seq OWNED BY ipmi_temperatures.id;
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: alteeve
+-- Name: id; Type: DEFAULT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY ipmi_temperatures ALTER COLUMN id SET DEFAULT nextval('ipmi_temperatures_id_seq'::regclass);
 
 
 --
--- Name: ipmi_temperatures_pkey; Type: CONSTRAINT; Schema: public; Owner: alteeve; Tablespace: 
+-- Name: ipmi_temperatures_pkey; Type: CONSTRAINT; Schema: public; Owner: striker; Tablespace: 
 --
 
 ALTER TABLE ONLY ipmi_temperatures
@@ -72,7 +72,7 @@ ALTER TABLE ONLY ipmi_temperatures
 
 
 --
--- Name: ipmi_temperatures_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: alteeve
+-- Name: ipmi_temperatures_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: striker
 --
 
 ALTER TABLE ONLY ipmi_temperatures
@@ -95,7 +95,7 @@ CREATE TABLE history.ipmi_temperatures (
     "timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE history.ipmi_temperatures OWNER TO alteeve;
+ALTER TABLE history.ipmi_temperatures OWNER TO striker;
 
 \echo Create function history_ipmi_temperatures to populate history.ipmi_temperatures from ipmi_temperatures
 
@@ -133,7 +133,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-ALTER FUNCTION history_ipmi_temperatures() OWNER TO alteeve;
+ALTER FUNCTION history_ipmi_temperatures() OWNER TO striker;
 
 \echo Create trigger trigger_ipmi_temperatures using function history_ipmi_temperaturess
 

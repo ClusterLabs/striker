@@ -4,6 +4,6 @@
 \echo       if DB reports connections to the DB.
 
 DROP DATABASE IF EXISTS scanner ;
-CREATE DATABASE scanner WITH OWNER alteeve;
+CREATE DATABASE scanner WITH OWNER striker;
 -- ----------------------------------------------------------------------
 -- End of File

@@ -9,7 +9,7 @@ SET client_min_messages = warning;
 CREATE LANGUAGE plpgsql;
 
 CREATE SCHEMA history;
-ALTER SCHEMA history OWNER to alteeve;
+ALTER SCHEMA history OWNER to striker;
 
 \echo Create table node
 
@@ -26,7 +26,7 @@ modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
 );
 
-ALTER TABLE node OWNER TO alteeve;
+ALTER TABLE node OWNER TO striker;
 
 \echo Create table history.node
 
@@ -44,7 +44,7 @@ modified_user	int	not null,
 modified_date	timestamp with time zone	not null	default now()
 );
 
-ALTER TABLE history.node OWNER TO alteeve;
+ALTER TABLE history.node OWNER TO striker;
 
 \echo Create function history_nodes to populate history.node from node
 
@@ -79,7 +79,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
- ALTER FUNCTION history_node() OWNER TO alteeve;
+ ALTER FUNCTION history_node() OWNER TO striker;
 
 \echo Create trigger trigger_node using function history_nodes
 
