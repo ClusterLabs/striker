@@ -659,6 +659,9 @@ sub eval_nested_status {
 sub eval_status {
     my ( $self, $args ) = @_;
 
+    die "Config file @{[$self->confpath()]}\n\tdoes not have an entry for '@{[$args->{tag}]}'."
+	unless 'HASH' eq ref $args->{rec_meta} && keys %{$args->{rec_meta}};
+
     return $self->eval_discrete_status( $args )
         unless (    exists $args->{rec_meta}{ok}
                  or exists $args->{rec_meta}{ok_min} );    # not range data.

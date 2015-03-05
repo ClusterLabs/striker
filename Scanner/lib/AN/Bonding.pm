@@ -122,7 +122,7 @@ sub process_combined_section {
     my $self = shift;
     my ( $name, $fh ) = @_;
 
-    my $args = { rec_meta    => {},
+    my $args = { rec_meta    => { dummy => 1},
                  prev_status => '',
                  prev_value  => '',
                  metadata    => {
@@ -178,7 +178,7 @@ sub process_section {
     my $self = shift;
     my ( $name, $fh ) = @_;
 
-    my $args = { rec_meta    => {},
+    my $args = { rec_meta    => { dummy => 1},
                  prev_status => '',
                  prev_value  => '',
                  metadata    => {
@@ -239,7 +239,7 @@ sub compare_sides {
     my $self = shift;
     my ( $name, $side_one, $side_two ) = @_;
 
-    my $args = { rec_meta    => {},
+    my $args = { rec_meta    => { dummy => 1},
                  prev_status => '',
                  prev_value  => '',
                  metadata    => {
