@@ -195,6 +195,7 @@ fi
 		if ($line =~ /LABEL="(.*?)"/)
 		{
 			$label = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$dm_path]'s filesystem label is: [$label]");
 		}
 	}
 	close $file_handle;
@@ -213,7 +214,24 @@ fi
 	else
 	{
 		logger($conf, $THIS_FILE, __LINE__, "The decrypted device: [$dm_path] doesn't appear to have a file system on it. The UUID and/or filesystem Type were not read.");
-		exit(17);
+		if ($conf->{luks}{force_initialize})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "The 'luks::force_initialize' option is set, formatting it now.");
+			my ($fs, $uuid, $label) = format_device($conf, $dm_path);
+			$device = $dm_path;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
+			$conf->{devices}{$device}{fs}    = $fs;
+			$conf->{devices}{$device}{uuid}  = $uuid;
+			$conf->{devices}{$device}{label} = $label;
+			$conf->{devices}{$device}{path}  = $dm_path;
+			logger($conf, $THIS_FILE, __LINE__, "Decryption was successful!");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "The 'luks::force_initialize' option is not set, so will not format. Unable to proceed.");
+			exit(17);
+		}
 	}
 	
 	return($device);
@@ -265,28 +283,15 @@ $conf->{path}{echo} YES | $conf->{path}{cryptsetup} luksFormat $device $temp_fil
 			my $fs = $1;
 			if ($fs eq "crypto_LUKS")
 			{
-				my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} $dm_path";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - luks::use_filesystem: [$conf->{luks}{use_filesystem}], luks::fs_label: [$conf->{luks}{fs_label}]");
-				if ($conf->{luks}{fs_label})
-				{
-					$mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} -L '$conf->{luks}{fs_label}' $dm_path";
-				}
-				my $fs    = "";
-				my $uuid  = "";
-				my $label = "";
-				logger($conf, $THIS_FILE, __LINE__, "Successfully formatted: [$device] as a LUKS partition. Will now format the device: [$dm_path] as: [$conf->{luks}{use_filesystem}]");
+				logger($conf, $THIS_FILE, __LINE__, "Successfully formatted: [$device] as a LUKS partition, unlocking it now.");
 				my $shell_call = "
 $conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
 unlink $temp_file
 if [ -e '$dm_path' ]
 then
-    echo 'formatting $dm_path now'
-    $mkfs_call
-    sync
-    echo 'formatted, checking with blkid'
-    $conf->{path}{blkid} -p $dm_path
+    echo 'unlocked successfully'
 else
-    echo 'dm path: [$dm_path] not found'
+    echo 'unlock failed, dm path: [$dm_path] not found'
 fi
 ";
 				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
@@ -301,32 +306,17 @@ fi
 						logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
 						exit(16);
 					}
-					if ($line =~ /formatting .* now/)
+					elsif ($line =~ /unlockes successfully/)
 					{
-						logger($conf, $THIS_FILE, __LINE__, "Formatting: [$dm_path]. Please wait, this might take a few minutes...");
-					}
-					if ($line =~ /formatted/)
-					{
-						logger($conf, $THIS_FILE, __LINE__, "Format appears to be complete, checking with 'blkid' now.");
-					}
-					if ($line =~ /UUID="(.*?)"/)
-					{
-						$uuid = $1;
-						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem's UUID: [$uuid]");
-					}
-					if ($line =~ /TYPE="(.*?)"/)
-					{
-						$fs = $1;
-						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem type is: [$fs]");
-					}
-					if ($line =~ /LABEL="(.*?)"/)
-					{
-						$label = $1;
+						logger($conf, $THIS_FILE, __LINE__, "Unlocked successfully, device mapper path is: [$dm_path].");
 					}
 				}
 				close $file_handle;
 				
-				if (($fs) && ($uuid))
+				my ($fs, $uuid, $label) = format_device($conf, $dm_path);
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
+				
+				if ($fs)
 				{
 					# If I am still alive, record the new details.
 					$device = $dm_path;
@@ -335,7 +325,7 @@ fi
 					$conf->{devices}{$device}{label} = $label;
 					$conf->{devices}{$device}{path}  = $device;
 					logger($conf, $THIS_FILE, __LINE__, "Format was successful!");
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}] and the label: [$conf->{devices}{$device}{label}].");
 				}
 				else
 				{
@@ -353,6 +343,74 @@ fi
 	close $file_handle;
 	
 	return($dm_path);
+}
+
+# This does the work of formatting a device.
+sub format_device
+{
+	my ($conf, $device) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - format_device(); device: [$device]");
+	
+	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} $device";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - luks::use_filesystem: [$conf->{luks}{use_filesystem}], luks::fs_label: [$conf->{luks}{fs_label}]");
+	if ($conf->{luks}{fs_label})
+	{
+		$mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} -L '$conf->{luks}{fs_label}' $device";
+	}
+	my $fs    = "";
+	my $uuid  = "";
+	my $label = "";
+	logger($conf, $THIS_FILE, __LINE__, "Will now format the device: [$device] as: [$conf->{luks}{use_filesystem}]");
+	my $shell_call = "
+echo 'formatting $device now'
+$mkfs_call
+sync
+echo 'formatted, checking with blkid'
+$conf->{path}{blkid} -p $device
+";
+	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		# Don't print the progress, it just creates a mess in the logs.
+		if ($line =~ /Writing inode tables/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [Writing inode tables: <progress messages supressed>]");
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		}
+		if ($line =~ /formatting .* now/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "Formatting: [$device]. Please wait, this might take a few minutes...");
+		}
+		if ($line =~ /formatted/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "Format appears to be complete, checking with 'blkid' now.");
+		}
+		if ($line =~ /UUID="(.*?)"/)
+		{
+			$uuid = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem's UUID: [$uuid]");
+		}
+		if ($line =~ /TYPE="(.*?)"/)
+		{
+			$fs = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem type is: [$fs]");
+		}
+		if ($line =~ /LABEL="(.*?)"/)
+		{
+			$label = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new filesystem label is: [$fs]");
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
+	return($fs, $uuid, $label);
 }
 
 # This mounts the file system locally and then connects to the remote machine
@@ -375,6 +433,10 @@ sub mount_filesystems
 		my $remote_password = $conf->{usb}{$this_usb}{sshfs}{password};
 		my $local_mount     = $conf->{usb}{$this_usb}{local_mount};
 		my $remote_mount    = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+		if ($conf->{devices}{$device}{label})
+		{
+			$remote_mount .= "-$conf->{devices}{$device}{label}";
+		}
 		if ($i)
 		{
 			$local_mount  .= "-$i";
@@ -393,11 +455,29 @@ sub mount_filesystems
 			($device) = decrypt_luks($conf, $device);
 			logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
 			$mountable = 1;
+			
+			# If there was a label on the decrypted FS, update the
+			# mount directory name.
+			if ($conf->{devices}{$device}{label})
+			{
+				# A label was set, update the mount name.
+				$remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+				if ($conf->{devices}{$device}{label})
+				{
+					$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
+				}
+				if ($i)
+				{
+					$remote_mount .= "-$i";
+				}
+			}
 		}
 		else
 		{
 			# Start by making sure it is unmounted
-			logger($conf, $THIS_FILE, __LINE__, "Checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
+			logger($conf, $THIS_FILE, __LINE__, "We're about to start, but we're going to sleep for 10 seconds to give other processes time to mount the partitions.");
+			sleep 10;
+			logger($conf, $THIS_FILE, __LINE__, "Done waiting; Now checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
 			unmount($conf, $device);
 			
 			# If the user has requested 'luks::force_initialize', 
@@ -460,6 +540,24 @@ sub mount_filesystems
 					logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [$device].");
 					($device) = format_device_luks($conf, $device);
 					logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
+					
+					# If the formatted FS has a label, and
+					# the old FS didn't, we'll want to 
+					# append the label to the mount point 
+					# now.
+					if ($conf->{devices}{$device}{label})
+					{
+						# A label was set, update the mount name.
+						$remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+						if ($conf->{devices}{$device}{label})
+						{
+							$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
+						}
+						if ($i)
+						{
+							$remote_mount .= "-$i";
+						}
+					}
 				}
 				$mountable = 1;
 			}
