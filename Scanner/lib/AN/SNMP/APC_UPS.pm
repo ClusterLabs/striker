@@ -659,19 +659,22 @@ sub eval_nested_status {
 sub eval_status {
     my ( $self, $args ) = @_;
 
-    return $self->eval_discrete_status( $args )
-        unless (    exists $args->{rec_meta}{ok}
-                 or exists $args->{rec_meta}{ok_min} );    # not range data.
+    if ( 'HASH' eq ref $args->{rec_meta} && keys %{$args->{rec_meta}} ) {
 
-    return $self->eval_nested_status( $args)
-        if exists $args->{rec_meta}{ok_min};
+        return $self->eval_discrete_status( $args )
+            unless (    exists $args->{rec_meta}{ok}
+                     or exists $args->{rec_meta}{ok_min} );    # not range data.
 
-    return $self->eval_rising_status($args)
-        if $args->{rec_meta}{warn} >= $args->{rec_meta}{ok};
+        return $self->eval_nested_status( $args)
+            if exists $args->{rec_meta}{ok_min};
 
-    return $self->eval_falling_status($args)
-        if $args->{rec_meta}{warn} <= $args->{rec_meta}{ok};
+        return $self->eval_rising_status($args)
+            if $args->{rec_meta}{warn} >= $args->{rec_meta}{ok};
 
+        return $self->eval_falling_status($args)
+            if $args->{rec_meta}{warn} <= $args->{rec_meta}{ok};
+    }
+    warn "Config file @{[$self->confpath()]}\n\tdoes not have an entry for '@{[$args->{tag}]}'.";
     return;
 }
 
