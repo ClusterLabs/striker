@@ -141,7 +141,7 @@ EOSQL
 SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM     alerts
 WHERE    message_tag = 'NODE_SERVER_STATUS'
-AND      value = ?
+AND      target_type = ?
 ORDER BY timestamp desc
 LIMIT    1
 
@@ -150,7 +150,7 @@ EOSQL
     Auto_Boot => <<"EOSQL",
 SELECT   *, round( extract( epoch from age( now(), timestamp ))) as age
 FROM     alerts
-WHERE    message_tag = 'AUTO_BOOY'
+WHERE    message_tag = 'AUTO_BOOT'
 AND      value = ?
 ORDER BY timestamp desc
 LIMIT    1

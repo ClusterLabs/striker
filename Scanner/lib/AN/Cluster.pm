@@ -10707,7 +10707,7 @@ sub read_node_cache {
         = "$conf->{path}{'striker_cache'}/cache_"
         . $cluster . "_"
         . $node
-        . ".striker";
+        . ".dashboard";
 
 #record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
     if ( not -e $cache_file ) {
@@ -10724,7 +10724,7 @@ sub read_node_cache {
                 = "$conf->{path}{'striker_cache'}/cache_"
                 . $cluster . "_"
                 . $node
-                . ".remote.striker";
+                . ".remote.dashboard";
         }
     }
     if ( -e $cache_file ) {

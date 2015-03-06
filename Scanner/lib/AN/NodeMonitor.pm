@@ -23,7 +23,9 @@ use AN::Cluster;
 # CLASS ATTRIBUTES
 #
 use Class::Tiny qw( healthfile host status first_ping_at sent_last_timeout_at
-    elapsed), { cache => sub { $_[0]->read_cache_file(); }, };
+    elapsed), { cache => sub { $_[0]->read_cache_file(); },
+                shorthost => sub { ( split /\./, $_[0]->host())[0];},
+              };
 
 # ======================================================================
 # CONSTANTS
@@ -97,7 +99,7 @@ sub read_cache_file {
 sub get_ip {
     my $self = shift;
 
-    my $ipmi_host = $self->host() . '.ipmi';
+    my $ipmi_host = $self->shorthost() . '.ipmi';
     my $ip        = $self->cache()->{node}{ $self->host }{hosts}{$ipmi_host};
     die( "Host @{[$self->host()]} not found in cache file ",
          Data::Dumper::Dumper( [ $self->cache() ] ), "\n" )

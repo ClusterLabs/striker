@@ -89,7 +89,8 @@ sub dispatch {
     else {
         system( '/bin/touch', $healthfile );
     }
-    if ( $sumweight >= $crisis ) {
+    if ( $sumweight >= $crisis
+      && $self->program ne 'dashboard'  ) {
         say "****    CRISIS    *****    CRISIS    *****    CRISIS   ******",
             "\nInvoking shutdown script $shutdown\n"
             if $verbose;

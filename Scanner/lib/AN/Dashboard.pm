@@ -99,7 +99,7 @@ sub isa_node_server_record {
     my $self = shift;
     my ($tag) = @_;
 
-    return $record->{message_tag} eq 'NODE_SERVER_STATUS';
+    return $tag eq 'NODE_SERVER_STATUS';
 }
 
 # ......................................................................
@@ -109,7 +109,7 @@ sub isa_auto_boot_record {
     my $self = shift;
     my ($tag) = @_;
 
-    return $record->{message_tag} eq 'AUTO_BOOT';
+    return $tag eq 'AUTO_BOOT';
 }
 
 # ......................................................................
@@ -149,7 +149,8 @@ sub map_auto_boot_status2string {
 sub parse_node_server_status {
     my $self = shift;
 
-    my $records = $self->dbs()->check_node_server_status( $self->host );
+    my $shorthost = (split /\./, $self->host() )[0];
+    my $records = $self->dbs()->check_node_server_status( $shorthost );
 
     my ( $dead_or_alive, $autoboot, $aok );
     for my $record (@$records) {
