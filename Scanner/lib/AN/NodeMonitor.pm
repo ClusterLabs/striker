@@ -249,7 +249,7 @@ sub ping_host_until_OK_or_timeout {
 sub report_host_status_to_boss {
     my $self = shift;
 
-    my $host = $self->host;
+    my $host = $self->shorthost;
     my $status = (   $self->status_host_is_pingable ? 'OK'
                    : $self->status_host_timed_out   ? 'TIMEOUT'
                    :                                  'unknown' );
@@ -264,7 +264,7 @@ sub report_host_status_to_boss {
     my $record = { table              => $self->confdata->{db}{table}{alerts},
                    with_node_table_id => 'node_id',
                    args               => {
-                             value             => $self->host,
+                             value             => $host,
                              field             => 'node server',
                              status            => $status,
                              message_tag       => 'NODE_SERVER_STATUS',
