@@ -381,6 +381,13 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		z_control_libvirtd		=>	{
+			path			=>	"/var/www/tools/control_libvirtd",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		z_check_dvd		=>	{
 			path			=>	"/var/www/tools/check_dvd",
 			owner			=>	"root",
@@ -3826,6 +3833,7 @@ sub configure_iptables
 	my $http_open  = 0;
 	my $https_open = 0;
 	my $vnc_open   = 0;
+	my $pgsql_open = 0;
 	print "- Reading the current firewall configuration.\n";
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
 	#print "[ Debug ] - shell_call: [$shell_call]\n";
@@ -3854,6 +3862,11 @@ sub configure_iptables
 		{
 			print "- VNC is already enabled.\n";
 			$vnc_open = 1;
+		}
+		if (($line =~ /--state NEW/) && ($line =~ /--dport 5432/) && ($line =~ /ACCEPT/))
+		{
+			print "- PostgreSQL is already enabled.\n";
+			$pgsql_open = 1;
 		}
 	}
 	close $file_handle;
@@ -3921,6 +3934,19 @@ sub configure_iptables
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5800 -j ACCEPT; ";
 		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5900 -j ACCEPT; ";
 		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 6000 -j ACCEPT; ";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "- Output: [$line]\n";
+		}
+		close $file_handle;
+	}
+	if (not $pgsql_open)
+	{
+		print "- Opening access for PostgreSQL.\n";
+		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT; ";
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -4720,12 +4746,18 @@ sub get_list_of_installed_packages
 		#print "[ Debug ] - line: [$line]\n";
 		if ($line =~ /^(.*?)\.(.*?)\s+(.*?)\s+\@/)
 		{
-			my $package   = $1;
-			my $arch      = $2;
-			my $version   = $3;
-			# NOTE: Someday record the arch and version, but for
-			#       now, we don't care.
-			$conf->{packages}{installed}{$package} = 1;
+			my $package = $1;
+			my $arch    = $2;
+			my $version = $3;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			# NOTE: Someday record the version.
+			$conf->{packages}{installed}{$package}           = 1;
+			$conf->{packages}{installed}{$package_with_arch} = 1;
 			#print "[ Debug ] - a) Package: [$package], arch: [$arch], version: [$version]\n";
 			if ($dots > 75)
 			{
@@ -4740,10 +4772,18 @@ sub get_list_of_installed_packages
 		}
 		elsif ($line =~ /^(.*?)\.(.*?)\s+(.*)/)
 		{
-			my $package   = $1;
-			my $arch      = $2;
-			my $version   = $3;
-			$conf->{packages}{installed}{$package} = 1;
+			my $package = $1;
+			my $arch    = $2;
+			my $version = $3;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			# NOTE: Someday record the version.
+			$conf->{packages}{installed}{$package}           = 1;
+			$conf->{packages}{installed}{$package_with_arch} = 1;
 			#print "[ Debug ] - b) Package: [$package], arch: [$arch], version: [$version]\n";
 			if ($dots > 75)
 			{
@@ -4758,9 +4798,16 @@ sub get_list_of_installed_packages
 		}
 		elsif ($line =~ /^(.*?)\.(\S*)$/)
 		{
-			my $package   = $1;
-			my $arch      = $2;
-			$conf->{packages}{installed}{$package} = 1;
+			my $package = $1;
+			my $arch    = $2;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			$conf->{packages}{installed}{$package}           = 1;
+			$conf->{packages}{installed}{$package_with_arch} = 1;
 			#print "[ Debug ] - c) Package: [$package], arch: [$arch]\n";
 			if ($dots > 75)
 			{

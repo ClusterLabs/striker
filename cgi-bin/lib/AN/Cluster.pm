@@ -6574,8 +6574,37 @@ sub control_dhcpd
 	my ($conf, $action) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; control_dhcpd(); action: [$action]\n");
 	
-	my $ok = 1;
-	my $shell_call = "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
+	# If the user installed libvirtd for some reason, and if it is running,
+	# it will block dhcpd from starting.
+	my $ok         = 1;
+	my $libvird_rc = 0;
+	my $shell_call = "";
+	if ($action eq "start")
+	{
+		$shell_call = "
+if [ -e '$conf->{path}{initd_libvirtd}' ];
+then
+	$conf->{path}{control_libvirtd} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo libvirtd running, stopping it.
+		$conf->{path}{control_libvirtd} stop
+		$conf->{path}{control_libvirtd} status
+		if [ \"\$?\" -eq \"0\" ];
+		then 
+			echo libvirtd stopped
+		else
+			echo libvirtd failed to stop
+		fi;
+	else
+		echo libvirtd not running
+	fi;
+else 
+	echo libvirtd not installed; 
+fi
+";
+	}
+	$shell_call .= "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
 	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -6583,6 +6612,22 @@ sub control_dhcpd
 		chomp;
 		my $line = $_;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /libvirtd not installed/)
+		{
+			$libvird_rc = 0;
+		}
+		if ($line =~ /libvirtd not running/)
+		{
+			$libvird_rc = 1;
+		}
+		if ($line =~ /libvirtd stopped/)
+		{
+			$libvird_rc = 2;
+		}
+		if ($line =~ /libvirtd failed to stop/)
+		{
+			$libvird_rc = 3;
+		}
 		if ($line =~ /rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -6591,6 +6636,11 @@ sub control_dhcpd
 			{
 				# setuid failed
 				$ok = 2;
+			}
+			elsif ($rc eq "3")
+			{
+				# Failed to start
+				$ok = 0;
 			}
 			elsif ($rc eq "0")
 			{
@@ -6606,12 +6656,18 @@ sub control_dhcpd
 	}
 	close $file_handle;
 	
+	# rc:
 	# 0 == Success
 	# 1 == Failed
 	# 2 == setuid failure
 	# 3 == unknown state
-	record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
-	return($ok);
+	# libvird_rc:
+	# 0 == not installed
+	# 1 == installed but stopped
+	# 2 == was running but stopped
+	# 3 == running and failed to stop.
+	record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
+	return($ok, $libvird_rc);
 }
 
 # Show the "select Anvil!" menu and Striker config and control options.
@@ -6637,56 +6693,115 @@ sub show_anvil_selection_and_striker_options
 		elsif ($conf->{cgi}{install_target} eq "start")
 		{
 			# Enable it.
-			my ($ok) = control_dhcpd($conf, "start");
-			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			my ($ok, $libvird_rc) = control_dhcpd($conf, "start");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
+			# rc:
 			# 0 == Success
 			# 1 == Failed
 			# 2 == setuid failure
 			# 3 == unknown state
+			# libvird_rc:
+			# 0 == not installed
+			# 1 == installed but stopped
+			# 2 == was running but stopped
+			# 3 == running and failed to stop.
 			# For now, 1 and 3 are treated the same.
+			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0410!#";
-			my $class   = "highlight_failed_bold";
+			my $class   = "highlight_warning_bold";
 			if ($ok eq "0")
 			{
+				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0411!#";
 				$class   = "highlight_good_bold";
 			}
 			if ($ok eq "2")
 			{
 				$message = "#!string!message_0412!#";
-				$class   = "highlight_good_bold";
 			}
 			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
 				class	=>	$class,
+				row	=>	$row,
 				message	=>	$message,
 			});
+			
+			# If libvirtd was stopped (or failed to stop), warn the
+			# user.
+			if ($libvird_rc eq "2")
+			{
+				# Warn the user that we turned off libvirtd.
+				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+					class	=>	"highlight_warning_bold",
+					row	=>	"#!string!row_0044!#",
+					message	=>	"#!string!message_0117!#",
+				});
+			}
+			elsif ($libvird_rc eq "3")
+			{
+				# Warn the user that we failed to turn off libvirtd.
+				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+					class	=>	"highlight_warning_bold",
+					row	=>	"#!string!row_0044!#",
+					message	=>	"#!string!message_0364!#",
+				});
+			}
 		}
 		elsif ($conf->{cgi}{install_target} eq "stop")
 		{
 			# Disable it.
-			my ($ok) = control_dhcpd($conf, "stop");
-			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+			my ($ok, $libvird_rc) = control_dhcpd($conf, "stop");
+			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
+			# rc:
 			# 0 == Success
 			# 1 == Failed
 			# 2 == setuid failure
 			# 3 == unknown state
+			# libvird_rc:
+			# 0 == not installed
+			# 1 == installed but stopped
+			# 2 == was running but stopped
+			# 3 == running and failed to stop.
 			# For now, 1 and 3 are treated the same.
+			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0413!#";
-			my $class   = "highlight_failed_bold";
+			my $class   = "highlight_warning_bold";
 			if ($ok eq "0")
 			{
+				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0414!#";
 				$class   = "highlight_good_bold";
 			}
 			if ($ok eq "2")
 			{
 				$message = "#!string!message_0415!#";
-				$class   = "highlight_good_bold";
 			}
 			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
 				class	=>	$class,
 				message	=>	$message,
 			});
+			
+			### NOTE: At this time, 'stop' action should never stop
+			###       libvirtd, so this *should* always return 0.
+			# If libvirtd was stopped (or failed to stop), warn the
+			# user.
+			if ($libvird_rc eq "2")
+			{
+				# Warn the user that we turned off libvirtd.
+				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+					class	=>	"highlight_warning_bold",
+					row	=>	"#!string!row_0044!#",
+					message	=>	"#!string!message_0117!#",
+				});
+			}
+			elsif ($libvird_rc eq "3")
+			{
+				# Warn the user that we failed to turn off libvirtd.
+				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+					class	=>	"highlight_warning_bold",
+					row	=>	"#!string!row_0044!#",
+					message	=>	"#!string!message_0364!#",
+				});
+			}
 		}
 	}
 	

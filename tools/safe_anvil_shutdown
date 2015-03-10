@@ -9,6 +9,9 @@
 # Author:  mkelly@alteeve.ca
 # Version: v0.0.1
 # 
+# TODO: Check if the peer is off before checking the health file.
+# 
+
 
 use strict;
 use warnings;
@@ -145,9 +148,10 @@ sub health_check
 			{
 				chomp;
 				my $line = $_;
-				$conf->{node}{peer}{health} = ($line =~ /health=(.*)/)[0];
+				$conf->{node}{peer}{health} = ($line =~ /health = (.*)/)[0];
 			}
 			close $file_handle;
+			print "[ Debug ] - node::peer::health: [$conf->{node}{peer}{health}]\n" if $conf->{sys}{debug};
 			if (lc($conf->{node}{peer}{health}) eq "ok")
 			{
 				print "- Peer was last listed as OK, I will migrate servers if possible.\n";
@@ -166,9 +170,9 @@ sub health_check
 			}
 			else
 			{
-				print "- Peer's health file: [$peer_health_file] exists, but the health state.\n";
+				print "- Peer's health file: [$peer_health_file] exists, but the health state\n";
 				print "  wasn't read. Assuming it is healthy and will migrate to it.\n";
-				$peer_healthy = 0;
+				$peer_healthy = 1;
 			}
 		}
 		else

@@ -4115,8 +4115,11 @@ sub add_vm_to_cluster
 	# cluster.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $vm         = $conf->{cgi}{name};
-	my $node       = $conf->{cgi}{node};
+	#my $node       = $conf->{cgi}{node};
+	my $node       = $conf->{new_vm}{host_node} ? $conf->{new_vm}{host_node} : $conf->{cgi}{node};
+	my $host_node  = $conf->{new_vm}{host_node};
 	my $definition = "/shared/definitions/$vm.xml";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], host_node: [$host_node], node: [$node], definition: [$definition]\n");
 	my $peer;
 	foreach my $this_node (@{$conf->{clusters}{$cluster}{nodes}})
 	{
@@ -4150,22 +4153,26 @@ sub add_vm_to_cluster
 		if ($fod =~ /primary_(.*?)$/)
 		{
 			my $node_suffix = $1;
-			my $alt_suffix  = $node_suffix eq "n01" ? "node01" : "node02";
+			my $alt_suffix  = (($node_suffix eq "n01") || ($node_suffix eq "n1")) ? "node01" : "node02";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
 			
 			# If the user has named their nodes 'nX' or 'nodeX',
 			# the 'n0X'/'node0X' won't match, so we fudge it here.
 			my $say_node = $node;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 			if (($node !~ /node0\d/) && ($node !~ /n0\d/))
 			{
 				if ($node =~ /node(\d)/)
 				{
 					my $integer = $1;
 					$say_node = "node0".$integer;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 				}
 				elsif ($node =~ /n(\d)/)
 				{
 					my $integer = $1;
 					$say_node = "n0".$integer;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_node: [$say_node]\n");
 				}
 			}
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], say_node: [$say_node], node_suffix: [$node_suffix], alt_suffix: [$alt_suffix]\n");
@@ -4856,6 +4863,7 @@ sub provision_vm
 	# I need to know what the bridge is called.
 	my $node   = $conf->{new_vm}{host_node};
 	my $bridge = get_bridge_name($conf, $node);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_vm::host_node: [$conf->{new_vm}{host_node}]\n");
 	
 	# Create the LVs
 	my $provision = "";
@@ -5040,6 +5048,7 @@ sub provision_vm
 	if (not $error)
 	{
 		# Add it and then change the boot device to 'hd'.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 		add_vm_to_cluster($conf, 1);
 	}
 	
@@ -5158,7 +5167,7 @@ sub verify_vm_config
 		
 		# Now what about RAM?
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::ram: [$conf->{cgi}{ram}]\n");
-		if ($conf->{cgi}{ram} =~ /\D/)
+		if (($conf->{cgi}{ram} =~ /\D/) && ($conf->{cgi}{ram} !~ /^\d+\.\d+$/))
 		{
 			# RAM amount isn't a digit...
 			my $say_row     = AN::Common::get_string($conf, {key => "row_0107"});
@@ -5257,6 +5266,7 @@ sub verify_vm_config
 				}
 			}
 		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; host_node: [$conf->{new_vm}{host_node}]\n");
 		
 		# Make sure the user specified an install disc.
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::install_iso: [$conf->{cgi}{install_iso}]\n");
