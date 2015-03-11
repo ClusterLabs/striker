@@ -18,7 +18,7 @@ package AN::InstallManifest;
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
 #   /root/.ssh/known_hosts
 # - Make the map NIC removal prompt order configurable.
-# 
+# - Pressing 'Restart' after a failed install causes a remap to be needed... FINISH THE MANIFEST UPDATE ALREADY! >_<
 # 
 # Symlink MegaCli64
 # 
@@ -9027,22 +9027,49 @@ sub get_installed_package_list
 			my $package   = $1;
 			my $arch      = $2;
 			my $version   = $3;
-			# NOTE: Someday record the arch and version, but for
-			#       now, we don't care.
-			$conf->{node}{$node}{packages}{installed}{$package} = 1;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			
+			# NOTE: Someday record the version.
+			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
+			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Package: [$package], arch: [$arch], version: [$version]\n");
 		}
 		elsif ($line =~ /^(.*?)\.(.*?)\s+(.*)/)
 		{
 			my $package   = $1;
 			my $arch      = $2;
 			my $version   = $3;
-			$conf->{node}{$node}{packages}{installed}{$package} = 1;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			
+			# NOTE: Someday record the version.
+			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
+			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Package: [$package], arch: [$arch], version: [$version]\n");
 		}
 		elsif ($line =~ /^(.*?)\.(\S*)$/)
 		{
 			my $package   = $1;
 			my $arch      = $2;
-			$conf->{node}{$node}{packages}{installed}{$package} = 1;
+			
+			# Some packages are defined with the arch to ensure
+			# other versions than the active arch of libraries are
+			# installed. To be sure we see that they're installed,
+			# we record the package with arch as '1'.
+			my $package_with_arch = "$package.$arch";
+			
+			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
+			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Package: [$package], arch: [$arch], version: [$version]\n");
 		}
 	}
 	
