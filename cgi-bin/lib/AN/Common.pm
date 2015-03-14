@@ -906,6 +906,7 @@ sub initialize_conf
 			server			=>	{
 				nic_count		=>	1,
 				alternate_nic_model	=>	"e1000",
+				minimum_ram		=>	67108864,
 			},
 			shared_fs_uuid		=>	"",
 			show_nodes		=>	0,

@@ -8560,7 +8560,7 @@ sub display_free_resources
 		button_text	=>	"#!string!button_0023!#",
 	}, "", 1);
 	
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in enough_storage: [$enough_storage], free_ram: [$free_ram], node1 cman: [$conf->{node}{$node1}{daemon}{cman}{exit_code}], node2 cman: [$conf->{node}{$node2}{daemon}{cman}{exit_code}]\n");
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	    ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
@@ -8573,6 +8573,7 @@ sub display_free_resources
 		
 		# Enable the "New Server" button if there is enough free memory
 		# and storage space.
+		my $minimum_ram = $conf->{sys}{server}{minimum_ram} ? $conf->{sys}{server}{minimum_ram} : 
 		if (($enough_storage) && ($free_ram > 1073741824))
 		{
 			$say_bns = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
