@@ -23,6 +23,8 @@
 # 1  = Failed to translate a given host name to an IP address.
 # 2  = Failed to find any UPSes.
 # 3  = Exited on SIGnal.
+# 4  = One or more UPSes didn't cancel their shutdown timer.
+# 5  = The program was not run as root.
 # 
 
 # OIDs
@@ -134,6 +136,7 @@ my $conf = {
 		by_ip		=>	{},
 	},
 	path		=>	{
+		cron_root	=>	"/var/spool/cron/root",
 		gethostip	=>	"/usr/bin/gethostip",
 		hosts		=>	"/etc/hosts",
 		logger		=>	"/bin/logger",
@@ -241,6 +244,14 @@ if (($conf->{switches}{h})   ||
 	exit(0);
 }
 
+# Make sure we're running as 'root'
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	logger($conf, $THIS_FILE, __LINE__, "I am sorry, but $THIS_FILE program must be run as the 'root' user.");
+	exit(5);
+}
+
 # Set the timers if the user defined them
 $conf->{sys}{apc}{ups}{sleep_time}     = $conf->{switches}{sleep_time}     if $conf->{switches}{sleep_time};
 $conf->{sys}{apc}{ups}{poweroff_delay} = $conf->{switches}{poweroff_delay} if $conf->{switches}{poweroff_delay};
@@ -253,6 +264,33 @@ read_configuration($conf);
 
 # Figure out what UPS(es) we're using.
 get_ups_ips($conf);
+
+# If I've been called with --cancel, send only to 'power-on' call.
+if ($conf->{switches}{cancel})
+{
+	my $exit = 0;
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling the UPS power-off sequence.");
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
+	{
+		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
+			$exit = 4;
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
+		}
+	}
+	manage_cron_entry($conf, "remove");
+	logger($conf, $THIS_FILE, __LINE__, "- Done.");
+	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Make sure you cancel on the other node, too!");
+	exit($exit);
+}
 
 # We're ready to start.
 logger($conf, $THIS_FILE, __LINE__, "Will now attempt to delay the reboot of the following UPS(es):");
@@ -309,10 +347,84 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
 	}
 }
+
+# Add the program to root's crontab, if needed.
+manage_cron_entry($conf, "add");
 logger($conf, $THIS_FILE, __LINE__, "Run complete, exiting.");
 
 
 exit(0);
+
+# This reads in the root user's cron table file and if the program isn't there,
+# adds it or removes it, depending on the $task ("add" or "remove").
+sub manage_cron_entry
+{
+	my ($conf, $task) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - manage_cron_entry(); task: [$task]") if $conf->{sys}{debug};
+	
+	my $changed    = 0;
+	my $raw_cron   = "";
+	my $shell_call = "$conf->{path}{cron_root}";
+	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		if ($line =~ /$THIS_FILE/)
+		{
+			# Skip it as we'll add it back later.
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found existing root cron table entry: [$line]. Removing it.") if $conf->{sys}{debug};
+			$changed = 1;
+		}
+		else
+		{
+			$raw_cron .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# If the line wasn't found, add it.
+	if ($task eq "add")
+	{
+		my $call = "/root/$THIS_FILE";
+		if ($conf->{switches}{ups})
+		{
+			$call .= " --ups $conf->{switches}{ups}";
+		}
+		if ($conf->{switches}{sleep_time})
+		{
+			$call .= " --sleep_time $conf->{switches}{sleep_time}";
+		}
+		if ($conf->{switches}{poweroff_delay})
+		{
+			$call .= " --poweroff_delay $conf->{switches}{poweroff_delay}";
+		}
+		$raw_cron .= "*/5 * * * * $call\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added entry: [$call].") if $conf->{sys}{debug};
+		$changed = 1;
+	}
+	
+	# Write out the updated crontab.
+	if ($changed)
+	{
+		# Tell the user.
+		if ($task eq "add")
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Adding $THIS_FILE to run every five minutes in the 'root' user's cron table.");
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Removing $THIS_FILE from root's cron table.");
+		}
+		my $shell_call = "$conf->{path}{cron_root}";
+		open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $raw_cron;
+		close $file_handle;
+	}
+	
+	return(0);
+}
 
 # This sets an OID with to an integer value.
 sub set_oid_integer
@@ -337,7 +449,7 @@ sub set_oid_integer
 	close $file_handle;
 	
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
-	return($value);
+	return($value, $shell_call);
 }
 
 # This calls the UPS and tries to get the current settings.
@@ -718,6 +830,17 @@ servers.
 
 SWITCHES
 
+ --cancel
+
+	This will cancel any previous power-off timer. This should be used
+	either when you want a controlled cold-stop of the Anvil!, or when
+	you plan to do maintenance that would interrupt the connection to the
+	UPS(es).
+	
+	NOTE: Remember to cancel on the other node(s) and to remove or disable
+	      this program in your cron table! Failure to do so could cause
+	      the power-off timer to restart!
+
  --debug
 
 	This enables debug mode, generating a lot more output than usual.
@@ -754,6 +877,16 @@ SWITCHES
 	Define the specific UPS(es) to work on. If host names are used, they
 	must be convertable to IP addresses. Two or more UPSes can be defined
 	using commas and *no* spaces to separate them.
+
+
+NOTES
+
+When run, this program will add itself to the root user's crontab
+automatically. It will be configured to run every five minutes until cancelled.
+The switches passwd when calling the program will be used in the crontab entry.
+
+When called with '--cancel', it will remove the cron table entry automatically,
+preventing it from restarting the countdown. 
 
 
 EXAMPLE

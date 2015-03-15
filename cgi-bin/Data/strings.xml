@@ -69,7 +69,7 @@
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063">Restart</key>
 		<key name="button_0064">Create</key>
-		<key name="button_0065"></key>
+		<key name="button_0065">Hard-Reset #!string!brand_0003!#</key>
 		<key name="button_0066"></key>
 		<key name="button_0067"></key>
 		<key name="button_0068"></key>
@@ -92,6 +92,7 @@
 		<key name="brand_0013">anvil</key>
 		<key name="brand_0014"><![CDATA[If you aren't sure what to do, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="brand_0015"><![CDATA[<i>Scan Core</i>]]></key>
+		<key name="brand_0016"><![CDATA[<span class="code">safe-anvil-start</span>]]></key>
 		
 		<!-- Text messages used in config files and such. -->
 		<key name="text_0001">
@@ -1735,8 +1736,8 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 						<span class="highlight_dangerous_bold">BE WARNED!</span><br />
 						The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
-		<key name="message_0435"><![CDATA[]]></key>
-		<key name="message_0436"><![CDATA[]]></key>
+		<key name="message_0435"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><span class="highlight_dangerous_bold">The UPS watchdog timer will NOT be stopped!</span><br />Everything powered by the UPSes will lose power for a few minutes!!<br />Power will be restored after the UPS(es) "sleep time" expires.<br />Is this really what you want to do?]]></key>
+		<key name="message_0436"><![CDATA[Power-down initiated. The node should offline in a few moments.<br /><span class="highlight_warning_bold">All devices powered by your UPS(es) will lose power shortly</span>!<br />This likely includes this #!string!brand_0002!#.<br />The UPS(es) will restore power after their configured "sleep time", usually five minutes.<br />You can monitor this by examining the LCD panel on the UPSes (if equipped).If the dashboards are running #!string!brand_0015!# with the 'nodemonitor' scan agent,<br />and if the dashboards are configured to power on when AC is restored,<br />your #!string!brand_0003!# should boot shortly there after.<br />If the nodes are using the #!string!brand_0016!# tool,<br />then your server(s) should come online automatically.]]></key>
 		<key name="message_0437"><![CDATA[]]></key>
 		<key name="message_0438"><![CDATA[]]></key>
 		<key name="message_0439"><![CDATA[]]></key>

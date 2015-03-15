@@ -625,6 +625,7 @@ sub initialize_conf
 			
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
+				'anvil-kick-apc-ups'	=>	"/root/anvil-kick-apc-ups",
 				backups			=>	"/root/backups",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
@@ -923,6 +924,27 @@ sub initialize_conf
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			use_drbd		=>	"8.3",			# Set to 8.3 if having trouble with 8.4
+			# If this is set to 1, a second option will be added 
+			# below 'Cold-Stop Anvil!' called 'Hard-Reset Anvil!'.
+			# The 'Hard-Reset' option will do the exact same thing
+			# that 'Cold-Stop' normally does, but an additional
+			# step will be added to 'Cold-Stop' which will cancel
+			# the APC UPS watchdog timer function. The result is 
+			# that 'Cold-Stop' will leave the cluster offline and 
+			# the power enabled where 'Hard-Reset' will *NOT* 
+			# cancel the UPS watchdog timer, causing full power 
+			# loss a few minutes after the nodes are powered off.
+			# In this way, 'Hard-Reset' will cause everything 
+			# powered by the UPSes to be power cycled. Assuming 
+			# that 'safe-anvil-start' is configured to run on boot
+			# on the nodes and that ScanCore is set to run the 
+			# 'nodemonitor' scan agent, the full cluster will 
+			# automatically restart after the UPS's configured
+			# sleep time (typically 5 minutes) plus boot time 
+			# overhead.
+			# NOTE: This will be ignored if the 'anvil-kick-apc-ups'
+			#       script is NOT found in /root/ on both nodes!
+			use_apc_ups_watchdog	=>	0,
 			username		=>	getpwuid( $< ),
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
