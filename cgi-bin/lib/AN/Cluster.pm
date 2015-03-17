@@ -6776,6 +6776,7 @@ sub show_anvil_selection_and_striker_options
 				$message = "#!string!message_0415!#";
 			}
 			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+				row	=>	$row,
 				class	=>	$class,
 				message	=>	$message,
 			});

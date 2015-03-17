@@ -1380,7 +1380,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0098"><![CDATA[#!string!message_0068!#<br />I was about to add a server to the #!string!brand_0003!# but I don't have the new server's name. This is likely a software error.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0099"><![CDATA[Saved successfully as <span class="fixed_width">#!variable!definition!#</span>.]]></key>
 		<key name="message_0100"><![CDATA[I tried to record the definition file and the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
-		<key name="message_0101"><![CDATA[To ensure only the Anvil! can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
+		<key name="message_0101"><![CDATA[To ensure only the #!string!brand_0004!# can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
 		<key name="message_0102"><![CDATA[Successfully removed the <span class="fixed_width">libvirtd</span> definition.]]></key>
 		<key name="message_0103"><![CDATA[I tried to remove the <span class="fixed_width">libvirtd</span> definition, which should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.<br />#!string!message_0104!#]]></key>
 		<key name="message_0104"><![CDATA[This is a non-fatal error. Proceeding.]]></key>
