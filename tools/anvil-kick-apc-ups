@@ -362,10 +362,29 @@ sub manage_cron_entry
 	my ($conf, $task) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - manage_cron_entry(); task: [$task]") if $conf->{sys}{debug};
 	
-	my $changed    = 0;
-	my $raw_cron   = "";
-	my $shell_call = "$conf->{path}{cron_root}";
-	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	my $changed  = 0;
+	my $raw_cron = "";
+	
+	# Make sure the cron file exists.
+	my $shell_call = "
+if [ ! -e '$conf->{path}{cron_root}' ]
+then
+	touch $conf->{path}{cron_root}
+	chown root:root $conf->{path}{cron_root}
+	chmod 600 $conf->{path}{cron_root}
+fi";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+	}
+	close $file_handle;
+	
+	# Now read the file (even if it's blank).
+	$shell_call = "$conf->{path}{cron_root}";
+	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;

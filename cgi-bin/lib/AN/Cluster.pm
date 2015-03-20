@@ -995,11 +995,75 @@ sub save_dashboard_configure
 		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/archive/ssh_config.$date");
 		write_new_ssh_config($conf, $say_date);
 		
+		# If requested in the config, add the user's SSH keys to the
+		# new anvil!.
+		my $anvil_id               = $conf->{cgi}{anvil_id};
+		my $anvil_name_key         = "cluster__${anvil_id}__name";
+		my $anvil_name             = $conf->{cgi}{$anvil_name_key};
+		my $root_root_password_key = "cluster__${anvil_id}__root_pw";
+		my $root_ricci_key         = "cluster__${anvil_id}__ricci_pw";
+		my $root_password          = $conf->{cgi}{$root_root_password_key} ? $conf->{cgi}{$root_root_password_key} : $conf->{cgi}{$root_ricci_key};
+		my $node1_name_key         = "cluster__${anvil_id}__nodes_1_name";
+		my $node1_name             = $conf->{cgi}{$node1_name_key};
+		my $node2_name_key         = "cluster__${anvil_id}__nodes_2_name";
+		my $node2_name             = $conf->{cgi}{$node2_name_key};
+		if (($anvil_id eq "new") && ($conf->{sys}{auto_populate_ssh_users}))
+		{
+			# For each user, check to see if the 
+			# '/home/<user>/populate_remote_authorized_keys' script
+			# exists and, if so, run it.
+			foreach my $user (split/,/, $conf->{sys}{auto_populate_ssh_users})
+			{
+				next if not $user;
+				my $user_home   = "/home/$user";
+				my $script_path = "$user_home/call_populate_remote_authorized_keys";
+				record($conf, "$THIS_FILE ".__LINE__."; Trying to run: [$script_path]...\n");
+				if (not -e $user_home)
+				{
+					# User doesn't appear to exist at all.
+					record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - User: [$user] doesn't appear to have a home directory.\n");
+				}
+				elsif (not -e $script_path)
+				{
+					# Script doesn't exist.
+					record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - Failed to find: [$script_path], the setuid C-wrapper may not have been created properly\n");
+				}
+				elsif (not -x $script_path)
+				{
+					# Script isn't executable
+					record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - The program: [$script_path] isn't executable. Try running: [chown $user:$user $script_path && chmod 6755 $script_path].\n");
+				}
+				else
+				{
+					# Try running it against node 1
+					my $shell_call = "$script_path -p $root_password -r $node1_name";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
+					}
+					close $file_handle;
+					
+					# Now node 2
+					$shell_call = "$script_path -p $root_password -r $node2_name";
+					record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+					open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
+					}
+					close $file_handle;
+				}
+			}
+		}
+		
 		# Tell the user we've succeeded and provide a link to their new
 		# Anvil!.
-		my $anvil_id   = $conf->{cgi}{anvil_id};
-		my $anvil_key  = "cluster__${anvil_id}__name";
-		my $anvil_name = $conf->{cgi}{$anvil_key};
 		print AN::Common::template($conf, "config.html", "general-row-good", {
 			row	=>	"#!string!row_0019!#",
 			message	=>	AN::Common::get_string($conf, {key => "message_0017", variables => {
@@ -1610,7 +1674,7 @@ sub push_config_to_anvil
 					line	=>	$line,
 				});
 			}
-			$file_handle->close;
+			close $file_handle;
 			print AN::Common::template($conf, "config.html", "close-push-entry");
 		}
 		print AN::Common::template($conf, "config.html", "close-table");

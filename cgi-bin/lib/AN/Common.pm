@@ -660,6 +660,7 @@ sub initialize_conf
 			rsync			=>	"-av --partial",
 		},
 		sys			=>	{
+			auto_populate_ssh_users	=>	"",
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
 			clustat_timeout		=>	120,
 			cluster_conf		=>	"",

@@ -364,10 +364,10 @@ sub process_task
 			}
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "restart_tomcat")
-	{
-		restart_tomcat($conf);
-	}
+# 	elsif ($conf->{cgi}{task} eq "restart_tomcat")
+# 	{
+# 		restart_tomcat($conf);
+# 	}
 	else
 	{
 		print "<pre>\n";
