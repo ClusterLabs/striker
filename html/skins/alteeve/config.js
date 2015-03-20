@@ -303,11 +303,13 @@ $("#set_secondary_values").click(function(){
 	// IPs; *if* prefixes are passed.
 	// BCN
 	var third = integer_sequence * 10;
+	//alert('bcn_root: ['+bcn_root+']');
 	if (regex_two_octal.test(bcn_root))
 	{
 		//alert('bcn_subnet: ['+bcn_subnet+']');
 		// IPMI third octal
 		var ipmi_third = third + 1;
+		//alert('ipmi_third: ['+ipmi_third+']');
 		
 		// Node 1
 		var node1_bcn_ip  = bcn_root + '.' + third + '.' + 1;
@@ -330,6 +332,7 @@ $("#set_secondary_values").click(function(){
 				$("#anvil_node1_ipmi_ip").val(node1_ipmi_ip);
 			}
 		}
+		//alert('node1_ipmi_ip: ['+node1_ipmi_ip+']');
 		
 		// Node 2
 		var node2_bcn_ip  = bcn_root + '.' + third + '.' + 2;
@@ -346,7 +349,7 @@ $("#set_secondary_values").click(function(){
 		}
 		if (regex_ipv4.test(node2_ipmi_ip))
 		{
-			id (!$("#anvil_node2_ipmi_ip").val())
+			if (!$("#anvil_node2_ipmi_ip").val())
 			{
 				$("#anvil_node2_ipmi_ip").val(node2_ipmi_ip);
 			}
@@ -433,6 +436,7 @@ $("#set_secondary_values").click(function(){
 		}
 	}
 	// SN
+	//alert('sn_root: ['+sn_root+']');
 	if (regex_two_octal.test(sn_root))
 	{
 		// Node 1
@@ -460,6 +464,7 @@ $("#set_secondary_values").click(function(){
 		}
 	}
 	// IFN
+	//alert('ifn_root: ['+ifn_root+']');
 	if (regex_two_octal.test(ifn_root))
 	{
 		// Node 1
@@ -509,6 +514,7 @@ $("#set_secondary_values").click(function(){
 		// IFN Default Gateway
 		var ifn_gateway = ifn_root + '.255.254';
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
+		//alert('ifn_gateway: ['+ifn_gateway+']');
 		if (regex_ipv4.test(ifn_gateway))
 		{
 			if (!$("#anvil_ifn_gateway").val())

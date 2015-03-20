@@ -3478,13 +3478,13 @@ sub manage_vm
 # 	else
 # 	{
 # 		# Not installed.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole is disabled.\n");
-		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
-		$remote_icon = AN::Common::template($conf, "common.html", "image", {
-			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
-			alt_text	=>	"",
-			id		=>	"server-desktop_oops",
-		}, "", 1);
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole is disabled.\n");
+# 		$message     = "#!string!message_0080!#";	# Version doesn't support guacamole
+# 		$remote_icon = AN::Common::template($conf, "common.html", "image", {
+# 			image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_server-desktop_oops.png",
+# 			alt_text	=>	"",
+# 			id		=>	"server-desktop_oops",
+# 		}, "", 1);
 # 	}
 	
 	# Finally, print it all
