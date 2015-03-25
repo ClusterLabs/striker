@@ -122,6 +122,7 @@ sub run_new_install_manifest
 	{
 		# OK, GO!
 		print AN::Common::template($conf, "install-manifest.html", "install-beginning");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::update_manifest: [$conf->{cgi}{update_manifest}]\n");
 		if ($conf->{cgi}{update_manifest})
 		{
 			# Write the updated manifest and switch to using it.
@@ -246,12 +247,12 @@ sub run_new_install_manifest
 		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
 		
 		# Rewrite the install manifest if need be.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::update_manifest: [$conf->{cgi}{update_manifest}]\n");
 		if ($conf->{cgi}{update_manifest})
 		{
 			# Update the running install manifest to record the MAC
 			# addresses the user selected.
-			update_install_manifest($conf) or return(1);
-			die "testing...\n";
+			update_install_manifest($conf);
 		}
 		
 		# Back things up.
@@ -371,6 +372,27 @@ sub update_install_manifest
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_install_manifest()\n");
 	
+	my $node1           = $conf->{cgi}{anvil_node1_current_ip};
+	my $node1_bcn_link1 = $conf->{conf}{node}{$node1}{set_nic}{bcn_link1};
+	my $node1_bcn_link2 = $conf->{conf}{node}{$node1}{set_nic}{bcn_link2};
+	my $node1_sn_link1  = $conf->{conf}{node}{$node1}{set_nic}{sn_link1};
+	my $node1_sn_link2  = $conf->{conf}{node}{$node1}{set_nic}{sn_link2};
+	my $node1_ifn_link1 = $conf->{conf}{node}{$node1}{set_nic}{ifn_link1};
+	my $node1_ifn_link2 = $conf->{conf}{node}{$node1}{set_nic}{ifn_link2};
+	my $node2           = $conf->{cgi}{anvil_node2_current_ip};
+	my $node2_bcn_link1 = $conf->{conf}{node}{$node2}{set_nic}{bcn_link1};
+	my $node2_bcn_link2 = $conf->{conf}{node}{$node2}{set_nic}{bcn_link2};
+	my $node2_sn_link1  = $conf->{conf}{node}{$node2}{set_nic}{sn_link1};
+	my $node2_sn_link2  = $conf->{conf}{node}{$node2}{set_nic}{sn_link2};
+	my $node2_ifn_link1 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link1};
+	my $node2_ifn_link2 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link2};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]; node1_bcn_link2: [$node1_bcn_link1], node1_bcn_link2: [$node1_bcn_link2], node1_sn_link1: [$node1_sn_link1], node1_sn_link2: [$node1_sn_link2], node1_ifn_link1: [$node1_ifn_link1], node1_ifn_link2: [$node1_ifn_link2].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]; node2_bcn_link2: [$node2_bcn_link1], node2_bcn_link2: [$node2_bcn_link2], node2_sn_link1: [$node2_sn_link1], node2_sn_link2: [$node2_sn_link2], node2_ifn_link1: [$node2_ifn_link1], node2_ifn_link2: [$node2_ifn_link2].\n");
+	
+	my $save       = 0;
+	my $in_node1   = 0;
+	my $in_node2   = 0;
+	my $raw_file   = "";
 	my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -378,9 +400,215 @@ sub update_install_manifest
 	{
 		chomp;
 		my $line = $_;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /<node name="(.*?)">/)
+		{
+			my $this_node = $1;
+			if (($this_node =~ /node01/) ||
+			    ($this_node =~ /node1/)  ||
+			    ($this_node =~ /n01/)    ||
+			    ($this_node =~ /n1/))
+			{
+				$in_node1 = 1;
+				$in_node2 = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_node1: [$in_node1], in_node2: [$in_node2]\n");
+			}
+			elsif (($this_node =~ /node02/) ||
+			       ($this_node =~ /node2/)  ||
+			       ($this_node =~ /n02/)    ||
+			       ($this_node =~ /n2/))
+			{
+				$in_node1 = 0;
+				$in_node2 = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_node1: [$in_node1], in_node2: [$in_node2]\n");
+			}
+		}
+		if ($line =~ /<\/node>/)
+		{
+			$in_node1 = 0;
+			$in_node2 = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_node1: [$in_node1], in_node2: [$in_node2]\n");
+		}
+		
+		# See if we have a NIC.
+		if ($line =~ /<interface /)
+		{
+			# OK, get the name and MAC.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_node1: [$in_node1], in_node2: [$in_node2], interface line: [$line]\n");
+			my $this_nic = ($line =~ /name="(.*?)"/)[0];
+			my $this_mac = ($line =~ /mac="(.*?)"/)[0];
+				$this_mac = "" if not $this_mac;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_node1: [$in_node1], in_node2: [$in_node2], this_nic: [$this_nic], this_mac: [$this_mac]\n");
+			
+			if ($in_node1)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node 1 nic: [$this_nic], this_mac: [$this_mac]\n");
+				if ($this_nic eq "bcn_link1")
+				{ 
+					if ($this_mac ne $node1_bcn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_bcn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "bcn_link2")
+				{ 
+					if ($this_mac ne $node1_bcn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_bcn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "sn_link1")
+				{ 
+					if ($this_mac ne $node1_sn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_sn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "sn_link2")
+				{ 
+					if ($this_mac ne $node1_sn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_sn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "ifn_link1")
+				{ 
+					if ($this_mac ne $node1_ifn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_ifn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "ifn_link2")
+				{ 
+					if ($this_mac ne $node1_ifn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node1; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node1_ifn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node1; line: [$line]\n");
+					}
+				}
+				else
+				{
+					# Unknown NIC.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - node1 has an unknown NIC: [$this_nic] (line: [$line])\n");
+				}
+			}
+			elsif ($in_node2)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node 2 nic: [$this_nic], this_mac: [$this_mac]\n");
+				if ($this_nic eq "bcn_link1")
+				{ 
+					if ($this_mac ne $node2_bcn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_bcn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "bcn_link2")
+				{ 
+					if ($this_mac ne $node2_bcn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_bcn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "sn_link1")
+				{ 
+					if ($this_mac ne $node2_sn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_sn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "sn_link2")
+				{ 
+					if ($this_mac ne $node2_sn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_sn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "ifn_link1")
+				{ 
+					if ($this_mac ne $node2_ifn_link1)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_ifn_link1"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				elsif ($this_nic eq "ifn_link2")
+				{ 
+					if ($this_mac ne $node2_ifn_link2)
+					{
+						$save =  1;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> node2; line: [$line]\n");
+						$line =~ s/mac=".*?"/mac="$node2_ifn_link2"/;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << node2; line: [$line]\n");
+					}
+				}
+				else
+				{
+					# Unknown NIC.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - node2 has an unknown NIC: [$this_nic] (line: [$line])\n");
+				}
+			}
+			else
+			{
+				# failed to determine the node...
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - Saw an interface without first determining if we're in node 1 or 2's element. Are the node names using 'n0X', 'nX', 'node0X' or 'nodeX' (where 'X' is 1 or 2)?\n");
+			}
+		}
+		$raw_file .= "$line\n";
 	}
 	close $file_handle;
+	
+	# Write out new raw file, if changes were made.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	if ($save)
+	{
+		### TODO: Make a backup directory and save a pre-modified
+		###       backup to it.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Updated manifest:\n========\n$raw_file\n========\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Writing out update manifest file: [$conf->{cgi}{run}]\n");
+		my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $raw_file;
+		close $file_handle;
+		
+		# Tell the user.
+		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+			row	=>	"#!string!title_0157!#",
+			class	=>	"body",
+			message	=>	"#!string!message_0376!#",
+		});
+	}
 	
 	return(0);
 }
@@ -8619,7 +8847,7 @@ sub map_network_on_node
 	my ($conf, $node, $password, $remap, $say_node) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; map_network_on_node(); node: [$node], remap: [$remap], say_node: [$say_node]\n");
 	
-	$conf->{cgi}{update_manifest} = 0;
+	$conf->{cgi}{update_manifest} = 0 if not $conf->{cgi}{update_manifest};
 	if ($remap)
 	{
 		my $title = AN::Common::get_string($conf, {key => "title_0174", variables => {
@@ -8765,7 +8993,7 @@ fi
 			$conf->{cgi}{update_manifest} = 1;
 			$shell_call = "$conf->{path}{'anvil-map-network'} --script";
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call], cgi::update_manifest: [$conf->{cgi}{update_manifest}]\n");
 		
 		### Start the call
 		my $state;

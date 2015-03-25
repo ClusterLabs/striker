@@ -590,12 +590,31 @@ if (not $conf->{sys}{skip_network})
 }
 
 # If the user should reboot, tell them.
+print "Installation of Striker is complete!\n\n";
 if ($conf->{sys}{reboot_needed})
 {
-	print "\n[ Note ] - Some of the changes require a reboot to take effect.\n";
-	print "[ Note ]   When you are ready, type 'reboot' and press <enter>.\n\n";
+	if ($conf->{switches}{'no-reboot'})
+	{
+		print "[ Note ] - Some of the changes require a reboot to take effect.\n";
+		print "[ Note ]   When you are ready, type 'reboot' and press <enter>.\n\n";
+	}
+	else
+	{
+		# Reboot!
+		print "[ Note ] - Some of the changes require a reboot to take effect.\n";
+		print "[ Note ]   Rebooting in five seconds! (press <ctrl> + <c> to abort.\n\n";
+		sleep 5;
+		my $shell_call = "sync && reboot";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ Debug ] - line: [$line]\n";
+		}
+		close $file_handle;
+	}
 }
-print "Installation of Striker is complete!\n\n";
 exit(0);
 
 
@@ -6310,6 +6329,12 @@ SWITCHES
 	access, this can cause problems. This option prevents the installer
 	from configuring the repository and, if it is installed, will remove
 	it.
+
+ --no-reboot
+ 
+	By default, the installer will reboot the system when it is finished.
+	This option prevents this from happening. If you are installing over
+	an ssh connection, using this switch is recommended.
 
  --ntp <ip[,ip]>
 
