@@ -625,7 +625,7 @@ sub initialize_conf
 			
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
-				'anvil-kick-apc-ups'	=>	"/root/anvil-kick-apc-ups",
+				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 				backups			=>	"/root/backups",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",

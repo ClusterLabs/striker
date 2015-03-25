@@ -1907,8 +1907,7 @@ sub load_backup_configuration
 }
 
 # This presents a form for the user to complete. When complete, an XML file
-# with the install information for new nodes is created. This XML file is then
-# passed to 'tools/anvil-configure-node' 
+# with the install information for new nodes is created.
 sub create_install_manifest
 {
 	my ($conf) = @_;
@@ -2052,7 +2051,8 @@ sub create_install_manifest
 			my ($return_code) = AN::InstallManifest::run_new_install_manifest($conf);
 			# 0 == success
 			# 1 == failed
-			if ($return_code)
+			# 2 == failed, but don't show the error footer.
+			if ($return_code eq "1")
 			{
 				# Something went wrong.
 				my $button = AN::Common::template($conf, "common.html", "form-button", {
@@ -3380,7 +3380,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
-						record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], PDU: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}], Password Script: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], PDU: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}], Password Script: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script}]\n");
 					}
 				}
 				elsif ($a eq "kvm")
@@ -3602,7 +3602,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
 						#$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_apc_snmp";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_raritan_snmp";
-						record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
 					}
 				}
 				elsif ($b eq "kvm")
@@ -3786,7 +3786,7 @@ sub load_install_manifest
 			my $ip       = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip};
 			$conf->{cgi}{$name_key} = $name ? $name : "";
 			$conf->{cgi}{$ip_key}   = $ip   ? $ip   : "";
-			record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
 			$i++;
 		}
 		# UPSes
@@ -3822,7 +3822,7 @@ sub load_install_manifest
 		$i = 1;
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], i: [$i]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], i: [$i]\n");
 			my $name_key          = "anvil_node".$i."_name";
 			my $bcn_ip_key        = "anvil_node".$i."_bcn_ip";
 			my $bcn_link1_mac_key = "anvil_node".$i."_bcn_link1_mac";
@@ -3868,9 +3868,9 @@ sub load_install_manifest
 				# There should only be one entry
 				$ipmi_reference = $reference;
 			}
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ipmi_reference: [$ipmi_reference]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ipmi_reference: [$ipmi_reference]\n");
 			my $j = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; j: [$j], install_manifest::${file}::node::${node}::pdu: [$conf->{install_manifest}{$file}{node}{$node}{pdu}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; j: [$j], install_manifest::${file}::node::${node}::pdu: [$conf->{install_manifest}{$file}{node}{$node}{pdu}]\n");
 			foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{pdu}})
 			{
 				# There should be two or four PDUs
@@ -3897,7 +3897,7 @@ sub load_install_manifest
 				}
 				$j++;
 			}
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu1_reference: [$pdu1_reference], pdu2_reference: [$pdu2_reference], pdu3_reference: [$pdu3_reference], pdu4_reference: [$pdu4_reference]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu1_reference: [$pdu1_reference], pdu2_reference: [$pdu2_reference], pdu3_reference: [$pdu3_reference], pdu4_reference: [$pdu4_reference]\n");
 			foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{kvm}})
 			{
 				# There should only be one entry
@@ -3919,7 +3919,7 @@ sub load_install_manifest
 			$conf->{cgi}{$pdu2_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_reference}{port};
 			$conf->{cgi}{$pdu3_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu3_reference}{port};
 			$conf->{cgi}{$pdu4_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu4_reference}{port};
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}]\n");
 			
 			# If the user remapped their network, we don't want to
 			# undo the results.
@@ -3931,7 +3931,7 @@ sub load_install_manifest
 				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{sn_link2}{mac};
 				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link1}{mac};
 				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link2}{mac};
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
 			}
 			$i++;
 		}
@@ -3949,7 +3949,7 @@ sub load_install_manifest
 		my $delay_time = $conf->{install_manifest}{$file}{common}{cluster}{fence}{delay};
 		foreach my $node ($conf->{cgi}{anvil_node1_name}, $conf->{cgi}{anvil_node2_name})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 			my $i = 1;
 			foreach my $method (split/,/, $fence_order)
 			{
@@ -4025,7 +4025,7 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
 						$j++;
 					}
 				}
@@ -4064,7 +4064,7 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
 						$j++;
 					}
 				}
@@ -4139,7 +4139,7 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
 				}
 			}
 			if ($device eq "pdu")
@@ -4172,7 +4172,7 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
 				}
 			}
 		}
@@ -4214,38 +4214,40 @@ sub show_existing_install_manifests
 		next if (($file eq ".") or ($file eq ".."));
 		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+-\d+-\d+).xml/)
 		{
-			if (not $header_printed)
-			{
-				print AN::Common::template($conf, "config.html", "install-manifest-header");
-				$header_printed = 1;
-			}
 			my $anvil =  $1;
 			my $date  =  $2;
 			my $time  =  $3;
 			   $time  =~ s/-/:/g;
+			record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
 									'time'	=>	$time,
 								}});
+			if (not $header_printed)
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-header");
+				$header_printed = 1;
+			}
 		}
 		# Deprecated: Old-style names, will go away eventually. (these
 		# were not [V]FAT compatible)
 		if ($file =~ /^install-manifest_(.*?)_(\d+-\d+-\d+)_(\d+:\d+:\d+).xml/)
 		{
-			if (not $header_printed)
-			{
-				print AN::Common::template($conf, "config.html", "install-manifest-header");
-				$header_printed = 1;
-			}
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
+			record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
 									'time'	=>	$time,
 								}});
+			if (not $header_printed)
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-header");
+				$header_printed = 1;
+			}
 		}
 	}
 	foreach my $file (sort {$b cmp $a} keys %{$conf->{manifest_file}})

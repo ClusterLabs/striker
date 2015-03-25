@@ -706,7 +706,7 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="row_0290"></key>
 		
 		<!-- Program names -->
-		<key name="app_0001">tools/anvil-setup-node</key>
+		<key name="app_0001">/sbin/striker/anvil-setup-node</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1668,10 +1668,10 @@ sys::use_spice_graphics			=	#!variable!use_spice_graphics!#
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376"></key>
 		<key name="message_0377"></key>
-		<key name="message_0378"></key> <!-- free -->
+		<key name="message_0378"><![CDATA[<span class="highlight_bad_bold">Error</span>: The tool <span class="code">anvil-map-network</span> was not found on the node.<br />Please make sure it is in <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes and.<br />Once fixed, please reload this page.]]></key>
 		<key name="message_0379"></key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
-		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">/root/anvil-map-network</span> on both nodes.<br />(Sorry about that)]]></key>
+		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0383"><![CDATA[I was asked to remap the network for a node I do not recognize.<br />(Sorry about that)]]></key>
 		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
