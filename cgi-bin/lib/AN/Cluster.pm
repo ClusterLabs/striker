@@ -4455,21 +4455,21 @@ Striker Version: $conf->{sys}{version}
 		</ups>
 		<pdu>";
 	# PDU 1 and 2 always exist.
-	my $pdu1_agent = $conf->{cgi}{pdu1_agent} ? $conf->{cgi}{pdu1_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+	my $pdu1_agent = $conf->{cgi}{anvil_pdu1_agent} ? $conf->{cgi}{anvil_pdu1_agent} : $conf->{sys}{install_manifest}{anvil_pdu_agent};
 	$xml .= "
 			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"$pdu1_agent\" />";
-	my $pdu2_agent = $conf->{cgi}{pdu2_agent} ? $conf->{cgi}{pdu2_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+	my $pdu2_agent = $conf->{cgi}{anvil_pdu2_agent} ? $conf->{cgi}{anvil_pdu2_agent} : $conf->{sys}{install_manifest}{anvil_pdu_agent};
 	$xml .= "
 			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"$pdu2_agent\" />";
 	if ($conf->{cgi}{anvil_pdu3_name})
 	{
-		my $pdu3_agent = $conf->{cgi}{pdu3_agent} ? $conf->{cgi}{pdu3_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+		my $pdu3_agent = $conf->{cgi}{anvil_pdu3_agent} ? $conf->{cgi}{anvil_pdu3_agent} : $conf->{sys}{install_manifest}{anvil_pdu_agent};
 		$xml .= "
 			<pdu reference=\"pdu03\" name=\"$conf->{cgi}{anvil_pdu3_name}\" ip=\"$conf->{cgi}{anvil_pdu3_ip}\" agent=\"$pdu3_agent\" />";
 	}
 	if ($conf->{cgi}{anvil_pdu4_name})
 	{
-		my $pdu4_agent = $conf->{cgi}{pdu4_agent} ? $conf->{cgi}{pdu4_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+		my $pdu4_agent = $conf->{cgi}{anvil_pdu4_agent} ? $conf->{cgi}{anvil_pdu4_agent} : $conf->{sys}{install_manifest}{anvil_pdu_agent};
 		$xml .= "
 			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
 	}
@@ -4792,16 +4792,22 @@ sub show_summary_manifest
 	});
 	
 	### PDUs are, surprise, a little more complicated.
+	my $say_apc        = AN::Common::get_string($conf, {key => "brand_0017"});
+	my $say_raritan    = AN::Common::get_string($conf, {key => "brand_0018"});
+	my $say_pdu1_brand = $conf->{cgi}{anvil_pdu1_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu4_brand = $conf->{cgi}{anvil_pdu4_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	if ($conf->{sys}{install_manifest}{pdu_count} == 2)
 	{
 		### Two PDU setup 
 		# PDUs
 		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
 			row		=>	"#!string!row_0196!#",
-			column1		=>	$conf->{cgi}{anvil_pdu1_name},
-			column2		=>	$conf->{cgi}{anvil_pdu1_ip},
-			column3		=>	$conf->{cgi}{anvil_pdu2_name},
-			column4		=>	$conf->{cgi}{anvil_pdu2_ip},
+			column1		=>	$conf->{cgi}{anvil_pdu1_name} ? "$conf->{cgi}{anvil_pdu1_name} ($say_pdu1_brand)" : "--",
+			column2		=>	$conf->{cgi}{anvil_pdu1_ip}   ? $conf->{cgi}{anvil_pdu1_ip}                       : "--",
+			column3		=>	$conf->{cgi}{anvil_pdu2_name} ? "$conf->{cgi}{anvil_pdu2_name} ($say_pdu2_brand)" : "--",
+			column4		=>	$conf->{cgi}{anvil_pdu2_ip}   ? $conf->{cgi}{anvil_pdu2_ip}                       : "--",
 		});
 	}
 	else
@@ -4810,18 +4816,18 @@ sub show_summary_manifest
 		# 'PDU 1' will be for '1A' and '1B'.
 		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
 			row		=>	"#!string!row_0276!#",
-			column1		=>	$conf->{cgi}{anvil_pdu1_name},
-			column2		=>	$conf->{cgi}{anvil_pdu1_ip},
-			column3		=>	$conf->{cgi}{anvil_pdu3_name},
-			column4		=>	$conf->{cgi}{anvil_pdu3_ip},
+			column1		=>	$conf->{cgi}{anvil_pdu1_name} ? "$conf->{cgi}{anvil_pdu1_name} ($say_pdu1_brand)" : "--",
+			column2		=>	$conf->{cgi}{anvil_pdu1_ip}   ? $conf->{cgi}{anvil_pdu1_ip}                       : "--",
+			column3		=>	$conf->{cgi}{anvil_pdu3_name} ? "$conf->{cgi}{anvil_pdu3_name} ($say_pdu3_brand)" : "--",
+			column4		=>	$conf->{cgi}{anvil_pdu3_ip}   ? $conf->{cgi}{anvil_pdu3_ip}                       : "--",
 		});
 		# 'PDU 2' will be for '2A' and '2B'.
 		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
 			row		=>	"#!string!row_0277!#",
-			column1		=>	$conf->{cgi}{anvil_pdu2_name},
-			column2		=>	$conf->{cgi}{anvil_pdu2_ip},
-			column3		=>	$conf->{cgi}{anvil_pdu4_name},
-			column4		=>	$conf->{cgi}{anvil_pdu4_ip},
+			column1		=>	$conf->{cgi}{anvil_pdu2_name} ? "$conf->{cgi}{anvil_pdu2_name} ($say_pdu2_brand)" : "--",
+			column2		=>	$conf->{cgi}{anvil_pdu2_ip}   ? $conf->{cgi}{anvil_pdu2_ip}                       : "--",
+			column3		=>	$conf->{cgi}{anvil_pdu4_name} ? "$conf->{cgi}{anvil_pdu4_name} ($say_pdu4_brand)" : "--",
+			column4		=>	$conf->{cgi}{anvil_pdu4_ip}   ? $conf->{cgi}{anvil_pdu4_ip}                       : "--",
 		});
 	}
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-spacer");
@@ -4968,12 +4974,16 @@ sub show_summary_manifest
 		anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
 		anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
 		anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
+		anvil_pdu1_agent		=>	$conf->{cgi}{anvil_pdu1_agent},
 		anvil_pdu2_name			=>	$conf->{cgi}{anvil_pdu2_name},
 		anvil_pdu2_ip			=>	$conf->{cgi}{anvil_pdu2_ip},
+		anvil_pdu2_agent		=>	$conf->{cgi}{anvil_pdu2_agent},
 		anvil_pdu3_name			=>	$conf->{cgi}{anvil_pdu3_name},
 		anvil_pdu3_ip			=>	$conf->{cgi}{anvil_pdu3_ip},
+		anvil_pdu3_agent		=>	$conf->{cgi}{anvil_pdu3_agent},
 		anvil_pdu4_name			=>	$conf->{cgi}{anvil_pdu4_name},
 		anvil_pdu4_ip			=>	$conf->{cgi}{anvil_pdu4_ip},
+		anvil_pdu4_agent		=>	$conf->{cgi}{anvil_pdu4_agent},
 		anvil_switch1_name		=>	$conf->{cgi}{anvil_switch1_name},
 		anvil_switch1_ip		=>	$conf->{cgi}{anvil_switch1_ip},
 		anvil_switch2_name		=>	$conf->{cgi}{anvil_switch2_name},
