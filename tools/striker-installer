@@ -249,6 +249,7 @@ my $conf = {
 			'madan-fonts'			=>	0,
 			metacity			=>	0,
 			nautilus			=>	0,
+			'nautilus-open-terminal'	=>	0,
 			'notification-daemon'		=>	0,
 			'openssh-askpass'		=>	0,
 			'paktype-naqsh-fonts'		=>	0,
