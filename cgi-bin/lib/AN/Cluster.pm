@@ -1934,12 +1934,16 @@ sub create_install_manifest
 	$conf->{form}{anvil_switch2_ip_star}        = "";
 	$conf->{form}{anvil_pdu1_name_star}         = "";
 	$conf->{form}{anvil_pdu1_ip_star}           = "";
+	$conf->{form}{anvil_pdu1_agent_star}        = "";
 	$conf->{form}{anvil_pdu2_name_star}         = "";
 	$conf->{form}{anvil_pdu2_ip_star}           = "";
+	$conf->{form}{anvil_pdu2_agent_star}        = "";
 	$conf->{form}{anvil_pdu3_name_star}         = "";
 	$conf->{form}{anvil_pdu3_ip_star}           = "";
+	$conf->{form}{anvil_pdu3_agent_star}        = "";
 	$conf->{form}{anvil_pdu4_name_star}         = "";
 	$conf->{form}{anvil_pdu4_ip_star}           = "";
+	$conf->{form}{anvil_pdu4_agent_star}        = "";
 	$conf->{form}{anvil_ups1_name_star}         = "";
 	$conf->{form}{anvil_ups1_ip_star}           = "";
 	$conf->{form}{anvil_ups2_name_star}         = "";
@@ -2814,49 +2818,72 @@ sub create_install_manifest
 			}
 		}
 		
+		# Ask the user which model of PDU they're using.
+		my $say_apc     = AN::Common::get_string($conf, {key => "brand_0017"});
+		my $say_raritan = AN::Common::get_string($conf, {key => "brand_0018"});
+		
 		# Build the two or four PDU form entries.
 		foreach my $i (1..$conf->{sys}{install_manifest}{pdu_count})
 		{
 			next if ($i > $conf->{sys}{install_manifest}{pdu_count});
-			my $pdu_name_key      = "anvil_pdu${i}_name";
-			my $pdu_ip_key        = "anvil_pdu${i}_ip";
-			my $pdu_star_name_key = "anvil_pdu${i}_name_star";
-			my $pdu_star_ip_key   = "anvil_pdu${i}_ip_star";
-			my $say_pdu           = "";
-			my $say_name_explain  = "";
-			my $say_ip_explain    = "";
-			my $say_name_url      = "";
-			my $say_ip_url        = "";
+			my $pdu_name_key       = "anvil_pdu${i}_name";
+			my $pdu_ip_key         = "anvil_pdu${i}_ip";
+			my $pdu_star_name_key  = "anvil_pdu${i}_name_star";
+			my $pdu_star_ip_key    = "anvil_pdu${i}_ip_star";
+			my $pdu_agent_key      = "anvil_pdu${i}_agent";
+			my $pdu_star_agent_key = "anvil_pdu${i}_agent_star";
+			my $say_pdu            = "";
+			my $say_name_explain   = "";
+			my $say_ip_explain     = "";
+			my $say_name_url       = "";
+			my $say_ip_url         = "";
+			my $say_agent_url      = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Defining_Fence_Devices";
+			my $say_agent_explain  = "";
+			
+			# Set the agent to use the global default if not set already.
+			$conf->{cgi}{$pdu_agent_key} = $conf->{sys}{install_manifest}{pdu_agent} if not $conf->{cgi}{$pdu_agent_key};
+			
+			# Build the select.
+			my $pdu_list  = ["fence_apc_snmp#!#$say_apc", "fence_raritan_snmp#!#$say_raritan"];
+			my $pdu_model = build_select($conf, "$pdu_agent_key", 0, 0, 220, $conf->{cgi}{$pdu_agent_key}, $pdu_list);
+			
 			if ($i == 1)
 			{
-				$say_pdu          = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0011!#"  : "#!string!device_0007!#";
-				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0078!#" : "#!string!explain_0078!#";
-				$say_name_url     = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
-				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0079!#" : "#!string!explain_0079!#";
-				$say_ip_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F";
+				$say_pdu           = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0011!#"  : "#!string!device_0007!#";
+				$say_name_explain  = $conf->{sys}{expert_ui} ? "#!string!terse_0078!#" : "#!string!explain_0078!#";
+				$say_name_url      = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_ip_explain    = $conf->{sys}{expert_ui} ? "#!string!terse_0079!#" : "#!string!explain_0079!#";
+				$say_ip_url        = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F";
+				$say_agent_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0150!#" : "#!string!explain_0150!#";
 			}
 			elsif ($i == 2)
 			{
-				$say_pdu          = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0012!#" : "#!string!device_0008!#";
-				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0080!#" : "#!string!explain_0080!#";
-				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0081!#" : "#!string!explain_0081!#";
+				$say_pdu           = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0012!#" : "#!string!device_0008!#";
+				$say_name_explain  = $conf->{sys}{expert_ui} ? "#!string!terse_0080!#" : "#!string!explain_0080!#";
+				$say_ip_explain    = $conf->{sys}{expert_ui} ? "#!string!terse_0081!#" : "#!string!explain_0081!#";
+				$say_agent_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0151!#" : "#!string!explain_0151!#";
 			}
 			elsif ($i == 3)
 			{
-				$say_pdu          = "#!string!device_0009!#";
-				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0146!#" : "#!string!explain_0146!#";
-				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0147!#" : "#!string!explain_0147!#";
+				$say_pdu           = "#!string!device_0009!#";
+				$say_name_explain  = $conf->{sys}{expert_ui} ? "#!string!terse_0146!#" : "#!string!explain_0146!#";
+				$say_ip_explain    = $conf->{sys}{expert_ui} ? "#!string!terse_0147!#" : "#!string!explain_0147!#";
+				$say_agent_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0152!#" : "#!string!explain_0152!#";
 			}
 			elsif ($i == 4)
 			{
-				$say_pdu          = "#!string!device_0010!#";
-				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0148!#" : "#!string!explain_0148!#";
-				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0149!#" : "#!string!explain_0149!#";
+				$say_pdu           = "#!string!device_0010!#";
+				$say_name_explain  = $conf->{sys}{expert_ui} ? "#!string!terse_0148!#" : "#!string!explain_0148!#";
+				$say_ip_explain    = $conf->{sys}{expert_ui} ? "#!string!terse_0149!#" : "#!string!explain_0149!#";
+				$say_agent_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0153!#" : "#!string!explain_0153!#";
 			}
-			my $say_pdu_name = AN::Common::get_string($conf, {key => "row_0174", variables => { 
+			my $say_pdu_name  = AN::Common::get_string($conf, {key => "row_0174", variables => { 
 						say_pdu	=>	"$say_pdu",
 					}});
-			my $say_pdu_ip   = AN::Common::get_string($conf, {key => "row_0175", variables => { 
+			my $say_pdu_ip    = AN::Common::get_string($conf, {key => "row_0175", variables => { 
+						say_pdu	=>	"$say_pdu",
+					}});
+			my $say_pdu_agent = AN::Common::get_string($conf, {key => "row_0177", variables => { 
 						say_pdu	=>	"$say_pdu",
 					}});
 			
@@ -2879,6 +2906,13 @@ sub create_install_manifest
 					name		=>	"$pdu_ip_key",
 					id		=>	"$pdu_ip_key",
 					value		=>	$conf->{cgi}{$pdu_ip_key},
+				});
+				
+				# PDU Brand
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$pdu_agent_key",
+					id		=>	"$pdu_agent_key",
+					value		=>	$conf->{cgi}{$pdu_agent_key},
 				});
 			}
 			else
@@ -2909,6 +2943,18 @@ sub create_install_manifest
 					value		=>	$conf->{cgi}{$pdu_ip_key},
 					star		=>	$conf->{form}{$pdu_star_ip_key},
 					more_info	=>	"$pdu_ip_more_info",
+				});
+				
+				# PDU Brand
+				my $pdu_agent_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_agent_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-select-entry", {
+					row		=>	"$say_pdu_agent",
+					explain		=>	"$say_agent_explain",
+					'select'	=>	$pdu_model,
+					star		=>	$conf->{form}{$pdu_star_agent_key},
+					more_info	=>	"$pdu_agent_more_info",
 				});
 			}
 		}
@@ -3600,8 +3646,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
-						#$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_apc_snmp";
-						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : "fence_raritan_snmp";
+						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : $conf->{sys}{install_manifest}{pdu_agent};
 						#record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
 					}
 				}
@@ -4402,17 +4447,33 @@ Striker Version: $conf->{sys}{version}
 	{
 		$xml .= "\t\t\t<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
 	}
-	$xml .="
+	$xml .= "
 		</switch>
 		<ups>
 			<ups name=\"$conf->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$conf->{cgi}{anvil_ups1_ip}\" />
 			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" />
 		</ups>
-		<pdu>
-			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"fence_raritan_snmp\" />
-			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"fence_raritan_snmp\" />
-			<pdu reference=\"pdu03\" name=\"$conf->{cgi}{anvil_pdu3_name}\" ip=\"$conf->{cgi}{anvil_pdu3_ip}\" agent=\"fence_raritan_snmp\" />
-			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"fence_raritan_snmp\" />
+		<pdu>";
+	# PDU 1 and 2 always exist.
+	my $pdu1_agent = $conf->{cgi}{pdu1_agent} ? $conf->{cgi}{pdu1_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+	$xml .= "
+			<pdu reference=\"pdu01\" name=\"$conf->{cgi}{anvil_pdu1_name}\" ip=\"$conf->{cgi}{anvil_pdu1_ip}\" agent=\"$pdu1_agent\" />";
+	my $pdu2_agent = $conf->{cgi}{pdu2_agent} ? $conf->{cgi}{pdu2_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+	$xml .= "
+			<pdu reference=\"pdu02\" name=\"$conf->{cgi}{anvil_pdu2_name}\" ip=\"$conf->{cgi}{anvil_pdu2_ip}\" agent=\"$pdu2_agent\" />";
+	if ($conf->{cgi}{anvil_pdu3_name})
+	{
+		my $pdu3_agent = $conf->{cgi}{pdu3_agent} ? $conf->{cgi}{pdu3_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+		$xml .= "
+			<pdu reference=\"pdu03\" name=\"$conf->{cgi}{anvil_pdu3_name}\" ip=\"$conf->{cgi}{anvil_pdu3_ip}\" agent=\"$pdu3_agent\" />";
+	}
+	if ($conf->{cgi}{anvil_pdu4_name})
+	{
+		my $pdu4_agent = $conf->{cgi}{pdu4_agent} ? $conf->{cgi}{pdu4_agent} : $conf->{sys}{install_manifest}{pdu_agent};
+		$xml .= "
+			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
+	}
+	$xml .= "
 		</pdu>
 		<ipmi>
 			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />

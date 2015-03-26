@@ -743,12 +743,16 @@ sub initialize_conf
 					password		=>	"Initial1",
 					pdu1_name		=>	"",
 					pdu1_ip			=>	"",
+					pdu1_agent		=>	"",
 					pdu2_name		=>	"",
 					pdu2_ip			=>	"",
+					pdu2_agent		=>	"",
 					pdu3_name		=>	"",
 					pdu3_ip			=>	"",
+					pdu3_agent		=>	"",
 					pdu4_name		=>	"",
 					pdu4_ip			=>	"",
+					pdu4_agent		=>	"",
 					pool1_size		=>	"50",
 					pool1_unit		=>	"%",
 					prefix			=>	"",
@@ -774,6 +778,9 @@ sub initialize_conf
 				# If the user wants to build install manifests for
 				# environments with 4 PDUs, this will be set to '4'.
 				pdu_count		=>	2,
+				# This sets the default fence agent to use for
+				# the PDUs.
+				pdu_fence_agent		=>	"fence_apc_snmp",
 				# These variables control whether certain
 				# fields are displayed or not when generating
 				# Install Manifests. If you set any of these to
