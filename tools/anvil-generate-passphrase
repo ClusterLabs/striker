@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+# 
+# This generates a string based on the passed passphrase and the re-encryption
+# and salt settings used striker.conf. It is meant to be used to restrict
+# (slightly) the calling of the self-destruct and storage lock-out functions.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+
+
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+use strict;
+use warnings;
+
+$| = 1;
+
+
+
+exit(0);

@@ -7397,9 +7397,27 @@ sub header
 		}, "", 1);
 	}
 	
-	# Now print the actual header.
+	# We only want the auto-refresh function to activate in certain pages.
+	my $use_refresh = 0;
 	record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
 	if ($conf->{sys}{reload_page_timer})
+	{
+		if ($conf->{sys}{cgi_string} eq "?cluster=$conf->{cgi}{cluster}")
+		{
+			$use_refresh = 1;
+		}
+		if ($conf->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
+		{
+			my $final = $1;
+			if ($final !~ /&/)
+			{
+				$use_refresh = 1;
+			}
+		}
+	}
+	
+	# Now print the actual header.
+	if ($use_refresh)
 	{
 		# Add the auto-reload function if requested by the user.
 		print AN::Common::template($conf, "common.html", "auto-refresh-header", {

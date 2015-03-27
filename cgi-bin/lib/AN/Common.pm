@@ -645,6 +645,7 @@ sub initialize_conf
 				ifn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-ifn_link2",
 				iptables		=>	"/etc/sysconfig/iptables",
 				lvm_conf		=>	"/etc/lvm/lvm.conf",
+				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
 				shadow			=>	"/etc/shadow",

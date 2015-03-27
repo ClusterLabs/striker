@@ -9243,6 +9243,22 @@ sub install_missing_packages
 	else
 	{
 		# Make sure the libvirtd bridge is gone.
+		my $shell_call = "
+if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
+then 
+	virsh net-destroy default;
+	virsh net-autostart default --disable;
+	virsh net-undefine default;
+else 
+	cat /dev/null >/etc/libvirt/qemu/networks/default.xml;
+fi;
+if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
+then 
+	echo failed;
+else
+	echo bridge gone;
+fi";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -9250,20 +9266,54 @@ sub install_missing_packages
 			password	=>	$password,
 			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 			'close'		=>	0,
-			shell_call	=>	"if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
-						then 
-							virsh net-destroy default;
-							virsh net-autostart default --disable;
-							virsh net-undefine default;
-						else 
-							cat /dev/null >/etc/libvirt/qemu/networks/default.xml;
-						fi;
-						if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
-						then 
-							echo failed;
-						else
-							echo bridge gone;
-						fi",
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		$conf->{node}{$node}{internet} = 0;
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			if ($line eq "failed")
+			{
+				$ok = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to delete the 'virbr0' bridge.\n");
+			}
+			elsif ($line eq "bridge gone")
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The bridge 'virbr0' is gone.\n");
+			}
+		}
+		
+		# If the MegaCli64 binary exists, make sure there is a symlink
+		# to it.
+		$shell_call = "
+if [ -e '$conf->{path}{nodes}{MegaCli64}' ]; 
+then 
+	if [ -e '/sbin/MegaCli64' ]
+	then
+		echo '/sbin/MegaCli64 symlink exists';
+	else
+		ln -s $conf->{path}{nodes}{MegaCli64} /sbin/
+		if [ -e '/sbin/MegaCli64' ]
+		then
+			echo '/sbin/MegaCli64 symlink created';
+		else
+			echo 'Failed to create /sbin/MegaCli64 symlink';
+		fi
+	fi
+else
+	echo 'MegaCli64 not installed.'
+fi
+";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		$conf->{node}{$node}{internet} = 0;
