@@ -95,6 +95,8 @@ my $conf = {
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
 		source			=>	"",
+		striker_tools		=>	"/sbin/striker",		# Change the library directory in the various tools if this changes!
+		udev_rules		=>	"/etc/udev/rules.d/",
 		yum_repos		=>	"/etc/yum.repos.d",
 	},
 	executable	=>	{
@@ -373,6 +375,13 @@ my $conf = {
 			mode			=>	"755",
 			recursive		=>	0,
 		},
+		striker_tools		=>	{
+			path			=>	"/sbin/striker",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"755",
+			recursive		=>	1,
+		},
 		# The following entries must sort last to ensure the setuid
 		# doesn't get changed by a change to the parent directory.
 		z_control_dhcpd		=>	{
@@ -590,6 +599,9 @@ if (not $conf->{sys}{skip_network})
 	reconfigure_network($conf);
 }
 
+# Configure the various dashboard tools, like the striker-usb tools.
+configure_striker_tools($conf);
+
 # If the user should reboot, tell them.
 print "Installation of Striker is complete!\n\n";
 if ($conf->{sys}{reboot_needed})
@@ -619,9 +631,39 @@ if ($conf->{sys}{reboot_needed})
 exit(0);
 
 
+
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# Configure the various dashboard tools, like the striker-usb tools.
+sub configure_striker_tools
+{
+	my ($conf) = @_;
+	
+	# Create the tools directory, if needed.
+	if (not -e $conf->{directory}{striker_tools})
+	{
+		mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{striker_tools}]. The error was: $!\n";
+	}
+	
+	# Now copy the tools we want into place, if they're not already there.
+	print "- Copying the USB management tools into place.\n";
+	rsync_files($conf, "$conf->{directory}{source}/tools/99-striker.rules",    "$conf->{directory}{udev_rules}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-insert",  "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-remove",  "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb.lib",     "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/anvil-kick-apc-ups",  "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/bond_watch",          "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/anvil-self-destruct", "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/disable_boot.sh",     "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/reenable_boot.sh",    "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_shutdown", "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_start",    "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/populate_remote_authorized_keys", "$conf->{directory}{striker_tools}/");
+	
+	return(0);
+}
 
 # Add the user's NTP server(s) if not already in ntp.conf.
 sub configure_ntp

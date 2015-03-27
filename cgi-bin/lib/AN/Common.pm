@@ -910,6 +910,9 @@ sub initialize_conf
 			pool1_shrunk		=>	0,
 			reboot_timeout		=>	600,
 			root_password		=>	"",
+			# Set this to an integer to have the main Striker page
+			# and the hardware status pages automatically reload.
+			reload_page_timer	=>	0,
 			# These options allow customization of newly provisioned
 			# servers.
 			server			=>	{

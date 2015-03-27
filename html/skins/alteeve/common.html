@@ -27,6 +27,46 @@
 <br />
 <!-- end header -->
 
+<!-- start auto-refresh-header -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>#!string!brand_0001!# - #!string!brand_0002!#</title>
+	<link rel="stylesheet" href="#!conf!url::skins!#/#!conf!sys::skin!#/common.css" media="screen" />
+	<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/jquery-latest.js"></script>
+	<meta http-equiv="refresh" content="#!conf!sys::reload_page_timer!#; url=#!conf!sys::cgi_string!#">
+	<script>
+$(function() {
+	display = document.querySelector('#time');
+	startTimer(#!conf!sys::reload_page_timer!#, display);
+});
+	</script>
+</head>
+<body>
+<br />
+<table class="hidden_table">
+	<tr>
+		<td class="td_hidden" style="width: 50px;">
+			&nbsp;
+		</td>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!back!#
+		</td>
+		<td class="td_hidden">
+			<a href="/cgi-bin/striker?logo=true"><img class="logo" src="#!conf!url::skins!#/#!conf!sys::skin!#/images/logo_striker_01.png" alt="#!string!brand_0001!# - #!string!brand_0002!#"></a>
+		</td>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!refresh!#
+		</td>
+		<td class="td_hidden" style="width: 50px;">
+			<div><span id="time" class="subtle_text"></span></div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end auto-refresh-header -->
+
 <!-- This was used when we used guacamole -->
 <!-- start old-footer -->
 <table class="hidden_table" width="100%">

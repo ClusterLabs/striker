@@ -26,7 +26,7 @@ sub inititialize_configuration
 			'mkdir'			=>	"/bin/mkdir",
 			mkfs			=>	"/sbin/mkfs",
 			mount			=>	"/bin/mount",
-			'striker-usb_conf'	=>	"/etc/striker/striker-usb.conf",
+			striker_conf		=>	"/etc/striker/striker.conf",
 			tail			=>	"/usr/bin/tail",
 			umount			=>	"/bin/umount",
 		},
@@ -76,7 +76,7 @@ sub read_configuration
 	my ($conf) = @_;
 	
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{'striker-usb_conf'}";
+	my $sc = "$conf->{path}{striker_conf}";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{

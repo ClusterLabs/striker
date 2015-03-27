@@ -7396,10 +7396,25 @@ sub header
 			id		=>	"refresh",
 		}, "", 1);
 	}
-	print AN::Common::template($conf, "common.html", "header", {
-		back	=>	$say_back,
-		refresh	=>	$say_refresh,
-	}); 
+	
+	# Now print the actual header.
+	record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
+	if ($conf->{sys}{reload_page_timer})
+	{
+		# Add the auto-reload function if requested by the user.
+		print AN::Common::template($conf, "common.html", "auto-refresh-header", {
+			back		=>	$say_back,
+			refresh		=>	$say_refresh,
+		});
+	}
+	else
+	{
+		print AN::Common::template($conf, "common.html", "header", {
+			back		=>	$say_back,
+			refresh		=>	$say_refresh,
+		});
+	}
+	
 	
 	return (0);
 }

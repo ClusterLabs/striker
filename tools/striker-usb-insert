@@ -40,7 +40,7 @@ ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
 
 use strict;
 use warnings;
-require "/sbin/striker-usb.lib";
+require "/sbin/striker/striker-usb.lib";
 
 my $THIS_FILE = "striker-usb-insert";
 my $conf = inititialize_configuration();

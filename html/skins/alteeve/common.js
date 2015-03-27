@@ -16,6 +16,50 @@ function show_on_load()
 	document.getElementById('hide_when_loaded').style.display = 'none'; 
 }
 
+// Grabbed from robbmj via http://stackoverflow.com/questions/20618355/the-simplest-possible-javascript-countdown-timer
+// This is used to display the time to reload on the front page when the user
+// has enabled the auto-reload function.
+function startTimer(duration, display)
+{
+	var start = Date.now(),
+		diff,
+		minutes,
+		seconds;
+	function timer()
+	{
+		// get the number of seconds that have elapsed since 
+		// startTimer() was called
+		diff = duration - (((Date.now() - start) / 1000) | 0);
+
+		// does the same job as parseInt truncates the float
+		minutes = (diff / 60) | 0;
+		seconds = (diff % 60) | 0;
+
+		minutes = minutes < 10 ? "0" + minutes : minutes;
+		seconds = seconds < 10 ? "0" + seconds : seconds;
+
+		display.textContent = minutes + ":" + seconds; 
+
+		if (diff <= 0) 
+		{
+			// add one second so that the count down starts at the
+			// full duration example 05:00 not 04:59
+			start = Date.now() + 1000;
+		}
+	};
+	// we don't want to wait a full second before the timer starts
+	timer();
+	setInterval(timer, 1000);
+}
+
+// This is called in the special header template now when the user has enabled
+// the auto-reload function.
+// window.onload = function ()
+// {
+// 	display = document.querySelector('#time');
+// 	startTimer(30, display);
+// };
+
 /* http://sixrevisions.com/tutorials/javascript_tutorial/create_lightweight_javascript_tooltip/
  * 
  */

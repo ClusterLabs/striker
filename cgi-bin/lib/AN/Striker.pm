@@ -9922,8 +9922,26 @@ sub display_node_controls
 	{
 		# Get the cluster's node name.
 		my $say_short_name =  $node;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_short_name: [$say_short_name]\n");
 		$say_short_name    =~ s/\..*//;
-		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_short_name: [$say_short_name], node::${node1}::info::host_name: [$conf->{node}{$node1}{info}{host_name}], node::${node2}::info::host_name: [$conf->{node}{$node2}{info}{host_name}]\n");
+		my $node_long_name = "";
+		if ($node1_long =~ /$say_short_name/)
+		{
+			$node_long_name = $conf->{node}{$node1}{info}{host_name};
+		}
+		elsif ($node2_long =~ /$say_short_name/)
+		{
+			$node_long_name = $conf->{node}{$node2}{info}{host_name};
+		}
+		else
+		{
+			# The name in the config doesn't match the name in the
+			# cluster.
+			$node_long_name = "??";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The node name set in striker.conf does not match either node name on the nodes (/etc/cluster/cluster.conf and/or /etc/hosts).\n");
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node_long_name: [$node_long_name]\n");
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
 		
 		# Join button.
@@ -10111,7 +10129,7 @@ sub display_node_controls
 		
 		# Make the node names click-able to show the hardware states.
 		$say_node_name[$i] = "$conf->{node}{$node}{info}{host_name}";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_node_name: [$say_node_name[$i]].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; i: [$i], node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], say_node_name: [$say_node_name[$i]].\n");
 		if ($conf->{node}{$node}{connected})
 		{
 			$say_node_name[$i] = AN::Common::template($conf, "common.html", "enabled-button-new-tab", {

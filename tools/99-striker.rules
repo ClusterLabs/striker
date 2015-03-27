@@ -1,6 +1,7 @@
-# This triggers the insert and eject scripts to mount and unmount USB drives on
-# remote servers when a USB storage device is plugged into a managed port.
+# Rules created to mount a locally inserted USB storage device on a remote
+# server. Which server the block device is mounted on (if at all) is determined
+# by the USB port used and how it is configured in /etc/striker/striker.conf.
 
-ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-insert"
+ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-insert"
 
-ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
+ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-remove"

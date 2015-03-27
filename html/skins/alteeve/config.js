@@ -49,19 +49,25 @@ $("#set_secondary_values").click(function(){
 	// Put together some values.
 	// Host names
 	// Node 1
-	var node1_name = prefix + '-a' + padded_sequence + 'n01.' + domain;
-	if (!prefix)
+	if (!$("#anvil_node1_name").val())
 	{
-		var node1_name = 'node01.' + domain;
+		var node1_name = prefix + '-a' + padded_sequence + 'n01.' + domain;
+		if (!prefix)
+		{
+			var node1_name = 'node01.' + domain;
+		}
+		$("#anvil_node1_name").val(node1_name);
 	}
-	$("#anvil_node1_name").val(node1_name);
 	// Node 2
-	var node2_name = prefix + '-a' + padded_sequence + 'n02.' + domain;
-	if (!prefix)
+	if (!$("#anvil_node2_name").val())
 	{
-		var node2_name = 'node02.' + domain;
+		var node2_name = prefix + '-a' + padded_sequence + 'n02.' + domain;
+		if (!prefix)
+		{
+			var node2_name = 'node02.' + domain;
+		}
+		$("#anvil_node2_name").val(node2_name);
 	}
-	$("#anvil_node2_name").val(node2_name);
 	
 	// Anvil! Name
 	var anvil_cluster_name = $("#anvil_cluster_name").val();
