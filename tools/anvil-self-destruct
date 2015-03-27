@@ -6,12 +6,13 @@
 # As the name implies, this is a rather dangerous operation. The system data
 # will be rendered irrevocably wiped upon completion.
 #
-# TODO: Read a hashed file, require a user pass a password, hash it and see
-#       that it matches the read hash.
-#
 
 use strict;
 use warnings;
+use IO::Handle;
+use Digest::SHA qw(sha512_base64);
+
+$| = 1;
 
 my $conf = {
 	drives		=>	{
@@ -23,6 +24,7 @@ my $conf = {
 	path		=>	{
 		ramdisk		=>	"/ram",
 		storcli64	=>	"/opt/MegaRAID/storcli/storcli64",
+		striker_conf	=>	"/etc/striker/striker.conf",
 	},
 	sys		=>	{
 		debug		=>	0,
@@ -33,6 +35,9 @@ my $conf = {
 
 system ('clear');
 print "\nInitiating self-destruct sequence...\n";
+
+# Make sure the passphrase is valid.
+check_passphrase($conf);
 
 # Create the ramdisk
 create_ramdisk($conf);
@@ -45,6 +50,39 @@ destroy_physical_drives($conf);
 
 # This will never be hit unless we failed to die.
 exit;
+
+# Sum the passed in passphrase to make sure it's right.
+sub check_passphrase
+{
+	my ($conf) = @_;
+	
+	read_configuration($conf);
+	my $passphrase = $ARGV[0];
+
+	print "Checking passphrase: [$passphrase]...\n";
+	my $hash = sha512_base64($passphrase);
+	if ($conf->{sys}{storage_security}{reencrypt_count})
+	{
+		for (1..$conf->{sys}{storage_security}{reencrypt_count})
+		{
+			$hash = sha512_base64($hash);
+		}
+	}
+	print "- Hash:  [$hash]\n";
+	print "- Match: [$conf->{sys}{storage_security}{hash}]\n";
+	
+	if ($hash eq $conf->{sys}{storage_security}{hash})
+	{
+		print "- Passphrase accepted.\n";
+	}
+	else
+	{
+		print "- Self-destruct aborted, bad passphrase!\n";
+		exit(1);
+	}
+	
+	return(0);
+}
 
 # This creates the ramdisk and copies the storcli command line tool to it.
 sub create_ramdisk
@@ -328,4 +366,80 @@ sub find_physical_drives
 # 	}
 
 	return(0);
+}
+
+# This reads in the configuration file.
+sub read_configuration
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{striker_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }

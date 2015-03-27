@@ -13,6 +13,7 @@ package AN::InstallManifest;
 #   striker IFN IPs assigned...
 # - Back-button doesn't work after creating a new manifest.
 # - keys are being added in duplicate to ~/.ssh/authorized_keys
+# - The generated hosts file is rather broken...
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -80,6 +81,7 @@ sub run_new_install_manifest
 		parted				=>	0,
 		pciutils			=>	0,
 		perl				=>	0,
+		'perl-Digest-SHA'		=>	0,
 		'perl-TermReadKey'		=>	0,
 		'perl-Time-HiRes'		=>	0,
 		'perl-Net-SSH2'			=>	0,

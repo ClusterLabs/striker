@@ -8,6 +8,11 @@
 # under the terms of the GNU GPL version 2.
 #
 # https://alteeve.ca
+# 
+# 0 == OK
+# 1 == Minimum passphrase length not set
+# 2 == Passphrase too short.
+# 3 == Re-encryption count not set
 
 
 my $THIS_FILE =  $0;
@@ -15,9 +20,127 @@ my $THIS_FILE =  $0;
 
 use strict;
 use warnings;
+use IO::Handle;
+use Digest::SHA qw(sha512_base64);
 
 $| = 1;
 
+# Don't set defaults for security here. The user *must* set them in their
+# striker.conf file.
+my $conf = {
+	path	=>	{
+		striker_conf		=>	"/etc/striker/striker.conf",
+	},
+};
+read_configuration($conf);
+
+my $passphrase = $ARGV[0];
+
+if (not $conf->{sys}{storage_security}{minimum_length})
+{
+	print "Please configure 'sys::storage_security::minimum_length' in striker.conf.\n";
+	exit(1);
+}
+if (length($passphrase) < $conf->{sys}{storage_security}{minimum_length})
+{
+	print "Passphrase: [$passphrase] too short. Must be $conf->{sys}{storage_security}{minimum_length} or longer.\n";
+	print "Remember to wrap your password in quotes if it has spaces in it!\n";
+	exit(2);
+}
+if (not $conf->{sys}{storage_security}{reencrypt_count})
+{
+	print "Please configure 'sys::storage_security::reencrypt_count' in striker.conf.\n";
+	exit(3);
+}
+
+print "Encrypting: [$passphrase] with salt: [$conf->{sys}{storage_security}{salt}], re-encrypting times: [$conf->{sys}{storage_security}{reencrypt_count}]\n";
+my $hash = sha512_base64($passphrase);
+if ($conf->{sys}{storage_security}{reencrypt_count})
+{
+	for (1..$conf->{sys}{storage_security}{reencrypt_count})
+	{
+		$hash = sha512_base64($hash);
+	}
+}
+print "- Hash: [$hash]\n";
 
 
 exit(0);
+
+
+
+# This reads in the configuration file.
+sub read_configuration
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{striker_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+###############################################################################
+# Sssh, there are private functions                                           #
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
+}

@@ -164,6 +164,7 @@ my $conf = {
 			'perl-CGI'			=>	0, 
 			'perl-CPAN'			=>	0, 
 			'perl-Crypt-SSLeay'		=>	0,
+			'perl-Digest-SHA'		=>	0,
 			'perl-IO-Socket-SSL'		=>	0,
 			'perl-libwww-perl'		=>	0,
 			'perl-Net-SSH2'			=>	0,
