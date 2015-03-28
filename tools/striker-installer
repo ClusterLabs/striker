@@ -603,6 +603,21 @@ if (not $conf->{sys}{skip_network})
 # Configure the various dashboard tools, like the striker-usb tools.
 configure_striker_tools($conf);
 
+# If requested, run the contents of rc.local. This is sometimes needed if the
+# user has customizations that might get clobbered by a --gui install.
+if ($conf->{switches}{'run-rc-local'})
+{
+	my $shell_call = "sh /etc/rc.local";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "[ Debug ] - line: [$line]\n";
+	}
+	close $file_handle;
+}
+
 # If the user should reboot, tell them.
 print "Installation of Striker is complete!\n\n";
 if ($conf->{sys}{reboot_needed})
@@ -6416,6 +6431,13 @@ SWITCHES
 	When installing on a RHEL server, these credentials can be passed to
 	add the machine to yout RHN account. If you do not pass this and if
 	your machine is not already activated, the install will fail.
+
+ --run-rc-local
+
+	In some cases, some users have customizations in /etc/rc.local that can
+	be clobbered by the --gui install. Using this switch causes the
+	installer to call 'sh /etc/rc.local' just prior to the end of the
+	install process.
 
  -u <user:password>
 

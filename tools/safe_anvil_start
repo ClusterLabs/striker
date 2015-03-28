@@ -17,6 +17,7 @@
 #      healthy.
 # 6  - Failed to connect to my peer within the timeout. To proceed would risk a
 #      fence loop.
+# 7  - Failed to find a daemon's init.d script
 # 
 # Bugs:
 # - It would seem that, in some case (which I don't yet have a reproducer for),
@@ -37,6 +38,10 @@ use warnings;
 use IO::Handle;
 use File::Basename;
 
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+$| = 1;
+
 my $conf =  {
 	cluster		=>	{
 		name		=>	"",
@@ -45,7 +50,6 @@ my $conf =  {
 		cman		=>	"/etc/init.d/cman",
 		rgmanager	=>	"/etc/init.d/rgmanager",
 	},
-	debug		=>	2,
 	drbd		=>	{},
 	failoverdomain	=>	{},
 	lvs		=>	{},
@@ -81,6 +85,10 @@ my $conf =  {
 		ssh		=>	"/usr/bin/ssh",
 	},
 	services	=>	{},
+	sys		=>	{
+		debug		=>	3,
+		node2_sleep	=>	120,
+	},
 	timeouts	=>	{
 		wait_for_drbd_sync	=>	300,	# Roughly 5 minutes.
 		wait_for_node_health	=>	300,	# Roughly 5 minutes.
@@ -89,27 +97,19 @@ my $conf =  {
 	vms		=>	{},
 };
 
-print "\n-=] Safe Anvil! Start is now running.\n" if $conf->{debug} > 0;
+logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
 read_hostname($conf);
 read_cluster_conf($conf);
-### TODO: Provide an optional max wait time where the wait ends and the peer
-###       is fenced so that start up can complete.
-print " - Wait up to: [$conf->{timeouts}{wait_for_peer}] seconds to connect to my peer.\n" if $conf->{debug} == 1;
-print " - ." if $conf->{debug} == 1;
+
+logger($conf, $THIS_FILE, __LINE__, "- Wait up to: [$conf->{timeouts}{wait_for_peer}] seconds to connect to my peer.", 1);
 for (0..$conf->{timeouts}{wait_for_peer})
 {
 	$conf->{nodes}{peer}{is_up} = check_peer_connection($conf);
 	if ($conf->{nodes}{peer}{is_up})
 	{
 		# Peer is up.
-		print " - Peer is up!\n" if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "- Peer is up!", 1);
 		last;
-	}
-	else
-	{
-		# The "peer is up!" message starts with a line-wrap to close
-		# this dotted progress bar.
-		print ".";
 	}
 	sleep 1;
 };
@@ -117,8 +117,8 @@ for (0..$conf->{timeouts}{wait_for_peer})
 # If the peer wasn't reachable, then the only safe option is to exit.
 if (not $conf->{nodes}{peer}{is_up})
 {
-	print "Failed to connect to peer within timeout.\n";
-	print "Proceeding would risk a fence loop. Exiting.\n";
+	logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to peer within timeout.", 0);
+	logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Proceeding would risk a fence loop. Exiting.", 0);
 	exit(6);
 }
 
@@ -142,13 +142,55 @@ wait_for_drbd_sync($conf);
 start_servers($conf);
 
 # All done.
-print __LINE__."; [ DEBUG ] - Finished, exiting.\n" if $conf->{debug} == 2;
-print " - Finished, exiting.\n\n" if $conf->{debug} == 1;
+logger($conf, $THIS_FILE, __LINE__, "- Finished, exiting.\n", 1);
 exit(0);
 
 ###############################################################################
 # Here be Functions!                                                          #
 ###############################################################################
+
+# Write entries to syslog and STDOUT.
+sub logger
+{
+	my ($conf, $file, $line_number, $message, $level) = @_;
+	$level = 0 if not $level;
+	
+	# Return if the log level is too low.
+	return(0) if $level > $conf->{sys}{debug};
+	
+	# Print the message to the screen.
+	# If the level is 0 or 1, don't print the file and line numnber
+	if ($level < 2)
+	{
+		$message =~ s/^; //;
+		print "$message\n";
+	}
+	else
+	{
+		print "$file $line_number; $message\n";
+	}
+	
+	# We split on new-lines so that multi-line message render better in
+	# syslog.
+	my $is_debug = $message =~ /\[ Debug \]/ ? 1 : 0;
+	foreach my $line (split/\n/, $message)
+	{
+		next if not $line;
+		if (($is_debug) && ($line !~ /\[ Debug \]/))
+		{
+			$line = "[ Debug ]   $line";
+		}
+		$line =~ s/\t/    /g;
+		open my $filehandle, '-|', "logger", "-t", $file, "$line_number: $line" or die "Failed to call: [logger -t $THIS_FILE $line]. Error: $!\n";
+		while (<$filehandle>)
+		{
+			print $_;
+		}
+		close $filehandle;
+	}
+	
+	return(0);
+}
 
 # This gets the list of physical volume(s) backing each logical volume. This is
 # needed to check the DRBD connection and disk state when deciding later which
@@ -158,15 +200,15 @@ sub get_pvs_under_lv
 	my ($conf) = @_;
 	
 	my @pvs;
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{lvs} --separator ' ' -o lv_name,vg_name,lv_path,devices";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{lvs} --separator ' ' -o lv_name,vg_name,lv_path,devices";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		if ($line =~ / (.*?) (.*?) (\/dev\/.*?) (\/dev\/.*)/)
 		{
 			my $lv_name = $1;
@@ -178,10 +220,10 @@ sub get_pvs_under_lv
 			$pvs =~ s/\(.*?\)//g;
 			# If the LV spans PVs, they will be comma-separated.
 			$conf->{lvs}{$lv_path}{pvs} = $pvs;
-			print __LINE__."; [ DEBUG ] - lvs::${lv_path}::pvs: [$conf->{lvs}{$lv_path}{pvs}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lvs::${lv_path}::pvs: [$conf->{lvs}{$lv_path}{pvs}]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return(0)
 }
@@ -190,26 +232,26 @@ sub get_pvs_under_lv
 sub translate_drbd_resource_to_device_path
 {
 	my ($conf, $resource) = @_;
-	print __LINE__."; [ DEBUG ] - translate_drbd_resource_to_device_path(); resource: [$resource]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - translate_drbd_resource_to_device_path(); resource: [$resource]", 3);
 	
 	# This 'drbdadm' switch is in 'drbdadm hidden-commands'.
 	my $device_path = "";
-	my $fh          = IO::Handle->new();
-	my $sc          = "$conf->{path}{drbdadm} sh-dev $resource";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{path}{drbdadm} sh-dev $resource";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		if ($line =~ /^(\/dev\/.*)/)
 		{
 			$device_path = $1;
-			print __LINE__."; [ DEBUG ] - device_path: [$device_path].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_path: [$device_path]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return($device_path);
 }
@@ -219,29 +261,36 @@ sub translate_drbd_resource_to_device_path
 sub read_drbd_state
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_drbd_state()", 3);
 	
-	my $fh = IO::Handle->new();
-	my $sc = "/etc/init.d/drbd status";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $device_path = "";
+	my $file_handle = IO::Handle->new();
+	#my $shell_call  = "/etc/init.d/drbd status";
+	my $shell_call  = "cat /proc/drbd";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		# I don't care about this output
 		chomp;
 		my $line = $_;
 		next if not $line;
-		print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug} == 2;
-		if ($line =~ /(\d+):(.*?)\s+(.*?)\s+(.*?)\/(.*?)\s+(.*?)\/(.*?)\s/)
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
+		if ($line =~ /(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) /)
 		{
 			my $minor_number     = $1;
-			my $resource_name    = $2;
-			my $connection_state = $3;
-			my $me_role          = $4;
-			my $peer_role        = $5;
-			my $me_disk_state    = $6;
-			my $peer_disk_state  = $7;
-			my ($device_path)    = translate_drbd_resource_to_device_path($conf, $resource_name);
-			print __LINE__."; [ DEBUG ] - minor_number: [$minor_number], resource_name: [$resource_name], connection_state: [$connection_state], me_role: [$me_role], peer_role: [$peer_role], me_disk_state: [$me_disk_state], peer_disk_state: [$peer_disk_state], device_path: [$device_path]\n" if $conf->{debug} == 2;
+			my $connection_state = $2;
+			my $me_role          = $3;
+			my $peer_role        = $4;
+			my $me_disk_state    = $5;
+			my $peer_disk_state  = $6;
+			my $resource_name    = "r".$minor_number;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - minor_number: [$minor_number], resource_name: [$resource_name], connection_state: [$connection_state], me_role: [$me_role], peer_role: [$peer_role], me_disk_state: [$me_disk_state], peer_disk_state: [$peer_disk_state]", 2);
+			   ($device_path)    = translate_drbd_resource_to_device_path($conf, $resource_name);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_path: [$device_path]", 2);
 			$conf->{drbd}{$device_path}{minor_number}     = $minor_number;
 			$conf->{drbd}{$device_path}{resource_name}    = $resource_name;
 			$conf->{drbd}{$device_path}{connection_state} = $connection_state;
@@ -249,16 +298,33 @@ sub read_drbd_state
 			$conf->{drbd}{$device_path}{me}{disk_state}   = $me_disk_state;
 			$conf->{drbd}{$device_path}{peer}{role}       = $peer_role;
 			$conf->{drbd}{$device_path}{peer}{disk_state} = $peer_disk_state;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::minor_number:     [$conf->{drbd}{$device_path}{minor_number}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::resource_name:    [$conf->{drbd}{$device_path}{resource_name}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::connection_state: [$conf->{drbd}{$device_path}{connection_state}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::me::role:         [$conf->{drbd}{$device_path}{me}{role}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::me::disk_state:   [$conf->{drbd}{$device_path}{me}{disk_state}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::peer::role:       [$conf->{drbd}{$device_path}{peer}{role}]\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - drbd::${device_path}::peer::disk_state: [$conf->{drbd}{$device_path}{peer}{disk_state}]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::minor_number:     [$conf->{drbd}{$device_path}{minor_number}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::resource_name:    [$conf->{drbd}{$device_path}{resource_name}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::connection_state: [$conf->{drbd}{$device_path}{connection_state}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::me::role:         [$conf->{drbd}{$device_path}{me}{role}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::me::disk_state:   [$conf->{drbd}{$device_path}{me}{disk_state}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::peer::role:       [$conf->{drbd}{$device_path}{peer}{role}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::peer::disk_state: [$conf->{drbd}{$device_path}{peer}{disk_state}]", 2);
+		}
+		if ($line =~ /finish: (\d+):(\d+):(\d+) speed/)
+		{
+			my $hours     = $1;
+			my $minutes   = $2;
+			my $seconds   = $3;
+			my $sync_time = ($hours * 3600) + ($minutes * 60) + $seconds;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - hours: [$hours], minutes: [$minutes], seconds: [$seconds], sync_time: [$sync_time]", 2);
+			if (not $device_path)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - device_path not set!", 0);
+			}
+			else
+			{
+				$conf->{drbd}{$device_path}{sync_time} = $sync_time;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::sync_time: [$conf->{drbd}{$device_path}{sync_time}]", 2);
+			}
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -273,29 +339,28 @@ sub wait_for_drbd_sync
 	foreach my $node ("me", "peer")
 	{
 		next if (($node eq "peer") && ($conf->{nodes}{peer}{healthy} == 2));
-		print __LINE__."; [ DEBUG ] - node: [$node]\n" if $conf->{debug} == 2;
-		my $fh = IO::Handle->new();
-		my $sc = "$conf->{path}{drbdadm} adjust all";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node]", 2);
+		my $file_handle = IO::Handle->new();
+		my $shell_call  = "$conf->{path}{drbdadm} adjust all";
 		if ($node eq "peer")
 		{
-			$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{drbdadm} adjust all\"";
+			$shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{drbdadm} adjust all\"";
 		}
-		print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-		open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-		while(<$fh>)
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		}
-		$fh->close();
+		close $file_handle;
 	}
 	
 	# Now loop for up to 'wait_for_drbd_sync' seconds
 	my $all_uptodate = 0;
-	print __LINE__."; [ DEBUG ] - all_uptodate: [$all_uptodate], timeouts::wait_for_drbd_sync: [$conf->{timeouts}{wait_for_drbd_sync}].\n" if $conf->{debug} == 2;
-	print " - Waiting up to: [$conf->{timeouts}{wait_for_drbd_sync}] seconds for DRBD to become 'UpToDate' on both nodes.\n" if $conf->{debug} == 1;
-	print " - ." if $conf->{debug} == 1;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - all_uptodate: [$all_uptodate], timeouts::wait_for_drbd_sync: [$conf->{timeouts}{wait_for_drbd_sync}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "- Waiting up to: [$conf->{timeouts}{wait_for_drbd_sync}] seconds for DRBD to become 'UpToDate' on both nodes.", 1);
 	for (0..$conf->{timeouts}{wait_for_drbd_sync})
 	{
 		read_drbd_state($conf);
@@ -303,72 +368,85 @@ sub wait_for_drbd_sync
 		$all_uptodate = 1;
 		foreach my $device_path (sort {$a cmp $b} keys %{$conf->{drbd}})
 		{
-			print __LINE__."; [ DEBUG ] - device_path: [$device_path].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_path: [$device_path]", 2);
 			my $me_role         = $conf->{drbd}{$device_path}{me}{role};
 			my $me_disk_state   = $conf->{drbd}{$device_path}{me}{disk_state};
 			my $peer_role       = $conf->{drbd}{$device_path}{peer}{role};
 			my $peer_disk_state = $conf->{drbd}{$device_path}{peer}{disk_state};
-			print __LINE__."; [ DEBUG ] - me_role: [$me_role], me_disk_state: [$me_disk_state], peer_role: [$peer_role], peer_disk_state: [$peer_disk_state].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - me_role: [$me_role], me_disk_state: [$me_disk_state], peer_role: [$peer_role], peer_disk_state: [$peer_disk_state]", 2);
 			if (lc($me_role) ne "primary")
 			{
 				$all_uptodate = 0;
-				print "." if $conf->{debug} == 1;
-				print __LINE__."; [ DEBUG ] - Local DRBD device: [$device_path]'s role is: [$me_role], will wait for it to become 'Primary'.\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Local DRBD device: [$device_path]'s role is: [$me_role], will wait for it to become 'Primary'", 2);
 			}
 			if (lc($peer_role) ne "primary")
 			{
 				$all_uptodate = 0;
-				print "." if $conf->{debug} == 1;
-				print __LINE__."; [ DEBUG ] - Peer's DRBD device: [$device_path]'s role is: [$peer_role], will wait for it to become 'Primary'.\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Peer's DRBD device: [$device_path]'s role is: [$peer_role], will wait for it to become 'Primary'", 2);
 			}
 			next if ($conf->{nodes}{peer}{healthy} == 2);
 			if (lc($me_disk_state) ne "uptodate")
 			{
-				$all_uptodate = 0;
-				print "." if $conf->{debug} == 1;
-				print __LINE__."; [ DEBUG ] - Local DRBD device: [$device_path]'s disk state is: [$me_disk_state], will wait for it to become 'UpToDate'.\n" if $conf->{debug} == 2;
+				# If the resync time is longer than the max
+				# wait time, proceed with startup.
+				if (($conf->{drbd}{$device_path}{sync_time}) && ($conf->{drbd}{$device_path}{sync_time} > $conf->{timeouts}{wait_for_drbd_sync}))
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Local DRBD device: [$device_path]'s disk state is: [$me_disk_state].", 2);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - It will take an estimated: [$conf->{drbd}{$device_path}{sync_time}] seconds to become 'UpToDate', which is longer than the maximum wait time of: [$conf->{timeouts}{wait_for_drbd_sync}].", 2);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - As such, there is no point waiting.", 2);
+				}
+				else
+				{
+					$all_uptodate = 0;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Local DRBD device: [$device_path]'s disk state is: [$me_disk_state], will wait for it to become 'UpToDate'.", 2);
+				}
 			}
 			if (lc($peer_disk_state) ne "uptodate")
 			{
-				$all_uptodate = 0;
-				print "." if $conf->{debug} == 1;
-				print __LINE__."; [ DEBUG ] - Peer's DRBD device: [$device_path]'s disk state is: [$peer_disk_state], will wait for it to become 'UpToDate'.\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - drbd::${device_path}::sync_time: [$conf->{drbd}{$device_path}{sync_time}], timeouts::wait_for_drbd_sync: [$conf->{timeouts}{wait_for_drbd_sync}].", 2);
+				if (($conf->{drbd}{$device_path}{sync_time}) && ($conf->{drbd}{$device_path}{sync_time} > $conf->{timeouts}{wait_for_drbd_sync}))
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Peer's DRBD device: [$device_path]'s disk state is: [$me_disk_state].", 2);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - It will take an estimated: [$conf->{drbd}{$device_path}{sync_time}] seconds to become 'UpToDate', which is longer than the maximum wait time of: [$conf->{timeouts}{wait_for_drbd_sync}].", 2);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - As such, there is no point waiting.", 2);
+				}
+				else
+				{
+					$all_uptodate = 0;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Peer's DRBD device: [$device_path]'s disk state is: [$peer_disk_state], will wait for it to become 'UpToDate'.", 2);
+				}
 			}
 		}
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - all_uptodate: [$all_uptodate]", 2);
 		if ($all_uptodate)
 		{
-			print " all UpToDate!\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Ready!", 1);
 			last;
 		}
-		
 		sleep 1;
 	}
-	print __LINE__."; [ DEBUG ] - all_uptodate: [$all_uptodate].\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - all_uptodate: [$all_uptodate].", 1);
 	if ($all_uptodate)
 	{
 		if ($conf->{nodes}{peer}{healthy} == 2)
 		{
-			print __LINE__."; [ DEBUG ] - All DRBD resources online and fully up to date on this node (peer is not healty).\n" if $conf->{debug} == 2;
-			print " - All of my resource are Primary and UpToDate.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- All of my resource are Primary and UpToDate.", 1);
 		}
 		else
 		{
-			print __LINE__."; [ DEBUG ] - All DRBD resources online and fully up to date.\n" if $conf->{debug} == 2;
-			print " - All of DRBD resource on both nodes are Primary and UpToDate.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- All of DRBD resource on both nodes are Primary and UpToDate.", 1);
 		}
 	}
 	else
 	{
-		print " - Timeout expired." if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "- Timeout expired.", 1);
 		if ($conf->{nodes}{peer}{healthy} == 2)
 		{
-			print __LINE__."; [ DEBUG ] - At least one DRBD resource did not become UpToDate or Primary locally (peer is not healthy).\n" if $conf->{debug} == 2;
-			print "   - At least one of my DRBD resources is not Primary or UpToDate, peer is unhealthy.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- At least one of my DRBD resources is not Primary or UpToDate, peer is unhealthy.", 1);
 		}
 		else
 		{
-			print __LINE__."; [ DEBUG ] - At least one DRBD resource did not become UpToDate or Primary on at least one node within timeout period.\n" if $conf->{debug} == 2;
-			print "   - All of my resource are UpToDate, but at least one of my peer's resources is not yet Primary or UpToDate.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- All of my resource are UpToDate, but at least one of my peer's resources is not yet Primary or UpToDate.", 1);
 		}
 	}
 	
@@ -379,33 +457,33 @@ sub wait_for_drbd_sync
 sub read_vm_definition
 {
 	my ($conf, $name, $definition) = @_;
-	print __LINE__."; [ DEBUG ] - read_vm_definition(); server name: [$name], definition: [$definition]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "- read_vm_definition(); server name: [$name], definition: [$definition]", 3);
 	
 	my $read_ok = 1;
 	if (not -e $definition)
 	{
 		$read_ok = 0;
-		print __LINE__."; [ DEBUG ] - server name: [$name]'s definition: [$definition] file doesn't exist!\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - server name: [$name]'s definition: [$definition] file doesn't exist!", 2);
 	}
 	elsif (not -r $definition)
 	{
 		$read_ok = 0;
-		print __LINE__."; [ DEBUG ] - server name: [$name]'s definition: [$definition] file exists but isn't readable!\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - server name: [$name]'s definition: [$definition] file exists but isn't readable!", 2);
 	}
 	if ($read_ok)
 	{
 		my $in_disk = 0;
-		my $fh = IO::Handle->new();
-		my $sc = "$definition";
-		print __LINE__."; [ DEBUG ] - File read: [$sc]\n" if $conf->{debug} == 2;
-		open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
-		while(<$fh>)
+		my $file_handle = IO::Handle->new();
+		my $shell_call = "$definition";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - File read: [$shell_call]", 2);
+		open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
 		{
 			# I don't care about this output
 			chomp;
 			my $line = $_;
 			next if not $line;
-			#print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
 			
 			if ($line =~ /<disk .*?device='disk'/)
 			{
@@ -415,7 +493,7 @@ sub read_vm_definition
 				# block boot.
 				next if $line =~ /device='cdrom'/;
 				$in_disk = 1;
-				#print __LINE__."; [ DEBUG ] - Going in_disk: [$in_disk]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Going in_disk: [$in_disk]", 3);
 				next;
 			}
 			if ($in_disk)
@@ -423,18 +501,18 @@ sub read_vm_definition
 				if ($line =~ /<\/disk>/)
 				{
 					$in_disk = 0;
-					#print __LINE__."; [ DEBUG ] - Exiting in_disk: [$in_disk]\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Exiting in_disk: [$in_disk]", 3);
 					next;
 				}
 				if ($line =~ /<source dev='(.*?)'/)
 				{
 					my $lv_path = $1;
 					push @{$conf->{vms}{$name}{lv_path}}, $lv_path;
-					print __LINE__."; [ DEBUG ] - Adding lv_path: [$lv_path] to array vms::${name}::lv_path. Array contains: [".@{$conf->{vms}{$name}{lv_path}}."] disk(s).\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Adding lv_path: [$lv_path] to array vms::${name}::lv_path. Array contains: [".@{$conf->{vms}{$name}{lv_path}}."] disk(s).", 2);
 				}
 			}
 		}
-		$fh->close();
+		close $file_handle;
 	}
 	
 	return($read_ok)
@@ -452,61 +530,60 @@ sub start_servers
 	# Now decide where to start each server.
 	foreach my $name (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
-		print " - Starting server: [$name] (current state: [$conf->{vm}{$name}{'state'}], current host: [$conf->{vm}{$name}{host}]).\n" if $conf->{debug} == 1;
-		print __LINE__."; [ DEBUG ] - Reading server: [$name]'s definition file: [$conf->{vm}{$name}{definition}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Reading server: [$name]'s definition file: [$conf->{vm}{$name}{definition}].", 2);
+		logger($conf, $THIS_FILE, __LINE__, "- Starting server: [$name] (current state: [$conf->{vm}{$name}{'state'}], current host: [$conf->{vm}{$name}{host}]).", 1);
 		if (lc($conf->{vm}{$name}{'state'}) eq "started")
 		{
-			print __LINE__."; [ DEBUG ] - Already running on: [$conf->{vm}{$name}{host}], skipping.\n" if $conf->{debug} == 2;
-			print "   - Already running on: [$conf->{vm}{$name}{host}].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Already running on: [$conf->{vm}{$name}{host}].", 1);
 			next;
 		}
 		read_vm_definition($conf, $name, $conf->{vm}{$name}{definition});
 		
 		my $preferred_node = "";
 		my $in_domain      = $conf->{vm}{$name}{domain};
-		print __LINE__."; [ DEBUG ] - in_domain: [$in_domain].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - in_domain: [$in_domain].", 2);
 		foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$in_domain}{priority}})
 		{
-			print __LINE__."; [ DEBUG ] - failoverdomain::${in_domain}::priority::${priority}::node: [$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - failoverdomain::${in_domain}::priority::${priority}::node: [$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node}].", 2);
 			$preferred_node = $conf->{failoverdomain}{$in_domain}{priority}{$priority}{node};
-			print __LINE__."; [ DEBUG ] - preferred_node: [$preferred_node].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - preferred_node: [$preferred_node].", 2);
 			last;
 		}
-		print "   - Preferred node is: [$preferred_node].\n" if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "- Preferred node is: [$preferred_node].", 1);
 		
 		my $preferred_node_is = "me";
 		my $backup_node_is    = "peer";
-		print __LINE__."; [ DEBUG ] - preferred_node: [$preferred_node], nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - preferred_node: [$preferred_node], nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}].", 2);
 		if ($preferred_node eq $conf->{nodes}{peer}{hostname})
 		{
 			$preferred_node_is = "peer";
 			$backup_node_is    = "me";
 		}
-		print __LINE__."; [ DEBUG ] - preferred_node_is: [$preferred_node_is], backup_node_is: [$backup_node_is].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - preferred_node_is: [$preferred_node_is], backup_node_is: [$backup_node_is].", 2);
 		
 		# Make sure I can boot the server on the preferred host.
 		my $can_boot_on_preferred = 1;
 		my $can_boot_on_backup    = 1;
-		print __LINE__."; [ DEBUG ] - nodes::${preferred_node_is}::healthy: [$conf->{nodes}{$preferred_node_is}{healthy}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${preferred_node_is}::healthy: [$conf->{nodes}{$preferred_node_is}{healthy}].", 2);
 		if ($conf->{nodes}{$preferred_node_is}{healthy} == 1)
 		{
 			# Loop through each LV attached to this server, determine which
 			# PVs are under it and make sure it/they are UpToDate.
-			print __LINE__."; [ DEBUG ] - Checking storage health of preferred node: [$preferred_node_is ($conf->{nodes}{$preferred_node_is}{hostname})].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking storage health of preferred node: [$preferred_node_is ($conf->{nodes}{$preferred_node_is}{hostname})].", 2);
 			foreach my $lv_path (sort {$a cmp $b} @{$conf->{vms}{$name}{lv_path}})
 			{
 				my $pvs = $conf->{lvs}{$lv_path}{pvs};
-				print __LINE__."; [ DEBUG ] - lv_path: [$lv_path], pvs: [$pvs]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lv_path: [$lv_path], pvs: [$pvs]", 2);
 				foreach my $device_path (split/,/, $pvs)
 				{
-					print __LINE__."; [ DEBUG ] - device_path: [$device_path]\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_path: [$device_path]", 2);
 					my $role       = $conf->{drbd}{$device_path}{$preferred_node_is}{role};
 					my $disk_state = $conf->{drbd}{$device_path}{$preferred_node_is}{disk_state};
-					print __LINE__."; [ DEBUG ] - preferred_node_is: [$preferred_node_is], role: [$role], disk_state: [$disk_state]\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - preferred_node_is: [$preferred_node_is], role: [$role], disk_state: [$disk_state]", 2);
 					if ((lc($role) ne "primary") or (lc($disk_state) ne "uptodate"))
 					{
-						print __LINE__."; [ DEBUG ] - Can't boot on preferred node.\n" if $conf->{debug} == 2;
-						print "   - I can not boot this server on the preferred node, storage isn't ready.\n" if $conf->{debug} == 1;
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Can't boot on preferred node.", 2);
+						logger($conf, $THIS_FILE, __LINE__, "- I can not boot this server on the preferred node, storage isn't ready.", 1);
 						$can_boot_on_preferred = 0;
 					}
 				}
@@ -515,21 +592,20 @@ sub start_servers
 		if (($conf->{nodes}{$backup_node_is}{healthy} == 1) && (not $can_boot_on_preferred))
 		{
 			# Peer isn't healthy, make sure I am  
-			print __LINE__."; [ DEBUG ] - Checking storage health of backup node: [$backup_node_is] ($conf->{nodes}{$backup_node_is}{hostname})].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking storage health of backup node: [$backup_node_is] ($conf->{nodes}{$backup_node_is}{hostname})].", 2);
 			foreach my $lv_path (sort {$a cmp $b} @{$conf->{vms}{$name}{lv_path}})
 			{
 				my $pvs = $conf->{lvs}{$lv_path}{pvs};
-				print __LINE__."; [ DEBUG ] - lv_path: [$lv_path], pvs: [$pvs]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lv_path: [$lv_path], pvs: [$pvs]", 2);
 				foreach my $device_path (split/,/, $pvs)
 				{
-					print __LINE__."; [ DEBUG ] - device_path: [$device_path]\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_path: [$device_path]", 2);
 					my $role       = $conf->{drbd}{$device_path}{$backup_node_is}{role};
 					my $disk_state = $conf->{drbd}{$device_path}{$backup_node_is}{disk_state};
-					print __LINE__."; [ DEBUG ] - backup_node_is: [$backup_node_is], role: [$role], disk_state: [$disk_state]\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - backup_node_is: [$backup_node_is], role: [$role], disk_state: [$disk_state]", 2);
 					if ((lc($role) ne "primary") or (lc($disk_state) ne "uptodate"))
 					{
-						print __LINE__."; [ DEBUG ] - Can't boot on backup node.\n" if $conf->{debug} == 2;
-						print "   - I can not boot this server on the backup node, storage isn't ready.\n" if $conf->{debug} == 1;
+						logger($conf, $THIS_FILE, __LINE__, "- I can not boot this server on the backup node, storage isn't ready.", 1);
 						$can_boot_on_backup = 0;
 					}
 				}
@@ -539,36 +615,35 @@ sub start_servers
 		# Ok, start!
 		if ((not $can_boot_on_preferred) && (not $can_boot_on_backup))
 		{
-			print __LINE__."; [ DEBUG ] - Neither node can run the server: [$name]. Skipping it.\n" if $conf->{debug} == 2;
-			print "   - Unable to boot this server, skipping it.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Unable to boot this server, skipping it.", 1);
 		}
 		else
 		{
-			my $fh = IO::Handle->new();
-			my $sc = "$conf->{path}{clusvcadm} -e vm:$name -m $preferred_node";
+			my $file_handle = IO::Handle->new();
+			my $shell_call  = "$conf->{path}{clusvcadm} -e vm:$name -m $preferred_node";
 			if ($can_boot_on_preferred)
 			{
 				my $preferred_node = $conf->{nodes}{$preferred_node_is}{hostname};
-				print __LINE__."; [ DEBUG ] - Starting server: [$name] on the preferred node: [$preferred_node].\n" if $conf->{debug} == 2;
-				print "   - Ready to start!\n" if $conf->{debug} == 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Starting server: [$name] on the preferred node: [$preferred_node].", 2);
+				logger($conf, $THIS_FILE, __LINE__, "- Ready to start!", 1);
 			}
 			elsif ($can_boot_on_backup)
 			{
 				my $backup_node = $conf->{nodes}{$backup_node_is}{hostname};
-				print __LINE__."; [ DEBUG ] - Starting server: [$name] on the backup node: [$backup_node].\n" if $conf->{debug} == 2;
-				$sc = "$conf->{path}{clusvcadm} -e vm:$name -m $backup_node";
-				print "   - Starting server on backup node.\n" if $conf->{debug} == 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Starting server: [$name] on the backup node: [$backup_node].", 2);
+				$shell_call = "$conf->{path}{clusvcadm} -e vm:$name -m $backup_node";
+				logger($conf, $THIS_FILE, __LINE__, "- Starting server on backup node.", 1);
 			}
-			print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 			}
-			$fh->close();
-			print "   - Started!\n" if $conf->{debug} == 1;
+			close $file_handle;
+			logger($conf, $THIS_FILE, __LINE__, "- Started!", 1);
 		}
 	}
 	
@@ -580,45 +655,46 @@ sub start_servers
 sub check_if_symlink
 {
 	my ($conf, $file, $node) = @_;
-	print __LINE__."; [ DEBUG ] - check_if_symlink(); file: [$file], node: [$node]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_if_symlink(); file: [$file], node: [$node]", 3);
 	my $target = "";
 	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ls} -l $file";
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{ls} -l $file";
 	if ($node eq "peer")
 	{
-		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{ls} -l $file\"";
+		$shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{ls} -l $file\"";
 	}
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		if ($line =~ /$file\s->\s(.*)/)
 		{
 			$target = $1;
-			print __LINE__."; [ DEBUG ] - target: [$target].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - target: [$target]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - target: [$target]", 4);
 	if ($target =~ /^\.\.\//)
 	{
 		my $path = dirname $file;
-		print __LINE__."; [ DEBUG ] - file: [$file], path: [$path], target: [$target].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - file: [$file], path: [$path], target: [$target]", 2);
 		while ($target =~ /^\.\.\//)
 		{
 			$path   =  dirname $path;
 			$target =~ s/^\.\.\///;
-			print __LINE__."; [ DEBUG ] - target: [$target], path: [$path].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - target: [$target], path: [$path]", 2);
 		}
 		$target =  $path."/".$target;
 		$target =~ s/\/\//\//g;
 	}
 	
-	print __LINE__."; [ DEBUG ] - target: [$target].\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - target: [$target]", 2);
 	return ($target);
 }
 
@@ -627,12 +703,13 @@ sub check_if_symlink
 sub check_clustat
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_clustat()", 4);
 	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{clustat}";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{clustat}";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
@@ -640,30 +717,30 @@ sub check_clustat
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		if ($line =~ /service:(.*?)\s(.*?)\s(.*)/)
 		{
 			my $service = $1;
 			my $host    = $2;
 			my $state   = $3;
-			print __LINE__."; [ DEBUG ] - service: [$service], host: [$host], state: [$state].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - service: [$service], host: [$host], state: [$state]", 2);
 			$conf->{services}{$service}{host}    = $host;
 			$conf->{services}{$service}{'state'} = $state;
-			print __LINE__."; [ DEBUG ] - service::${service}::host: [$conf->{services}{$service}{host}], service::${service}::state: [$conf->{services}{$service}{state}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - service::${service}::host: [$conf->{services}{$service}{host}], service::${service}::state: [$conf->{services}{$service}{state}]", 2);
 		}
 		if ($line =~ /vm:(.*?)\s(.*?)\s(.*)/)
 		{
 			my $name  = $1;
 			my $host  = $2;
 			my $state = $3;
-			print __LINE__."; [ DEBUG ] - name: [$name], host: [$host], state: [$state].\n" if $conf->{debug} == 2;
-
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - name: [$name], host: [$host], state: [$state]", 2);
+			
 			$conf->{vm}{$name}{host}    = $host;
 			$conf->{vm}{$name}{'state'} = $state;
-			print __LINE__."; [ DEBUG ] - vm::${name}::host: [$conf->{vm}{$name}{host}], vm::${name}::state: [$conf->{vm}{$name}{'state'}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - vm::${name}::host: [$conf->{vm}{$name}{host}], vm::${name}::state: [$conf->{vm}{$name}{'state'}]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -672,32 +749,32 @@ sub check_clustat
 sub read_df
 {
 	my ($conf, $node) = @_;
-	print __LINE__."; [ DEBUG ] - read_df(); node: [$node]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_df(); node: [$node]", 3);
 	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{df} -P";
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{df} -P";
 	if ($node eq "peer")
 	{
-		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{df} -P\"";
+		$shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{df} -P\"";
 	}
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print __LINE__."; [ DEBUG ] - line: [$line].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		next if ($line !~ /^\//);
 		if ($line =~ /^(\/.*?)\s.*?(\/.*)/)
 		{
 			my $device     = $1;
 			my $mountpoint = $2;
-			print __LINE__."; [ DEBUG ] - device: [$device], mountpoint: [$mountpoint].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], mountpoint: [$mountpoint]", 2);
 			$conf->{nodes}{$node}{mounts}{$device} = $mountpoint;
-			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	# I need to get the device-mapper name for the mounts, if there is one,
 	# as the LVs behind the gfs2 partitions often display in 'df' 
@@ -705,16 +782,16 @@ sub read_df
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{nodes}{$node}{mounts}})
 	{
 		my $mountpoint = $conf->{nodes}{$node}{mounts}{$device};
-		print __LINE__."; [ DEBUG ] - Checking if: [$device], mounted at: [$mountpoint] is a symlink.\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking if: [$device], mounted at: [$mountpoint] is a symlink", 2);
 		my ($target) = check_if_symlink($conf, $device, $node);
 		if ($target)
 		{
 			$conf->{nodes}{$node}{mounts}{$target} = $mountpoint;
-			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${target}: [$conf->{nodes}{$node}{mounts}{$target}].\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::mounts::${target}: [$conf->{nodes}{$node}{mounts}{$target}]", 2);
 		}
 		else
 		{
-			print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}, mounted at: [$conf->{nodes}{$node}{mounts}{$device}], is _not_ a symlink.\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::mounts::${device}, mounted at: [$conf->{nodes}{$node}{mounts}{$device}], is *not* a symlink", 2);
 		}
 	}
 	
@@ -728,10 +805,9 @@ sub read_df
 sub check_node_health
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_node_health()", 3);
 	
-	print " - Waiting up to: [$conf->{timeouts}{wait_for_node_health}] seconds for the nodes to become healthy.\n" if $conf->{debug} == 1;
-	print " - ." if $conf->{debug} == 1;
-	print __LINE__."; [ DEBUG ] - timeouts::wait_for_node_health: [$conf->{timeouts}{wait_for_node_health}]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "- Waiting up to: [$conf->{timeouts}{wait_for_node_health}] seconds for the nodes to become healthy.", 1);
 	for (0..$conf->{timeouts}{wait_for_node_health})
 	{
 		check_daemons($conf);
@@ -743,120 +819,108 @@ sub check_node_health
 		$conf->{nodes}{peer}{healthy} = 1;
 		foreach my $daemon (sort {$a cmp $b} keys %{$conf->{daemons}})
 		{
-			print __LINE__."; [ DEBUG ] - daemon: [$daemon]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - daemon: [$daemon]", 2);
 			foreach my $node ("me", "peer")
 			{
-				print __LINE__."; [ DEBUG ] - node: [$node], ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node], ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}]", 2);
 				if ($conf->{$node}{daemon}{$daemon}{rc} ne "0")
 				{
 					$conf->{nodes}{$node}{healthy} = 0;
-					print __LINE__."; [ DEBUG ] - nodes::${node}::healthy: [$conf->{nodes}{$node}{healthy}]\n" if $conf->{debug} == 2;
-					print "." if $conf->{debug} == 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::healthy: [$conf->{nodes}{$node}{healthy}]", 2);
 				}
 			}
 		}
 		
 		foreach my $clusterfs (sort {$a cmp $b} keys %{$conf->{cluster}{gfs2}})
 		{
-			print __LINE__."; [ DEBUG ] - clusterfs: [$clusterfs]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - clusterfs: [$clusterfs]", 2);
 			foreach my $node ("me", "peer")
 			{
-				print __LINE__."; [ DEBUG ] - node: [$node], cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node], cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]", 2);
 				my $device     = $conf->{cluster}{gfs2}{$clusterfs}{device};
 				my $mountpoint = $conf->{cluster}{gfs2}{$clusterfs}{mountpoint};
-				print __LINE__."; [ DEBUG ] - device: [$device], mountpoint: [$mountpoint]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], mountpoint: [$mountpoint]", 2);
 				my ($target) = check_if_symlink($conf, $device, $node);
 				if ($target)
 				{
 					my $old_device = $device;
 					$device        = $target;
 					$conf->{cluster}{gfs2}{$clusterfs}{device} = $target;
-					print __LINE__."; [ DEBUG ] - Adapting device to symlink target; cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], was: [$old_device].\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Adapting device to symlink target; cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], was: [$old_device]", 2);
 				}
 				
-				print __LINE__."; [ DEBUG ] - node: [$node], device: [$device].\n" if $conf->{debug} == 2;
-				#print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node], device: [$device]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]", 3);
 				if (not exists $conf->{nodes}{$node}{mounts}{$device})
 				{
-					print __LINE__."; [ DEBUG ] - nodes::${node}::mounts::${device} not mounted.\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::${node}::mounts::${device} not mounted", 2);
 					$conf->{nodes}{$node}{healthy} = 0;
-					print "." if $conf->{debug} == 1;
 				}
 				elsif ($conf->{nodes}{$node}{mounts}{$device} eq $conf->{cluster}{gfs2}{$clusterfs}{mountpoint})
 				{
-					print __LINE__."; [ DEBUG ] - clusterfs: [$clusterfs] mounted properly: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - clusterfs: [$clusterfs] mounted properly: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]", 2);
 				}
 				else
 				{
-					print __LINE__."; [ DEBUG ] - Unexpected mount point! nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], expected: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug} == 2;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Unexpected mount point! nodes::${node}::mounts::${device}: [$conf->{nodes}{$node}{mounts}{$device}], expected: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]", 2);
 					$conf->{nodes}{$node}{healthy} = 2;
 				}
 			}
 		}
 		foreach my $service (sort {$a cmp $b} keys %{$conf->{services}})
 		{
-			print __LINE__."; [ DEBUG ] - services::${service}::state: [$conf->{services}{$service}{'state'}], host: [$conf->{services}{$service}{host}], my host name: [$conf->{nodes}{me}{hostname}], peer's host name: [$conf->{nodes}{peer}{hostname}] \n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - services::${service}::state: [$conf->{services}{$service}{'state'}], host: [$conf->{services}{$service}{host}], my host name: [$conf->{nodes}{me}{hostname}], peer's host name: [$conf->{nodes}{peer}{hostname}]", 2);
 			my $node = $conf->{services}{$service}{host} eq $conf->{nodes}{me}{hostname} ? "me" : "peer";
 			if ($conf->{services}{$service}{'state'} eq "failed")
 			{
-				print __LINE__."; [ DEBUG ] - Service: [$service] on host: [$conf->{services}{$service}{'state'}] is 'failed'. Marking node: [$conf->{nodes}{$node}{hostname} ($node)] as unhealthy.\n" if $conf->{debug} == 2;
+				# TODO: Try to recover the service
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Service: [$service] on host: [$conf->{services}{$service}{'state'}] is 'failed'. Marking node: [$conf->{nodes}{$node}{hostname} ($node)] as unhealthy.", 0);
 				$conf->{nodes}{$node}{healthy} = 2;
 			}
 			elsif ($conf->{services}{$service}{'state'} eq "started")
 			{
-				print __LINE__."; [ DEBUG ] - Service: [$service] started on host: [$conf->{services}{$service}{host}].\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Service: [$service] started on host: [$conf->{services}{$service}{host}]", 2);
 			}
 			else
 			{
-				#print __LINE__."; [ DEBUG ] - Service: [$service] is in state: [$conf->{services}{$service}{'state'}].\n" if $conf->{debug} == 2;
-				print __LINE__."; [ DEBUG ] - Service: [$service] is in state: [$conf->{services}{$service}{'state'}].\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Service: [$service] is in state: [$conf->{services}{$service}{'state'}]", 2);
 				$conf->{nodes}{$node}{healthy} = 0;
-				print "." if $conf->{debug} == 1;
 			}
 		}
 		
 		# TODO: Make sure all LVs are 'ACTIVE' and, if not, try to
 		#       activate them.
-		
-		print __LINE__."; [ DEBUG ] - Node health; nodes::me::healthy: [$conf->{nodes}{me}{healthy}], nodes::peer::healthy: [$conf->{nodes}{peer}{healthy}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Node health; nodes::me::healthy: [$conf->{nodes}{me}{healthy}], nodes::peer::healthy: [$conf->{nodes}{peer}{healthy}]", 2);
 		if (($conf->{nodes}{me}{healthy} == 1) && ($conf->{nodes}{peer}{healthy} == 1))
 		{
-			print __LINE__."; [ DEBUG ] - Both nodes appear to be healthy now.\n" if $conf->{debug} == 2;
-			print " - Both nodes are now healthy.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Both nodes are now healthy", 1);
 			last;
 		}
 		elsif (($conf->{nodes}{me}{healthy} == 1) && ($conf->{nodes}{peer}{healthy} == 2))
 		{
-			print __LINE__."; [ DEBUG ] - I am healthy, but my peer is not. Exiting the health check.\n" if $conf->{debug} == 2;
-			print " - I am healthy, but my peer is not.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- I am healthy, but my peer is not", 1);
 			last;
 		}
 		elsif (($conf->{nodes}{me}{healthy} == 2) && ($conf->{nodes}{peer}{healthy} == 1))
 		{
-			print __LINE__."; [ DEBUG ] - My peer is healthy, but I am not.\n" if $conf->{debug} == 2;
-			print __LINE__."; [ DEBUG ] - Exiting. The peer's 'safe_anvil_start' should boot the servers.\n" if $conf->{debug} == 2;
-			print " - My peer is healthy, but I am not. Exiting.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- My peer is healthy, but I am not. Exiting", 1);
 			exit(3);
 		}
 		elsif (($conf->{nodes}{me}{healthy} == 2) && ($conf->{nodes}{peer}{healthy} == 2))
 		{
-			print __LINE__."; [ DEBUG ] - Both nodes have critical issues and can not proceed.\n" if $conf->{debug} == 2;
-			print "Both nodes are in a failed state. Unable to proceed.\n";
-			print " - Both nodes are unhealthy. Exiting.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Both nodes have critical issues and can not proceed", 0);
 			exit(4);
 		}
 		sleep 1;
 	}
 	if ($conf->{nodes}{me}{healthy} != 1)
 	{
-		print __LINE__."; [ DEBUG ] - Hit the timeout waiting for local nodes to become healthy, exiting.\n" if $conf->{debug} == 2;
-		print " - Timed out waiting for this node to become healthy, exiting.\n" if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Timed out waiting for this node to become healthy, exiting", 0);
 		exit(5);
 	}
 	elsif ($conf->{nodes}{peer}{healthy} != 1)
 	{
-		print __LINE__."; [ DEBUG ] - Hit the timeout waiting for my peer to become healthy, proceeding.\n" if $conf->{debug} == 2;
-		print " - Timed out waiting for my peer to become healthy, proceeding.\n" if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Timed out waiting for my peer to become healthy, proceeding.", 0);
 	}
 
 	return(0);
@@ -867,13 +931,14 @@ sub check_node_health
 sub start_daemon_simultaneously
 {
 	my ($conf, $daemon) = @_;
-	print __LINE__."; [ DEBUG ] - start_daemon_simultaneously(); daemon: [$daemon]\n" if $conf->{debug} == 2;
-	print " - Starting: [$daemon].\n" if $conf->{debug} == 1;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - start_daemon_simultaneously(); daemon: [$daemon]", 3);
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Starting: [$daemon]", 1);
 	
 	# I need to fork here because the calls won't return until cman
 	# either talks to it's peer or fences it.
 	my $parent_pid = $$;
-	print __LINE__."; [ DEBUG ($$) ] - Parent PID: [$parent_pid]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) ] - Parent PID: [$parent_pid]", 2);
 	
 	my %pids;
 	defined(my $pid = fork) or die "Can't fork(), error was: $!\n";
@@ -881,62 +946,65 @@ sub start_daemon_simultaneously
 	{
 		# Parent
 		$pids{$pid} = 1;
-		print __LINE__."; [ DEBUG ($$) - Parent ] - Spawned child with PID: [$pid] to start: [$daemon] on: [$conf->{nodes}{me}{hostname}].\n" if $conf->{debug} == 2;
-		print __LINE__."; [ DEBUG ($$) - Parent ] - me::daemon::${daemon}::rc: [$conf->{me}{daemon}{$daemon}{rc}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Parent ] - Spawned child with PID: [$pid] to start: [$daemon] on: [$conf->{nodes}{me}{hostname}]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Parent ] - me::daemon::${daemon}::rc: [$conf->{me}{daemon}{$daemon}{rc}]", 2);
 		if ($conf->{me}{daemon}{$daemon}{rc} eq "3")
 		{
 			# Start the daemon locally.
-			my $fh = IO::Handle->new();
-			my $sc = "$conf->{daemons}{$daemon} start; echo $daemon:\$?";
-			print __LINE__."; [ DEBUG ($$) - Parent ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-			print "   - Starting locally.\n" if $conf->{debug} == 1;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			my $file_handle = IO::Handle->new();
+			my $shell_call = "$conf->{daemons}{$daemon} start 2>&1; echo $daemon:\$?";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Parent ] - shell call: [$shell_call]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Starting locally", 1);
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print __LINE__."; [ DEBUG ($$) - Parent ] - line: [$line].\n" if $conf->{debug} == 2;
+				   $line =~ s/\r//;
+				   $line =~ s/\n//;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Parent ] - line: [$line]", 2);
 			}
-			$fh->close();
+			close $file_handle;
 		}
 		elsif ($conf->{me}{daemon}{$daemon}{rc} eq "0")
 		{
-			print __LINE__."; [ DEBUG ($$) - Parent ] - Daemon: [$daemon] already running locally.\n" if $conf->{debug} == 2;
-			print "   - Daemon: [$daemon] is already running locally.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Daemon: [$daemon] already running locally, no need to start it.", 1);
 		}
-		print __LINE__."; [ DEBUG ($$) - Parent ] - Parent process: [$pid ($$)] exiting.\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Parent ] - Parent process: [$pid ($$)] exiting.", 2);
 	}
 	else
 	{
 		# Child
-		print __LINE__."; [ DEBUG ($$) - Child ] - Child process continuing.\n" if $conf->{debug} == 2;
-		print __LINE__."; [ DEBUG ($$) - Child ] - peer::daemon::${daemon}::rc: [$conf->{peer}{daemon}{$daemon}{rc}].\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Child ] - Child process continuing.", 2);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Child ] - peer::daemon::${daemon}::rc: [$conf->{peer}{daemon}{$daemon}{rc}].", 2);
 		if ($conf->{peer}{daemon}{$daemon}{rc} eq "3")
 		{
 			# Start needed on the peer.
-			my $fh = IO::Handle->new();
-			my $sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} start; echo $daemon:\\\$?\"";
-			print __LINE__."; [ DEBUG ($$) - Child ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-			print "   - Starting on peer.\n" if $conf->{debug} == 1;
-			open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-			while(<$fh>)
+			my $file_handle = IO::Handle->new();
+			my $shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} start 2>&1; echo $daemon:\\\$?\"";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Child ] - shell call: [$shell_call].", 3);
+			logger($conf, $THIS_FILE, __LINE__, "- Starting on peer.", 1);
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print __LINE__."; [ DEBUG ($$) - Child ] - line: [$line].\n" if $conf->{debug} == 2;
+				   $line =~ s/\r//;
+				   $line =~ s/\n//;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Child ] - line: [$line].", 2);
 			}
-			$fh->close();
+			close $file_handle;
 		}
 		elsif ($conf->{peer}{daemon}{$daemon}{rc} eq "0")
 		{
-			print __LINE__."; [ DEBUG ($$) - Child ] - Daemon: [$daemon] already running on: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug} == 2;
-			print "   - Daemon: [$daemon] is already running on the peer.\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "- Daemon: [$daemon] is already running on the peer, no need to start.", 1);
 		}
-		sleep 1;	# This probably isn't needed.
-		print __LINE__."; [ DEBUG ($$) - Child ] - Child process exiting.\n" if $conf->{debug} == 2;
+		# NOTE: This probably isn't needed.
+		sleep 1;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) - Child ] - Child process exiting.", 2);
 		exit;
 	}
-	print __LINE__."; [ DEBUG ($$) ] - Done fork()ing.\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) ] - Done fork()ing.", 2);
 	
 	# Now loop until both child processes are dead.
 	# This helps to catch hung children.
@@ -958,11 +1026,11 @@ sub start_daemon_simultaneously
 			$pid = wait;
 			if ($pid < 1)
 			{
-				print __LINE__."; [ DEBUG ($$) ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.", 2);
 			}
 			else
 			{
-				print __LINE__."; [ DEBUG ($$) ] - Parent process told that child with PID: [$pid] has exited.\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) ] - Parent process told that child with PID: [$pid] has exited.", 2);
 			}
 			
 			# This deletes the just-exited child process' PID from the
@@ -974,7 +1042,7 @@ sub start_daemon_simultaneously
 			$saw_reaped++;
 			if ($saw_reaped > 2)
 			{
-				print "All children should be gone now but it seems the program went into an infinit loop.\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - All children should be gone now but it seems the program went into an infinit loop.", 0);
 				exit(3);
 			}
 		}
@@ -982,13 +1050,60 @@ sub start_daemon_simultaneously
 				# long as the PID returned by wait()
 				# was >0.
 	}
-	print __LINE__."; [ DEBUG ($$) ] - Done watching child processes.\n" if $conf->{debug} == 2;
-	print "   - done!\n" if $conf->{debug} == 1;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ($$) ] - Done watching child processes.", 2);
+	logger($conf, $THIS_FILE, __LINE__, "- done!", 1);
 	
 	if ($daemon eq "rgmanager")
 	{
-		print __LINE__."; [ DEBUG ] - rgmanager started, sleeping for a minute.\n" if $conf->{debug} == 2;
-		sleep 60;
+		logger($conf, $THIS_FILE, __LINE__, "- 'rgmanager' started, Waiting up to one minute for services to come online.", 1);
+		my $ok = 0;
+		for (0..60)
+		{
+			   $ok          = 0;
+			my $file_handle = IO::Handle->new();
+			my $shell_call  = "$conf->{path}{clustat}";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				next if not $line;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
+				if ($line =~ /Service Name/)
+				{
+					# rgmanager is running
+					$ok = 1;
+				}
+				if ($line =~ /service:(.*?)\s(.*?)\s(.*)/)
+				{
+					my $service = $1;
+					my $host    = $2;
+					my $state   = $3;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - service: [$service], host: [$host], state: [$state]", 2);
+					if ($state ne "started")
+					{
+						$ok = 0;
+					}
+				}
+			}
+			close $file_handle;
+			
+			if ($ok)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- All services started!", 1);
+				last;
+			}
+			sleep 1;
+		}
+		if (not $ok)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Not all services started in timeout period!", 1);
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Will proceed, might be able to recover.", 1);
+		}
 	}
 	
 	return(0);
@@ -999,53 +1114,54 @@ sub start_daemon_simultaneously
 sub get_daemon_state
 {
 	my ($conf, $daemon, $node) = @_;
-	print __LINE__."; [ DEBUG ] - get_daemon_state(); daemon: [$daemon], node: [$node]\n" if $conf->{debug} == 2;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_daemon_state(); daemon: [$daemon], node: [$node]", 2);
 
 	# Return code:
 	# 0   == Started
 	# 1   == Bad call
 	# 3   == Stopped
 	# 127 == File not found
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{daemons}{$daemon} status; echo $daemon:\$?";
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{daemons}{$daemon} status 2>&1 > /dev/null; echo $daemon:\$?";
 	if ($node eq "peer")
 	{
-		$sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} status; echo $daemon:\\\$?\"";
+		$shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{daemons}{$daemon} status 2>&1 > /dev/null; echo $daemon:\\\$?\"";
 	}
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 4);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		if ($line =~ /$daemon:(\d+)/)
 		{
 			$conf->{$node}{daemon}{$daemon}{rc} = $1;
-			print __LINE__."; [ DEBUG ] - ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ${node}::daemon::${daemon}::rc: [$conf->{$node}{daemon}{$daemon}{rc}] (0 = Running, 3 = Stopped)", 2);
 		}
 		elsif ($line =~ /No such file or directory/)
 		{
-			print "Unable to find daemon script: [$conf->{daemon}{$daemon}] on: [$conf->{nodes}{$node}{hostname}]\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to find daemon script: [$conf->{daemon}{$daemon}] on: [$conf->{nodes}{$node}{hostname}]", 0);
+			exit(7);
 		}
 		else
 		{
-			print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	if (($conf->{$node}{daemon}{$daemon}{rc} ne "0") && ($conf->{$node}{daemon}{$daemon}{rc} ne "3"))
 	{
 		if ($node eq "me")
 		{
-			print "Daemon: [$daemon] is in an unknown state on this node.\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Daemon: [$daemon] is in an unknown state on this node.", 0);
 		}
 		else
 		{
-			print "Daemon: [$daemon] is in an unknown state on: [$conf->{nodes}{peer}{hostname}].\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Daemon: [$daemon] is in an unknown state on: [$conf->{nodes}{peer}{hostname}].", 0);
 		}
-		print "Status return code was: [$conf->{$node}{daemon}{$daemon}{rc}].\n";
-		print "Only '0' (started) and '3' (stopped) are handled.\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Status return code was: [$conf->{$node}{daemon}{$daemon}{rc}].", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Only '0' (started) and '3' (stopped) are handled.", 0);
 		exit(2);
 	}
 	
@@ -1059,7 +1175,7 @@ sub check_daemons
 	
 	foreach my $daemon (sort {$a cmp $b} keys %{$conf->{daemons}})
 	{
-		print __LINE__."; [ DEBUG ] - Checking daemon: [$daemon] using: [$conf->{daemons}{$daemon}]\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking daemon: [$daemon] using: [$conf->{daemons}{$daemon}]", 4);
 		get_daemon_state($conf, $daemon, "me");
 		get_daemon_state($conf, $daemon, "peer");
 	}
@@ -1071,18 +1187,19 @@ sub check_daemons
 sub check_peer_connection
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_peer_connection()", 3);
 	
 	if (not $conf->{nodes}{peer}{hostname})
 	{
-		print "Can't connect to peer, peer host name unknown.\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Can't connect to peer, peer host name unknown.", 0);
 		exit(1);
 	}
 	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{echo} 1\"";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{echo} 1\"";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		# I don't care about this output
 		chomp;
@@ -1090,14 +1207,14 @@ sub check_peer_connection
 		if ($line eq "1")
 		{
 			$conf->{nodes}{peer}{reachable} = 1; 
-			print __LINE__."; [ DEBUG ] - nodes::peer_reachable: [$conf->{nodes}{peer}{reachable}]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::peer_reachable: [$conf->{nodes}{peer}{reachable}]", 2);
 		}
 		else
 		{
-			print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
 		}
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return($conf->{nodes}{peer}{reachable});
 }
@@ -1108,26 +1225,26 @@ sub read_cluster_conf
 {
 	my ($conf) = @_;
 	
-	my $in_domain = "";
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{cluster_conf}";
-	print " - Reading the cluster configuration.\n" if $conf->{debug} == 1;
-	print __LINE__."; [ DEBUG ] - File read: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $in_domain   = "";
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{path}{cluster_conf}";
+	logger($conf, $THIS_FILE, __LINE__, "- Reading the cluster configuration.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - File read: [$shell_call]", 2);
+	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		# I don't care about this output
 		chomp;
 		my $line = $_;
-		print __LINE__."; [ DEBUG ] - line: [$line]\n" if $conf->{debug} == 2;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 4);
 		
 		# Pull out the cluster name. This has no use yet, beyond
 		# telling the user.
 		if ($line =~ /<cluster .*?name="(.*?)"/)
 		{
 			$conf->{cluster}{name} = $1;
-			print __LINE__."; [ DEBUG ] - cluster::name: [$conf->{cluster}{name}]\n" if $conf->{debug} == 2;
-			print " - This cluster is called: [$conf->{cluster}{name}].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cluster::name: [$conf->{cluster}{name}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- This cluster is called: [$conf->{cluster}{name}].", 1);
 			next;
 		}
 		
@@ -1136,20 +1253,29 @@ sub read_cluster_conf
 		if ($line =~ /<clusternode .*?name="(.*?)"/)
 		{
 			my $node = $1;
-			if ($node ne $conf->{nodes}{me}{hostname})
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node].", 4);
+			if ($node eq $conf->{nodes}{me}{hostname})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Me; node: [$node]", 2);
+			}
+			else
 			{
 				# Shorten the names and see if they match.
-				print __LINE__."; [ DEBUG ] - nodes::me::hostname: [$conf->{nodes}{me}{hostname}], node: [$node]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Peer; node: [$node]", 2);
 				my ($short_hostname) = ($conf->{nodes}{me}{hostname} =~ /^(.*?)\./);
 				my ($short_nodename) = ($node                        =~ /^(.*?)\./);
-				print __LINE__."; [ DEBUG ] - short_hostname: [$short_hostname], short_nodename: [$short_nodename]\n" if $conf->{debug} == 2;
-				if ($short_hostname ne $short_nodename)
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - short_hostname: [$short_hostname], short_nodename: [$short_nodename]", 2);
+				if ($short_hostname eq $short_nodename)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Me; node: [$node]", 2);
+				}
+				else
 				{
 					$conf->{nodes}{peer}{hostname}   = $node;
 					$conf->{nodes}{peer}{short_name} = $short_nodename;
 					$conf->{nodes}{me}{short_name}   = $short_hostname;
-					print __LINE__."; [ DEBUG ] - nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}], nodes::peer::short_name: [$conf->{nodes}{peer}{short_name}], nodes::me::short_name: [$conf->{nodes}{me}{short_name}]\n" if $conf->{debug} == 2;
-					print " - This peer's host name is: [$conf->{nodes}{peer}{hostname}].\n" if $conf->{debug} == 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - nodes::peer::hostname: [$conf->{nodes}{peer}{hostname}], nodes::peer::short_name: [$conf->{nodes}{peer}{short_name}], nodes::me::short_name: [$conf->{nodes}{me}{short_name}]", 2);
+					logger($conf, $THIS_FILE, __LINE__, "- This peer's host name is: [$conf->{nodes}{peer}{hostname}].", 1);
 				}
 			}
 			next;
@@ -1157,16 +1283,14 @@ sub read_cluster_conf
 		
 		# The scripts I find here will be the daemons whose status I
 		# will check later to determine health.
-		# TODO: If a script service is defined but not in a service,
-		#       this script will fail.
 		if ($line =~ /<script file="(.*?)"/)
 		{
 			my $script_path = $1;
 			my ($script_name) = ($script_path =~ /.*?\/(\w+)$/);
-			#print __LINE__."; [ DEBUG ] - script_path: [$script_path], script_name: [$script_name]\n" if $conf->{debug} == 2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - script_path: [$script_path], script_name: [$script_name]", 3);
 			$conf->{daemons}{$script_name} = $script_path;
-			print __LINE__."; [ DEBUG ] - daemons::$script_name: [$conf->{daemons}{$script_name}]\n" if $conf->{debug} == 2;
-			#print " - Found a managed script service called: [$script_name].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - daemons::$script_name: [$conf->{daemons}{$script_name}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Found a managed script service called: [$script_name].", 1);
 			next;
 		}
 		
@@ -1182,8 +1306,8 @@ sub read_cluster_conf
 			my ($clusterfs)  = ($line =~ /name="(.*?)"/);
 			$conf->{cluster}{gfs2}{$clusterfs}{device}     = $device;
 			$conf->{cluster}{gfs2}{$clusterfs}{mountpoint} = $mountpoint,
-			print __LINE__."; [ DEBUG ] - cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]\n" if $conf->{debug} == 2;
-			#print " - Found a clustered file system called: [$clusterfs] which mounts at: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cluster::gfs2::${clusterfs}::device: [$conf->{cluster}{gfs2}{$clusterfs}{device}], cluster::gfs2::${clusterfs}::mountpoint: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Found a clustered file system called: [$clusterfs] which mounts at: [$conf->{cluster}{gfs2}{$clusterfs}{mountpoint}].", 1);
 			next;
 		}
 		
@@ -1200,8 +1324,8 @@ sub read_cluster_conf
 			$definition      =~ s/\/\//\//g;
 			$conf->{vm}{$name}{domain}     = $domain;
 			$conf->{vm}{$name}{definition} = $definition;
-			print __LINE__."; [ DEBUG ] - vm::${name}::domain: [$conf->{vm}{$name}{domain}], vm::${name}::definition: [$conf->{vm}{$name}{definition}]\n" if $conf->{debug} == 2;
-			print " - Found a server named: [$name] in the failover domain: [$conf->{vm}{$name}{domain}].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - vm::${name}::domain: [$conf->{vm}{$name}{domain}], vm::${name}::definition: [$conf->{vm}{$name}{definition}]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Found a server named: [$name] in the failover domain: [$conf->{vm}{$name}{domain}].", 1);
 			next;
 		}
 		
@@ -1210,8 +1334,8 @@ sub read_cluster_conf
 		if ($line =~ /<failoverdomain .*?name="(.*?)"/)
 		{
 			$in_domain = $1;
-			print __LINE__."; [ DEBUG ] - in_domain: [$in_domain]\n" if $conf->{debug} == 2;
-			#print " - Found the failover domain named: [$in_domain].\n" if $conf->{debug} == 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - in_domain: [$in_domain]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Found the failover domain named: [$in_domain].", 1);
 			next;
 		}
 		if ($in_domain)
@@ -1219,7 +1343,7 @@ sub read_cluster_conf
 			if ($line =~ /<\/failoverdomain>/)
 			{
 				$in_domain = "";
-				print __LINE__."; [ DEBUG ] - Exiting domain; in_domain: [$in_domain]\n" if $conf->{debug} == 2;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Exiting domain; in_domain: [$in_domain]", 3);
 				next;
 			}
 			else
@@ -1230,15 +1354,15 @@ sub read_cluster_conf
 					my ($priority) = ($line =~ / priority="(.*?)"/);
 					   $priority   = 1 if not $priority;
 					$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node} = $node;
-					print __LINE__."; [ DEBUG ] - failoverdomain::${in_domain}::priority::${priority}::node: [$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node}]\n" if $conf->{debug} == 2;
-					#print "   - Node named: [$node] has priority: [$priority].\n" if $conf->{debug} == 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - failoverdomain::${in_domain}::priority::${priority}::node: [$conf->{failoverdomain}{$in_domain}{priority}{$priority}{node}]", 4);
+					logger($conf, $THIS_FILE, __LINE__, "- Node named: [$node] has priority: [$priority].", 1);
 					next;
 				}
 			}
 		}
 		
 	}
-	$fh->close();
+	close $file_handle;
 	
 	return(0);
 }
@@ -1248,27 +1372,30 @@ sub read_cluster_conf
 sub read_hostname
 {
 	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_hostname()", 3);
 	
-	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{hostname}";
-	print __LINE__."; [ DEBUG ] - shell call: [$sc]\n" if $conf->{debug} == 2;
-	open ($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error was: $!\n";
-	while(<$fh>)
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{path}{hostname}";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
 		# I don't care about this output
 		chomp;
 		$conf->{nodes}{me}{hostname} = $_;
-		print __LINE__."; [ DEBUG ] - nodes::me::hostname: [$conf->{nodes}{me}{hostname}]\n" if $conf->{debug} == 2;
-		print " - My hostname is: [$conf->{nodes}{me}{hostname}]\n" if $conf->{debug} == 1;
+		logger($conf, $THIS_FILE, __LINE__, "- My hostname is: [$conf->{nodes}{me}{hostname}]", 1);
 	}
-	$fh->close();
+	close $file_handle;
 	
 	# If I am node 02, sleep for 1 minutes to help avoid conflicting with
 	# the startup being performed by node 1.
-	if ($conf->{nodes}{me}{hostname} =~ /n02/)
+	if (($conf->{nodes}{me}{hostname} =~ /n02/)    || 
+	    ($conf->{nodes}{me}{hostname} =~ /n2/)     || 
+	    ($conf->{nodes}{me}{hostname} =~ /node02/) || 
+	    ($conf->{nodes}{me}{hostname} =~ /node2/))
 	{
-		print " - I am not node 1, so I will sleep for a minute.\n" if $conf->{debug} == 1;
-		sleep 60;
+		logger($conf, $THIS_FILE, __LINE__, "- I am not node 1, so I will sleep for a minute to help avoid race conditions.", 1);
+		sleep $conf->{sys}{node2_sleep};
 	}
 	
 	return($conf->{nodes}{me}{hostname});
