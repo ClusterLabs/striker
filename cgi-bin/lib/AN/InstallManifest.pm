@@ -325,6 +325,10 @@ sub run_new_install_manifest
 		# /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
 		
+		# This sets up the various Striker tools like safe_anvil_start
+		# and so on.
+		configure_striker_tools($conf);
+		
 		# Set the root user's passwords as the last step to ensure
 		# reloading the browser works for as long as possible.
 		set_root_password($conf) or return(1);
@@ -363,6 +367,15 @@ sub run_new_install_manifest
 		# Enough of that, now everyone go home.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
 	}
+	
+	return(0);
+}
+
+# 
+sub configure_striker_tools
+{
+	my ($conf) = @_;
+	
 	
 	return(0);
 }
