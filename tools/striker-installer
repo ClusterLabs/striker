@@ -436,7 +436,7 @@ my $conf = {
 		create_bonds		=>	0,		# Gets set to '1' if 4 NICs are found.
 		customer		=>	"Striker Dashboard",
 		# Debug level; 0 == silent except errors, 1 == normal output, 2 == basic debug, 3 == extra debug, 4 == prepare your buffers
-		debug			=>	3,
+		debug			=>	2,
 		hostname		=>	"",
 		ipmi_gateway		=>	"",
 		ipmi_ip			=>	"",

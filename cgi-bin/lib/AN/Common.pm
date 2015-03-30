@@ -1002,7 +1002,7 @@ sub check_global_settings
 	# TODO: Make this smarter... For now, just check the SMTP username to
 	# see if it is default.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; smtp__username: [$smtp__username]\n");
-	if ((not $smtp__username) or ($smtp__username =~ /example/))
+	if ((not $smtp__username) or ($smtp__username =~ /example\.com/))
 	{
 		# Not configured yet.
 		$global_set = 0;
@@ -1083,13 +1083,13 @@ sub read_configuration_file
 			$line =~ s/\s+$//;
 			next if $line =~ /^#/;
 			next if not $line;
-			my ($var, $val) = (split/=/, $line, 2);
-			$var =~ s/^\s+//;
-			$var =~ s/\s+$//;
-			$val =~ s/^\s+//;
-			$val =~ s/\s+$//;
-			next if (not $var);
-			_make_hash_reference($conf, $var, $val);
+			my ($variable, $value) = (split/=/, $line, 2);
+			$variable =~ s/^\s+//;
+			$variable =~ s/\s+$//;
+			$value    =~ s/^\s+//;
+			$value    =~ s/\s+$//;
+			next if (not $variable);
+			_make_hash_reference($conf, $variable, $value);
 		}
 		close $file_handle;
 	}

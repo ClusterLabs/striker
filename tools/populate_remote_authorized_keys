@@ -38,6 +38,13 @@ use Net::SSH2;
 # Turn off buffering.
 $| = 1;
 
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID and EffectiveUID from throwing an error
+$< = $>;
+
 my $conf = {
 	executable	=>	{
 		gethostip	=>	"/usr/bin/gethostip",
@@ -71,7 +78,12 @@ if (not $conf->{sys}{switch_count})
 # This sanity-checks the passed in command line switches and returns '1' if
 # any problems were found.
 $conf->{sys}{username} = $ENV{LOGNAME} || $ENV{USER} || getpwuid($<);
-print "Starting: [$0]...\n";
+if ((not $conf->{sys}{username}) || ($conf->{sys}{username} eq "apache"))
+{
+        # taint!
+        $conf->{sys}{username} = ($ENV{_} =~ /^\/home\/(.*?)\//)[0];
+}
+print "Starting: [$0] for: [$conf->{sys}{username}]...\n";
 if (sanity_check_switches($conf))
 {
 	exit(7);
@@ -100,15 +112,17 @@ sub add_rsa_to_remote
 	
 	# Make sure the remote machine's fingerprints are in our 
 	# ~/.ssh/known_hosts.
-	my $known_hosts = "$ENV{'HOME'}/.ssh/known_hosts";
-	my $shell_call  = "
-if [ -e '$known_hosts' ] && \$(grep -q $conf->{sys}{remote} $known_hosts);
-then 
-	echo exists
-else 
-	echo add
-	ssh-keyscan $conf->{sys}{remote} >> $known_hosts
-fi";
+	my $known_hosts = "/home/$conf->{sys}{username}/.ssh/known_hosts";
+	my $shell_call  = "if [ -e '$known_hosts' ] && \$(grep -q $conf->{sys}{remote} $known_hosts); then echo exists; else echo add;  ssh-keyscan $conf->{sys}{remote} >> $known_hosts; fi";
+	# Untaint
+	if ($shell_call =~ /^(if .* fi)$/)
+	{
+		$shell_call = $1;
+	}
+	else
+	{
+		die "$THIS_FILE ".__LINE__."; Shell call tainted: [$shell_call]\n";
+	}
 	#print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -352,6 +366,9 @@ sub remote_call
 	{
 		#print "[ Debug ] ".__LINE__."; Opening an SSH connection to: [$user\@$remote:$port].\n";
 		$ssh_fh = Net::SSH2->new();
+		# Untaint.
+		if ($remote =~ /^(.*)$/)  { $remote = $1; }
+		if ($port   =~ /^(\d+)$/) { $port   = $1; }
 		if (not $ssh_fh->connect($remote, $port, Timeout => 10))
 		{
 			print "[ Debug ] ".__LINE__."; error: [$@]\n";
@@ -390,7 +407,10 @@ sub remote_call
 		if (not $error)
 		{
 			#print "[ Debug ] ".__LINE__."; user: [$user], password: [$password]\n";
-			if (not $ssh_fh->auth_password($user, $password)) 
+			$ssh_fh->auth_password($user, $password);
+			my $ok = $ssh_fh->auth_ok();
+			print "[ Debug ] ".__LINE__."; ok: [$ok]\n";
+                        if (not $ok)                                      
 			{
 				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
 				print "[ Debug ] ".__LINE__.";   Please check that the password provides is the correct password for 'root' on the target machine.\n";
@@ -526,7 +546,7 @@ sub get_local_rsa
 		# Generate.
 		print "- Generating: [$conf->{sys}{username}]'s RSA keys.\n";
 		print "- Please be patient! It can take a few minutes to gather entropy.\n";
-		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
+		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f /home/$conf->{sys}{username}/.ssh/id_rsa";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		print "/------------------\n";
 		while(<$file_handle>)
@@ -636,6 +656,16 @@ sub sanity_check_switches
 			# It's not an IP, try to resolve it.
 			print "- Resolving hostname: [$conf->{switches}{r}] to IP address.\n";
 			my $shell_call = "$conf->{executable}{gethostip} -d $conf->{switches}{r}";
+			# Untaint the call so that it works when called via
+			# setuid.
+			if ($shell_call =~ /^(\/.*? -d .*)$/)
+			{
+				$shell_call = $1;
+			}
+			else
+			{
+				die "$THIS_FILE ".__LINE__."; shell_call appears to be tainted: [$shell_call]\n";
+			}
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{

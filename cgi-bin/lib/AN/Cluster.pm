@@ -240,9 +240,9 @@ sub sanity_check_striker_conf
 			$conf->{hosts}{$this_nodes_1_name}{ip} = $this_nodes_1_ip;
 			if (not exists $conf->{hosts}{by_ip}{$this_nodes_1_ip})
 			{
-				$conf->{hosts}{by_ip}{$this_nodes_1_ip} = "";
+				$conf->{hosts}{by_ip}{$this_nodes_1_ip} = [];
 			}
-			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= "$this_nodes_1_name ";
+			push @{$conf->{hosts}{by_ip}{$this_nodes_1_ip}}, $this_nodes_1_name;
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_ip: [$this_nodes_2_ip]\n");
 		if (($this_nodes_2_name) && ($this_nodes_2_ip))
@@ -250,9 +250,9 @@ sub sanity_check_striker_conf
 			$conf->{hosts}{$this_nodes_2_name}{ip} = $this_nodes_2_ip;
 			if (not exists $conf->{hosts}{by_ip}{$this_nodes_2_ip})
 			{
-				$conf->{hosts}{by_ip}{$this_nodes_2_ip} = "";
+				$conf->{hosts}{by_ip}{$this_nodes_2_ip} = [];
 			}
-			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= "$this_nodes_2_name ";
+			push @{$conf->{hosts}{by_ip}{$this_nodes_2_ip}}, $this_nodes_2_name;
 		}
 		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_port: [$this_nodes_1_port]\n");
 		if (($this_nodes_1_name) && ($this_nodes_1_port))
@@ -297,12 +297,10 @@ sub sanity_check_striker_conf
 				delete $conf->{hosts}{$nodes_2_name};
 				foreach my $this_ip (keys %{$conf->{hosts}{by_ip}})
 				{
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/$nodes_1_name //;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/$nodes_2_name //;
-					if (not $conf->{hosts}{by_ip}{$this_ip})
-					{
-						delete $conf->{hosts}{by_ip}{$this_ip};
-					}
+					# Delete the nodes (empty values are
+					# skipped later)
+					delete_string_from_array($conf, $nodes_1_name, $conf->{hosts}{by_ip}{$this_ip});
+					delete_string_from_array($conf, $nodes_2_name, $conf->{hosts}{by_ip}{$this_ip});
 				}
 				
 				# Now delete the Anvil! from memory.
@@ -422,7 +420,7 @@ sub sanity_check_striker_conf
 	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
 	
 	# Make sure email addresses are.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
 	if (($conf->{cgi}{$smtp__username_key}) && ($conf->{cgi}{$smtp__username_key} ne "#!inherit!#") && ($conf->{cgi}{$smtp__username_key} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
 	{
 		$save = 0;
@@ -433,7 +431,7 @@ sub sanity_check_striker_conf
 			email	=>	$conf->{cgi}{$smtp__username_key},
 		}); 
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
 	if (($conf->{cgi}{$mail_data__to_key}) && ($conf->{cgi}{$mail_data__to_key} ne "#!inherit!#"))
 	{
 		foreach my $email (split /,/, $conf->{cgi}{$mail_data__to_key})
@@ -453,7 +451,7 @@ sub sanity_check_striker_conf
 	}
 	
 	# Make sure values that should be numerical are.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
 	if (($conf->{cgi}{$smtp__port_key}) && ($conf->{cgi}{$smtp__port_key} ne "#!inherit!#"))
 	{
 		$conf->{cgi}{$smtp__port_key} =~ s/,//;
@@ -531,10 +529,14 @@ sub sanity_check_striker_conf
 			$conf->{cluster}{$this_id}{mail_data}{sending_domain} = $conf->{cgi}{$mail_data__sending_domain_key};
 			
 			# Record hosts
-			$conf->{hosts}{$this_nodes_1_name}{ip}  =  $this_nodes_1_ip;
-			$conf->{hosts}{$this_nodes_2_name}{ip}  =  $this_nodes_2_ip;
-			$conf->{hosts}{by_ip}{$this_nodes_1_ip} .= " $this_nodes_1_name ";
-			$conf->{hosts}{by_ip}{$this_nodes_2_ip} .= " $this_nodes_2_name ";
+			$conf->{hosts}{$this_nodes_1_name}{ip} = $this_nodes_1_ip;
+			$conf->{hosts}{$this_nodes_2_name}{ip} = $this_nodes_2_ip;
+			
+			# Create empty arrays, if needed.
+			$conf->{hosts}{by_ip}{$this_nodes_1_ip} = [] if not $conf->{hosts}{by_ip}{$this_nodes_1_ip};
+			$conf->{hosts}{by_ip}{$this_nodes_2_ip} = [] if not $conf->{hosts}{by_ip}{$this_nodes_2_ip};
+			push @{$conf->{hosts}{by_ip}{$this_nodes_1_ip}}, $this_nodes_1_name;
+			push @{$conf->{hosts}{by_ip}{$this_nodes_2_ip}}, $this_nodes_2_name;
 			
 			# Search in 'hosts' and 'ssh_config' for previous
 			# entries with these names and delete them if found.
@@ -544,17 +546,11 @@ sub sanity_check_striker_conf
 				my $say_node_2 = $conf->{cgi}{$nodes_2_name_key};
 				if ($this_ip ne $this_nodes_1_ip)
 				{
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_1\s//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_1$//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_1$//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_1\s//;
+					delete_string_from_array($conf, $say_node_1, $conf->{hosts}{by_ip}{$this_ip});
 				}
 				if ($this_ip ne $this_nodes_2_ip)
 				{
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_2\s//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/\s$say_node_2$//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_2$//;
-					$conf->{hosts}{by_ip}{$this_ip} =~ s/^$say_node_2\s//;
+					delete_string_from_array($conf, $say_node_2, $conf->{hosts}{by_ip}{$this_ip});
 				}
 			}
 			foreach my $this_host (sort {$a cmp $b} keys %{$conf->{hosts}})
@@ -581,7 +577,6 @@ sub sanity_check_striker_conf
 			$conf->{smtp}{helo_domain}         = $conf->{cgi}{smtp__helo_domain};
 			$conf->{mail_data}{to}             = $conf->{cgi}{mail_data__to};
 			$conf->{mail_data}{sending_domain} = $conf->{cgi}{mail_data__sending_domain};
-			$conf->{sys}{use_spice_graphics}   = $conf->{cgi}{anvil_use_spice_graphics};
 		}
 	}
 
@@ -589,28 +584,41 @@ sub sanity_check_striker_conf
 	return ($save);
 }
 
+# This deletes an entry from an array by blanking it's value if it's existing
+# value matches the string passed in.
+sub delete_string_from_array
+{
+	my ($conf, $string, $array) = @_;
+	#record($conf, "$THIS_FILE ".__LINE__."; delete_string_from_array(); string: [$string]\n");
+	
+	# Delete the nodes (empty values are
+	# skipped later)
+	for (my $i = 0; $i < @{$array}; $i++)
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], value: [$array->[$i]], string: [$string]\n");
+		if ($array->[$i] eq $string)
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; Value matches, blanking.\n");
+			$array->[$i] = "";
+		}
+	}
+	
+	return($array);
+}
+
 # This writes out the new striker.conf file.
 sub write_new_striker_conf
 {
 	my ($conf, $say_date) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; write_new_striker_conf(); say_date: [$say_date]\n");
 	
 	# Tell the user where ready to go.
 	print AN::Common::template($conf, "config.html", "general-row-good", {
 		row	=>	"#!string!row_0018!#",
 		message	=>	"#!string!message_0015!#",
-	}); 
+	});
 	
-	# Start writing the config file.
-	my $shell_call = $conf->{path}{config_file};
-	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Can't write to: [$shell_call], error was: $!\n";
-	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
-		date	=>	$say_date,
-	}});
-	my $say_text = AN::Common::get_string($conf, {key => "text_0001"});
-	print $file_handle "$say_date_header\n";
-	print $file_handle "$say_text\n";
-
-	# If saving the global values, check for a couple substitutions.
+	# Tweak some values, if needed
 	if (not $conf->{cgi}{anvil_id})
 	{
 		# If the sending domain or helo domain are 
@@ -642,86 +650,238 @@ sub write_new_striker_conf
 		}
 	}
 	
-	# This forces spice graphics when provisioning and disables in-browser
-	# VNC.
-	$conf->{sys}{use_spice_graphics} = $conf->{cgi}{anvil_use_spice_graphics} ? $conf->{cgi}{anvil_use_spice_graphics} : 0;
-	
-	# The user doesn't currently set the 'smtp::helo_domain' or 
-	# 'mail_data::sending_domain', so for now we'll devine it from the user's 
-	# 'smtp::username'.
-	record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]\n");
-	if ($conf->{smtp}{helo_domain} eq "example.com")
+	# Read in the existing config file.
+	my $new_config = "";
+	if (-e $conf->{path}{config_file})
 	{
-		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
-		$conf->{smtp}{helo_domain} = $domain if $domain;
-		record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], domain: [$domain]\n");
+		my $anvil_id   = $conf->{cgi}{anvil_id};
+		my $shell_call = $conf->{path}{config_file};
+		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			
+			# We don't want to munge the config any more than
+			# necessary as the user may have customizations we
+			# don't want to clobber.
+			if (($line =~ /^#/) || ($line =~ /^\s+#/))
+			{
+				# This just makes sure we don't parse commented
+				# out example variable=value pairs
+			}
+			elsif ($line =~ /(.*?)=(.*)$/)
+			{
+				# Looks like a variable. Even if it's not
+				# though, that should be OK because we won't
+				# alter any variables we're not explicitely
+				# checking for.
+				my $variable = $1;
+				my $value    = $2;
+				
+				# Strip white spaces
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+$//;
+				$value    =~ s/^\s+//;
+				$value    =~ s/\s+$//;
+				#record($conf, "$THIS_FILE ".__LINE__."; variable: [$variable], value: [$value]\n");
+				
+				# We're setting certain values. If this
+				# variable matches on of the ones we're
+				# setting, overwrite the current value. 
+				# Otherwise, leave it as-is.
+				
+				if (($variable eq "smtp::encrypt_pass")        && ($conf->{cgi}{smtp__encrypt_pass}))        { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__encrypt_pass}/; }
+				if (($variable eq "smtp::helo_domain")         && ($conf->{cgi}{smtp__helo_domain}))         { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__helo_domain}/; }
+				if (($variable eq "smtp::password")            && ($conf->{cgi}{smtp__password}))            { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__password}/; }
+				if (($variable eq "smtp::port")                && ($conf->{cgi}{smtp__port}))                { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__port}/; }
+				if (($variable eq "smtp::security")            && ($conf->{cgi}{smtp__security}))            { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__security}/; }
+				if (($variable eq "smtp::server")              && ($conf->{cgi}{smtp__server}))              { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__server}/; }
+				if (($variable eq "smtp::username")            && ($conf->{cgi}{smtp__username}))            { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__username}/; }
+				if (($variable eq "mail_data::to")             && ($conf->{cgi}{mail_data__to}))             { $line =~ s/=.*$/=\t$conf->{cgi}{mail_data__to}/; }
+				if (($variable eq "mail_data::sending_domain") && ($conf->{cgi}{mail_data__sending_domain})) { $line =~ s/=.*$/=\t$conf->{cgi}{mail_data__sending_domain}/; }
+				
+				# If I am saving a new or edited Anvil!
+				# definition, check to see if it already exists
+				# in the config file. If so, edit it in place.
+				# If the Anvil! is not seen, it will be
+				# appended at the end.
+				if (($anvil_id) && ($anvil_id ne "new"))
+				{
+					$conf->{seen_anvil}{$anvil_id} = 1;
+					my $company_key     = "cluster__${anvil_id}__company";
+					my $description_key = "cluster__${anvil_id}__description";
+					my $name_key        = "cluster__${anvil_id}__name";
+					my $ricci_pw_key    = "cluster__${anvil_id}__ricci_pw";
+					my $root_pw_key     = "cluster__${anvil_id}__root_pw";
+					my $url_key         = "cluster__${anvil_id}__url";
+					# Nodes
+					my $node1_name_key  = "cluster__${anvil_id}__nodes_1_name";
+					my $node1_ip_key    = "cluster__${anvil_id}__nodes_1_ip";
+					my $node1_port_key  = "cluster__${anvil_id}__nodes_1_port";
+					my $node2_name_key  = "cluster__${anvil_id}__nodes_2_name";
+					my $node2_ip_key    = "cluster__${anvil_id}__nodes_2_ip";
+					my $node2_port_key  = "cluster__${anvil_id}__nodes_2_port";
+					# Mail stuff
+					my $smtp_server_key              = "cluster__${anvil_id}__smtp__server";
+					my $smtp_port_key                = "cluster__${anvil_id}__smtp__port";
+					my $smtp_username_key            = "cluster__${anvil_id}__smtp__username";
+					my $smtp_password_key            = "cluster__${anvil_id}__smtp__password";
+					my $smtp_security_key            = "cluster__${anvil_id}__smtp__security";
+					my $smtp_encrypt_pass_key        = "cluster__${anvil_id}__smtp__encrypt_pass";
+					my $smtp_helo_domain_key         = "cluster__${anvil_id}__smtp__helo_domain";
+					my $mail_data_to_key             = "cluster__${anvil_id}__mail_data__to";
+					my $mail_data_sending_domain_key = "cluster__${anvil_id}__mail_data__sending_domain";
+					
+					# If the anvil has been deleted, simply
+					# skip this line.
+					next if ((not $conf->{cgi}{$name_key}) && ($line =~ /cluster::$anvil_id::/));
+					
+					# Anvil! details
+					if ($variable eq "cluster::${anvil_id}::company")     { $line =~ s/=.*$/=\t$conf->{cgi}{$company_key}/; }
+					if ($variable eq "cluster::${anvil_id}::description") { $line =~ s/=.*$/=\t$conf->{cgi}{$description_key}/; }
+					if ($variable eq "cluster::${anvil_id}::name")        { $line =~ s/=.*$/=\t$conf->{cgi}{$name_key}/; }
+					if ($variable eq "cluster::${anvil_id}::nodes")       { $line =~ s/=.*$/=\t$conf->{cgi}{$node1_name_key} $conf->{cgi}{$node2_name_key}/; }
+					if ($variable eq "cluster::${anvil_id}::ricci_pw")    { $line =~ s/=.*$/=\t$conf->{cgi}{$ricci_pw_key}/; }
+					if ($variable eq "cluster::${anvil_id}::root_pw")     { $line =~ s/=.*$/=\t$conf->{cgi}{$root_pw_key}/; }
+					if ($variable eq "cluster::${anvil_id}::url")         { $line =~ s/=.*$/=\t$conf->{cgi}{$url_key}/; }
+					
+					# Mail variables
+					if ($variable eq "cluster::${anvil_id}::smtp::server")              { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_server_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::port")                { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_port_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::username")            { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_username_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::password")            { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_password_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::security")            { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_security_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::encrypt_pass")        { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_encrypt_pass_key}/; }
+					if ($variable eq "cluster::${anvil_id}::smtp::helo_domain")         { $line =~ s/=.*$/=\t$conf->{cgi}{$smtp_helo_domain_key}/; }
+					if ($variable eq "cluster::${anvil_id}::mail_data::to")             { $line =~ s/=.*$/=\t$conf->{cgi}{$mail_data_to_key}/; }
+					if ($variable eq "cluster::${anvil_id}::mail_data::sending_domain") { $line =~ s/=.*$/=\t$conf->{cgi}{$mail_data_sending_domain_key}/; }
+				}
+			}
+			$new_config .= "$line\n";
+		}
+		close $file_handle;
+		
+		### TODO: Look for and remove comments for now-deleted Anvil!
+		###       systems.
+		# If a new Anvil! has been created, add it.
+		# Now print the individual Anvil!s 
+		foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
+		{
+			next if not $this_id;
+			next if not $conf->{cluster}{$this_id}{name};
+			next if $conf->{seen_anvil}{$this_id};
+			
+			# If I am still here, this is an unrecorded Anvil!.
+			$new_config .= generate_anvil_entry_for_striker_conf($conf, $this_id);
+		}
 	}
-	if ($conf->{mail_data}{sending_domain} eq "example.com")
+	else
 	{
-		my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
-		$conf->{mail_data}{sending_domain} = $domain if $domain;
-		record($conf, "$THIS_FILE ".__LINE__."; mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]: domain: [$domain]\n");
+		# No existing config, write it new.
+		my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
+			date	=>	$say_date,
+		}});
+		my $say_text = AN::Common::get_string($conf, {key => "text_0001"});
+		$new_config .= "$say_date_header\n";
+		$new_config .= "$say_text\n";
+		
+		# The user doesn't currently set the 'smtp::helo_domain' or 
+		# 'mail_data::sending_domain', so for now we'll devine it from the user's 
+		# 'smtp::username'.
+		record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]\n");
+		if ($conf->{smtp}{helo_domain} eq "example.com")
+		{
+			my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+			$conf->{smtp}{helo_domain} = $domain if $domain;
+			record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], domain: [$domain]\n");
+		}
+		if ($conf->{mail_data}{sending_domain} eq "example.com")
+		{
+			my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
+			$conf->{mail_data}{sending_domain} = $domain if $domain;
+			record($conf, "$THIS_FILE ".__LINE__."; mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]: domain: [$domain]\n");
+		}
+		
+		# Write out the global values.
+		my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
+			smtp__server			=>	$conf->{smtp}{server},
+			smtp__port			=>	$conf->{smtp}{port},
+			smtp__username			=>	$conf->{smtp}{username},
+			smtp__password			=>	$conf->{smtp}{password},
+			smtp__security			=>	$conf->{smtp}{security},
+			smtp__encrypt_pass		=>	$conf->{smtp}{encrypt_pass},
+			smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
+			mail_data__to			=>	$conf->{mail_data}{to},
+			mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
+		}});
+		$new_config .= $say_body;
+		
+		# Now print the individual Anvil!s 
+		foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
+		{
+			next if not $this_id;
+			next if not $conf->{cluster}{$this_id}{name};
+			
+			my ($new_anvil_data) = generate_anvil_entry_for_striker_conf($conf, $this_id);
+		}
 	}
 	
-	# Write out the global values.
-	my $say_body = AN::Common::get_string($conf, {key => "text_0002", variables => {
-		smtp__server			=>	$conf->{smtp}{server},
-		smtp__port			=>	$conf->{smtp}{port},
-		smtp__username			=>	$conf->{smtp}{username},
-		smtp__password			=>	$conf->{smtp}{password},
-		smtp__security			=>	$conf->{smtp}{security},
-		smtp__encrypt_pass		=>	$conf->{smtp}{encrypt_pass},
-		smtp__helo_domain		=>	$conf->{smtp}{helo_domain},
-		mail_data__to			=>	$conf->{mail_data}{to},
-		mail_data__sending_domain	=>	$conf->{mail_data}{sending_domain},
-		use_spice_graphics		=>	$conf->{sys}{use_spice_graphics},
-	}});
-	print $file_handle $say_body;
-	
-	# Now print the individual Anvil!s 
-	foreach my $this_id (sort {$a cmp $b} keys %{$conf->{cluster}})
-	{
-		next if not $this_id;
-		next if not $conf->{cluster}{$this_id}{name};
-		
-		# Main Anvil! values, always recorded, even when blank.
-		print $file_handle "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
-		print $file_handle "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
-		print $file_handle "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
-		print $file_handle "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
-		print $file_handle "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
-		print $file_handle "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
-		print $file_handle "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
-		print $file_handle "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
-		
-		# Set any undefined values to '#!inherit!#'
-		$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
-		$conf->{cluster}{$this_id}{smtp}{port}                = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{port};
-		$conf->{cluster}{$this_id}{smtp}{username}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{username};
-		$conf->{cluster}{$this_id}{smtp}{password}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{password};
-		$conf->{cluster}{$this_id}{smtp}{security}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{security};
-		$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{encrypt_pass};
-		$conf->{cluster}{$this_id}{smtp}{helo_domain}         = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{helo_domain};
-		$conf->{cluster}{$this_id}{mail_data}{to}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{to};
-		$conf->{cluster}{$this_id}{mail_data}{sending_domain} = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{sending_domain};
-		
-		# Record this Anvil!'s overrides (or that it doesn't override,
-		# as the case may be).
-		print $file_handle "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
-		print $file_handle "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
-		print $file_handle "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
-		print $file_handle "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
-		print $file_handle "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
-		print $file_handle "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
-		print $file_handle "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
-		print $file_handle "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
-		print $file_handle "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
-	}
-	print $file_handle "\n";
+	# Save the file.
+	my $shell_call = $conf->{path}{config_file};
+	#my $shell_call = "/tmp/striker.conf";
+	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $new_config;
 	close $file_handle;
 	
 	return(0);
 }
+
+# This generates the raw text entry lines for an Anvil! that can be added to
+# striker.conf.
+sub generate_anvil_entry_for_striker_conf
+{
+	my ($conf, $this_id) = @_;
+	
+	my $data = "";
+	# Main Anvil! values, always recorded, even when blank.
+	$data .= "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
+	$data .= "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
+	$data .= "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
+	$data .= "cluster::${this_id}::name\t\t\t=\t$conf->{cluster}{$this_id}{name}\n";
+	$data .= "cluster::${this_id}::nodes\t\t\t=\t$conf->{cluster}{$this_id}{nodes}\n";
+	$data .= "cluster::${this_id}::ricci_pw\t\t\t=\t$conf->{cluster}{$this_id}{ricci_pw}\n";
+	$data .= "cluster::${this_id}::root_pw\t\t\t=\t$conf->{cluster}{$this_id}{root_pw}\n";
+	$data .= "cluster::${this_id}::url\t\t\t\t=\t$conf->{cluster}{$this_id}{url}\n";
+	
+	# Set any undefined values to '#!inherit!#'
+	$conf->{cluster}{$this_id}{smtp}{server}              = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{server};
+	$conf->{cluster}{$this_id}{smtp}{port}                = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{port};
+	$conf->{cluster}{$this_id}{smtp}{username}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{username};
+	$conf->{cluster}{$this_id}{smtp}{password}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{password};
+	$conf->{cluster}{$this_id}{smtp}{security}            = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{security};
+	$conf->{cluster}{$this_id}{smtp}{encrypt_pass}        = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{encrypt_pass};
+	$conf->{cluster}{$this_id}{smtp}{helo_domain}         = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{smtp}{helo_domain};
+	$conf->{cluster}{$this_id}{mail_data}{to}             = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{to};
+	$conf->{cluster}{$this_id}{mail_data}{sending_domain} = "#!inherit!#" if not exists $conf->{cluster}{$this_id}{mail_data}{sending_domain};
+	
+	# Record this Anvil!'s overrides (or that it doesn't override,
+	# as the case may be).
+	$data .= "cluster::${this_id}::smtp::server\t\t=\t$conf->{cluster}{$this_id}{smtp}{server}\n";
+	$data .= "cluster::${this_id}::smtp::port\t\t\t=\t$conf->{cluster}{$this_id}{smtp}{port}\n";
+	$data .= "cluster::${this_id}::smtp::username\t\t=\t$conf->{cluster}{$this_id}{smtp}{username}\n";
+	$data .= "cluster::${this_id}::smtp::password\t\t=\t$conf->{cluster}{$this_id}{smtp}{password}\n";
+	$data .= "cluster::${this_id}::smtp::security\t\t=\t$conf->{cluster}{$this_id}{smtp}{security}\n";
+	$data .= "cluster::${this_id}::smtp::encrypt_pass\t\t=\t$conf->{cluster}{$this_id}{smtp}{encrypt_pass}\n";
+	$data .= "cluster::${this_id}::smtp::helo_domain\t\t=\t$conf->{cluster}{$this_id}{smtp}{helo_domain}\n";
+	$data .= "cluster::${this_id}::mail_data::to\t\t=\t$conf->{cluster}{$this_id}{mail_data}{to}\n";
+	$data .= "cluster::${this_id}::mail_data::sending_domain\t=\t$conf->{cluster}{$this_id}{mail_data}{sending_domain}\n";
+	$data .= "\n";
+	
+	return($data);
+}
+	
 
 # This reads in /etc/hosts and later will try to match host names to IPs
 sub read_hosts
@@ -729,22 +889,20 @@ sub read_hosts
 	my ($conf) = @_;
 	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
-	$conf->{raw}{hosts} = [];
 	my $shell_call = "$conf->{path}{hosts}";
 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
-		my $line = $_;
-		push @{$conf->{raw}{hosts}}, $line;
-		$line =~ s/#.*$//;
-		$line =~ s/\s+$//;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/#.*$//;
+		   $line =~ s/\s+$//;
 		next if not $line;
-		next if $line =~ /^127.0.0.1\s/;
-		next if $line =~ /^::1\s/;
 		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		
 		my ($this_ip, $these_hosts);
+		### NOTE: We don't support IPv6 yet
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
 		{
 			$this_ip     = $1;
@@ -754,14 +912,24 @@ sub read_hosts
 				$conf->{hosts}{$this_host}{ip} = $this_ip;
 				if (not exists $conf->{hosts}{by_ip}{$this_ip})
 				{
-					$conf->{hosts}{by_ip}{$this_ip} = "";
+					$conf->{hosts}{by_ip}{$this_ip} = [];
 				}
-				$conf->{hosts}{by_ip}{$this_ip} .= "$this_host ";
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{hosts}{$this_host}{ip}] ($conf->{hosts}{by_ip}{$this_ip})\n");
+				push @{$conf->{hosts}{by_ip}{$this_ip}}, $this_host;
+				#record($conf, "$THIS_FILE ".__LINE__."; Added this_host: [$this_host] to array: [$conf->{hosts}{by_ip}{$this_ip}]\n");
 			}
 		}
 	}
 	close $file_handle;
+	
+	# Debug
+	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
+	{
+		#record($conf, "$THIS_FILE ".__LINE__."; $this_ip\n");
+		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
+		{
+			#record($conf, "$THIS_FILE ".__LINE__."; - this_host: [$this_host]\n");
+		}
+	}
 	
 	return(0);
 }
@@ -912,6 +1080,7 @@ sub write_new_hosts
 	
 	# Open the file
 	my $shell_call = $conf->{path}{hosts};
+	#my $shell_call = "/tmp/hosts";
 	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 	my $say_date_header = AN::Common::get_string($conf, {key => "text_0003", variables => {
 		date	=>	$say_date,
@@ -919,46 +1088,70 @@ sub write_new_hosts
 	my $say_host_header = AN::Common::get_string($conf, {key => "text_0005"});
 	print $file_handle "$say_date_header\n";
 	print $file_handle "$say_host_header\n";
-
-	# Cycle through the passed variables and add them to the hashed created
-	# when the hosts file was last read.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::ids: [$conf->{cgi}{ids}]\n");
+	
+	# Print 127.0.0.1 first to keep things cleaner.
+	my $hosts      = "";
+	my $seen_hosts = {};
+	my $this_ip    = "127.0.0.1";
+	foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
+	{
+		# Avoid dupes
+		next if $seen_hosts->{$this_ip}{$this_host};
+		$seen_hosts->{$this_ip}{$this_host} = 1;
+		$hosts .= "$this_host ";
+		#record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
+	}
+	   $hosts =~ s/ $//;
+	my $line  =  "$this_ip\t$hosts";
+	#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	print $file_handle "$line\n";
+	delete $conf->{hosts}{by_ip}{"127.0.0.1"};
+	
+	# Push the IPs into an array for sorting.
+	my @ip;
 	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
 	{
-		# A host can be one or more, separated by spaces.
-		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], hosts::by_ip::$this_ip: [$conf->{hosts}{by_ip}{$this_ip}]\n");
-		my $hosts =  $conf->{hosts}{by_ip}{$this_ip};
-		   $hosts =~ s/\s+$//;
-		   $hosts =~ s/\s+/ /g;
-		next if not $hosts;
-		record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
+		push @ip, $this_ip;
+	}
+	
+	# Sort (from gryng's post here: http://www.perlmonks.org/?node=Sorting%20IP%20Addresses%20Quickly)
+	my @sorted_ip = map  { $_->[0] }
+	                sort { $a->[1] <=> $b->[1] }
+	                map  { my ($x, $y) = (0, $_);
+	                       $x = $_ + $x * 256 for split(/\./, $y);
+	                       [$y,$x]
+	                     } @ip;
+	
+	# Cycle through the passed variables and add them to the hashed created
+	# when the hosts file was last read.
+	my $last_start_octals = "";
+	foreach my $this_ip (@sorted_ip)
+	{
+		# There can be one or more hosts for a given IP, contained in
+		# an array
+		my $hosts      = "";
+		my $seen_hosts = {};
+		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
+		{
+			# Avoid dupes
+			next if $seen_hosts->{$this_ip}{$this_host};
+			$seen_hosts->{$this_ip}{$this_host} = 1;
+			$hosts .= "$this_host ";
+			#record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
+		}
+		$hosts =~ s/ $//;
 		
-		# Search for duplicates
-		my $say_hosts = "";
-		if ($hosts =~ / /)
+		# Add a space if the first three octals have changed.
+		my $start_octals = ($this_ip =~ /^(\d+\.\d+\.\d+)\./)[0];
+		if ($start_octals ne $last_start_octals)
 		{
-			my $last_host = "";
-			record($conf, "$THIS_FILE ".__LINE__."; spliting hosts: [$say_hosts]\n");
-			foreach my $this_host (sort {$a cmp $b} split/ /, $hosts)
-			{
-				record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
-				next if not $this_host;
-				record($conf, "$THIS_FILE ".__LINE__."; last_host: [$last_host]\n");
-				next if $this_host eq $last_host;
-				$last_host = $this_host;
-				$say_hosts .= " $this_host ";
-				record($conf, "$THIS_FILE ".__LINE__."; say_hosts: [$say_hosts]\n");
-			}
-			$say_hosts =~ s/\s+$//;
-			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
+			$last_start_octals = $start_octals;
+			print $file_handle "\n";
 		}
-		else
-		{
-			$say_hosts = $hosts;
-			record($conf, "$THIS_FILE ".__LINE__."; = say_hosts: [$say_hosts]\n");
-		}
-		record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip], say_hosts: [$say_hosts]\n");
-		print $file_handle "$this_ip\t$say_hosts\n";
+		
+		my $line  =  "$this_ip\t$hosts";
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		print $file_handle "$line\n";
 	}
 	close $file_handle;
 	
@@ -974,12 +1167,14 @@ sub save_dashboard_configure
 	my ($save) = sanity_check_striker_conf($conf, $conf->{cgi}{section});
 	if ($save)
 	{
-		#die "$THIS_FILE ".__LINE__."; Testing...\n";
 		# Get the current date and time.
 		my ($say_date) =  get_date($conf, time);
+		#record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date]\n");
 		my $date       =  $say_date;
-		$date          =~ s/ /_/;
-		$say_date      =~ s/ /, /;
+		   $date       =~ s/ /_/g;
+		   $date       =~ s/:/-/g;
+		   $say_date   =~ s/ /, /g;
+		#record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date], date: [$date]\n");
 		
 		# Write out the new config file.
 		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date]\n");
@@ -1062,13 +1257,20 @@ sub save_dashboard_configure
 			}
 		}
 		
-		# Tell the user we've succeeded and provide a link to their new
-		# Anvil!.
+		# Which message to show will depend on whether we're saving an
+		# Anvil! or the global config. The 'message_0017' provides a
+		# link to the user's Anvil!, which is non-existent when saving
+		# global values.
+		my $message = AN::Common::get_string($conf, {key => "message_0377"});
+		if ($anvil_name)
+		{
+			$message = AN::Common::get_string($conf, {key => "message_0017", variables => {
+					url	=>	"?cluster=$anvil_name"
+				}});
+		}
 		print AN::Common::template($conf, "config.html", "general-row-good", {
 			row	=>	"#!string!row_0019!#",
-			message	=>	AN::Common::get_string($conf, {key => "message_0017", variables => {
-					url	=>	"?cluster=$anvil_name"
-				}}),
+			message	=>	$message,
 		});
 		print AN::Common::template($conf, "config.html", "close-table");
 		footer($conf);
@@ -1105,7 +1307,6 @@ sub load_configuration_defaults
 	$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 	$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 	$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-	$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 	
 	# If I've been passed an anvil name, load it's data.
 	if ($conf->{cgi}{anvil})
@@ -1360,7 +1561,6 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-		$conf->{cgi}{anvil_use_spice_graphics}  = defined $conf->{sys}{use_spice_graphics}   ? $conf->{sys}{use_spice_graphics}   : 0;
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
 	}
 	
@@ -1454,9 +1654,6 @@ sub show_common_config_section
 		mail_data__to_name		=>	$mail_data__to_key,
 		mail_data__to_id		=>	$mail_data__to_key,
 		mail_data__to_value		=>	$conf->{cgi}{$mail_data__to_key},
-		sys__use_spice_graphics		=>	"sys__use_spice_graphics",
-		sys__use_spice_graphics_id	=>	"sys__use_spice_graphics",
-		sys__use_spice_graphics_value	=>	$conf->{cgi}{anvil_use_spice_graphics},
 		push_button			=>	$push_button,
 	}); 
 	
@@ -1549,9 +1746,12 @@ sub push_config_to_anvil
 		
 		# We're going to want to backup each file before pushing the updates.
 		my ($say_date) =  get_date($conf, time);
+		record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date]\n");
 		my $date       =  $say_date;
-		$date          =~ s/ /_/;
-		$say_date      =~ s/ /, /;
+		   $date       =~ s/ /_/g;
+		   $date       =~ s/:/-/g;
+		   $say_date   =~ s/ /, /g;
+		record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date], date: [$date]\n");
 		
 		print AN::Common::template($conf, "config.html", "open-push-table");
 		foreach my $node (@{$conf->{up_nodes}})
@@ -3547,8 +3747,9 @@ sub load_install_manifest
 				}
 				elsif ($b eq "servers")
 				{
-					my $use_spice_graphics = $a->{$b}->[0]->{provision}->[0]->{use_spice_graphics};
-					$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
+					# I may use this later for other things.
+					#my $use_spice_graphics = $a->{$b}->[0]->{provision}->[0]->{use_spice_graphics};
+					#$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
 					#record($conf, "$THIS_FILE ".__LINE__."; Server provisioning; Use spice graphics: [$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics}]\n");
 				}
 				elsif ($b eq "media_library")
@@ -3787,9 +3988,6 @@ sub load_install_manifest
 		# iptables
 		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_open_vnc_ports: [$conf->{cgi}{anvil_open_vnc_ports}]\n");
-		
-		# Server provisioning
-		$conf->{cgi}{anvil_use_spice_graphics} = $conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics};
 		
 		# Storage Pool 1
 		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
@@ -4491,7 +4689,8 @@ Striker Version: $conf->{sys}{version}
 			<vnc ports=\"$conf->{cgi}{anvil_open_vnc_ports}\" />
 		</iptables>
 		<servers>
-			<provision use_spice_graphics=\"0\" />
+			<!-- This isn't used anymore, but this section may be useful for other things in the future, -->
+			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 	</common>
 </config>
@@ -7175,7 +7374,6 @@ sub header
 		id		=>	"refresh_icon",
 	}, "", 1);
 	
-	#if ($conf->{sys}{show_refresh})
 	if ($conf->{cgi}{config})
 	{
 		$conf->{sys}{cgi_string} =~ s/cluster=(.*?)&//;
