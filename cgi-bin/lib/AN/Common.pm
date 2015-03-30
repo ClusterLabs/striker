@@ -648,7 +648,7 @@ sub initialize_conf
 				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
-				safe_anvil_start	=>	"/sbin/safe_anvil_start",
+				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99z_safe_anvil_start",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],

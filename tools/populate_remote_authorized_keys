@@ -78,21 +78,16 @@ if (not $conf->{sys}{switch_count})
 
 # This sanity-checks the passed in command line switches and returns '1' if
 # any problems were found.
-$conf->{sys}{username} = $ENV{LOGNAME} || $ENV{USER} || getpwuid($<);
-if ((not $conf->{sys}{username}) || ($conf->{sys}{username} eq "apache"))
-{
-        # taint!
-        $conf->{sys}{username} = ($ENV{_} =~ /^\/home\/(.*?)\//)[0];
-}
-print "Starting: [$0] for: [$conf->{sys}{username}]...\n";
-if (sanity_check_switches($conf))
-{
-	exit(7);
-}
+$conf->{sys}{username} = ($0 =~ /^\/home\/(.*?)\//)[0];
 if (not $conf->{sys}{username})
 {
 	print "[ Error ] - Unable to determine which user I am running as.\n";
 	exit(1);
+}
+print "Starting: [$THIS_FILE] for: [$conf->{sys}{username}]...\n";
+if (sanity_check_switches($conf))
+{
+	exit(7);
 }
 print "- Adding local user: [$conf->{sys}{username}]'s RSA key to: [$conf->{sys}{remote}]\n";
 

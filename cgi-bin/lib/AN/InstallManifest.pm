@@ -375,8 +375,10 @@ sub run_new_install_manifest
 sub configure_striker_tools
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools();\n");
 	
 	# If requested, enable safe_anvil_start.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
 	if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
 	{
 		# Don't fail on this, yet. Maybe later.
@@ -405,7 +407,7 @@ then
         then
                 echo '$conf->{path}{nodes}{safe_anvil_start_link} already exists.'
         else
-                ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}'
+                ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}
                 if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
                 then
                         echo '$conf->{path}{nodes}{safe_anvil_start_link} link created.'
@@ -416,7 +418,7 @@ then
 else 
         echo '$conf->{path}{nodes}{safe_anvil_start} not found'
 fi";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
