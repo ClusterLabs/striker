@@ -42,8 +42,9 @@ $| = 1;
 # via a setuid wrapper.
 $ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
 
-# Prevent a discrepency between UID and EffectiveUID from throwing an error
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
 $< = $>;
+$( = $);
 
 my $conf = {
 	executable	=>	{

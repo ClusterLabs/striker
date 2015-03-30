@@ -695,7 +695,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0279">NTP 2</key>
 		<key name="row_0280">Booting Server</key>
 		<key name="row_0281">Adding</key>
-		<key name="row_0282"></key>
+		<key name="row_0282">Enabling 'Safe #!string!brand_0004!# Start'</key>
 		<key name="row_0283"></key>
 		<key name="row_0284"></key>
 		<key name="row_0285"></key>
@@ -1075,10 +1075,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0103">Registration needed</key>
 		<key name="state_0104">No, but no Internet</key>
 		<key name="state_0105">Already registered</key>
-		<key name="state_0106"></key>
-		<key name="state_0107"></key>
-		<key name="state_0108"></key>
-		<key name="state_0109"></key>
+		<key name="state_0106">Enabled</key>
+		<key name="state_0107">Already Enabled</key>
+		<key name="state_0108"><![CDATA[Failed to find: [<span class="highlight_detail">#!variable!file!#</span>]]]></key>
+		<key name="state_0109">Failed to create symlink</key>
 		<key name="state_0110"></key>
 		
 		<!-- Titles used in tables -->

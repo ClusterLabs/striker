@@ -648,6 +648,8 @@ sub initialize_conf
 				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
+				safe_anvil_start	=>	"/sbin/safe_anvil_start",
+				safe_anvil_start_link	=>	"/etc/rc3.d/S99z_safe_anvil_start",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
@@ -824,7 +826,10 @@ sub initialize_conf
 					# site will never have Internet access.
 					internet_check		=>	1,
 					rhn_checks		=>	1,
-				}
+				},
+				# This controls whether safe_anvil_start is
+				# enabled or not.
+				use_safe_anvil_start	=>	0,
 			},
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
