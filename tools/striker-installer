@@ -607,6 +607,7 @@ configure_striker_tools($conf);
 if ($conf->{switches}{'run-rc-local'})
 {
 	my $shell_call = "sh /etc/rc.local";
+	logger($conf, $THIS_FILE, __LINE__, "Running: [$shell_call] on user request.", 1);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -615,6 +616,10 @@ if ($conf->{switches}{'run-rc-local'})
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
 	}
 	close $file_handle;
+}
+else
+{
+	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of /etc/rc.local.", 1);
 }
 
 # If the user should reboot, tell them.
@@ -3965,7 +3970,18 @@ sub configure_iptables
 		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 3);
 		if (($line =~ /--state NEW/) && ($line =~ /--dport 69/) && ($line =~ /ACCEPT/))
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Trivial FTP is already enabled.", 1);
+			if ($line =~ /tcp/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Trivial FTP, tcp port is already enabled.", 1);
+			}
+			elsif ($line =~ /udp/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Trivial FTP, udp port is already enabled.", 1);
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Trivial FTP port is already enabled.", 1);
+			}
 			$tftp_open = 1;
 		}
 		if (($line =~ /--state NEW/) && ($line =~ /--dport 80/) && ($line =~ /ACCEPT/))
@@ -4850,8 +4866,6 @@ sub get_list_of_installed_packages
 {
 	my ($conf) = @_;
 	
-	# TODO: Use 'tput cols' to get the user's screen width.
-	my $dots = 0;
 	logger($conf, $THIS_FILE, __LINE__, "Getting a list of currently installed packages.\n- ", 1);
 	my $shell_call = "$conf->{executable}{yum} list installed";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -4879,16 +4893,6 @@ sub get_list_of_installed_packages
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - a) Package: [$package], arch: [$arch], version: [$version]", 3);
-			if ($dots > 75)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "\n- .", 1);
-				$dots = 0;
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, ".", 1);
-				$dots++;
-			}
 		}
 		elsif ($line =~ /^(.*?)\.(.*?)\s+(.*)/)
 		{
@@ -4905,16 +4909,6 @@ sub get_list_of_installed_packages
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - b) Package: [$package], arch: [$arch], version: [$version]", 3);
-			if ($dots > 75)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "\n- .", 1);
-				$dots = 0;
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, ".", 1);
-				$dots++;
-			}
 		}
 		elsif ($line =~ /^(.*?)\.(\S*)$/)
 		{
@@ -4929,16 +4923,6 @@ sub get_list_of_installed_packages
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c) Package: [$package], arch: [$arch]", 3);
-			if ($dots > 75)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "\n- .", 1);
-				$dots = 0;
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, ".", 1);
-				$dots++;
-			}
 		}
 	}
 	close $file_handle;

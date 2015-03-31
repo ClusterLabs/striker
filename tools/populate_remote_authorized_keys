@@ -542,7 +542,19 @@ sub get_local_rsa
 		# Generate.
 		print "- Generating: [$conf->{sys}{username}]'s RSA keys.\n";
 		print "- Please be patient! It can take a few minutes to gather entropy.\n";
-		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f /home/$conf->{sys}{username}/.ssh/id_rsa";
+		my $ssh_directory = "/home/$conf->{sys}{username}/.ssh";
+		my $shell_call    = "
+if [ ! -e '$ssh_directory' ];
+then
+	mkdir $ssh_directory
+	chown $conf->{sys}{username}:$conf->{sys}{username} $ssh_directory
+	chmod 700 $ssh_directory
+fi
+$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f /home/$conf->{sys}{username}/.ssh/id_rsa
+chown $conf->{sys}{username}:$conf->{sys}{username} /home/$conf->{sys}{username}/.ssh/id_rsa
+chown $conf->{sys}{username}:$conf->{sys}{username} /home/$conf->{sys}{username}/.ssh/id_rsa.pub
+chmod 600 /home/$conf->{sys}{username}/.ssh/id_rsa
+chown 644 /home/$conf->{sys}{username}/.ssh/id_rsa.pub";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		print "/------------------\n";
 		while(<$file_handle>)

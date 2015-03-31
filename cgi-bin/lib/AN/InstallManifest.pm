@@ -386,9 +386,80 @@ sub configure_striker_tools
 	}
 	
 	# Configure Scanner
+	if ($conf->{sys}{install_manifest}{use_anvil_kick_apc_ups})
+	{
+		# Don't fail on this, yet. Maybe later.
+		enable_anvil_kick_apc_ups($conf);
+	}
 	
 	return(0);
 }
+
+# This creates the run-level 3 link to enable anvil-kick-apc-ups.
+sub enable_anvil_kick_apc_ups_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups_on_node(); node: [$node]\n");
+	
+	my $return_code = 0;
+	my $shell_call = "
+if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups}' ];
+then 
+        echo '$conf->{path}{nodes}{anvil_kick_apc_ups} exists, creating symlink';
+        if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+        then
+                echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} already exists.'
+        else
+                ln -s $conf->{path}{nodes}{anvil_kick_apc_ups} $conf->{path}{nodes}{anvil_kick_apc_ups_link}
+                if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+                then
+                        echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} link created.'
+                else
+                        echo 'Failed to create $conf->{path}{nodes}{anvil_kick_apc_ups_link}.'
+                fi
+        fi
+else 
+        echo '$conf->{path}{nodes}{anvil_kick_apc_ups} not found'
+fi";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /already exists/i)
+		{
+			$return_code = 1;
+		}
+		if ($line =~ /link created/i)
+		{
+			$return_code = 0;
+		}
+		if ($line =~ /Failed to create/i)
+		{
+			$return_code = 2;
+		}
+		if ($line =~ /not found/i)
+		{
+			$return_code = 3;
+		}
+	}
+	
+	# 0 = Link created.
+	# 1 = Symlink already exists
+	# 2 = Failed to create link.
+	# 3 = anvil_kick_apc_ups not found
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
+} 
 
 # This creates the run-level 3 link to enable safe_anvil_start.
 sub enable_safe_anvil_start_on_node
@@ -458,6 +529,78 @@ fi";
 	return($return_code);
 } 
 
+# This creates a symlink in run-level 3 to run anvil-kick-apc-ups on boot.
+sub enable_anvil_kick_apc_ups
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups()\n");
+	
+	my $ok = 1;
+	my ($node1_rc) = enable_anvil_kick_apc_ups_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = enable_anvil_kick_apc_ups_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+	# 0 = Link created.
+	# 1 = Symlink already exists
+	# 2 = Failed to create link.
+	# 3 = anvil-kick-apc-ups not found
+	
+	# Report
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0106!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0106!#";
+	# Node 1
+	if ($node1_rc eq "1")
+	{
+		# Symlink already exists
+		$node1_message = "#!string!state_0107!#";
+	}
+	elsif ($node1_rc eq "2")
+	{
+		# Failed to create link
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0109!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "3")
+	{
+		# anvil-kick-apc-ups not found
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{anvil_kick_apc_ups}" }});
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_rc eq "1")
+	{
+		# Symlink already exists
+		$node2_message = "#!string!state_0107!#";
+	}
+	elsif ($node2_rc eq "2")
+	{
+		# Failed to create link
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0109!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "3")
+	{
+		# anvil-kick-apc-ups not found
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{anvil_kick_apc_ups}" }});
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0283!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
 # This creates a symlink in run-level 3 to run safe_anvil_start on boot.
 sub enable_safe_anvil_start
 {
@@ -481,18 +624,19 @@ sub enable_safe_anvil_start
 	# Node 1
 	if ($node1_rc eq "1")
 	{
+		# Symlink already exists
 		$node1_message = "#!string!state_0107!#";
 	}
 	elsif ($node1_rc eq "2")
 	{
-		# Failed to mount /shared
+		# Failed to create link
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = "#!string!state_0109!#";
 		$ok            = 0;
 	}
 	elsif ($node1_rc eq "3")
 	{
-		# GFS2 LSB check failed
+		# safe_anvil_start not found
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{safe_anvil_start}" }});
 		$ok            = 0;
@@ -500,18 +644,19 @@ sub enable_safe_anvil_start
 	# Node 2
 	if ($node2_rc eq "1")
 	{
+		# Symlink already exists
 		$node2_message = "#!string!state_0107!#";
 	}
 	elsif ($node2_rc eq "2")
 	{
-		# Failed to mount /shared
+		# Failed to create link
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0109!#";
 		$ok            = 0;
 	}
 	elsif ($node2_rc eq "3")
 	{
-		# GFS2 LSB check failed
+		# safe_anvil_start not found
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{safe_anvil_start}" }});
 		$ok            = 0;

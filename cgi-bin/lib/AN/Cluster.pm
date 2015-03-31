@@ -7595,21 +7595,37 @@ sub header
 		}, "", 1);
 	}
 	
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV key: [$key]\t->\t[$ENV{$key}]\n"); }
+	#$conf->{sys}{reload_page_timer} = 1;
+	
 	# We only want the auto-refresh function to activate in certain pages.
 	my $use_refresh = 0;
 	record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
 	if ($conf->{sys}{reload_page_timer})
 	{
-		if ($conf->{sys}{cgi_string} eq "?cluster=$conf->{cgi}{cluster}")
+		record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}], ENV{REQUEST_URI}: [$ENV{REQUEST_URI}]\n");
+		if (($conf->{sys}{cgi_string} eq "?cluster=$conf->{cgi}{cluster}") && 
+		    ($ENV{REQUEST_URI} !~ /mediaLibrary/i))
 		{
+			record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
 			$use_refresh = 1;
+		}
+		else
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
 		}
 		if ($conf->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
 		{
 			my $final = $1;
+			record($conf, "$THIS_FILE ".__LINE__."; final: [$final]\n");
 			if ($final !~ /&/)
 			{
+				record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
 				$use_refresh = 1;
+			}
+			else
+			{
+				record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
 			}
 		}
 	}
@@ -10731,15 +10747,16 @@ sub parse_daemons
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd_exit:     [$clvmd_exit]\n");
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2_exit:      [$gfs2_exit]\n");
 		if (($rgmanager_exit eq "0") ||
-		($drbd_exit eq "0") ||
-		($clvmd_exit eq "0") ||
-		($gfs2_exit eq "0"))
+		    ($drbd_exit eq "0") ||
+		    ($clvmd_exit eq "0") ||
+		    ($gfs2_exit eq "0"))
 		{
-			# Uh oh...
-			my $message = AN::Common::get_string($conf, {key => "message_0044", variables => {
-				node	=>	$node,
-			}});
-			error($conf, $message); 
+			# This can happen if the user loads the page (or it
+			# auto-loads) while the storage is coming online.
+			#my $message = AN::Common::get_string($conf, {key => "message_0044", variables => {
+			#	node	=>	$node,
+			#}});
+			#error($conf, $message); 
 		}
 		else
 		{
