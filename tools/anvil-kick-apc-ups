@@ -151,12 +151,25 @@ my $conf = {
 		striker_conf	=>	"/etc/striker/striker.conf",
 	},
 	snmp		=>	{
+		min_return_time	=>	{
+			oid		=>	'.1.3.6.1.4.1.318.1.1.1.5.2.29.0',
+			value		=>	{
+				old		=>	"",
+				new		=>	"",
+			},
+		},
+		model_number	=>	{
+			oid		=>	'.1.3.6.1.4.1.318.1.1.1.1.2.5.0',
+			value		=>	"",
+		},
 		oid_name	=>	{
 			'1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1'	=>	"Sleep Time; Main Outlet Group",
 			'1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2'	=>	"Sleep Time; Outlet Group 1",
 			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.4.2'	=>	"Power-Off delay",
 			'.1.3.6.1.4.1.318.1.1.1.6.2.6.0'	=>	"Power-On",
 			'.1.3.6.1.4.1.318.1.1.1.6.2.3.0'	=>	"Power-Off",
+			'.1.3.6.1.4.1.318.1.1.1.1.2.5.0'	=>	"Model Number",
+			'.1.3.6.1.4.1.318.1.1.1.5.2.29.0'	=>	"Minimum Mains Return Time",	# how long to wait after the AC mains return before restoring power
 		},
 		sleep_time	=>	{
 			main_ups	=>	{
@@ -230,6 +243,7 @@ my $conf = {
 				devices		=>	[],
 				poweroff_delay	=>	600,
 				sleep_time	=>	300,	# Minutes; will be converted to seconds and then divided by timeticks when set.
+				min_return_time	=>	60000,	# Ten minutes, in time ticks (-t)
 			},
 		},
 		debug		=>	0,
@@ -348,6 +362,10 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		logger($conf, $THIS_FILE, __LINE__, "  - Setting the Power-off delay to: [$conf->{sys}{apc}{ups}{poweroff_delay} seconds].");
 		my ($power_off_delay) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid}, $conf->{sys}{apc}{ups}{poweroff_delay});
 		
+		# Set the minimum return time delay.
+		logger($conf, $THIS_FILE, __LINE__, "  - Setting the minimum return time delay to: [$conf->{sys}{apc}{ups}{min_return_time} ticks] (1 tick = 10ms).");
+		my ($min_return_time) = set_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid}, $conf->{sys}{apc}{ups}{min_return_time});
+		
 		# Do the needful
 		logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed power off!");
 		my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
@@ -412,7 +430,8 @@ fi";
 	# If the line wasn't found, add it.
 	if ($task eq "add")
 	{
-		my $call = "/sbin/striker/$THIS_FILE";
+		# $0 contains the actual path and program name in use at runtime
+		my $call = $0;
 		if ($conf->{switches}{ups})
 		{
 			$call .= " --ups $conf->{switches}{ups}";
@@ -477,6 +496,37 @@ sub set_oid_integer
 	return($value, $shell_call);
 }
 
+# This sets an OID with to a time tick (-t, 10ms) value.
+sub set_oid_ticks
+{
+	my ($conf, $ups, $oid, $value) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_ticks(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
+	
+	my $shell_call = "$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community}{'write'} $ups $oid t $value";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		if ($line =~ /Timeticks: \((\d+)\)/i)
+		{
+			   $value     = $1;
+			my $say_value = ($value / 100);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], set to value: [$value] ($say_value seconds)") if $conf->{sys}{debug};
+		}
+		if ($line =~ /Failed object/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], not set! Does this OID exist on your UPS?");
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+	return($value, $shell_call);
+}
+
 # This calls the UPS and tries to get the current settings.
 sub get_current_settings
 {
@@ -494,6 +544,7 @@ sub get_current_settings
 	my ($sleep_time_mains_ups) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid});
 	my ($sleep_time_group_one) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group_one}{oid});
 	my ($power_off_delay)      = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid});
+	my ($min_return_time)      = read_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid});
 	
 	$conf->{snmp}{current_state}{value}{$type}         = $current_state;
 	$conf->{snmp}{sleep_time}{main_ups}{value}{$type}  = $sleep_time_mains_ups;
@@ -502,6 +553,46 @@ sub get_current_settings
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - snmp::current_state::value::$type: [$conf->{snmp}{current_state}{value}{$type}], snmp::sleep_time::main_ups::value::$type: [$conf->{snmp}{sleep_time}{main_ups}{value}{$type}], snmp::sleep_time::group_one::value::$type: [$conf->{snmp}{sleep_time}{group_one}{value}{$type}], snmp::power_off_delay::value::$type: [$conf->{snmp}{power_off_delay}{value}{$type}]")  if $conf->{sys}{debug};
 	
 	return(0);
+}
+
+# This reads an OID with an ticks value and returns the results. If the
+# connection to the UPS times out, it will return '#!no_connection!#'. If no
+# ticks is read, "#!no_value!#" is returned.
+sub read_oid_ticks
+{
+	my ($conf, $ups, $oid) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_oid_ticks(); ups: [$ups], oid: [$oid]") if $conf->{sys}{debug};
+	
+	my $value      = "#!no_value!#";
+	my $shell_call = "$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community}{'read'} $ups $oid";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		
+		if ($line =~ /No Response/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
+			$value = "#!no_connection!#";
+		}
+		if ($line =~ /Timeticks: \((\d+)\)/i)
+		{
+			$value = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+		}
+		if ($line =~ /No Such Instance/i)
+		{
+			$value = "--";
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+	return($value);
 }
 
 # This reads an OID with an integer value and returns the results. If the
@@ -531,6 +622,11 @@ sub read_oid_integer
 		{
 			$value = $1;
 			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+		}
+		if ($line =~ /No Such Instance/i)
+		{
+			$value = "--";
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
 		}
 	}
 	close $file_handle;
