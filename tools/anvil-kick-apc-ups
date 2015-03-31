@@ -432,6 +432,12 @@ fi";
 	{
 		# $0 contains the actual path and program name in use at runtime
 		my $call = $0;
+		if ($call =~ /^\.\//)
+		{
+			# Prepend the PWD environment variable.
+			my $pwd = $ENV{PWD};
+			$call =~ s/^\.\//$pwd\//;
+		}
 		if ($conf->{switches}{ups})
 		{
 			$call .= " --ups $conf->{switches}{ups}";
