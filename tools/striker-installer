@@ -693,7 +693,8 @@ sub configure_scancore
 	# won't exist yet.
 	my $initialized = 0;
 	logger($conf, $THIS_FILE, __LINE__, "Setting up the ScanCore database.", 1);
-	if (not $conf->{path}{pg_hba_conf})
+	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [$conf->{path}{pg_hba_conf}]", 2);
+	if (not -e $conf->{path}{pg_hba_conf})
 	{
 		# Initialization required.
 		my $shell_call = "/etc/init.d/postgresql initdb && chkconfig postgresql on && chkconfig --list postgresql";
@@ -718,6 +719,10 @@ sub configure_scancore
 			}
 		}
 		close $file_handle;
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Database is already initialized.", 1);
 	}
 	
 	# Make sure the server is set to start on boot.
@@ -744,12 +749,12 @@ sub configure_scancore
 	# Now start the DB, if needed.
 	$shell_call = "
 /etc/init.d/postgresql status;
-if [ '\$?' -eq '0' ]; 
+if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
 else
 	/etc/init.d/postgresql start; 
-	if [ '\$?' -eq '0' ]; 
+	if [ \"\$?\" -eq '0' ]; 
 	then 
 		echo 'Started';
 	else 
@@ -1282,7 +1287,7 @@ sub configure_striker_tools
 	}
 	
 	# Now copy the tools we want into place, if they're not already there.
-	logger($conf, $THIS_FILE, __LINE__, "- Copying the USB management tools into place.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Copying the USB management tools into place.", 1);
 	rsync_files($conf, "$conf->{directory}{source}/tools/99-striker.rules",    "$conf->{directory}{udev_rules}/");
 	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-insert",  "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-remove",  "$conf->{directory}{striker_tools}/");
@@ -1295,6 +1300,7 @@ sub configure_striker_tools
 	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_shutdown", "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_start",    "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/tools/populate_remote_authorized_keys", "$conf->{directory}{striker_tools}/");
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n\n", 1);
 	
 	return(0);
 }
@@ -4088,7 +4094,7 @@ sub set_file_ownership_and_modes
 		my $selinux   = $conf->{permissions}{$file}{selinux};
 		logger($conf, $THIS_FILE, __LINE__, "- Setting ownership and mode to: [$owner:$group] and: [$mode] ($conf->{permissions}{$file}{recursive}) on: [$path]", 1);
 		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__." - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
