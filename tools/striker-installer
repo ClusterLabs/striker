@@ -6419,7 +6419,7 @@ sub sanity_check_switches
 		foreach my $ntp_server (split/,/, $conf->{switches}{ntp})
 		{
 			next if not $ntp_server;
-			if (not is_string_ipv4($conf, $ntp_server))
+			if ((not is_string_ipv4($conf, $ntp_server)) && (not is_domain_name($conf, $ntp_server)))
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified NTP server: [$ntp_server] is not valid.", 0);
 				$bad_value = 1;
@@ -7499,6 +7499,25 @@ sub is_string_ipv4
 	else
 	{
 		# Not in the right format.
+		$valid = 0;
+	}
+	
+	return($valid);
+}
+
+# Check to see if the string looks like a valid hostname
+sub is_domain_name
+{
+	my ($conf, $name) = @_;
+	my $valid = 1;
+	
+	if (not $name)
+	{
+		$valid = 0;
+	}
+	elsif (($name !~ /^((([a-z]|[0-9]|\-)+)\.)+([a-z])+$/i) && (($name !~ /^\w+$/) && ($name !~ /-/)))
+	{
+		# Doesn't appear to be valid.
 		$valid = 0;
 	}
 	
