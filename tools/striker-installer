@@ -329,6 +329,7 @@ my $conf = {
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 		pg_hba_conf		=>	"/var/lib/pgsql/data/pg_hba.conf",
+		postgresql_conf		=>	"/var/lib/pgsql/data/postgresql.conf",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
@@ -872,11 +873,31 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	my $bcn_subnet   = $conf->{network}{bcn}{netmask};
 	my $ifn_network  = $conf->{network}{ifn}{ip};
 	my $ifn_subnet   = $conf->{network}{ifn}{netmask};
-	my $add_bcn      = 1;
-	my $add_ifn      = 1;
-	my $secure_local = 0;
-	my $raw_config   = "";
-	   $shell_call   = "<$conf->{path}{pg_hba_conf}";
+	
+	# Convert (crudely) the IPs into network ranges and the subnets into CIDR.
+	my $cidr_bcn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{bcn}{netmask});
+	if    ($cidr_bcn_netmask eq "8")  { $bcn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
+	elsif ($cidr_bcn_netmask eq "16") { $bcn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
+	elsif ($cidr_bcn_netmask eq "24") { $bcn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
+	else
+	{
+		# Ya, this is where I need to get smarter
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the BCN.", 1);
+	}
+	my $cidr_ifn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{ifn}{netmask});
+	if    ($cidr_ifn_netmask eq "8")  { $ifn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
+	elsif ($cidr_ifn_netmask eq "16") { $ifn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
+	elsif ($cidr_ifn_netmask eq "24") { $ifn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
+	else
+	{
+		# Ya, this is where I need to get smarter
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the IFN.", 1);
+	}
+	
+	# Update the main postgresql.conf to listen on all interfaces.
+	my $raw_postgresql_config = "";
+	my $updated               = 0;
+	   $shell_call            = "<$conf->{path}{postgresql_conf}";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -884,12 +905,49 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 		chomp;
 		my $line =  $_;
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /^host\s+all\s+all\s+$bcn_network\/$bcn_subnet\s+md5$/)
+		if ($line =~ /^#listen_addresses = 'localhost'/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Telling the database server to listen on all interfaces.", 1);
+			$line    =~ s/#listen_addresses = 'localhost'/listen_addresses = '*'/;
+			$updated =  1;
+		}
+		$raw_postgresql_config .= "$line\n";
+	}
+	close $file_handle;
+	if ($updated)
+	{
+		# Write it back out.
+		my $shell_call = ">$conf->{path}{postgresql_conf}";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $raw_postgresql_config;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- interfaces opened.", 1);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Database server was already listening on all interfaces.", 1);
+	}
+	
+	# Now update the pg_hba.conf.
+	my $add_bcn           = 1;
+	my $add_ifn           = 1;
+	my $secure_local      = 0;
+	my $raw_pg_hba_config = "";
+	   $shell_call        = "<$conf->{path}{pg_hba_conf}";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^host\s+all\s+all\s+$bcn_network\/$cidr_bcn_netmask\s+md5$/)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The BCN network is already configured.", 1);
 			$add_bcn = 0;
 		}
-		if ($line =~ /^host\s+all\s+all\s+$ifn_network\/$ifn_subnet\s+md5$/)
+		if ($line =~ /^host\s+all\s+all\s+$ifn_network\/$cidr_ifn_netmask\s+md5$/)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The IFN network is already configured.", 1);
 			$add_ifn = 0;
@@ -908,7 +966,7 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 				$secure_local = 1;
 			}
 		}
-		$raw_config .= "$line\n";
+		$raw_pg_hba_config .= "$line\n";
 	}
 	close $file_handle;
 	
@@ -917,18 +975,18 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	{
 		# Loop through the raw config and insert the missing network
 		my $new_config = "";
-		foreach my $line (split/\n/, $raw_config)
+		foreach my $line (split/\n/, $raw_pg_hba_config)
 		{
 			if ($line =~ /# TYPE  DATABASE/)
 			{
 				$new_config .= "$line\n";
 				if ($add_bcn)
 				{
-					$new_config .= "host    all         all  $bcn_network/$bcn_subnet  md5\n";
+					$new_config .= "host    all         all  $bcn_network/$cidr_bcn_netmask  md5\n";
 				}
 				if ($add_ifn)
 				{
-					$new_config .= "host    all         all  $ifn_network/$ifn_subnet  md5\n";
+					$new_config .= "host    all         all  $ifn_network/$cidr_ifn_netmask  md5\n";
 				}
 			}
 			else
@@ -1018,8 +1076,9 @@ sed -i 's/OWNER TO striker/OWNER TO $striker_user/I' $conf->{path}{merged_sql}
 sed -i 's/IF EXISTS scanner/IF EXISTS $striker_database/I' $conf->{path}{merged_sql}
 sed -i 's/DATABASE scanner/DATABASE $striker_database/I' $conf->{path}{merged_sql}
 sed -i 's/-d scanner/-d $striker_database/I' $conf->{path}{merged_sql}
-psql $striker_database -U $striker_user -f $conf->{path}{merged_sql}
-su - postgres -c \"psql -d scanner -c 'SELECT * FROM alert_listeners';\"";
+su - postgres -c \"psql -d $striker_database -f $conf->{path}{merged_sql}\"
+su - postgres -c \"psql -d $striker_database -c 'SELECT * FROM alert_listeners';\"";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -1054,7 +1113,7 @@ su - postgres -c \"psql -d scanner -c 'SELECT * FROM alert_listeners';\"";
 	$shell_call = "
 /etc/init.d/postgresql restart
 /etc/init.d/postgresql status;
-if [ '\$?' -eq '0' ]; 
+if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
 else
@@ -7528,4 +7587,49 @@ sub is_domain_name
 	}
 	
 	return($valid);
+}
+
+# This takes a dotted-decimal subnet mask and converts it to it's CIDR
+# equivalent. If it's not, it returns '#!INVALID!#'.
+sub convert_dotted_decimal_to_cidr
+{
+	my ($conf, $netmask) = @_;
+	
+	if    ($netmask eq "128.0.0.0")       { $netmask = 1; }
+	elsif ($netmask eq "192.0.0.0")       { $netmask = 2; }
+	elsif ($netmask eq "224.0.0.0")       { $netmask = 3; }
+	elsif ($netmask eq "240.0.0.0")       { $netmask = 4; }
+	elsif ($netmask eq "248.0.0.0")       { $netmask = 5; }
+	elsif ($netmask eq "252.0.0.0")       { $netmask = 6; }
+	elsif ($netmask eq "254.0.0.0")       { $netmask = 7; }
+	elsif ($netmask eq "255.0.0.0")       { $netmask = 8; }
+	elsif ($netmask eq "255.128.0.0")     { $netmask = 9; }
+	elsif ($netmask eq "255.192.0.0")     { $netmask = 10; }
+	elsif ($netmask eq "255.224.0.0")     { $netmask = 11; }
+	elsif ($netmask eq "255.240.0.0")     { $netmask = 12; }
+	elsif ($netmask eq "255.248.0.0")     { $netmask = 13; }
+	elsif ($netmask eq "255.252.0.0")     { $netmask = 14; }
+	elsif ($netmask eq "255.254.0.0")     { $netmask = 15; }
+	elsif ($netmask eq "255.255.0.0")     { $netmask = 16; }
+	elsif ($netmask eq "255.255.128.0")   { $netmask = 17; }
+	elsif ($netmask eq "255.255.192.0")   { $netmask = 18; }
+	elsif ($netmask eq "255.255.224.0")   { $netmask = 19; }
+	elsif ($netmask eq "255.255.240.0")   { $netmask = 20; }
+	elsif ($netmask eq "255.255.248.0")   { $netmask = 21; }
+	elsif ($netmask eq "255.255.252.0")   { $netmask = 22; }
+	elsif ($netmask eq "255.255.254.0")   { $netmask = 23; }
+	elsif ($netmask eq "255.255.255.0")   { $netmask = 24; }
+	elsif ($netmask eq "255.255.255.128") { $netmask = 25; }
+	elsif ($netmask eq "255.255.255.192") { $netmask = 26; }
+	elsif ($netmask eq "255.255.255.224") { $netmask = 27; }
+	elsif ($netmask eq "255.255.255.240") { $netmask = 28; }
+	elsif ($netmask eq "255.255.255.248") { $netmask = 29; }
+	elsif ($netmask eq "255.255.255.252") { $netmask = 30; }
+	elsif ($netmask eq "255.255.255.255") { $netmask = 32; }
+	else
+	{
+		$netmask = "#!INVALID!#";
+	}
+	
+	return($netmask);
 }

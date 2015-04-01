@@ -75,6 +75,51 @@ sub convert_cidr_to_dotted_decimal
 	return($netmask);
 }
 
+# This takes a dotted-decimal subnet mask and converts it to it's CIDR
+# equivalent. If it's not, it returns '#!INVALID!#'.
+sub convert_dotted_decimal_to_cidr
+{
+	my ($conf, $netmask) = @_;
+	
+	if    ($netmask eq "128.0.0.0")       { $netmask = 1; }
+	elsif ($netmask eq "192.0.0.0")       { $netmask = 2; }
+	elsif ($netmask eq "224.0.0.0")       { $netmask = 3; }
+	elsif ($netmask eq "240.0.0.0")       { $netmask = 4; }
+	elsif ($netmask eq "248.0.0.0")       { $netmask = 5; }
+	elsif ($netmask eq "252.0.0.0")       { $netmask = 6; }
+	elsif ($netmask eq "254.0.0.0")       { $netmask = 7; }
+	elsif ($netmask eq "255.0.0.0")       { $netmask = 8; }
+	elsif ($netmask eq "255.128.0.0")     { $netmask = 9; }
+	elsif ($netmask eq "255.192.0.0")     { $netmask = 10; }
+	elsif ($netmask eq "255.224.0.0")     { $netmask = 11; }
+	elsif ($netmask eq "255.240.0.0")     { $netmask = 12; }
+	elsif ($netmask eq "255.248.0.0")     { $netmask = 13; }
+	elsif ($netmask eq "255.252.0.0")     { $netmask = 14; }
+	elsif ($netmask eq "255.254.0.0")     { $netmask = 15; }
+	elsif ($netmask eq "255.255.0.0")     { $netmask = 16; }
+	elsif ($netmask eq "255.255.128.0")   { $netmask = 17; }
+	elsif ($netmask eq "255.255.192.0")   { $netmask = 18; }
+	elsif ($netmask eq "255.255.224.0")   { $netmask = 19; }
+	elsif ($netmask eq "255.255.240.0")   { $netmask = 20; }
+	elsif ($netmask eq "255.255.248.0")   { $netmask = 21; }
+	elsif ($netmask eq "255.255.252.0")   { $netmask = 22; }
+	elsif ($netmask eq "255.255.254.0")   { $netmask = 23; }
+	elsif ($netmask eq "255.255.255.0")   { $netmask = 24; }
+	elsif ($netmask eq "255.255.255.128") { $netmask = 25; }
+	elsif ($netmask eq "255.255.255.192") { $netmask = 26; }
+	elsif ($netmask eq "255.255.255.224") { $netmask = 27; }
+	elsif ($netmask eq "255.255.255.240") { $netmask = 28; }
+	elsif ($netmask eq "255.255.255.248") { $netmask = 29; }
+	elsif ($netmask eq "255.255.255.252") { $netmask = 30; }
+	elsif ($netmask eq "255.255.255.255") { $netmask = 32; }
+	else
+	{
+		$netmask = "#!INVALID!#";
+	}
+	
+	return($netmask);
+}
+
 # This creates an 'expect' script for an rsync call.
 sub create_rsync_wrapper
 {
@@ -686,7 +731,6 @@ sub initialize_conf
 					"drbd",		# 
 					"gfs2",		# 
 					"ip6tables",	# 
-					"kdump",	# 
 					"rgmanager",	# 
 				],
 			},
