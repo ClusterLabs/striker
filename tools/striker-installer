@@ -44,6 +44,12 @@
 # 28 - Failed to install one or more required packaged for the GUI.
 # 29 - Failed to download a GPG key for a repo that was just added.
 # 30 - Failed to find custom striker configuration file.
+# 31 - Failed to start the databased server.
+# 32 - Failed to set postgres to start on boot
+# 33 - Failed to create the Striker databse user.
+# 34 - Failed to create the Striker database.
+# 35 - Failed to load initial database tables.
+# 36 - Failed to restart database server.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -95,6 +101,7 @@ my $conf = {
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
 		source			=>	"",
+		sql_files		=>	"/etc/striker/SQL",
 		striker_tools		=>	"/sbin/striker",		# Change the library directory in the various tools if this changes!
 		udev_rules		=>	"/etc/udev/rules.d/",
 		yum_repos		=>	"/etc/yum.repos.d",
@@ -116,16 +123,21 @@ my $conf = {
 		ln			=>	"/bin/ln",
 		lspci			=>	"/sbin/lspci",
 		'lwp-download'		=>	"/usr/bin/lwp-download",
+		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
+		MegaCli64_link		=>	"/sbin/MegaCli64",
 		mount			=>	"/bin/mount",
 		passwd			=>	"/usr/bin/passwd",
 		restorecon		=>	"/sbin/restorecon",
 		'rhn-channel'		=>	"/usr/sbin/rhn-channel",
 		rhnreg_ks		=>	"/usr/sbin/rhnreg_ks",
 		rsync			=>	"/usr/bin/rsync",
+		scanner			=>	"/usr/share/striker/bin/scanner",
 		sed			=>	"/bin/sed",
 		semanage		=>	"/usr/sbin/semanage",
 		setenforce		=>	"/usr/sbin/setenforce",
 		setsebool		=>	"/usr/sbin/setsebool",
+		storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
+		storcli64_link		=>	"/sbin/storcli64",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
@@ -156,7 +168,9 @@ my $conf = {
 			libcdio				=>	0, 
 			'libstdc++.i686' 		=>	0,
 			'libstdc++-devel.i686'		=>	0,
+			mailx				=>	0,
 			man				=>	0, 
+			MegaCli				=>	0,
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
 			ntp				=>	0,
@@ -164,6 +178,7 @@ my $conf = {
 			'perl-CGI'			=>	0, 
 			'perl-CPAN'			=>	0, 
 			'perl-Crypt-SSLeay'		=>	0,
+			'perl-DBD-Pg'			=>	0,
 			'perl-Digest-SHA'		=>	0,
 			'perl-IO-Socket-SSL'		=>	0,
 			'perl-libwww-perl'		=>	0,
@@ -174,11 +189,17 @@ my $conf = {
 			'perl-XML-Simple'		=>	0,
 			'perl-YAML-Tiny'		=>	0, 
 			'policycoreutils-python'	=>	0, 
-			postfix				=>	0, 
+			postfix				=>	0,
+			postgresql			=>	0,
+			'postgresql-contrib'		=>	0,
+			'postgresql-libs'		=>	0,
+			'postgresql-plperl'		=>	0,
+			'postgresql-server'		=>	0,
 			rsync				=>	0,
 			Scanner				=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
+			storcli				=>	0,
 			syslinux			=>	0, 
 			sysstat				=>	0,
 			'syslinux-tftpboot'		=>	0,
@@ -295,16 +316,19 @@ my $conf = {
 		apache_manifest_conf	=>	"/etc/httpd/conf.d/manifest.conf",
 		apache_shell		=>	"/bin/bash",
 		backups			=>	"/root/anvil",
+		cron_root		=>	"/var/spool/cron/root",
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 		hostname		=>	"/etc/sysconfig/network",
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
+		merged_sql		=>	"/tmp/striker_all.sql",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		ntp_conf		=>	"/etc/ntp.conf",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+		pg_hba_conf		=>	"/var/lib/pgsql/data/pg_hba.conf",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
@@ -455,6 +479,7 @@ my $conf = {
 		skip_mail		=>	0,
 		skip_network		=>	0,
 		stable_version		=>	"1.1.6",
+		striker_database	=>	"scanner",
 		striker_user		=>	"admin",
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
@@ -602,6 +627,9 @@ if (not $conf->{sys}{skip_network})
 # Configure the various dashboard tools, like the striker-usb tools.
 configure_striker_tools($conf);
 
+# This sets up the dashboard to be a ScanCore database server.
+configure_scancore($conf);
+
 # If requested, run the contents of rc.local. This is sometimes needed if the
 # user has customizations that might get clobbered by a --gui install.
 if ($conf->{switches}{'run-rc-local'})
@@ -613,7 +641,7 @@ if ($conf->{switches}{'run-rc-local'})
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 	}
 	close $file_handle;
 }
@@ -643,7 +671,7 @@ if ($conf->{sys}{reboot_needed})
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 		}
 		close $file_handle;
 	}
@@ -655,6 +683,549 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# Configure Striker to be a ScanCore DB server
+sub configure_scancore
+{
+	my ($conf) = @_;
+	
+	# First, see if we need to initialize the DB. If so, the 'pg_hba.conf'
+	# won't exist yet.
+	my $initialized = 0;
+	logger($conf, $THIS_FILE, __LINE__, "Setting up the ScanCore database.", 1);
+	if (not $conf->{path}{pg_hba_conf})
+	{
+		# Initialization required.
+		my $shell_call = "/etc/init.d/postgresql initdb && chkconfig postgresql on && chkconfig --list postgresql";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /OK/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Database initialized.", 1);
+			}
+			elsif ($line =~ /3:on/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Database set to start on boot.", 1);
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Database may not have been initialized or failed to set to start on boot. Expected 'OK' or '3:on', but got: [$line]", 1);
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Make sure the server is set to start on boot.
+	my $shell_call = "chkconfig postgresql on && chkconfig --list postgresql";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /3:on/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Database server will start on boot.", 1);
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database failed to set to start on boot. Expected '3:on', but got: [$line]", 1);
+			exit(32);
+		}
+	}
+	close $file_handle;
+	
+	# Now start the DB, if needed.
+	$shell_call = "
+/etc/init.d/postgresql status;
+if [ '\$?' -eq '0' ]; 
+then 
+	echo 'Running';
+else
+	/etc/init.d/postgresql start; 
+	if [ '\$?' -eq '0' ]; 
+	then 
+		echo 'Started';
+	else 
+		echo 'Failed to start';
+	fi;
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /Running/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Database server already running.", 1);
+		}
+		elsif ($line =~ /Started/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Database server was started.", 1);
+		}
+		elsif ($line =~ /Failed/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database server is not running and failed to start! Unable to proceed.", 0);
+			exit(31);
+		}
+	}
+	close $file_handle;
+	
+	# Create the postgresql user, if needed.
+	my $striker_user = $conf->{sys}{striker_user};
+	my $striker_pass = $conf->{sys}{striker_pass};
+	logger($conf, $THIS_FILE, __LINE__, "- Creating database user: [$striker_user] if needed.", 1);
+	my $create_user  = 1;
+	   $shell_call   = "su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^$striker_user \| (\d+)/i)
+		{
+			my $id = $1;
+			logger($conf, $THIS_FILE, __LINE__, "- Database user: [$striker_user] already exists with ID: [$id].", 1);
+			$create_user = 0;
+			last;
+		}
+	}
+	close $file_handle;
+	if ($create_user)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Creating database user: [$striker_user] now.", 1);
+		my $shell_call = "
+su - postgres -c \"createuser --no-superuser --createdb --no-createrole $striker_user\"
+su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /^$striker_user \| (\d+)/i)
+			{
+				my $id = $1;
+				logger($conf, $THIS_FILE, __LINE__, "- Database user: [$striker_user] created with ID: [$id].", 1);
+				$create_user = 0;
+				last;
+			}
+		}
+		close $file_handle;
+		if ($create_user)
+		{
+			# Failed to create the user.
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to add the database user: [$striker_user]! Unable to proceed.", 0);
+			exit(33);
+		}
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- No need to create database user: [$striker_user].", 1);
+	}
+	
+	# Now set the passwords.
+	logger($conf, $THIS_FILE, __LINE__, "- Updating or setting database user's passwords.", 1);
+	foreach my $user ("postgres", $striker_user)
+	{
+		my $shell_call = "su - postgres -c \"psql template1 -c \\\"ALTER ROLE $user WITH PASSWORD '$striker_pass';\\\"\"";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /ALTER ROLE/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Database user: [$striker_user] password set.", 1);
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Update pg_hba.conf.
+	logger($conf, $THIS_FILE, __LINE__, "- Checking database access security.", 1);
+	my $bcn_network  = $conf->{network}{bcn}{ip};
+	my $bcn_subnet   = $conf->{network}{bcn}{netmask};
+	my $ifn_network  = $conf->{network}{ifn}{ip};
+	my $ifn_subnet   = $conf->{network}{ifn}{netmask};
+	my $add_bcn      = 1;
+	my $add_ifn      = 1;
+	my $secure_local = 0;
+	my $raw_config   = "";
+	   $shell_call   = "<$conf->{path}{pg_hba_conf}";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^host\s+all\s+all\s+$bcn_network\/$bcn_subnet\s+md5$/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The BCN network is already configured.", 1);
+			$add_bcn = 0;
+		}
+		if ($line =~ /^host\s+all\s+all\s+$ifn_network\/$ifn_subnet\s+md5$/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The IFN network is already configured.", 1);
+			$add_ifn = 0;
+		}
+		if ($line =~ /local\s+all\s+all\s+(.*)$/)
+		{
+			my $security = $1;
+			if ($security eq "md5")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The local connection is already secured.", 1);
+			}
+			elsif ($security eq "ident")
+			{
+				$line =~ s/ident/md5/;
+				logger($conf, $THIS_FILE, __LINE__, "- The local connection will be secured.", 1);
+				$secure_local = 1;
+			}
+		}
+		$raw_config .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Rewrite the config if something changed.
+	if (($add_bcn) || ($add_ifn) || ($secure_local))
+	{
+		# Loop through the raw config and insert the missing network
+		my $new_config = "";
+		foreach my $line (split/\n/, $raw_config)
+		{
+			if ($line =~ /# TYPE  DATABASE/)
+			{
+				$new_config .= "$line\n";
+				if ($add_bcn)
+				{
+					$new_config .= "host    all         all  $bcn_network/$bcn_subnet  md5\n";
+				}
+				if ($add_ifn)
+				{
+					$new_config .= "host    all         all  $ifn_network/$ifn_subnet  md5\n";
+				}
+			}
+			else
+			{
+				$new_config .= "$line\n";
+			}
+		}
+		
+		# Write out the new file.
+		my $shell_call = ">$conf->{path}{pg_hba_conf}";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $new_config;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Database server security already configured.", 1);
+	}
+	
+	# Create the Striker database, if needed.
+	my $striker_database = $conf->{sys}{striker_database};
+	my $create_database  = 1;
+	logger($conf, $THIS_FILE, __LINE__, "- Creating database: [$striker_database] if needed.", 1);
+	   $shell_call       = "su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database;'\"";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^$striker_database$/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$striker_database] already exists.", 1);
+			$create_database = 0;
+			last;
+		}
+	}
+	close $file_handle;
+	if ($create_database)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Creating Striker database: [$create_database] now.", 1);
+		my $shell_call = "
+su - postgres -c \"createdb --owner $striker_user $striker_database\"
+su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database;'\"";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /^$striker_database$/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$striker_database] created.", 1);
+				$create_database = 0;
+				last;
+			}
+		}
+		close $file_handle;
+		if ($create_database)
+		{
+			# Failed to create the user.
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to add the database: [$create_database]! Unable to proceed.", 0);
+			exit(34);
+		}
+		
+		### TODO: Move this out to the main section and check each
+		###       table manually, or provide a switch to force the
+		###       database to be re-initialized.
+		# Load the data now by cat'ing all the SQL files into one temp
+		# file it, then loading that temp file into our DB.
+		my $tables_loaded = 0;
+		   $shell_call = "
+cat $conf->{directory}{sql_files}/*.sql > $conf->{path}{merged_sql}
+sed -i 's/OWNER striker/OWNER $striker_user/I' $conf->{path}{merged_sql}
+sed -i 's/OWNER: striker/OWNER: $striker_user/I' $conf->{path}{merged_sql}
+sed -i 's/OWNER TO striker/OWNER TO $striker_user/I' $conf->{path}{merged_sql}
+sed -i 's/IF EXISTS scanner/IF EXISTS $striker_database/I' $conf->{path}{merged_sql}
+sed -i 's/DATABASE scanner/DATABASE $striker_database/I' $conf->{path}{merged_sql}
+sed -i 's/-d scanner/-d $striker_database/I' $conf->{path}{merged_sql}
+psql $striker_database -U $striker_user -f $conf->{path}{merged_sql}
+su - postgres -c \"psql -d scanner -c 'SELECT * FROM alert_listeners';\"";
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			next if $line =~ /unrecognized configuration parameter "lock_timeout"/;
+			if ($line =~ /ERROR/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Error seen while loading database tables: [$line] (may be harmless, but please test!)", 1);
+			}
+			if ($line =~ /Health Monitor/)
+			{
+				$tables_loaded = 1;
+				logger($conf, $THIS_FILE, __LINE__, "Database tables have been loaded.", 1);
+			}
+		}
+		close $file_handle;
+		if (not $tables_loaded)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to load the initial database tables into: [$create_database]! Unable to proceed.", 0);
+			exit(35);
+		}
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- No need to create Striker database.", 1);
+	}
+	
+	# Restart postgresql.
+	logger($conf, $THIS_FILE, __LINE__, "- Restarting database server.", 1);
+	$shell_call = "
+/etc/init.d/postgresql restart
+/etc/init.d/postgresql status;
+if [ '\$?' -eq '0' ]; 
+then 
+	echo 'Running';
+else
+	echo 'Failed to restart';
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /Running/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Database server restarted.", 1);
+		}
+		elsif ($line =~ /Failed/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database server failed to restart!", 0);
+			exit(36);
+		}
+	}
+	close $file_handle;
+	
+	# Make sure the LSI storage tools have their symlinks created.
+	logger($conf, $THIS_FILE, __LINE__, "- Setting up storage symlinks.", 1);
+	
+	# MegaCli64 first
+	$shell_call = "
+if [ -e '$conf->{executable}{MegaCli64}' ]; 
+then 
+	if [ -e '$conf->{executable}{MegaCli64_symlink}' ]
+	then
+		echo '$conf->{executable}{MegaCli64_symlink} symlink exists';
+	else
+		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_symlink}
+		if [ -e '$conf->{executable}{MegaCli64_symlink}' ]
+		then
+			echo '$conf->{executable}{MegaCli64_symlink} symlink created';
+		else
+			echo 'Failed to create $conf->{executable}{MegaCli64_symlink} symlink';
+		fi
+	fi
+else
+	echo 'MegaCli64 not installed.'
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /symlink exists/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink already exists.", 1);
+		}
+		if ($line =~ /symlink created/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink was created.", 1);
+		}
+		if ($line =~ /Failed to create/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'MegaCli64' symlink!", 1);
+		}
+		if ($line =~ /not installed/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - 'MegaCli64' not installed.", 1);
+		}
+	}
+	close $file_handle;
+	
+	# Now storcli
+	$shell_call = "
+if [ -e '$conf->{executable}{storcli64}' ]; 
+then 
+	if [ -e '$conf->{executable}{storcli64_symlink}' ]
+	then
+		echo '$conf->{executable}{storcli64_symlink} symlink exists';
+	else
+		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_symlink}
+		if [ -e '$conf->{executable}{storcli64_symlink}' ]
+		then
+			echo '$conf->{executable}{storcli64_symlink} symlink created';
+		else
+			echo 'Failed to create $conf->{executable}{storcli64_symlink} symlink';
+		fi
+	fi
+else
+	echo 'storcli64 not installed.'
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /symlink exists/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink already exists.", 1);
+		}
+		if ($line =~ /symlink created/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink was created.", 1);
+		}
+		if ($line =~ /Failed to create/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'storcli64' symlink!", 1);
+		}
+		if ($line =~ /not installed/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - 'storcli64' not installed.", 1);
+		}
+	}
+	close $file_handle;
+	
+	### TODO: Make this enabled via a command line switch... many users
+	###       may not want this.
+	# Add scanner to crontab.
+	logger($conf, $THIS_FILE, __LINE__, "- Enabling ScanCore.", 1);
+	$shell_call = "
+if [ ! -e '$conf->{path}{cron_root}' ]
+then
+	echo 'creating empty crontab for root.'
+	touch $conf->{path}{cron_root}
+	chown root:root $conf->{path}{cron_root}
+	chmod 600 $conf->{path}{cron_root}
+fi";
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /creating empty/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Creating empty crontab file for 'root'.", 1);
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
+	my $scanner    = $conf->{executable}{scanner};
+	my $raw_cron   = "";
+	   $shell_call = "$conf->{path}{cron_root}";
+	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /$scanner/)
+		{
+			# Skip it as we'll add it back later.
+			logger($conf, $THIS_FILE, __LINE__, "- Existing scanner entry found in 'root's cron, removing it.", 2);
+		}
+		else
+		{
+			$raw_cron .= "$line\n";
+		}
+	}
+	close $file_handle;
+	$raw_cron .= "*/5 * * * * $scanner\n";
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
+	$shell_call = "$conf->{path}{cron_root}";
+	open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $raw_cron;
+	close $file_handle;
+	
+	# Done.
+	logger($conf, $THIS_FILE, __LINE__, "- Scanner configured.", 1);
+	
+	return(0);
+}
 
 # Write entries to syslog and STDOUT.
 sub logger
@@ -674,7 +1245,7 @@ sub logger
 	}
 	else
 	{
-		print "$file $line_number; $message\n";
+		print "$file $line_number; [ Debug ] - $message\n";
 	}
 	
 	# We split on new-lines so that multi-line message render better in
@@ -738,25 +1309,26 @@ sub configure_ntp
 	{
 		next if not $ntp_server;
 		logger($conf, $THIS_FILE, __LINE__, "- Checking to see if: [$ntp_server] needs to be added.", 1);
-		my $shell_call = "if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf}); 
-				then 
-					echo exists; 
-				else 
-					echo adding $ntp_server;
-					echo 'server $ntp_server iburst' >> $conf->{path}{ntp_conf}
-					if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf});
-					then
-						echo added
-					else
-						echo failed
-					fi;
-				fi";
+		my $shell_call = "
+if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf}); 
+then 
+	echo exists; 
+else 
+	echo adding $ntp_server;
+	echo 'server $ntp_server iburst' >> $conf->{path}{ntp_conf}
+	if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf});
+	then
+		echo added
+	else
+		echo failed
+	fi;
+fi";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 			if ($line =~ /exists/i)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Already added, skipping.", 1);
@@ -791,7 +1363,7 @@ sub get_hostname
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 			$conf->{sys}{hostname} = $1;
 			last;
 		}
@@ -821,13 +1393,13 @@ sub freeze_networkmanager
 			else
 				echo rc:1
 			fi";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -876,7 +1448,7 @@ sub freeze_networkmanager
 				{
 					chomp;
 					my $line = $_;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 					if ($line =~ /^NM_CONTROLLED=(.*)/)
 					{
 						$nm_controlled = $1;
@@ -915,13 +1487,13 @@ sub freeze_networkmanager
 			logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 			logger($conf, $THIS_FILE, __LINE__, "- Note: Other interfaces may go down temporarily.", 1);
 			$shell_call .= "/etc/init.d/NetworkManager stop; /etc/init.d/network start";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 			}
 			close $file_handle;
 		}
@@ -946,12 +1518,12 @@ sub add_repo
 	{
 		$conf->{sys}{repositories} .= ",$conf->{switches}{r}";
 	}
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - repositories: [$conf->{switches}{r}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "repositories: [$conf->{switches}{r}]", 3);
 	foreach my $url (split/,/, $conf->{switches}{r})
 	{
 		next if not $url;
 		my ($repo_url, $repo_file) = ($url =~ /^(.*)\/(.*?)$/);
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - repo_url: [$repo_url], repo_file: [$repo_file], url: [$url]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "repo_url: [$repo_url], repo_file: [$repo_file], url: [$url]", 2);
 		if (not $repo_file)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to parse repository file from path:", 0);
@@ -969,7 +1541,7 @@ sub add_repo
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Downloading: [$url]", 1);
 			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean all";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 			while(<$file_handle>)
@@ -1007,7 +1579,7 @@ sub add_repo
 								
 								logger($conf, $THIS_FILE, __LINE__, "- Trying to download: [$key_url].", 1);
 								my $shell_call = "$conf->{executable}{'lwp-download'} $key_url $local_key";
-								logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+								logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 								open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 								logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 								while(<$file_handle>)
@@ -1153,7 +1725,7 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1199,7 +1771,7 @@ sub configure_gui
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Disabling the just-installed NetworkManager.", 1);
 			my $shell_call = "/etc/init.d/NetworkManager stop";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -1572,13 +2144,13 @@ sub configure_gui
 # 		# If this is a QXL-based VM, setup a higher resolution.
 # 		my $is_qxl     = 0;
 # 		my $shell_call = "$conf->{executable}{lspci} -m";
-# 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 2);
+# 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 # 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 # 		while(<$file_handle>)
 # 		{
 # 			chomp;
 # 			my $line = $_;
-# 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 2);
+# 			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 # 			if ($line =~ /QXL/i)
 # 			{
 # 				$is_qxl = 1;
@@ -1653,7 +2225,7 @@ sub configure_gui
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Disabling 'NetworkManager'", 1);
 		my $shell_call = "chkconfig NetworkManager off";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -1671,7 +2243,7 @@ sub configure_gui
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Enabling 'network'", 1);
 		my $shell_call = "chkconfig network on";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -1707,7 +2279,7 @@ sub configure_ipmi
 	my $to_install = "";
 	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{ipmi_packages}})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - packages::installed::$package: [$conf->{packages}{installed}{$package}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "packages::installed::$package: [$conf->{packages}{installed}{$package}]", 3);
 		if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
 		{
 			$conf->{packages}{ipmi_packages}{$package} = 1;
@@ -1730,7 +2302,7 @@ sub configure_ipmi
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1796,7 +2368,7 @@ sub configure_ipmi
 					echo 'IPMI already running.'; 
 					echo 'rc:1'
 				fi";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -1821,7 +2393,7 @@ sub configure_ipmi
 			}
 			else
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - output: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "output: [$line]", 3);
 			}
 		}
 		close $file_handle;
@@ -1835,7 +2407,7 @@ sub configure_ipmi
 		logger($conf, $THIS_FILE, __LINE__, "- Seaching for IPMI LAN channel:", 1);
 		while (not $channel_found)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - channel: [$channel]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "channel: [$channel]", 3);
 			if ($channel > 20)
 			{
 				# Give up...
@@ -1847,16 +2419,16 @@ sub configure_ipmi
 			# check to see if this is the write channel
 			my $rc         = "";
 			my $shell_call = "ipmitool lan print $channel 2>&1; echo rc:\$?";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				if ($line =~ /Invalid channel: /)
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Wrong LAN channel: [$channel]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "Wrong LAN channel: [$channel]", 3);
 				}
 				elsif ($line =~ "rc:0")
 				{
@@ -1868,7 +2440,7 @@ sub configure_ipmi
 			close $file_handle;
 			$channel++ if not $channel_found;
 		}
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - LAN channel: [$channel]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "LAN channel: [$channel]", 3);
 	}
 	
 	# Now find the requested user ID number.
@@ -1879,7 +2451,7 @@ sub configure_ipmi
 		logger($conf, $THIS_FILE, __LINE__, "- Searching for the user ID for: [$conf->{sys}{ipmi_user}]", 1);
 		while (not $user_id_found)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - user_id: [$user_id]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "user_id: [$user_id]", 3);
 			if ($user_id > 20)
 			{
 				# Give up...
@@ -1892,19 +2464,19 @@ sub configure_ipmi
 			my $rc         = "";
 			my $ipmi_user  = $conf->{sys}{ipmi_user};
 			my $shell_call = "ipmitool user list $channel 2>&1";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $filehandle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$filehandle>)
 			{
 				chomp;
 				my $line = $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				$line =~ s/\s+/ /g;
 				if ($line =~ /^(\d+) $ipmi_user /)
 				{
 					$user_id       = $1;
 					$user_id_found = 1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found the user ID: [$user_id]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "Found the user ID: [$user_id]", 3);
 				}
 			}
 			$user_id++ if not $user_id_found;
@@ -1914,13 +2486,13 @@ sub configure_ipmi
 		
 		# Set the password.
 		my $shell_call = "ipmitool user set password $user_id '$conf->{sys}{ipmi_password}'";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		}
 		close $file_handle;
 		
@@ -1931,12 +2503,12 @@ sub configure_ipmi
 			my $try_20      = 0;
 			my $shell_call  = "ipmitool user test $user_id 16 '$conf->{sys}{ipmi_password}'";
 			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			while (<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				if ($line =~ /Success/i)
 				{
 					# Woo!
@@ -1945,7 +2517,7 @@ sub configure_ipmi
 				elsif ($line =~ /wrong password size/i)
 				{
 					$try_20 = 1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IPMI password is not a 16-byte string, will try 20-byte.", 3);
+					logger($conf, $THIS_FILE, __LINE__, "IPMI password is not a 16-byte string, will try 20-byte.", 3);
 				}
 				elsif ($line =~ /password incorrect/i)
 				{
@@ -1959,13 +2531,13 @@ sub configure_ipmi
 			if ($try_20)
 			{
 				my $shell_call = "ipmitool user test $user_id 20 '$conf->{sys}{ipmi_password}'";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 				while (<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 					if ($line =~ /Success/i)
 					{
 						# Woo!
@@ -1994,44 +2566,44 @@ sub configure_ipmi
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "return line: [$line]", 3);
 		}
 		close $file_handle;
 		
 		# Now set the IP
 		$shell_call = "ipmitool lan set $channel ipaddr $conf->{sys}{ipmi_ip}";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "return line: [$line]", 3);
 		}
 		close $file_handle;
 		
 		# Now the netmask
 		$shell_call = "ipmitool lan set $channel netmask $conf->{sys}{ipmi_netmask}";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "return line: [$line]", 3);
 		}
 		
 		# If the user has specified a gateway, set it
 		if ($conf->{sys}{ipmi_gateway})
 		{
 			my $shell_call = "ipmitool lan set $channel defgw ipaddr $conf->{sys}{ipmi_gateway}";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "return line: [$line]", 3);
 			}
 			close $file_handle;
 		}
@@ -2039,17 +2611,17 @@ sub configure_ipmi
 		### Now read it back.
 		# Now the netmask
 		$shell_call = "ipmitool lan print $channel";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - >> return line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, ">> return line: [$line]", 3);
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - << return line: [$line]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "<< return line: [$line]", 3);
 			if ($line =~ /IP Address Source/i)
 			{
 				if ($line =~ /Static/i)
@@ -2165,12 +2737,12 @@ sub configure_iso_source
 			my @subdirectories = ($conf->{directory}{centos_pxe_web}, "$conf->{directory}{centos_pxe_web}/x86_64");
 			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - directory::centos_pxe_web: [$conf->{directory}{centos_pxe_web}], subdirectory: [$subdirectory], combined: [$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "directory::centos_pxe_web: [$conf->{directory}{centos_pxe_web}], subdirectory: [$subdirectory], combined: [$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory]", 3);
 				push @subdirectories, "$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory";
 			}
 			foreach my $directory (@subdirectories)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - directory: [$directory]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "directory: [$directory]", 3);
 				if (-e $directory)
 				{
 					logger($conf, $THIS_FILE, __LINE__, "- Directory already exists: [$directory]", 1);
@@ -2209,7 +2781,7 @@ sub configure_iso_source
 				   $file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
 				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 				while(<$file_handle>)
@@ -2403,7 +2975,7 @@ sub configure_iso_source
 				   $file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
 				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 				while(<$file_handle>)
@@ -2639,17 +3211,17 @@ sub generate_iso
 			logger($conf, $THIS_FILE, __LINE__, "  Please be patient as this might take a few minutes.", 1);
 			my $iso_size   = 0;
 			my $shell_call = "dd if=$device of=$file_name bs=1M";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line =  $_;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				if ($line =~ /(\d+) bytes/)
 				{
 					$iso_size = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - iso_size: [$iso_size]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "iso_size: [$iso_size]", 3);
 				}
 			}
 			close $file_handle;
@@ -2657,7 +3229,7 @@ sub generate_iso
 			# Make sure it's at least 50 MiB
 			if (-e $file_name)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - iso_size: [$iso_size]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "iso_size: [$iso_size]", 3);
 				#	        3782213632
 				if ($iso_size > 52428800)
 				{
@@ -2692,7 +3264,7 @@ sub unmount_iso
 	
 	# First make sure the target isn't already mounted.
 	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -2739,7 +3311,7 @@ sub mount_iso
 				mount $target;
 				echo mount:$?; 
 			fi";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3293,7 +3865,7 @@ sub configure_dhcp
 				chomp;
 				my $line =  $_;
 				   $line =~ s/"//g;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
@@ -3318,7 +3890,7 @@ sub configure_dhcp
 				chomp;
 				my $line =  $_;
 				   $line =~ s/"//g;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
@@ -3446,7 +4018,7 @@ sub manage_daemons
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Disabling: [$daemon] on boot and stopping it.", 1);
 		}
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -3474,7 +4046,7 @@ sub manage_daemons
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Enabling: [$daemon] on boot and (re)starting it.", 1);
 		}
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -3551,7 +4123,7 @@ sub set_file_ownership_and_modes
 			#[root@striker ~]# restorecon /var/log/striker.log 
 			logger($conf, $THIS_FILE, __LINE__, "  Setting selinux context to: [$selinux].", 1);
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -3568,7 +4140,7 @@ sub set_file_ownership_and_modes
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Giving apache permission to create network connections.", 1);
 		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -3682,9 +4254,9 @@ sub install_striker_files
 		}
 		
 		logger($conf, $THIS_FILE, __LINE__, "- Updating mail server values in Striker's configuration file.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mail_server: [$mail_server], mail_port: [$mail_port]", 3);
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mail user: [$conf->{sys}{mail_user}], password: [$conf->{sys}{mail_password}]", 3);
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Reading: [$conf->{path}{striker_config}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "mail_server: [$mail_server], mail_port: [$mail_port]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "mail user: [$conf->{sys}{mail_user}], password: [$conf->{sys}{mail_password}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "Reading: [$conf->{path}{striker_config}]", 3);
 		my $striker_config = "";
 		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{striker_config}], the error was: $!\n";
 		while(<$file_handle>)
@@ -3727,7 +4299,7 @@ sub rsync_files
 	my ($conf, $source, $destination) = @_;
 	
 	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3757,7 +4329,7 @@ sub copy_file
 	my ($conf, $source, $destination) = @_;
 	
 	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -3807,7 +4379,7 @@ sub download_striker
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
 		$conf->{directory}{source} = "./striker-master";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - directory::source: [$conf->{directory}{source}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "directory::source: [$conf->{directory}{source}]", 3);
 	}
 	else
 	{
@@ -3858,7 +4430,7 @@ sub download_striker
 		else
 		{
 			my $shell_call = "$conf->{executable}{wget} -c $download";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 			while(<$file_handle>)
@@ -3889,7 +4461,7 @@ sub download_striker
 	if ($extract)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Extracting: [$extract]", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking if the directory: [$conf->{directory}{source}] exists already.", 3);
+		logger($conf, $THIS_FILE, __LINE__, "Checking if the directory: [$conf->{directory}{source}] exists already.", 3);
 		if (-d $conf->{directory}{source})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The source appears to already be extracted, skipping.", 1);
@@ -3902,7 +4474,7 @@ sub download_striker
 			{
 				$shell_call = "$conf->{executable}{unzip} $extract";
 			}
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -3910,20 +4482,20 @@ sub download_striker
 				my $line = $_;
 				if (($line =~ /^(.*?)\/$/) && (not $source_dir_found))
 				{
-					#print __LINE__."; [ Debug ] - line: [$line]\n";
+					#print __LINE__."; line: [$line]\n";
 					# This overrides anything set above
 					# (though those need to be set in-case
 					# extraction wasn't needed).
 					my $source = $1;
-					#print __LINE__."; [ Debug ] - source: [$source]\n";
+					#print __LINE__."; source: [$source]\n";
 					# When using 'unzip', the line as 'creating:' in it.
 					if ($line =~ /creating: (.*?\/)$/)
 					{
 						$source = $1;
-						#print __LINE__."; [ Debug ] - source: [$source]\n";
+						#print __LINE__."; source: [$source]\n";
 					}
 					$conf->{directory}{source} = "./$source";
-					#print __LINE__."; [ Debug ] - directory::source: [$conf->{directory}{source}]\n";
+					#print __LINE__."; directory::source: [$conf->{directory}{source}]\n";
 					$source_dir_found          = 1;
 				}
 				logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
@@ -3961,7 +4533,7 @@ sub configure_iptables
 	my $pgsql_open = 0;
 	logger($conf, $THIS_FILE, __LINE__, "- Reading the current firewall configuration.", 1);
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -4147,7 +4719,7 @@ sub configure_ssh
 		logger($conf, $THIS_FILE, __LINE__, "- Generating: [$conf->{sys}{apache_user}]'s RSA keys.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient! It might take time to collect entropy.", 1);
 		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -4163,7 +4735,7 @@ sub configure_ssh
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Creating the SSH RSA key for 'root'.", 1);
 		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
-		logger($conf, $THIS_FILE, __LINE__, "- [ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "- shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -4442,7 +5014,7 @@ sub set_root_password
 	{
 		$conf->{sys}{striker_pass} =~ s/"/\\"/g;
 		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_pass}\" | $conf->{executable}{passwd} root --stdin";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -4483,7 +5055,7 @@ sub create_apache_htpasswd
 	$conf->{sys}{striker_pass} =~ s/"/\\\\\\\"/g;
 	logger($conf, $THIS_FILE, __LINE__, "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.", 1);
 	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_pass}\\\"\"";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -4648,9 +5220,9 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 			logger($conf, $THIS_FILE, __LINE__, "- RHN credentials given. Attempting to register now.", 1);
 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
 			my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			my $registered = 0;
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -4681,9 +5253,9 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Adding 'Optional' channel...", 1);
 				my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
@@ -4782,7 +5354,7 @@ sub install_missing_packages
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
 		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -4877,7 +5449,7 @@ sub get_list_of_installed_packages
 		next if $line =~ /^Loading mirror/;
 		next if $line =~ /^Installed Packages/;
 		next if $line =~ /^\s/;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		if ($line =~ /^(.*?)\.(.*?)\s+(.*?)\s+\@/)
 		{
 			my $package = $1;
@@ -4892,7 +5464,7 @@ sub get_list_of_installed_packages
 			# NOTE: Someday record the version.
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - a) Package: [$package], arch: [$arch], version: [$version]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "a) Package: [$package], arch: [$arch], version: [$version]", 3);
 		}
 		elsif ($line =~ /^(.*?)\.(.*?)\s+(.*)/)
 		{
@@ -4908,7 +5480,7 @@ sub get_list_of_installed_packages
 			# NOTE: Someday record the version.
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - b) Package: [$package], arch: [$arch], version: [$version]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "b) Package: [$package], arch: [$arch], version: [$version]", 3);
 		}
 		elsif ($line =~ /^(.*?)\.(\S*)$/)
 		{
@@ -4922,7 +5494,7 @@ sub get_list_of_installed_packages
 			my $package_with_arch = "$package.$arch";
 			$conf->{packages}{installed}{$package}           = 1;
 			$conf->{packages}{installed}{$package_with_arch} = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c) Package: [$package], arch: [$arch]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "c) Package: [$package], arch: [$arch]", 3);
 		}
 	}
 	close $file_handle;
@@ -5022,7 +5594,7 @@ sub start_all_nics
 			# It exists, edit it if needed.
 			logger($conf, $THIS_FILE, __LINE__, "- Config file exists, changing BOOTPROTO to 'none'.", 1);
 			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -5416,7 +5988,7 @@ sub daemon_control
 # 		chomp;
 # 		my $line = $_;
 # 		$message .= "$line\n";
-# 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Shell output: [$line]", 3);
+# 		logger($conf, $THIS_FILE, __LINE__, "Shell output: [$line]", 3);
 # 	}
 # 	close $file_handle;
 	
@@ -5570,7 +6142,7 @@ sub sanity_check_switches
 			{
 				$conf->{network}{bcn}{ip}      = $1;
 				$conf->{network}{bcn}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]", 3);
 			}
 		}
 		close $file_handle;
@@ -6830,12 +7402,12 @@ sub check_nic_states
 		# I don't care about localhost, wireless or bonded interfaces.
 		if (($this_iface eq "lo") || ($this_iface =~ /wlan/) || ($this_iface =~ /bond/))
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Skipping interface: [$this_iface]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "Skipping interface: [$this_iface]", 3);
 		}
 		else
 		{
 			$nic_count++;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
 		}
 		if ($conf->{nic}{mac}{$this_mac}{link_state} ne "1")
 		{
