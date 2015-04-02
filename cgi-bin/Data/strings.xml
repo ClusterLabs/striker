@@ -1786,7 +1786,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="lsi_0040">RAID Controller ##!variable!adapter!#</key>
 		<key name="lsi_0041"><![CDATA[ - Missing disk in row <span class="fixed_width">#!variable!row!#</span>, replace with <span class="fixed_width">#!variable!minimum_size!#</span> or larger.<br />]]></key>
 		<key name="lsi_0042"><![CDATA[<br />Rebuild is <span class="highlight_detail">#!variable!rebuild_percent!#%</span> complete, rebuilding for <span class="highlight_detail">#!variable!time_to_complete!#</span>.]]></key>
-		<key name="lsi_0043"><![CDATA[Successfully foreign configurations on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
+		<key name="lsi_0043"><![CDATA[Successfully cleared foreign configurations on adapter <span class="highlight_detail">##!variable!adapter!#</span>.]]></key>
 		<key name="lsi_0044"><![CDATA[Failed to clear foreign configurations on adapter <span class="highlight_detail">##!variable!adapter!#</span>.<br /><br />Message from the controller:<br /><br /><span class="fixed_width">#!variable!message!#</span>]]></key>
 		<key name="lsi_0045">Clear foreign configurations</key>
 		<key name="lsi_0046"><![CDATA[]]></key>

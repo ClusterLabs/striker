@@ -453,6 +453,16 @@ my $conf = {
 			recursive		=>	0,
 		},
 	},
+	# Not used yet.
+	scancore	=>	{
+		scan_agents		=>	{
+			bonding			=>	{
+				configuration_body	=>	"",
+				configuration_file	=>	"bonding.conf",
+				enabled			=>	1,
+			},
+		},
+	},
 	sys		=>	{
 		apache_group		=>	"apache",
 		apache_timeout		=>	"60000",	# This will go away with AJAX
@@ -982,11 +992,11 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 				$new_config .= "$line\n";
 				if ($add_bcn)
 				{
-					$new_config .= "host    all         all  $bcn_network/$cidr_bcn_netmask  md5\n";
+					$new_config .= "host    all         all      $bcn_network/$cidr_bcn_netmask  md5\n";
 				}
 				if ($add_ifn)
 				{
-					$new_config .= "host    all         all  $ifn_network/$cidr_ifn_netmask  md5\n";
+					$new_config .= "host    all         all      $ifn_network/$cidr_ifn_netmask  md5\n";
 				}
 			}
 			else
@@ -1230,6 +1240,9 @@ fi";
 		}
 	}
 	close $file_handle;
+	
+	# Write out the scancore config files.
+	
 	
 	### TODO: Make this enabled via a command line switch... many users
 	###       may not want this.

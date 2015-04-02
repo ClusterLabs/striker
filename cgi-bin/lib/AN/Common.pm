@@ -677,6 +677,7 @@ sub initialize_conf
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
 				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link2",
 				cluster_conf		=>	"/etc/cluster/cluster.conf",
+				cron_root		=>	"/var/spool/cron/root",
 				drbd			=>	"/etc/drbd.d",
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
@@ -694,6 +695,7 @@ sub initialize_conf
 				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
+				scan_agents		=>	"/etc/striker/Config/",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99z_safe_anvil_start",
 				shadow			=>	"/etc/shadow",
@@ -737,7 +739,6 @@ sub initialize_conf
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
 			dd_block_size		=>	"1M",
 			debug			=>	1,
-			default_password	=>	"Initial1",
 			# When set to '1', (almost) all external links will be
 			# disabled. Useful for sites without an Internet
 			# connection.
@@ -766,6 +767,7 @@ sub initialize_conf
 					ifn_subnet		=>	"255.255.0.0",
 					library_size		=>	"40",
 					library_unit		=>	"GiB",
+					mtu			=>	1500,
 					name			=>	"",
 					node1_bcn_ip		=>	"",
 					node1_ifn_ip		=>	"",
@@ -806,14 +808,19 @@ sub initialize_conf
 					prefix			=>	"",
 					repositories		=>	"",
 					sequence		=>	"01",
+					ssh_keysize		=>	8191,
 					sn_network		=>	"10.10.0.0",
 					sn_subnet		=>	"255.255.0.0",
+					striker_database	=>	"scanner",
+					striker_user		=>	"admin",
 					striker1_bcn_ip		=>	"",
 					striker1_ifn_ip		=>	"",
 					striker1_name		=>	"",
+					striker1_user		=>	"",	# Defaults to 'striker_user' if not set
 					striker2_bcn_ip		=>	"",
 					striker2_ifn_ip		=>	"",
 					striker2_name		=>	"",
+					striker2_user		=>	"",	# Defaults to 'striker_user' if not set
 					switch1_ip		=>	"",
 					switch1_name		=>	"",
 					switch2_ip		=>	"",

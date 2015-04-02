@@ -89,6 +89,7 @@ sub run_new_install_manifest
 		'perl-Net-SSH2'			=>	0,
 		'perl-XML-Simple'		=>	0,
 		'policycoreutils-python'	=>	0,
+		postgresql			=>	0,
 		postfix				=>	0,
 		'python-virtinst'		=>	0,
 		rgmanager			=>	0,
@@ -106,6 +107,567 @@ sub run_new_install_manifest
 		# similar) output.
 		MegaCli				=>	0,
 		storcli				=>	0,
+	};
+	$conf->{scancore}{scan_agents} = {
+		bonding			=>	{
+			configuration_body	=>	"
+# Bonding Agent config file
+# 
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name = bond
+
+# Agent metadata
+#
+bond::db::table::summary	= bonding
+bond::db::table::other		= bonding
+bond::db::table::alerts		= alerts
+bond::host			= #!conf!long_hostname!#
+bond::ip			= #!conf!bcn_ip!#
+bond::type			= Ethernet Channel Bonding Driver
+
+# The agent will analyze all '*bond1' files in this directory.
+bond::dir			= /proc/net/bonding
+
+# specifications for the summary data & various attributes
+#
+bond::summary::max		= 100
+bond::summary::ok		= 0
+bond::summary::warn		= 4
+bond::summary::hysteresis	= 0
+
+# ----------------------------------------------------------------------
+# End of file.
+",
+			configuration_file	=>	"bonding.conf",
+			enabled			=>	1,
+		},
+		db			=>	{
+			configuration_body	=>	"
+db::1::name		= $conf->{cgi}{anvil_striker1_database}
+db::1::db_type		= Pg
+db::1::host		= $conf->{cgi}{anvil_striker1_bcn_ip}
+db::1::port		= 5432
+db::1::user		= $conf->{cgi}{anvil_striker1_user}
+db::1::password		= $conf->{cgi}{anvil_striker1_password}
+
+db::2::name		= $conf->{cgi}{anvil_striker2_database}
+db::2::db_type		= Pg
+db::2::host		= $conf->{cgi}{anvil_striker2_bcn_ip}
+db::2::port		= 5432
+db::2::user		= $conf->{cgi}{anvil_striker2_user}
+db::2::password		= $conf->{cgi}{anvil_striker2_password}
+",
+			configuration_file	=>	"db.conf",
+			enabled			=>	1,
+		},
+		ipmi			=>	{
+			configuration_body	=>	"
+# IPMI config file
+#
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name					= ipmi
+
+# Agent metadata
+#
+ipmi::db::table::summary		= ipmi_temperatures
+ipmi::db::table::Ambient		= ipmi_temperatures
+ipmi::db::table::Systemboard 1		= ipmi_temperatures
+ipmi::db::table::Systemboard 2		= ipmi_temperatures
+ipmi::db::table::VR CPU1		= ipmi_temperatures
+ipmi::db::table::VR MEM AB		= ipmi_temperatures
+ipmi::db::table::VR MEM CD		= ipmi_temperatures
+ipmi::db::table::VR CPU2		= ipmi_temperatures
+ipmi::db::table::VR MEM EF		= ipmi_temperatures
+ipmi::db::table::VR MEM GH		= ipmi_temperatures
+ipmi::db::table::CPU1			= ipmi_temperatures
+ipmi::db::table::CPU2			= ipmi_temperatures
+ipmi::db::table::MEM A			= ipmi_temperatures
+ipmi::db::table::MEM B			= ipmi_temperatures
+ipmi::db::table::MEM C			= ipmi_temperatures
+ipmi::db::table::MEM D			= ipmi_temperatures
+ipmi::db::table::MEM E			= ipmi_temperatures
+ipmi::db::table::MEM F			= ipmi_temperatures
+ipmi::db::table::MEM G			= ipmi_temperatures
+ipmi::db::table::MEM H			= ipmi_temperatures
+ipmi::db::table::PSU1 Inlet		= ipmi_temperatures
+ipmi::db::table::PSU2 Inlet		= ipmi_temperatures
+ipmi::db::table::PSU1			= ipmi_temperatures
+ipmi::db::table::PSU2			= ipmi_temperatures
+ipmi::db::table::BBU			= ipmi_temperatures
+ipmi::db::table::RAID Controller	= ipmi_temperatures
+ipmi::db::table::summary		= ipmi_temperatures
+ipmi::db::table::other			= ipmi_temperatures
+
+ipmi::db::table::alerts			= alerts
+
+ipmi::host				= #!conf!long_hostname!#
+ipmi::ip				= #!conf!bcn_ip!#
+ipmi::type				= server node
+
+# Name of the setuid c-wrapper that calls ipmitool.
+ipmi::query				= wipmi
+
+# specifications for the various attributes
+#
+ipmi::summary::max			= 100
+ipmi::summary::ok			= 0
+ipmi::summary::warn			= 4
+ipmi::summary::hysteresis		= 0
+
+
+ipmi::Ambient::ok			= 45
+ipmi::Ambient::warn			= 55
+ipmi::Ambient::hysteresis		= 1
+ipmi::Ambient::units			= degrees C
+
+ipmi::Systemboard 1::ok			= 45
+ipmi::Systemboard 1::warn		= 55
+ipmi::Systemboard 1::hysteresis		= 1
+ipmi::Systemboard 1::units		= degrees C
+
+ipmi::Systemboard 2::ok			= 45
+ipmi::Systemboard 2::warn		= 55
+ipmi::Systemboard 2::hysteresis		= 1
+ipmi::Systemboard 2::units		= degrees C
+
+ipmi::VR CPU1::ok			= 45
+ipmi::VR CPU1::warn			= 55
+ipmi::VR CPU1::hysteresis		=  1
+ipmi::VR CPU1::units			= degrees C
+
+ipmi::VR MEM AB::ok			= 45
+ipmi::VR MEM AB::warn			= 55
+ipmi::VR MEM AB::hysteresis		=  1
+ipmi::VR MEM AB::units			= degrees C
+
+ipmi::VR MEM CD::ok			= 45
+ipmi::VR MEM CD::warn			= 55
+ipmi::VR MEM CD::hysteresis		= 1
+ipmi::VR MEM CD::units			= degrees C
+
+ipmi::VR CPU2::ok			= 45
+ipmi::VR CPU2::warn			= 55
+ipmi::VR CPU2::hysteresis		=  1
+ipmi::VR CPU2::units			= degrees C
+
+ipmi::VR MEM EF::ok			= 45
+ipmi::VR MEM EF::warn			= 55
+ipmi::VR MEM EF::hysteresis		=  1
+ipmi::VR MEM EF::units			= degrees C
+
+ipmi::VR MEM GH::ok			= 45
+ipmi::VR MEM GH::warn			= 55
+ipmi::VR MEM GH::hysteresis		=  1
+ipmi::VR MEM GH::units			= degrees C
+
+ipmi::CPU1::ok				= 45
+ipmi::CPU1::warn			= 55
+ipmi::CPU1::hysteresis			=  1
+ipmi::CPU1::units			= degrees C
+
+ipmi::CPU2::ok				= 45
+ipmi::CPU2::warn			= 55
+ipmi::CPU2::hysteresis			=  1
+ipmi::CPU2::units			= degrees C
+
+ipmi::MEM A::ok				= 45
+ipmi::MEM A::warn			= 55
+ipmi::MEM A::hysteresis			=  1
+ipmi::MEM A::units			= degrees C
+
+ipmi::MEM B::ok				= 45
+ipmi::MEM B::warn			= 55
+ipmi::MEM B::hysteresis			=  1
+ipmi::MEM B::units			= degrees C
+
+ipmi::MEM C::ok				= 45
+ipmi::MEM C::warn			= 55
+ipmi::MEM C::hysteresis			=  1
+ipmi::MEM C::units			= degrees C
+
+ipmi::MEM D::ok				= 45
+ipmi::MEM D::warn			= 55
+ipmi::MEM D::hysteresis			=  1
+ipmi::MEM D::units			= degrees C
+
+ipmi::MEM E::ok				= 45
+ipmi::MEM E::warn			= 55
+ipmi::MEM E::hysteresis			=  1
+ipmi::MEM E::units			= degrees C
+
+ipmi::MEM F::ok				= 45
+ipmi::MEM F::warn			= 55
+ipmi::MEM F::hysteresis			=  1
+ipmi::MEM F::units			= degrees C
+
+ipmi::MEM G::ok				= 45
+ipmi::MEM G::warn			= 55
+ipmi::MEM G::hysteresis			=  1
+ipmi::MEM G::units			= degrees C
+
+ipmi::MEM H::ok				= 45
+ipmi::MEM H::warn			= 55
+ipmi::MEM H::hysteresis			=  1
+ipmi::MEM H::units			= degrees C
+
+ipmi::PSU1 Inlet::ok			= 45
+ipmi::PSU1 Inlet::warn			= 55
+ipmi::PSU1 Inlet::hysteresis		=  1
+ipmi::PSU1 Inlet::units			= degrees C
+
+ipmi::PSU2 Inlet::ok			= 45
+ipmi::PSU2 Inlet::warn			= 55
+ipmi::PSU2 Inlet::hysteresis		=  1
+ipmi::PSU2 Inlet::units			= degrees C
+
+ipmi::PSU1::ok				= 65
+ipmi::PSU1::warn			= 75
+ipmi::PSU1::hysteresis			=  1
+ipmi::PSU1::units			= degrees C
+
+ipmi::PSU2::ok				= 65
+ipmi::PSU2::warn			= 75
+ipmi::PSU2::hysteresis			=  1
+ipmi::PSU2::units			= degrees C
+
+ipmi::BBU::ok				= 45
+ipmi::BBU::warn				= 55
+ipmi::BBU::hysteresis			=  1
+ipmi::BBU::units			= degrees C
+
+ipmi::RAID Controller::ok		= 60
+ipmi::RAID Controller::warn		= 70
+ipmi::RAID Controller::hysteresis	=  1
+ipmi::RAID Controller::units		= degrees C
+
+# ----------------------------------------------------------------------
+# End of file.
+",
+			configuration_file	=>	"ipmi.conf",
+			enabled			=>	1,
+		},
+		raid			=>	{
+			configuration_body	=>	"
+# RAID config file
+#
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name = raid
+
+# Agent metadata
+#
+raid::db::table::ROC temperature	= raid_controllers
+raid::db::table::Drive Temperature	= raid_drives
+raid::db::table::summary		= raid_controllers
+raid::db::table::other			= raid_controllers
+raid::db::table::alerts			= alerts
+
+raid::host				= #!conf!long_hostname!#
+raid::ip				= #!conf!bcn_ip!#
+raid::type				= RAID subsystem
+raid::query				= wstorcli
+
+# specifications for the summary data & various attributes
+#
+raid::summary::max			= 100
+raid::summary::ok			= 0
+raid::summary::warn			= 4
+raid::summary::hysteresis		= 0
+
+
+raid::Drive Temperature::ok		=  40
+raid::Drive Temperature::warn		=  50
+raid::Drive Temperature::hysteresis	=   1
+raid::Drive Temperature::units		= degrees C
+
+
+raid::ROC temperature::ok		=  50
+raid::ROC temperature::warn		=  60
+raid::ROC temperature::hysteresis	=   1
+raid::ROC temperature::units		= degrees C
+
+
+# ----------------------------------------------------------------------
+# End of file.
+",
+			configuration_file	=>	"raid.conf",
+			enabled			=>	1,
+		},
+		scanner			=>	{
+			configuration_body	=>	"
+# scanner config file
+#
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name = scanner
+
+# Agent metadata
+#
+scanner::db::table::alerts	= alerts
+
+# This is the local machine's full host name, used to help users identify this
+# node when parsing database data.
+scanner::host			= #!conf!long_hostname!#
+
+# This is the local machine's IP addressed, used to help users identify this
+# node when parsing database data.
+scanner::ip			= #!conf!bcn_ip!#
+
+# 
+scanner::type			= scanCore
+
+# Each node records it's health to this file. The other node consults this file
+# when it is in an emergency shutdown-state to decide whether it should migrate
+# or power down servers.
+scanner::healthfile		= /shared/status/.#!conf!short_hostname!#
+
+# This is a setuid c-wrapper that calls /var/www/tools/safe_anvil_stop to
+# initiate the shutdown of the node in an emergency.
+scanner::shutdown		= /var/www/tools/wshutdown 
+
+# This is a list of agents (or other files) in /usr/share/striker/agents/ to
+# ignore. Any hardware, service or resource you do not have should be listed
+# here. Alternatively, delete the files you don't want from that directory.
+scanner::ignorefile		= MegaSAS.log nodemonitor snmp_brocade_switch snmp_apc_pdu
+
+# How important are the various agents in determining a shutdown?
+#
+scanner::weight::snmp_apc_ups	= 1
+scanner::weight::snmp_apc_pdu	= 1
+scanner::weight::ipmi		= 1
+scanner::weight::raid		= 1
+
+# specifications for the summary data & various attributes
+#
+scanner::summary::max		= 100
+scanner::summary::ok		= 1
+scanner::summary::warn		= 5
+
+# ----------------------------------------------------------------------
+# End of file.
+",
+			configuration_file	=>	"scanner.conf",
+			enabled			=>	1,
+		},
+		snmp_apc_ups		=>	{
+			configuration_body	=>	"
+# SNMP Configuration for APC UPSes.
+#
+# Global data should be tagged with 'global' at the second level, or
+# equivalenty, with 'default'. The oid to determine the battery
+# temperature is always the same, if we are querying an APC UPS, so
+# OIDs are tagged as global.
+#
+# Data which is different for various entities should be tagged with a
+# number. The appearance of a number rather than letter at the second
+# level indicates characteristics which are unique to a single
+# instance. While names for the multiple instances could in theory be
+# meaningful, the existing code searaches for digits to differentiate
+# global and local data.
+#
+# It is also possible to set a global characteristic and then override
+# it on a local level. To test and demonstrate this, UPS 1 has it's
+# own definition for snmp::reason for last transfer::values::1 ...
+# Instead of 'No events', it uses 'Nothing happened' ... clearly a
+# meaningless and insignificant difference. But using the debugger, we
+# can display the snmp_apc_ups object and see the separate values.
+#
+
+# Each config file uses a unique prefix for data. Specify what that
+# prefix is, so a single reading routine can handle all the different
+# files.
+#
+name = snmp
+
+# Agent metadata
+#
+snmp::db::table::battery capacity		= snmp_apc_ups
+snmp::db::table::battery temperature		= snmp_apc_ups
+snmp::db::table::battery runtime remaining	= snmp_apc_ups
+snmp::db::table::battery replace		= snmp_apc_ups
+snmp::db::table::input voltage			= snmp_apc_ups
+snmp::db::table::input frequency		= snmp_apc_ups
+snmp::db::table::reason for last transfer	= snmp_apc_ups
+snmp::db::table::output voltage			= snmp_apc_ups
+snmp::db::table::output frequency		= snmp_apc_ups
+snmp::db::table::output load			= snmp_apc_ups
+snmp::db::table::output current			= snmp_apc_ups
+snmp::db::table::comms				= snmp_apc_ups
+snmp::db::table::last self test result		= snmp_apc_ups
+snmp::db::table::last self test date		= snmp_apc_ups
+snmp::db::table::other				= snmp_apc_ups
+snmp::db::table::alerts				= alerts
+
+snmp::1::name					= $conf->{cgi}{anvil_ups1_name}
+snmp::1::type					= APC UPS
+snmp::1::ip					= $conf->{cgi}{anvil_ups1_ip}
+snmp::1::community				= public
+
+snmp::2::name					= $conf->{cgi}{anvil_ups2_name}
+snmp::2::type					= APC UPS
+snmp::2::ip					= $conf->{cgi}{anvil_ups2_ip}
+snmp::2::community				= public
+
+# specifications for the summary data & various attributes
+#
+snmp::global::summary::max			= 100
+snmp::global::summary::ok			= 0
+snmp::global::summary::warn			= 4
+snmp::global::summary::hysteresis		= 0
+
+#snmp::global::oid::ups  type			= .1.3.6.1.4.1.318.1.1.1.1.1.1.0
+snmp::global::oid::battery capacity		= .1.3.6.1.4.1.318.1.1.1.2.2.1.0
+snmp::global::oid::battery temperature		= .1.3.6.1.4.1.318.1.1.1.2.2.2.0
+snmp::global::oid::battery runtime remaining	= .1.3.6.1.4.1.318.1.1.1.2.2.3.0
+snmp::global::oid::battery replace		= .1.3.6.1.4.1.318.1.1.1.2.2.4.0
+snmp::global::oid::input voltage		= .1.3.6.1.4.1.318.1.1.1.3.2.1.0
+snmp::global::oid::input frequency		= .1.3.6.1.4.1.318.1.1.1.3.2.4.0
+snmp::global::oid::reason for last transfer	= .1.3.6.1.4.1.318.1.1.1.3.2.5.0
+snmp::global::oid::output voltage		= .1.3.6.1.4.1.318.1.1.1.4.2.1.0
+snmp::global::oid::output frequency		= .1.3.6.1.4.1.318.1.1.1.4.2.2.0
+snmp::global::oid::output load			= .1.3.6.1.4.1.318.1.1.1.4.2.3.0
+snmp::global::oid::output current		= .1.3.6.1.4.1.318.1.1.1.4.2.4.0
+snmp::global::oid::comms			= .1.3.6.1.4.1.318.1.1.1.8.1.0
+snmp::global::oid::last self test result	= .1.3.6.1.4.1.318.1.1.1.7.2.3.0
+snmp::global::oid::last self test date		= .1.3.6.1.4.1.318.1.1.1.7.2.4.0
+
+# Dummy entry so 'last self test date' has SOME config file entry.
+#
+snmp::global::last self test date::hysteresis	= 0.0
+
+snmp::global::battery capacity::units		= %
+snmp::global::battery capacity::min		= 0
+snmp::global::battery capacity::max		= 100
+snmp::global::battery capacity::ok		= 25
+snmp::global::battery capacity::warn		= 10
+snmp::global::battery capacity::hysteresis	= 1
+snmp::global::battery capacity::weight		= 1
+snmp::global::battery capacity::compare		= greater
+
+# http://koninkx.net/index.php/howtos/snmp/8-usefull-oids-for-apc says
+# this can be F or C depending on configuration, but APC MIB file says
+# it is Celsius.
+#
+snmp::global::battery temperature::units	= degrees C
+snmp::global::battery temperature::min		= 0
+snmp::global::battery temperature::max		= 100
+snmp::global::battery temperature::ok		= 20
+snmp::global::battery temperature::warn		= 25
+snmp::global::battery temperature::hysteresis	= 1
+snmp::global::battery temperature::weight	= 1
+snmp::global::battery temperature::compare	= lesser
+
+snmp::global::battery runtime remaining::units		= minutes?
+snmp::global::battery runtime remaining::min		= 0
+snmp::global::battery runtime remaining::max		= 50
+snmp::global::battery runtime remaining::ok		= 20
+snmp::global::battery runtime remaining::warn		= 05
+snmp::global::battery runtime remaining::hysteresis	= 1
+snmp::global::battery runtime remaining::weight		= 1
+snmp::global::battery runtime remaining::compare	= greater
+
+snmp::global::battery replace::values::1	= unneeded
+snmp::global::battery replace::values::2	= needed
+snmp::global::battery replace::weight		= 1
+ 
+snmp::global::input voltage::units		= V
+snmp::global::input voltage::min		= 90
+snmp::global::input voltage::max		= 150
+snmp::global::input voltage::ok_min		= 105
+snmp::global::input voltage::ok_max		= 125
+snmp::global::input voltage::warn_min		= 95
+snmp::global::input voltage::warn_max		= 140
+snmp::global::input voltage::crisis_min		= 90
+snmp::global::input voltage::crisis_max		= 150
+snmp::global::input voltage::hysteresis		= 1
+snmp::global::input voltage::weight		= 1
+
+snmp::global::input frequency::units		= Hz
+snmp::global::input frequency::min		= 55
+snmp::global::input frequency::max		= 65
+snmp::global::input frequency::ok_min		= 58
+snmp::global::input frequency::ok_max		= 62
+snmp::global::input frequency::warn_min		= 56
+snmp::global::input frequency::warn_max		= 64
+snmp::global::input frequency::crisis_min	= 55
+snmp::global::input frequency::crisis_max	= 65
+snmp::global::input frequency::hysteresis	= 1
+snmp::global::input frequency::weight		= 1
+
+snmp::global::reason for last transfer::values::1	= No events
+snmp::global::reason for last transfer::values::2	= High line voltage
+snmp::global::reason for last transfer::values::3	= Brownout
+snmp::global::reason for last transfer::values::4	= Los of mains power
+snmp::global::reason for last transfer::values::5	= Small temporary power drop
+snmp::global::reason for last transfer::values::6	= Large temporary power drop
+snmp::global::reason for last transfer::values::7	= Small spike
+snmp::global::reason for last transfer::values::8	= Large spike
+snmp::global::reason for last transfer::values::9	= UPS self test
+snmp::global::reason for last transfer::values::10	= Excessive input voltage fluctuation
+snmp::global::reason for last transfer::weight		= 1
+
+# test/demonstrate local override of global setting
+#
+snmp::1::reason for last transfer::values::1  = Nothing happened.
+
+snmp::global::output voltage::units		= V
+snmp::global::output voltage::min		= 90
+snmp::global::output voltage::max		= 150
+snmp::global::output voltage::ok_min		= 115
+snmp::global::output voltage::ok_max		= 130
+snmp::global::output voltage::warn_min		= 110
+snmp::global::output voltage::warn_max		= 135
+snmp::global::output voltage::crisis_min	= 90
+snmp::global::output voltage::crisis_max	= 150
+snmp::global::output voltage::hysteresis	= 1
+snmp::global::output voltage::weight		= 1
+
+snmp::global::output frequency::units		= Hz
+snmp::global::output frequency::min		= 55
+snmp::global::output frequency::max		= 65
+snmp::global::output frequency::ok_min		= 58
+snmp::global::output frequency::ok_max		= 62
+snmp::global::output frequency::warn_min	= 56
+snmp::global::output frequency::warn_max	= 64
+snmp::global::output frequency::crisis_min	= 55
+snmp::global::output frequency::crisis_max	= 65
+snmp::global::output frequency::hysteresis	= 1
+snmp::global::output frequency::weight		= 1
+
+snmp::global::output load::units		= %
+snmp::global::output load::min			= 0
+snmp::global::output load::max			= 100
+snmp::global::output load::ok			= 75
+snmp::global::output load::warn			= 95
+snmp::global::output load::hysteresis		= 1
+snmp::global::output load::weight		= 1
+
+snmp::global::output current::units		= A
+snmp::global::output current::min		= 0
+snmp::global::output current::max		= 5
+snmp::global::output current::ok		= 4
+snmp::global::output current::warn		= 4.7
+snmp::global::output current::hysteresis	= 0.1
+snmp::global::output current::weight		= 1
+
+snmp::global::comms::label			= Communicating
+snmp::global::comms::values::1			= yes
+snmp::global::comms::values::2			= no
+snmp::global::comms::weight			= 5
+",
+			configuration_file	=>	"snmp_apc_ups.conf",
+			enabled			=>	1,
+		},
 	};
 	
 	if ($conf->{sys}{use_drbd} eq "8.3")
@@ -178,8 +740,8 @@ sub run_new_install_manifest
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_remap_required: [$node1_remap_required], node2_remap_required: [$node2_remap_required].\n");
 	
 	# If either/both nodes need a remap done, do it now.
-	my $node1_rc        = 0;
-	my $node2_rc        = 0;
+	my $node1_rc = 0;
+	my $node2_rc = 0;
 	if ($node1_remap_required)
 	{
 		($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
@@ -305,6 +867,10 @@ sub run_new_install_manifest
 		# Configure storage stage 1 (partitioning.
 		configure_storage_stage1($conf) or return(1);
 		
+		# Set the root user's passwords as the last step to ensure
+		# reloading the browser works for as long as possible.
+		set_root_password($conf) or return(1);
+		
 		# If a reboot is needed, now is the time to do it. This will
 		# switch the CGI nodeX IPs to the new ones, too.
 		reboot_nodes($conf) or return(1);
@@ -330,10 +896,6 @@ sub run_new_install_manifest
 		# This sets up the various Striker tools like safe_anvil_start
 		# and so on.
 		configure_striker_tools($conf);
-		
-		# Set the root user's passwords as the last step to ensure
-		# reloading the browser works for as long as possible.
-		set_root_password($conf) or return(1);
 		
 		### If we're not dead, it's time to celebrate!
 		# Is this Anvil! already in the config file?
@@ -377,7 +939,7 @@ sub run_new_install_manifest
 sub configure_striker_tools
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools();\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
 	
 	# If requested, enable safe_anvil_start.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
@@ -387,13 +949,148 @@ sub configure_striker_tools
 		enable_safe_anvil_start($conf);
 	}
 	
-	# Configure Scanner
+	# If requested, enable anvil-kick-apc-ups
 	if ($conf->{sys}{install_manifest}{use_anvil_kick_apc_ups})
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_anvil_kick_apc_ups($conf);
 	}
 	
+	# Configure Scancore.
+	configure_scancore($conf);
+	
+	return(0);
+}
+
+# This sets up scancore to run on the nodes. It expects the database(s) to be
+# on the node(s).
+sub configure_scancore
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
+	
+	### TODO: Each scan agent has a config file, most of which may not be
+	###       useful to the client. For now, we'll configure them all. 
+	###       Later, these will be configured via Install Manifest.
+	my $node1_name       = $conf->{cgi}{anvil_node1_name};
+	my $node1_short_name = $node1_name;
+	   $node1_short_name = s/^(.*?)\..*$/$1/;
+	my $node1_bcn_ip     = $conf->{cgi}{anvil_node1_bcn_ip};
+	my $node2_name       = $conf->{cgi}{anvil_node2_name};
+	my $node2_short_name = $node2_name;
+	   $node2_short_name = s/^(.*?)\..*$/$2/;
+	my $node2_bcn_ip     = $conf->{cgi}{anvil_node2_bcn_ip};
+	my $node1            =  $conf->{cgi}{anvil_node1_current_ip};
+	my $node1_password   =  $conf->{cgi}{anvil_node1_current_password};
+	my $node2            =  $conf->{cgi}{anvil_node2_current_ip};
+	my $node2_password   =  $conf->{cgi}{anvil_node2_current_password};
+	foreach my $agent (sort {$a cmp $b} keys %{$conf->{scancore}{scan_agents}})
+	{
+		next if not $conf->{scancore}{scan_agents}{$agent}{enabled};
+		my $config_file       = "$conf->{path}{nodes}{scan_agents}/$conf->{scancore}{scan_agents}{$agent}{configuration_file}";
+		my $node1_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
+		my $node2_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
+		
+		# Substitute variables.
+		$node1_config_body =~ s/#!conf!bcn_ip!#/$node1_bcn_ip/gs;
+		$node1_config_body =~ s/#!conf!long_hostname!#/$node1_name/gs;
+		$node1_config_body =~ s/#!conf!short_hostname!#/$node1_short_name/gs;
+		
+		$node2_config_body =~ s/#!conf!bcn_ip!#/$node2_bcn_ip/gs;
+		$node2_config_body =~ s/#!conf!long_hostname!#/$node2_name/gs;
+		$node2_config_body =~ s/#!conf!short_hostname!#/$node2_short_name/gs;
+		
+		### TODO: Backup any existing files.
+		# Write out the config for node 1
+		my $shell_call =  "cat > $config_file << EOF\n";
+		   $shell_call .= "$node1_config_body\n";
+		   $shell_call .= "EOF";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node1,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$node1_password,
+			ssh_fh		=>	$conf->{node}{$node1}{ssh_fh} ? $conf->{node}{$node1}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		}
+		# Now node 2
+		$shell_call =  "cat > $config_file << EOF\n";
+		$shell_call .= "$node2_config_body\n";
+		$shell_call .= "EOF";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node2,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$node2_password,
+			ssh_fh		=>	$conf->{node}{$node2}{ssh_fh} ? $conf->{node}{$node2}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		}
+	}
+	
+	# Now make sure scan core is set to start on boot.
+	logger($conf, $THIS_FILE, __LINE__, "- Enabling ScanCore on boot.", 1);
+	my $shell_call = "
+if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
+then
+	echo 'creating empty crontab for root.'
+	touch $conf->{path}{nodes}{cron_root}
+	chown root:root $conf->{path}{nodes}{cron_root}
+	chmod 600 $conf->{path}{nodes}{cron_root}
+fi
+grep -q scanner /var/spool/cron/root
+if [ \"\$?\" -eq '0' ];
+then
+	echo 'exits'
+else
+	echo '*/5 * * * * /usr/share/striker/bin/scanner' >> $conf->{path}{nodes}{cron_root}
+fi";
+	# Node 1
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node1,
+		port		=>	11,
+		user		=>	"root",
+		password	=>	$node1_password,
+		ssh_fh		=>	$conf->{node}{$node1}{ssh_fh} ? $conf->{node}{$node1}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+	}
+	# Node 2
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node2,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$node2_password,
+		ssh_fh		=>	$conf->{node}{$node2}{ssh_fh} ? $conf->{node}{$node2}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+	}
+
 	return(0);
 }
 
@@ -407,21 +1104,21 @@ sub enable_anvil_kick_apc_ups_on_node
 	my $shell_call = "
 if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups}' ];
 then 
-        echo '$conf->{path}{nodes}{anvil_kick_apc_ups} exists, creating symlink';
-        if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
-        then
-                echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} already exists.'
-        else
-                ln -s $conf->{path}{nodes}{anvil_kick_apc_ups} $conf->{path}{nodes}{anvil_kick_apc_ups_link}
-                if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
-                then
-                        echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} link created.'
-                else
-                        echo 'Failed to create $conf->{path}{nodes}{anvil_kick_apc_ups_link}.'
-                fi
-        fi
+	echo '$conf->{path}{nodes}{anvil_kick_apc_ups} exists, creating symlink';
+	if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+	then
+		echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} already exists.'
+	else
+		ln -s $conf->{path}{nodes}{anvil_kick_apc_ups} $conf->{path}{nodes}{anvil_kick_apc_ups_link}
+		if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+		then
+			echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} link created.'
+		else
+			echo 'Failed to create $conf->{path}{nodes}{anvil_kick_apc_ups_link}.'
+		fi
+	fi
 else 
-        echo '$conf->{path}{nodes}{anvil_kick_apc_ups} not found'
+	echo '$conf->{path}{nodes}{anvil_kick_apc_ups} not found'
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -475,21 +1172,21 @@ sub enable_safe_anvil_start_on_node
 	my $shell_call = "
 if [ -e '$conf->{path}{nodes}{safe_anvil_start}' ];
 then 
-        echo '$conf->{path}{nodes}{safe_anvil_start} exists, creating symlink';
-        if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
-        then
-                echo '$conf->{path}{nodes}{safe_anvil_start_link} already exists.'
-        else
-                ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}
-                if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
-                then
-                        echo '$conf->{path}{nodes}{safe_anvil_start_link} link created.'
-                else
-                        echo 'Failed to create $conf->{path}{nodes}{safe_anvil_start_link}.'
-                fi
-        fi
+	echo '$conf->{path}{nodes}{safe_anvil_start} exists, creating symlink';
+	if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
+	then
+		echo '$conf->{path}{nodes}{safe_anvil_start_link} already exists.'
+	else
+		ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}
+		if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
+		then
+			echo '$conf->{path}{nodes}{safe_anvil_start_link} link created.'
+		else
+			echo 'Failed to create $conf->{path}{nodes}{safe_anvil_start_link}.'
+		fi
+	fi
 else 
-        echo '$conf->{path}{nodes}{safe_anvil_start} not found'
+	echo '$conf->{path}{nodes}{safe_anvil_start} not found'
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -1001,12 +1698,13 @@ sub check_if_in_cluster
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
 	
-	my $shell_call = "if [ -e '/etc/init.d/cman' ];
-                        then 
-                                /etc/init.d/cman status; echo rc:\$?; 
-                        else 
-                                echo 'not in a cluster'; 
-                        fi";
+	my $shell_call = "
+if [ -e '/etc/init.d/cman' ];
+then 
+	/etc/init.d/cman status; echo rc:\$?; 
+else 
+	echo 'not in a cluster'; 
+fi";
 	# rc == 0; in a cluster
 	# rc == 3; NOT in a cluster
 	# Node 1
@@ -1608,13 +2306,14 @@ sub setup_gfs2_on_node
 	my $return_code = 0;
 	
 	# Make sure the '/shared' directory exists.
-	my $shell_call = "if [ -e '/shared' ];
-			then 
-				echo '/shared exists';
-			else 
-				mkdir /shared;
-				echo '/shared created'
-			fi";
+	my $shell_call = "
+if [ -e '/shared' ];
+then 
+	echo '/shared exists';
+else 
+	mkdir /shared;
+	echo '/shared created'
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -1636,18 +2335,19 @@ sub setup_gfs2_on_node
 	{
 		my $append_ok    = 0;
 		my $fstab_string = "UUID=$conf->{sys}{shared_fs_uuid} /shared gfs2 defaults,noatime,nodiratime 0 0";
-		$shell_call   = "if \$(grep -q shared /etc/fstab)
-				then
-					echo 'shared exists'
-				else
-					echo \"$fstab_string\" >> /etc/fstab
-					if \$(grep -q shared /etc/fstab)
-					then
-						echo 'shared added'
-					else
-						echo 'failed to add shared'
-					fi
-				fi";
+		$shell_call   = "
+if \$(grep -q shared /etc/fstab)
+then
+	echo 'shared exists'
+else
+	echo \"$fstab_string\" >> /etc/fstab
+	if \$(grep -q shared /etc/fstab)
+	then
+		echo 'shared added'
+	else
+		echo 'failed to add shared'
+	fi
+fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -1747,12 +2447,13 @@ sub setup_gfs2_on_node
 			{
 				next if not $directory;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; directory: [$directory].\n");
-				my $shell_call = "if [ -e '/shared/$directory' ]
-						then
-							echo '/shared/$directory already exists'
-						else
-							mkdir /shared/$directory; echo rc:\$?
-						fi";
+				my $shell_call = "
+if [ -e '/shared/$directory' ]
+then
+	echo '/shared/$directory already exists'
+else
+	mkdir /shared/$directory; echo rc:\$?
+fi";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -1787,21 +2488,22 @@ sub setup_gfs2_on_node
 		# Setup SELinux context on /shared
 		if (not $return_code)
 		{
-			my $shell_call = "context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
-					if [ \$context == 'file_t' ];
-					then
-						semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
-						restorecon -r /shared
-						context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
-						if [ \$context == 'virt_etc_t' ];
-						then
-							echo 'context updated'
-						else
-							echo \"context failed to update, still: \$context.\"
-						fi
-					else 
-						echo 'context ok';
-					fi";
+			my $shell_call = "
+context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+if [ \$context == 'file_t' ];
+then
+	semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
+	restorecon -r /shared
+	context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+	if [ \$context == 'virt_etc_t' ];
+	then
+		echo 'context updated'
+	else
+		echo \"context failed to update, still: \$context.\"
+	fi
+else 
+	echo 'context ok';
+fi";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
@@ -2546,13 +3248,14 @@ sub start_clvmd_on_node
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_clvmd_on_node(); node: [$node]\n");
 	
 	my $return_code = 255;
-	my $shell_call  = "/etc/init.d/clvmd status &>/dev/null; 
-			if [ \$? == 3 ];
-			then 
-				/etc/init.d/clvmd start; echo rc:\$?;
-			else 
-				echo 'clvmd already running';
-			fi";
+	my $shell_call  = "
+/etc/init.d/clvmd status &>/dev/null; 
+if [ \$? == 3 ];
+then 
+	/etc/init.d/clvmd start; echo rc:\$?;
+else 
+	echo 'clvmd already running';
+fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -3229,18 +3932,19 @@ sub do_drbd_attach_on_node
 	my $message     = "";
 	my $return_code = 0;
 	# First up, is the DRBD kernel module loaded?
-	my $shell_call = "if [ -e '/proc/drbd' ]; 
-			then 
-				echo 'DRBD already loaded'; 
-			else 
-				modprobe drbd; 
-				if [ -e '/proc/drbd' ]; 
-				then 
-					echo 'loaded DRBD kernel module'; 
-				else 
-					echo 'failed to load drbd' 
-				fi;
-			fi;";
+	my $shell_call = "
+if [ -e '/proc/drbd' ]; 
+then 
+	echo 'DRBD already loaded'; 
+else 
+	modprobe drbd; 
+	if [ -e '/proc/drbd' ]; 
+	then 
+		echo 'loaded DRBD kernel module'; 
+	else 
+		echo 'failed to load drbd' 
+	fi;
+fi;";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -3483,17 +4187,17 @@ sub populate_authorized_keys_on_node
 	my $ok = 1;
 	foreach my $name (@{$conf->{sys}{node_names}})
 	{
-		my $shell_call = "if [ -e '/root/.ssh/authorized_keys' ]
-				then
-					if \$(grep -q $name ~/.ssh/authorized_keys);
-					then 
-						echo 'RSA key exists, removing it.'
-						sed -i '/ root\@$name$/d' /root/.ssh/authorized_keys
-					fi;
-				else
-					echo 'no file'
-				fi
-				";
+		my $shell_call = "
+if [ -e '/root/.ssh/authorized_keys' ]
+then
+	if \$(grep -q $name ~/.ssh/authorized_keys);
+	then 
+		echo 'RSA key exists, removing it.'
+		sed -i '/ root\@$name$/d' /root/.ssh/authorized_keys
+	fi;
+else
+	echo 'no file'
+fi";
 	}
 	
 	### Now add the keys.
@@ -3518,12 +4222,13 @@ sub populate_authorized_keys_on_node
 		}
 		
 		# Verify it was added.
-		$shell_call = "if \$(grep -q \"$node1_rsa\" /root/.ssh/authorized_keys)
-				then
-					echo added
-				else
-					echo failed
-				fi";
+		$shell_call = "
+if \$(grep -q \"$node1_rsa\" /root/.ssh/authorized_keys)
+then
+	echo added
+else
+	echo failed
+fi";
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -3570,12 +4275,13 @@ sub populate_authorized_keys_on_node
 		}
 		
 		# Verify it was added.
-		$shell_call = "if \$(grep -q \"$node2_rsa\" /root/.ssh/authorized_keys)
-				then
-					echo added
-				else
-					echo failed
-				fi";
+		$shell_call = "
+if \$(grep -q \"$node2_rsa\" /root/.ssh/authorized_keys)
+then
+	echo added
+else
+	echo failed
+fi";
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -3618,18 +4324,19 @@ sub populate_known_hosts_on_node
 		# found.
 		next if not $name;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; checking/adding fingerprint for: [$name]\n");
-		my $shell_call = "if \$(grep -q $name ~/.ssh/known_hosts);
-				then 
-					echo 'fingerprint exists, removing it.'
-					sed -i '/^$name /d' /root/.ssh/known_hosts
-				fi
-				ssh-keyscan $name >> ~/.ssh/known_hosts;
-				if \$(grep -q $name ~/.ssh/known_hosts);
-				then 
-					echo 'fingerprint added';
-				else
-					echo 'failed to record fingerprint for $node.';
-				fi;";
+		my $shell_call = "
+if \$(grep -q $name ~/.ssh/known_hosts);
+then 
+	echo 'fingerprint exists, removing it.'
+	sed -i '/^$name /d' /root/.ssh/known_hosts
+fi
+ssh-keyscan $name >> ~/.ssh/known_hosts;
+if \$(grep -q $name ~/.ssh/known_hosts);
+then 
+	echo 'fingerprint added';
+else
+	echo 'failed to record fingerprint for $node.';
+fi;";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -3674,18 +4381,19 @@ sub get_node_rsa_public_key
 	#ssh-keygen -t rsa -N "" -b 8191 -f ~/.ssh/id_rsa
 	#ssh-keygen -l -f ~/.ssh/id_rsa
 	$conf->{cgi}{anvil_ssh_keysize} = "8191" if not $conf->{cgi}{anvil_ssh_keysize};
-	my $shell_call = "if [ -e '/root/.ssh/id_rsa.pub' ]; 
-			then 
-				cat /root/.ssh/id_rsa.pub; 
-			else 
-				ssh-keygen -t rsa -N \"\" -b $conf->{cgi}{anvil_ssh_keysize} -f ~/.ssh/id_rsa;
-				if [ -e '/root/.ssh/id_rsa.pub' ];
-				then 
-					cat /root/.ssh/id_rsa.pub; 
-				else 
-					echo 'keygen failed';
-				fi;
-			fi";
+	my $shell_call = "
+if [ -e '/root/.ssh/id_rsa.pub' ]; 
+then 
+	cat /root/.ssh/id_rsa.pub; 
+else 
+	ssh-keygen -t rsa -N \"\" -b $conf->{cgi}{anvil_ssh_keysize} -f ~/.ssh/id_rsa;
+	if [ -e '/root/.ssh/id_rsa.pub' ];
+	then 
+		cat /root/.ssh/id_rsa.pub; 
+	else 
+		echo 'keygen failed';
+	fi;
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4297,12 +5005,13 @@ sub backup_files_on_node
 	my ($conf, $node, $password) = @_;
 	
 	# Create the backup directory if it doesn't exist yet.
-	my $shell_call = "if [ -e '$conf->{path}{nodes}{backups}' ];
-			then 
-				echo \"Backup directory exist\";
-			else 
-				mkdir -p $conf->{path}{nodes}{backups}; 
-			fi";
+	my $shell_call = "
+if [ -e '$conf->{path}{nodes}{backups}' ];
+then 
+	echo \"Backup directory exist\";
+else 
+	mkdir -p $conf->{path}{nodes}{backups}; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4317,12 +5026,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup the original network config
-	$shell_call = "if [ -e '$conf->{path}{nodes}{backups}/network-scripts' ];
-			then 
-				echo \"Network configuration files previously backed up\";
-			else 
-				rsync -av $conf->{path}{nodes}{network_scripts} $conf->{path}{nodes}{backups}/;
-			fi";
+	$shell_call = "
+if [ -e '$conf->{path}{nodes}{backups}/network-scripts' ];
+then 
+	echo \"Network configuration files previously backed up\";
+else 
+	rsync -av $conf->{path}{nodes}{network_scripts} $conf->{path}{nodes}{backups}/;
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4337,12 +5047,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup the original SSH config
-	$shell_call = "if [ -e '$conf->{path}{nodes}{backups}/.ssh' ];
-			then 
-				echo \"SSH configuration files previously backed up\";
-			else 
-				rsync -av /root/.ssh $conf->{path}{nodes}{backups}/;
-			fi";
+	$shell_call = "
+if [ -e '$conf->{path}{nodes}{backups}/.ssh' ];
+then 
+	echo \"SSH configuration files previously backed up\";
+else 
+	rsync -av /root/.ssh $conf->{path}{nodes}{backups}/;
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4357,12 +5068,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup DRBD if it exists.
-	$shell_call = "if [ -e '$conf->{path}{nodes}{drbd}' ] && [ ! -e '$conf->{path}{nodes}{backups}/drbd.d' ];
-			then 
-				rsync -av $conf->{path}{nodes}{drbd} $conf->{path}{nodes}{backups}/; 
-			else 
-				echo \"DRBD backup not needed\"; 
-			fi";
+	$shell_call = "
+if [ -e '$conf->{path}{nodes}{drbd}' ] && [ ! -e '$conf->{path}{nodes}{backups}/drbd.d' ];
+then 
+	rsync -av $conf->{path}{nodes}{drbd} $conf->{path}{nodes}{backups}/; 
+else 
+	echo \"DRBD backup not needed\"; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4377,12 +5089,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup lvm.conf.
-	$shell_call = "if [ ! -e '$conf->{path}{nodes}{backups}/lvm.conf' ];
-			then 
-				rsync -av $conf->{path}{nodes}{lvm_conf} $conf->{path}{nodes}{backups}/; 
-			else 
-				echo \"LVM previously backed up, skipping.\"; 
-			fi";
+	$shell_call = "
+if [ ! -e '$conf->{path}{nodes}{backups}/lvm.conf' ];
+then 
+	rsync -av $conf->{path}{nodes}{lvm_conf} $conf->{path}{nodes}{backups}/; 
+else 
+	echo \"LVM previously backed up, skipping.\"; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4397,12 +5110,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup cluster.conf.
-	$shell_call = "if [ ! -e '$conf->{path}{nodes}{backups}/cluster.conf' ];
-			then 
-				rsync -av $conf->{path}{nodes}{cluster_conf} $conf->{path}{nodes}{backups}/; 
-			else 
-				echo \"cman previously backed up, skipping.\"; 
-			fi";
+	$shell_call = "
+if [ ! -e '$conf->{path}{nodes}{backups}/cluster.conf' ];
+then 
+	rsync -av $conf->{path}{nodes}{cluster_conf} $conf->{path}{nodes}{backups}/; 
+else 
+	echo \"cman previously backed up, skipping.\"; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4417,12 +5131,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup fstab.
-	$shell_call = "if [ ! -e '$conf->{path}{nodes}{backups}/fstab' ];
-			then 
-				rsync -av $conf->{path}{nodes}{fstab} $conf->{path}{nodes}{backups}/; 
-			else 
-				echo \"fstab previously backed up, skipping.\"; 
-			fi";
+	$shell_call = "
+if [ ! -e '$conf->{path}{nodes}{backups}/fstab' ];
+then 
+	rsync -av $conf->{path}{nodes}{fstab} $conf->{path}{nodes}{backups}/; 
+else 
+	echo \"fstab previously backed up, skipping.\"; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4437,12 +5152,13 @@ sub backup_files_on_node
 	#foreach my $line (@{$return}) { AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
 	
 	# Backup shadow.
-	$shell_call = "if [ ! -e '$conf->{path}{nodes}{backups}/shadow' ];
-			then 
-				rsync -av $conf->{path}{nodes}{shadow} $conf->{path}{nodes}{backups}/; 
-			else 
-				echo \"shadow previously backed up, skipping.\"; 
-			fi";
+	$shell_call = "
+if [ ! -e '$conf->{path}{nodes}{backups}/shadow' ];
+then 
+	rsync -av $conf->{path}{nodes}{shadow} $conf->{path}{nodes}{backups}/; 
+else 
+	echo \"shadow previously backed up, skipping.\"; 
+fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -5967,19 +6683,20 @@ sub add_repo_to_node
 	else
 	{
 		# Now call the client.
-		my $shell_call = "if [ -e '/etc/yum.repos.d/$repo_file' ];
-				then
-					echo 1;
-				else
-					curl --silent $url --output /etc/yum.repos.d/$repo_file;
-					if [ -e '/etc/yum.repos.d/$repo_file' ];
-					then
-						yum clean all --quiet;
-						echo 2;
-					else
-						echo 9;
-					fi;
-				fi";
+		my $shell_call = "
+if [ -e '/etc/yum.repos.d/$repo_file' ];
+then
+	echo 1;
+else
+	curl --silent $url --output /etc/yum.repos.d/$repo_file;
+	if [ -e '/etc/yum.repos.d/$repo_file' ];
+	then
+		yum clean all --quiet;
+		echo 2;
+	else
+		echo 9;
+	fi;
+fi";
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -6110,8 +6827,8 @@ sub create_partitions_on_node
 	my $ok                        = 1;
 	my $partition_created         = 0;
 	my $create_extended_partition = 0;
-	my $pool1_partition   = 4;
-	my $pool2_partition   = 5;
+	my $pool1_partition           = 4;
+	my $pool2_partition           = 5;
 	if ($disk =~ /da$/)
 	{
 		# I need to know the label type to determine the partition numbers to
@@ -6573,8 +7290,8 @@ sub check_for_drbd_metadata
 			if ($resource)
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]'s device: [$device] belongs to DRBD resource: [$resource].\n");
-				my $rc          = 255;         
-				my $shell_call  = "drbdadm -- --force create-md $resource; echo rc:\$?";
+				my $rc         = 255;
+				my $shell_call = "drbdadm -- --force create-md $resource; echo rc:\$?";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -7282,9 +7999,9 @@ common {
 	disk {
 		# size max-bio-bvecs on-io-error fencing disk-barrier disk-flushes
 		# disk-drain md-flushes resync-rate resync-after al-extents
-                # c-plan-ahead c-delay-target c-fill-target c-max-rate
-                # c-min-rate disk-timeout
-                fencing resource-and-stonith;
+		# c-plan-ahead c-delay-target c-fill-target c-max-rate
+		# c-min-rate disk-timeout
+		fencing resource-and-stonith;
 	}
  
 	net {
@@ -7337,10 +8054,10 @@ common {
 		return(1);
 	}
 	
-	my $node1_sn_ip_key       = "anvil_node1_sn_ip";
-	my $node2_sn_ip_key       = "anvil_node2_sn_ip";
-	my $node1_sn_ip           = $conf->{cgi}{$node1_sn_ip_key};
-	my $node2_sn_ip           = $conf->{cgi}{$node2_sn_ip_key};
+	my $node1_sn_ip_key = "anvil_node1_sn_ip";
+	my $node2_sn_ip_key = "anvil_node2_sn_ip";
+	my $node1_sn_ip     = $conf->{cgi}{$node1_sn_ip_key};
+	my $node2_sn_ip     = $conf->{cgi}{$node2_sn_ip_key};
 	if ((not $node1_sn_ip) || (not $node2_sn_ip))
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to determine Storage Network IPs!; node1_sn_ip: [$node1_sn_ip], node2_sn_ip: [$node2_sn_ip]\n");
@@ -7533,30 +8250,31 @@ sub read_drbd_config_on_node
 	my $global_common = $conf->{path}{nodes}{drbd_global_common};
 	my $r0            = $conf->{path}{nodes}{drbd_r0};
 	my $r1            = $conf->{path}{nodes}{drbd_r1};
-	my $shell_call    = "if [ -e '$global_common' ]; 
-			then 
-				echo start:$global_common; 
-				cat $global_common; 
-				echo end:$global_common; 
-			else 
-				echo not_found:$global_common; 
-			fi;
-			if [ -e '$r0' ]; 
-			then 
-				echo start:$r0; 
-				cat $r0; 
-				echo end:$r0; 
-			else 
-				echo not_found:$r0; 
-			fi;
-			if [ -e '$r1' ]; 
-			then 
-				echo start:$r1; 
-				cat $r1; 
-				echo end:$r1; 
-			else 
-				echo not_found:$r1; 
-			fi;";
+	my $shell_call = "
+if [ -e '$global_common' ]; 
+then 
+	echo start:$global_common; 
+	cat $global_common; 
+	echo end:$global_common; 
+else 
+	echo not_found:$global_common; 
+fi;
+if [ -e '$r0' ]; 
+then 
+	echo start:$r0; 
+	cat $r0; 
+	echo end:$r0; 
+else 
+	echo not_found:$r0; 
+fi;
+if [ -e '$r1' ]; 
+then 
+	echo start:$r1; 
+	cat $r1; 
+	echo end:$r1; 
+else 
+	echo not_found:$r1; 
+fi;";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -7576,8 +8294,8 @@ sub read_drbd_config_on_node
 	
 	# These will contain the contents of the file.
 	$conf->{node}{$node}{drbd_file}{global_common} = "";
-	$conf->{node}{$node}{drbd_file}{r0}            = "";
-	$conf->{node}{$node}{drbd_file}{r1}            = "";
+	$conf->{node}{$node}{drbd_file}{r0}				   = "";
+	$conf->{node}{$node}{drbd_file}{r1}				   = "";
 	
 	# And these tell us which file we're looking at.
 	my $in_global = 0;
@@ -7679,8 +8397,8 @@ sub setup_drbd_on_node
 		{
 			# Resource 0 config
 			my $shell_call =  "cat > $conf->{path}{nodes}{drbd_r1} << EOF\n";
-			$shell_call .= "$conf->{drbd}{r1}\n";
-			$shell_call .= "EOF";
+			   $shell_call .= "$conf->{drbd}{r1}\n";
+			   $shell_call .= "EOF";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
@@ -7867,7 +8585,7 @@ sub register_node_with_rhn
 	my $base              = 0;
 	my $resilient_storage = 0;
 	my $optional          = 0;
-	my $return_code       = 0;
+	my $return_code =  0;
 	my $shell_call  =  "rhnreg_ks --username \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --force --profilename \"$name\" && ";
 	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-rs-6 && ";
 	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-optional-6 && ";
@@ -8069,6 +8787,14 @@ sub summarize_build_plan
 		node2_os_registered_class	=>	$say_node2_class,
 		update_manifest			=>	$conf->{cgi}{update_manifest},
 		rhn_template			=>	$rhn_template,
+		striker_user			=>	$conf->{cgi}{striker_user},
+		striker_database		=>	$conf->{cgi}{striker_database},
+		anvil_striker1_user		=>	$conf->{cgi}{anvil_striker1_user},
+		anvil_striker1_password		=>	$conf->{cgi}{anvil_striker1_password},
+		anvil_striker1_database		=>	$conf->{cgi}{anvil_striker1_database},
+		anvil_striker2_user		=>	$conf->{cgi}{anvil_striker2_user},
+		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
+		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
 	});
 	
 	return(0);
@@ -8090,19 +8816,20 @@ sub configure_ntp_on_node
 	foreach my $ntp_server (@ntp_servers)
 	{
 		# Look for/add NTP server
-		my $shell_call = "if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
-				then 
-					echo exists; 
-				else 
-					echo adding $ntp_server;
-					echo 'server $ntp_server iburst' >> $conf->{path}{nodes}{ntp_conf}
-					if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
-					then
-						echo added OK
-					else
-						echo failed to add!
-					fi;
-				fi";
+		my $shell_call = "
+if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
+then 
+	echo exists; 
+else 
+	echo adding $ntp_server;
+	echo 'server $ntp_server iburst' >> $conf->{path}{nodes}{ntp_conf}
+	if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
+	then
+		echo added OK
+	else
+		echo failed to add!
+	fi;
+fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -9194,8 +9921,7 @@ else
 		chmod 755 $conf->{path}{'anvil-map-network'};
 		echo ready;
 	fi
-fi
-";
+fi";
 	if (not $conf->{node}{$node}{internet_access})
 	{
 		### TODO: figure out a way to see if either dashboard is online
@@ -9212,8 +9938,7 @@ else
 	else
 		chmod 755 $conf->{path}{'anvil-map-network'};
 	fi
-fi
-";
+fi";
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -9271,11 +9996,11 @@ fi
 	else
 	{
 		# I need input from the user, so I need to call the client directly
-		my $cluster    = $conf->{cgi}{cluster};
-		my $port       = 22;
-		my $user       = "root";
-		my $ssh_fh     = $conf->{node}{$node}{ssh_fh};
-		my $close      = 0;
+		my $cluster = $conf->{cgi}{cluster};
+		my $port    = 22;
+		my $user    = "root";
+		my $ssh_fh  = $conf->{node}{$node}{ssh_fh};
+		my $close   = 0;
 		
 		### Build the shell call
 		# Figure out the hash keys to use
@@ -9613,8 +10338,7 @@ then
 	fi
 else
 	echo 'MegaCli64 not installed.'
-fi
-";
+fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -10400,65 +11124,65 @@ sub create_dvd_repo
 		shell_call	=>	"
 if [ -e \"/dev/sr0\" ];
 then
-        echo \"DVD drive exists.\"
-        if [ -e \"/mnt/$mount_name\" ]
-        then
-                echo \"Optical drive mount point exists.\"
-        else
-                echo \"Optical drive mount point does not exist yet.\"
-                mkdir /mnt/$mount_name
-                if [ ! -e \"/mnt/$mount_name\" ]
-                then
-                        echo \"Creating mountpoint failed.\"
-                        echo \"exit:2\"
-                        exit 2
-                fi
-        fi
-        if \$(mount | grep -q sr0)
-        then
-                echo \"Optical drive already mounted.\"
-        else
-                echo \"Optical drive not mounted.\"
-                mount /dev/sr0 /mnt/$mount_name
-                if ! \$(mount | grep -q sr0)
-                then
-                        echo \"Mount failed.\"
-                        echo \"exit:3\"
-                        exit 3
-                fi
-        fi
-        if [ -e \"/mnt/$mount_name/Packages\" ]
-        then
-                echo \"Install media found.\"
-        else
-                echo \"Install media not found, ejecting disk.\"
-                umount /mnt/$mount_name
-                echo \"exit:4\"
-                exit 4
-        fi
-        if [ -e \"/etc/yum.repos.d/$mount_name.repo\" ]
-        then
-                echo \"Repo already exists, skipping.\"
-                echo \"exit:0\"
-                exit 0
-        else
-                echo \"Creating optical media repo.\"
-                cat > /etc/yum.repos.d/$mount_name.repo << EOF
+	echo \"DVD drive exists.\"
+	if [ -e \"/mnt/$mount_name\" ]
+	then
+		echo \"Optical drive mount point exists.\"
+	else
+		echo \"Optical drive mount point does not exist yet.\"
+		mkdir /mnt/$mount_name
+		if [ ! -e \"/mnt/$mount_name\" ]
+		then
+			echo \"Creating mountpoint failed.\"
+			echo \"exit:2\"
+			exit 2
+		fi
+	fi
+	if \$(mount | grep -q sr0)
+	then
+		echo \"Optical drive already mounted.\"
+	else
+		echo \"Optical drive not mounted.\"
+		mount /dev/sr0 /mnt/$mount_name
+		if ! \$(mount | grep -q sr0)
+		then
+			echo \"Mount failed.\"
+			echo \"exit:3\"
+			exit 3
+		fi
+	fi
+	if [ -e \"/mnt/$mount_name/Packages\" ]
+	then
+		echo \"Install media found.\"
+	else
+		echo \"Install media not found, ejecting disk.\"
+		umount /mnt/$mount_name
+		echo \"exit:4\"
+		exit 4
+	fi
+	if [ -e \"/etc/yum.repos.d/$mount_name.repo\" ]
+	then
+		echo \"Repo already exists, skipping.\"
+		echo \"exit:0\"
+		exit 0
+	else
+		echo \"Creating optical media repo.\"
+		cat > /etc/yum.repos.d/$mount_name.repo << EOF
 [$mount_name]
 baseurl=file:///mnt/$mount_name/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
 EOF
-                echo \"Cleaning repo data\"
-                yum clean all
-                echo \"exit:0\"
-                exit 0
-        fi
+		echo \"Cleaning repo data\"
+		yum clean all
+		echo \"exit:0\"
+		exit 0
+	fi
 else
-        echo \"No optical drive found, exiting\"
-        echo \"exit:1\"
-        exit 1
+	echo \"No optical drive found, exiting\"
+	echo \"exit:1\"
+	exit 1
 fi
 ",
 	});
@@ -11101,12 +11825,13 @@ sub read_drbd_resource_files
 			next;
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; file: [$file]\n");
-		my $shell_call = "if [ -e '$file' ];
-				then
-					cat $file;
-				else
-					echo \"not found\"
-				fi";
+		my $shell_call = "
+if [ -e '$file' ];
+then
+	cat $file;
+else
+	echo \"not found\"
+fi";
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -11459,7 +12184,7 @@ sub configure_cman
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It doesn't, and node2's version is higher, so using it instead.\n");
 			$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
-			$write_node1                        = 1;
+			$write_node1                       = 1;
 		}
 	}
 	elsif ($node2_cluster_conf_version > 1)
@@ -11642,12 +12367,13 @@ sub read_cluster_conf
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I
 	# only care if the file exists at all.
-	my $shell_call = "if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
-			then
-				cat $conf->{path}{nodes}{cluster_conf}
-			else
-				echo not found
-			fi";
+	my $shell_call = "
+if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
+then
+	cat $conf->{path}{nodes}{cluster_conf}
+else
+	echo not found
+fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,

@@ -2176,6 +2176,15 @@ sub create_install_manifest
 	$conf->{form}{anvil_node2_pdu3_outlet_star} = "";
 	$conf->{form}{anvil_node2_pdu4_outlet_star} = "";
 	$conf->{form}{anvil_open_vnc_ports}         = "";
+	$conf->{form}{striker_user}                 = "";
+	$conf->{form}{striker_database}             = "";
+	$conf->{form}{anvil_striker1_user}          = "";
+	$conf->{form}{anvil_striker1_password}      = "";
+	$conf->{form}{anvil_striker1_database}      = "";
+	$conf->{form}{anvil_striker2_user}          = "";
+	$conf->{form}{anvil_striker2_password}      = "";
+	$conf->{form}{anvil_striker2_database}      = "";
+		
 	if ($conf->{cgi}{'delete'})
 	{
 		if ($conf->{cgi}{confirm})
@@ -3696,14 +3705,18 @@ sub load_install_manifest
 					# Only ever one entry in the array 
 					# reference, so we can safely 
 					# dereference immediately.
-					my $prefix   = $a->{$b}->[0]->{prefix};
-					my $domain   = $a->{$b}->[0]->{domain};
-					my $sequence = $a->{$b}->[0]->{sequence};
-					my $password = $a->{$b}->[0]->{password};
-					$conf->{install_manifest}{$file}{common}{anvil}{prefix}   = $prefix   ? $prefix   : "";
-					$conf->{install_manifest}{$file}{common}{anvil}{domain}   = $domain   ? $domain   : "";
-					$conf->{install_manifest}{$file}{common}{anvil}{sequence} = $sequence ? $sequence : "";
-					$conf->{install_manifest}{$file}{common}{anvil}{password} = $password ? $password : "";
+					my $prefix           = $a->{$b}->[0]->{prefix};
+					my $domain           = $a->{$b}->[0]->{domain};
+					my $sequence         = $a->{$b}->[0]->{sequence};
+					my $password         = $a->{$b}->[0]->{password};
+					my $striker_user     = $a->{$b}->[0]->{striker_user};
+					my $striker_database = $a->{$b}->[0]->{striker_database};
+					$conf->{install_manifest}{$file}{common}{anvil}{prefix}           = $prefix           ? $prefix           : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{domain}           = $domain           ? $domain           : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{sequence}         = $sequence         ? $sequence         : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{password}         = $password         ? $password         : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{striker_user}     = $striker_user     ? $striker_user     : "";
+					$conf->{install_manifest}{$file}{common}{anvil}{striker_database} = $striker_database ? $striker_database : "";
 				}
 				elsif ($b eq "cluster")
 				{
@@ -3915,13 +3928,19 @@ sub load_install_manifest
 				{
 					foreach my $c (@{$a->{$b}->[0]->{striker}})
 					{
-						my $name   = $c->{name};
-						my $bcn_ip = $c->{bcn_ip};
-						my $ifn_ip = $c->{ifn_ip};
+						my $name     = $c->{name};
+						my $bcn_ip   = $c->{bcn_ip};
+						my $ifn_ip   = $c->{ifn_ip};
+						my $password = $c->{password};
+						my $user     = $c->{user};
+						my $database = $c->{database};
 						
-						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip} = $bcn_ip ? $bcn_ip : "";
-						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip} = $ifn_ip ? $ifn_ip : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}]\n");
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}   = $bcn_ip   ? $bcn_ip   : "";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}   = $ifn_ip   ? $ifn_ip   : "";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{password} = $password ? $password : "";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{user}     = $user     ? $user     : "";
+						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{database} = $database ? $database : "";
+						#record($conf, "$THIS_FILE ".__LINE__."; Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}], install_manifest${file}::common::striker::name::${name}::password: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{password}], install_manifest::${file}::common::striker::name::${name}::user: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{user}], install_manifest::${file}::common::striker::name::${name}::database: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{database}]\n");
 					}
 				}
 				elsif ($b eq "switch")
@@ -3965,11 +3984,13 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_prefix}       = $conf->{install_manifest}{$file}{common}{anvil}{prefix};
 		$conf->{cgi}{anvil_domain}       = $conf->{install_manifest}{$file}{common}{anvil}{domain};
 		$conf->{cgi}{anvil_sequence}     = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
-		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}     ? $conf->{install_manifest}{$file}{common}{anvil}{password}     : $conf->{sys}{default_password};
-		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories} ? $conf->{install_manifest}{$file}{common}{anvil}{repositories} : "";
-		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}        ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}        : 8191;
-		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}  : 1500;
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}]\n");
+		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}         ? $conf->{install_manifest}{$file}{common}{anvil}{password}         : $conf->{sys}{install_manifest}{'default'}{password};
+		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories}     ? $conf->{install_manifest}{$file}{common}{anvil}{repositories}     : $conf->{sys}{install_manifest}{'default'}{repositories};
+		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}            ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}            : $conf->{sys}{install_manifest}{'default'}{ssh_keysize};
+		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu};
+		$conf->{cgi}{striker_user}       = $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     ? $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     : $conf->{sys}{install_manifest}{'default'}{striker_user};
+		$conf->{cgi}{striker_database}   = $conf->{install_manifest}{$file}{common}{anvil}{striker_database} ? $conf->{install_manifest}{$file}{common}{anvil}{striker_database} : $conf->{sys}{install_manifest}{'default'}{striker_database};
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}], cgi::striker_database: [$conf->{cgi}{striker_database}]\n");
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
@@ -4051,13 +4072,19 @@ sub load_install_manifest
 		{
 			# Probably an autovivication bug or something... getting empty hash references.
 			next if $striker =~ /^HASH/;
-			my $name_key   = "anvil_striker".$i."_name";
-			my $bcn_ip_key = "anvil_striker".$i."_bcn_ip";
-			my $ifn_ip_key = "anvil_striker".$i."_ifn_ip";
-			$conf->{cgi}{$name_key}   = $striker;
-			$conf->{cgi}{$bcn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{bcn_ip};
-			$conf->{cgi}{$ifn_ip_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{ifn_ip};
-			#record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}]\n");
+			my $name_key     =  "anvil_striker".$i."_name";
+			my $bcn_ip_key   =  "anvil_striker".$i."_bcn_ip";
+			my $ifn_ip_key   =  "anvil_striker".$i."_ifn_ip";
+			my $user_key     =  "anvil_striker".$i."_user";
+			my $password_key =  "anvil_striker".$i."_password";
+			my $database_key =  "anvil_striker".$i."_database";
+			$conf->{cgi}{$name_key}     = $striker;
+			$conf->{cgi}{$bcn_ip_key}   = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{bcn_ip};
+			$conf->{cgi}{$ifn_ip_key}   = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{ifn_ip};
+			$conf->{cgi}{$user_key}     = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     : $conf->{cgi}{striker_user};
+			$conf->{cgi}{$password_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} : $conf->{cgi}{anvil_password};
+			$conf->{cgi}{$database_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} : $conf->{cgi}{striker_database};
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$user_key: [$conf->{cgi}{$user_key}], cgi::$password_key: [$conf->{cgi}{$password_key}], cgi::$database_key: [$conf->{cgi}{$database_key}]\n");
 			$i++;
 		}
 		
@@ -4631,7 +4658,7 @@ Striker Version: $conf->{sys}{version}
 		<repository urls=\"$conf->{cgi}{anvil_repositories}\" />
 		<media_library size=\"$conf->{cgi}{anvil_media_library_size}\" units=\"$conf->{cgi}{anvil_media_library_unit}\" />
 		<storage_pool_1 size=\"$conf->{cgi}{anvil_storage_pool1_size}\" units=\"$conf->{cgi}{anvil_storage_pool1_unit}\" />
-		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" />
+		<anvil prefix=\"$conf->{cgi}{anvil_prefix}\" sequence=\"$conf->{cgi}{anvil_sequence}\" domain=\"$conf->{cgi}{anvil_domain}\" password=\"$conf->{cgi}{anvil_password}\" striker_user=\"$conf->{cgi}{striker_user}\" striker_databas=\"$conf->{cgi}{striker_database}\" />
 		<ssh keysize=\"8191\" />
 		<cluster name=\"$conf->{cgi}{anvil_name}\">
 			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
@@ -4681,8 +4708,20 @@ Striker Version: $conf->{sys}{version}
 			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password_script=\"\" agent=\"fence_virsh\" />
 		</kvm>
 		<striker>
-			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" />
-			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" />
+			<!-- 
+			The user and password are, primarily, for the Scanner
+			database user and passowrd, but should be the same as
+			the user and password set via:
+			striker-installer -u <user:password>
+			These should be left unset in most cases. When unset,
+			these will take the values from:
+			<anvil password=\"<secret>\" striker_user=\"<user>\" />
+			striker_user, if unset, defaults to 'admin'. There is
+			no default password!
+			TODO: Make the TCP port configurable
+			-->
+			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" database=\"\" user=\"\" password=\"\" />
+			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" database=\"\" user=\"\" password=\"\" />
 		</striker>
 		<update os=\"true\" />
 		<iptables>
@@ -4829,6 +4868,14 @@ sub confirm_install_manifest_run
 		anvil_open_vnc_ports		=>	$conf->{cgi}{anvil_open_vnc_ports},
 		say_anvil_repos			=>	$say_repos,
 		run				=>	$conf->{cgi}{run},
+		striker_user			=>	$conf->{cgi}{striker_user},
+		striker_database		=>	$conf->{cgi}{striker_database},
+		anvil_striker1_user		=>	$conf->{cgi}{anvil_striker1_user},
+		anvil_striker1_password		=>	$conf->{cgi}{anvil_striker1_password},
+		anvil_striker1_database		=>	$conf->{cgi}{anvil_striker1_database},
+		anvil_striker2_user		=>	$conf->{cgi}{anvil_striker2_user},
+		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
+		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
 	});
 	
 	return(0);
