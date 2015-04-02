@@ -1042,7 +1042,7 @@ sub configure_scancore
 	}
 	
 	# Now make sure scan core is set to start on boot.
-	logger($conf, $THIS_FILE, __LINE__, "- Enabling ScanCore on boot.", 1);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
 	my $shell_call = "
 if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
