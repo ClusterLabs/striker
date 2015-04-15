@@ -1,0 +1,98 @@
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+AN::Tools::Math
+
+This is the mathmatical (and general number-based methods) module in the AN::Tools suite. Please do not directly access it, but instead access it's methods via the parent AN::Tools module. The methods provided by this method are described below.
+
+=head1 SYNOPSIS
+
+  use AN::Tools;
+
+  # Get a common object handle on all AN::Tools::* modules.
+  my $an = AN::Tools->new();
+  
+  # Access this module's methods using '$an->Math->method()' syntax.
+  my $rounded = $an->Math->round({
+  	  number	=>	10.245,
+  	  places	=>	2
+  });
+  print "Rounded: [$rounded]\n";	# Prints "Rounded: [10.25]"
+
+=head1 DESCRIPTION
+
+This module provides access to the mathmatical and other number-type methods in the AN::Tools suite. Please see each method's sections below.
+
+=head1 NOTES
+
+All AN::Tools::* modules expects the data they receive to be in UTF-8 encoded format. Likewise, they return UTF-8 encoded strings. If you are getting weird output or are seeing a "wide character in print" error, check that you are not getting double-encoded UTF-8 strings by casting your data as UTF-8 in the first place.
+
+=head1 METHODS
+
+Below are the detailed usage instructions for the methods provided by this module.
+
+=head2 round
+
+=head3 Example
+
+  # Round a number to two places after the decimal.
+  my $real_number = 10.63295;
+  my $places      = 2;
+  my $rounded     = $an->Math->round({
+  	  number	=>	$real_number,
+  	  places	=>	$places
+  });
+  print "Rounded: [$rounded]\n";	# Prints "Rounded: [10.63]"
+  
+  # Alternatively, to save space, you can pass the number and places directly
+  # in the following order:
+  my $rounded = $an->Math->round($real_number, $places);
+  print "Rounded: [$rounded]\n";	# Prints "Rounded: [10.63]"
+
+=head3 Details
+
+Takes a number (signed float) with an arbitrary number of digits after the decimal place and a number of places after the decimal to round it to (default is '0') and return a properly rounded value. This methods works by looking at each digit, from least significant and working back, and deciding whether the preceding value needs to be incremented or not. As such, it's probably quite slow compared to 'ceil' or 'floor', or other types of rounding/truncating functions, but it is financially accurate and it has no limit on the number of places after the decimal you give it.
+
+=head3 Parameters
+
+=head4 C<number>
+
+This can be any signed real number. It may have commas, however, the returned rounded number will have it's commas removed. It may contain one period denoting the decimal place and may contain a sign at the beginning of the number; (-) to denote negative number and (+) or no prefix to denote a positive number. Any other character found in this paramete will trigger a fatal error.
+
+=head4 C<places>
+
+Default: 0
+
+This can be a simple unsigned integer to define how many places after the decimal place to round the C<number> paramter value to. If this is longer than the number of places after the decimal passed in then the returned number will have up to this number of '0' padded onto the fractional portion of the number.
+
+=head1 SEE ALSO
+
+Other modules in the AN::Tools suite:
+
+=over
+
+=item AN::Tools
+
+=item AN::Tools::Alert
+
+=item AN::Tools::Check
+
+=item AN::Tools::Log
+
+=item AN::Tools::Readable
+
+=item AN::Tools::String
+
+=item AN::Tools::Storage
+
+=back
+
+=head1 LICENSE
+
+ Copyright (c) 1997-2015 Alteeve's Niche! Inc., All rights reserved.
+ This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

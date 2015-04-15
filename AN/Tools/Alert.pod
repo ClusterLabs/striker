@@ -1,0 +1,450 @@
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+AN::Tools::Alert
+
+This module provides access to error handling methods.
+
+=head1 SYNOPSIS
+
+  use AN::Tools;
+
+  # Get a common object handle on all AN::Tools::* modules.
+  my $an = AN::Tools->new();
+  
+  # Trigger a fatal error.
+  $an->Alert->error({
+  	fatal		=>	1,
+  	title		=>	"Something went boom",
+  	message		=>	"Details on what went boom",
+  	code		=>	<some integer representing what went boom>,
+  	file		=>	"$THIS_FILE",
+  	line		=>	__LINE__,
+  	log_to		=>	"/var/log/app_error.log",
+  });
+  
+  # Trigger a translatable fatal error.
+  $an->Alert->error({
+  	fatal		=>	1,
+  	title_key	=>	"err_0001",	# Something went: [#!variable!bang!#]
+  	title_vars	=>	{
+  		 bang		=>	"$boom"
+  	},
+  	message_key	=>	"err_0002",	# Details on what went [#!variable!bang!#]: #!variable!oops!#
+  	message_vars	=>	{
+  		bang		=>	"$boom",
+  		oops		=>	"$reason",
+  	},
+  	code		=>	<some integer representing what went boom>,
+  	file		=>	"$THIS_FILE",
+  	line		=>	__LINE__
+  	log_to		=>	"/var/log/app_error.log",
+  });
+
+=head1 DESCRIPTION
+
+This is the error handling module. It provides support for all the possible ways that AN::Tools could fail.
+
+=head1 NOTES
+
+All AN::Tools::* modules expects the data they receive to be in UTF-8 encoded format. Likewise, they return UTF-8 encoded strings. If you are getting weird output or are seeing a "wide character in print" error, check that you are not getting double-encoded UTF-8 strings by casting your data as UTF-8 in the first place.
+
+=head1 METHODS
+
+Below are the detailed usage instructions for the methods provided by this module.
+
+=head2 no_fatal_errors
+
+=head3 Example
+
+  # Set otherwise fatal errors to not die but instead return the error to the
+  # caller.
+  $an->Alert->no_fatal_errors({set => 1});
+  
+  # Check if fatal errors are actually fatal.
+  if ($an->Alert->no_fatal_errors)
+  {
+  	  print "AN::Tools errors are fatal.\n";
+  }
+  else
+  {
+  	  print "AN::Tools errors are no longer fatal.\n";
+  }
+  
+  # Make fatal errors actually fatal again (this is the default).
+  $an->Alert->no_fatal_errors({set => 0});
+
+=head3 Details
+
+This either checks if AN::Tools errors are fatal (will terminate the running program) or instead set their internal error strings (see below). By default, errors are fatal.
+
+When called with no arguments, this method will return 1 or 0 depending on whether errors are fatal or not, respectively. The only parameter this method takes is 'set' with a value or '1' or '0'. Any other value is simply ignored.
+
+If set to 1, modules that would have died will set '$an->error' in much the same way that you can check for an error in 'eval' by seeing if the special variable '$@' is set.
+
+=head2 silence_warnings
+
+=head3 Example
+
+  # Set otherwise fatal errors to not die but instead return the error to the
+  # caller.
+  $an->Alert->silence_warnings({set => 1});
+  
+  # Check if warnings are silent.
+  if ($an->Alert->silence_warnings)
+  {
+  	  print "AN::Tools warnings are silent.\n";
+  }
+  else
+  {
+  	  print "AN::Tools warnings will print to STDOUT.\n";
+  }
+  
+  # Silence warnings; This prevents warnings from being printed to STDOUT, but
+  # they will still be logged.
+  $an->Alert->silence_warnings({set => 1});
+
+=head3 Details
+
+If you're getting a warning and you want to prevent it from being printed to STDOUT, set this to C<1>. By default, this is set to C<0>. This might come in handy if your program is known to trigger a harmless warning and you want to silence it until you can fix the underlying problem. ... You will get around to fixing it, of course, won't you.
+
+=head2 warning
+
+=head3 Example
+
+  # Calling this method triggers a warning.
+  $an->Alert->warning({
+  	title		=>	"Something went pop",
+  	message		=>	"Details on what went pop",
+  	code		=>	<some integer representing what went pop>,
+  	file		=>	"$THIS_FILE",
+  	line		=>	__LINE__
+  });
+  
+  # The alternative, short-form of calling this method is:
+  $an->Alert->warning("Something went pop", "Details on what went pop", <some integer representing what went pop>, "$THIS_FILE", __LINE__);
+
+=head3 Details
+
+This method handles warning via the module. It actually expects the 'title' and 'message' to be word keys, but that isn't built yet (Madi!). When it does, it will also accept the usual 'title_var' and 'message_var' array references.
+
+If C<$an->Alert->silence_warnings> is C<1>, then the warning will only be printed to the log file. By default it writes to the log file and to STDOUT.
+
+This method takes several parameters:
+
+=head3 Parameters
+
+=head4 C<title>
+
+This is the short title (title key, eventually) of the warning message.
+
+=head4 C<message>
+
+This is the full warning message (text key, eventually) of the warning message.
+
+=head4 C<code>
+
+This is the error code for this warning.
+
+=head4 C<file>
+
+This is the name of the file triggering the warning.
+
+=head4 C<line>
+
+This is the line in the file where the warning was triggered.
+
+=head2 error
+
+=head3 Example
+
+  # Calling this method triggers an error event.
+  $an->Alert->error({
+  	fatal		=>	1,
+  	title		=>	"Something went boom",
+  	message		=>	"Details on what went boom",
+  	code		=>	<some integer representing what went boom>,
+  	file		=>	"$THIS_FILE",
+  	line		=>	__LINE__
+  });
+  
+  # The alternative, short-form of calling this method is by using a simple
+  # array of arguments. Arguments are expected in this order:
+  # 1. Fatal
+  # 2. Title
+  # 3. Title arguments (used when C<title> is a word key)
+  # 4. Message body
+  # 5. Message argumens (used when C<message> is a word key)
+  # 6. Error code. When C<message> is a C<error_####> word key and this is
+  #    blank, the digit from the key is used as the error code.
+  # 7. The name of the file triggering the error.
+  # 8. The line number from the file triggering the error.
+  $an->Alert->error(1, "Something went boom", "", "Details on what went boom", "", <some integer representing what went boom>, "$THIS_FILE", __LINE__);
+
+=head3 Details
+
+This method handles errors via the module. The 'title' and 'message' can be translatable word keys (in the format 'w*_d*', like 'error_0001') or a raw string. If the title or message do not match the expected key string, the string will be treated as a raw message and will be recorded as-is.
+
+This method takes several parameters. 
+
+=head3 Parameters
+
+=head4 C<fatal>
+
+default: 1
+
+if 'no_fatal_errors' was set, this parameter is ignored, the error that would have been printed is set in '$an->error' and the method returns undef.
+
+If set to 1, an error string will be built using the other parameters and then be printed to STDOUT and the method terminate the calling program.
+
+If set to 0, the error will simply print to the error message to STDOUT and return undef.
+
+=head4 C<title>
+
+This is a short "Title" used for the alert message. If it's detected as a key, C<title_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
+
+=head4 C<title_vars>
+
+This is an array reference containing the arguments to feed into the C<title> string when translating a word key.
+
+=head4 C<message>
+
+This is the alert message body. If it's detected as a key, C<message_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
+
+=head4 C<message_vars>
+
+This is an array reference containing the arguments to feed into the C<message> string when translating a word key.
+
+=head4 C<code>
+
+This is the error code for this error (see below).
+
+=head4 C<file>
+
+This is the name of the file triggering the error.
+
+=head4 C<line>
+
+This is the line in the file where the error was triggered.
+
+=head1 AN::Tools ERROR CODES
+
+Below are the list of AN::Tools numeric error codes for both errors and warnings and their English description.
+
+=head2 C<0>
+
+No Error, successful exit.
+
+=head2 C<1>
+
+Generic or unknown error.
+
+=head2 C<2>
+
+Non-integer value passed to the 'AN::Tools::Math->round' method. Only digits and one decimal are allowed in the string to be rounded. Commas may be passed but they will be stripped out in the returned string.
+
+=head2 C<3>
+
+A value other that C<0> or C<1> was passed into the 'AN::Readable::Readable' module's 'base2' method.
+
+=head2 C<4>
+
+Invalid argument passed into the 'AN::Tools::Readable' module's 'comma' method. Specifically, the argument contained a non-digit character or too many decimals.
+
+=head2 C<5>
+
+Invalid argument passed into the 'AN::Tools::Readable' module's 'time' method. Specifically, the argument contained a non-digit character or too many decimals. Commas may have been in the string and they would not trigger this error as they are removed prior to calculation.
+
+=head2 C<6>
+
+Invalid argument passed into the 'AN::Tools::Readable' module's 'bytes_to_hr' method. Specifically, the byte size was not a signed integer. Commas are allowed and are removed by the method prior to calculations. Any other non-digit character will trigger this error.
+
+=head2 C<7>
+
+Invalid argument passed into the 'AN::Tools::Readable' module's 'hr_to_bytes' method. Specifically, the byte size was not a signed integer or real number. Commas are allowed and are removed by the method prior to calculations. Any other non-digit character will trigger this error.
+
+=head2 C<8>
+
+Invalid argument passed into the 'AN::Tools::Readable' module's 'hr_to_bytes' method. Specifically, the size appears to already be in bytes but the size was not a signed integer. Commas are allowed and are removed by the method prior to calculations. Any other non-digit character will trigger this error.
+
+=head2 C<9>
+
+The 'AN::Tools' module tried to load the 'Math::BigInt' module but it failed to load or was not found. This module is needed when dealing with very large number and is only loaded when needed. Please install this module using your operating system's package manager or via CPAN.
+
+=head2 C<10>
+
+The 'AN::Tools::Readable' module's 'hr_to_bytes' method was not able to parse a valid size type. Either an invalid size type was passed or the method failed to properly parse the size type. Valid size types are: 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' or 'y'.
+
+=head2 C<11>
+
+The 'AN::Tools::String' module's 'read_words' method was not able to find the specified words file. This was either the passed words file or the default words file 'tools.xml' in the root directory of the module if none was specified.
+
+=head2 C<12>
+
+The 'AN::Tools::String' module's 'read_words' method was not able to read the specified words file. Please check the permissions on the words file.
+
+=head2 C<13>
+
+The 'AN::Tools' module tried to load the 'IO::Handle' module but it failed to load or was not found. This module is needed when reading from or writing to files on disk. Please install this module using your operating system's package manager or via CPAN.
+
+=head2 C<14>
+
+The 'AN::Tools::String' module's 'force_utf8' method was passed an invalid argument. Only 1 and 0 are valid arguments.
+
+=head2 C<15>
+
+The 'AN::Tools::String' module's 'get_string' method was passed an invalid 'hash' argument. This must be a hash reference containing data read in from an XML words file by the 'read_words()' method.
+
+=head2 C<16>
+
+The 'AN::Tools::String' module's 'get_string' method was passed an invalid 'vars' argument. This must be an array reference containing elements intended to replace corresponding #!variable!x!# replacement keys in the requested string.
+
+=head2 C<17>
+
+The 'AN::Tools::String' module's 'get_string' method was passed an invalid 'language' argument. This must match one of the languages in the words file's <langs>...</langs> block.
+
+=head2 C<18>
+
+The 'AN::Tools::String' module's 'get_string' method was passed a 'key' argument not found in the active language. This key must be defined in one of the read in words files.
+
+=head2 C<19>
+
+The 'AN::Tools::Log' module's 'log_level()' method was passed a non-integer argument. Only integers are valid.
+
+=head2 C<20>
+
+The 'AN::Tools::String' module's 'get()' method was passed an empty key value.
+
+=head2 C<21>
+
+free
+
+=head2 C<22>
+
+free
+
+=head2 C<23>
+
+free
+
+=head2 C<24>
+
+free
+
+=head2 C<25>
+
+A directory was passed to a method that does not exist yet. Please create the directory mentioned in the error.
+
+=head2 C<26>
+
+A directory was passed to a method that exists but is not writeable by either the user or group that the method was running as. Please change the permissions on the directory to be writeable by the user or group specified in the error or specify a different directory that is writeable.
+
+=head2 C<27>
+
+A file was passed to a method that exists but is not writeable by either the user or group that the method was running as. Please change the permissions on the file to be writeable by the user or group specified in the error or specify a different file that is writeable.
+
+=head2 C<28>
+
+The file mentioned in the error failed to open for reading. The error returned by the system will be included in the error message.
+
+=head2 C<29>
+
+The file mentioned in the error failed to open for writing. The error returned by the system will be included in the error message.
+
+=head2 C<30>
+
+free
+
+=head2 C<31>
+
+The 'AN::Tools' module tried to load the 'Fcntl' module but it failed to load or was not found. This module is needed when locking and unlocking files on disk. Please install this module using your operating system's package manager or via CPAN.
+
+=head2 C<32>
+
+free
+
+=head2 C<33>
+
+free
+
+=head2 C<34>
+
+free
+
+=head2 C<35>
+
+A method used by AN::Tools tried to call 'rename' on a file and failed. Exactly which module, method, source and destination file name will be included in the error message.
+
+=head2 C<36>
+
+The 'AN::Tools::String' module's 'get()' was passed a string with a '#!variable!x!#' replacement key without an array reference containing the replacement keys. This would trigger an infinite loop and is thus a fatal error.
+
+=head2 C<37>
+
+The 'AN::Tools' module detected an unknown environment. Defaulting to "html" as it can at least be seen on the command line, unlike the other way around.
+
+=head2 C<38>
+
+free
+
+=head2 C<39>
+
+free
+
+=head2 C<40>
+
+free
+
+=head2 C<41>
+
+free
+
+=head2 C<42>
+
+free
+
+=head2 C<43>
+
+warning
+
+The 'AN::Tools' module detected an unknown operating system type. The user was asked to submit this warning and their operating system details to AN! so that this module can be extended to support their OS. The program will contiunue with Linux-type settings which may not work.
+
+=head2 C<44>
+
+The C<AN::Tools::Storage-E<gt>find()> was set to be fatal if the requested file was not found and it wasn't, triggering this error.
+
+=head2 C<45>
+
+The C<AN::Tools::Storage-E<gt>search_dirs()> was passed an argument that wasn't an array reference or a comma-seperated list of directories.
+
+=head1 SEE ALSO
+
+Other modules in the AN::Tools suite:
+
+=over
+
+=item AN::Tools
+
+=item AN::Tools::Check
+
+=item AN::Tools::Log
+
+=item AN::Tools::Math
+
+=item AN::Tools::Readable
+
+=item AN::Tools::String
+
+=item AN::Tools::Storage
+
+=back
+
+=head1 LICENSE
+
+ Copyright (c) 1997-2015 Alteeve's Niche! Inc., All rights reserved.
+ This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

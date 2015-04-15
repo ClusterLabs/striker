@@ -1,0 +1,25 @@
+REQUIREMENTS
+
+Attempts were made to keep to requirements of third party modules to a minimum. However, a few are needed.
+
+Math::BigInt
+
+  In some cases, like in the AN::Tools::Readable module's 'hr_to_bytes' method,
+  this module will be needed. Specifically when a size larger than 1 petabyte/
+  pebibyte is passed. This module provides arbitrary size mathmatical functions
+  at the cost of speed. This module is only loaded when a big enough number is
+  passed in to warrant it.
+
+IO::Handle
+
+  Whenever AN::Tools needs to open a file for reading or writting, or when it
+  needs to make a system call, it uses the IO::Handle method to create the
+  filehandle. This is a core module and most systems should have it by default.
+
+Fcntl
+
+  When AN::Tools::Log wants to spool off the top of a log file to create space,
+  it uses Fcntl's LOCK_EX and LOCK_UN calls. This is a core module and most
+  systems should have it by default.
+  
+

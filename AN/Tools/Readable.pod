@@ -1,0 +1,236 @@
+=pod
+
+=encoding utf8
+
+=head1 NAME
+
+AN::Tools::Readable
+
+This modules provides methods for converting machine readible values into more human friendly variants and vice versa.
+
+=head1 SYNOPSIS
+
+  use AN::Tools;
+
+  # Get a common object handle on all AN::Tools::* modules.
+  my $an = AN::Tools->new();
+  
+  # Access this module's methods using '$an->Math->method()' syntax.
+  my $rounded = $an->Readable->...({
+  });
+
+=head1 DESCRIPTION
+
+This is the human readable module. It's purpose is to provide methods meant to benefit humans (and others) reading output from various methods or other data soures. It serves this purpose by converting, generally large numbers, into smaller or formatted versions easier to understand by the reader.
+  
+Likewise, this module also provides methods for translating human readable format into their machine friendly versions. When this can't be done with precision, these methods will return the most accurate expanded data possible.
+
+=head1 NOTES
+
+All AN::Tools::* modules expects the data they receive to be in UTF-8 encoded format. Likewise, they return UTF-8 encoded strings. If you are getting weird output or are seeing a "wide character in print" error, check that you are not getting double-encoded UTF-8 strings by casting your data as UTF-8 in the first place.
+
+=head1 METHODS
+
+Below are the detailed usage instructions for the methods provided by this module.
+
+=head2 comma
+
+=head3 Example
+
+  # Add commas to a long number.
+  my $number    = 1234567890.09876;
+  my $hr_number = $an->Readable->commas($number);
+  print "$hr_number\n";  # prints '1,234,567,890.09876'
+
+=head3 Details
+
+This method adds commas to the whole-number portion of a real number that is four or more digits in length. This method does not take a parameters hash reference. It only accepts one argument, that being the number to change.
+
+Valid arguments are real numbers only. Commas may already be in the passed number (they will be stripped and re-added as needed). One decimal place is allowed. Any other non-digit character will trigger a fatal error.
+
+=head2 base2
+
+=head3 Example
+
+  # Check if AN::Tools is currently using base 2 or base 10 notation for
+  # translating byte sizs.
+  if ($an->Readable->base2)
+  {
+	  print "Using base 2, 1,024 bytes = 1 KiB.\n";
+  }
+  else
+  {
+	  print "Using base 10, 1,000 bytes = 1 KB.\n";
+  }
+  
+  # Switch to using base10 notation and back.
+  $an->Readable->base2(0);
+  # Now using base 10 notation.
+  $an->Readable->base2(1);
+  # Back to using base 2 notation.
+
+=head3 Default
+
+The default is C<1>, which means Base 2 notation will be used when converting large byte sizes into a human readable format.
+
+=head3 Details
+
+This method returns C<1> when Base 2 notation is in use and C<0> when Base 10 notation is in use. This method does not take a parameters hash reference. It only accepts one argument, that being C<1> to enable base 2 and C<0> to switch to Base 10. Any other passed argument will trigger a fatal error.
+
+=head3 Reference
+
+Below is a quick reference to see how setting C<base2> notation will effect how large numbers are interpreted. 
+
+Each line for both C<base2> and C<base10> shows; The short-form notation followed by it's English long-form name. Then it shows in the braces the X to the power of Y value that it represents followed, finally, by the exact number of bytes represented.
+
+=over
+
+=item C<base2> Notation
+
+ IEC Notation   Size
+ -------------- -------------------------------------------------
+ KiB = kibibyte (2^10  / 1,024 bytes)
+ MiB = mebibyte (2^20  / 1,048,576 bytes)
+ GiB = gibibyte (2^30  / 1,073,741,824 bytes)
+ TiB = tebibyte (2^40  / 1,099,511,627,776 bytes)
+ PiB = pebibyte (2^50  / 1,125,899,906,842,624 bytes)
+ EiB = exbibyte (2^60  / 1,152,921,504,606,846,976 bytes)
+ ZiB = zebibyte (2^70  / 1,180,591,620,717,411,303,424 bytes)
+ YiB = yebibyte (2^80  / 1,208,925,819,614,629,174,706,176 bytes)
+
+=item C<base10> Notation
+
+ SI Notation    Size
+ -------------- -------------------------------------------------
+ KB = kilobyte  (10^3  / 1,000 bytes)
+ MB = megabyte  (10^6  / 1,000,000 bytes)
+ GB = gigabyte  (10^9  / 1,000,000,000 bytes)
+ TB = terabyte  (10^12 / 1,000,000,000,000 bytes)
+ PB = petabyte  (10^15 / 1,000,000,000,000,000 bytes)
+ EB = exabyte   (10^18 / 1,000,000,000,000,000,000 bytes)
+ ZB = zettabyte (10^21 / 1,000,000,000,000,000,000,000 bytes)
+ YB = yottabyte (10^24 / 1,000,000,000,000,000,000,000,000 bytes)
+
+=back
+
+=head2 time
+
+=head3 Example
+
+  # Get the human-readable time represented by a passed number of seconds.
+  my $time     = 1234567890.09876;
+  my $say_time = $an->Readable->time({'time' => $time});
+  print "$say_time\n";  # prints '2,041w 1d 23h 31m 30.09876s'
+  
+  $say_time = $an->Readable->time($time);
+  print "$say_time\n";  # Also prints '2,041w 1d 23h 31m 30.09876s'
+
+=head3 Details
+
+This method takes a given number of seconds are returns a human-readable form of that time expressed as a given number of weeks, days, hours, minutes and seconds. If the number is too small for weeks, days, hours or minutes to be needed, it simply doesn't use those portions (as opposed to returning 0w 0d 0h 0m). The digits to the right of the decimal place in a whole number will be interpreted as a given fraction of a second and will be returned as part of the second statement. Negative values are also okay and the returned string will have '-' at the start of the string to the left of the most significant number.
+
+This method does not account for values greater than "week" as the definition on "month" and "year" is vague.
+
+This method can take the time argument directly for convenience, but it is recommended to use a hash reference with the 'time' key for maximum future compatibility.
+
+=head2 bytes_to_hr
+
+=head3 Example
+
+  # Get the human-readable time represented by a passed number of seconds.
+  my $big_byte = 1000000000;
+  my $say_size = $an->Readable->bytes_to_hr({'bytes' => $big_byte});
+  print "Size: $say_size\n";	# Prints 'Size: 953.67mib'
+  
+  $an->Readable->base2(0);	# Switch to Base10 notation.
+  $say_size = $an->Readable->bytes_to_hr($big_byte);
+  print "Size: $say_size\n";	# Prints 'Size: 1.00gb'
+
+=head3 Details
+
+This takes a singed integer representing a number of bytes and returns the shorter "human readable" form. By default, this is shortened using Base2 notation (1024 bytes = 1k), but can be switched to use Base10 (1000 bytes = 1k) notation via this module's C<base2()> method.
+
+The letters following the returned singed real number are always lowercase and in standard IEC or SI notation depending on whether Base2 or Base10 notation was used in the calculation. 
+
+Specifically, the suffix may be:
+
+  Suffix	   Represented Size
+  IEC/SI	Base2		Base10
+  ------ --------------------------------
+  b		bytes		bytes
+  kib/kb	kibibyte	kilobyte
+  mib/mb	mebibyte	megabyte
+  gib/gb	gibibyte	gigabyte
+  tib/tb	tebibyte	terrabyte
+  pib/pb	pebibyte	petabyte
+  eib/eb	exbibyte	exibyte
+  zib/zb	zebibyte	zettabyte
+  yib/yb	yebibyte	yottabyte
+
+This method can take the byte size argument directly for convenience, but it is recommended to use a hash reference with the 'bytes' key for maximum future compatibility.
+
+=head3 NOTE
+
+If you pass an unquoted integer with a length equal to or grater than "1000000000000000000000", perl will pass the value to this method as an exponential value (1e+20). This method will convert exponential notation back into a full number before calculation is done, but some resolution may be lost. In this case, you may wish to push your large byte size into a variable and pass the variable or you may wish to quote your long number when sending it as a "raw" argument.
+
+=head2 hr_to_bytes
+
+=head3 Example
+
+  # Most reliable method;
+  my $bytes = $an->Readable->hr_to_bytes({
+  	size	=>	"1",
+  	type	=>	"k"
+  });
+  print "$bytes\n";	# Prints '1024' as 'base2()' is true by default.
+
+  # Short form to be parsed, more compatible with other data sources.
+  $bytes = $an->Readable->hr_to_bytes({size => "1k"});
+  print "$bytes\n";	# Prints '1024'.
+  
+  # Switch to base10 and pass the human readable size as an array argument.
+  $an->Readable->base2(0);
+  $bytes = $an->Readable->hr_to_bytes("1k");
+  print "$bytes\n";	# Prints '1000' now.
+  
+  # Force base2 despite still running in base10 mode. This time as two array
+  # arguments and use a negative singed real number.
+  $bytes = $an->Readable->hr_to_bytes("-1.525", "kib");
+  print "$bytes\n";	# Prints '-1562'.
+
+=head3 Details
+
+This takes a signed, human-readable data size and converts it back into bytes as accurately as possible.
+
+The method is very flexible in how it accepts the size to convert. Ideally and most reliably, you would pass a hash reference using the keys 'size' for the real number and 'type' for the IEC, SI or single letter denoting the size type. Alternatively, you can pass the size as-is with the notation directly after the size and let the method break it up for you. Similar to other AN::* methods, you can also pass the number with the notation as a single array-type argument or as two array elements with the first being the real number and the second being the size type.
+
+If the type is passed or passed as one letter, then 'base2()' is consulted to determine how to convert the passed size to bytes. If you want to force the issue though, pass the type as either IEC notation (ie: 1kib = 1024 bytes) or SI notation (ie: 1kb = 1000 bytes). If no type is passed or parsed then the size is assumed to already be in bytes and is returned directly. 
+
+=head1 SEE ALSO
+
+Other modules in the AN::Tools suite:
+
+=over
+
+=item AN::Tools
+
+=item AN::Tools::Alert
+
+=item AN::Tools::Check
+
+=item AN::Tools::Log
+
+=item AN::Tools::Math
+
+=item AN::Tools::String
+
+=item AN::Tools::Storage
+
+=back
+
+=head1 LICENSE
+
+ Copyright (c) 1997-2015 Alteeve's Niche! Inc., All rights reserved.
+ This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

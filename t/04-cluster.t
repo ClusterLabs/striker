@@ -31,13 +31,13 @@ sub test__call_gather_system_info {
 
 # ......................................................................
 #
-sub test__sanity_check_an_conf {
+sub test__sanity_check_striker_conf {
 
 }
 
 # ......................................................................
 #
-sub test__write_new_an_conf {
+sub test__write_new_striker_conf {
 
 }
 
@@ -271,12 +271,6 @@ sub test__get_cgi_vars {
 
 # ......................................................................
 #
-sub test__read_conf {
-
-}
-
-# ......................................................................
-#
 sub test__build_select {
 
 }
@@ -502,8 +496,8 @@ main {
     test__check_for_updates();
     test__read_network_settings();
     test__call_gather_system_info();
-    test__sanity_check_an_conf();
-    test__write_new_an_conf();
+    test__sanity_check_striker_conf();
+    test__write_new_striker_conf();
     test__read_hosts();
     test__read_ssh_config();
     test__copy_file();
@@ -542,7 +536,6 @@ main {
     test__footer();
     test__get_date();
     test__get_cgi_vars();
-    test__read_conf();
     test__build_select();
     test__read_files_on_shared();
     test__record();

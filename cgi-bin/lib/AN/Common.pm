@@ -1346,6 +1346,7 @@ sub process_string
 	# Restore and unrecognized substitution values.
 	($string) = process_string_restore_escape_variables($conf, $string);
 	#print __LINE__."; << string: [$string]\n";
+	
 	if ($string =~ /Etc\/GMT\+0/)
 	{
 		$conf->{i}++;
@@ -1508,7 +1509,7 @@ sub read_strings
 	while(<$file_handle>)
 	{
 		chomp;
-		my $line=$_;
+		my $line = $_;
 
 		### Deal with comments.
 		# Look for a closing stanza if I am (still) in a comment.
@@ -1560,7 +1561,7 @@ sub read_strings
 					$cdata =  $1;
 					$line  =~ s/<!\[CDATA\[$cdata\]\]>/$cdata/;
 				}
-
+				
 				# Pull out the key and name.
 				my ($key) = ($line =~ /^<(.*?) /);
 				my ($name, $data) = ($line =~ /^<$key name="(.*?)">(.*?)<\/$key>/);

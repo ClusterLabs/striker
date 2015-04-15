@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 1  - Failed to connect to any database.
+# 2  - Error preparing a database query.
+# 3  - Failed to read a file.
+# 
+# TODO:
+# - 
+#         
+# BUG:
+# - 
+# 
+
+# NOTE: This is temporary. When the AN::Tools module moves into a standard @INC
+#       directory, this will be removed.
+BEGIN {
+   push @INC, "/var/www/";
+};
+
+# Determine this file name.
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+
+# Disable buffering.
+$| = 1;
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+			#log_file		=>	"",
+			scancore_strings	=>	"/var/www/ScanCore/ScanCore.xml",
+			scancore_sql		=>	"/var/www/ScanCore/ScanCore.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/var/www/cgi-bin/Data/strings.xml",
+		},
+		sys		=>	{
+			log_level		=>	2,
+			log_language		=>	"en_CA",
+		},
+	}
+});
+
+# Read my stuff
+$an->Log->level($an->data->{sys}{log_level});
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->String->read_words({file => $an->data->{path}{scancore_strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+print $an->String->get({key => "scancore_message_0001"}), "\n";
+
+# Connect to the database(s).
+my $connections = $an->DB->connect_to_databases();
+$an->Log->entry({
+	log_level	=>	3,
+	title_key	=>	"scancore_title_0001",
+	message_key	=>	"scancore_log_0005",
+	message_vars	=>	{
+		connections	=>	$connections,
+	},
+	file		=>	$THIS_FILE,
+	line		=>	__LINE__,
+	language	=>	$an->data->{sys}{log_language},
+	log_to		=>	$an->data->{path}{log_file},
+});
+
+
+
+
+
+
+nice_exit();
+
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# Nicely exits the program.
+sub nice_exit
+{
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect;
+	}
+	
+	exit(0);
+}
+
+# This will initialize the database using the data in the ScanCore.sql file.
+sub initialize_db
+{
+	my ($id, $query) = @_;
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "id", value1 => $id}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	my $success = 1;
+	
+	# Read in the SQL file and replace #!variable!name!# with the database
+	# owner name.
+	my $user       = $an->data->{scancore}{db}{$id}{user};
+	my $sql        = "";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {user => $user}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Create the read shell call.
+	my $shell_call = "$an->data->{path}{scancore_sql}";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "line", value1 => $line}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		$line =~ s/#!variable!user!#/$user/g;
+		$line =~ s/--.*//g;
+		$line =~ s/\t/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//g;
+		$line =~ s/\s+$//g;
+		next if not $line;
+		$sql .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Now we should be ready.
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "sql", value1 => $sql}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Now that I am ready, disable autocommit, write and commit.
+	$an->DB->db_do_write($id, $sql);
+	
+	
+	return($success);
+};

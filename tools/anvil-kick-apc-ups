@@ -114,6 +114,10 @@ calculation catpured at start of last shutdown. The reason is that if power goes
 
 snmpget -v 2c -c public ups1 .1.3.6.1.4.1.318.1.1.1.5.2.29.0
 
+
+Subu's UPSes
+Return Delay		.1.3.6.1.4.1.318.1.1.1.5.2.9.0		ie: 1000 = 10sec, 3000 = 30sec (ticks)
+
 =cut
 
 # Play safe!
@@ -163,24 +167,35 @@ my $conf = {
 			value		=>	"",
 		},
 		oid_name	=>	{
-			'1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1'	=>	"Sleep Time; Main Outlet Group",
-			'1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2'	=>	"Sleep Time; Outlet Group 1",
-			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.4.2'	=>	"Power-Off delay",
-			'.1.3.6.1.4.1.318.1.1.1.6.2.6.0'	=>	"Power-On",
-			'.1.3.6.1.4.1.318.1.1.1.6.2.3.0'	=>	"Power-Off",
+			'.1.3.6.1.4.1.318.1.1.1.4.1.1.0'	=>	"UPS Basic State",
 			'.1.3.6.1.4.1.318.1.1.1.1.2.5.0'	=>	"Model Number",
 			'.1.3.6.1.4.1.318.1.1.1.5.2.29.0'	=>	"Minimum Mains Return Time",	# how long to wait after the AC mains return before restoring power
+			'.1.3.6.1.4.1.318.1.1.1.6.2.3.0'	=>	"Power-Off",
+			'.1.3.6.1.4.1.318.1.1.1.6.2.6.0'	=>	"Power-On",
+			'.1.3.6.1.4.1.318.1.1.1.5.2.9.0'	=>	"Return Delay",
+			'.1.3.6.1.4.1.318.1.1.1.5.2.10.0'	=>	"Shut-Off Delay",			# SURTD5000RMXLT3U, ticks
+			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.4.2'	=>	"Power-Off delay",			# SMT1500, int, secs
+			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1'	=>	"Sleep Time; Main Outlet Group",
+			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2'	=>	"Sleep Time; Outlet Group 1",
+		},
+		return_delay	=>	{
+			oid		=>	".1.3.6.1.4.1.318.1.1.1.5.2.9.0",
+			value		=>	{
+				old		=>	"",
+				new		=>	"",
+			},
+			unit		=>	"t",
 		},
 		sleep_time	=>	{
 			main_ups	=>	{
-				oid		=>	"1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1",
+				oid		=>	".1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1",
 				value		=>	{
 					old		=>	"",
 					new		=>	"",
 				},
 			},
 			group_one	=>	{
-				oid		=>	"1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2",
+				oid		=>	".1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2",
 				value		=>	{
 					old		=>	"",
 					new		=>	"",
@@ -193,6 +208,15 @@ my $conf = {
 				old		=>	"",
 				new		=>	"",
 			},
+			unit		=>	"i",
+		},
+		shut_off_delay	=>	{
+			oid		=>	".1.3.6.1.4.1.318.1.1.1.5.2.10.0",
+			value		=>	{
+				old		=>	"",
+				new		=>	"",
+			},
+			unit		=>	"t",
 		},
 		power_on	=>	{
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.6.0",
@@ -239,11 +263,14 @@ my $conf = {
 	sys	=>	{
 		apc		=>	{
 			ups		=>	{
-				device		=>	{},
-				devices		=>	[],
-				poweroff_delay	=>	600,
-				sleep_time	=>	300,	# Minutes; will be converted to seconds and then divided by timeticks when set.
-				min_return_time	=>	60000,	# Ten minutes, in time ticks (-t)
+				device			=>	{},
+				devices			=>	[],
+				poweroff_delay		=>	600,
+				sleep_time		=>	300,	# Minutes; will be converted to seconds and then divided by timeticks when set.
+				min_return_time		=>	60000,	# Ten minutes, in time ticks (-t)
+				ticks			=>	10,	# ms
+				use_shut_off_delay	=>	0,	# Gets set to '1' if the power_off_delay OID fails to be read
+				kick_every_minutes	=>	2,	# Sets the cron job to run this script (kick the UPS) every X minutes
 			},
 		},
 		debug		=>	0,
@@ -323,9 +350,21 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	my $current_state = $conf->{snmp}{current_state}{value}{old};
 	my $say_state     = $conf->{snmp}{current_state}{'values'}{$current_state};
 	logger($conf, $THIS_FILE, __LINE__, "  - Current outlet state:                 [$say_state ($current_state)]");
-	logger($conf, $THIS_FILE, __LINE__, "  - Current main outlet group sleep time: [$conf->{snmp}{sleep_time}{main_ups}{value}{old} seconds]");
-	logger($conf, $THIS_FILE, __LINE__, "  - Current outlet group one sleep time:  [$conf->{snmp}{sleep_time}{group_one}{value}{old} seconds]");
-	logger($conf, $THIS_FILE, __LINE__, "  - Current power-off delay timer:        [$conf->{snmp}{power_off_delay}{value}{old} seconds]");
+	logger($conf, $THIS_FILE, __LINE__, "  - Minimum Runtime before Power-On:      [".convert_ticks_to_seconds($conf, $conf->{snmp}{min_return_time}{value}{old})." seconds ($conf->{snmp}{min_return_time}{value}{old} ticks)]");
+	if ($conf->{sys}{apc}{ups}{use_shut_off_delay})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "  - Current main outlet group sleep time: [$conf->{snmp}{sleep_time}{main_ups}{value}{old} seconds]");
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "  - Current main outlet group sleep time: [$conf->{snmp}{sleep_time}{main_ups}{value}{old} seconds]");
+		logger($conf, $THIS_FILE, __LINE__, "  - Current outlet group one sleep time:  [$conf->{snmp}{sleep_time}{group_one}{value}{old} seconds]");
+	}
+	if ($conf->{snmp}{power_off_delay}{value}{old})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "  - Current power-off delay timer:        [$conf->{snmp}{power_off_delay}{value}{old} seconds]");
+	}
+	### TODO: Add shut-off delay
 	
 	if ($current_state eq "1")
 	{
@@ -345,30 +384,60 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	}
 	else
 	{
-		# The UPS is on, so abort any existing power-off value.
-		logger($conf, $THIS_FILE, __LINE__, "  - Aborting any pending 'power-off' actions.");
-		my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		# How I do this depends on the UPS type.
+		if ($conf->{sys}{apc}{ups}{use_shut_off_delay})
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}]. The UPS may still be in a prior poweroff-timer!");
+			### SURTD style
+			# The UPS is on, so abort any existing power-off value.
+			logger($conf, $THIS_FILE, __LINE__, "  - Aborting any pending 'power-off' actions.");
+			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+			if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}]. The UPS may still be in a prior poweroff-timer!");
+			}
+			
+			# Set the sleep time for the UPS (no groups).
+			logger($conf, $THIS_FILE, __LINE__, "  - Setting the UPS outlets sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
+			$conf->{sys}{apc}{ups}{sleep_time} = convert_seconds_to_ticks($conf, $conf->{sys}{apc}{ups}{sleep_time});
+			my ($sleep_time_mains_ups) = set_oid_ticks($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
+			
+			# Set the power-off (really, 'Shut-Off') delay
+			logger($conf, $THIS_FILE, __LINE__, "  - Setting the Shut-off delay to: [$conf->{sys}{apc}{ups}{poweroff_delay} seconds].");
+			$conf->{sys}{apc}{ups}{poweroff_delay} = convert_seconds_to_ticks($conf, $conf->{sys}{apc}{ups}{poweroff_delay});
+			my ($power_off_delay) = set_oid_integer($conf, $ups, $conf->{snmp}{shut_off_delay}{oid}, $conf->{sys}{apc}{ups}{poweroff_delay});
+			
+			# Do the needful
+			logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed power off!");
+			my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
 		}
-		
-		# Set the sleep time for the main UPS outlets and group 1 outlets.
-		logger($conf, $THIS_FILE, __LINE__, "  - Setting the UPS Main outlets and Group 1 outlets sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
-		my ($sleep_time_mains_ups) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
-		my ($sleep_time_group_one) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group_one}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
-		
-		# Set the power-off delay
-		logger($conf, $THIS_FILE, __LINE__, "  - Setting the Power-off delay to: [$conf->{sys}{apc}{ups}{poweroff_delay} seconds].");
-		my ($power_off_delay) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid}, $conf->{sys}{apc}{ups}{poweroff_delay});
-		
-		# Set the minimum return time delay.
-		logger($conf, $THIS_FILE, __LINE__, "  - Setting the minimum return time delay to: [$conf->{sys}{apc}{ups}{min_return_time} ticks] (1 tick = 10ms).");
-		my ($min_return_time) = set_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid}, $conf->{sys}{apc}{ups}{min_return_time});
-		
-		# Do the needful
-		logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed power off!");
-		my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
+		else
+		{
+			### SMT style
+			# The UPS is on, so abort any existing power-off value.
+			logger($conf, $THIS_FILE, __LINE__, "  - Aborting any pending 'power-off' actions.");
+			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+			if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}]. The UPS may still be in a prior poweroff-timer!");
+			}
+			
+			# Set the sleep time for the main UPS outlets and group 1 outlets.
+			logger($conf, $THIS_FILE, __LINE__, "  - Setting the UPS Main outlets and Group 1 outlets sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
+			my ($sleep_time_mains_ups) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
+			my ($sleep_time_group_one) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group_one}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
+			
+			# Set the power-off delay
+			logger($conf, $THIS_FILE, __LINE__, "  - Setting the Power-off delay to: [$conf->{sys}{apc}{ups}{poweroff_delay} seconds].");
+			my ($power_off_delay) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid}, $conf->{sys}{apc}{ups}{poweroff_delay});
+			
+			# Set the minimum return time delay.
+			logger($conf, $THIS_FILE, __LINE__, "  - Setting the minimum return time delay to: [$conf->{sys}{apc}{ups}{min_return_time} ticks] (1 tick = 10ms).");
+			my ($min_return_time) = set_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid}, $conf->{sys}{apc}{ups}{min_return_time});
+			
+			# Do the needful
+			logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed power off!");
+			my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
+		}
 	}
 }
 
@@ -450,7 +519,7 @@ fi";
 		{
 			$call .= " --poweroff_delay $conf->{switches}{poweroff_delay}";
 		}
-		$raw_cron .= "*/5 * * * * $call\n";
+		$raw_cron .= "*/$conf->{sys}{apc}{ups}{kick_every_minutes} * * * * $call\n";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added entry: [$call].") if $conf->{sys}{debug};
 		$changed = 1;
 	}
@@ -547,18 +616,75 @@ sub get_current_settings
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
 		return(1);
 	}
-	my ($sleep_time_mains_ups) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid});
-	my ($sleep_time_group_one) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group_one}{oid});
-	my ($power_off_delay)      = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid});
-	my ($min_return_time)      = read_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid});
 	
+	# Get the minimum return time
+	my ($min_return_time) = read_oid_ticks($conf, $ups, $conf->{snmp}{min_return_time}{oid});
+	
+	# This will be empty on some UPSes.
+	my $sleep_time_mains_ups = "--";
+	my $sleep_time_group_one = "--";
+	my $power_off_delay      = "--";
+	if ($conf->{sys}{apc}{ups}{use_shut_off_delay})
+	{
+		# If this is the first read, and if this OID is not found on
+		# the UPS, it will return '--'.
+		$power_off_delay = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid});
+	}
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off_delay: [$power_off_delay] (seconds, integer)") if $conf->{sys}{debug};
+	if ((not $power_off_delay) || ($power_off_delay eq "--"))
+	{
+		# Try reading the This is in ticks
+		$conf->{sys}{apc}{ups}{use_shut_off_delay} = 1;
+		($power_off_delay) = read_oid_ticks($conf, $ups, $conf->{snmp}{shut_off_delay}{oid});
+		$power_off_delay   = convert_ticks_to_seconds($conf, $power_off_delay);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off_delay: [$power_off_delay] (seconds, converted from ticks)") if $conf->{sys}{debug};
+		
+		# This UPS won't have sleep time, either, so we'll get the time
+		# in ticks and convert it. Also, these UPSes don't have groups.
+		($sleep_time_mains_ups) = read_oid_ticks($conf, $ups, $conf->{snmp}{return_delay}{oid});
+		 $sleep_time_mains_ups  = convert_ticks_to_seconds($conf, $sleep_time_mains_ups);
+	}
+	else
+	{
+		# UPS supports sleep time.
+		($sleep_time_mains_ups) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{main_ups}{oid});
+		($sleep_time_group_one) = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group_one}{oid});
+	}
+	
+	$conf->{snmp}{min_return_time}{value}{$type}       = $min_return_time;
 	$conf->{snmp}{current_state}{value}{$type}         = $current_state;
 	$conf->{snmp}{sleep_time}{main_ups}{value}{$type}  = $sleep_time_mains_ups;
 	$conf->{snmp}{sleep_time}{group_one}{value}{$type} = $sleep_time_group_one;
 	$conf->{snmp}{power_off_delay}{value}{$type}       = $power_off_delay;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - snmp::current_state::value::$type: [$conf->{snmp}{current_state}{value}{$type}], snmp::sleep_time::main_ups::value::$type: [$conf->{snmp}{sleep_time}{main_ups}{value}{$type}], snmp::sleep_time::group_one::value::$type: [$conf->{snmp}{sleep_time}{group_one}{value}{$type}], snmp::power_off_delay::value::$type: [$conf->{snmp}{power_off_delay}{value}{$type}]")  if $conf->{sys}{debug};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - snmp::min_return_time::value::$type: [$conf->{snmp}{min_return_time}{value}{$type}], snmp::current_state::value::$type: [$conf->{snmp}{current_state}{value}{$type}], snmp::sleep_time::main_ups::value::$type: [$conf->{snmp}{sleep_time}{main_ups}{value}{$type}], snmp::sleep_time::group_one::value::$type: [$conf->{snmp}{sleep_time}{group_one}{value}{$type}], snmp::power_off_delay::value::$type: [$conf->{snmp}{power_off_delay}{value}{$type}]") if $conf->{sys}{debug};
 	
 	return(0);
+}
+
+# Convert ticks to seconds.
+sub convert_ticks_to_seconds
+{
+	my ($conf, $ticks) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "convert_ticks_to_seconds(); ticks: [$ticks]") if $conf->{sys}{debug};
+	
+	my $ticks_per_second = (1000 / $conf->{sys}{apc}{ups}{ticks});
+	my $seconds          = ($ticks / $ticks_per_second);
+	
+	logger($conf, $THIS_FILE, __LINE__, "seconds: [$seconds]") if $conf->{sys}{debug};
+	return($seconds);
+}
+
+# Convert seconds to ticks.
+sub convert_seconds_to_ticks
+{
+	my ($conf, $seconds) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "convert_seconds_to_ticks(); seconds: [$seconds]") if $conf->{sys}{debug};
+	
+	my $ticks_per_second = (1000 / $conf->{sys}{apc}{ups}{ticks});
+	my $ticks            = ($seconds * $ticks_per_second);
+	
+	logger($conf, $THIS_FILE, __LINE__, "ticks: [$ticks]") if $conf->{sys}{debug};
+	return($ticks);
 }
 
 # This reads an OID with an ticks value and returns the results. If the

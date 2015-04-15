@@ -7006,12 +7006,11 @@ SWITCHES
 
  --gui
  
-	This tells striker to install a graphical interface. This considerably
-	increases the size of the install.
+	This tells striker to install a graphical interface.
 
  -h, -?, --help
 
-	Show this dialoge and exit.
+	Show this dialog and exit.
 
  -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 

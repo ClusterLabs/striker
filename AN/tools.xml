@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+This is the AN::Tools master 'words' file.
+-->
+
+<words>
+	<!-- Canadian English -->
+	<name>tools.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA,jp</langs>
+	<lang name="en_CA" long_name="Canadian English">
+		<key name="comment">Created by Madison Kelly (mkelly@alteeve.ca) for the AN::Tools suite of perl modules.</key>
+		
+		<!-- Test words. Do NOT change unless you update 't/String.t' or tests will needlessly fail. -->
+		<key name="t_0000">Test</key>
+		<key name="t_0001">Test replace: [#!variable!test!#].</key>
+		<key name="t_0002">Test Out of order: [#!variable!second!#] replace: [#!variable!first!#].</key>
+		
+		<!-- Do not use 't_0003'. It is used to test failures caused by calling a non-existent key. -->
+		<key name="t_0004">#!FREE!#</key>
+		
+		<!-- Internal module words -->
+		<key name="an_0000">AN!Tools RDF</key>
+		<key name="an_0001">AN!Tools Rapid Development Framework</key>
+		<key name="an_0002">Fatal Error</key>
+		<key name="an_0003">Error</key>
+		<key name="an_0004">no title</key>
+		<key name="an_0005">no message</key>
+		<key name="an_0006">unknown file</key>
+		<key name="an_0007">
+-=] #!variable!title!# - Error Code #!variable!code!# - #!variable!heading!# - #!variable!file!# at #!variable!line!# [=-
+
+#!variable!message!#
+		</key>
+		<key name="an_0008">Exiting.</key>
+		<key name="an_0009">
+-=] #!variable!title!# - #!variable!file!# at #!variable!line!# [=-
+
+#!variable!message!#
+		</key>
+		<key name="an_0010">#!variable!message!#</key>
+		
+		<!-- Branding stuff that others might want to change. -->
+		<key name="an_brand_0001">https://alteeve.ca</key>
+		
+		<!-- Warning titles -->
+		<key name="warning_title_0001">Unknown OS</key>
+		<key name="warning_title_0002">Unknown Environment</key>
+		
+		<!-- Warning messages -->
+		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
+		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
+		
+		<!-- Error titles -->
+		<key name="error_title_0001">Invalid Argument</key>
+		<key name="error_title_0002">File not found</key>
+		<key name="error_title_0003">'AN::Tools::Storage->search_dirs()' was passed an argument that wasn't an array reference or a comma-seperated list of directories.</key>
+		<key name="error_title_0004">Invalid String Key</key>
+		<key name="error_title_0005">Missing Variables</key>
+		<key name="error_title_0006">Unable to find the words file</key>
+		<key name="error_title_0007">Unable to read the words file</key>
+		<key name="error_title_0008">AN::Tools::String->read()' was not able to open the words file for reading</key>
+		<key name="error_title_0009">Illegal Argument</key>
+		<key name="error_title_0010">Invalid Character in Argument</key>
+		<key name="error_title_0011">Illegal value in '#!variable!method!#'</key>
+		<key name="error_title_0012">'AN::Tools::Readable->hr_to_bytes()' was not able to parse a valid size type</key>
+		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
+		
+		<!-- Error messages -->
+		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
+		<key name="error_message_0002">I was asked to find the file: [#!variable!file!#] but failed to do so. This request was set to be fatal on failure.</key>
+		<key name="error_message_0003">The AN::Tools::Storage method 'search_dirs' was passed an invalid 'array' argument: [#!variable!array!#]. This must be an array reference or a comma-seperated list of directories to search within.</key>
+		<key name="error_message_0004">The invalid argument: [#!variable!set!#] was passed into the 'AN::Tools::String->force_utf8()'. Only 1 or 0 are valid arguments.</key>
+		<key name="error_message_0005">The 'AN::Tools::String' module's 'get' method was passed an invalid 'hash' argument: [#!variable!hash!#]. This must be a hash reference containing data read in from an XML words file by the 'read_words()' method.</key>
+		<key name="error_message_0006">The 'AN::Tools::String' module's 'get' method was passed an invalid 'variable' argument: [#!variable!variables!#]. This must be a hash reference containing the key name intended to replace corresponding #!variable!...!# replacement key in the requested string.</key>
+		<key name="error_message_0007">The 'AN::Tools::String' module's 'get' method was passed the 'key': [#!variable!key!#] which was not found in the language: [#!variable!language!#]. This key must be defined in one of the words files that were loaded.</key>
+		<key name="error_message_0008">The 'AN::Tools::String' module's 'get()' was passed a string with a '#!variable!*!#' replacement key without a hash reference containing the replacement keys. This would trigger an infinite loop and is thus a fatal error.</key>
+		<key name="error_message_0009">The words file: [#!variable!file!#] could not be found. Please check that it exists.</key>
+		<key name="error_message_0010">The words file: [#!variable!file!#] was found but could not be read. Please check that it exists.</key>
+		<key name="error_message_0011">The AN::Tools::String methid 'read' was not able to open the words file: [#!variable!file!#]. The error was: #!variable!error!#</key>
+		<key name="error_message_0012">The 'AN::Tools::Log' module's 'level()' method was passed a non-integer argument: [#!variable!set!#]. Only integers are valid.</key>
+		<key name="error_message_0013">The invalid argument: [#!variable!set!#] was passed into the 'AN::Tools::Readable' module's 'base2' method.</key>
+		<key name="error_message_0014">The number: [#!variable!number!#] passed into the 'AN::Tools::Readable' module's 'comma' method contains a non-digit character or too many decimals.</key>
+		<key name="error_message_0015">The passed time: [#!variable!old_time!#] contains an illegal value. Only digits and one decimal place are allowed in the given time. Commas are allowed but are stripped out.</key>
+		<key name="error_message_0016">The passed byte size: [#!variable!size!#] contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
+		<key name="error_message_0017">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] contains an illegal value. Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.</key>
+		<key name="error_message_0018">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] appears to be a byte size already but the size does not seem to be an integer. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
+		<key name="error_message_0019">The passed: [size: #!variable!size!#, type: #!variable!type!#] is not recognized. Either an invalid size type was passed or I failed to properly parse the size type. Valid size types are: 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' or 'y'.</key>
+		<key name="error_message_0020">The passed real number: [#!variable!number!#] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.</key>
+		<key name="error_message_0021">Loading the perl module '#!variable!module!#' failed with the error: [#!variable!error!#].</key>
+	</lang>
+	
+	<!-- 日本語 -->
+	<lang name="jp" long_name="日本語">
+		<key name="comment">Created by Madison Kelly (mkelly@alteeve.ca) for the AN::Tools suite of perl modules.</key>
+		<key name="t_0000">テスト</key>
+		<key name="t_0001">テスト いれかえる: [#!variable!test!#]。</key>
+		<key name="t_0002">テスト、 整理: [#!variable!second!#]/[#!variable!first!#]。</key>
+		<!-- Do not use 't_0003'. It is used to test failures caused by calling a non-existent key. -->
+		<key name="t_0004">#!FREE!#</key>
+	<!-- Internal module words -->
+		<key name="an_0000">AN!Tools RDF</key>
+		<key name="an_0001">AN!Tools; すぱやい。進展。機構。</key>
+		<key name="an_0002">重大エラー</key>
+		<key name="an_0003">エラー</key>
+		<key name="an_0004">タイトルでわありません</key>
+		<key name="an_0005">メッセージはありません</key>
+		<key name="an_0006">不明なファイル</key>
+	</lang>
+</words>

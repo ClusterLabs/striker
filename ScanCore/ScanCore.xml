@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for ScanCore. Please be careful not to use names used by
+the main Striker strings file. Do this by prefixing all strings with
+'scancore_'.
+-->
+<words>
+	<!-- Canadian English -->
+	<name>ScanCore.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the ScanCore.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scancore_brand_0001">ScanCore</key>
+		
+		<!-- Log titles -->
+		<key name="scancore_title_0001">Debug</key>
+		<key name="scancore_title_0002">Warning</key>
+		<key name="scancore_title_0003">Error</key>
+		<key name="scancore_title_0004">Success</key>
+		<key name="scancore_title_0005">Note</key>
+		
+		<!-- Log messages -->
+		<key name="scancore_log_0001">Entering: [#!variable!function!#()]</key>
+		<key name="scancore_log_0002">
+Connecting to Database with configuration ID: [#!variable!id!#]
+- driver:            [#!variable!driver!#]
+- host:              [#!variable!host!#]
+- port:              [#!variable!port!#]
+- postgres_password: [#!variable!postgres_password!#]
+- name:              [#!variable!name!#]
+- user:              [#!variable!user!#]
+- password:          [#!variable!password!#]
+- initialize:        [#!variable!initialize!#]
+		</key>
+		<key name="scancore_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
+		<key name="scancore_log_0004">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#]. The file handle is: [#!variable!conf_dbh!# (#!variable!dbh!#)].</key>
+		<key name="scancore_log_0005">Connected to: [#!variable!connections!#] database(s).</key>
+		<key name="scancore_log_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
+		<key name="scancore_log_0007">Shell call: [#!variable!shell_call!#].</key>
+		<key name="scancore_log_0008">Committing changes to the database.</key>
+		<key name="scancore_log_0009">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
+		
+		<!-- Warnings. -->
+		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
+		<key name="scancore_warning_0002">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
+		<key name="scancore_warning_0003"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
+		<key name="scancore_warning_0004"><![CDATA[The password set for the user: [#!variable!user!#] is incorrect. Please update: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
+		<key name="scancore_warning_0005">
+The error was:
+----------
+#!variable!dbi_error!#
+----------
+		</key>
+		<key name="scancore_warning_0006">This database can not be used, skipping it.</key>
+		<key name="scancore_warning_0007">Error during DB 'do'. The error was:
+----------
+#!variable!dbi_error!#
+----------
+		</key>
+		<key name="scancore_warning_0008">There were errors writing data to the database. Rolling back!</key>
+		
+		<!-- Errors -->
+		<key name="scancore_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="scancore_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="scancore_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		
+		<!-- ScanCore-specific messages -->
+		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
+	</lang>
+</words>
