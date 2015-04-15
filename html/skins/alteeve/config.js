@@ -576,7 +576,7 @@ $("#set_secondary_values").click(function(){
 		}
 		
 		// IFN Default Gateway
-		var ifn_gateway = ifn_root + '.255.254';
+		var ifn_gateway = ifn_root + '.254';
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ifn_gateway))
 		{

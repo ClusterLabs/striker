@@ -2184,7 +2184,8 @@ sub create_install_manifest
 	$conf->{form}{anvil_striker2_user}          = "";
 	$conf->{form}{anvil_striker2_password}      = "";
 	$conf->{form}{anvil_striker2_database}      = "";
-		
+	$conf->{form}{anvil_mtu_size}               = "";
+	
 	if ($conf->{cgi}{'delete'})
 	{
 		if ($conf->{cgi}{confirm})
@@ -2352,6 +2353,9 @@ sub create_install_manifest
 			# Hidden fields for now.
 			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
 			if (not $conf->{cgi}{anvil_open_vnc_ports})     { $conf->{cgi}{anvil_open_vnc_ports}     = $conf->{sys}{install_manifest}{'default'}{open_vnc_ports}; }
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_mtu_size: [$conf->{cgi}{anvil_mtu_size}], sys::install_manifest::default::mtu: [$conf->{sys}{install_manifest}{'default'}{mtu}]\n");
+			if (not $conf->{cgi}{anvil_mtu_size})           { $conf->{cgi}{anvil_mtu_size}           = $conf->{sys}{install_manifest}{'default'}{mtu}; }
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_mtu_size: [$conf->{cgi}{anvil_mtu_size}]\n");
 			
 			# It's possible for the user to set default values in
 			# the install manifest.
@@ -2743,6 +2747,13 @@ sub create_install_manifest
 			name		=>	"anvil_cluster_name",
 			id		=>	"anvil_cluster_name",
 			value		=>	$conf->{cgi}{anvil_cluster_name},
+		});
+		
+		# The "mtu" is stored as a hidden field.
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_mtu_size",
+			id		=>	"anvil_mtu_size",
+			value		=>	$conf->{cgi}{anvil_mtu_size},
 		});
 		
 		# Anvil! IFN Gateway
@@ -4538,6 +4549,84 @@ sub show_existing_install_manifests
 	return(0);
 }
 
+# This takes an IP, compares it to the BCN, SN and IFN networks and returns the
+# netmask from the matched network.
+sub get_netmask_from_ip
+{
+	my ($conf, $ip) = @_;
+	
+	### TODO: Make this support all possible subnet masks.
+	my $netmask = "";
+	
+	# Create short versions of the three networks that I can use in the
+	# regex.
+	my $short_bcn = "";
+	my $short_sn = "";
+	my $short_ifn = "";
+	
+	# BCN
+	if ($conf->{cgi}{anvil_bcn_subnet} eq "255.0.0.0")
+	{
+		$short_bcn = ($conf->{cgi}{anvil_bcn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_bcn_subnet} eq "255.255.0.0")
+	{
+		$short_bcn = ($conf->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_bcn_subnet} eq "255.255.255.0")
+	{
+		$short_bcn = ($conf->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# SN
+	if ($conf->{cgi}{anvil_sn_subnet} eq "255.0.0.0")
+	{
+		$short_sn = ($conf->{cgi}{anvil_sn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_sn_subnet} eq "255.255.0.0")
+	{
+		$short_sn = ($conf->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_sn_subnet} eq "255.255.255.0")
+	{
+		$short_sn = ($conf->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# IFN 
+	if ($conf->{cgi}{anvil_ifn_subnet} eq "255.0.0.0")
+	{
+		$short_ifn = ($conf->{cgi}{anvil_ifn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_ifn_subnet} eq "255.255.0.0")
+	{
+		$short_ifn = ($conf->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($conf->{cgi}{anvil_ifn_subnet} eq "255.255.255.0")
+	{
+		$short_ifn = ($conf->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	record($conf, "$THIS_FILE ".__LINE__."; short_bcn: [$short_bcn], short_sn: [$short_sn], short_ifn: [$short_ifn]\n");
+	
+	if ($ip =~ /^$short_bcn/)
+	{
+		$netmask = $conf->{cgi}{anvil_bcn_subnet};
+		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	}
+	elsif ($ip =~ /^$short_sn/)
+	{
+		$netmask = $conf->{cgi}{anvil_sn_subnet};
+		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	}
+	elsif ($ip =~ /^$short_ifn/)
+	{
+		$netmask = $conf->{cgi}{anvil_ifn_subnet};
+		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	return($netmask);
+}
+
 # This takes the (sanity-checked) form data and generates the XML manifest file
 # and then returns the download URL.
 sub generate_install_manifest
@@ -4571,7 +4660,12 @@ sub generate_install_manifest
 	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{install_manifest}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
 	
 	# This is currently not set by the program, but will be later.
-	$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{mtu_size} if not $conf->{cgi}{anvil_mtu_size};
+	$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{install_manifest}{'default'}{mtu_size} if not $conf->{cgi}{anvil_mtu_size};
+	
+	# Use the subnet mask of the IPMI devices by comparing their IP to that
+	# of the BCN and IFN, and use the netmask of the matching network.
+	my $node1_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node1_ipmi_ip});
+	my $node2_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node2_ipmi_ip});
 	
 	### KVM-based fencing is supported but not documented. Sample entries
 	### are here for those who might ask for it when building test Anvil!
@@ -4592,7 +4686,7 @@ Striker Version: $conf->{sys}{version}
 			<ifn ip=\"$conf->{cgi}{anvil_node1_ifn_ip}\" />
 		</network>
 		<ipmi>
-			<on reference=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" gateway=\"\" />
+			<on reference=\"ipmi_n01\" ip=\"$conf->{cgi}{anvil_node1_ipmi_ip}\" netmask=\"$node1_ipmi_netmask\" user=\"$conf->{cgi}{anvil_node1_ipmi_user}\" password=\"$conf->{cgi}{anvil_node1_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
 			<on reference=\"pdu01\" port=\"$conf->{cgi}{anvil_node1_pdu1_outlet}\" />
@@ -4620,7 +4714,7 @@ Striker Version: $conf->{sys}{version}
 			<ifn ip=\"$conf->{cgi}{anvil_node2_ifn_ip}\" />
 		</network>
 		<ipmi>
-			<on reference=\"ipmi_n02\" ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" user=\"$conf->{cgi}{anvil_node2_ipmi_user}\" password=\"$conf->{cgi}{anvil_node2_ipmi_password}\" gateway=\"\" />
+			<on reference=\"ipmi_n02\" ip=\"$conf->{cgi}{anvil_node2_ipmi_ip}\" netmask=\"$node2_ipmi_netmask\" user=\"$conf->{cgi}{anvil_node2_ipmi_user}\" password=\"$conf->{cgi}{anvil_node2_ipmi_password}\" gateway=\"\" />
 		</ipmi>
 		<pdu>
 			<on reference=\"pdu01\" port=\"$conf->{cgi}{anvil_node2_pdu1_outlet}\" />
@@ -4876,6 +4970,7 @@ sub confirm_install_manifest_run
 		anvil_striker2_user		=>	$conf->{cgi}{anvil_striker2_user},
 		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
 		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
+		anvil_mtu_size			=>	$conf->{cgi}{anvil_mtu_size},
 	});
 	
 	return(0);
@@ -4954,7 +5049,7 @@ sub show_summary_manifest
 		elsif ($i == 4) { $say_pdu = "#!string!device_0010!#"; }
 		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_pdu: [$say_pdu]\n");
 		
-		my $say_pdu_name         = AN::Common::get_string($conf, {key => "row_0174", variables => { say_pdu => "$say_pdu" }});
+		my $say_pdu_name         = AN::Common::get_string($conf, {key => "row_0176", variables => { say_pdu => "$say_pdu" }});
 		my $node1_pdu_outlet_key = "anvil_node1_pdu${i}_outlet";
 		my $node2_pdu_outlet_key = "anvil_node2_pdu${i}_outlet";
 		
@@ -4992,9 +5087,9 @@ sub show_summary_manifest
 		column2		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
 	});
 	
-	# Striker SN IP
+	# Striker IFN IP
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
-		row		=>	"#!string!row_0167!#",
+		row		=>	"#!string!row_0169!#",
 		column1		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
 		column2		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
 	});
@@ -5040,10 +5135,12 @@ sub show_summary_manifest
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = AN::Common::get_string($conf, {key => "brand_0017"});
 	my $say_raritan    = AN::Common::get_string($conf, {key => "brand_0018"});
-	my $say_pdu1_brand = $conf->{cgi}{anvil_pdu1_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu4_brand = $conf->{cgi}{anvil_pdu4_name} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_pdu1_agent: [$conf->{cgi}{anvil_pdu1_agent}], cgi::anvil_pdu2_agent: [$conf->{cgi}{anvil_pdu2_agent}], cgi::anvil_pdu3_agent: [$conf->{cgi}{anvil_pdu3_agent}], cgi::anvil_pdu4_agent: [$conf->{cgi}{anvil_pdu4_agent}]\n");
+	my $say_pdu1_brand = $conf->{cgi}{anvil_pdu1_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	my $say_pdu4_brand = $conf->{cgi}{anvil_pdu4_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	record($conf, "$THIS_FILE ".__LINE__."; say_pdu1_brand: [$say_pdu1_brand], say_pdu2_brand: [$say_pdu2_brand], say_pdu3_brand: [$say_pdu3_brand], say_pdu4_brand: [$say_pdu4_brand]\n");
 	if ($conf->{sys}{install_manifest}{pdu_count} == 2)
 	{
 		### Two PDU setup 
@@ -5241,6 +5338,7 @@ sub show_summary_manifest
 		anvil_striker2_bcn_ip		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
 		anvil_striker2_ifn_ip		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
 		anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
+		anvil_mtu_size			=>	$conf->{cgi}{anvil_mtu_size},
 		say_anvil_repositories		=>	$say_repos,
 	});
 	
@@ -7458,7 +7556,7 @@ sub header
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}, "", 1);
-
+			
 			if ($conf->{cgi}{task} eq "load_config")
 			{
 				$say_refresh = "";
@@ -7497,8 +7595,22 @@ sub header
 					if ($conf->{cgi}{run})
 					{
 						my $back_url =  $conf->{sys}{cgi_string};
-						   $back_url =~ s/confirm=.*?&//;
-						   $back_url =~ s/confirm=.*$//;
+						   $back_url =~ s/confirm=.*?&//; $back_url =~ s/confirm=.*$//;
+						   
+						#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
+						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+							button_link	=>	"$back_url",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}, "", 1);
+					}
+					elsif ($conf->{cgi}{'delete'})
+					{
+						my $back_url =  $conf->{sys}{cgi_string};
+						   $back_url =~ s/confirm=.*?&//; $back_url =~ s/confirm=.*$//;
+						   $back_url =~ s/delete=.*?&//;  $back_url =~ s/delete=.*$//;
+						   
 						#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}]\n");
 						#record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
 						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {

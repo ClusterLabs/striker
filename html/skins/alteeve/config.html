@@ -312,22 +312,6 @@
 				</tr>
 				<tr>
 					<td class="td_hidden_white" style="text-align: right;">
-						<span class="subtle_text">#!string!row_0278!#:</span>
-					</td>
-					<td class="td_hidden_white" style="text-align: left;">
-						<span class="fixed_width">#!replace!anvil_ntp1!#</span>
-					</td>
-				</tr>
-				<tr>
-					<td class="td_hidden_white" style="text-align: right;">
-						<span class="subtle_text">#!string!row_0279!#:</span>
-					</td>
-					<td class="td_hidden_white" style="text-align: left;">
-						<span class="fixed_width">#!replace!anvil_ntp2!#</span>
-					</td>
-				</tr>
-				<tr>
-					<td class="td_hidden_white" style="text-align: right;">
 						<span class="subtle_text">#!string!row_0207!#:</span>
 					</td>
 					<td class="td_hidden_white" style="text-align: left;">
@@ -633,6 +617,29 @@
 			&nbsp;
 		</td>
 	</tr>
+	<!-- NTP servers -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0278!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_ntp1!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0279!#
+		</td>
+		<td class="fixed_width">
+			#!replace!anvil_ntp2!#
+		</td>
+		<td class="td_hidden_white">
+			&nbsp;
+		</td>
+	</tr>
 	<!-- User-defined repos -->
 	<tr>
 		<td class="highlight_good_bold">
@@ -745,6 +752,7 @@
 			<input type="hidden" name="anvil_striker2_user" value="#!replace!anvil_striker2_user!#" />
 			<input type="hidden" name="anvil_striker2_password" value="#!replace!anvil_striker2_password!#" />
 			<input type="hidden" name="anvil_striker2_database" value="#!replace!anvil_striker2_database!#" />
+			<input type="hidden" name="anvil_mtu_size" value="#!replace!anvil_mtu_size!#" />
 		</td>
 	</tr>
 	<tr>
@@ -959,6 +967,7 @@
 						<input type="hidden" name="anvil_striker2_ifn_ip"    id="anvil_striker2_ifn_ip"    value="#!replace!anvil_striker2_ifn_ip!#" />
 						<input type="hidden" name="anvil_sequence"           id="anvil_sequence"           value="#!replace!anvil_sequence!#" />
 						<input type="hidden" name="anvil_repositories"       id="anvil_repositories"       value="#!replace!anvil_repositories!#" />
+						<input type="hidden" name="anvil_mtu_size"           id="anvil_mtu_size"           value="#!replace!anvil_mtu_size!#" />
 						<input type="submit" name="do" id="do" value="#!string!button_0047!#" class="bold_button" />
 						<input type="hidden" name="config" id="config" value="true" />
 						<input type="hidden" name="generate" id="generate" value="true" />
