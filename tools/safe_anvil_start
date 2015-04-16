@@ -86,7 +86,7 @@ my $conf =  {
 	},
 	services	=>	{},
 	sys		=>	{
-		debug		=>	3,
+		debug		=>	1,
 		node2_sleep	=>	120,
 	},
 	timeouts	=>	{
@@ -148,6 +148,74 @@ exit(0);
 ###############################################################################
 # Here be Functions!                                                          #
 ###############################################################################
+
+# This uses the information from cluster.conf to determine how to check the
+# peer's power state and power it on if needed.
+sub power_on_peer
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_on_peer();", 3);
+	
+	#print "nodes::me::fence:   [$conf->{nodes}{me}{fence}]\n";
+	#print "nodes::peer::fence: [$conf->{nodes}{peer}{fence}]\n";
+	my $boot_peer   = 0;
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{nodes}{peer}{fence} -o status; echo rc:\$?";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc eq "0")
+			{
+				# Already running.
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The peer node is already running, no need to boot it.", 3);
+			}
+			elsif ($rc eq "1")
+			{
+				# Failed to reach the peer.
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to reach the peer's IPMI interface, unable to determine it's power state.", 1);
+			}
+			elsif ($rc eq "2")
+			{
+				# This should return '2'
+				logger($conf, $THIS_FILE, __LINE__, "- The peer node is off, it will be booted.", 1);
+				$boot_peer = 1;
+			}
+		}
+	}
+	close $file_handle;
+	
+	if ($boot_peer)
+	{
+		my $shell_call  = "$conf->{nodes}{peer}{fence} -o on; echo rc:\$?";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					# Already running.
+					logger($conf, $THIS_FILE, __LINE__, "- The peer node was booted successfully.", 1);
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
 
 # Write entries to syslog and STDOUT.
 sub logger
@@ -1195,6 +1263,9 @@ sub check_peer_connection
 		exit(1);
 	}
 	
+	# Check to see if the node is powered on and, if not, power it on.
+	power_on_peer($conf);
+	
 	my $file_handle = IO::Handle->new();
 	my $shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{echo} 1\"";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]", 2);
@@ -1225,9 +1296,11 @@ sub read_cluster_conf
 {
 	my ($conf) = @_;
 	
-	my $in_domain   = "";
-	my $file_handle = IO::Handle->new();
-	my $shell_call  = "$conf->{path}{cluster_conf}";
+	my $in_fencedevices = 0;
+	my $in_node         = "";
+	my $in_domain       = "";
+	my $file_handle     = IO::Handle->new();
+	my $shell_call      = "$conf->{path}{cluster_conf}";
 	logger($conf, $THIS_FILE, __LINE__, "- Reading the cluster configuration.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - File read: [$shell_call]", 2);
 	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
@@ -1236,7 +1309,7 @@ sub read_cluster_conf
 		# I don't care about this output
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 4);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
 		
 		# Pull out the cluster name. This has no use yet, beyond
 		# telling the user.
@@ -1252,7 +1325,8 @@ sub read_cluster_conf
 		# usable to log into the peer.
 		if ($line =~ /<clusternode .*?name="(.*?)"/)
 		{
-			my $node = $1;
+			my $node    = $1;
+			   $in_node = $node;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - node: [$node].", 4);
 			if ($node eq $conf->{nodes}{me}{hostname})
 			{
@@ -1279,6 +1353,86 @@ sub read_cluster_conf
 				}
 			}
 			next;
+		}
+		if (($in_node) && ($line =~ /<\/clusternode>/))
+		{
+			# Not in a node anymore.
+			$in_node = "";
+		}
+		if ($line =~ /<fencedevices>/)
+		{
+			$in_fencedevices = 1;
+		}
+		if (($in_fencedevices) && ($line =~ /<\/fencedevices>/))
+		{
+			$in_fencedevices = 0;
+		}
+		
+		# Gather IPMI fence device info.
+		if (($in_fencedevices) && ($line =~ /<fencedevice/))
+		{
+			my $name;
+			#print "in_fencedevices; line: [$line]\n";
+			if ($line =~ /name="(.*?)"/)
+			{
+				$name = $1;
+			}
+			if (($name) && ($line =~ /ipaddr="(.*?)"/))
+			{
+				$conf->{ipmi}{$name}{ipaddr} = "-a ".$1;
+			}
+			if ($line =~ /agent="(.*?)"/)
+			{
+				$conf->{ipmi}{$name}{agent} = $1;
+			}
+			if (($name) && ($line =~ /login="(.*?)"/))
+			{
+				$conf->{ipmi}{$name}{login} = "-l ".$1;
+			}
+			if ($line =~ /passwd="(.*?)"/)
+			{
+				$conf->{ipmi}{$name}{passwd} = "-p ".$1;
+			}
+			if ($line =~ /passwd_script="(.*?)"/)
+			{
+				$conf->{ipmi}{$name}{passwd_script} = "-S ".$1;
+			}
+		}
+		
+		# Gather my IPMI fencing info.
+		if (($in_node) && ($line =~ /ipmi/))
+		{
+			#print "in_node; line: [$line]\n";
+			next if $line =~ /<method/;
+			my $node;
+			if (($in_node eq $conf->{nodes}{me}{hostname}))
+			{
+				$node = "me";
+			}
+			elsif (($in_node eq $conf->{nodes}{peer}{hostname}))
+			{
+				$node = "peer";
+			}
+			if ($line =~ /ipaddr="(.*?)"/)
+			{
+				$conf->{nodes}{$node}{ipmi}{ipaddr} = "-a ".$1;
+			}
+			if ($line =~ /login="(.*?)"/)
+			{
+				$conf->{nodes}{$node}{ipmi}{login} = "-l ".$1;
+			}
+			if ($line =~ /name="(.*?)"/)
+			{
+				$conf->{nodes}{$node}{ipmi}{name} = $1;
+			}
+			if ($line =~ /passwd="(.*?)"/)
+			{
+				$conf->{nodes}{$node}{ipmi}{passwd} = "-p ".$1;
+			}
+			if ($line =~ /passwd_script="(.*?)"/)
+			{
+				$conf->{nodes}{$node}{ipmi}{passwd_script} = "-S ".$1;
+			}
 		}
 		
 		# The scripts I find here will be the daemons whose status I
@@ -1363,6 +1517,48 @@ sub read_cluster_conf
 		
 	}
 	close $file_handle;
+	
+	foreach my $node (sort {$a cmp $b} keys %{$conf->{nodes}})
+	{
+		#print "Node: [$node] IPMI fence attributes:\n";
+		my $fence = "fence_ipmilan";
+		foreach my $key (sort {$a cmp $b} keys %{$conf->{nodes}{$node}{ipmi}})
+		{
+			#print "- $key: [$conf->{nodes}{$node}{ipmi}{$key}]\n";
+			if ($key eq "name")
+			{
+				my $name = $conf->{nodes}{$node}{ipmi}{$key};
+				foreach my $key (sort {$a cmp $b} keys %{$conf->{ipmi}{$name}})
+				{
+					#print "- $key: [$conf->{ipmi}{$name}{$key}]\n";
+					if ($key eq "agent")
+					{
+						if ($conf->{ipmi}{$name}{$key} ne "fence_ipmilan")
+						{
+							$fence =~ s/^fence_ipmilan /$conf->{ipmi}{$name}{$key} /;
+						}
+					}
+					else
+					{
+						$fence .= " $conf->{nodes}{$node}{ipmi}{$key}";
+					}
+				}
+			}
+			elsif ($key eq "agent")
+			{
+				if ($conf->{nodes}{$node}{ipmi}{$key} ne "fence_ipmilan")
+				{
+					$fence =~ s/^fence_ipmilan /$conf->{nodes}{$node}{ipmi}{$key} /;
+				}
+			}
+			else
+			{
+				$fence .= " $conf->{nodes}{$node}{ipmi}{$key}";
+			}
+		}
+		$conf->{nodes}{$node}{fence} = $fence;
+		#print "nodes::${node}::fence: [$conf->{nodes}{$node}{fence}]\n";
+	}
 	
 	return(0);
 }

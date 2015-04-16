@@ -639,7 +639,7 @@ if (not $conf->{sys}{skip_network})
 configure_striker_tools($conf);
 
 # This sets up the dashboard to be a ScanCore database server.
-configure_scancore($conf);
+#configure_scancore($conf);
 
 # If requested, run the contents of rc.local. This is sometimes needed if the
 # user has customizations that might get clobbered by a --gui install.
