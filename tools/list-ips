@@ -1,0 +1,96 @@
+#!/usr/bin/perl
+# 
+# This program appends the list of IPs currently in use by a machine to
+# /etc/issue so that they are seen without logging in. It is meant to be run
+# from /etc/rc.local on new nodes. It is designed to allow the user to gather
+# the IPs of the nodes after the "Stage 1" install completes so that they can
+# easily find the IPs to enter into Striker's Install Manifest run.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $THIS_FILE = $0;
+
+# Make the new list.
+my $new_data = "";
+my $in_iface = "";
+my $ip_count = 0;
+#print "Adding current IPs to '/etc/issue':\n";
+$new_data .= "IPs currently assigned to this machine:\n";
+open (my $file_handle, "ifconfig 2>&1 |") or die "Failed to call 'ifconfig', error was: $!\n";
+while(<$file_handle>)
+{
+	chomp;
+	my $line = $_;
+	if ($line =~ /^(\w+)\s+Link/)
+	{
+		$in_iface = $1;
+	}
+	next if $in_iface eq "lo";
+	if ($in_iface)
+	{
+		if ($line =~ /addr:(\d+\.\d+\.\d+\.\d+)\s/)
+		{
+			my $ip = $1;
+			$new_data .= "- Interface: [$in_iface] has IP: [$ip]\n";
+			$ip_count++;
+		}
+	}
+}
+close $file_handle;
+
+if (not $ip_count)
+{
+	$new_data .= "- No IPs found.\n";
+}
+$new_data .= "End list.\n";
+print "[ Debug ] - New data:\n========\n$new_data\n========\n";
+
+# Clear old entries from /etc/issue
+my $issue_data = "";
+if (-r '/etc/issue')
+{
+	# Read in the old issue file.
+	my $in_old_data = 0;
+	open (my $file_handle, "</etc/issue") or die "Failed to read '/etc/issue', error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /^IPs currently assigned to/)
+		{
+			$in_old_data = 1;
+			next;
+		}
+		if (($in_old_data) && ($line =~ /End list/))
+		{
+			$in_old_data = 0;
+			next;
+		}
+		next if $in_old_data == 1;
+		$issue_data .= "$line\n";
+	}
+}
+else
+{
+	print "$THIS_FILE; Failed to read '/etc/issue'.\n";
+}
+#print "[ Debug ] - Issue data:\n========\n$issue_data\n========\n";
+
+# Write out new /etc/issue
+if (-w '/etc/issue')
+{
+	my $shell_call = ">/etc/issue";
+	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	open (my $file_handle, $shell_call) or die "Failed to write '/etc/issue', error was: $!\n";
+	print $file_handle $issue_data;
+	print $file_handle "$new_data\n";
+	close $file_handle;
+}
+else
+{
+	print "$THIS_FILE; Failed to write '/etc/issue'.\n";
+}
+
