@@ -19,9 +19,8 @@ package AN::InstallManifest;
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
 #   /root/.ssh/known_hosts
 # - Make the map NIC removal prompt order configurable.
-# - Pressing 'Restart' after a failed install causes a remap to be needed... FINISH THE MANIFEST UPDATE ALREADY! >_<
-# 
-# Symlink MegaCli64
+# - Check with fragmentless ping if the MTU is >1500 and error out if the 
+#   packet fails. Otherwise, DRBD will blow up.
 # 
 
 use strict;

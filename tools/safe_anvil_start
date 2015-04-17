@@ -174,7 +174,7 @@ sub power_on_peer
 			if ($rc eq "0")
 			{
 				# Already running.
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The peer node is already running, no need to boot it.", 3);
+				logger($conf, $THIS_FILE, __LINE__, "- The peer node is already running, no need to boot it.", 3);
 			}
 			elsif ($rc eq "1")
 			{

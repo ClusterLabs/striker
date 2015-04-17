@@ -50,6 +50,8 @@
 # 34 - Failed to create the Striker database.
 # 35 - Failed to load initial database tables.
 # 36 - Failed to restart database server.
+# 37 - Failed to access the database server as 'postgres'. Striker password did
+#      not work when set in the postgres user's ~/.pgpass file.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -127,6 +129,7 @@ my $conf = {
 		MegaCli64_link		=>	"/sbin/MegaCli64",
 		mount			=>	"/bin/mount",
 		passwd			=>	"/usr/bin/passwd",
+		ping			=>	"/bin/ping",
 		restorecon		=>	"/sbin/restorecon",
 		'rhn-channel'		=>	"/usr/sbin/rhn-channel",
 		rhnreg_ks		=>	"/usr/sbin/rhnreg_ks",
@@ -330,6 +333,7 @@ my $conf = {
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 		pg_hba_conf		=>	"/var/lib/pgsql/data/pg_hba.conf",
 		postgresql_conf		=>	"/var/lib/pgsql/data/postgresql.conf",
+		postgres_pgpass		=>	"/var/lib/pgsql/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
@@ -557,8 +561,8 @@ system('clear');
 logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 logger($conf, $THIS_FILE, __LINE__, " #   ___ _       _ _                                    The Anvil! Dashboard  #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #  / __| |_ _ _(_) |_____ _ _                                 -=] Installer  #", 1);
-logger($conf, $THIS_FILE, __LINE__, " #  \__ \  _| '_| | / / -_) '_|                                               #", 1);
-logger($conf, $THIS_FILE, __LINE__, " #  |___/\__|_| |_|_\_\___|_|                                                 #", 1);
+logger($conf, $THIS_FILE, __LINE__, " #  \\__ \\  _| '_| | / / -_) '_|                                               #", 1);
+logger($conf, $THIS_FILE, __LINE__, " #  |___/\\__|_| |_|_\\_\\___|_|                                                 #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #                                               https://alteeve.ca/w/Striker #", 1);
 logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 
@@ -667,14 +671,14 @@ if ($conf->{sys}{reboot_needed})
 {
 	if ($conf->{switches}{'no-reboot'})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Some of the changes require a reboot to take effect.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ]   When you are ready, type 'reboot' and press <enter>.\n", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Some of the changes require a reboot to take effect.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "  When you are ready, type 'reboot' and press <enter>.\n", 1);
 	}
 	else
 	{
 		# Reboot!
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Some of the changes require a reboot to take effect.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ]   Rebooting in five seconds! (press <ctrl> + <c> to abort.\n", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Some of the changes require a reboot to take effect.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "  Rebooting in five seconds! (press <ctrl> + <c> to abort.\n", 1);
 		sleep 5;
 		my $shell_call = "sync && reboot";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -704,7 +708,7 @@ sub configure_scancore
 	# won't exist yet.
 	my $initialized = 0;
 	logger($conf, $THIS_FILE, __LINE__, "Setting up the ScanCore database.", 1);
-	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [$conf->{path}{pg_hba_conf}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [$conf->{path}{pg_hba_conf}]", 3);
 	if (not -e $conf->{path}{pg_hba_conf})
 	{
 		# Initialization required.
@@ -751,7 +755,7 @@ sub configure_scancore
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database failed to set to start on boot. Expected '3:on', but got: [$line]", 1);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database failed to set to start on boot. Expected '3:on', but got: [$line]", 0);
 			exit(32);
 		}
 	}
@@ -781,11 +785,11 @@ fi";
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		if ($line =~ /Running/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Database server already running.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "Database server already running.", 3);
 		}
 		elsif ($line =~ /Started/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Database server was started.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "Database server was started.", 3);
 		}
 		elsif ($line =~ /Failed/i)
 		{
@@ -795,9 +799,36 @@ fi";
 	}
 	close $file_handle;
 	
-	# Create the postgresql user, if needed.
+	# Check to see if this is a re-run of the install. if it appears to be,
+	# create a temporary .pgpass file for postgres
 	my $striker_user = $conf->{sys}{striker_user};
 	my $striker_pass = $conf->{sys}{striker_pass};
+	my $use_password = 0;
+	logger($conf, $THIS_FILE, __LINE__, "- Looks like the 'postgres' user's password is set. Creating temporary: [$conf->{path}{postgres_pgpass}]", 1);
+	   $shell_call = "
+if grep -q -P  \"^local.*?md5\$\" $conf->{path}{pg_hba_conf}; 
+then 
+	echo 'use pgpass'
+	echo \"*:*:*:postgres:$striker_pass\" > $conf->{path}{postgres_pgpass} && \
+	chown postgres:postgres $conf->{path}{postgres_pgpass} && \
+	chmod 600 $conf->{path}{postgres_pgpass} && \
+	su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /use pgpass/)
+		{
+			$use_password = 1;
+		}
+	}
+	close $file_handle;
+	
+	# Create the postgresql user, if needed.
 	logger($conf, $THIS_FILE, __LINE__, "- Creating database user: [$striker_user] if needed.", 1);
 	my $create_user  = 1;
 	   $shell_call   = "su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"";
@@ -820,6 +851,7 @@ fi";
 		}
 	}
 	close $file_handle;
+	
 	if ($create_user)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Creating database user: [$striker_user] now.", 1);
@@ -940,8 +972,10 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	}
 	
 	# Now update the pg_hba.conf.
-	my $add_bcn           = 1;
-	my $add_ifn           = 1;
+	logger($conf, $THIS_FILE, __LINE__, "cidr_bcn_netmask: [$cidr_bcn_netmask], cidr_ifn_netmask: [$cidr_ifn_netmask]", 3);
+	my $add_bcn           = $cidr_bcn_netmask eq "#!INVALID!#" ? 0 : 1;
+	my $add_ifn           = $cidr_ifn_netmask eq "#!INVALID!#" ? 0 : 1;
+	logger($conf, $THIS_FILE, __LINE__, "add_bcn: [$add_bcn], add_ifn: [$add_ifn]", 3);
 	my $secure_local      = 0;
 	my $raw_pg_hba_config = "";
 	   $shell_call        = "<$conf->{path}{pg_hba_conf}";
@@ -987,21 +1021,27 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 		my $new_config = "";
 		foreach my $line (split/\n/, $raw_pg_hba_config)
 		{
+			logger($conf, $THIS_FILE, __LINE__, ">> line: [$line]", 3);
 			if ($line =~ /# TYPE  DATABASE/)
 			{
 				$new_config .= "$line\n";
 				if ($add_bcn)
 				{
-					$new_config .= "host    all         all      $bcn_network/$cidr_bcn_netmask  md5\n";
+					my $new_line = "host    all         all         $bcn_network/$cidr_bcn_netmask  md5";
+					$new_config .= "$new_line\n";
+					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
 				}
 				if ($add_ifn)
 				{
-					$new_config .= "host    all         all      $ifn_network/$cidr_ifn_netmask  md5\n";
+					my $new_line = "host    all         all         $ifn_network/$cidr_ifn_netmask  md5";
+					$new_config .= "$new_line\n";
+					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
 				}
 			}
 			else
 			{
 				$new_config .= "$line\n";
+				logger($conf, $THIS_FILE, __LINE__, "<< line: [$line]", 3);
 			}
 		}
 		
@@ -1155,16 +1195,16 @@ fi";
 	$shell_call = "
 if [ -e '$conf->{executable}{MegaCli64}' ]; 
 then 
-	if [ -e '$conf->{executable}{MegaCli64_symlink}' ]
+	if [ -e '$conf->{executable}{MegaCli64_link}' ]
 	then
-		echo '$conf->{executable}{MegaCli64_symlink} symlink exists';
+		echo '$conf->{executable}{MegaCli64_link} symlink exists';
 	else
-		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_symlink}
-		if [ -e '$conf->{executable}{MegaCli64_symlink}' ]
+		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
+		if [ -e '$conf->{executable}{MegaCli64_link}' ]
 		then
-			echo '$conf->{executable}{MegaCli64_symlink} symlink created';
+			echo '$conf->{executable}{MegaCli64_link} symlink created';
 		else
-			echo 'Failed to create $conf->{executable}{MegaCli64_symlink} symlink';
+			echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
 		fi
 	fi
 else
@@ -1191,7 +1231,7 @@ fi";
 		}
 		if ($line =~ /not installed/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - 'MegaCli64' not installed.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- 'MegaCli64' not installed.", 1);
 		}
 	}
 	close $file_handle;
@@ -1200,16 +1240,16 @@ fi";
 	$shell_call = "
 if [ -e '$conf->{executable}{storcli64}' ]; 
 then 
-	if [ -e '$conf->{executable}{storcli64_symlink}' ]
+	if [ -e '$conf->{executable}{storcli64_link}' ]
 	then
-		echo '$conf->{executable}{storcli64_symlink} symlink exists';
+		echo '$conf->{executable}{storcli64_link} symlink exists';
 	else
-		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_symlink}
-		if [ -e '$conf->{executable}{storcli64_symlink}' ]
+		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_link}
+		if [ -e '$conf->{executable}{storcli64_link}' ]
 		then
-			echo '$conf->{executable}{storcli64_symlink} symlink created';
+			echo '$conf->{executable}{storcli64_link} symlink created';
 		else
-			echo 'Failed to create $conf->{executable}{storcli64_symlink} symlink';
+			echo 'Failed to create $conf->{executable}{storcli64_link} symlink';
 		fi
 	fi
 else
@@ -1236,13 +1276,13 @@ fi";
 		}
 		if ($line =~ /not installed/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - 'storcli64' not installed.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- 'storcli64' not installed.", 1);
 		}
 	}
 	close $file_handle;
 	
-	# Write out the scancore config files.
-	
+	### Write out the scancore config files.
+	# Not needed at the moment, handled by the kickstart files
 	
 	### TODO: Make this enabled via a command line switch... many users
 	###       may not want this.
@@ -1256,12 +1296,13 @@ then
 	chown root:root $conf->{path}{cron_root}
 	chmod 600 $conf->{path}{cron_root}
 fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 		if ($line =~ /creating empty/i)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating empty crontab file for 'root'.", 1);
@@ -1282,7 +1323,7 @@ fi";
 		if ($line =~ /$scanner/)
 		{
 			# Skip it as we'll add it back later.
-			logger($conf, $THIS_FILE, __LINE__, "- Existing scanner entry found in 'root's cron, removing it.", 2);
+			logger($conf, $THIS_FILE, __LINE__, "- Existing scanner entry found in 'root's cron, removing it.", 1);
 		}
 		else
 		{
@@ -1297,6 +1338,22 @@ fi";
 	open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
 	print $file_handle $raw_cron;
 	close $file_handle;
+	
+	# Delete the .pgpass file, if it was created.
+	if ($use_password)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Deleting the temporary .pgpass file that was created for the 'postgres' user.", 1);
+		my $shell_call = "rm -f $conf->{path}{postgres_pgpass}";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]", 3);
+		}
+		close $file_handle;
+	}
 	
 	# Done.
 	logger($conf, $THIS_FILE, __LINE__, "- Scanner configured.", 1);
@@ -1406,7 +1463,7 @@ fi";
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+			#logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 			if ($line =~ /exists/i)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Already added, skipping.", 1);
@@ -5397,17 +5454,58 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with RHN and no RHN", 1);
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   credentials have been given. The install will likely fail if any", 1);
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   packages need to be installed and are not locally available!", 1);
-			sleep 2;
+			# Only show this warning if there is an internet
+			# connection.
+			if (verify_internet_access($conf))
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with RHN and no RHN", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   credentials have been given. The install will likely fail if any", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   packages need to be installed and are not locally available!", 1);
+				sleep 2;
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- This system will not be registered with RHN.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "  RHN credentials not given and no Internet connection detected.", 1);
+			}
 		}
 	}
-	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }
+
+# Check to see if we can ping 8.8.8.8
+sub verify_internet_access
+{
+	my ($conf) = @_;
+	
+	my $ok         = 0;
+	my $shell_call = "$conf->{executable}{ping} 8.8.8.8 -c 3 -q";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
+		{
+			my $pings_sent     = $1;
+			my $pings_received = $2;
+			logger($conf, $THIS_FILE, __LINE__, "pings_sent: [$pings_sent], pings_received: [$pings_received]", 3);
+			if ($pings_received > 0)
+			{
+				$ok = 1;
+				logger($conf, $THIS_FILE, __LINE__, "ok: [$ok]", 3);
+			}
+		}
+	}
+	
+	logger($conf, $THIS_FILE, __LINE__, "ok: [$ok]", 3);
+	return($ok);
+}
+
 
 # This looks at the list of installed RPMs, compares them against the list of
 # needed RPMs and installs any that are missing.
@@ -6216,6 +6314,84 @@ sub backup_file
 	return(0);
 }
 
+# This looks to see what the current BCN and IFN IPs are.
+sub get_existing_ips
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Reading existing config:", 1);
+	my $ok         = 1;
+	my $in_iface   = "";
+	my $shell_call = "$conf->{executable}{ip} addr show";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /^\d+: (.*?): <.*?> mtu/)
+		{
+			$in_iface = $1;
+		}
+		if (($in_iface) && ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/(\d+) /))
+		{
+			$conf->{network}{raw}{$in_iface}{ip}      = $1;
+			$conf->{network}{raw}{$in_iface}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
+			logger($conf, $THIS_FILE, __LINE__, "in_iface: [$in_iface], IP: [$conf->{network}{raw}{$in_iface}{ip}], netmask: [$conf->{network}{raw}{$in_iface}{netmask}]", 3);
+		}
+	}
+	close $file_handle;
+	
+	# See if the user has a bond for BCN
+	if ($conf->{network}{raw}{bcn_bond1}{ip})
+	{
+		# Yup!
+		$conf->{network}{bcn}{ip}      = $conf->{network}{raw}{bcn_bond1}{ip};
+		$conf->{network}{bcn}{netmask} = $conf->{network}{raw}{bcn_bond1}{netmask};
+		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_bond1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
+	}
+	elsif ($conf->{network}{raw}{bcn_link1}{ip})
+	{
+		# Nope, normal network.
+		$conf->{network}{bcn}{ip}      = $conf->{network}{raw}{bcn_link1}{ip};
+		$conf->{network}{bcn}{netmask} = $conf->{network}{raw}{bcn_link1}{netmask};
+		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_link1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
+	}
+	else
+	{
+		# Failed to find the BCN.
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Network configuration is disabled, but the BCN network's IP address", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   and network mask were not found. Is the device 'bcn_bond1' or 'bcn_link1'", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   configured with an IP address?", 0);
+		$ok = 0;
+	}
+	
+	# See if the user has a bond for IFN
+	if ($conf->{network}{raw}{ifn_bond1}{ip})
+	{
+		# Yup!
+		$conf->{network}{ifn}{ip}      = $conf->{network}{raw}{ifn_bond1}{ip};
+		$conf->{network}{ifn}{netmask} = $conf->{network}{raw}{ifn_bond1}{netmask};
+		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_bond1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
+	}
+	elsif ($conf->{network}{raw}{ifn_link1}{ip})
+	{
+		# Nope, normal network.
+		$conf->{network}{ifn}{ip}      = $conf->{network}{raw}{ifn_link1}{ip};
+		$conf->{network}{ifn}{netmask} = $conf->{network}{raw}{ifn_link1}{netmask};
+		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_link1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
+	}
+	else
+	{
+		# Failed to find the IFN.
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Network configuration is disabled, but the IFN network's IP address", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   and network mask were not found. Is the device 'ifn_bond1' or 'ifn_link1'", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   configured with an IP address?", 0);
+		$ok = 0;
+	}
+	
+	return($ok);
+}
+
 # This breaks out the command-line switches and varifies that their values are
 # (more or less) sane
 sub sanity_check_switches
@@ -6227,6 +6403,7 @@ sub sanity_check_switches
 	my $bad_value = 0;
 
 	# The network is a little tricker
+	logger($conf, $THIS_FILE, __LINE__, "\nSanity-checking command line switches:", 1);
 	if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
 	{
 		print_usage($conf);
@@ -6239,39 +6416,12 @@ sub sanity_check_switches
 	}
 	elsif ((not $conf->{switches}{b}) && (not $conf->{switches}{i}))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - No network details given. Skipping Network config!", 1);
-		my $shell_call = "$conf->{executable}{ip} addr show bcn_link1";
-		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			if ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/(\d+) /)
-			{
-				$conf->{network}{bcn}{ip}      = $1;
-				$conf->{network}{bcn}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
-				logger($conf, $THIS_FILE, __LINE__, "BCN IP: [$conf->{network}{bcn}{ip}], netmask: [$conf->{network}{bcn}{netmask}]", 3);
-			}
-		}
-		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- No network details given. Skipping Network config!", 1);
 		$conf->{sys}{skip_network} = 1;
-		if ((not $conf->{network}{bcn}{ip}) || (not $conf->{network}{bcn}{netmask}))
-		{
-			# Might have been configured in a previous run but not
-			# yet rebooted.
-			if (not -e "$conf->{path}{network_configs}/ifcfg-bcn_link1")
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Network configuration is disabled, but the BCN network's IP address", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   and network mask were not found. Is the device 'bcn_link1'", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   configured with an IP address?", 0);
-				$bad_value = 1;
-			}
-			else
-			{
-				# It looks like it's already been configured,
-				# so no need to panic.
-			}
-		}
+		
+		# Get the current IFN and BCN addresses. Returns '0' if the BCN
+		# or IFN IPs are not found.
+		$bad_value = 1 if not get_existing_ips($conf);
 	}
 	elsif (not $conf->{switches}{b})
 	{
@@ -6310,14 +6460,14 @@ sub sanity_check_switches
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - No hostname given. Will not change it.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- No hostname given. Will not change it.", 1);
 		$conf->{sys}{skip_hostname} = 1;
 	}
 	
 	# See if they set an owner name
 	if (not $conf->{switches}{c})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - No customer/owner name given, will use: [$conf->{sys}{customer}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- No customer/owner name given, will use: [$conf->{sys}{customer}]", 1);
 		# TODO: check to see if apache limits the names allowed.
 	}
 	else
@@ -6330,7 +6480,7 @@ sub sanity_check_switches
 	# See if they've asked for a specific version.
 	if (not $conf->{switches}{d})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
 		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
@@ -6347,14 +6497,14 @@ sub sanity_check_switches
 		    ($conf->{switches}{d} eq "1.1.5") ||
 		    ($conf->{switches}{d} eq "1.1.6"))
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Will install version: [$conf->{switches}{d}]", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Will install version: [$conf->{switches}{d}]", 1);
 		}
 		elsif ($conf->{switches}{d} eq "git")
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Will install the latest version from git.", 1);
-			logger($conf, $THIS_FILE, __LINE__, "\n ##############################################################################", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Will install the latest version from git.", 1);
+			logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 			logger($conf, $THIS_FILE, __LINE__, " # [ Warning ] - Please do NOT use a git version in production!               #", 1);
-			logger($conf, $THIS_FILE, __LINE__, " ##############################################################################\n", 1);
+			logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 			#sleep 5;
 		}
 		else
@@ -6388,7 +6538,7 @@ sub sanity_check_switches
 	}
 	elsif ((not $conf->{switches}{e}) && (not $conf->{switches}{m}))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ]    - Mail server information not provided.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Mail server information not provided.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - If mail sending was not previously configured, you may encounter", 1);
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   problems later!", 1);
 		$conf->{sys}{skip_mail} = 1;
@@ -6535,7 +6685,7 @@ sub sanity_check_switches
 		}
 	}
 
-	logger($conf, $THIS_FILE, __LINE__, "Sanity checks complete.\n", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	return($bad_value);
 }
 
@@ -6589,7 +6739,7 @@ sub sanity_check_dhcp
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The DHCP lease start: [$conf->{switches}{lease_start}] and end: [$conf->{switches}{lease_end}]", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   IPs do not appear to be in the same subnet: [xxx.xxx.xxx.xxx].", 0);
-		logger($conf, $THIS_FILE, __LINE__, "[ Note ]  - Only the BCN subnet is used for DHCP.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Only the BCN subnet is used for DHCP.", 1);
 		$bad_value = 1;
 	}
 	
