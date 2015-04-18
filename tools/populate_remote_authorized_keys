@@ -45,6 +45,8 @@ $ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
 # Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
 $< = $>;
 $( = $);
+#print "I am: [$THIS_FILE]\n";
+#print "I am running as: [$>]/[$)]\n";
 
 my $conf = {
 	executable	=>	{
@@ -109,9 +111,9 @@ sub add_rsa_to_remote
 	# Make sure the remote machine's fingerprints are in our 
 	# ~/.ssh/known_hosts.
 	my $known_hosts = "/home/$conf->{sys}{username}/.ssh/known_hosts";
-	my $shell_call  = "if [ -e '$known_hosts' ] && \$(grep -q $conf->{sys}{remote} $known_hosts); then echo exists; else echo add;  ssh-keyscan $conf->{sys}{remote} >> $known_hosts; fi";
+	my $shell_call  = "if [ -e '$known_hosts' ] && \$(grep -q $conf->{sys}{remote} $known_hosts); then echo exists; else echo add; ssh-keyscan $conf->{sys}{remote} >> $known_hosts; fi; chown $conf->{sys}{username}:$conf->{sys}{username} $known_hosts";
 	# Untaint
-	if ($shell_call =~ /^(if .* fi)$/)
+	if ($shell_call =~ /^(if .*)$/)
 	{
 		$shell_call = $1;
 	}
@@ -119,7 +121,7 @@ sub add_rsa_to_remote
 	{
 		die "$THIS_FILE ".__LINE__."; Shell call tainted: [$shell_call]\n";
 	}
-	#print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";
+	print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -279,7 +281,7 @@ sub check_authorized_keys
 				if [ ! -e '$ssh_directory' ]
 				then
 					mkdir $ssh_directory
-					chown root:root $ssh_directory
+					chown $user:$user $ssh_directory
 					chmod 700 $ssh_directory
 					echo '$ssh_directory directory created.'
 				fi
