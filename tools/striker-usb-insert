@@ -32,7 +32,7 @@ ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
 # 12 = Loop detected trying to find a mount point on the remote machine.
 # 13 = Unknown error trying to create a directory on the remote machine.
 # 14 = Asked to format an device that didn't look like a proper block device path.
-# 15 = Tried to format device as LUKS, but reported post-format FS was not 'crypto_LUKS'.
+# 15 = Tried to format device as LUKS, but no luksUUID was found.
 # 16 = Failed to decrypt LUKS-encrypted device.
 # 17 = blkid called against the LUKS decrypted dm device didn't return the UUID and/or fs type.
 # 18 = Attempt to mount the local mount on the remote machine using sshfs timed out.
@@ -251,6 +251,10 @@ sub format_device_luks
 		exit(14);
 	}
 	
+	# Delete all existing partition and create a single one using all the
+	# space on the disk.
+	
+	
 	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
 	my $dm_path     = "/dev/mapper/$device_name";
 	my $temp_file   = "/tmp/".time;
@@ -269,7 +273,7 @@ $conf->{path}{echo} YES | $conf->{path}{cryptsetup} luksFormat $device $temp_fil
 	close $file_handle;
 	
 	# Now check to be sure the partition is now LUKS
-	$shell_call = "$conf->{path}{blkid} -c /dev/null $device";
+	$shell_call = "$conf->{path}{cryptsetup} luksUUID $device";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
@@ -278,13 +282,16 @@ $conf->{path}{echo} YES | $conf->{path}{cryptsetup} luksFormat $device $temp_fil
 		my $line = $_;
 		next if not $line;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-		if ($line =~ /^$device: .* TYPE="(.*?)"/)
+		if ($line =~ /not a valid LUKS device/)
 		{
-			my $fs = $1;
-			if ($fs eq "crypto_LUKS")
-			{
-				logger($conf, $THIS_FILE, __LINE__, "Successfully formatted: [$device] as a LUKS partition, unlocking it now.");
-				my $shell_call = "
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] Failed to format: [$device] as a LUKS partition. No 'luksUUID' was found. Unable to proceed.");
+			exit(15);
+		}
+		else
+		{
+			my $luksuuid = $line;
+			logger($conf, $THIS_FILE, __LINE__, "Successfully formatted: [$device] as a LUKS partition with UUID: [$luksuuid], unlocking it now.");
+			my $shell_call = "
 $conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
 unlink $temp_file
 if [ -e '$dm_path' ]
@@ -294,49 +301,43 @@ else
     echo 'unlock failed, dm path: [$dm_path] not found'
 fi
 ";
-				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
-				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-				while (<$file_handle>)
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /dm path: .* not found/)
 				{
-					chomp;
-					my $line = $_;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-					if ($line =~ /dm path: .* not found/)
-					{
-						logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
-						exit(16);
-					}
-					elsif ($line =~ /unlockes successfully/)
-					{
-						logger($conf, $THIS_FILE, __LINE__, "Unlocked successfully, device mapper path is: [$dm_path].");
-					}
+					logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
+					exit(16);
 				}
-				close $file_handle;
-				
-				my ($fs, $uuid, $label) = format_device($conf, $dm_path);
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
-				
-				if ($fs)
+				elsif ($line =~ /unlockes successfully/)
 				{
-					# If I am still alive, record the new details.
-					$device = $dm_path;
-					$conf->{devices}{$device}{fs}    = $fs;
-					$conf->{devices}{$device}{uuid}  = $uuid;
-					$conf->{devices}{$device}{label} = $label;
-					$conf->{devices}{$device}{path}  = $device;
-					logger($conf, $THIS_FILE, __LINE__, "Format was successful!");
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}] and the label: [$conf->{devices}{$device}{label}].");
+					logger($conf, $THIS_FILE, __LINE__, "Unlocked successfully, device mapper path is: [$dm_path].");
 				}
-				else
-				{
-					logger($conf, $THIS_FILE, __LINE__, "Format appears to have failed. The new file system type and/or UUID were not read.");
-					exit(17);
-				}
+			}
+			close $file_handle;
+			
+			my ($fs, $uuid, $label) = format_device($conf, $dm_path);
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
+			
+			if ($fs)
+			{
+				# If I am still alive, record the new details.
+				$device = $dm_path;
+				$conf->{devices}{$device}{fs}    = $fs;
+				$conf->{devices}{$device}{uuid}  = $uuid;
+				$conf->{devices}{$device}{label} = $label;
+				$conf->{devices}{$device}{path}  = $device;
+				logger($conf, $THIS_FILE, __LINE__, "Format was successful!");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}] and the label: [$conf->{devices}{$device}{label}].");
 			}
 			else
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] Failed to format: [$device] as a LUKS partition. The post-format filesystem is reported as: [$fs], 'crypto_LUKS' expected. Unable to proceed.");
-				exit(15);
+				logger($conf, $THIS_FILE, __LINE__, "Format appears to have failed. The new file system type and/or UUID were not read.");
+				exit(17);
 			}
 		}
 	}
@@ -894,7 +895,7 @@ sub find_file_systems
 		chomp;
 		my $line = $_;
 		next if not $line;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		# If there is a partition already on the device, I will need to know
 		# later if I need to encrypt the drive.
 		if ($line =~ /^$device\d+/)

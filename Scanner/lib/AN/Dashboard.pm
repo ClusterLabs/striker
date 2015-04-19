@@ -196,6 +196,7 @@ KEY:
         $self->host( $self->confdata()->{node_server}{$key} );
 
         my ( $dead_or_alive, $autoboot ) = $self->parse_node_server_status;
+        #say "dead_or_alive: [$dead_or_alive], autoboot: [$autoboot]\n";
 
         if (    $dead_or_alive
              && $dead_or_alive eq 'alive' ) {
