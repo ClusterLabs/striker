@@ -1,0 +1,130 @@
+#!/bin/bash
+# Carry out queries on scanner database
+
+# ---------------------------------------------------------------------- 
+
+#set -x 
+
+# ---------------------------------------------------------------------- 
+# Use the blank version on the same host where the DB is running.
+# The second version for remote hosts.
+#
+HOST=''
+#HOST='-h an-m01'
+#HOST='-h 10.255.4.251'
+
+# The user account with which to connect to DB
+#
+USER=alteeve
+
+# The DB to access.
+#
+DB=scanner
+
+# ...................................................................... 
+
+# (-m) How many records to fetch?
+#
+MAXN=10
+
+# (-n) Fetch records with specified foreign key 
+#
+NODE_ID=''
+
+# How to sort records
+#
+ORDER_BY='modified_date'
+
+# (-t) Which table to access.
+#
+TABLE_NAME='node'
+
+# (-p) Fetch records with this pid
+#
+PID=''
+
+# (_-f) list of fields to fetch.
+#
+FIELDS='*'
+
+# Where clause; assembled using pid or node_id or both.
+#
+WHERE=''
+
+# ---------------------------------------------------------------------- 
+
+function usage() {
+
+if [ -n $1 ]; then
+    echo "
+You passed an unfamiliar argument, '$1'
+"
+fi
+
+echo "
+USAGE: $0 [-f field [-f field2]] [ -m maxnum ] [ -n node_id ]
+          [ -p pid ] [ -t tablename ] [-v]
+
+Where
+	field     : a set of fields names that will be displayed in order;
+        maxnum    : number of records to fetch
+        node_id   : used in the where clause
+        pid       : used in the where clause
+        tablename : the table to read from
+        v         : display the resulting SQL query before running it
+
+Note : instead of -f field -f value -f units, it is also possible to type -f 'field, value, units'.
+You are spared the repeated -f, but have to use quotes and provide your own commas.
+"
+exit 1
+}
+# ---------------------------------------------------------------------- 
+
+while getopts ":f:m:n:p:t:v" opt; do
+    case $opt in
+      m) MAXN=$OPTARG
+         ;;
+      n) if [ -z $WHERE ]; then
+            WHERE="where node_id = $OPTARG"
+         else
+            WHERE="$WHERE and node_id = $OPTARG"
+         fi
+         ;;
+      f) if [ "$FIELDS" = '*' ]; then
+            FIELDS=$OPTARG
+         else
+            FIELDS="$FIELDS, $OPTARG"
+         fi
+         ;;
+      p) if [ -z $WHERE ]; then
+            WHERE="where pid = $OPTARG"
+         else
+            WHERE="$WHERE and pid = $OPTARG"
+         fi
+         ;;
+      t) TABLE_NAME=$OPTARG
+         if [ $TABLE_NAME = 'node_id' ]; then
+             ORDER_BY='modified_date'
+         else
+             ORDER_BY='timestamp'
+         fi
+         ;;
+      v) VERBOSE=1
+         ;;
+      *) usage $OPTARG
+         ;;
+    esac
+done
+
+# : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : 
+
+CMD="select $FIELDS from $TABLE_NAME $WHERE order by $ORDER_BY desc limit $MAXN"
+
+if [ $VERBOSE ]; then
+    echo "$CMD"
+else 
+    /usr/bin/psql $HOST -U $USER -d $DB -c "$CMD"
+fi
+
+# ----------------------------------------------------------------------
+# end of file.

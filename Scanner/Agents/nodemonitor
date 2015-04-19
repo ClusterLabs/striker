@@ -1,0 +1,273 @@
+#!/usr/bin/perl
+
+# _Perl_
+use warnings;
+use strict;
+use 5.010;
+
+our $VERSION = 1.0;
+
+use English '-no_match_vars';
+use File::Basename;
+use FileHandle;
+
+use Cwd;
+use Data::Dumper;
+use Getopt::Long;
+use Pod::Usage;
+use FindBin qw($Bin);
+use Time::HiRes qw( time alarm sleep );
+use DBI;
+
+use lib $Bin . '/lib';    # When called by scanner core pre-install
+use lib ( dirname $Bin) . '/lib';   # When run post-install, or during dev/test.
+use AN::NodeMonitor;
+
+use Const::Fast;
+
+# ======================================================================
+# CONSTANTS
+#
+const my $SYSTEMNAME => 'striker';
+const my $binbase    => dirname $Bin;
+const my $AGENTDIR => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/bin" )
+                        ? "${binbase}/agent"
+                        : $Bin );
+const my $BINDIR => (
+                ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" ) ? "${binbase}/bin"
+                : ( 'Agents' eq basename $Bin)                ? $binbase
+                :                                               $Bin );
+
+const my $TEXTBASE => ( ( $Bin eq "/usr/share/${SYSTEMNAME}/agents" )
+                        ? "/etc/${SYSTEMNAME}"
+                        : $binbase );
+
+const my $LOGDIR => -w '/var/log/striker' ? '/var/log/striker' : '/tmp';
+const my $DEFAULT_DB_CONFIG   => "${TEXTBASE}/Config/db.conf";
+const my $DEFAULT_CONFIG_PATH => "${TEXTBASE}/Config/nodemonitor.conf";
+const my $MSG_DIR             => "${TEXTBASE}/Messages";
+
+const my $BRIEF     => 1;
+const my $COMMA     => q{,};
+const my $DOTSLASH  => q{./};
+const my $MAX_RATE  => 600;
+const my $MIN_RATE  => 1;
+const my $PROG      => ( fileparse($PROGRAM_NAME) )[0];
+const my $REP_RATE  => 30;
+const my $RUN_UNTIL => ' 23
+    : 59
+    : 59 ';
+const my $SLASH   => q{/};
+const my $VERBOSE => 2;
+
+# ======================================================================
+# Subroutines
+#
+# ......................................................................
+# process command-line arguments
+#
+sub process_args {
+
+    my @cmdline = ( @ARG );
+    my $opt = {
+        rate      => $REP_RATE,           # loop repetition rate in seconds.
+        run_until => $RUN_UNTIL,          # Stop this process at appointed time.
+        dbconf    => $DEFAULT_DB_CONFIG,  # DB configuration file.
+        confpath => $DEFAULT_CONFIG_PATH,        # RAID configuration file.
+        msg_file => "${MSG_DIR}/${PROG}.xml",    # Message translation file
+        bindir   => $BINDIR,                     # Where the bins are
+        logdir   => $LOGDIR,                     # Where logfiles go
+        verbose  => 0,                           # avoid undef in '+' @ line 122
+	log      => 0,
+    };
+
+    GetOptions( $opt,               'rate=i',
+                'filepath=s',       'dbconf=s',
+                'msg_file=s',       'metadata|o=s',
+                'run_until=s',      'confpath=s',
+                'datatable_name=s', 'verbose+',
+                'logdir=s',         'bindir=s',
+		'log',
+		'host=s',           'healthfile=s',
+                'man',              'help' )
+        or pod2usage(2);
+
+    pod2usage( -verbose => $BRIEF )   if $opt->{help};    # display brief docs.
+    pod2usage( -verbose => $VERBOSE ) if $opt->{man};     # verbose docs
+
+    pod2usage( -verbose => $BRIEF, 
+	       -message => q{'host' and 'healthfile' args are mandatory; actual: }
+               . Dumper([\@cmdline, $opt], ['raw args', 'processed'])
+	) unless $opt->{host} and $opt->{healthfile};
+
+    verify_args($opt);
+
+    return $opt;
+}
+
+# ......................................................................
+# Check command line argument validity
+#
+sub verify_args {
+    my ($opt) = @_;
+
+    return;
+}
+
+# ----------------------------------------------------------------------
+# Main code
+#
+
+sub main {
+    my $options = process_args();
+
+    my $agent = AN::NodeMonitor->new($options);
+    $agent->create_flagfile();
+
+    my @node_args = @{ $agent->confdata() }{qw(host ip type)};
+
+    if ( $options->{log} || !$agent->interactive() ) {
+        $agent->begin_logging();
+        $agent->verbose( $agent->verbose() + 1 );
+    }
+
+    $agent->run( \@node_args );
+}
+
+# ----------------------------------------------------------------------
+# Now invoke main()
+
+STDOUT->autoflush();
+main();
+
+__END__
+# ======================================================================
+# POD
+
+=head1 NAME
+
+     snmp_apc_upd - a scanner agent to query APC UPSes via SNMP
+
+=head1 SYNOPSIS
+
+     snmp_apc_ups [options]
+
+     Options:
+         -rate     N         How often test is performed, by default
+                             every 30 seconds.
+         -run_until 23:59:59 Time at which process should make way for new instance.
+         -agentdir <path>    Which directory to check, by default
+                             the 'agents directory next to this program.
+         -help               Brief help message.
+         -man                Full documentation.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-rate N>
+
+How often loop is run, in seconds. Must be one or greater; larger than
+600 is considered an error.
+
+=item B<-agentdir path>
+
+Path to the directory to be scanned for additions and removals.
+
+
+=item B<duration N>
+
+How long should the program run, before spawning a fresh replacement?
+Typically 24 hours, i.e. 86400 seconds.
+
+=item B<-verbose>
+
+Output a message even if no files have been added or deleted.
+
+=item B<showsleep>
+
+Adds a component to the output string showing the duration of
+processing, and the amount of time that will be spent sleeping before
+the next iteration. =item B<-help>
+
+Print a brief help message and exits.
+
+=item B<-help>
+
+Prints guide to command line arguments.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<snmp_apc_ups> is one of scanning agents for the scan-core
+program. It uses Net::SNMP to connect to the specified UPSes and
+fetches information representing current running conditions.  It is
+intended to work with APC UPSes, but hopefully is general enough to
+connect to UPSes of other brands as well,
+
+When the program begins to run, it outputs a message,
+
+C<Starting ./snmp_apc_ups at Sat Nov  1 23:53:51 2014.>
+
+to report the program being run, and the start time.
+
+Similarly when the program terminates because the run duration has
+expired, a similar message is output:
+
+C<Halting ./snmp_apc_ups at Sat Nov  1 23:59:46 2014.>
+
+Immediately after the start message, the first scan is performed. A
+sample output string looks like:
+
+C<snmp_apc_ups>
+
+=head1 LICENSE AND COPYRIGHT
+
+This program is part of Aleeve's Anvil! system, and is released under
+the GNU GPL v2+ license.
+
+=head1 BUGS AND LIMITATIONS
+
+We don't yet know of any bugs or limitations. Report problems to 
+
+    Alteeve's Niche!  -  https://alteeve.ca
+
+No warranty is provided. Do not use this software unless you are
+willing and able to take full liability for it's use. The authors take
+care to prevent unexpected side effects when using this
+program. However, no software is perfect and bugs may exist which
+could lead to hangs or crashes in the program, in your cluster and
+possibly even data loss.
+
+=begin unused
+
+=head1  INCOMPATIBILITIES
+
+There are no current incompatabilities.
+
+=head1 DEPENDENCIES
+
+=head1 CONFIGURATION
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 USAGE
+
+=end unused
+
+=head1 AUTHOR
+
+Alteeve's Niche!  -  https://alteeve.ca
+
+Tom Legrady       -  tom@alteeve.ca	December 2014
+
+=cut
