@@ -961,75 +961,42 @@ sub configure_striker_tools
 	return(0);
 }
 
-# This sets up scancore to run on the nodes. It expects the database(s) to be
-# on the node(s).
-sub configure_scancore
+# This does the actual work of configuring ScanCore on a given node.
+sub configure_scancore_on_node
 {
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
+	my ($conf, $node, $password, $node_name) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
+	my $ok = 1;
 	### TODO: Each scan agent has a config file, most of which may not be
 	###       useful to the client. For now, we'll configure them all. 
 	###       Later, these will be configured via Install Manifest.
-	my $node1_name       = $conf->{cgi}{anvil_node1_name};
-	my $node1_short_name = $node1_name;
-	   $node1_short_name = s/^(.*?)\..*$/$1/;
-	my $node1_bcn_ip     = $conf->{cgi}{anvil_node1_bcn_ip};
-	my $node2_name       = $conf->{cgi}{anvil_node2_name};
-	my $node2_short_name = $node2_name;
-	   $node2_short_name = s/^(.*?)\..*$/$2/;
-	my $node2_bcn_ip     = $conf->{cgi}{anvil_node2_bcn_ip};
-	my $node1            =  $conf->{cgi}{anvil_node1_current_ip};
-	my $node1_password   =  $conf->{cgi}{anvil_node1_current_password};
-	my $node2            =  $conf->{cgi}{anvil_node2_current_ip};
-	my $node2_password   =  $conf->{cgi}{anvil_node2_current_password};
+	my $node_short_name = $node_name;
+	   $node_short_name = s/^(.*?)\..*$/$1/;
+	my $node_bcn_ip     = $node;
 	foreach my $agent (sort {$a cmp $b} keys %{$conf->{scancore}{scan_agents}})
 	{
 		next if not $conf->{scancore}{scan_agents}{$agent}{enabled};
 		my $config_file       = "$conf->{path}{nodes}{scan_agents}/$conf->{scancore}{scan_agents}{$agent}{configuration_file}";
-		my $node1_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
-		my $node2_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
+		my $node_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
 		
 		# Substitute variables.
-		$node1_config_body =~ s/#!conf!bcn_ip!#/$node1_bcn_ip/gs;
-		$node1_config_body =~ s/#!conf!long_hostname!#/$node1_name/gs;
-		$node1_config_body =~ s/#!conf!short_hostname!#/$node1_short_name/gs;
-		
-		$node2_config_body =~ s/#!conf!bcn_ip!#/$node2_bcn_ip/gs;
-		$node2_config_body =~ s/#!conf!long_hostname!#/$node2_name/gs;
-		$node2_config_body =~ s/#!conf!short_hostname!#/$node2_short_name/gs;
+		$node_config_body =~ s/#!conf!bcn_ip!#/$node_bcn_ip/gs;
+		$node_config_body =~ s/#!conf!long_hostname!#/$node_name/gs;
+		$node_config_body =~ s/#!conf!short_hostname!#/$node_short_name/gs;
 		
 		### TODO: Backup any existing files.
-		# Write out the config for node 1
+		# Write out the config
 		my $shell_call =  "cat > $config_file << EOF\n";
-		   $shell_call .= "$node1_config_body\n";
+		   $shell_call .= "$node_config_body\n";
 		   $shell_call .= "EOF";
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node1,
+			node		=>	$node,
 			port		=>	22,
 			user		=>	"root",
-			password	=>	$node1_password,
-			ssh_fh		=>	$conf->{node}{$node1}{ssh_fh} ? $conf->{node}{$node1}{ssh_fh} : "",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-		foreach my $line (@{$return})
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-		}
-		# Now node 2
-		$shell_call =  "cat > $config_file << EOF\n";
-		$shell_call .= "$node2_config_body\n";
-		$shell_call .= "EOF";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node2,
-			port		=>	22,
-			user		=>	"root",
-			password	=>	$node2_password,
-			ssh_fh		=>	$conf->{node}{$node2}{ssh_fh} ? $conf->{node}{$node2}{ssh_fh} : "",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
@@ -1057,14 +1024,13 @@ then
 else
 	echo '*/5 * * * * /usr/share/striker/bin/scanner' >> $conf->{path}{nodes}{cron_root}
 fi";
-	# Node 1
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node1,
+		node		=>	$node,
 		port		=>	11,
 		user		=>	"root",
-		password	=>	$node1_password,
-		ssh_fh		=>	$conf->{node}{$node1}{ssh_fh} ? $conf->{node}{$node1}{ssh_fh} : "",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
@@ -1073,23 +1039,23 @@ fi";
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 	}
-	# Node 2
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node2,
-		port		=>	22,
-		user		=>	"root",
-		password	=>	$node2_password,
-		ssh_fh		=>	$conf->{node}{$node2}{ssh_fh} ? $conf->{node}{$node2}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return})
-	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-	}
+	
+	return($ok);
+}
 
+
+# This sets up scancore to run on the nodes. It expects the database(s) to be
+# on the node(s).
+sub configure_scancore
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
+	
+	my ($node1_ok) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+	my ($node2_ok) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	
+	# TODO: Show the user the results.
+	
 	return(0);
 }
 
