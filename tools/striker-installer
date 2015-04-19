@@ -114,6 +114,7 @@ my $conf = {
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
 		curl			=>	"/usr/bin/curl",
+		dashboard		=>	"/usr/share/striker/bin/dashboard",
 		echo			=>	"/bin/echo",
 		git			=>	"/usr/bin/git",
 		hostname		=>	"/bin/hostname",
@@ -1311,7 +1312,7 @@ fi";
 	close $file_handle;
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
-	my $scanner    = $conf->{executable}{scanner};
+	my $dashboard  = $conf->{executable}{dashboard};
 	my $raw_cron   = "";
 	   $shell_call = "$conf->{path}{cron_root}";
 	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
@@ -1320,10 +1321,10 @@ fi";
 		chomp;
 		my $line = $_;
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /$scanner/)
+		if ($line =~ /$dashboard/)
 		{
 			# Skip it as we'll add it back later.
-			logger($conf, $THIS_FILE, __LINE__, "- Existing scanner entry found in 'root's cron, removing it.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
 		}
 		else
 		{
@@ -1331,7 +1332,7 @@ fi";
 		}
 	}
 	close $file_handle;
-	$raw_cron .= "*/5 * * * * $scanner\n";
+	$raw_cron .= "*/5 * * * * $dashboard\n";
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
 	$shell_call = "$conf->{path}{cron_root}";

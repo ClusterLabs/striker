@@ -7560,8 +7560,13 @@ sub header
 			if ($conf->{cgi}{task} eq "load_config")
 			{
 				$say_refresh = "";
+				my $back = "?logo=true";
+				if ($conf->{cgi}{anvil})
+				{
+					$back = "?anvil=$conf->{cgi}{anvil}&config=true";
+				}
 				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
+					button_link	=>	$back,
 					button_text	=>	"$back_image",
 					id		=>	"back",
 				}, "", 1);
