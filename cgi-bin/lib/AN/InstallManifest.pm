@@ -10356,14 +10356,67 @@ fi";
 		foreach my $line (@{$return})
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
-			if ($line eq "failed")
+			if ($line =~ /Failed/i)
 			{
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to delete the 'virbr0' bridge.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create the 'MegaCli64' symlink! Does: [$conf->{path}{nodes}{MegaCli64}] exist?.\n");
 			}
-			elsif ($line eq "bridge gone")
+			elsif ($line =~ /exists/i)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The bridge 'virbr0' is gone.\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'MegaCli64' symlink already exists.\n");
+			}
+			elsif ($line =~ /created/i)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'MegaCli64' symlink was created.\n");
+			}
+		}
+		
+		# Now make sure we have the storcli symlink.
+		$shell_call = "
+if [ -e '$conf->{path}{nodes}{storcli64}' ]; 
+then 
+	if [ -e '/sbin/storcli64' ]
+	then
+		echo '/sbin/storcli64 symlink exists';
+	else
+		ln -s $conf->{path}{nodes}{storcli64} /sbin/
+		if [ -e '/sbin/storcli64' ]
+		then
+			echo '/sbin/storcli64 symlink created';
+		else
+			echo 'Failed to create /sbin/storcli64 symlink';
+		fi
+	fi
+else
+	echo 'storcli64 not installed.'
+fi";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		$conf->{node}{$node}{internet} = 0;
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			if ($line =~ /Failed/i)
+			{
+				$ok = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create the 'storcli64' symlink! Does: [$conf->{path}{nodes}{storcli64}] exist?.\n");
+			}
+			elsif ($line =~ /exists/i)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'storcli64' symlink already exists.\n");
+			}
+			elsif ($line =~ /created/i)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The 'storcli64' symlink was created.\n");
 			}
 		}
 	}

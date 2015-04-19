@@ -703,6 +703,7 @@ sub initialize_conf
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link2",
+				storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 			},
 		},

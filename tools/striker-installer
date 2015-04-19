@@ -4691,6 +4691,7 @@ sub configure_iptables
 		backup_file($conf, $conf->{path}{iptables});
 	}
 	
+	my $changes    = 0;
 	my $tftp_open  = 0;
 	my $http_open  = 0;
 	my $https_open = 0;
@@ -4757,6 +4758,7 @@ sub configure_iptables
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
 		}
 		close $file_handle;
+		$changes = 1;
 	}
 	if (not $http_open)
 	{
@@ -4770,6 +4772,7 @@ sub configure_iptables
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
 		}
 		close $file_handle;
+		$changes = 1;
 	}
 	if (not $https_open)
 	{
@@ -4783,23 +4786,7 @@ sub configure_iptables
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
 		}
 		close $file_handle;
-	}
-	if ((not $http_open) || (not $https_open))
-	{
-		# Save the changes.
-		logger($conf, $THIS_FILE, __LINE__, "- Saving the new iptables configuration.", 1);
-		my $shell_call = "/etc/init.d/iptables save";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			# The formatting here isn't nice.
-			$line =~ s/\n//g;
-			$line =~ s/\r//g;
-			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 3);
-		}
-		close $file_handle;
+		$changes = 1;
 	}
 	if (not $vnc_open)
 	{
@@ -4815,6 +4802,7 @@ sub configure_iptables
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
 		}
 		close $file_handle;
+		$changes = 1;
 	}
 	if (not $pgsql_open)
 	{
@@ -4826,6 +4814,24 @@ sub configure_iptables
 			chomp;
 			my $line = $_;
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+		}
+		close $file_handle;
+		$changes = 1;
+	}
+	if ($changes)
+	{
+		# Save the changes.
+		logger($conf, $THIS_FILE, __LINE__, "- Saving the new iptables configuration.", 1);
+		my $shell_call = "/etc/init.d/iptables save";
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			# The formatting here isn't nice.
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 3);
 		}
 		close $file_handle;
 	}
