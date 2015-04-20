@@ -141,7 +141,7 @@ sub remote_call
 {
 	my ($conf, $parameters) = @_;
 	
-	#print "[ Debug ] ".__LINE__."; parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]\n";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]");
 	my $remote     = $parameters->{remote}           ? $parameters->{remote}   : $conf->{sys}{remote};
 	my $port       = $parameters->{port}             ? $parameters->{port}     : $conf->{sys}{ssh_port};
 	my $user       = $parameters->{user}             ? $parameters->{user}     : "root";
@@ -149,24 +149,25 @@ sub remote_call
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
-	#print "[ Debug ] ".__LINE__."; remote: [$remote], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n";
-	#print "[ Debug ] ".__LINE__."; remote: [$remote], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], port: [$port], user: [$user], password: [---], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
 	
 	# Break out the port, if needed.
 	my $state;
 	my $error;
-	#print "[ Debug ] ".__LINE__."; remote: [$remote]\n";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote]");
 	if ($remote =~ /^(.*):(\d+)$/)
 	{
-		#print "[ Debug ] ".__LINE__."; >> remote: [$remote], port: [$port]\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - >> remote: [$remote], port: [$port]");
 		$remote = $1;
 		$port   = $2;
-		#print "[ Debug ] ".__LINE__."; << remote: [$remote], port: [$port]\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - << remote: [$remote], port: [$port]");
 		if (($port < 0) || ($port > 65536))
 		{
 			# Variables for 'message_0373'.
-			print "[ Error ] ".__LINE__."; - The TCP port: [$port] is out of range. It must be between 1 and 65536. The default is '22'.\n";
-			print "[ Error ] ".__LINE__.";   The error was hit calling: [$shell_call]\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The TCP port: [$port] is out of range. It must be between 1 and 65536. The default is '22'.");
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The error was hit calling: [$shell_call]");
 			exit(8);
 		}
 	}
@@ -174,58 +175,58 @@ sub remote_call
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
-	#print "[ Debug ] ".__LINE__."; ssh_fh: [$ssh_fh]\n";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ssh_fh: [$ssh_fh]");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		#print "[ Debug ] ".__LINE__."; Opening an SSH connection to: [$user\@$remote:$port].\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Opening an SSH connection to: [$user\@$remote:$port]");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($remote, $port, Timeout => 10))
 		{
-			print "[ Debug ] ".__LINE__."; error: [$@]\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$@]");
 			if ($@ =~ /Bad hostname/)
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
 				exit(9);
 			}
 			elsif ($@ =~ /Connection refused/)
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
 				exit(10);
 			}
 			elsif ($@ =~ /No route to host/)
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
 				exit(11);
 			}
 			elsif ($@ =~ /timeout/)
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
 				exit(12);
 			}
 			else
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Error was: [$@]\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
 				exit(13);
 			}
 		}
-		#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n";
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$error], ssh_fh: [$ssh_fh]");
 		if (not $error)
 		{
-			#print "[ Debug ] ".__LINE__."; user: [$user], password: [$password]\n";
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - user: [$user], password: [$password]");
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
-				print "[ Debug ] ".__LINE__."; - Failed to connect to the host: [$remote]\n";
-				print "[ Debug ] ".__LINE__.";   Please check that the password provides is the correct password for 'root' on the target machine.\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Please check that the password provides is the correct password for 'root' on the target machine.");
 				exit(14);
 			}
 			else
 			{
-				#print "[ Debug ] ".__LINE__."; SSH session opened to: [$remote].\n";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - SSH session opened to: [$remote].");
 			}
 			$conf->{node}{$remote}{ssh_fh} = $ssh_fh;
 		}
@@ -236,7 +237,7 @@ sub remote_call
 	### collection in this section.
 	#
 	# Open a channel and make the call.
-	#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$error], ssh_fh: [$ssh_fh]");
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
 		# We need to open a channel every time for 'exec' calls. We
@@ -254,7 +255,7 @@ sub remote_call
 		}
 		else
 		{
-			#print "[ Debug ] ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - channel: [$channel], shell_call: [$shell_call]");
 			$channel->exec("$shell_call");
 			#"/etc/ssh/ssh_config",
 			# This keeps the connection open when the remote side is slow
@@ -281,7 +282,7 @@ sub remote_call
 				while ($stdout =~ s/^(.*)\n//)
 				{
 					my $line = $1;
-					#print "[ Debug ] ".__LINE__."; STDOUT: [$line].\n";
+					#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - STDOUT: [$line].");
 					push @{$stdout_output}, $line;
 				}
 				
@@ -293,7 +294,7 @@ sub remote_call
 				while ($stderr =~ s/^(.*)\n//)
 				{
 					my $line = $1;
-					#print "[ Debug ] ".__LINE__."; STDERR: [$line].\n";
+					#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - STDERR: [$line].");
 					push @{$stderr_output}, $line;
 				}
 				
@@ -302,12 +303,12 @@ sub remote_call
 			}
 			if ($stdout)
 			{
-				#print "[ Debug ] ".__LINE__."; stdout: [$stdout].\n";
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] -stdout: [$stdout]. ");
 				push @{$stdout_output}, $stdout;
 			}
 			if ($stderr)
 			{
-				#print "[ Debug ] ".__LINE__."; stderr: [$stderr].\n";
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - stderr: [$stderr].");
 				push @{$stderr_output}, $stderr;
 			}
 		}
@@ -318,23 +319,23 @@ sub remote_call
 	
 	foreach my $line (@{$stderr_output}, @{$stdout_output})
 	{
-		#print "[ Debug ] ".__LINE__."; Merge; line: [$line]\n";
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Merge; line: [$line]");
 		push @{$output}, $line;
 	}
 	
 	# Close the connection if requested.
 	if ($close)
 	{
-		#print "[ Debug ] ".__LINE__."; Disconnecting from: [$remote]\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Disconnecting from: [$remote]");
 		$ssh_fh->disconnect();
 		
 		# For good measure, blank both variables.
 		$conf->{remote}{$remote}{ssh_fh} = "";
-		$ssh_fh                      = "";
+		$ssh_fh                          = "";
 	}
 	
 	$error = "" if not defined $error;
-	#print "[ Debug ] ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]");
 	return($error, $ssh_fh, $output);
 }
 

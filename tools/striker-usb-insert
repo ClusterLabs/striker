@@ -1,20 +1,20 @@
 #!/usr/bin/perl
 #
-# Install:
-# - Copy:
-#   - rsync -av /var/www/tools/striker-usb.conf root@10.20.4.1:/etc/striker/ && rsync -av /var/www/tools/striker-usb.lib root@10.20.4.1:/sbin/ && rsync -av /var/www/tools/striker-usb-* root@10.20.4.1:/sbin/
+# This program looks in the Striker configuration file:
+# [/etc/striker/striker.conf] for managed USB ports. An example of how to
+# configure a USB port to be managed are shown there.
 # 
 # Create:
 # - /etc/udev/rules/99-striker-usb.rules
 #   - Containing:
-=pod
-# This triggers the insert and eject scripts to mount and unmount USB drives on
-# remote servers when a USB storage device is plugged into a managed port.
-
-ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-insert"
-
-ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
-=cut
+#------------------------------------------------------------------------------
+# # This triggers the insert and eject scripts to mount and unmount USB drives on
+# # remote servers when a USB storage device is plugged into a managed port.
+# 
+# ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-insert"
+# 
+# ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
+#------------------------------------------------------------------------------
 # 
 # Exit codes:
 # 0  = Normal exit.
@@ -26,16 +26,24 @@ ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
 # 6  = Unable to create the remote mount point
 # 7  = Remote machine does not have 'sshfs' installed.
 # 8  = sshfs call to ourselves failed.
-# 9  = The remote user does not have permission to create the remote mount point.
+# 9  = The remote user does not have permission to create the remote mount
+#      point.
 # 10 = No mountable device found.
 # 11 = The file system on the device can not be mounted locally.
 # 12 = Loop detected trying to find a mount point on the remote machine.
 # 13 = Unknown error trying to create a directory on the remote machine.
-# 14 = Asked to format an device that didn't look like a proper block device path.
+# 14 = Asked to format an device that didn't look like a proper block device
+#      path.
 # 15 = Tried to format device as LUKS, but no luksUUID was found.
 # 16 = Failed to decrypt LUKS-encrypted device.
-# 17 = blkid called against the LUKS decrypted dm device didn't return the UUID and/or fs type.
-# 18 = Attempt to mount the local mount on the remote machine using sshfs timed out.
+# 17 = blkid called against the LUKS decrypted dm device didn't return the UUID
+#      and/or fs type.
+# 18 = Attempt to mount the local mount on the remote machine using sshfs timed
+#      out.
+# 19 = Permission denied error on the remote machine when trying to create the
+#      remote mount point.
+# 20 = The remote machine failed to connect to this machine. Probably used a
+#      host name that didn't resolve to an IP address.
 # 
 
 use strict;
@@ -466,10 +474,12 @@ sub mount_filesystems
 				if ($conf->{devices}{$device}{label})
 				{
 					$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 				}
 				if ($i)
 				{
 					$remote_mount .= "-$i";
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 				}
 			}
 		}
@@ -693,10 +703,16 @@ sub mount_filesystems
 					foreach my $line (@{$return})
 					{
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-						if ($line eq "failed")
+						if ($line =~ /cannot create directory/)
 						{
-							# WTF?!
-							logger($conf, $THIS_FILE, __LINE__, "Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
+							logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to create the directory: [$use_directory].");
+							logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Does the user: [$remote_user] have sufficient rights on the remote machine: [$remote] to create this directory?");
+							exit(19);
+						}
+						elsif ($line eq "failed")
+						{
+							# <sad trombone />
+							logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
 							exit(13);
 						}
 						elsif ($line eq "created")
@@ -764,6 +780,15 @@ fi";
 		foreach my $line (@{$return})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /getaddrinfo (.*?): Name or service not known/)
+			{
+				my $name = $1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Asked the remote machine: [$remote] to connect to this machine using the name or IP: [$name].");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If this is a host name, can the remote machine resolve it to an IP?");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Perhaps the remote machine's '/etc/hosts' file needs to be updated?");
+				unmount($conf, $device);
+				exit(20);
+			}
 		}
 		
 		# Try the mount
@@ -789,7 +814,10 @@ fi";
 			}
 			elsif ($line =~ /fuse: failed to exec fusermount: Permission denied/)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a 'permission denied' error. Please run this manually and resolve any permissions issues. Is the '$remote_user' user in the 'fuse' group? If not, please run: [usermod -a -G fuse $remote_user] on the target server and try again. Unable to proceed.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Calling: [$shell_call] on the remote machine returned a 'permission denied' error.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Is the remote user: [$remote_user] user in the 'fuse' group?");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If not, please run: [usermod -a -G fuse $remote_user] on the remote server and try again.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to proceed.");
 				unmount($conf, $device);
 				exit(8);
 			}

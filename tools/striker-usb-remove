@@ -55,6 +55,54 @@ sub cleanup_local
 	}
 	close $file_handle;
 	
+	# It's possible that the mount point remains and we didn't catch it
+	# above. So look up the usual mount point for the removed device and
+	# see if it's expected mount point exists and is empty.
+	my $this_usb    = $conf->{this_usb};
+	my $local_mount = $conf->{usb}{$this_usb}{local_mount};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_mount: [$local_mount], usb::${this_usb}::local_mount: [$conf->{usb}{$this_usb}{local_mount}]");
+	if ($local_mount =~ /\/mnt\//)
+	{
+		local(*DIRECTORY);
+		opendir(DIRECTORY, "/mnt") or die "Failed to open the '/mnt' directory, error was: $!\n";
+		while (my $file = readdir(DIRECTORY))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $full_path = "/mnt/$file";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - full_path: [$full_path]");
+			
+			# If it's not a direcory or if it doesn't match our
+			# base mount point, skip it.
+			if (not -d $full_path)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - full_path: [$full_path] is not a directory.");
+				next;
+			}
+			if ($full_path !~ /^$local_mount/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - full_path: [$full_path] doesn't start with: [$local_mount]");
+				next;
+			}
+			
+			# If I am here, it's a directory like the one we
+			# normally use for this device, so try to unmount it.
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Attempting to remove the directory: [$full_path]");
+			rmdir($full_path) or warn "Unable to remove directory: [$full_path]. Error: $!\n" or warn "Failed to remove: [$full_path]. The error was: $!\n";
+			if (-d $full_path)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "Failed to remove local mount point: [$full_path]. Are there files in the directory?");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "Local mount point: [$full_path] removed.");
+			}
+		}
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Local mount point: [$local_mount] isn't under the '/mnt' directory, will not try to remove it.");
+	}
+	
 	return(0);
 }
 
@@ -146,9 +194,33 @@ sub cleanup_remote
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
 	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
 	
-	my $shell_call = "mount";
+	# First, terminate any stale PIDs
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Killing any stale sshfs PIDs for the mount point: [$remote_mount]");
+	my $shell_call = "
+for i in \$(ps aux | grep '$remote_mount' | grep sshfs | awk '{print \$2}')
+do
+	echo \"Killing stale sshfs PID: [\$i]\"
+	kill \$i
+done";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 	my ($error, $ssh_fh, $return) = remote_call($conf, {
+		remote		=>	$remote,
+		port		=>	22,
+		user		=>	$remote_user,
+		password	=>	$remote_password,
+		ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+	}
+	
+	# Now look for mounts.
+	$shell_call = "mount";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	($error, $ssh_fh, $return) = remote_call($conf, {
 		remote		=>	$remote,
 		port		=>	22,
 		user		=>	$remote_user,
@@ -223,11 +295,11 @@ sub check_mount
 		rmdir($mount_point) or warn "Unable to remove directory: [$mount_point]. Error: $!\n";
 		if (-d $mount_point)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "Failed to remove mount point: [$mount_point]. Are there files in the directory?");
+			logger($conf, $THIS_FILE, __LINE__, "Failed to remove locat mount point: [$mount_point]. Are there files in the directory?");
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "Mount point: [$mount_point] removed.");
+			logger($conf, $THIS_FILE, __LINE__, "Local mount point: [$mount_point] removed.");
 		}
 	}
 	
