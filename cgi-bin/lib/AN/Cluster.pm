@@ -7071,7 +7071,7 @@ then
 		echo libvirtd running, stopping it.
 		$conf->{path}{control_libvirtd} stop
 		$conf->{path}{control_libvirtd} status
-		if [ \"\$?\" -eq \"0\" ];
+		if [ \"\$?\" -eq \"3\" ];
 		then 
 			echo libvirtd stopped
 		else

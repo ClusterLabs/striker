@@ -949,14 +949,14 @@ sub configure_striker_tools
 	}
 	
 	# If requested, enable anvil-kick-apc-ups
-	if ($conf->{sys}{install_manifest}{use_anvil_kick_apc_ups})
+	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_anvil_kick_apc_ups($conf);
 	}
 	
 	# Configure Scancore.
-	configure_scancore($conf);
+	#configure_scancore($conf);
 	
 	return(0);
 }
@@ -1067,23 +1067,23 @@ sub enable_anvil_kick_apc_ups_on_node
 	
 	my $return_code = 0;
 	my $shell_call = "
-if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups}' ];
+if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ];
 then 
-	echo '$conf->{path}{nodes}{anvil_kick_apc_ups} exists, creating symlink';
-	if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+	echo '$conf->{path}{nodes}{'anvil-kick-apc-ups'} exists, creating symlink';
+	if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups_link'}' ];
 	then
-		echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} already exists.'
+		echo '$conf->{path}{nodes}{'anvil-kick-apc-ups_link'} already exists.'
 	else
-		ln -s $conf->{path}{nodes}{anvil_kick_apc_ups} $conf->{path}{nodes}{anvil_kick_apc_ups_link}
-		if [ -e '$conf->{path}{nodes}{anvil_kick_apc_ups_link}' ];
+		ln -s $conf->{path}{nodes}{'anvil-kick-apc-ups'} $conf->{path}{nodes}{'anvil-kick-apc-ups_link'}
+		if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups_link'}' ];
 		then
-			echo '$conf->{path}{nodes}{anvil_kick_apc_ups_link} link created.'
+			echo '$conf->{path}{nodes}{'anvil-kick-apc-ups_link'} link created.'
 		else
-			echo 'Failed to create $conf->{path}{nodes}{anvil_kick_apc_ups_link}.'
+			echo 'Failed to create $conf->{path}{nodes}{'anvil-kick-apc-ups_link'}.'
 		fi
 	fi
 else 
-	echo '$conf->{path}{nodes}{anvil_kick_apc_ups} not found'
+	echo '$conf->{path}{nodes}{'anvil-kick-apc-ups'} not found'
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -1120,7 +1120,7 @@ fi";
 	# 0 = Link created.
 	# 1 = Symlink already exists
 	# 2 = Failed to create link.
-	# 3 = anvil_kick_apc_ups not found
+	# 3 = anvil-kick-apc-ups not found
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
 	return($return_code);
 } 
@@ -1230,7 +1230,7 @@ sub enable_anvil_kick_apc_ups
 	{
 		# anvil-kick-apc-ups not found
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{anvil_kick_apc_ups}" }});
+		$node1_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{'anvil-kick-apc-ups'}" }});
 		$ok            = 0;
 	}
 	# Node 2
@@ -1250,7 +1250,7 @@ sub enable_anvil_kick_apc_ups
 	{
 		# anvil-kick-apc-ups not found
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{anvil_kick_apc_ups}" }});
+		$node2_message = AN::Common::get_string($conf, {key => "state_0108", variables => { file => "$conf->{path}{nodes}{'anvil-kick-apc-ups'}" }});
 		$ok            = 0;
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {

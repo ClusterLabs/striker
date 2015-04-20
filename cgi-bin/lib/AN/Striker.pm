@@ -4957,6 +4957,8 @@ sub provision_vm
 	}, {
 		script	=>	$shell_script,
 	});
+	my $shell_call = "echo \"$provision\" > $shell_script && chmod 755 $shell_script";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4964,7 +4966,7 @@ sub provision_vm
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"echo \"$provision\" > $shell_script && chmod 755 $shell_script",
+		shell_call	=>	$shell_call,
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4978,7 +4980,8 @@ sub provision_vm
 	});
 	
 	# Run the script.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling; script: [$shell_script]\n");
+	$shell_call = "$shell_script 2>&1 |";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4986,7 +4989,7 @@ sub provision_vm
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	1,
-		shell_call	=>	"$shell_script",
+		shell_call	=>	$shell_call,
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	$error = 0;
@@ -5001,8 +5004,17 @@ sub provision_vm
 				provision_script	=>	$shell_script,
 			}});
 		}
+		if ($line =~ /Unable to read from monitor/i)
+		{
+			### TODO: Delete the just-created LV
+			# This can be caused by insufficient free RAM
+			$error = AN::Common::get_string($conf, {key => "message_0437", variables => {
+				server		=>	$conf->{new_vm}{name},
+				node		=>	$node,
+			}});
+		}
 		### Supressing output to clean-up what the user sees.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		#print AN::Common::template($conf, "server.html", "one-line-message-fixed-width", {
 		#	message	=>	"$line",
 		#});
@@ -6597,7 +6609,7 @@ sub delete_vm
 	my $vm      = "vm:$conf->{cgi}{vm}";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in delete_vm(), vm: [$vm], cluster: [$cluster]\n");
 	
-	# This, more than 
+	# This, more than ... what? what was I going to say here?!
 	AN::Cluster::scan_cluster($conf);
 	my $proceed      = 1;
 	my $stop_vm      = 0;
@@ -6662,6 +6674,8 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
+		my $shell_call = "ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$host,
 			port		=>	$conf->{node}{$host}{port},
@@ -6669,7 +6683,7 @@ sub delete_vm
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?",
+			shell_call	=>	$shell_call,
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
