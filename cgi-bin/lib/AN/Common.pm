@@ -807,7 +807,7 @@ sub initialize_conf
 					pool1_size		=>	"50",
 					pool1_unit		=>	"%",
 					prefix			=>	"",
-					repositories		=>	"",
+					repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
 					sequence		=>	"01",
 					ssh_keysize		=>	8191,
 					sn_network		=>	"10.10.0.0",

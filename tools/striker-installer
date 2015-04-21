@@ -52,12 +52,13 @@
 # 36 - Failed to restart database server.
 # 37 - Failed to access the database server as 'postgres'. Striker password did
 #      not work when set in the postgres user's ~/.pgpass file.
+# 38 - Failed to register against RHN.
 # 
-# TODO: - Create an init script that deletes anything in the media directory on
+# TODO: - Add a '--bcn-router' option that, if set along with PXE, will
+#         configure shorewall to masq the BCN. Then have the Install Target
+#         function also enable/disabled shorewall/iptables.
+#       - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
-#       - Create a '-g' switch to install the GUI (make sure this sets up
-#         'virt-manager'). Install 'virt-manager'
-#       - Add a firefox desktop icon when the GUI is installed for http://localhost
 #       - Configure avahi to announce newly build nodes and strikers and have
 #         striker listen for newly built nodes. 
 #         (broadcast 'I am $hostname on ip $ip' once per second, and then have
@@ -65,7 +66,7 @@
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
 #         
-# BUG: - ISO for PXE isn't mounted properly.
+# BUG: - 
 # 
 
 my $THIS_FILE =  $0;
@@ -5411,8 +5412,11 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 					}
 					else
 					{
-						logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration with RHN appears to have failed!", 1);
-						logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Exit code was: [$exit_code], expected '0'.", 1);
+						logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
+						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Exit code was: [$exit_code], expected '0'.", 1);
+						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
+						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
+						exit(38);
 					}
 				}
 				else

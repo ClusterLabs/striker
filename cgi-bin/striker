@@ -23,6 +23,8 @@
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 # TODO:
+# - Make it so that the backup from one Striker can be loaded into another
+#   without changing it's host name/IPs/etc. A "Don't alter system" checkbox?
 # - Adding a VM that is running on the "wrong" node gets it added to the wrong
 #   failover domain.
 # - Check to see if a VM is running outside of clustat and, if so, auto-enable
@@ -44,7 +46,7 @@
 # - Pass $THIS_FILE and __LINE__ on all 'error()' calls.
 # 
 # Bugs:
-# - Media Library isn't skinable/translatable yet.
+# - 
 
 use strict;
 use warnings;

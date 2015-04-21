@@ -4979,8 +4979,10 @@ sub provision_vm
 		server	=>	$conf->{new_vm}{name},
 	});
 	
+	### NOTE: Don't try to redirect output (2>&1 |), it causes errors I've
+	###       not yet solved.
 	# Run the script.
-	$shell_call = "$shell_script 2>&1 |";
+	$shell_call = "$shell_script";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -5011,6 +5013,14 @@ sub provision_vm
 			$error = AN::Common::get_string($conf, {key => "message_0437", variables => {
 				server		=>	$conf->{new_vm}{name},
 				node		=>	$node,
+			}});
+		}
+		if ($line =~ /syntax error/i)
+		{
+			# Something is wrong with the provision script
+			$error = AN::Common::get_string($conf, {key => "message_0438", variables => {
+				provision_script	=>	$shell_script,
+				error			=>	$line,
 			}});
 		}
 		### Supressing output to clean-up what the user sees.
