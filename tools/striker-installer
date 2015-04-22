@@ -53,10 +53,14 @@
 # 37 - Failed to access the database server as 'postgres'. Striker password did
 #      not work when set in the postgres user's ~/.pgpass file.
 # 38 - Failed to register against RHN.
+# 39 - Failed to configure shorewall because the BCN subnet mask could not be
+#      converted to CIDR notation.
 # 
 # TODO: - Add a '--bcn-router' option that, if set along with PXE, will
 #         configure shorewall to masq the BCN. Then have the Install Target
 #         function also enable/disabled shorewall/iptables.
+#       - If a repo is specified with an 'https://' address, then be sure that
+#         perl-Crypt-SSLeay is installed.
 #       - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
 #       - Configure avahi to announce newly build nodes and strikers and have
@@ -201,7 +205,7 @@ my $conf = {
 			'postgresql-plperl'		=>	0,
 			'postgresql-server'		=>	0,
 			rsync				=>	0,
-			Scanner				=>	0,
+			#Scanner				=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
 			storcli				=>	0,
@@ -341,6 +345,14 @@ my $conf = {
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
+		shorewall		=>	{
+			interfaces		=>	"/etc/shorewall/interfaces",
+			masq			=>	"/etc/shorewall/masq",
+			policy			=>	"/etc/shorewall/policy",
+			rules			=>	"/etc/shorewall/rules",
+			shorewall_conf		=>	"/etc/shorewall/shorewall.conf",
+			zones			=>	"/etc/shorewall/zones",
+		},
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		striker_config		=>	"/etc/striker/striker.conf",
 		striker_log		=>	"/var/log/striker.log",
@@ -513,10 +525,14 @@ my $conf = {
 		bcn		=>	{
 			ip		=>	"",
 			netmask		=>	"",
+			network		=>	"",
+			interface	=>	"",
 		},
 		ifn		=>	{
 			ip		=>	"",
 			netmask		=>	"",
+			network		=>	"",
+			interface	=>	"",
 			gateway		=>	"",
 			dns1		=>	"",
 			dns2		=>	"",
@@ -934,7 +950,7 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	elsif ($cidr_ifn_netmask eq "24") { $ifn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
 	else
 	{
-		# Ya, this is where I need to get smarter
+		# here, too
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the IFN.", 1);
 	}
 	
@@ -1660,7 +1676,7 @@ sub add_repo
 	{
 		next if not $url;
 		my ($repo_url, $repo_file) = ($url =~ /^(.*)\/(.*?)$/);
-		logger($conf, $THIS_FILE, __LINE__, "repo_url: [$repo_url], repo_file: [$repo_file], url: [$url]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "repo_url: [$repo_url], repo_file: [$repo_file], url: [$url]", 3);
 		if (not $repo_file)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to parse repository file from path:", 0);
@@ -2361,7 +2377,7 @@ sub configure_gui
 	if (1)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Disabling 'NetworkManager'", 1);
-		my $shell_call = "chkconfig NetworkManager off";
+		my $shell_call = "if [ -e /etc/init.d/NetworkManager ]; then chkconfig NetworkManager off; fi";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -2849,6 +2865,7 @@ sub configure_pxe
 		configure_xinetd($conf);
 		configure_iso_source($conf);
 		configure_pxe_config($conf);
+		configure_shorewall($conf);
 		if ($conf->{switches}{'autostart-dhcpd'})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "Auto-starting 'dhcpd' on start.", 1);
@@ -2862,6 +2879,290 @@ sub configure_pxe
 	}
 	
 	return(0);
+}
+
+# If '--router-mode' mode was set, this will install and configure shorewall to
+# masq the BCN (thus providing Internet access, assuming there is Internet
+# access on the IFN.
+sub configure_shorewall
+{
+	my ($conf) = @_;
+	
+	# To start, we need to know what the IFN and BCN devices are.
+	logger($conf, $THIS_FILE, __LINE__, "Configuring shorewall to provide Internet access to the BCN.", 1);
+	my $bcn_interface = $conf->{network}{bcn}{interface};
+	my $ifn_interface = $conf->{network}{ifn}{interface};
+	logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
+	if (not $bcn_interface)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}]", 3);
+		if ($conf->{sys}{create_bonds})
+		{
+			$bcn_interface = "bcn_bond1";
+			$ifn_interface = "ifn_bond1";
+			logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
+		}
+		else
+		{
+			$bcn_interface = "bcn_link1";
+			$ifn_interface = "ifn_link1";
+			logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
+		}
+	}
+
+	# Get the BCN network block.
+	my ($bcn_network, $bcn_broadcast) = get_network_and_broadcast_from_ip_and_subnet($conf, $conf->{network}{bcn}{ip}, $conf->{network}{bcn}{netmask});
+	logger($conf, $THIS_FILE, __LINE__, "bcn_network: [$bcn_network]", 3);
+	
+	my $cidr_bcn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{bcn}{netmask});
+	logger($conf, $THIS_FILE, __LINE__, "cidr_bcn_netmask: [$cidr_bcn_netmask]", 3);
+	if ($cidr_bcn_netmask eq "#!INVALID!#")
+	{
+		# We can't setup the firewall.
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to convert the BCN subnet mask: [$conf->{network}{bcn}{netmask}] to CIDR notation.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to configure Striker in router-mode.", 0);
+		exit(39);
+	}
+	
+	### Now prepare my configuration files.
+	# Zones - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#zones
+	my $zones = "
+#
+# Shorewall version 4 - Zones File
+#
+# For information about this file, type \"man shorewall-zones\"
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-zones.html
+#
+###############################################################################
+#ZONE	TYPE		OPTIONS		IN			OUT
+#					OPTIONS			OPTIONS
+fw	firewall
+net	ipv4
+loc	ipv4";
+	
+	# Interfaces - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#interfaces
+	my $interfaces  = "
+#
+# Shorewall version 4 - Interfaces File
+#
+# For information about entries in this file, type \"man shorewall-interfaces\"
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-interfaces.html
+#
+###############################################################################
+FORMAT 2
+###############################################################################
+#ZONE		INTERFACE		OPTIONS
+loc		$bcn_interface		dhcp
+net		$ifn_interface";
+	
+	# Policy - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#policy
+	my $policy = "
+#
+# Shorewall version 4 - Policy File
+#
+# For information about entries in this file, type \"man shorewall-policy\"
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-policy.html
+#
+###############################################################################
+#SOURCE	DEST	POLICY		LOG	LIMIT:		CONNLIMIT:
+#				LEVEL	BURST		MASK
+# Let everything from the Striker out onto the net.
+fw	net	ACCEPT
+
+# Likewise, allow everything from Striker out to the BCN.
+fw	loc	ACCEPT
+
+# Don't allow incoming connections from the web into the Striker *or* into the
+# BCN. The 'info' option causes failed connection attempts to be logged.
+net	all	DROP		info
+
+# Allow connections from the BCN into Striker
+loc	fw	DROP
+
+# Let machines on the BCN out onto the web
+loc	net	ACCEPT";
+	
+	# Rules - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#rules
+	my $rules = "
+#
+# Shorewall version 4 - Rules File
+#
+# For information on the settings in this file, type \"man shorewall-rules\"
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-rules.html
+#
+######################################################################################################################################################################################
+#ACTION		SOURCE		DEST		PROTO	DEST	SOURCE		ORIGINAL	RATE		USER/	MARK	CONNLIMIT	TIME         HEADERS         SWITCH
+#							PORT	PORT(S)		DEST		LIMIT		GROUP
+#SECTION ALL
+#SECTION ESTABLISHED
+#SECTION RELATED
+SECTION NEW
+
+### The rules for this firewall need to replicate what is provided by iptables
+### would normally because we're replacing it.
+# Answer ICMP queries
+Ping(ACCEPT)	net		fw
+Ping(ACCEPT)	loc		fw
+
+# Allow incoming SSH connections to the firewall itself from the IFN.
+ACCEPT		net		fw			tcp	22
+
+# Allow incoming HTTP and HTTPS connections from both the IFN.
+ACCEPT		net		fw			tcp	80
+ACCEPT		net		fw			tcp	443
+
+# Allow VNC connections in.
+ACCEPT		net		fw			tcp	5800
+ACCEPT		net		fw			tcp	5900
+ACCEPT		net		fw			tcp	6000
+
+# Open up access to PostgreSQL.
+ACCEPT		net		fw			tcp	5432
+
+# We don't want to allow anything into the BCN. That is not the point of
+# shorewall on this system. However, if you want to for some reason, here
+# is an example that would route incoming connections on TCP port 22101 to 
+# Anvil! 01, node 01's SSH.
+#ACCEPT		net		loc:10.20.10.1:22	tcp	22101";
+	
+	# Masquarade - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#masq
+	my $masq = "
+#
+# Shorewall version 4 - Masq file
+#
+# For information about entries in this file, type \"man shorewall-masq\"
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-masq.html
+#
+######################################################################################################
+#INTERFACE:DEST		SOURCE		ADDRESS		PROTO	PORT(S)	IPSEC	MARK	USER/	SWITCH
+#											GROUP
+$ifn_interface		$bcn_network/$cidr_bcn_netmask";
+	
+	# Read in the shorewall.conf file and change 'STARTUP_ENABLED=No' to
+	# 'STARTUP_ENABLED=Yes'.
+	my $shorewall_conf = "";
+	my $shell_call     = "$conf->{path}{shorewall}{shorewall_conf}";
+	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /STARTUP_ENABLED=/)
+		{
+			$line = "STARTUP_ENABLED=Yes";
+		}
+		$shorewall_conf .= "$line\n";
+	}
+	close $file_handle;
+	
+	### Now start writing things out!
+	# Zones.
+	if ($zones)
+	{
+		my $shell_call = $conf->{path}{shorewall}{zones};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $zones;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	
+	# Interfaces.
+	if ($interfaces)
+	{
+		my $shell_call = $conf->{path}{shorewall}{interfaces};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $interfaces;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	
+	# Policy
+	if ($policy)
+	{
+		my $shell_call = $conf->{path}{shorewall}{policy};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $policy;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	
+	# Rules
+	if ($rules)
+	{
+		my $shell_call = $conf->{path}{shorewall}{rules};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $rules;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	
+	# Masquarade
+	if ($masq)
+	{
+		my $shell_call = $conf->{path}{shorewall}{masq};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $masq;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	
+	# Finally, shorewall.conf
+	if ($shorewall_conf)
+	{
+		my $shell_call = $conf->{path}{shorewall}{shorewall_conf};
+		open (my $file_handle, ">", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], the error was: $!\n";
+		print $file_handle $shorewall_conf;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
+	}
+	logger($conf, $THIS_FILE, __LINE__, "Done.", 1);
+	
+	return(0);
+}
+
+# Converts an IP address and dotted-decimal subnet mask into a network range
+# and broadcast IP.
+# Credit for this to: http://www.perlmonks.org/?node_id=465359
+sub get_network_and_broadcast_from_ip_and_subnet
+{
+	my ($conf, $address, $subnet) = @_;
+	
+	### From "monarch" (http://www.perlmonks.org/?node_id=460541): 
+	# What I'm doing is converting the dot notation into an integer. That
+	# way I can do bit manipulation on the address as a whole rather than
+	# trying to deal with individual bytes. 
+	my @address_bytes   = split("[.]", $address);
+	my ($address_value) = unpack("N", pack("C4", @address_bytes));
+	
+	my @subnet_bytes   = split("[.]", $subnet);
+	my ($subnet_value) = unpack( "N", pack("C4", @subnet_bytes));
+	
+	# calculate network address
+	my $network_value = ($address_value & $subnet_value);
+	
+	# calculate broadcast address
+	my $broadcast_value = ($address_value & $subnet_value) + ( ~ $subnet_value);
+	
+	# convert network address to IP address
+	my @network_bytes = unpack("C4", pack("N", $network_value));
+	my $network       = join(".", @network_bytes);
+	
+	# convert broadcast address to IP address
+	my @broadcast_bytes = unpack( "C4", pack("N", $broadcast_value));
+	my $broadcast       = join(".", @broadcast_bytes);
+	
+	return($network, $broadcast);
 }
 
 # This sets up the install ISOs, if available.
@@ -5526,6 +5827,42 @@ sub install_packages
 	
 	logger($conf, $THIS_FILE, __LINE__, "Checking if anything needs to be installed.", 1);
 	
+	# If the user has set 'router-mode', add 'shorewall' to the list of
+	# packages to install.
+	if ($conf->{switches}{'router-mode'})
+	{
+		# It was.
+		logger($conf, $THIS_FILE, __LINE__, "- Router mode enabled, will add 'shorewall' to the package list.", 1);
+		$conf->{packages}{to_install}{shorewall} = 0;
+		
+		# Now, should it start on boot?
+		if ($conf->{switches}{'autostart-dhcpd'})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Auto-start of dhcpd was selected, so shorewall will be auto-started as well.", 1);
+			push @{$conf->{daemons}{enable}}, "shorewall";
+			# Delete iptables from startup
+			my $array = [];
+			foreach my $daemon (sort {$a cmp $b} @{$conf->{daemons}{enable}})
+			{
+				if ($daemon eq "iptables")
+				{
+					logger($conf, $THIS_FILE, __LINE__, "- Removing iptables from the list of start-up daemons.", 1);
+				}
+				else
+				{
+					push @{$array}, $daemon;
+				}
+			}
+			delete $conf->{daemons}{enable};
+			$conf->{daemons}{enable} = $array;
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Auto-start of dhcpd was not selected, so shorewall will not be auto-started either.", 1);
+			push @{$conf->{daemons}{disable}}, "shorewall";
+		}
+	}
+	
 	# Check for OS updates.
 	update_os($conf);
 	
@@ -5546,6 +5883,7 @@ sub install_missing_packages
 	
 	logger($conf, $THIS_FILE, __LINE__, "Checking to see if any packages need to be installed.", 1);
 	my $to_install = "";
+	
 	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
 	{
 		# Watch for autovivication...
@@ -5875,10 +6213,6 @@ sub start_all_nics
 sub reconfigure_network
 {
 	my ($conf) = @_;
-	
-	### TODO: Confirm that this is needed, may have to reboot anyway
-	# Stop the network.
-	#daemon_control($conf, "NetworkManager.service", "stop");
 	
 	# Write the udev file, if bonds don't already exist.
 	if (not $conf->{sys}{bonds_exist})
@@ -6356,15 +6690,17 @@ sub get_existing_ips
 	if ($conf->{network}{raw}{bcn_bond1}{ip})
 	{
 		# Yup!
-		$conf->{network}{bcn}{ip}      = $conf->{network}{raw}{bcn_bond1}{ip};
-		$conf->{network}{bcn}{netmask} = $conf->{network}{raw}{bcn_bond1}{netmask};
+		$conf->{network}{bcn}{ip}        = $conf->{network}{raw}{bcn_bond1}{ip};
+		$conf->{network}{bcn}{netmask}   = $conf->{network}{raw}{bcn_bond1}{netmask};
+		$conf->{network}{bcn}{interface} = "bcn_bond1";
 		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_bond1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
 	}
 	elsif ($conf->{network}{raw}{bcn_link1}{ip})
 	{
 		# Nope, normal network.
-		$conf->{network}{bcn}{ip}      = $conf->{network}{raw}{bcn_link1}{ip};
-		$conf->{network}{bcn}{netmask} = $conf->{network}{raw}{bcn_link1}{netmask};
+		$conf->{network}{bcn}{ip}        = $conf->{network}{raw}{bcn_link1}{ip};
+		$conf->{network}{bcn}{netmask}   = $conf->{network}{raw}{bcn_link1}{netmask};
+		$conf->{network}{bcn}{interface} = "bcn_link1";
 		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_link1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
 	}
 	else
@@ -6380,15 +6716,17 @@ sub get_existing_ips
 	if ($conf->{network}{raw}{ifn_bond1}{ip})
 	{
 		# Yup!
-		$conf->{network}{ifn}{ip}      = $conf->{network}{raw}{ifn_bond1}{ip};
-		$conf->{network}{ifn}{netmask} = $conf->{network}{raw}{ifn_bond1}{netmask};
+		$conf->{network}{ifn}{ip}        = $conf->{network}{raw}{ifn_bond1}{ip};
+		$conf->{network}{ifn}{netmask}   = $conf->{network}{raw}{ifn_bond1}{netmask};
+		$conf->{network}{ifn}{interface} = "ifn_bond1";
 		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_bond1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
 	}
 	elsif ($conf->{network}{raw}{ifn_link1}{ip})
 	{
 		# Nope, normal network.
-		$conf->{network}{ifn}{ip}      = $conf->{network}{raw}{ifn_link1}{ip};
-		$conf->{network}{ifn}{netmask} = $conf->{network}{raw}{ifn_link1}{netmask};
+		$conf->{network}{ifn}{ip}        = $conf->{network}{raw}{ifn_link1}{ip};
+		$conf->{network}{ifn}{netmask}   = $conf->{network}{raw}{ifn_link1}{netmask};
+		$conf->{network}{ifn}{interface} = "ifn_link1";
 		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_link1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
 	}
 	else
@@ -6550,8 +6888,8 @@ sub sanity_check_switches
 	elsif ((not $conf->{switches}{e}) && (not $conf->{switches}{m}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Mail server information not provided.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - If mail sending was not previously configured, you may encounter", 1);
-		logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   problems later!", 1);
+		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - If mail sending was not previously configured, you may encounter", 1);
+		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   problems later!", 1);
 		$conf->{sys}{skip_mail} = 1;
 	}
 	elsif (not $conf->{switches}{e})
@@ -7309,6 +7647,21 @@ SWITCHES
 	add the machine to yout RHN account. If you do not pass this and if
 	your machine is not already activated, the install will fail.
 
+ --router-mode
+
+	When Striker is configured to be an install target, using this switch
+	tells Striker to run as a router, providing Internet access on the BCN
+	to the machines getting DHCP IPs from it on the BCN.
+	
+	If '-p' is not set, this option will be ignored.
+	
+	NOTE: This will expose the BCN to the IFN! Care has been taken to
+	      block all traffic from the IFN to the BCN, but no program is
+	      perfect. If you are particularly concerned about this, audit the
+	      code before using this. In any case, it is a good idea to disable
+	      the "Install Target" feature in Striker when not needed. That
+	      will tear down the bridge as well.
+
  --run-rc-local
 
 	In some cases, some users have customizations in /etc/rc.local that can
@@ -7469,7 +7822,7 @@ sub get_switches
 sub select_nics
 {
 	my ($conf) = @_;
-
+	
 	logger($conf, $THIS_FILE, __LINE__, "-=] Configuring network to enable access to Anvil! systems.\n", 1);
 	logger($conf, $THIS_FILE, __LINE__, "Beginning NIC identification...", 1);
 	foreach my $nic (@{$conf->{nics}})
@@ -7523,7 +7876,7 @@ sub select_nics
 		}
 		sleep 1;
 	}
-
+	
 	my $proceed = 1;
 	logger($conf, $THIS_FILE, __LINE__, "\nHere is what you selected:", 1);
 	foreach my $nic (@{$conf->{nics}})
