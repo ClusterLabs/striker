@@ -436,6 +436,20 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		z_control_shorewall	=>	{
+			path			=>	"/var/www/tools/control_shorewall",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
+		z_control_iptables	=>	{
+			path			=>	"/var/www/tools/control_iptables",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		z_control_libvirtd		=>	{
 			path			=>	"/var/www/tools/control_libvirtd",
 			owner			=>	"root",
