@@ -333,7 +333,7 @@ my $conf = {
 		iptables		=>	"/etc/sysconfig/iptables",
 		merged_sql		=>	"/tmp/striker_all.sql",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
-		network_map_cache	=>	"/root/striker-network-map.cache",
+		network_map_cache	=>	"/root/.striker-network-map.cache",
 		ntp_conf		=>	"/etc/ntp.conf",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
@@ -626,8 +626,7 @@ if (not $conf->{sys}{skip_network})
 	if (not $conf->{sys}{bonds_exist})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "-=] Configuring network to enable access to Anvil! systems.", 1);
-		#load_network_map_cache($conf);
-		logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 2);
+		load_network_map_cache($conf);
 		until(select_nics($conf))
 		{
 			sleep 1;
@@ -7828,14 +7827,12 @@ sub select_nics
 {
 	my ($conf, $cache_read) = @_;
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Beginning NIC identification...", 1);
-	
 	# If a cache file exists, read it and see if we've got the same MAC
 	# addresses.
-	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 3);
 	if (not $conf->{sys}{network_map_cache_read})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "Manual mapping", 2);
+		logger($conf, $THIS_FILE, __LINE__, "- Beginning NIC identification...", 1);
 		foreach my $nic (@{$conf->{nics}})
 		{
 			my $plug_in_message_printed = 0;
@@ -7887,35 +7884,42 @@ sub select_nics
 			}
 			sleep 1;
 		}
+		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+		logger($conf, $THIS_FILE, __LINE__, "Here is what you selected:", 1);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "Here is what was read:", 1);
 	}
 	
 	my $proceed = 1;
-	logger($conf, $THIS_FILE, __LINE__, "\nHere is what you selected:", 1);
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $say_nic = $nic;
-		logger($conf, $THIS_FILE, __LINE__, "say_nic: [$say_nic]", 2);
-# 		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
-# 		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
-# 		my $this_mac = $conf->{nic}{name}{$nic};
-# 		if (not $this_mac)
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - There seems to be a problem.", 0);
-# 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Desired NIC: [$nic] doesn't have a referenced MAC address!", 0);
-# 			exit(1);
-# 		}
-# 		my $current_name = $conf->{nic}{mac}{$this_mac}{current_name};
-# 		if (not $current_name)
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - There seems to be a problem.", 0);
-# 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Desired NIC: [$nic] doesn't have a referenced interface!", 0);
-# 			exit(2);
-# 		}
-# 		logger($conf, $THIS_FILE, __LINE__, "- Interface: [".uc($this_mac)."], currently named: [$current_name],", 1);
-# 		logger($conf, $THIS_FILE, __LINE__, "  will be renamed to: [$nic]", 1);
-# 		logger($conf, $THIS_FILE, __LINE__, "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)", 3);
+		logger($conf, $THIS_FILE, __LINE__, "say_nic: [$say_nic]", 3);
+		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		#logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [$conf->{nic}{name}{$nic}], cache::nic::name::$nic: [$conf->{cache}{nic}{name}{$nic}]", 2);
+		my $this_mac = $conf->{cache}{nic}{name}{$nic} ? $conf->{cache}{nic}{name}{$nic} : $conf->{nic}{name}{$nic};
+		logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac]", 3);
+		if (not $this_mac)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - There seems to be a problem.", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Desired NIC: [$nic] doesn't have a referenced MAC address!", 0);
+			exit(1);
+		}
+		my $current_name = $conf->{nic}{mac}{$this_mac}{current_name};
+		if (not $current_name)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - There seems to be a problem.", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Desired NIC: [$nic] doesn't have a referenced interface!", 0);
+			exit(2);
+		}
+		logger($conf, $THIS_FILE, __LINE__, "- Interface: [".uc($this_mac)."], currently named: [$current_name],", 1);
+		logger($conf, $THIS_FILE, __LINE__, "  will be renamed to: [$nic]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)", 3);
 	}
-	exit;
+
 	my $bcn_ip      = $conf->{network}{bcn}{ip};
 	my $bcn_netmask = $conf->{network}{bcn}{netmask};
 	logger($conf, $THIS_FILE, __LINE__, "\nThe Back-Channel Network interface will be set to:", 1);
@@ -7997,9 +8001,9 @@ sub load_network_map_cache
 			{
 				my $nic = $1;
 				my $mac = $2;
-				$conf->{nic}{name}{$nic} = $mac;
-				$conf->{nic}{mac}{$mac}  = $nic;
-				logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic] to use: [$mac].", 1);
+				$conf->{cache}{nic}{name}{$nic} = lc($mac);
+				$conf->{cache}{nic}{mac}{$mac}  = $nic;
+				logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic ($conf->{cache}{nic}{name}{$nic})] to use: [$mac ($conf->{cache}{nic}{mac}{$mac})].", 1);
 			}
 		}
 		close $file_handle;
@@ -8013,10 +8017,12 @@ sub load_network_map_cache
 		{
 			chomp;
 			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line].", 3);
 			if ($line =~ /^\d+: (.*?): <(.*?)>/)
 			{
 				$this_iface = $1;
 				$this_mac   = "";
+				logger($conf, $THIS_FILE, __LINE__, "this_iface: [$this_iface].", 3);
 			}
 			next if not $this_iface;
 			next if $this_iface eq "lo";
@@ -8027,24 +8033,29 @@ sub load_network_map_cache
 			{
 				# We're not going to bother configuring the network, so just bail out now.
 				logger($conf, $THIS_FILE, __LINE__, "- Bonds exist, network will not be configured.", 1);
+				$conf->{cache} = {};
 				return(0);
 			}
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line].", 3);
 			if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
 			{
-				$this_mac = $1;
-				logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [$conf->{nic}{mac}{$this_mac}]", 2);
-				if ($conf->{nic}{mac}{$this_mac})
+				$this_mac = lc($1);
+				#logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [$conf->{cache}{nic}{mac}{$this_mac}]", 3);
+				if ($conf->{cache}{nic}{mac}{$this_mac})
 				{
-					#push @{$conf->{nics}}, $conf->{nic}{mac}{$this_mac};
-					$conf->{nic}{name}{$this_iface} = $this_mac;
+					push @{$conf->{cache}{nics}}, $conf->{cache}{nic}{mac}{$this_mac};
+					logger($conf, $THIS_FILE, __LINE__, ": this_mac: [$this_mac], this_iface: [$this_iface]", 3);
+					$conf->{nic}{name}{$this_iface}            = $this_mac;
 					$conf->{nic}{mac}{$this_mac}{current_name} = $this_iface;
+					logger($conf, $THIS_FILE, __LINE__, ": nic::name::$this_iface: [$conf->{nic}{name}{$this_iface}], nic::mac::${this_mac}::current_name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
 				}
 				else
 				{
 					# A NIC we don't know, remap.
 					logger($conf, $THIS_FILE, __LINE__, "- The NIC with MAC address: [$this_mac] is not cached, remap required.", 1);
+					$conf->{cache} = {};
 					return(0);
 				}
 			}
@@ -8055,15 +8066,17 @@ sub load_network_map_cache
 		if ($ok)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Cache read successfully, remap not required.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 		}
 	}
 	else
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Network mapping cache not found, manual mapping required.", 1);
+		$conf->{cache} = {};
 		$ok = 0;
 	}
 	$conf->{sys}{network_map_cache_read} = $ok;
-	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 3);
 
 	return($ok);
 }
@@ -8080,12 +8093,10 @@ sub record_network_map
 	foreach my $nic (@{$conf->{nics}})
 	{
 		my $this_mac = $conf->{nic}{name}{$nic};
-		print $file_handle "$nic:".uc($this_mac)."\n";
+		print $file_handle "$nic:".lc($this_mac)."\n";
 	}
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "- network mapping cached.", 1);
-	
-	exit;
 	
 	return(0);
 }
