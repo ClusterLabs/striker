@@ -7049,39 +7049,206 @@ sub ask_which_cluster
 	return (0);
 }
 
-# This toggles the dhcpd server on and off.
-sub control_dhcpd
+# This toggles the dhcpd server and shorewall/iptables to turn the Install
+# Target feature on and off.
+sub control_install_target
 {
 	my ($conf, $action) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; control_dhcpd(); action: [$action]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; control_install_target(); action: [$action]\n");
 	
+	### TODO: Track what was running and start back up things we turned off
+	###       only.
+	###       Check the 'start' and 'stop' calls for rc:4 (bad setuid)
 	# If the user installed libvirtd for some reason, and if it is running,
 	# it will block dhcpd from starting.
-	my $ok         = 1;
-	my $libvird_rc = 0;
-	my $shell_call = "";
+	my $ok           = 1;
+	my $dhcpd_rc     = 0;
+	my $libvirtd_rc  = 0;
+	my $shorewall_rc = 0;
+	my $iptables_rc  = 0;
+	my $shell_call   = "";
 	if ($action eq "start")
 	{
+		# Start == stop libvirtd -> cycle iptablte to shorewall -> start dhcpd
 		$shell_call = "
 if [ -e '$conf->{path}{initd_libvirtd}' ];
 then
 	$conf->{path}{control_libvirtd} status;
 	if [ \"\$?\" -eq \"0\" ];
 	then 
-		echo libvirtd running, stopping it.
+		echo 'libvirtd running, stopping it'
 		$conf->{path}{control_libvirtd} stop
 		$conf->{path}{control_libvirtd} status
 		if [ \"\$?\" -eq \"3\" ];
 		then 
-			echo libvirtd stopped
+			echo 'libvirtd stopped'
 		else
-			echo libvirtd failed to stop
+			echo 'libvirtd failed to stop'
 		fi;
 	else
-		echo libvirtd not running
+		echo 'libvirtd not running'
 	fi;
 else 
-	echo libvirtd not installed; 
+	echo 'libvirtd not installed'; 
+fi
+";
+		# If we've got shorewall, stop iptables and start it.
+		$shell_call .= "
+if grep -q 'STARTUP_ENABLED=Yes' /etc/shorewall/shorewall.conf
+then
+	echo 'shorewall enabled, stopping iptables and starting shorewall'
+	if [ -e '$conf->{path}{initd_iptables}' ];
+	then
+		$conf->{path}{control_iptables} status;
+		if [ \"\$?\" -eq \"0\" ];
+		then 
+			echo 'iptables running, stopping it'
+			$conf->{path}{control_iptables} stop
+			$conf->{path}{control_iptables} status
+			if [ \"\$?\" -eq \"3\" ];
+			then 
+				echo 'iptables stopped'
+			else
+				echo 'iptables failed to stop'
+			fi;
+		else
+			echo 'iptables not running'
+		fi;
+	else 
+		echo 'iptables not installed'; 
+	fi
+
+	$conf->{path}{control_shorewall} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo 'shorewall running'
+	else
+		echo 'shorewall stopped, starting it'
+		$conf->{path}{control_shorewall} restart
+		$conf->{path}{control_shorewall} status
+		if [ \"\$?\" -eq \"0\" ];
+		then 
+			echo 'shorewall started'
+		else
+			echo 'shorewall failed to start'
+		fi;
+	fi;
+else 
+	echo 'shorewall not enabled';
+fi
+
+if [ -e '$conf->{path}{control_dhcpd}' ];
+then
+	$conf->{path}{control_dhcpd} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo 'dhcpd running'
+	else
+		echo 'dhcpd running, starting it'
+		$conf->{path}{control_dhcpd} restart
+		$conf->{path}{control_dhcpd} status
+		if [ \"\$?\" -eq \"0\" ];
+		then 
+			echo 'dhcpd started'
+		else
+			echo 'dhcpd failed to start'
+		fi;
+	fi;
+else 
+	echo 'dhcpd not installed'; 
+fi
+";
+	}
+	else
+	{
+		# We don't start libvirtd, period.
+		# Stop shorewall and start iptables
+		$shell_call .= "
+if [ -e '$conf->{path}{initd_libvirtd}' ];
+then
+	$conf->{path}{control_libvirtd} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo 'libvirtd running, stopping it'
+		$conf->{path}{control_libvirtd} stop
+		$conf->{path}{control_libvirtd} status
+		if [ \"\$?\" -eq \"3\" ];
+		then 
+			echo 'libvirtd stopped'
+		else
+			echo 'libvirtd failed to stop'
+		fi;
+	else
+		echo 'libvirtd not running'
+	fi;
+else 
+	echo 'libvirtd not installed'; 
+fi
+";
+		# Cycle shorewall to iptables, stop dhcpd
+		$shell_call .= "
+if grep -q 'STARTUP_ENABLED=Yes' /etc/shorewall/shorewall.conf
+then
+	echo 'shorewall enabled, stopping iptables and starting shorewall'
+	$conf->{path}{control_shorewall} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo 'shorewall running, stopping it'
+		$conf->{path}{control_shorewall} stop
+		$conf->{path}{control_shorewall} status
+		if [ \"\$?\" -eq \"3\" ];
+		then 
+			echo 'shorewall stopped'
+		else
+			echo 'shorewall failed to stop'
+		fi;
+	else
+		echo 'shorewall not running'
+	fi;
+
+	if [ -e '$conf->{path}{initd_iptables}' ];
+	then
+		$conf->{path}{control_iptables} status;
+		if [ \"\$?\" -eq \"3\" ];
+		then 
+			echo 'iptables stopped, starting it'
+			$conf->{path}{control_iptables} restart
+			$conf->{path}{control_iptables} status
+			if [ \"\$?\" -eq \"0\" ];
+			then 
+				echo 'iptables started'
+			else
+				echo 'iptables running'
+			fi;
+		else
+			echo 'iptables running'
+		fi;
+	else 
+		echo 'iptables not installed'; 
+	fi
+else 
+	echo 'shorewall not enabled';
+fi
+
+if [ -e '$conf->{path}{control_dhcpd}' ];
+then
+	$conf->{path}{control_dhcpd} status;
+	if [ \"\$?\" -eq \"0\" ];
+	then 
+		echo 'dhcpd running, stopping it'
+		$conf->{path}{control_dhcpd} restart
+		$conf->{path}{control_dhcpd} status
+		if [ \"\$?\" -eq \"3\" ];
+		then 
+			echo 'dhcpd stopped'
+		else
+			echo 'dhcpd failed to stop'
+		fi;
+	else
+		echo 'dhcpd not running'
+	fi;
+else 
+	echo 'dhcpd not installed'; 
 fi
 ";
 	}
@@ -7093,62 +7260,146 @@ fi
 		chomp;
 		my $line = $_;
 		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		# libvirtd
 		if ($line =~ /libvirtd not installed/)
 		{
-			$libvird_rc = 0;
+			$libvirtd_rc = 0;
 		}
 		if ($line =~ /libvirtd not running/)
 		{
-			$libvird_rc = 1;
+			$libvirtd_rc = 1;
 		}
 		if ($line =~ /libvirtd stopped/)
 		{
-			$libvird_rc = 2;
+			$libvirtd_rc = 2;
 		}
 		if ($line =~ /libvirtd failed to stop/)
 		{
-			$libvird_rc = 3;
+			$libvirtd_rc = 3;
 		}
-		if ($line =~ /rc:(\d+)/)
+		
+		# shorewall
+		if ($line =~ /shorewall not enabled/)
 		{
-			my $rc = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
-			if ($rc eq "4")
-			{
-				# setuid failed
-				$ok = 2;
-			}
-			elsif ($rc eq "3")
-			{
-				# Failed to start
-				$ok = 0;
-			}
-			elsif ($rc eq "0")
-			{
-				# Running
-				$ok = 0;
-			}
-			else
-			{
-				# Unknown state.
-				$ok = 3;
-			}
+			$shorewall_rc = 0;
+		}
+		if ($line =~ /shorewall not running/)
+		{
+			$shorewall_rc = 1;
+		}
+		if ($line =~ /shorewall stopped/)
+		{
+			$shorewall_rc = 2;
+		}
+		if ($line =~ /shorewall failed to stop/)
+		{
+			$shorewall_rc = 3;
+		}
+		if ($line =~ /shorewall running/)
+		{
+			$shorewall_rc = 4;
+		}
+		if ($line =~ /shorewall started/)
+		{
+			$shorewall_rc = 5;
+		}
+		if ($line =~ /shorewall failed to start/)
+		{
+			$shorewall_rc = 6;
+		}
+		
+		# iptables
+		if ($line =~ /iptables not installed/)
+		{
+			$iptables_rc = 0;
+		}
+		if ($line =~ /iptables not running/)
+		{
+			$iptables_rc = 1;
+		}
+		if ($line =~ /iptables stopped/)
+		{
+			$iptables_rc = 2;
+		}
+		if ($line =~ /iptables failed to stop/)
+		{
+			$iptables_rc = 3;
+		}
+		if ($line =~ /iptables started/)
+		{
+			$iptables_rc = 4;
+		}
+		if ($line =~ /iptables running/)
+		{
+			$iptables_rc = 5;
+		}
+		
+		# dhcpd
+		if ($line =~ /dhcpd not installed/)
+		{
+			$dhcpd_rc = 0;
+		}
+		if ($line =~ /dhcpd not running/)
+		{
+			$dhcpd_rc = 1;
+		}
+		if ($line =~ /dhcpd stopped/)
+		{
+			$dhcpd_rc = 2;
+		}
+		if ($line =~ /dhcpd failed to stop/)
+		{
+			$dhcpd_rc = 3;
+		}
+		if ($line =~ /dhcpd started/)
+		{
+			$dhcpd_rc = 4;
+		}
+		if ($line =~ /dhcpd running/)
+		{
+			$dhcpd_rc = 5;
+		}
+		if ($line =~ /dhcpd failed to start/)
+		{
+			$dhcpd_rc = 6;
 		}
 	}
 	close $file_handle;
 	
-	# rc:
-	# 0 == Success
-	# 1 == Failed
-	# 2 == setuid failure
-	# 3 == unknown state
-	# libvird_rc:
+	# dhcpd_rc:
+	# 0 == not installed
+	# 1 == not running
+	# 2 == dhcpd stopped
+	# 3 == failed to stop
+	# 4 == dhcpd started
+	# 5 == dhcpd running
+	# 6 == dhcpd failed to start
+	# 
+	# libvirtd_rc:
 	# 0 == not installed
 	# 1 == installed but stopped
 	# 2 == was running but stopped
 	# 3 == running and failed to stop.
-	record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
-	return($ok, $libvird_rc);
+	# 
+	# shorewall_rc:
+	# 0 == not enabled
+	# 1 == not running
+	# 2 == stopped
+	# 3 == running and failed to stop.
+	# 4 == shorewall running
+	# 5 == shorewall started
+	# 6 == shorewall failed to start
+	# 
+	# iptables_rc:
+	# 0 == not installed
+	# 1 == not running
+	# 2 == stopped
+	# 3 == failed to stop.
+	# 4 == iptables started
+	# 5 == iptables running
+	
+	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+	return($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc);
 }
 
 # Show the "select Anvil!" menu and Striker config and control options.
@@ -7174,14 +7425,46 @@ sub show_anvil_selection_and_striker_options
 		elsif ($conf->{cgi}{install_target} eq "start")
 		{
 			# Enable it.
-			my ($ok, $libvird_rc) = control_dhcpd($conf, "start");
-			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
+			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "start");
+			record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			# dhcpd_rc:
+			# 0 == not installed
+			# 1 == not running
+			# 2 == dhcpd stopped
+			# 3 == failed to stop
+			# 4 == dhcpd started
+			# 5 == dhcpd running
+			# 6 == dhcpd failed to start
+			# 
+			# libvirtd_rc:
+			# 0 == not installed
+			# 1 == installed but stopped
+			# 2 == was running but stopped
+			# 3 == running and failed to stop.
+			# 
+			# shorewall_rc:
+			# 0 == not enabled
+			# 1 == not running
+			# 2 == stopped
+			# 3 == running and failed to stop.
+			# 4 == shorewall running
+			# 5 == shorewall started
+			# 6 == shorewall failed to start
+			# 
+			# iptables_rc:
+			# 0 == not installed
+			# 1 == not running
+			# 2 == stopped
+			# 3 == failed to stop.
+			# 4 == iptables started
+			# 5 == iptables running
+			
 			# rc:
 			# 0 == Success
 			# 1 == Failed
 			# 2 == setuid failure
 			# 3 == unknown state
-			# libvird_rc:
+			# libvirtd_rc:
 			# 0 == not installed
 			# 1 == installed but stopped
 			# 2 == was running but stopped
@@ -7190,13 +7473,13 @@ sub show_anvil_selection_and_striker_options
 			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0410!#";
 			my $class   = "highlight_warning_bold";
-			if ($ok eq "0")
+			if ($dhcpd_rc eq "0")
 			{
 				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0411!#";
 				$class   = "highlight_good_bold";
 			}
-			if ($ok eq "2")
+			if ($dhcpd_rc eq "2")
 			{
 				$message = "#!string!message_0412!#";
 			}
@@ -7208,7 +7491,7 @@ sub show_anvil_selection_and_striker_options
 			
 			# If libvirtd was stopped (or failed to stop), warn the
 			# user.
-			if ($libvird_rc eq "2")
+			if ($libvirtd_rc eq "2")
 			{
 				# Warn the user that we turned off libvirtd.
 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
@@ -7217,7 +7500,7 @@ sub show_anvil_selection_and_striker_options
 					message	=>	"#!string!message_0117!#",
 				});
 			}
-			elsif ($libvird_rc eq "3")
+			elsif ($libvirtd_rc eq "3")
 			{
 				# Warn the user that we failed to turn off libvirtd.
 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
@@ -7230,29 +7513,50 @@ sub show_anvil_selection_and_striker_options
 		elsif ($conf->{cgi}{install_target} eq "stop")
 		{
 			# Disable it.
-			my ($ok, $libvird_rc) = control_dhcpd($conf, "stop");
-			record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok], libvird_rc: [$libvird_rc]\n");
-			# rc:
-			# 0 == Success
-			# 1 == Failed
-			# 2 == setuid failure
-			# 3 == unknown state
-			# libvird_rc:
+			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "stop");
+			record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			# dhcpd_rc:
+			# 0 == not installed
+			# 1 == not running
+			# 2 == dhcpd stopped
+			# 3 == failed to stop
+			# 4 == dhcpd started
+			# 5 == dhcpd running
+			# 6 == dhcpd failed to start
+			# 
+			# libvirtd_rc:
 			# 0 == not installed
 			# 1 == installed but stopped
 			# 2 == was running but stopped
 			# 3 == running and failed to stop.
-			# For now, 1 and 3 are treated the same.
+			# 
+			# shorewall_rc:
+			# 0 == not enabled
+			# 1 == not running
+			# 2 == stopped
+			# 3 == running and failed to stop.
+			# 4 == shorewall running
+			# 5 == shorewall started
+			# 6 == shorewall failed to start
+			# 
+			# iptables_rc:
+			# 0 == not installed
+			# 1 == not running
+			# 2 == stopped
+			# 3 == failed to stop.
+			# 4 == iptables started
+			# 5 == iptables running
+			
 			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0413!#";
 			my $class   = "highlight_warning_bold";
-			if ($ok eq "0")
+			if ($dhcpd_rc eq "0")
 			{
 				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0414!#";
 				$class   = "highlight_good_bold";
 			}
-			if ($ok eq "2")
+			if ($dhcpd_rc eq "2")
 			{
 				$message = "#!string!message_0415!#";
 			}
@@ -7266,7 +7570,7 @@ sub show_anvil_selection_and_striker_options
 			###       libvirtd, so this *should* always return 0.
 			# If libvirtd was stopped (or failed to stop), warn the
 			# user.
-			if ($libvird_rc eq "2")
+			if ($libvirtd_rc eq "2")
 			{
 				# Warn the user that we turned off libvirtd.
 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
@@ -7275,7 +7579,7 @@ sub show_anvil_selection_and_striker_options
 					message	=>	"#!string!message_0117!#",
 				});
 			}
-			elsif ($libvird_rc eq "3")
+			elsif ($libvirtd_rc eq "3")
 			{
 				# Warn the user that we failed to turn off libvirtd.
 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
