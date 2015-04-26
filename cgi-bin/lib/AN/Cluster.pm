@@ -7424,24 +7424,60 @@ sub show_anvil_selection_and_striker_options
 		}
 		elsif ($conf->{cgi}{install_target} eq "start")
 		{
-			# Enable it.
+			# Stop libvirtd, stop iptables, start shorewall, start dhcpd
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "start");
 			record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
-			# dhcpd_rc:
-			# 0 == not installed
-			# 1 == not running
-			# 2 == dhcpd stopped
-			# 3 == failed to stop
-			# 4 == dhcpd started
-			# 5 == dhcpd running
-			# 6 == dhcpd failed to start
-			# 
+			
 			# libvirtd_rc:
 			# 0 == not installed
 			# 1 == installed but stopped
 			# 2 == was running but stopped
 			# 3 == running and failed to stop.
-			# 
+			
+			# If libvirtd was stopped (or failed to stop), warn the
+			# user.
+# 			if ($libvirtd_rc eq "2")
+# 			{
+# 				# Warn the user that we turned off libvirtd.
+# 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+# 					class	=>	"highlight_warning_bold",
+# 					row	=>	"#!string!row_0044!#",
+# 					message	=>	"#!string!message_0117!#",
+# 				});
+# 			}
+# 			elsif ($libvirtd_rc eq "3")
+# 			{
+# 				# Warn the user that we failed to turn off libvirtd.
+# 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+# 					class	=>	"highlight_warning_bold",
+# 					row	=>	"#!string!row_0044!#",
+# 					message	=>	"#!string!message_0364!#",
+# 				});
+# 			}
+			
+			# If shorewall is configured, tell the user that we toggled
+# 			
+# 			
+# 			# DHCP message; Default message is 'not instaled'
+# 			my $row     = "#!string!row_0133!#";
+# 			my $message = "#!string!message_0410!#";
+# 			my $class   = "highlight_warning_bold";
+# 			if ($dhcpd_rc eq "4")
+# 			{
+# 				$row     = "#!string!row_0083!#";
+# 				$message = "#!string!message_0411!#";
+# 				$class   = "highlight_good_bold";
+# 			}
+# 			if ($dhcpd_rc eq "6")
+# 			{
+# 				$message = "#!string!message_0412!#";
+# 			}
+# 			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
+# 				class	=>	$class,
+# 				row	=>	$row,
+# 				message	=>	$message,
+# 			});
+			
 			# shorewall_rc:
 			# 0 == not enabled
 			# 1 == not running
@@ -7459,56 +7495,35 @@ sub show_anvil_selection_and_striker_options
 			# 4 == iptables started
 			# 5 == iptables running
 			
-			# rc:
-			# 0 == Success
-			# 1 == Failed
-			# 2 == setuid failure
-			# 3 == unknown state
-			# libvirtd_rc:
+			
+			# dhcpd_rc:
 			# 0 == not installed
-			# 1 == installed but stopped
-			# 2 == was running but stopped
-			# 3 == running and failed to stop.
-			# For now, 1 and 3 are treated the same.
+			# 1 == not running
+			# 2 == dhcpd stopped
+			# 3 == failed to stop
+			# 4 == dhcpd started
+			# 5 == dhcpd running
+			# 6 == dhcpd failed to start
+			
+			# DHCP message; Default message is 'not instaled'
 			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0410!#";
 			my $class   = "highlight_warning_bold";
-			if ($dhcpd_rc eq "0")
+			if ($dhcpd_rc eq "4")
 			{
 				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0411!#";
 				$class   = "highlight_good_bold";
 			}
-			if ($dhcpd_rc eq "2")
+			if ($dhcpd_rc eq "6")
 			{
 				$message = "#!string!message_0412!#";
 			}
-			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
 				class	=>	$class,
 				row	=>	$row,
 				message	=>	$message,
 			});
-			
-			# If libvirtd was stopped (or failed to stop), warn the
-			# user.
-			if ($libvirtd_rc eq "2")
-			{
-				# Warn the user that we turned off libvirtd.
-				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
-					class	=>	"highlight_warning_bold",
-					row	=>	"#!string!row_0044!#",
-					message	=>	"#!string!message_0117!#",
-				});
-			}
-			elsif ($libvirtd_rc eq "3")
-			{
-				# Warn the user that we failed to turn off libvirtd.
-				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
-					class	=>	"highlight_warning_bold",
-					row	=>	"#!string!row_0044!#",
-					message	=>	"#!string!message_0364!#",
-				});
-			}
 		}
 		elsif ($conf->{cgi}{install_target} eq "stop")
 		{
