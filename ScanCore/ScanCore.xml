@@ -43,6 +43,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="scancore_log_0007">Shell call: [#!variable!shell_call!#].</key>
 		<key name="scancore_log_0008">Committing changes to the database.</key>
 		<key name="scancore_log_0009">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
+		<key name="scancore_log_0010">Variable: [#!variable!variable!#]	-> value: [#!variable!value!#]</key>
 		
 		<!-- Warnings. -->
 		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>

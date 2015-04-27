@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 # 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
 # 
 
 =pod
@@ -12,6 +19,180 @@ SNMPv2-SMI::enterprises.318.1.1.1.5.2.3.0 = INTEGER: 160
 Read upper transfer voltage:
 snmpget -v 2c -c private ups1 .1.3.6.1.4.1.318.1.1.1.5.2.2.0
 SNMPv2-SMI::enterprises.318.1.1.1.5.2.2.0 = INTEGER: 255
-
-
 =cut
+
+# NOTE: This is temporary. When the AN::Tools module moves into a standard @INC
+#       directory, this will be removed.
+BEGIN {
+   push @INC, "/var/www/";
+};
+
+# Determine this file name.
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+
+# Disable buffering.
+$| = 1;
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path		=>	{
+			log_file		=>	"/var/log/scan_apc_ups.log",
+			#log_file		=>	"",
+			strings			=>	"/var/www/ScanCore/agents/scan_apc_ups.xml",
+			sql			=>	"/var/www/ScanCore/agents/scan_apc_ups.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/var/www/cgi-bin/Data/strings.xml",
+		},
+		sys		=>	{
+			log_level		=>	2,
+			log_language		=>	"en_CA",
+		},
+	}
+});
+
+# Read my stuff
+$an->Log->level($an->data->{sys}{log_level});
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->String->read_words({file => $an->data->{path}{strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+print $an->String->get({key => "scan_apc_ups_message_0001"}), "\n";
+get_switches($conf);
+
+if ((not $an->data->{sys}{switch_count}) || (
+{
+	print_usage($conf);
+	exit(10);
+}
+
+# Connect to the database(s).
+my $connections = $an->DB->connect_to_databases();
+$an->Log->entry({
+	log_level	=>	3,
+	title_key	=>	"scan_apc_ups_title_0001",
+	message_key	=>	"scan_apc_ups_log_0005",
+	message_vars	=>	{
+		connections	=>	$connections,
+	},
+	file		=>	$THIS_FILE,
+	line		=>	__LINE__,
+	language	=>	$an->data->{sys}{log_language},
+	log_to		=>	$an->data->{path}{log_file},
+});
+
+
+
+
+
+
+nice_exit();
+
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# Nicely exits the program.
+sub nice_exit
+{
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect;
+	}
+	
+	exit(0);
+}
+
+### TODO: Move this into AN::Tools
+# This collects the command line switches
+sub get_switches
+{
+	my ($conf) = @_;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$an->data->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything
+			# after it to 'raw'.
+			$an->data->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$an->data->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$an->data->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$an->data->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$an->data->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			else
+			{
+				# Got a value without an argument.
+				$an->data->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($an->data->{switches}{raw})
+	{
+		$an->data->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{switches}})
+	{
+		$an->Log->entry({
+			log_level	=>	2,
+			title_key	=>	"scancore_title_0001",
+			message_key	=>	"scancore_log_0010",
+			message_vars	=>	{
+				variable	=>	$variable,
+				value		=>	$an->data->{switches}{$variable},
+			},
+			file		=>	$THIS_FILE,
+			line		=>	__LINE__,
+			language	=>	$an->data->{sys}{log_language},
+			log_to		=>	$an->data->{path}{log_file},
+		});
+	}
+	
+	# If the user has asked for help, print the usage info.
+	if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
+	{
+		print_usage($conf);
+		exit(0);
+	}
+	
+	return(0);
+}
