@@ -25,6 +25,7 @@ Steps to setup ScanCore DB:
 # Database setup
 /etc/init.d/postgresql initdb
 /etc/init.d/postgresql start
+chkconfig postgresql on
 su - postgres -c "psql template1 -c \"ALTER ROLE postgres WITH PASSWORD 'secret';\""
 echo *:*:*:postgres:secret > /var/lib/pgsql/.pgpass
 chown postgres:postgres /var/lib/pgsql/.pgpass
@@ -37,6 +38,7 @@ chown postgres:postgres /var/lib/pgsql/data/*
 su - postgres -c "createuser --no-superuser --createdb --no-createrole striker"
 su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';\""
 su - postgres -c "createdb --owner striker scancore"
+
 
 # Core table setup.
 

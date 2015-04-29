@@ -1079,7 +1079,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0107">Already Enabled</key>
 		<key name="state_0108"><![CDATA[Failed to find: [<span class="highlight_detail">#!variable!file!#</span>]]]></key>
 		<key name="state_0109">Failed to create symlink</key>
-		<key name="state_0110"></key>
+		<key name="state_0110">Malformed MAC address found</key>
+		<key name="state_0111"></key>
+		<key name="state_0112"></key>
+		<key name="state_0113"></key>
+		<key name="state_0114"></key>
+		<key name="state_0115"></key>
+		<key name="state_0116"></key>
+		<key name="state_0117"></key>
+		<key name="state_0118"></key>
+		<key name="state_0119"></key>
+		<key name="state_0120"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>

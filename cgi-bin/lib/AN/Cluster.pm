@@ -2280,7 +2280,13 @@ sub create_install_manifest
 						try_again_button	=>	$button,
 					},
 				});
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}], cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac: [$conf->{cgi}{anvil_node1_sn_link1_mac}], cgi::anvil_node1_sn_link2_mac: [$conf->{cgi}{anvil_node1_sn_link2_mac}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}], cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}], cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac: [$conf->{cgi}{anvil_node2_sn_link1_mac}], cgi::anvil_node2_sn_link2_mac: [$conf->{cgi}{anvil_node2_sn_link2_mac}]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}], cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}]\n");
+				my $restart_html = AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
 					form_file			=>	"/cgi-bin/striker",
 					button_class			=>	"bold_button", 
 					button_name			=>	"confirm",
@@ -2307,6 +2313,8 @@ sub create_install_manifest
 					anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
 					anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
 				});
+				record($conf, "$THIS_FILE ".__LINE__."; restart_html:\n======\n$restart_html\n======\n");
+				print $restart_html;
 			}
 		}
 		else
