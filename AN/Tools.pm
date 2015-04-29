@@ -66,6 +66,7 @@ sub new
 		ERROR_COUNT			=>	0,
 		ERROR_LIMIT			=>	10000,
 		DEFAULT				=>	{
+			STRINGS				=>	'./AN/tools.xml',
 			CONFIG_FILE			=>	'AN::Tools/an.conf',
 			LANGUAGE			=>	'en_CA',
 			SEARCH_DIR			=>	\@INC,
@@ -80,7 +81,6 @@ sub new
 	
 	# Bless you!
 	bless $self, $class;
-	
 	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# This isn't needed, but it makes the code below more consistent with
@@ -156,8 +156,29 @@ sub new
 	}
 	
 	# Call methods that need to be loaded at invocation of the module.
-	#$self->String->read_words();
-	
+	#print "Reading: [$self->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
+	if (($self->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $self->{DEFAULT}{STRINGS} =~ /^\.\//))
+	{
+		# Try to find the location of this module (I can't use
+		# Dir::Self' because it's not provided by RHEL 6)
+		my $root = ($INC{'AN/Tools.pm'} =~ /^(.*?)\/AN\/Tools.pm/)[0];
+		my $file = ($self->{DEFAULT}{STRINGS} =~ /^\.\/(.*)/)[0];
+		my $path = "$root/$file";
+		#print "path: [$path]\n";
+		if (-e $path)
+		{
+			# Found the words file.
+			$self->{DEFAULT}{STRINGS} = $path;
+			#print "Found it: [$self->{DEFAULT}{STRINGS}]\n";
+		}
+	}
+	if (not -e $self->{DEFAULT}{STRINGS})
+	{
+		print "Failed to read the core words file: [$self->{DEFAULT}{STRINGS}]\n";
+		exit(255);
+	}
+	$self->String->read_words({file => $self->{DEFAULT}{STRINGS}});
+
 	return ($self);
 }
 

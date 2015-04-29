@@ -68,7 +68,53 @@ The error was:
 		<key name="scan_apc_ups_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scan_apc_ups_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
-		<!-- ScanCore-specific messages -->
+		<!-- APC UPS Agent-specific messages -->
 		<key name="scan_apc_ups_message_0001">Starting #!string!scan_apc_ups_brand_0001!#:</key>
+		<key name="scan_apc_ups_message_0002"><![CDATA[
+ -=] Striker installer
+
+DESCRIPTION
+
+This program installs and configures Striker, the Anvil! dashboard, on an
+almost minimal EL6 install.
+
+
+SWITCHES
+
+ -c <host>, --caller <host>
+	
+	This is to be set by the ScanCore server and 'host' must match the
+	FQDN of the caller. When data is recorded to the target databases, this
+	value is used to link the data to this host. Failing to match this name
+	to an entry in the 'hosts' table will cause the agent to exit with the
+	return code of '1'.
+
+
+ -ups <ups1>[,<ups2>,...,<upsN>]
+
+	Specify the UPS(es) to query. If host names are used, they must be 
+	convertable to IP addresses. Two or more UPSes can be defined using
+	commas and *no* spaces to separate them.
+	
+	This is optional. By default, the scan agent will read /etc/hosts and
+	any entries with a host name containing 'ups' will be checked. If you
+	are not using /etc/hosts, then be sure to set:
+	
+	scancore::agent::scan-apc-ups::switches::ups = <ups1>[,<ups2>,...,<upsN>]
+	
+	This will tell ScanCore to call this agent using this switch.
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
 	</lang>
 </words>

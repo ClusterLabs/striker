@@ -14,6 +14,8 @@ package AN::InstallManifest;
 # - Back-button doesn't work after creating a new manifest.
 # - keys are being added in duplicate to ~/.ssh/authorized_keys
 # - The generated hosts file is rather broken...
+# - Possible; Re-running the install after a problem (ie: failed fence_check)
+#   appears to clobber the udev rules file.
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to

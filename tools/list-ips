@@ -59,6 +59,12 @@ if (-r '/etc/issue')
 	{
 		chomp;
 		my $line = $_;
+		next if not $line;
+		if ($line =~ /^Kernel .*/)
+		{
+			# Add a blank line below the 'Kernel' line.
+			$line .= "\n";
+		}
 		if ($line =~ /^IPs currently assigned to/)
 		{
 			$in_old_data = 1;

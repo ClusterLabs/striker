@@ -44,6 +44,8 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="scancore_log_0008">Committing changes to the database.</key>
 		<key name="scancore_log_0009">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
 		<key name="scancore_log_0010">Variable: [#!variable!variable!#]	-> value: [#!variable!value!#]</key>
+		<key name="scancore_log_0011">Entering scan loop</key>
+		<key name="scancore_log_0012">Scan finished, sleeping for: [#!variable!sleep_time!#] seconds.</key>
 		
 		<!-- Warnings. -->
 		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
@@ -68,8 +70,12 @@ The error was:
 		<key name="scancore_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scancore_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scancore_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="scancore_error_0004">Failed to connect to any database, unable to proceed.</key>
+		<key name="scancore_error_0005">Not ID passed to the database initializing method.</key>
+		<key name="scancore_error_0006"></key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
+		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
 	</lang>
 </words>

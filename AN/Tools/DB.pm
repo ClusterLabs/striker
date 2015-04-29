@@ -1,5 +1,7 @@
 package AN::Tools::DB;
 
+# TODO: Move the ScanCore stuff into another Module and make this more generic.
+
 use strict;
 use warnings;
 use DBI;
@@ -180,6 +182,20 @@ sub db_do_write
 }
 
 # This cleanly closes any open file handles.
+sub disconnect_from_databases
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect;
+	}
+	
+	return(0);
+}
 
 # This will connect to the databases and record their database handles. It will
 # also initialize the databases, if needed.
@@ -349,18 +365,92 @@ sub connect_to_databases
 			if ($count < 1)
 			{
 				# Need to load the database.
-				initialize_db($id);
+				$an->DB->initialize_db({id => $id});
 			}
 		}
 	}
 	if (not $connections)
 	{
 		# Failed to connect to any database.
-		print "[ Error ] - Failed to connect to any database, unable to proceed.\n";
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0004"}),
+			},
+		}), "\n";
 		exit(1);
 	}
 	
 	return($connections);
 }
+
+# This will initialize the database using the data in the ScanCore.sql file.
+sub initialize_db
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	
+	my $id = $parameter->{id} ? $parameter->{id} : "";
+	
+	# If I don't have an ID, die.
+	if (not $id)
+	{
+		# what DB?
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0005"}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "id", value1 => $id}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Tell the user we need to initialize
+	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	my $success = 1;
+	
+	# Read in the SQL file and replace #!variable!name!# with the database
+	# owner name.
+	my $user       = $an->data->{scancore}{db}{$id}{user};
+	my $sql        = "";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {user => $user}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Create the read shell call.
+	my $shell_call = $an->data->{path}{scancore_sql};
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "line", value1 => $line}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		$line =~ s/#!variable!user!#/$user/g;
+		$line =~ s/--.*//g;
+		$line =~ s/\t/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//g;
+		$line =~ s/\s+$//g;
+		next if not $line;
+		$sql .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Now we should be ready.
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "sql", value1 => $sql}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Now that I am ready, disable autocommit, write and commit.
+	$an->DB->db_do_write($id, $sql);
+	
+	
+	return($success);
+};
 
 1;

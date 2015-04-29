@@ -88,11 +88,12 @@ my $conf =  {
 	sys		=>	{
 		debug		=>	1,
 		node2_sleep	=>	120,
+		bad_ipmi	=>	0,
 	},
 	timeouts	=>	{
 		wait_for_drbd_sync	=>	300,	# Roughly 5 minutes.
 		wait_for_node_health	=>	300,	# Roughly 5 minutes.
-		wait_for_peer		=>	3600,	# Roughly 1 hour.
+		wait_for_peer		=>	600,	# Roughly 10 minutes.
 	},
 	vms		=>	{},
 };
@@ -180,6 +181,7 @@ sub power_on_peer
 			{
 				# Failed to reach the peer.
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to reach the peer's IPMI interface, unable to determine it's power state.", 1);
+				$conf->{sys}{bad_ipmi} = 1;
 			}
 			elsif ($rc eq "2")
 			{
@@ -1263,8 +1265,9 @@ sub check_peer_connection
 		exit(1);
 	}
 	
-	# Check to see if the node is powered on and, if not, power it on.
-	power_on_peer($conf);
+	# Check to see if the node is powered on and, if not, power it on. If a
+	# a previous attempt to check failed though, skip this.
+	power_on_peer($conf) if not $conf->{sys}{bad_ipmi};
 	
 	my $file_handle = IO::Handle->new();
 	my $shell_call = "$conf->{path}{ssh} root\@$conf->{nodes}{peer}{hostname} \"$conf->{path}{echo} 1\"";
@@ -1372,30 +1375,36 @@ sub read_cluster_conf
 		if (($in_fencedevices) && ($line =~ /<fencedevice/))
 		{
 			my $name;
-			#print "in_fencedevices; line: [$line]\n";
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 			if ($line =~ /name="(.*?)"/)
 			{
 				$name = $1;
+				logger($conf, $THIS_FILE, __LINE__, "name: [$name]", 2);
 			}
 			if (($name) && ($line =~ /ipaddr="(.*?)"/))
 			{
 				$conf->{ipmi}{$name}{ipaddr} = "-a ".$1;
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
 			}
 			if ($line =~ /agent="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{agent} = $1;
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
 			}
 			if (($name) && ($line =~ /login="(.*?)"/))
 			{
 				$conf->{ipmi}{$name}{login} = "-l ".$1;
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
 			}
 			if ($line =~ /passwd="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{passwd} = "-p ".$1;
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
 			}
 			if ($line =~ /passwd_script="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{passwd_script} = "-S ".$1;
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
 			}
 		}
 		
