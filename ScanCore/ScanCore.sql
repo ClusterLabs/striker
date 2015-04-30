@@ -1,16 +1,14 @@
--- This is the core database schema for ScanCore.
+-- This is the core database schema for ScanCore. 
+-- It expects PostgreSQL v. 9.x
 
 SET client_encoding       = 'UTF8';
-SET check_function_bodies = false;
-SET client_min_messages   = warning;
-CREATE LANGUAGE plpgsql;
 
 CREATE SCHEMA history;
 ALTER SCHEMA history OWNER to #!variable!user!#;
 
 CREATE TABLE hosts (
 	host_id			serial				primary key,
-	host_name		text				primary key,
+	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_bcn_ip		text,								-- Might want to make this inet or cidr later.
 	host_ifn_ip		text,								-- Might want to make this inet or cidr later.
@@ -79,17 +77,17 @@ CREATE TRIGGER trigger_hosts
 -- This stores alerts coming in from various agents
 CREATE TABLE alerts (
 	alert_id		serial				primary key,
-	alert_host_id		int				not null,				-- The name of the node or dashboard that this alert came from.
-	alert_agent_name	text,
-	alert_sensor_name	text				not null,				-- This is the name of the sensor causing this alert. Note that this must match the name used in striker.conf for the hysteresis tuning
-	alert_sensor_type	text				not null	default "information",	-- "temperature", "power", "information" - These are used for making shutdown decisions. "temperature" and "power" should only be used when going to hot/cold or when power is lost (or the batteries are otherwise depleting, like in a brown-out).
-	alert_seconds_remaining	int,									-- When 'alert_sensor_type' is 'power', this must be set to the number of minutes remaining in the UPS.
-	alert_temp_event_type	text,									-- "over" or "under" - When 'alert_sensor_type' is 'temperature', this tells ScanCore if it is an over temp or under temp alarm.
-	alert_temp_value	real,									-- When 'alert_sensor_type' is 'temperature', this will have the temperature in celcius.
-	alert_message_key	text,									-- ScanCore will read in the agents <name>.xml words file and look for this message key
-	alert_message_variables	text,									-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
+	alert_host_id		int				not null,			-- The name of the node or dashboard that this alert came from.
+	alert_agent_name	text				not null,
+	alert_sensor_name	text				not null,			-- This is the name of the sensor causing this alert. Note that this must match the name used in striker.conf for the hysteresis tuning
+	alert_sensor_type	text				not null,			-- "temperature", "power", "server", "information" - These are used for making shutdown/restart decisions. "temperature", "power" and "server" should only be used when going to hot/cold, when power is lost (or the batteries are otherwise depleting, like in a brown-out) or when a server needs to be restarted.
+	alert_seconds_remaining	int,								-- When 'alert_sensor_type' is 'power', this must be set to the number of minutes remaining in the UPS.
+	alert_temp_event_type	text,								-- "over" or "under" - When 'alert_sensor_type' is 'temperature', this tells ScanCore if it is an over temp or under temp alarm.
+	alert_temp_value	real,								-- When 'alert_sensor_type' is 'temperature', this will have the temperature in celcius.
+	alert_message_key	text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
+	alert_message_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
 	modified_user		integer				not null	default 1,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null	default now(),
 	
 	FOREIGN KEY(alert_host_id) REFERENCES hosts(host_id)
 );

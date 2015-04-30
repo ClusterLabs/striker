@@ -358,8 +358,8 @@ sub connect_to_databases
 				log_to		=>	$an->data->{path}{log_file},
 			});
 			
-			# Now that I have connected, see if my 'nodes' table exists.
-			my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='nodes';";
+			# Now that I have connected, see if my 'hosts' table exists.
+			my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='hosts';";
 			my $count = $an->DB->db_do_query({id => $id, query => $query});
 			$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {name1 => "count", value1 => $count}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
 			if ($count < 1)

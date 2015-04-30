@@ -23,22 +23,21 @@
 Steps to setup ScanCore DB:
 
 # Database setup
-/etc/init.d/postgresql initdb
-/etc/init.d/postgresql start
-chkconfig postgresql on
+/etc/init.d/postgresql-9.4 initdb
+/etc/init.d/postgresql-9.4 start
+chkconfig postgresql-9.4 on
 su - postgres -c "psql template1 -c \"ALTER ROLE postgres WITH PASSWORD 'secret';\""
 echo *:*:*:postgres:secret > /var/lib/pgsql/.pgpass
 chown postgres:postgres /var/lib/pgsql/.pgpass
 chmod 600 /var/lib/pgsql/.pgpass
-sed -i.bak '/# TYPE  DATABASE/a host\tall\tall\t10.20.0.0\/16\tmd5\nhost\tall\tall\t192.168.199.0\/24\tmd5' /var/lib/pgsql/data/pg_hba.conf 
-sed -i 's/local   all         all                               ident/local   all         all                               md5/' /var/lib/pgsql/data/pg_hba.conf 
-sed -i.bak "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /var/lib/pgsql/data/postgresql.conf
-chown postgres:postgres /var/lib/pgsql/data/*
-/etc/init.d/postgresql restart
+sed -i.bak '/# TYPE  DATABASE/a host\tall\tall\t10.20.0.0\/16\tmd5\nhost\tall\tall\t10.250.0.0\/16\tmd5' /var/lib/pgsql/9.4/data/pg_hba.conf 
+sed -i 's/local   all         all                               ident/local   all         all                               md5/' /var/lib/pgsql/9.4/data/pg_hba.conf 
+sed -i.bak "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /var/lib/pgsql/9.4/data/postgresql.conf
+chown postgres:postgres /var/lib/pgsql/9.4/data/*
+/etc/init.d/postgresql-9.4 restart
 su - postgres -c "createuser --no-superuser --createdb --no-createrole striker"
 su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';\""
 su - postgres -c "createdb --owner striker scancore"
-
 
 # Core table setup.
 
