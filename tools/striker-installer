@@ -179,7 +179,6 @@ my $conf = {
 			'libstdc++-devel.i686'		=>	0,
 			mailx				=>	0,
 			man				=>	0, 
-			MegaCli				=>	0,
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
 			ntp				=>	0,
@@ -208,7 +207,6 @@ my $conf = {
 			#Scanner			=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
-			storcli				=>	0,
 			syslinux			=>	0, 
 			sysstat				=>	0,
 			'syslinux-tftpboot'		=>	0,
@@ -1222,99 +1220,6 @@ fi";
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database server failed to restart!", 0);
 			exit(36);
-		}
-	}
-	close $file_handle;
-	
-	# Make sure the LSI storage tools have their symlinks created.
-	logger($conf, $THIS_FILE, __LINE__, "- Setting up storage symlinks.", 1);
-	
-	# MegaCli64 first
-	$shell_call = "
-if [ -e '$conf->{executable}{MegaCli64}' ]; 
-then 
-	if [ -e '$conf->{executable}{MegaCli64_link}' ]
-	then
-		echo '$conf->{executable}{MegaCli64_link} symlink exists';
-	else
-		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
-		if [ -e '$conf->{executable}{MegaCli64_link}' ]
-		then
-			echo '$conf->{executable}{MegaCli64_link} symlink created';
-		else
-			echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
-		fi
-	fi
-else
-	echo 'MegaCli64 not installed.'
-fi";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /symlink exists/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink already exists.", 1);
-		}
-		if ($line =~ /symlink created/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink was created.", 1);
-		}
-		if ($line =~ /Failed to create/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'MegaCli64' symlink!", 1);
-		}
-		if ($line =~ /not installed/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- 'MegaCli64' not installed.", 1);
-		}
-	}
-	close $file_handle;
-	
-	# Now storcli
-	$shell_call = "
-if [ -e '$conf->{executable}{storcli64}' ]; 
-then 
-	if [ -e '$conf->{executable}{storcli64_link}' ]
-	then
-		echo '$conf->{executable}{storcli64_link} symlink exists';
-	else
-		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_link}
-		if [ -e '$conf->{executable}{storcli64_link}' ]
-		then
-			echo '$conf->{executable}{storcli64_link} symlink created';
-		else
-			echo 'Failed to create $conf->{executable}{storcli64_link} symlink';
-		fi
-	fi
-else
-	echo 'storcli64 not installed.'
-fi";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /symlink exists/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink already exists.", 1);
-		}
-		if ($line =~ /symlink created/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink was created.", 1);
-		}
-		if ($line =~ /Failed to create/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'storcli64' symlink!", 1);
-		}
-		if ($line =~ /not installed/i)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- 'storcli64' not installed.", 1);
 		}
 	}
 	close $file_handle;
@@ -5897,6 +5802,14 @@ sub install_packages
 		}
 	}
 	
+	# Add the storcli and MegaCli RPMs to the install list if the user has
+	# requested them.
+	if ($conf->{switches}{'use-lsi'})
+	{
+		$conf->{packages}{to_install}{storcli} = 0;
+		$conf->{packages}{to_install}{MegaCli} = 0;
+	}
+	
 	# Check for OS updates.
 	update_os($conf);
 	
@@ -5905,6 +5818,102 @@ sub install_packages
 	
 	# Install missing packages, if any.
 	install_missing_packages($conf);
+	
+	# Make sure the LSI storage tools have their symlinks created.
+	if ($conf->{switches}{'use-lsi'})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Setting up storage symlinks.", 1);
+		
+		# MegaCli64 first
+		my $shell_call = "
+if [ -e '$conf->{executable}{MegaCli64}' ]; 
+then 
+	if [ -e '$conf->{executable}{MegaCli64_link}' ]
+	then
+		echo '$conf->{executable}{MegaCli64_link} symlink exists';
+	else
+		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
+		if [ -e '$conf->{executable}{MegaCli64_link}' ]
+		then
+			echo '$conf->{executable}{MegaCli64_link} symlink created';
+		else
+			echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
+		fi
+	fi
+else
+	echo 'MegaCli64 not installed.'
+fi";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /symlink exists/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink already exists.", 1);
+			}
+			if ($line =~ /symlink created/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The 'MegaCli64' symlink was created.", 1);
+			}
+			if ($line =~ /Failed to create/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'MegaCli64' symlink!", 1);
+			}
+			if ($line =~ /not installed/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- 'MegaCli64' not installed.", 1);
+			}
+		}
+		close $file_handle;
+		
+		# Now storcli
+		$shell_call = "
+if [ -e '$conf->{executable}{storcli64}' ]; 
+then 
+	if [ -e '$conf->{executable}{storcli64_link}' ]
+	then
+		echo '$conf->{executable}{storcli64_link} symlink exists';
+	else
+		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_link}
+		if [ -e '$conf->{executable}{storcli64_link}' ]
+		then
+			echo '$conf->{executable}{storcli64_link} symlink created';
+		else
+			echo 'Failed to create $conf->{executable}{storcli64_link} symlink';
+		fi
+	fi
+else
+	echo 'storcli64 not installed.'
+fi";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /symlink exists/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink already exists.", 1);
+			}
+			if ($line =~ /symlink created/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The 'storcli64' symlink was created.", 1);
+			}
+			if ($line =~ /Failed to create/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to create the 'storcli64' symlink!", 1);
+			}
+			if ($line =~ /not installed/i)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- 'storcli64' not installed.", 1);
+			}
+		}
+		close $file_handle;
+	}
 	
 	return(0);
 }
@@ -7619,6 +7628,12 @@ SWITCHES
 	If specified, and if an IPMI BMC is found, the installer will set the
 	IPMI BMC to have the specified IP address and network mask/subnet.
 	Optionally, if 'gw' is set, the BMC's gateway will also be set.
+
+ --use-lsi
+
+	If your dashboard machine uses an LSI-brand storage controller, and if
+	you've installed (or specify a repo with) the LSI 'storcli' and 
+	'MegaCli' RPMs, then they will be installed and configured.
 
  -m <mail server:port>
 
