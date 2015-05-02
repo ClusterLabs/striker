@@ -2823,8 +2823,8 @@ sub configure_shorewall
 	logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
 	if (not $bcn_interface)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}]", 3);
-		if ($conf->{sys}{create_bonds})
+		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}], sys::bonds_exist: [$conf->{sys}{bonds_exist}]", 2);
+		if (($conf->{sys}{create_bonds}) || ($conf->{sys}{bonds_exist}))
 		{
 			$bcn_interface = "bcn_bond1";
 			$ifn_interface = "ifn_bond1";
@@ -8083,7 +8083,8 @@ sub load_network_map_cache
 			{
 				# We're not going to bother configuring the network, so just bail out now.
 				logger($conf, $THIS_FILE, __LINE__, "- Bonds exist, network will not be configured.", 1);
-				$conf->{cache} = {};
+				$conf->{cache}            = {};
+				$conf->{sys}{bonds_exist} = 1;
 				return(0);
 			}
 			$line =~ s/^\s+//;
@@ -8147,7 +8148,7 @@ sub record_network_map
 	if ($cache_data)
 	{
 		my $shell_call = ">$conf->{path}{network_map_cache}";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
 		print $file_handle $cache_data;
 		close $file_handle;
