@@ -13,7 +13,7 @@ package AN::InstallManifest;
 #   striker IFN IPs assigned...
 # - Back-button doesn't work after creating a new manifest.
 # - keys are being added in duplicate to ~/.ssh/authorized_keys
-# - The generated hosts file is rather broken...
+# - Failed to add local repo... Didn't install the PGP key
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -6661,6 +6661,14 @@ else
 	else
 		echo 9;
 	fi;
+fi
+if grep -q gpgcheck=1 /etc/yum.repos.d/$repo_file;
+then 
+	local_file=\$(grep gpgkey /etc/yum.repos.d/an-el6.repo | sed 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
+	file=\$(grep gpgkey /etc/yum.repos.d/an-el6.repo | sed 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
+	url=\$(grep baseurl /etc/yum.repos.d/an-el6.repo | sed 's/baseurl=//');
+	echo 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
+	curl \$url/\$file > \$local_file
 fi";
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -6675,7 +6683,7 @@ fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		foreach my $line (@{$return})
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 			$rc = $line;
 		}
 	}
