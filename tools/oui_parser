@@ -16,6 +16,10 @@ my $conf = {
 		temp		=>	"/tmp/oui.txt",
 		wget		=>	"/usr/bin/wget",
 	},
+	sys		=>	{
+		#mode		=>	"html",		# Use for HTML select field
+		mode		=>	"hash",		# Use for anvil-map-network
+	},
 };
 
 download_oui($conf);
@@ -28,12 +32,27 @@ foreach my $oui (sort {$a cmp $b} keys %{$conf->{oui}})
 	my $say_vendor =  $conf->{oui}{$oui}{vendor};
 	   $say_vendor =~ s/&/&amp;/g;
 	#print "OUI: [$say_oui], Vendor: [$conf->{oui}{$oui}{vendor}], address: [$conf->{oui}{$oui}{address}]\n";
-	print "\t\t<key name=\"oui_".lc($oui)."\">$say_vendor</key>\n";
+	print "\t\t<key name=\"oui_".lc($oui)."\">$say_vendor</key>\n" if $conf->{sys}{mode} eq "html";
 }
 
 # These are manually added.
-print "\t\t<!-- These are not found in the official OUI list -->\n";
-print "\t\t<key name=\"oui_525400\">Red Hat KVM virtual NIC</key>\n";
+print "\t\t<!-- These are not found in the official OUI list -->\n" if $conf->{sys}{mode} eq "html";
+print "\t\t<key name=\"oui_525400\">Red Hat KVM virtual NIC</key>\n" if $conf->{sys}{mode} eq "html";
+
+### Show the output in a format I can use in anvil-scan-network
+foreach my $oui (sort {$a cmp $b} keys %{$conf->{oui}})
+{
+	next if not $oui;
+	my $say_oui    =  $oui;
+	   $say_oui    =~ s/(\w\w)(\w\w)(\w\w)/$1:$2:$3/;
+	my $say_vendor =  $conf->{oui}{$oui}{vendor};
+	   $say_vendor =~ s/"//g;
+	   $say_vendor =~ s/\@/\\\@/g;
+	#   $say_vendor =~ s/([\w']+)/\u\L$1/g;
+	#print "OUI: [$say_oui], Vendor: [$conf->{oui}{$oui}{vendor}], address: [$conf->{oui}{$oui}{address}]\n";
+	print "\t\t'".lc($say_oui)."'	=>	\"$say_vendor\",\n" if $conf->{sys}{mode} eq "hash";
+}
+print "\t\t'52:54:00'	=>	'Red Hat KVM virtual NIC',\n" if $conf->{sys}{mode} eq "hash";
 
 exit(0);
 
