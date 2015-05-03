@@ -3,6 +3,10 @@
 # This scans the BCN looking for devices we know about to help automate the 
 # configuration of an Anvil!'s foundation pack.
 #
+# At this time, it is statically configured for 10.20.0.0/16. It will be made
+# more flexible later. This is basically a proof-of-concept program at this
+# stage.
+# 
 
 use strict;
 use warnings;
@@ -20,13 +24,15 @@ my $conf = {
 		# -PR            == ARP ping scan 
 		nmap_switches	=>	"-sn -n -PR",
 		quiet		=>	1,
+		network		=>	"10.20",
 	},
 };
 
+# This is just a way to put the wall of text below the program's body.
 load_vendors($conf);
 
 # Create the directory where the child processes will write their output to.
-print "Scanning for devices on 10.20.0.0/16 now:\n" if not $conf->{sys}{quiet};
+print "Scanning for devices on $conf->{sys}{network}.0.0/16 now:\n" if not $conf->{sys}{quiet};
 print "# Network scan started at: [".get_date($conf, time)."], expected finish: [".get_date($conf, (time + 300))."]\n" if $conf->{sys}{quiet};
 if (not -d $conf->{path}{child_output})
 {
@@ -36,19 +42,17 @@ if (not -d $conf->{path}{child_output})
 else
 {
 	# Clear out any files from the previous run
-	print "- Purging old scan files.\n" if not $conf->{sys}{quiet};
-	my $shell_call = "$conf->{path}{rm} -f $conf->{path}{child_output}/segment.*";
-	print "- Calling: [$shell_call]\n" if not $conf->{sys}{quiet};
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		print "- Output: [$line]\n" if not $conf->{sys}{quiet};
-	}
-	close $file_handle;
+	cleanup_temp($conf);
 }
 
+### WARNING: Some switches might thing this is a flood and get angry with us!
+# A straight nmap call of all 65,636 IPs on a /16 takes about 40+ minutes. So
+# to speed things up, we break it into 256 jobs, each scanning 256 IPs. Each
+# child process is told to wait $i seconds, where $i is equal to it's segment
+# value. This is done to avoid running out of buffer, which causes output like:
+# WARNING:  eth_send of ARP packet returned -1 rather than expected 42 (errno=105: No buffer space available)
+# By staggering the child processes, we have early children exiting as new
+# children are spawned, and things are OK.
 my $parent_pid = $$;
 my %pids;
 foreach my $i (0..255)
@@ -67,7 +71,7 @@ foreach my $i (0..255)
 		# up here if the fork() failed.
 		sleep $i;
 		my $output_file = "$conf->{path}{child_output}/segment.$i.out";
-		my $scan_range  = "10.20.$i.0/24";
+		my $scan_range  = "$conf->{sys}{network}.$i.0/24";
 		my $shell_call  = "$conf->{path}{nmap} $conf->{sys}{nmap_switches} $scan_range > $output_file";
 		print "Child process with PID: [$$] scanning segment: [$scan_range] now...\n" if not $conf->{sys}{quiet};
 		#print "Calling: [$shell_call]\n";
@@ -177,7 +181,29 @@ foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{ip}})
 	print "$this_ip,$conf->{ip}{$this_ip}{mac},$conf->{ip}{$this_ip}{oem}\n" if $conf->{sys}{quiet};
 }
 
+# Clean up!
+cleanup_temp($conf);
+print "# Network scan finished at: [".get_date($conf, time)."]\n" if $conf->{sys}{quiet};
+
 exit(0);
+
+# This clears out the /tmp/ files our child processes created.
+sub cleanup_temp
+{
+	my ($conf) = @_;
+	
+	print "- Purging old scan files.\n" if not $conf->{sys}{quiet};
+	my $shell_call = "$conf->{path}{rm} -f $conf->{path}{child_output}/segment.*";
+	print "- Calling: [$shell_call]\n" if not $conf->{sys}{quiet};
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "- Output: [$line]\n" if not $conf->{sys}{quiet};
+	}
+	close $file_handle;
+}
 
 # This returns the current date and time in 'YYYY/MM/DD HH:MM:SS' format. It
 # always uses 24-hour time and it zero-pads single digits.
