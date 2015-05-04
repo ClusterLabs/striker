@@ -327,12 +327,14 @@ sub String
 	return ($self->{HANDLE}{STRING});
 }
 
-# Nicely exits the program.
+### This will be expanded later when the DB module is done. For now, it is not
+### used.
 sub nice_exit
 {
 	my $self      = shift;
 	my $exit_code = defined $_[0] ? shift : 99;
 	
+	my $an = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	$exit_code = 99 if not $exit_code;
 	

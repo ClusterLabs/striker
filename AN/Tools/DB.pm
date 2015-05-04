@@ -54,7 +54,7 @@ sub db_do_query
 		# Values passed in a hash, good.
 		$id    = $parameter->{id}    ? $parameter->{id}    : 0;		# This should throw an error
 		$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
-		print "$THIS_FILE ".__LINE__."; id: [$id], query: [$query]\n";
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0006", message_vars => {name1 => "id", value1 => $id, name2 => "query", value2 => $query}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
 	}
 	else
 	{

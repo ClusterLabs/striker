@@ -44,7 +44,7 @@ This is the AN::Tools master 'words' file.
 		<key name="an_brand_0001">https://alteeve.ca</key>
 		
 		<!-- log messages -->
-		<key name="tools_log_0001">Entering: [#!variable!function!#()]</key>
+		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		
