@@ -835,6 +835,8 @@ sub initialize_conf
 					ups1_name		=>	"",
 					ups2_ip			=>	"",
 					ups2_name		=>	"",
+					'use_anvil-kick-apc-ups' =>	0,
+					use_safe_anvil_start	=>	1,
 				},
 				# If the user wants to build install manifests for
 				# environments with 4 PDUs, this will be set to '4'.
@@ -886,10 +888,10 @@ sub initialize_conf
 					rhn_checks		=>	1,
 				},
 				# This sets anvil-kick-apc-ups to start on boot
-				'use_anvil-kick-apc-ups'	=>	0,
+				'use_anvil-kick-apc-ups' =>	0,
 				# This controls whether safe_anvil_start is
 				# enabled or not.
-				use_safe_anvil_start	=>	0,
+				use_safe_anvil_start	=>	1,
 			},
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",

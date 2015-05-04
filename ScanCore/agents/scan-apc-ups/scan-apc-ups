@@ -110,6 +110,9 @@ use strict;
 use warnings;
 use AN::Tools;
 
+# Exit with 1 until this is done
+exit(1);
+
 # Disable buffering.
 $| = 1;
 

@@ -39,17 +39,16 @@ su - postgres -c "createuser --no-superuser --createdb --no-createrole striker"
 su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';\""
 su - postgres -c "createdb --owner striker scancore"
 
-# Core table setup.
+----
+
+# Reset DB
+su - postgres -c "dropdb scancore"
+su - postgres -c "createdb --owner striker scancore"
+su postgres -c "psql scancore"
 
 
 =cut
 # =============================================================================
-
-# NOTE: This is temporary. When the AN::Tools module moves into a standard @INC
-#       directory, this will be removed.
-BEGIN {
-   push @INC, "/var/www/";
-};
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -71,6 +70,7 @@ my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 my $an = AN::Tools->new({data => 
 	{
 		path		=>	{
+			agents_directory	=>	"$running_directory/agents",
 			log_file		=>	"/var/log/striker.log",
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
@@ -78,8 +78,11 @@ my $an = AN::Tools->new({data =>
 			striker_strings		=>	"$running_directory/Data/strings.xml",
 		},
 		sys		=>	{
+			agents			=>	[],
+			hostname		=>	$ENV{HOSTNAME},
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+			max_scancore_ram	=>	(64 * 1048576),		# 64 MiB
 			sleep_time		=>	30,
 		},
 	}
@@ -93,8 +96,9 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 print $an->String->get({key => "scancore_message_0001"}), "\n";
 
-### TODO: Move this into the loop and handle loss/recovery of DBs.
-# Connect to the database(s).
+# Connect to the database(s). This is different from the in-loop connection in
+# that failing to connect to any databases right off the bad will cause the
+# program to bail out.
 my $connections = $an->DB->connect_to_databases();
 if (not $connections)
 {
@@ -106,6 +110,10 @@ if (not $connections)
 			message		=>	$an->String->get({key => "scancore_message_0004"}),
 		},
 	}), "\n";
+	
+	# TODO: Send an email.
+	
+	# die...
 	exit(1);
 }
 
@@ -131,13 +139,15 @@ while (1)
 	if ($connections)
 	{
 		### At least one database connection is up.
+		# Check to see if any of the databases need to be brought up to
+		# date.
+		sync_dbs($an);
+		
 		# Call all agents
 		call_agents($an);
 		
 		# Analyze results and take any necessary actions.
 		analyze_results($an);
-		
-		# Disconnect from the databases.
 		
 		# Sleep
 		$an->Log->entry({
@@ -165,6 +175,14 @@ while (1)
 			},
 		}), "\n";
 	}
+	
+	# Disconnect from databases.
+	$an->DB->disconnect_from_databases();
+	
+	# Check RAM usage and bail if it looks like we're leaking.
+	check_ram_usage($an);
+	
+	# Sleep.
 	sleep $an->data->{sys}{sleep_time};
 }
 
@@ -175,12 +193,68 @@ nice_exit($an);
 # Functions                                                                   #
 ###############################################################################
 
+# This 'checks last_updated -> last_updated_date' for this node on all DBs and
+# if any are behind, it will read in the changes from the most up to date DB
+sub sync_dbs
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	
+	# Get this node's ID for each DB with:
+	# 
+	
+	# Read the time as a unix timestamp for easier comparison with:
+	# SELECT round(extract(epoch from now()));
+	
+	return(0);
+}
+
 # This loops through the agents directory 
 sub call_agents
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "call_agents", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
-	$an->data->{sys}{scan_time} = time;
+	# Loop through the agents directory and call each agent. Record how
+	# long it takes and note the exit code, then record the run-data in the
+	# database.
+	scan_directory($an, $an->data->{path}{agents_directory});
+	
+	# Now loop through the agents I found and try calling them.
+	foreach my $agent (sort {$a cmp $b} @{$an->data->{sys}{agents}})
+	{
+		### TODO: Put a timer on these.
+		my $start_time = time;
+		
+		# I call these sequentially to minimize the load on the host.
+		
+	}
+	
+	return(0);
+}
+
+# This checks the amount RAM used by ScanCore and exits if it exceeds a
+# sys::max_scancore_ram bytes.
+sub check_ram_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "check_ram_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	
+	# Use 'ps auxf' to find ScanCore and it's children, then for each PID, call:
+	#
+	### NOTE: Using 'rgmanager' as an example
+	#[root@an-a05n01 ~]# ps auxf | grep -v grep | grep rgmanager
+	#root      3164  0.0  0.0  36948  6252 ?        S<Ls 11:27   0:00 rgmanager
+	#root      3166  0.0  0.0 494828  3044 ?        S<l  11:27   0:06  \_ rgmanager
+	# 
+	#[root@an-a05n01 ~]# pmap 3164 | grep total | awk '{print $2}' | sed 's/K/000 bytes/'
+	#36948000 bytes
+	#[root@an-a05n01 ~]# pmap 3166 | grep total | awk '{print $2}' | sed 's/K/000 bytes/'
+	#494828000 bytes
+	#
+	### NOTE: There shouldn't be any child processes when this is called...
+	
+	
 	
 	return(0);
 }
@@ -189,6 +263,7 @@ sub call_agents
 sub analyze_results
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "analyze_results", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
 	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the
 	# time to select after. 
@@ -196,10 +271,46 @@ sub analyze_results
 	return(0);
 }
 
+# This digs through a directory looking for scan agents to call. It will dive
+# into subdiretories as well. Anything it finds, it will record the path to
+# sys::agents.
+sub scan_directory
+{
+	my ($an, $directory) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "scan_directory", }, message_key => "tools_log_0003", message_vars => { name1 => "directory", value1 => "$directory" }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $an->data->{path}{agents_directory});
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file eq ".";
+		next if $file eq "..";
+		my $full_path = "$directory/$file";
+		if (-d $full_path)
+		{
+			# This is a directory, dive into it.
+			scan_directory($an, $full_path);
+		}
+		
+		# Now I only want to know if the file starts with 'scan-'
+		next if $file !~ /^scan-/;
+		
+		# Make sure the file is exectable
+		next if not -x $full_path;
+		
+		# If I am still alive, I am looking at a scan agent!
+		push @{$an->data->{sys}{agents}}, $full_path;
+	}
+	
+	return(0);
+}
+
 # Nicely exits the program.
 sub nice_exit
 {
-	my ($an) = @_;
+	my ($an, $exit_code) = @_;
+	$exit_code = 99 if not defined $exit_code;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
 	# Close database connections
 	$an->DB->disconnect_from_databases();

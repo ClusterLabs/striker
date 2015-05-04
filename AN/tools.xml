@@ -16,7 +16,6 @@ This is the AN::Tools master 'words' file.
 		<key name="t_0000">Test</key>
 		<key name="t_0001">Test replace: [#!variable!test!#].</key>
 		<key name="t_0002">Test Out of order: [#!variable!second!#] replace: [#!variable!first!#].</key>
-		
 		<!-- Do not use 't_0003'. It is used to test failures caused by calling a non-existent key. -->
 		<key name="t_0004">#!FREE!#</key>
 		
@@ -43,6 +42,11 @@ This is the AN::Tools master 'words' file.
 		
 		<!-- Branding stuff that others might want to change. -->
 		<key name="an_brand_0001">https://alteeve.ca</key>
+		
+		<!-- log messages -->
+		<key name="tools_log_0001">Entering: [#!variable!function!#()]</key>
+		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
+		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>

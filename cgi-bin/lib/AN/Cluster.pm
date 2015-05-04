@@ -3784,6 +3784,18 @@ sub load_install_manifest
 					#$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
 					#record($conf, "$THIS_FILE ".__LINE__."; Server provisioning; Use spice graphics: [$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics}]\n");
 				}
+				elsif ($b eq "tools")
+				{
+					# Used to control which Anvil! tools 
+					# are used and how to use them.
+					#<use safe_anvil_start=\"true\" anvil-kick-apc-ups=\"false\" />
+					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
+					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
+					
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
+					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}]\n");
+				}
 				elsif ($b eq "media_library")
 				{
 					my $size  = $a->{$b}->[0]->{size};
@@ -4033,6 +4045,10 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
 		$conf->{cgi}{anvil_storage_pool1_unit} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units};
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_size: [$conf->{cgi}{anvil_storage_pool1_size}], cgi::anvil_storage_pool1_unit: [$conf->{cgi}{anvil_storage_pool1_unit}]\n");
+		
+		# Tools
+		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
+		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
@@ -4833,6 +4849,9 @@ Striker Version: $conf->{sys}{version}
 			<!-- This isn't used anymore, but this section may be useful for other things in the future, -->
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
+		<tools>
+			<use safe_anvil_start=\"true\" anvil-kick-apc-ups=\"false\" />
+		</tools>
 	</common>
 </config>
 ";

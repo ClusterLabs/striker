@@ -327,6 +327,24 @@ sub String
 	return ($self->{HANDLE}{STRING});
 }
 
+# Nicely exits the program.
+sub nice_exit
+{
+	my $self      = shift;
+	my $exit_code = defined $_[0] ? shift : 99;
+	
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	$exit_code = 99 if not $exit_code;
+	
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect;
+	}
+	
+	exit($exit_code);
+}
+
 ### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
 # This is a helper to the above '_add_href' method. It is called each time a
 # new string is to be created as a new hash key in the passed hash reference.

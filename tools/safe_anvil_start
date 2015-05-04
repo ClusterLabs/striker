@@ -429,7 +429,7 @@ sub wait_for_drbd_sync
 	
 	# Now loop for up to 'wait_for_drbd_sync' seconds
 	my $all_uptodate = 0;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - all_uptodate: [$all_uptodate], timeouts::wait_for_drbd_sync: [$conf->{timeouts}{wait_for_drbd_sync}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - all_uptodate: [$all_uptodate], timeouts::wait_for_drbd_sync: [$conf->{timeouts}{wait_for_drbd_sync}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- Waiting up to: [$conf->{timeouts}{wait_for_drbd_sync}] seconds for DRBD to become 'UpToDate' on both nodes.", 1);
 	for (0..$conf->{timeouts}{wait_for_drbd_sync})
 	{
@@ -1389,22 +1389,22 @@ sub read_cluster_conf
 			if ($line =~ /agent="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{agent} = $1;
-				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::agent: [$conf->{ipmi}{$name}{agent}]", 2);
 			}
 			if (($name) && ($line =~ /login="(.*?)"/))
 			{
 				$conf->{ipmi}{$name}{login} = "-l ".$1;
-				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::login: [$conf->{ipmi}{$name}{login}]", 2);
 			}
 			if ($line =~ /passwd="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{passwd} = "-p ".$1;
-				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::passwd: [$conf->{ipmi}{$name}{passwd}]", 2);
 			}
 			if ($line =~ /passwd_script="(.*?)"/)
 			{
 				$conf->{ipmi}{$name}{passwd_script} = "-S ".$1;
-				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::ipaddr: [$conf->{ipmi}{$name}{ipaddr}]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "ipmi::${name}::passwd_script: [$conf->{ipmi}{$name}{passwd_script}]", 2);
 			}
 		}
 		
