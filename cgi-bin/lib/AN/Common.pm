@@ -667,8 +667,6 @@ sub initialize_conf
 			# These are the tools that will be copied to 'docroot'
 			# if either node doesn't have an internet connection.
 			tools			=>	[
-				"anvil-configure-network",
-				"anvil-map-drives",
 				"anvil-map-network",
 				"anvil-self-destruct",
 			],

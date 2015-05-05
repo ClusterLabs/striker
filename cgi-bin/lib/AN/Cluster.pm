@@ -4309,6 +4309,22 @@ sub load_install_manifest
 						{
 							$name = $ip;
 						}
+						
+						# If the password is more than
+						# 16 characters long, truncate
+						# it so that nodes with IPMI
+						# v1.5 don't spazz out.
+						if (length($password) > 16)
+						{
+							$password = substr($password, 0, 16);
+						}
+						
+						# Record the IPMI password in a
+						# variable for use later when
+						# we write the cluster.conf
+						# file.
+						$conf->{sys}{ipmi}{$node}{password} = $password;
+						
 						# Build the string
 						my $string =  "<device name=\"$reference\"";
 						   $string .= " ipaddr=\"$name\"" if $name;
