@@ -4072,6 +4072,7 @@ sub load_install_manifest
 		# Tools
 		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
@@ -7239,7 +7240,7 @@ fi
 		$shell_call .= "
 if grep -q 'STARTUP_ENABLED=Yes' /etc/shorewall/shorewall.conf
 then
-	echo 'shorewall enabled, stopping iptables and starting shorewall'
+	echo 'shorewall enabled, stopping it and starting iptables'
 	$conf->{path}{control_shorewall} status;
 	if [ \"\$?\" -eq \"0\" ];
 	then 
@@ -7249,33 +7250,21 @@ then
 		if [ \"\$?\" -eq \"3\" ];
 		then 
 			echo 'shorewall stopped'
+			echo 'Restarting iptables now'
+			$conf->{path}{control_iptables} stop;
+			$conf->{path}{control_iptables} start;
+			if [ \"\$?\" -eq \"0\" ];
+			then 
+				echo 'iptables started'
+			else
+				echo 'iptables failed to start'
+			fi;
 		else
 			echo 'shorewall failed to stop'
 		fi;
 	else
 		echo 'shorewall not running'
 	fi;
-
-	if [ -e '$conf->{path}{initd_iptables}' ];
-	then
-		$conf->{path}{control_iptables} status;
-		if [ \"\$?\" -eq \"3\" ];
-		then 
-			echo 'iptables stopped, starting it'
-			$conf->{path}{control_iptables} restart
-			$conf->{path}{control_iptables} status
-			if [ \"\$?\" -eq \"0\" ];
-			then 
-				echo 'iptables started'
-			else
-				echo 'iptables running'
-			fi;
-		else
-			echo 'iptables running'
-		fi;
-	else 
-		echo 'iptables not installed'; 
-	fi
 else 
 	echo 'shorewall not enabled';
 fi

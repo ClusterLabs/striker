@@ -949,6 +949,7 @@ sub configure_striker_tools
 	}
 	
 	# If requested, enable anvil-kick-apc-ups
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
 	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 	{
 		# Don't fail on this, yet. Maybe later.

@@ -2868,7 +2868,8 @@ sub configure_shorewall
 #					OPTIONS			OPTIONS
 fw	firewall
 net	ipv4
-loc	ipv4";
+loc	ipv4
+";
 	
 	# Interfaces - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#interfaces
 	my $interfaces  = "
@@ -2884,8 +2885,9 @@ loc	ipv4";
 FORMAT 2
 ###############################################################################
 #ZONE		INTERFACE		OPTIONS
-loc		$bcn_interface		dhcp
-net		$ifn_interface";
+net		$ifn_interface		dhcp
+loc		$bcn_interface
+";
 	
 	# Policy - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#policy
 	my $policy = "
@@ -2900,21 +2902,15 @@ net		$ifn_interface";
 ###############################################################################
 #SOURCE	DEST	POLICY		LOG	LIMIT:		CONNLIMIT:
 #				LEVEL	BURST		MASK
-# Let everything from the Striker out onto the net.
+
+# Let Striker go anywhere it wants, let the BCN out onto the net, drop
+# everything else.
 fw	net	ACCEPT
-
-# Likewise, allow everything from Striker out to the BCN.
 fw	loc	ACCEPT
-
-# Don't allow incoming connections from the web into the Striker *or* into the
-# BCN. The 'info' option causes failed connection attempts to be logged.
-net	all	DROP		info
-
-# Allow connections from the BCN into Striker
-loc	fw	ACCEPT
-
-# Let machines on the BCN out onto the web
-loc	net	ACCEPT";
+net	all	DROP
+loc	fw	DROP
+loc	net	ACCEPT
+";
 	
 	# Rules - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#rules
 	my $rules = "
@@ -2934,43 +2930,18 @@ loc	net	ACCEPT";
 #SECTION RELATED
 SECTION NEW
 
-### The rules for this firewall need to replicate what is provided by iptables
-### would normally because we're replacing it.
-# Answer ICMP queries
+# Respond to pings
 Ping(ACCEPT)	net		fw
 Ping(ACCEPT)	loc		fw
 
-# Allow incoming SSH connections to the firewall itself from the IFN.
-ACCEPT		net		fw			tcp	22
-ACCEPT		loc		fw			tcp	22
-
-# Allow DHCP in on loc only
-ACCEPT		loc		fw			udp	67
-ACCEPT		loc		fw			udp	68
-
-# Allow incoming HTTP and HTTPS connections from both the IFN.
-ACCEPT		net		fw			tcp	80
-ACCEPT		net		fw			tcp	443
-ACCEPT		loc		fw			tcp	80
-ACCEPT		loc		fw			tcp	443
-
-# Allow VNC connections in.
-ACCEPT		net		fw			tcp	5800
-ACCEPT		net		fw			tcp	5900
-ACCEPT		net		fw			tcp	6000
-ACCEPT		loc		fw			tcp	5800
-ACCEPT		loc		fw			tcp	5900
-ACCEPT		loc		fw			tcp	6000
-
-# Open up access to PostgreSQL.
-ACCEPT		net		fw			tcp	5432
-ACCEPT		loc		fw			tcp	5432
-
-# We don't want to allow anything into the BCN. That is not the point of
-# shorewall on this system. However, if you want to for some reason, here
-# is an example that would route incoming connections on TCP port 22101 to 
-# Anvil! 01, node 01's SSH.
-#ACCEPT		net		loc:10.20.10.1:22	tcp	22101";
+# Let ssh, http and https in from both the IFN and BCN.
+ACCEPT		net		fw		tcp	22
+ACCEPT		net		fw		tcp	80
+ACCEPT		net		fw		tcp	443
+ACCEPT		loc		fw		tcp	22
+ACCEPT		loc		fw		tcp	80
+ACCEPT		loc		fw		tcp	443
+";
 	
 	# Masquarade - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#masq
 	my $masq = "
@@ -2985,7 +2956,8 @@ ACCEPT		loc		fw			tcp	5432
 ######################################################################################################
 #INTERFACE:DEST		SOURCE		ADDRESS		PROTO	PORT(S)	IPSEC	MARK	USER/	SWITCH
 #											GROUP
-$ifn_interface		$bcn_network/$cidr_bcn_netmask";
+$ifn_interface		$bcn_network/$cidr_bcn_netmask
+";
 	
 	# Read in the shorewall.conf file and change 'STARTUP_ENABLED=No' to
 	# 'STARTUP_ENABLED=Yes'.
