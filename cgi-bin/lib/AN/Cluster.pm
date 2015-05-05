@@ -3691,6 +3691,17 @@ sub load_install_manifest
 						my $password        = $b->{password};
 						my $password_script = $b->{password_script};
 						
+						# If the password is more than
+						# 16 characters long, truncate
+						# it so that nodes with IPMI
+						# v1.5 don't spazz out.
+						record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
+						if (length($password) > 16)
+						{
+							$password = substr($password, 0, 16);
+							record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
+						}
+						
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}            = $name            ? $name            : "";
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway}         = $gateway         ? $gateway         : "";
@@ -3930,6 +3941,17 @@ sub load_install_manifest
 						my $password_script = $c->{password_script};
 						my $agent           = $c->{agent};
 						
+						# If the password is more than
+						# 16 characters long, truncate
+						# it so that nodes with IPMI
+						# v1.5 don't spazz out.
+						record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
+						if (length($password) > 16)
+						{
+							$password = substr($password, 0, 16);
+							record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
+						}
+						
 						$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}          = $name            ? $name            : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
@@ -3938,7 +3960,8 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}           = $agent           ? $agent           : "fence_ipmilan";
-						#record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
+						
+						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ssh")
@@ -4309,22 +4332,6 @@ sub load_install_manifest
 						{
 							$name = $ip;
 						}
-						
-						# If the password is more than
-						# 16 characters long, truncate
-						# it so that nodes with IPMI
-						# v1.5 don't spazz out.
-						if (length($password) > 16)
-						{
-							$password = substr($password, 0, 16);
-						}
-						
-						# Record the IPMI password in a
-						# variable for use later when
-						# we write the cluster.conf
-						# file.
-						$conf->{sys}{ipmi}{$node}{password} = $password;
-						
 						# Build the string
 						my $string =  "<device name=\"$reference\"";
 						   $string .= " ipaddr=\"$name\"" if $name;

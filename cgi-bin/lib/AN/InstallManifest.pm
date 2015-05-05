@@ -5280,11 +5280,6 @@ sub configure_ipmi_on_node
 	my ($conf, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ipmi_on_node(); node: [$node], ipmi_ip: [$ipmi_ip], ipmi_netmask: [$ipmi_netmask], ipmi_password: [$ipmi_password], ipmi_user: [$ipmi_user], ipmi_gateway: [$ipmi_gateway]\n");
 	
-	if ($conf->{sys}{ipmi}{$node}{password})
-	{
-		$ipmi_password = $conf->{sys}{ipmi}{$node}{password};
-	}
-	
 	my $return_code = 255;
 	# 0 = Configured
 	# 1 = Failed to set the IPMI password
