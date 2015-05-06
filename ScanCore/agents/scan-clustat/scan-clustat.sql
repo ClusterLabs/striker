@@ -2,7 +2,7 @@
 
 CREATE TABLE clustat (
 	clustat_id			bigserial				primary key,
-	clustat_host_id			bigserial,
+	clustat_host_id			bigint,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
 	modified_date			timestamp with time zone	not null	default now(),
@@ -13,7 +13,7 @@ ALTER TABLE clustat OWNER TO #!variable!user!#;
 
 CREATE TABLE history.clustat (
 	clustat_id			bigserial,
-	clustat_host_id			bigserial,
+	clustat_host_id			bigint,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
 	history_id			bigserial,

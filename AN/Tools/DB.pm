@@ -35,6 +35,73 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This records data to one or all of the databases. If an ID is passed, the query is written to one database only. Otherwise, it will be written to all DBs.
+sub do_db_write
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Setup my variables.
+	my ($id, $query);
+
+	$id    = $parameter->{id}    ? $parameter->{id}    : "";
+	$query = $parameter->{query} ? $parameter->{query} : "";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0006", message_vars => {
+		name1 => "id",    value1 => $id, 
+		name2 => "query", value2 => $query
+	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# If I don't have a query, die.
+	if (not $query)
+	{
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0011"}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	
+	# This array will hold either just the passed DB ID or all of them, if
+	# no ID was specified.
+	my @db_ids;
+	if ($id)
+	{
+		push @db_ids, $id;
+	}
+	else
+	{
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			push @db_ids, $id;
+		}
+	}
+	
+	foreach my $id (@db_ids)
+	{
+		# Record the query
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0006", message_vars => {
+			name1 => "id",    value1 => $id,
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		
+		# Do the actual query
+		$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_vars => { 
+			query    => $query, 
+			server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+			db_error => $DBI::errstr
+		}, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		
+		# Commit the changes.
+		$an->data->{dbh}{$id}->commit();
+	}
+	
+	return(0);
+}
+
 # This does a database query and returns the resulting array. It must be passed
 # the ID of the database to connect to.
 sub db_do_query
@@ -388,6 +455,119 @@ sub connect_to_databases
 	return($connections);
 }
 
+# This loads a SQL schema into the specified DB.
+sub load_schema
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
+	
+	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
+	my $file = $parameter->{file} ? $parameter->{file} : "";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0006", message_vars => { 
+		name1 => "id",   value1 => $id, 
+		name2 => "file", variable2 => $file 
+	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# If I don't have an ID, die.
+	if (not $id)
+	{
+		# what DB?
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0007"}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	
+	# now, the file
+	if (not $file)
+	{
+		# what file?
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0008"}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	if (not -e $file)
+	{
+		# file not found
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0009", variables => { file => $file }}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	if (not -r $file)
+	{
+		# file found, but can't be read. <sad_trombine />
+		print $an->String->get({
+			key		=>	"scancore_message_0002",
+			variables	=>	{
+				title		=>	$an->String->get({key => "scancore_title_0003"}),
+				message		=>	$an->String->get({key => "scancore_error_0010", variables => { file => $file }}),
+			},
+		}), "\n";
+		exit(1);
+	}
+	
+	# Tell the user we're loading a schema
+	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0021", message_vars => {
+		name => $an->data->{scancore}{db}{$id}{name}, 
+		host => $an->data->{scancore}{db}{$id}{host}, 
+		file => $file
+	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Read in the SQL file and replace #!variable!name!# with the database
+	# owner name.
+	my $success = 1;
+	my $user    = $an->data->{scancore}{db}{$id}{user};
+	my $sql     = "";
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => { user => $user }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Create the read shell call.
+	my $shell_call = $file;
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => { 
+			name1 => "line", value1 => $line 
+		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		$line =~ s/#!variable!user!#/$user/g;
+		$line =~ s/--.*//g;
+		$line =~ s/\t/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//g;
+		$line =~ s/\s+$//g;
+		next if not $line;
+		$sql .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Now we should be ready.
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => { name1 => "sql", value1 => $sql}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	
+	# Now that I am ready, disable autocommit, write and commit.
+	$an->DB->db_do_write($id, $sql);
+	
+	return($success);
+}
+
 # This will initialize the database using the data in the ScanCore.sql file.
 sub initialize_db
 {
@@ -424,11 +604,11 @@ sub initialize_db
 	# owner name.
 	my $user       = $an->data->{scancore}{db}{$id}{user};
 	my $sql        = "";
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => {user => $user}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0003", message_vars => { user => $user }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{

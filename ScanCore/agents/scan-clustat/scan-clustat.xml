@@ -43,7 +43,7 @@ The error was:
 		<key name="scan_clustat_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scan_clustat_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
-		<!-- APC UPS Agent-specific messages -->
+		<!-- clustat Agent-specific messages -->
 		<key name="scan_clustat_message_0001">Starting #!string!scan_clustat_brand_0001!#:</key>
 		<key name="scan_clustat_message_0002"><![CDATA[
  -=] ScanCore - Agent - scan-clustat
@@ -75,5 +75,6 @@ SUPPORT
 
 https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
+		<key name="scan_clustat_message_0003">It looks like 'rgmanager' is not in installed, exiting.</key>
 	</lang>
 </words>

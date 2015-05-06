@@ -54,6 +54,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="scancore_log_0018">Table found, schema does not need to be loaded.</key>
 		<key name="scancore_log_0019">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
 		<key name="scancore_log_0020">Scan agent: [#!variable!agent!#] ran for: [#!variable!runtime!#] second(s).</key>
+		<key name="scancore_log_0021">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be have the: [#!variable!file!#] SQL schema file loaded.</key>
 		
 		<!-- Warnings. -->
 		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
@@ -79,8 +80,14 @@ The error was:
 		<key name="scancore_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scancore_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="scancore_error_0004">Failed to connect to any database, unable to proceed.</key>
-		<key name="scancore_error_0005">Not ID passed to the database initializing method.</key>
+		<key name="scancore_error_0005">Not ID passed to the AN::Tools::DB->initialize_db() method.</key>
 		<key name="scancore_error_0006">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="scancore_error_0007">Not ID passed to the AN::Tools::DB->load_schema() method.</key>
+		<key name="scancore_error_0008">No schema file passed to the AN::Tools::DB->load_schema() method.</key>
+		<key name="scancore_error_0009">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was not found.</key>
+		<key name="scancore_error_0010">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
+		<key name="scancore_error_0011">The AN::Tools::DB->do_db_write() method was called without a query.</key>
+		<key name="scancore_error_0012">Failed to do an update or insert the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
