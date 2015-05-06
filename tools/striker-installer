@@ -2936,11 +2936,30 @@ Ping(ACCEPT)	loc		fw
 
 # Let ssh, http and https in from both the IFN and BCN.
 ACCEPT		net		fw		tcp	22
+ACCEPT		net		fw		tcp	67
+ACCEPT		net		fw		tcp	68
+ACCEPT		net		fw		udp	69
+ACCEPT		net		fw		tcp	69
 ACCEPT		net		fw		tcp	80
 ACCEPT		net		fw		tcp	443
+ACCEPT		net		fw		tcp	5432
+ACCEPT		net		fw		tcp	5800
+ACCEPT		net		fw		tcp	5900
+ACCEPT		net		fw		tcp	6000
+ACCEPT		net		fw		tcp	8099
+
 ACCEPT		loc		fw		tcp	22
+ACCEPT		loc		fw		tcp	67
+ACCEPT		loc		fw		tcp	68
+ACCEPT		loc		fw		udp	69
+ACCEPT		loc		fw		tcp	69
 ACCEPT		loc		fw		tcp	80
 ACCEPT		loc		fw		tcp	443
+ACCEPT		loc		fw		tcp	5432
+ACCEPT		loc		fw		tcp	5800
+ACCEPT		loc		fw		tcp	5900
+ACCEPT		loc		fw		tcp	6000
+ACCEPT		loc		fw		tcp	8099
 ";
 	
 	# Masquarade - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#masq

@@ -3695,11 +3695,11 @@ sub load_install_manifest
 						# 16 characters long, truncate
 						# it so that nodes with IPMI
 						# v1.5 don't spazz out.
-						record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
 						if (length($password) > 16)
 						{
 							$password = substr($password, 0, 16);
-							record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
 						}
 						
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}            = $name            ? $name            : "";
@@ -3945,11 +3945,11 @@ sub load_install_manifest
 						# 16 characters long, truncate
 						# it so that nodes with IPMI
 						# v1.5 don't spazz out.
-						record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
 						if (length($password) > 16)
 						{
 							$password = substr($password, 0, 16);
-							record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
 						}
 						
 						$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}          = $name            ? $name            : "";
@@ -3961,7 +3961,7 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}           = $agent           ? $agent           : "fence_ipmilan";
 						
-						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ssh")

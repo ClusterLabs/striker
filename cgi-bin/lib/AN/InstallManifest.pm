@@ -1619,11 +1619,13 @@ sub check_local_repo
 			# For now, I'm only looking for IPs and subnets.
 			if (($variable eq "ip") && ($interface =~ /ifn/))
 			{
+				next if $value eq "?";
 				$conf->{sys}{'local'}{ifn}{ip} = $value;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found IFN IP: [$conf->{sys}{'local'}{ifn}{ip}]\n");
 			}
 			if (($variable eq "ip") && ($interface =~ /bcn/))
 			{
+				next if $value eq "?";
 				$conf->{sys}{'local'}{bcn}{ip} = $value;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found BCN IP: [$conf->{sys}{'local'}{bcn}{ip}]\n");
 			}
@@ -11053,7 +11055,7 @@ sub ping_website
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
@@ -11079,10 +11081,10 @@ sub ping_website
 	# Now look for offending devices 
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking for conflicting routes.\n");
 	my ($dg_network, $dg_netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Default gateway is; dg_device: [$dg_device], network: [$dg_network/$dg_netmask]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Default gateway is; dg_device: [$dg_device], network: [$dg_network/$dg_netmask]\n");
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{routes}{interface}})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface], dg_device: [$dg_device]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface], dg_device: [$dg_device]\n");
 		next if $interface eq $dg_device;
 		my ($network, $netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
@@ -11099,7 +11101,7 @@ sub ping_website
 				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 			$conf->{node}{$node}{internet} = 0;
 			foreach my $line (@{$return})
 			{
