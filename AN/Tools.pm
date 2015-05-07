@@ -89,32 +89,32 @@ sub new
 	
 	# This gets handles to my other modules that the child modules will use
 	# to talk to other sibling modules.
-	$self->Alert->parent($self);
-	$self->Check->parent($self);
-	$self->Convert->parent($self);
-	$self->DB->parent($self);
-	$self->Get->parent($self);
-	$self->Log->parent($self);
-	$self->Math->parent($self);
-	$self->Readable->parent($self);
-	$self->Storage->parent($self);
-	$self->String->parent($self);
+	$an->Alert->parent($an);
+	$an->Check->parent($an);
+	$an->Convert->parent($an);
+	$an->DB->parent($an);
+	$an->Get->parent($an);
+	$an->Log->parent($an);
+	$an->Math->parent($an);
+	$an->Readable->parent($an);
+	$an->Storage->parent($an);
+	$an->String->parent($an);
 	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# Check the operating system and set any OS-specific values.
-	$self->Check->_os;
+	$an->Check->_os;
 	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# This checks the environment this program is running in.
-	$self->Check->_environment;
+	$an->Check->_environment;
 	
 	# Before I do anything, read in values from the 'DEFAULT::CONFIG_FILE'
 	# configuration file.
-	$an->Storage->read_conf($self->{DEFAULT}{CONFIG_FILE});
+	$an->Storage->read_conf($an->{DEFAULT}{CONFIG_FILE});
 	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# I need to read the initial words early.
-	$self->String->read_words();
+	$an->String->read_words();
 	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# 
@@ -126,26 +126,26 @@ sub new
 	{
 		### Local parameters
 		# Set the data hash
-		$self->data			($param->{data}) 			if $param->{data};
+		$an->data			($param->{data}) 			if $param->{data};
 		
 		# Set the default language.
-		$self->default_language		($param->{default_language}) 		if $param->{default_language};
+		$an->default_language		($param->{default_language}) 		if $param->{default_language};
 		
 		### AN::Tools::Readable parameters
 		# Readable needs to be set before Log so that changes to
 		# 'base2' are made before the default log cycle size is
 		# interpreted.
-		$self->Readable->base2		($param->{Readable}{base2}) 		if defined $param->{Readable}{base2};
+		$an->Readable->base2		($param->{Readable}{base2}) 		if defined $param->{Readable}{base2};
 		
 		### AN::Tools::Log parameters
 		# Set the log file.
-		$self->Log->level		($param->{'Log'}{level}) 		if defined $param->{'Log'}{level};
+		$an->Log->level		($param->{'Log'}{level}) 		if defined $param->{'Log'}{level};
 		
 		### AN::Tools::String parameters
 		# Force UTF-8.
-		$self->String->force_utf8	($param->{String}{force_utf8}) 		if defined $param->{String}{force_utf8};
+		$an->String->force_utf8	($param->{String}{force_utf8}) 		if defined $param->{String}{force_utf8};
 		# Read in the user's words.
-		$self->String->read_words({file => $param->{String}{read_words}{file}}) if defined $param->{String}{read_words}{file};
+		$an->String->read_words({file => $param->{String}{read_words}{file}}) if defined $param->{String}{read_words}{file};
 		
 		### AN::Tools::Get parameters
 		$an->Get->use_24h		($param->{'Get'}{use_24h})		if defined $param->{'Get'}{use_24h};
@@ -156,28 +156,28 @@ sub new
 	}
 	
 	# Call methods that need to be loaded at invocation of the module.
-	#print "Reading: [$self->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
-	if (($self->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $self->{DEFAULT}{STRINGS} =~ /^\.\//))
+	#print "Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
+	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS} =~ /^\.\//))
 	{
 		# Try to find the location of this module (I can't use
 		# Dir::Self' because it's not provided by RHEL 6)
 		my $root = ($INC{'AN/Tools.pm'} =~ /^(.*?)\/AN\/Tools.pm/)[0];
-		my $file = ($self->{DEFAULT}{STRINGS} =~ /^\.\/(.*)/)[0];
+		my $file = ($an->{DEFAULT}{STRINGS} =~ /^\.\/(.*)/)[0];
 		my $path = "$root/$file";
 		#print "path: [$path]\n";
 		if (-e $path)
 		{
 			# Found the words file.
-			$self->{DEFAULT}{STRINGS} = $path;
-			#print "Found it: [$self->{DEFAULT}{STRINGS}]\n";
+			$an->{DEFAULT}{STRINGS} = $path;
+			#print "Found it: [$an->{DEFAULT}{STRINGS}]\n";
 		}
 	}
-	if (not -e $self->{DEFAULT}{STRINGS})
+	if (not -e $an->{DEFAULT}{STRINGS})
 	{
-		print "Failed to read the core words file: [$self->{DEFAULT}{STRINGS}]\n";
+		print "Failed to read the core words file: [$an->{DEFAULT}{STRINGS}]\n";
 		exit(255);
 	}
-	$self->String->read_words({file => $self->{DEFAULT}{STRINGS}});
+	$an->String->read_words({file => $an->{DEFAULT}{STRINGS}});
 
 	return ($self);
 }
@@ -210,6 +210,14 @@ sub error_code
 {
 	my $self = shift;
 	return ($self->Alert->_error_code);
+}
+
+# This returns the hostname for the machine this is running on.
+sub hostname
+{
+	my $self = shift;
+	
+	return($ENV{HOSTNAME});
 }
 
 # Makes my handle to AN::Tools::Alert clearer when using this module to access

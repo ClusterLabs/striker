@@ -49,12 +49,20 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="scancore_log_0013"><![CDATA[<function takes no arguments>]]></key>
 		<key name="scancore_log_0014">Found a scan agent: [#!variable!agent!#]</key>
 		<key name="scancore_log_0015">Starting agent: [#!variable!agent!#]...</key>
-		<key name="scancore_log_0016">Scan agent: [#!variable!agent!#] is checking if DB with ID: [#!variable!db_id!#] has it's schema loaded yet.</key>
+		<key name="scancore_log_0016">Scan agent: [#!variable!agent!#] is checking if the DB(s) have their schemas loaded yet.</key>
 		<key name="scancore_log_0017">Table not found, need to load the schema.</key>
 		<key name="scancore_log_0018">Table found, schema does not need to be loaded.</key>
 		<key name="scancore_log_0019">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
 		<key name="scancore_log_0020">Scan agent: [#!variable!agent!#] ran for: [#!variable!runtime!#] second(s).</key>
 		<key name="scancore_log_0021">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be have the: [#!variable!file!#] SQL schema file loaded.</key>
+		
+		<!-- These are used to display variable = value pairs in log entries. -->
+		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
+		<key name="scancore_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
+		<key name="scancore_variables_0003">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
+		<key name="scancore_variables_0004">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#]</key>
+		<key name="scancore_variables_0005">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#]</key>
+		<key name="scancore_variables_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#]</key>
 		
 		<!-- Warnings. -->
 		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
@@ -82,7 +90,7 @@ The error was:
 		<key name="scancore_error_0004">Failed to connect to any database, unable to proceed.</key>
 		<key name="scancore_error_0005">Not ID passed to the AN::Tools::DB->initialize_db() method.</key>
 		<key name="scancore_error_0006">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
-		<key name="scancore_error_0007">Not ID passed to the AN::Tools::DB->load_schema() method.</key>
+		<key name="scancore_error_0007">No ID passed to the AN::Tools::DB->load_schema() method.</key>
 		<key name="scancore_error_0008">No schema file passed to the AN::Tools::DB->load_schema() method.</key>
 		<key name="scancore_error_0009">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was not found.</key>
 		<key name="scancore_error_0010">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
