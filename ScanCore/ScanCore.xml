@@ -55,6 +55,12 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="scancore_log_0019">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
 		<key name="scancore_log_0020">Scan agent: [#!variable!agent!#] ran for: [#!variable!runtime!#] second(s).</key>
 		<key name="scancore_log_0021">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be have the: [#!variable!file!#] SQL schema file loaded.</key>
+		<key name="scancore_log_0022">The DB table [#!variable!table!#] needs to be updated.</key>
+		<key name="scancore_log_0023">The DB table [#!variable!table!#] has not changed and does not need to be updated.</key>
+		<key name="scancore_log_0024">The DB table: [#!variable!table!#] needs to have: [#!variable!entry!#] added.</key>
+		<key name="scancore_log_0025">The DB table: [#!variable!table!#] needs to have it's: [#!variable!entry!#] entry updated.</key>
+		<key name="scancore_log_0026">The DB table: [#!variable!table!#] does not need to have it's: [#!variable!entry!#] entry updated; nothing changed.</key>
+		<key name="scancore_log_0027">Checking to see if the DB table: [#!variable!table!#] needs to have it's: [#!variable!entry!#] entry updated...</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -96,9 +102,11 @@ The error was:
 		<key name="scancore_error_0010">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
 		<key name="scancore_error_0011">The AN::Tools::DB->do_db_write() method was called without a query.</key>
 		<key name="scancore_error_0012">Failed to do an update or insert the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="scancore_error_0013">Too much RAM being used! Using: [#!variable!used_ram!#], maximum allowed: [#!variable!maximum_ram!#]!</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
 		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
+		<key name="scancore_message_0003">Another copy of #!string!scancore_brand_0001!# is running, exiting.</key>
 	</lang>
 </words>

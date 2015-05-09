@@ -43,10 +43,22 @@ This is the AN::Tools master 'words' file.
 		<!-- Branding stuff that others might want to change. -->
 		<key name="an_brand_0001">https://alteeve.ca</key>
 		
+		<!-- Default values -->
+		<key name="tools_default_0001">Debug</key>
+		
 		<!-- log messages -->
 		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
+		
+		<!-- These are used to display variable = value pairs in log entries. -->
+		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
+		<key name="an_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
+		<key name="an_variables_0003">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
+		<key name="an_variables_0004">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#]</key>
+		<key name="an_variables_0005">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#]</key>
+		<key name="an_variables_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#]</key>
+		
 		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>
@@ -70,6 +82,7 @@ This is the AN::Tools master 'words' file.
 		<key name="error_title_0011">Illegal value in '#!variable!method!#'</key>
 		<key name="error_title_0012">'AN::Tools::Readable->hr_to_bytes()' was not able to parse a valid size type</key>
 		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
+		<key name="error_title_0014">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>

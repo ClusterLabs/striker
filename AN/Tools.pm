@@ -128,8 +128,9 @@ sub new
 		# Set the data hash
 		$an->data			($param->{data}) 			if $param->{data};
 		
-		# Set the default language.
+		# Set the default languages.
 		$an->default_language		($param->{default_language}) 		if $param->{default_language};
+		$an->default_log_language	($param->{default_log_language}) 	if $param->{default_log_language};
 		
 		### AN::Tools::Readable parameters
 		# Readable needs to be set before Log so that changes to
@@ -154,6 +155,11 @@ sub new
 		$an->Get->date_seperator	($param->{'Get'}{date_seperator})	if defined $param->{'Get'}{date_seperator};
 		$an->Get->time_seperator	($param->{'Get'}{time_seperator})	if defined $param->{'Get'}{time_seperator};
 	}
+	
+	# Set some system paths
+	$an->data->{path}{pgrep} = "/usr/bin/pgrep";
+	$an->data->{path}{pmap}  = "/usr/bin/pmap";
+	$an->data->{path}{ps}    = "/bin/ps";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	#print "Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
@@ -194,6 +200,20 @@ sub default_language
 	$self->{DEFAULT}{LANGUAGE} = $set if $set;
 	
 	return ($self->{DEFAULT}{LANGUAGE});
+}
+
+# This sets or returns the default language the various modules use when
+# processing word strings.
+sub default_log_language
+{
+	my $self = shift;
+	my $set  = shift if defined $_[0];
+	
+	# This could be set before any word files are read, so no checks are
+	# done here.
+	$self->{DEFAULT}{LOG_LANGUAGE} = $set if $set;
+	
+	return ($self->{DEFAULT}{LOG_LANGUAGE});
 }
 
 # This is a shortcut to the '$an->Alert->_error_string' method allowing for

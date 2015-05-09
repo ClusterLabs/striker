@@ -57,7 +57,7 @@ CREATE TABLE clustat_node (
 	clustat_node_clustat_id		bigint				not null,
 	clustat_node_cluster_id		int,								-- This is the node ID reported by clustat
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
-	clustat_node_state		text,								-- Node status
+	clustat_node_status		text,								-- Node status
 	modified_date			timestamp with time zone	not null	default now(),
 	
 	FOREIGN KEY(clustat_node_clustat_id) REFERENCES clustat(clustat_id)
@@ -69,7 +69,7 @@ CREATE TABLE history.clustat_node (
 	clustat_node_clustat_id		bigint,
 	clustat_node_cluster_id		int,
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
-	clustat_node_state		text,								-- Node status
+	clustat_node_status		text,								-- Node status
 	history_id			bigserial,
 	modified_date			timestamp with time zone	not null	default now()
 );
@@ -86,14 +86,14 @@ BEGIN
 		clustat_node_clustat_id,
 		clustat_node_cluster_id,
 		clustat_node_name,
-		clustat_node_state,
+		clustat_node_status,
 		modified_date)
 	VALUES
 		(history_clustat_node.clustat_node_id,
 		history_clustat_node.clustat_node_clustat_id,
 		history_clustat_node.clustat_node_cluster_id,
 		history_clustat_node.clustat_node_name,
-		history_clustat_node.clustat_node_state,
+		history_clustat_node.clustat_node_status,
 		history_clustat_node.modified_date);
 	RETURN NULL;
 END;
@@ -112,7 +112,7 @@ CREATE TABLE clustat_service (
 	clustat_service_clustat_id	bigint				not null,
 	clustat_service_name		text,
 	clustat_service_host		text,
-	clustat_service_state		text,
+	clustat_service_status		text,
 	clustat_service_is_vm		boolean				not null,
 	modified_date			timestamp with time zone	not null	default now(),
 	
@@ -125,7 +125,7 @@ CREATE TABLE history.clustat_service (
 	clustat_service_clustat_id	bigint,
 	clustat_service_name		text,
 	clustat_service_host		text,
-	clustat_service_state		text,
+	clustat_service_status		text,
 	clustat_service_is_vm		boolean				not null,
 	history_id			bigserial,
 	modified_date			timestamp with time zone	not null	default now()
@@ -143,7 +143,7 @@ BEGIN
 		clustat_service_clustat_id,
 		clustat_service_name,
 		clustat_service_host,
-		clustat_service_state,
+		clustat_service_status,
 		clustat_service_is_vm,
 		modified_date)
 	VALUES
@@ -151,7 +151,7 @@ BEGIN
 		history_clustat_service.clustat_service_clustat_id,
 		history_clustat_service.clustat_service_name,
 		history_clustat_service.clustat_service_host,
-		history_clustat_service.clustat_service_state,
+		history_clustat_service.clustat_service_status,
 		history_clustat_service.clustat_service_is_vm,
 		history_clustat_service.modified_date);
 	RETURN NULL;

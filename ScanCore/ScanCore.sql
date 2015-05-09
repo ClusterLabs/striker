@@ -80,20 +80,6 @@ CREATE TRIGGER trigger_hosts
 	AFTER INSERT OR UPDATE ON hosts
 	FOR EACH ROW EXECUTE PROCEDURE history_hosts();
 
-
--- This is a simple table used by ScanCore to record when the last scan
--- finished. If, when ScanCore connects, this table is behind another
--- database, the data will be copied out from the most up to date DB and
--- written to this DB. As such, this table has no history.
-CREATE TABLE last_updated (
-	last_updated_host_id	bigint,
-	last_updated_date	timestamp with time zone	not null	default now(),
-	
-	FOREIGN KEY(last_updated_host_id) REFERENCES hosts(host_id)
-);
-ALTER TABLE last_updated OWNER TO #!variable!user!#;
-
-
 -- 'Temperature' sensor types all have the default hysteresis of '1'. These can
 -- be tuned in striker.conf with:
 --   scancore::agent::<foo>::hysteresis::<alert_sensor_name> = X
@@ -179,24 +165,24 @@ CREATE TRIGGER trigger_alerts
 
 -- This stores information about the scan agents on this system
 CREATE TABLE agents (
-	agents_id		bigserial				primary key,
-	agents_host_id		bigint				not null,
-	agents_name		text				not null,			-- This is the name of the scan agent file name
-	agents_last_exit_code	int				not null,			-- This is the exit code from the last run
-	agents_runtime		int				not null,			-- This is the number of seconds it took for the agent to run last time.
+	agent_id		bigserial				primary key,
+	agent_host_id		bigint				not null,
+	agent_name		text				not null,			-- This is the name of the scan agent file name
+	agent_exit_code		int				not null,			-- This is the exit code from the last run
+	agent_runtime		int				not null,			-- This is the number of seconds it took for the agent to run last time.
 	modified_date		timestamp with time zone	not null	default now(),
 	
-	FOREIGN KEY(agents_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(agent_host_id) REFERENCES hosts(host_id)
 );
 ALTER TABLE agents OWNER TO #!variable!user!#;
 
 CREATE TABLE history.agents (
 	history_id		bigserial,
-	agents_id		bigint,
-	agents_host_id		bigint,
-	agents_name		text				not null,
-	agents_last_exit_code	int				not null,
-	agents_runtime		int				not null,
+	agent_id		bigint,
+	agent_host_id		bigint,
+	agent_name		text				not null,
+	agent_exit_code		int				not null,
+	agent_runtime		int				not null,
 	modified_date		timestamp with time zone	not null	default now()
 );
 ALTER TABLE history.agents OWNER TO #!variable!user!#;
@@ -206,20 +192,20 @@ AS $$
 DECLARE
 	history_agents RECORD;
 BEGIN
-	SELECT INTO history_agents * FROM agents WHERE host_id=new.host_id;
+	SELECT INTO history_agents * FROM agents WHERE agent_id=new.agent_id;
 	INSERT INTO history.agents
-		(agents_id,
-		agents_host_id,
-		agents_name,
-		agents_last_exit_code,
-		agents_runtime,
+		(agent_id,
+		agent_host_id,
+		agent_name,
+		agent_exit_code,
+		agent_runtime,
 		modified_date)
 	VALUES
-		(history_agents.agents_id,
-		history_agents.agents_host_id,
-		history_agents.agents_name,
-		history_agents.agents_last_exit_code,
-		history_agents.agents_runtime,
+		(history_agents.agent_id,
+		history_agents.agent_host_id,
+		history_agents.agent_name,
+		history_agents.agent_exit_code,
+		history_agents.agent_runtime,
 		history_agents.modified_date);
 	RETURN NULL;
 END;
@@ -230,3 +216,54 @@ ALTER FUNCTION history_agents() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_agents
 	AFTER INSERT OR UPDATE ON agents
 	FOR EACH ROW EXECUTE PROCEDURE history_agents();
+
+
+-- This stores information about the RAM used by ScanCore and it's agents.
+CREATE TABLE ram_used (
+	ram_used_id		bigserial,
+	ram_used_host_id	bigint				not null,
+	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
+	ram_used_bytes		bigint				not null,
+	modified_date		timestamp with time zone	not null	default now(),
+	
+	FOREIGN KEY(ram_used_host_id) REFERENCES hosts(host_id)
+);
+ALTER TABLE ram_used OWNER TO #!variable!user!#;
+
+CREATE TABLE history.ram_used (
+	history_id		bigserial,
+	ram_used_id		bigint,
+	ram_used_host_id	bigint,
+	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
+	ram_used_bytes		bigint				not null,
+	modified_date		timestamp with time zone	not null	default now()
+);
+ALTER TABLE history.ram_used OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_ram_used() RETURNS trigger
+AS $$
+DECLARE
+	history_ram_used RECORD;
+BEGIN
+	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id=new.ram_used_id;
+	INSERT INTO history.ram_used
+		(ram_used_id,
+		ram_used_host_id,
+		ram_used_by,
+		ram_used_bytes,
+		modified_date)
+	VALUES
+		(history_ram_used.ram_used_id,
+		history_ram_used.ram_used_host_id,
+		history_ram_used.ram_used_by,
+		history_ram_used.ram_used_bytes,
+		history_ram_used.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_ram_used() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_ram_used
+	AFTER INSERT OR UPDATE ON ram_used
+	FOR EACH ROW EXECUTE PROCEDURE history_ram_used();

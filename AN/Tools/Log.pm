@@ -89,11 +89,11 @@ sub entry
 		$log_level    = $parameter->{log_level}                   ? $parameter->{log_level}    : 0;
 		$file         = $parameter->{file}                        ? $parameter->{file}         : "";
 		$line         = $parameter->{line}                        ? $parameter->{line}         : "";
-		$title_key    = $parameter->{title_key}                   ? $parameter->{title_key}    : "";
+		$title_key    = $parameter->{title_key}                   ? $parameter->{title_key}    : "tools_default_0001";
 		$title_vars   = ref($parameter->{title_vars}) eq "HASH"   ? $parameter->{title_vars}   : "";
 		$message_key  = $parameter->{message_key}                 ? $parameter->{message_key}  : "";
 		$message_vars = ref($parameter->{message_vars}) eq "HASH" ? $parameter->{message_vars} : "";
-		$language     = $parameter->{language}                    ? $parameter->{language}     : $an->default_language;
+		$language     = $parameter->{language}                    ? $parameter->{language}     : $an->default_log_language;
 		$raw          = $parameter->{raw}                         ? $parameter->{raw}          : "";
 		$log_to       = $parameter->{log_to}                      ? $parameter->{log_to}       : "";
 		#print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], language: [$language], raw: [$raw], log_to: [$log_to]\n";

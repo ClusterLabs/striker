@@ -88,7 +88,7 @@ sub run_new_install_manifest
 		'perl-Net-SSH2'			=>	0,
 		'perl-XML-Simple'		=>	0,
 		'policycoreutils-python'	=>	0,
-		postgresql			=>	0,
+		postgresql94			=>	0,
 		postfix				=>	0,
 		'python-virtinst'		=>	0,
 		rgmanager			=>	0,

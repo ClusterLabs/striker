@@ -323,54 +323,54 @@ sub bytes_to_hr
 			# Yebibyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
 			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "yib";
+			$suffix  = "YiB";
 		}
 		elsif ($hr_size >= (2 ** 70))
 		{
 			# Zebibyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
-			$suffix  = "zib";
+			$suffix  = "ZiB";
 		}
 		elsif ($hr_size >= (2 ** 60))
 		{
 			# Exbibyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
-			$suffix  = "eib";
+			$suffix  = "EiB";
 		}
 		elsif ($hr_size >= (2 ** 50))
 		{
 			# Pebibyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
-			$suffix  = "pib";
+			$suffix  = "PiB";
 		}
 		elsif ($hr_size >= (2 ** 40))
 		{
 			# Tebibyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
-			$suffix  = "tib";
+			$suffix  = "TiB";
 		}
 		elsif ($hr_size >= (2 ** 30))
 		{
 			# Gibibyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
-			$suffix  = "gib";
+			$suffix  = "GiB";
 		}
 		elsif ($hr_size >= (2 ** 20))
 		{
 			# Mebibyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
-			$suffix  = "mib";
+			$suffix  = "MiB";
 		}
 		elsif ($hr_size >= (2 ** 10))
 		{
 			# Kibibyte
 			$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
-			$suffix  = "kib";
+			$suffix  = "KiB";
 		}
 		else
 		{
 			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "b";
+			$suffix  = "B";
 		}
 	}
 	else
@@ -380,49 +380,49 @@ sub bytes_to_hr
 			# Yottabyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 24)));
 			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "yb";
+			$suffix  = "YB";
 		}
 		elsif ($hr_size >= (10 ** 21))
 		{
 			# Zettabyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 21)));
-			$suffix  = "zb";
+			$suffix  = "ZB";
 		}
 		elsif ($hr_size >= (10 ** 18))
 		{
 			# Exabyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 18)));
-			$suffix  = "eb";
+			$suffix  = "EB";
 		}
 		elsif ($hr_size >= (10 ** 15))
 		{
 			# Petabyte
 			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 15)));
-			$suffix  = "pb";
+			$suffix  = "PB";
 		}
 		elsif ($hr_size >= (10 ** 12))
 		{
 			# Terabyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 12)));
-			$suffix  = "tb";
+			$suffix  = "TB";
 		}
 		elsif ($hr_size >= (10 ** 9))
 		{
 			# Gigabyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 9)));
-			$suffix  = "gb";
+			$suffix  = "GB";
 		}
 		elsif ($hr_size >= (10 ** 6))
 		{
 			# Megabyte
 			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 6)));
-			$suffix  = "mb";
+			$suffix  = "MB";
 		}
 		elsif ($hr_size >= (10 ** 3))
 		{
 			# Kilobyte
 			$hr_size = sprintf("%.1f", ($hr_size /= (10 ** 3)));
-			$suffix  = "kb";
+			$suffix  = "KB";
 		}
 		else
 		{
@@ -436,7 +436,7 @@ sub bytes_to_hr
 	{
 		$hr_size = $sign.$hr_size;
 	}
-	$hr_size .= $suffix;
+	$hr_size .= " $suffix";
 	
 	return($hr_size);
 }

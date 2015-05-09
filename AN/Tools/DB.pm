@@ -46,10 +46,10 @@ sub do_db_write
 
 	$id    = $parameter->{id}    ? $parameter->{id}    : "";
 	$query = $parameter->{query} ? $parameter->{query} : "";
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# If I don't have a query, die.
 	if (not $query)
@@ -81,9 +81,9 @@ sub do_db_write
 	
 	# Sort out if I have one or many queries.
 	my @query;
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	if (ref($query) eq "ARRAY")
 	{
 		# Multiple things to enter.
@@ -102,10 +102,10 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0002", message_vars => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
-			}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 			
 			# Just one query.
 			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_vars => { 
@@ -136,10 +136,10 @@ sub do_db_query
 	# Values passed in a hash, good.
 	$id    = $parameter->{id}    ? $parameter->{id}    : $an->data->{sys}{read_db_id};
 	$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Prepare the query
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_vars => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__ });
@@ -179,10 +179,10 @@ sub record_failed_db_write_to_cache
 		$query = defined $_[0]      ? $_[0]      : "";	# This should throw an error
 		print "$THIS_FILE ".__LINE__."; id: [$id], query: [$query]\n";
 	}
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# TODO: ...
 	
@@ -219,15 +219,15 @@ sub db_do_write
 	
 	foreach my $id (@id)
 	{
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "id",  value2 => $id, 
 			name2 => "sql", value2 => $sql
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		
 		my $errors = "";
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "sql", value1 => $sql
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		$errors .= $an->data->{dbh}{$id}->do($sql) or $an->Alert->warning({
 			title_key	=>	"scancore_title_0002",
 			message_key	=>	"scancore_warning_0007",
@@ -240,9 +240,9 @@ sub db_do_write
 		});
 		$errors = "" if $errors eq "0E0";
 			
-		$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "errors", value1 => $errors
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		if ($errors)
 		{
 			# Abort, abort!
@@ -261,7 +261,7 @@ sub db_do_write
 		else
 		{
 			# Good!
-			$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0008", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0008", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 			$an->data->{dbh}{$id}->commit;
 		}
 	}
@@ -277,8 +277,8 @@ sub disconnect_from_databases
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
-	# Write an entry saying when we disconnected.
-	my $query = "";
+	# Clear the old timestamp.
+	$an->data->{sys}{db_timestamp} = "";
 	
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
@@ -297,7 +297,7 @@ sub connect_to_databases
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
-	$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => {function => "connect_to_databases"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_vars => {function => "connect_to_databases"}, file => $THIS_FILE, line => __LINE__, log_to  => $an->data->{path}{log_file} });
 	
 	my $connections = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -312,12 +312,12 @@ sub connect_to_databases
 		my $postgres_password = $an->data->{scancore}{db}{$id}{postgres_password} ? $an->data->{scancore}{db}{$id}{postgres_password} : "";
 		my $initialize        = $an->data->{scancore}{db}{$id}{initialize}        ? $an->data->{scancore}{db}{$id}{initialize}        : 0;
 		
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0004", message_vars => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_vars => {
 			name1 => "id",              value1 => $id, 
 			name2 => "sys::read_db_id", value2 => $an->data->{sys}{read_db_id}, 
 			name3 => "dbh::$id",        value3 => $an->data->{dbh}{$id}, 
 			name4 => "sys::use_db_fh",  value4 => $an->data->{sys}{use_db_fh}
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		
 		# Log what we're doing.
 		$an->Log->entry({
@@ -344,9 +344,9 @@ sub connect_to_databases
 		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
-		$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "db_connect_string", value1 => $db_connect_string
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		
 		# Connect!
 		my $dbh = "";
@@ -459,9 +459,9 @@ sub connect_to_databases
 			# Now that I have connected, see if my 'hosts' table exists.
 			my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='hosts' AND schemaname='public';";
 			my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-			$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 				name1 => "count", value1 => $count
-			}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 			if ($count < 1)
 			{
 				# Need to load the database.
@@ -470,8 +470,24 @@ sub connect_to_databases
 		}
 		
 		# Set the first ID to be the one I read from later.
-		$an->data->{sys}{read_db_id} = $id if not $an->data->{sys}{read_db_id};
-		$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
+		$an->data->{sys}{read_db_id}    = $id if not $an->data->{sys}{read_db_id};
+		$an->data->{sys}{use_db_fh}     = $an->data->{dbh}{$id};
+		if (not $an->data->{sys}{db_timestamp})
+		{
+			my $query = "SELECT cast(now() AS timestamp with time zone)";
+			$an->data->{sys}{db_timestamp}  = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+			$an->data->{sys}{db_timestamp}  = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+				name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}
+		$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_vars => {
+			name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
+			name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
+			name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	}
 	if (not $connections)
 	{
@@ -503,7 +519,7 @@ sub check_hostname
 	my $self = shift;
 	my $an   = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	
 	#$an->hostname();
 	
@@ -517,7 +533,7 @@ sub sync_dbs
 	my $self = shift;
 	my $an   = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	
 	# Get this node's ID for each DB with:
 	# 
@@ -535,15 +551,15 @@ sub load_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_vars => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__, log_to  => $an->data->{path}{log_file} });
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
 	
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0002", message_vars => { 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => { 
 		name1 => "id",   value1 => $id, 
 		name2 => "file", variable2 => $file 
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Do I know which DB I am loading the schema into?
 	if (not $id)
@@ -606,7 +622,7 @@ sub load_schema
 		name => $an->data->{scancore}{db}{$id}{name}, 
 		host => $an->data->{scancore}{db}{$id}{host}, 
 		file => $file
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Read in the SQL file and replace #!variable!name!# with the database
 	# owner name.
@@ -616,15 +632,15 @@ sub load_schema
 	
 	# Create the read shell call.
 	my $shell_call = $file;
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => { 
-			name1 => "line", value1 => $line 
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => { 
+			name1 => ">> line", value1 => $line 
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		$line =~ s/#!variable!user!#/$user/g;
 		$line =~ s/--.*//g;
 		$line =~ s/\t/ /g;
@@ -632,14 +648,17 @@ sub load_schema
 		$line =~ s/^\s+//g;
 		$line =~ s/\s+$//g;
 		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => { 
+			name1 => "line", value1 => $line 
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		$sql .= "$line\n";
 	}
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => { 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => { 
 		name1 => "sql", value1 => $sql
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Now that I am ready, write!
 	$an->DB->db_do_write({id => $id, query => $sql});
@@ -671,13 +690,13 @@ sub initialize_db
 		exit(1);
 	}
 	
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0001", message_vars => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to  => $an->data->{path}{log_file} });
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_vars => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__, log_to  => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "id", value1 => $id
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Tell the user we need to initialize
-	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	my $success = 1;
 	
@@ -688,15 +707,15 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "line", value1 => $line
-		}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 		$line =~ s/#!variable!user!#/$user/g;
 		$line =~ s/--.*//g;
 		$line =~ s/\t/ /g;
@@ -709,9 +728,9 @@ sub initialize_db
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 2, title_key => "scancore_title_0001", message_key => "scancore_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "sql", value1 => $sql
-	}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
 	
 	# Now that I am ready, disable autocommit, write and commit.
 	$an->DB->db_do_write({id => $id, query => $sql});

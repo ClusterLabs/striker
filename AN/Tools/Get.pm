@@ -385,4 +385,54 @@ sub date_and_time
 	return ($date, $time);
 }
 
+# This returns the RAM used by the passed in PID. If not PID was passed, it 
+# returns the RAM used by the parent process.
+sub get_ram_used_by_pid
+{
+	my $self  = shift;
+	my $param = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What PID?
+	my $pid = $param->{pid} ? $param->{pid} : $$;
+	
+	my $total_bytes = 0;
+	my $shell_call  = $an->data->{path}{pmap}." $pid 2>&1 |";
+	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+			name1 => ">> line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		
+		next if $line !~ /total/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+			name1 => "line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		
+		# Dig out the PID
+		my $kilobytes   =  ($line =~ /total (\d+)K/i)[0];
+		my $bytes       =  ($kilobytes * 1024);
+		   $total_bytes += $bytes;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+			name1 => "kilobytes",   value1 => "$kilobytes", 
+			name2 => "bytes",       value2 => "$bytes", 
+			name3 => "total_bytes", value3 => "$total_bytes"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	}
+	close $file_handle;
+	
+	return($total_bytes);
+}
+
 1;
