@@ -29,8 +29,6 @@ CREATE TABLE hosts (
 	host_id			bigserial			primary key,
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
-	host_bcn_ip		text,								-- Might want to make this inet or cidr later.
-	host_ifn_ip		text,								-- Might want to make this inet or cidr later.
 	host_status		text,
 	modified_date		timestamp with time zone	not null
 );
@@ -41,8 +39,6 @@ CREATE TABLE history.hosts (
 	host_id			bigint,
 	host_name		text,
 	host_type		text,
-	host_bcn_ip		text,								-- Might want to make this inet or cidr later.
-	host_ifn_ip		text,								-- Might want to make this inet or cidr later.
 	host_status		text,
 	modified_date		timestamp with time zone	not null
 );
@@ -58,16 +54,12 @@ BEGIN
 		(host_id,
 		host_name,
 		host_type,
-		host_bcn_ip,
-		host_ifn_ip,
 		host_status,
 		modified_date)
 	VALUES
 		(history_hosts.host_id,
 		history_hosts.host_name,
 		history_hosts.host_type,
-		history_hosts.host_bcn_ip,
-		history_hosts.host_ifn_ip,
 		history_hosts.host_status,
 		history_hosts.modified_date);
 	RETURN NULL;
