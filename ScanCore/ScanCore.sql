@@ -32,7 +32,7 @@ CREATE TABLE hosts (
 	host_bcn_ip		text,								-- Might want to make this inet or cidr later.
 	host_ifn_ip		text,								-- Might want to make this inet or cidr later.
 	host_status		text,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
 
@@ -44,7 +44,7 @@ CREATE TABLE history.hosts (
 	host_bcn_ip		text,								-- Might want to make this inet or cidr later.
 	host_ifn_ip		text,								-- Might want to make this inet or cidr later.
 	host_status		text,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.hosts OWNER TO #!variable!user!#;
 
@@ -100,7 +100,7 @@ CREATE TABLE alerts (
 	alert_temp_value	real,								-- When 'alert_sensor_type' is 'temperature', this will have the temperature in celcius.
 	alert_message_key	text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
 	alert_message_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
-	modified_date		timestamp with time zone	not null	default now(),
+	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(alert_host_id) REFERENCES hosts(host_id)
 );
@@ -118,7 +118,7 @@ CREATE TABLE history.alerts (
 	alert_temp_value	real,
 	alert_message_key	text,
 	alert_message_variables	text,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.alerts OWNER TO #!variable!user!#;
 
@@ -170,7 +170,7 @@ CREATE TABLE agents (
 	agent_name		text				not null,			-- This is the name of the scan agent file name
 	agent_exit_code		int				not null,			-- This is the exit code from the last run
 	agent_runtime		int				not null,			-- This is the number of seconds it took for the agent to run last time.
-	modified_date		timestamp with time zone	not null	default now(),
+	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(agent_host_id) REFERENCES hosts(host_id)
 );
@@ -183,7 +183,7 @@ CREATE TABLE history.agents (
 	agent_name		text				not null,
 	agent_exit_code		int				not null,
 	agent_runtime		int				not null,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.agents OWNER TO #!variable!user!#;
 
@@ -218,13 +218,19 @@ CREATE TRIGGER trigger_agents
 	FOR EACH ROW EXECUTE PROCEDURE history_agents();
 
 
+-- ------------------------------------------------------------------------- --
+-- NOTE: Because this will be updated on every run, we will use its          --
+--       modified_data comlumn to determine if the tables in this schema     --
+--       need to be updated.                                                 --
+-- ------------------------------------------------------------------------- --
+
 -- This stores information about the RAM used by ScanCore and it's agents.
 CREATE TABLE ram_used (
 	ram_used_id		bigserial,
 	ram_used_host_id	bigint				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		bigint				not null,
-	modified_date		timestamp with time zone	not null	default now(),
+	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(ram_used_host_id) REFERENCES hosts(host_id)
 );
@@ -236,7 +242,7 @@ CREATE TABLE history.ram_used (
 	ram_used_host_id	bigint,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		bigint				not null,
-	modified_date		timestamp with time zone	not null	default now()
+	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.ram_used OWNER TO #!variable!user!#;
 
@@ -267,3 +273,17 @@ ALTER FUNCTION history_ram_used() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_ram_used
 	AFTER INSERT OR UPDATE ON ram_used
 	FOR EACH ROW EXECUTE PROCEDURE history_ram_used();
+
+
+-- This is a special table with no history that simply records the last time a
+-- scan ran.
+CREATE TABLE updated (
+	updated_host_id		bigint				not null,
+	updated_by		text				not null,			-- The name of the agent (or "ScanCore' itself) that updated.
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(updated_host_id) REFERENCES hosts(host_id)
+);
+ALTER TABLE updated OWNER TO #!variable!user!#;
+
+

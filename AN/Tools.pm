@@ -131,6 +131,7 @@ sub new
 		# Set the default languages.
 		$an->default_language		($param->{default_language}) 		if $param->{default_language};
 		$an->default_log_language	($param->{default_log_language}) 	if $param->{default_log_language};
+		$an->default_log_file		($param->{default_log_file}) 		if $param->{default_log_file};
 		
 		### AN::Tools::Readable parameters
 		# Readable needs to be set before Log so that changes to
@@ -157,9 +158,11 @@ sub new
 	}
 	
 	# Set some system paths
-	$an->data->{path}{pgrep} = "/usr/bin/pgrep";
-	$an->data->{path}{pmap}  = "/usr/bin/pmap";
-	$an->data->{path}{ps}    = "/bin/ps";
+	$an->data->{path}{pg_dump} = "/usr/bin/pg_dump";
+	$an->data->{path}{pgrep}   = "/usr/bin/pgrep";
+	$an->data->{path}{psql}    = "/usr/bin/psql";
+	$an->data->{path}{pmap}    = "/usr/bin/pmap";
+	$an->data->{path}{ps}      = "/bin/ps";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	#print "Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
@@ -214,6 +217,19 @@ sub default_log_language
 	$self->{DEFAULT}{LOG_LANGUAGE} = $set if $set;
 	
 	return ($self->{DEFAULT}{LOG_LANGUAGE});
+}
+
+# This sets or returns the default log file.
+sub default_log_file
+{
+	my $self = shift;
+	my $set  = shift if defined $_[0];
+	
+	# This could be set before any word files are read, so no checks are
+	# done here.
+	$self->{DEFAULT}{LOG_FILE} = $set if $set;
+	
+	return ($self->{DEFAULT}{LOG_FILE});
 }
 
 # This is a shortcut to the '$an->Alert->_error_string' method allowing for

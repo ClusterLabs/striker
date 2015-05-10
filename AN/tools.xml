@@ -83,6 +83,7 @@ This is the AN::Tools master 'words' file.
 		<key name="error_title_0012">'AN::Tools::Readable->hr_to_bytes()' was not able to parse a valid size type</key>
 		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
 		<key name="error_title_0014">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0015">Failed to write to the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>

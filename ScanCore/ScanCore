@@ -104,6 +104,7 @@ my $an = AN::Tools->new({data =>
 			# reports shared memory, so to even start a program 
 			# lists 120 MiB+ used. I will make it smarter later.
 			maximum_ram		=>	(256 * 1048576),
+			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
 			sleep_time		=>	30,
 			use_db_fh		=>	"",
@@ -112,8 +113,9 @@ my $an = AN::Tools->new({data =>
 });
 
 # Set some defaults
-$an->default_language($an->data->{sys}{language});
+$an->default_language    ($an->data->{sys}{language});
 $an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{sys}{log_level});
@@ -148,6 +150,9 @@ if (not $connections)
 	
 	exit(1);
 }
+# Look to see if any databases need to be updated.
+update_db($an);
+die;
 
 # Make sure this node is in the database.
 add_host_to_databases($an);
@@ -175,6 +180,9 @@ while (1)
 	my $connections = $an->DB->connect_to_databases();
 	if ($connections)
 	{
+		# Look to see if any databases need to be updated.
+		update_db($an);
+		
 		# Call all agents
 		call_agents($an);
 		
@@ -210,6 +218,9 @@ while (1)
 	# Check RAM usage and bail if it looks like we're leaking.
 	check_ram_usage($an);
 	
+	# Record the time
+	update_time($an);
+	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
 	
@@ -224,24 +235,332 @@ nice_exit($an);
 # Functions                                                                   #
 ###############################################################################
 
+# This looks at each DB's 'ram_used' -> 'modified-date' and if any are behind,
+# it will take the most up to data database and copy the missing records to the
+# behind DBs.
+sub update_db
+{
+	my ($an) = @_;
+	
+# 	$an->data->{scancore}{sql}{most_recent_time};
+# 	$an->data->{scancore}{sql}{most_updated_id};
+# 	$an->data->{scancore}{db_to_update}{$id}{behind};
+# 	$an->data->{scancore}{db}{$id}{last_updated};
+	
+	$an->data->{sys}{sql} = [];
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
+	{
+		my $this_db_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+		my $most_up_to_date_time = $an->data->{scancore}{sql}{most_recent_time};
+		my $most_up_to_date_db   = $an->data->{scancore}{sql}{most_updated_id};
+		next if $id eq $most_up_to_date_db;
+		
+		# TODO: Make these proper log messages
+		print "Updating DB with ID: [$id].\n";
+		print "- The most up to date DB is:   [$most_up_to_date_db]\n";
+		print "- It was last updated on:      [$most_up_to_date_time]\n";
+		print "- This DB was last updated on: [$this_db_last_updated]\n";
+		if (not $this_db_last_updated)
+		{
+			print "- This database has no data and will need to copy everything for this host.\n";
+		}
+		else
+		{
+			print "- It is: [".($most_up_to_date_time - $this_db_last_updated)."] second(s) behind.\n";
+		}
+		
+		###############################################################
+		# hosts                                                       #
+		###############################################################
+		
+		### TODO: What happens if a hostname changes while a DB is 
+		###       offline?
+		
+		### Update hosts.
+		# Does an entry exist for this host on the out-of-date DB?
+		my $insert_first = 0;
+		my $query        = "SELECT COUNT(*) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];	# (->[row]->[column])
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__ });
+		if (not $count)
+		{
+			$insert_first = 1;
+		}
+		
+		# Now read in all the entries from history.hosts from the most
+		# up to date DB.
+		$query = "
+SELECT 
+    host_type, 
+    host_bcn_ip, 
+    host_ifn_ip, 
+    host_status, 
+    modified_date 
+FROM 
+    history.hosts 
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)." 
+AND 
+    (SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($this_db_last_updated).")) < modified_date
+ORDER BY
+    modified_date ASC;
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		
+		# Querying the updated DB!
+		my $results = $an->DB->do_db_query({id => $most_up_to_date_db, query => $query});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__ });
+		foreach my $row (@{$results})
+		{
+			my $host_type     = $an->data->{sys}{use_db_fh}->quote($row->[0]);
+			my $host_bcn_ip   = $an->data->{sys}{use_db_fh}->quote($row->[1]);
+			my $host_ifn_ip   = $an->data->{sys}{use_db_fh}->quote($row->[2]);
+			my $host_status   = $an->data->{sys}{use_db_fh}->quote($row->[3]);
+			my $modified_date = $an->data->{sys}{use_db_fh}->quote($row->[4]);
+			if ($insert_first)
+			{
+				# The first entry must be an insert.
+				push @{$an->data->{sys}{sql}}, "
+INSERT INTO 
+    hosts
+(
+    host_name, 
+    host_type, 
+    host_bcn_ip, 
+    host_ifn_ip, 
+    host_status, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
+    $host_type, 
+    $host_bcn_ip, 
+    $host_ifn_ip, 
+    $host_status, 
+    $modified_date
+);
+";				
+				$insert_first = 0;
+			}
+			else
+			{
+				# Do an update.
+				push @{$an->data->{sys}{sql}}, "
+UPDATE 
+    hosts
+SET
+    host_type = $host_type, 
+    host_bcn_ip = $host_bcn_ip, 
+    host_ifn_ip = $host_ifn_ip, 
+    host_status = $host_status, 
+    modified_date = $modified_date
+WHERE
+    host_id = (".$an->data->{sys}{host_id_query}.");
+";				
+			}
+		}
+		
+		# Everything relies on hosts, so record changes now.
+		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+		
+		# Now the rest of the tables I can do in one shot.
+		
+		###############################################################
+		# agents                                                      #
+		###############################################################
+		
+		# I need to look at each 'agent_name' entry 
+		$query = "
+SELECT 
+    agent_name, 
+    agent_exit_code, 
+    agent_runtime, 
+    modified_date 
+FROM 
+    history.agents 
+WHERE 
+    agent_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    (SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($this_db_last_updated).")) < modified_date 
+ORDER BY 
+    agent_name ASC, 
+    modified_date ASC;
+"; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		
+		# Querying the updated DB!
+		$results = "";
+		$results = $an->DB->do_db_query({id => $most_up_to_date_db, query => $query});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__ });
+		
+		# As I loop through, I need to check each unique 'agent_name'
+		# to see if a record for that agent exists yet, and do an
+		# initial INSERT before switching to UPDATEs.
+		my $this_agent   = "";
+		   $insert_first = 0;
+		foreach my $row (@{$results})
+		{
+			my $agent_name      = $an->data->{sys}{use_db_fh}->quote($row->[0]); 
+			my $agent_exit_code = $an->data->{sys}{use_db_fh}->quote($row->[1]);
+			my $agent_runtime   = $an->data->{sys}{use_db_fh}->quote($row->[2]);
+			my $modified_date   = $an->data->{sys}{use_db_fh}->quote($row->[3]);
+			if ($agent_name ne $this_agent)
+			{
+				# Different agent, see if we need an INSERT;
+				my $query = "SELECT COUNT(*) FROM agents WHERE agent_name = $agent_name AND agent_host_id = (".$an->data->{sys}{host_id_query}.");";
+				my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];	# (->[row]->[column])
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+					name1 => "count", value1 => $count
+				}, file => $THIS_FILE, line => __LINE__ });
+				if (not $count)
+				{
+					$insert_first = 1;
+				}
+				$this_agent = $agent_name;
+			}
+			
+			# Do an INSERT or UPDATE
+			if ($insert_first)
+			{
+				# New record, INSERT.
+				$insert_first = 0;
+				push @{$an->data->{sys}{sql}}, "
+INSERT INTO 
+    agents
+(
+    agent_host_id, 
+    agent_name, 
+    agent_exit_code, 
+    agent_runtime, 
+    modified_date 
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    $agent_name,  
+    $agent_exit_code, 
+    $agent_runtime, 
+    $modified_date 
+);
+";
+			}
+			else
+			{
+				# Existing record, UPDATE.
+				push @{$an->data->{sys}{sql}}, "
+UPDATE 
+    agents
+SET
+    agent_exit_code = $agent_exit_code, 
+    agent_runtime = $agent_runtime, 
+    modified_date = $modified_date
+WHERE 
+    agent_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND
+    agent_name = $agent_name;
+";
+			}
+		}
+		
+		
+		# All done!
+		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
+	die;
+	
+	return(0);
+}
+
+# This simply updates the 'updated' table with the current time.
+sub update_time
+{
+	my ($an) = @_;
+	
+	# Records the RAM used.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    updated 
+WHERE 
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND
+    updated_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+		name1  => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__ });
+	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+		name1 => "count", value1 => $count
+	}, file => $THIS_FILE, line => __LINE__ });
+	if (not $count)
+	{
+		# Add this agent to the DB
+		my $query = "
+INSERT INTO 
+    updated 
+(
+    updated_host_id, 
+    updated_by, 
+    modified_date
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{db_timestamp}."
+);
+";
+		$an->DB->do_db_write({query => $query});
+	}
+	else
+	{
+		# It exists and the value has changed.
+		my $query = "
+UPDATE 
+    updated 
+SET
+    modified_date = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND
+    updated_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+		$an->DB->do_db_write({query => $query});
+	}
+	
+	return(0);
+}
+
 # This checks to see if this node is in each database and, if not, adds it.
 sub add_host_to_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "add_host_to_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "add_host_to_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Check each DB
 	my $query = "SELECT COUNT(*) FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1  => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__ });
 	
 	#          The actual query -----------------.        .------- Row 0
 	#                                            |        |    .-- Columns 0
 	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "count", value1 => $count
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__ });
 	if ($count < 1)
 	{
 		### TODO: For now, we determine if this host is a node
@@ -253,7 +572,7 @@ sub add_host_to_databases
 			name1 => "sys::hostname", value1 => $an->hostname, 
 			name2 => "host_name",     value2 => $host_name, 
 			name3 => "host_type",     value3 => $host_type
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		
 		if (($host_name =~ /striker/) || ($host_name =~ /dashboard/))
 		{
@@ -284,14 +603,14 @@ INSERT INTO
 sub call_agents
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "call_agents", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "call_agents", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through the agents directory and call each agent. Record how
 	# long it takes and note the exit code, then record the run-data in the
 	# database.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "path::agents_directory", value1 => $an->data->{path}{agents_directory}
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	}, file => $THIS_FILE, line => __LINE__});
 	scan_directory($an, $an->data->{path}{agents_directory});
 	
 	# Now loop through the agents I found and try calling them.
@@ -302,12 +621,12 @@ sub call_agents
 		my $say_agent  =  $agent;
 		   $say_agent  =~ s/^.*\///;
 		
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0015", message_vars => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0015", message_vars => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__});
 		
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
 		my $shell_call = "$agent; echo rc:\$? 2>&1 |";
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 		while(<$file_handle>)
 		{
@@ -315,18 +634,18 @@ sub call_agents
 			my $line =  $_;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 				name1 => "line", value1 => "$line"
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /rc:(\d+)/)
 			{
 				$agent_rc = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 					name1 => "agent_rc", value1 => "$agent_rc"
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;
 		my $runtime = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_vars => { agent => "$agent", runtime => $runtime }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_vars => { agent => "$agent", runtime => $runtime }, file => $THIS_FILE, line => __LINE__});
 		
 		# Record this run in the DB.
 		my $query = "
@@ -342,11 +661,11 @@ AND
 ";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "count", value1 => $count
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		if ($count < 1)
 		{
 			# Add this agent to the DB
@@ -400,13 +719,14 @@ AND
 sub check_ram_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "check_ram_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "check_ram_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this ___way___ smarter.
 	# Call PS to get our (and any other duplicate copies of ScanCore) RAM 
 	# usage.
+	my $used_ram   = 0;
 	my $shell_call = $an->data->{path}{ps}." aux 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 	while(<$file_handle>)
 	{
@@ -414,7 +734,7 @@ sub check_ram_usage
 		my $line = $_;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => ">> line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		next if $line !~ /$THIS_FILE/;
 		next if $line =~ /grep $THIS_FILE/;
@@ -423,39 +743,43 @@ sub check_ram_usage
 		$line =~ s/\s+/ /g;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Dig out the PID
-		my $pid        = ($line =~ /^.*?\s(\d+)\s/)[0];
-		my ($used_ram) = $an->Get->get_ram_used_by_pid({pid => $pid});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_vars => {
+		my $pid        =  ($line =~ /^.*?\s(\d+)\s/)[0];
+		my ($pids_ram) =  $an->Get->get_ram_used_by_pid({pid => $pid});
+		   $used_ram   += $pids_ram;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_vars => {
 			name1 => "pid",              value1 => "$pid", 
-			name2 => "used_ram",         value2 => "$used_ram", 
-			name3 => "sys::maximum_ram", value3 => $an->data->{sys}{maximum_ram}
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		
-		# Records the RAM used.
-		my $query = "
+			name2 => "pids_ram",         value2 => "$pids_ram", 
+			name3 => "used_ram",         value3 => "$used_ram", 
+			name4 => "sys::maximum_ram", value4 => $an->data->{sys}{maximum_ram}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	# Records the RAM used.
+	my $query = "
 SELECT 
-    COUNT(*) 
+    ram_used_bytes 
 FROM 
     ram_used 
 WHERE 
-    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
     ram_used_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
-			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
-		my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
-			name1 => "count", value1 => $count
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
-		if ($count < 1)
-		{
-			# Add this agent to the DB
-			my $query = "
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+		name1  => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__ });
+	my $ram_used_bytes = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+		name1 => "ram_used_bytes", value1 => $ram_used_bytes
+	}, file => $THIS_FILE, line => __LINE__ });
+	if (not $ram_used_bytes)
+	{
+		# Add this agent to the DB
+		my $query = "
 INSERT INTO 
     ram_used 
 (
@@ -465,41 +789,44 @@ INSERT INTO
     modified_date
 ) VALUES (
     (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name}).", 
     ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
     ".$an->data->{sys}{db_timestamp}."
 );
 ";
-			$an->DB->do_db_write({query => $query});
-		}
-		else
-		{
-			# It exists, update it.
-			my $query = "
+		$an->DB->do_db_write({query => $query});
+	}
+	elsif ($ram_used_bytes ne $used_ram)
+	{
+		# It exists and the value has changed.
+		my $query = "
 UPDATE 
     ram_used 
 SET
     ram_used_bytes = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
     modified_date = ".$an->data->{sys}{db_timestamp}."
 WHERE 
-    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
     ram_used_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-			$an->DB->do_db_write({query => $query});
-		}
-		
-		if ($used_ram > $an->data->{sys}{maximum_ram})
-		{
-			# Much, too much, much music!
-			# err, too much RAM...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0013", message_vars => { 
-				used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
-				maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{sys}{maximum_ram}})
-			}, code => 5, file => "$THIS_FILE", line => __LINE__ });
-		}
+		$an->DB->do_db_write({query => $query});
 	}
-	close $file_handle;
+	else
+	{
+		# The amount of RAM used is unchanged.
+		#print __LINE__."; The amount of RAM used by ".$an->data->{sys}{program_name}." is unchanged.\n";
+	}
+	
+	if ($used_ram > $an->data->{sys}{maximum_ram})
+	{
+		# Much, too much, much music!
+		# err, too much RAM...
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0013", message_vars => { 
+			used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
+			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{sys}{maximum_ram}})
+		}, code => 5, file => "$THIS_FILE", line => __LINE__ });
+	}
 	
 	return(0);
 }
@@ -508,7 +835,7 @@ AND
 sub analyze_results
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "analyze_results", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "analyze_results", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the
 	# time to select after. 
@@ -524,7 +851,7 @@ sub scan_directory
 	my ($an, $directory) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "scan_directory", }, message_key => "an_variables_0001", message_vars => { 
 		name1 => "directory", value1 => "$directory" 
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $an->data->{path}{agents_directory});
@@ -535,7 +862,7 @@ sub scan_directory
 		my $full_path = "$directory/$file";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "full_path", value1 => "$full_path"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		}, file => $THIS_FILE, line => __LINE__});
 		if (-d $full_path)
 		{
 			# This is a directory, dive into it.
@@ -547,7 +874,7 @@ sub scan_directory
 			next if $file !~ /^scan-/;
 			
 			# If I am still alive, I am looking at a scan agent!
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0014", message_vars => { agent => "$full_path" }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0014", message_vars => { agent => "$full_path" }, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{agents}}, $full_path;
 		}
 	}
@@ -560,7 +887,7 @@ sub nice_exit
 {
 	my ($an, $exit_code) = @_;
 	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "an_variables_0001", message_vars => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "an_variables_0001", message_vars => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Close database connections
 	$an->DB->disconnect_from_databases();
@@ -572,11 +899,11 @@ sub nice_exit
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_vars => { function => "avoid_duplicate_run", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_vars => { function => "avoid_duplicate_run", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file_handle = IO::Handle->new();
 	my $shell_call  = $an->data->{path}{pgrep}." $THIS_FILE 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 	while (<$file_handle>)
 	{
@@ -584,12 +911,12 @@ sub avoid_duplicate_run
 		my $pid = $_;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "pid", value1 => "$pid"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($pid ne $$)
 		{
 			# Another copy is running, exit.
 			close $file_handle;
-			$an->Log->entry({log_level => 2, message_key => "scancore_message_0003", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			$an->Log->entry({log_level => 2, message_key => "scancore_message_0003", file => $THIS_FILE, line => __LINE__});
 			exit(6);
 		}
 	}

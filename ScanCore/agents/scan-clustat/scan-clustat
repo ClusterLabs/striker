@@ -136,9 +136,9 @@ nice_exit($an, 0);
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_vars => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_vars => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__ });
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='clustat' AND schemaname='public';";
@@ -147,23 +147,34 @@ sub prep_databases
 		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "count", value1 => $count
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		if ($count < 1)
 		{
 			# Need to load the database schema.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__ });
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
 		}
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__ });
 		}
 	}
 	
 	# Now look at the various databases and see if any need to be updated.
 	# TODO...
-	#update_db($an);
+	update_db($an);
+	
+	return(0);
+}
+
+# This function is responsible for updating 
+sub update_db
+{
+	my ($an) = @_;
+	
+	# First, make sure 'hosts' is up to date.
+	
 	
 	return(0);
 }
@@ -173,7 +184,7 @@ sub prep_databases
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in last scan data (if any).
 	my $id               = $an->data->{sys}{read_db_id};
@@ -231,14 +242,14 @@ WHERE
 ";
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_vars => {
 				table => "clustat"
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 		}
 		else
 		{
 			# No change.
 			$an->Log->entry({log_level => 3, message_key => "scancore_log_0023", message_vars => {
 				table => "clustat"
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 		}
 		
 		# Now look for changes in 'clustat_node'
@@ -248,14 +259,14 @@ WHERE
 			$an->Log->entry({log_level => 3, message_key => "scancore_log_0027", message_vars => {
 				table => "clustat_node",
 				entry => "$node",
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 			if (not $an->data->{clustat}{sql}{clustat_node}{$node})
 			{
 				# Nope, insert it.
 				$an->Log->entry({log_level => 2, message_key => "scancore_log_0024", message_vars => {
 					table => "clustat_node",
 					entry => "$node",
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+				}, file => $THIS_FILE, line => __LINE__ });
 				insert_into_clustat_node($an, $node);
 			}
 			else
@@ -273,7 +284,7 @@ WHERE
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_vars => {
 						table => "clustat_node",
 						entry => "$node",
-					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+					}, file => $THIS_FILE, line => __LINE__ });
 					update_clustat_node($an, $node);
 				}
 				else
@@ -282,7 +293,7 @@ WHERE
 					$an->Log->entry({log_level => 3, message_key => "scancore_log_0026", message_vars => {
 						table => "clustat_node",
 						entry => "$node",
-					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+					}, file => $THIS_FILE, line => __LINE__ });
 					delete $an->data->{clustat}{sql}{clustat_node}{$node};
 				}
 			}
@@ -295,14 +306,14 @@ WHERE
 			$an->Log->entry({log_level => 3, message_key => "scancore_log_0027", message_vars => {
 				table => "clustat_service",
 				entry => "$service",
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 			if (not $an->data->{clustat}{sql}{clustat_service}{$service})
 			{
 				# Nope, insert it.
 				$an->Log->entry({log_level => 2, message_key => "scancore_log_0024", message_vars => {
 					table => "clustat_service",
 					entry => "$service",
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+				}, file => $THIS_FILE, line => __LINE__ });
 				insert_into_clustat_service($an, $service);
 			}
 			else
@@ -319,7 +330,7 @@ WHERE
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_vars => {
 						table => "clustat_service",
 						entry => "$service",
-					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+					}, file => $THIS_FILE, line => __LINE__ });
 					update_clustat_service($an, $service);
 				}
 				else
@@ -328,7 +339,7 @@ WHERE
 					$an->Log->entry({log_level => 3, message_key => "scancore_log_0026", message_vars => {
 						table => "clustat_service",
 						entry => "$service",
-					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+					}, file => $THIS_FILE, line => __LINE__ });
 					delete $an->data->{clustat}{sql}{clustat_service}{$service};
 				}
 			}
@@ -510,7 +521,7 @@ WHERE
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Couple of variables to make the code cleaner
 	my $id        = $an->data->{sys}{read_db_id};
@@ -518,7 +529,7 @@ sub read_last_scan
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",        value1 => $id, 
 		name2 => "host_name", value2 => $host_name, 
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__ });
 	
 	# This calls up the entry for this host. If no entry is found, 'new'
 	# gets set to '1' and the main function won't bother looking for
@@ -543,7 +554,7 @@ AND
 		name1 => "query",        value1 => $query, 
 		name2 => "results",      value2 => $results, 
 		name3 => "results->[0]", value3 => $results->[0], 
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__ });
 	if ($results->[0])
 	{
 		# We've got an entry in the 'clustat' table, so now we'll look
@@ -552,14 +563,14 @@ AND
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 			name1 => "clustat_quorate",      value1 => $clustat_quorate, 
 			name2 => "clustat_cluster_name", value2 => $clustat_cluster_name
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		
 		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
 		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 			name1 => "clustat::sql::clustat::clustat_quorate",      value1 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
 			name2 => "clustat::sql::clustat::clustat_cluster_name", value2 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		
 		my $query = "
 SELECT 
@@ -582,7 +593,7 @@ AND
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 			name1 => "query",       value1 => $query, 
 			name2 => "results",     value2 => $results, 
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__ });
 		foreach my $array_reference (@{$results})
 		{
 			my ($clustat_node_name, $clustat_node_cluster_id, $clustat_node_status) = @{$array_reference};
@@ -592,7 +603,7 @@ AND
 				name1 => "clustat_node_name",       value1 => $clustat_node_name, 
 				name2 => "clustat_node_cluster_id", value2 => $clustat_node_cluster_id, 
 				name3 => "clustat_node_status",      value3 => $clustat_node_status
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 			
 			# Push them into the hash
 			$an->data->{clustat}{sql}{clustat_node}{$clustat_node_name} = {
@@ -604,7 +615,7 @@ AND
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_cluster_id", value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_cluster_id}, 
 				name2 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_status",      value2 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 		}
 		
 		# Now pull our the services
@@ -636,7 +647,7 @@ AND
 				name2 => "clustat_service_host",       value2 => $clustat_service_host, 
 				name3 => "clustat_service_status",      value3 => $clustat_service_status, 
 				name4 => "clustat_service_is_vm",      value4 => $clustat_service_is_vm
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 			
 			# Push them into the hash
 			$clustat_service_is_vm = $clustat_service_is_vm ? "TRUE" : "FALSE";
@@ -651,7 +662,7 @@ AND
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_host",  value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}, 
 				name2 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value2 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
 				name3 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm", value3 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__ });
 		}
 	}
 	else
@@ -667,14 +678,14 @@ AND
 sub parse_clustat
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "parse_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "parse_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code  = 0;
 	if (-e $an->data->{path}{clustat})
 	{
 		# Found it!
 		my $shell_call  = $an->data->{path}{clustat}." 2>&1 |";
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 		while(<$file_handle>)
 		{
@@ -685,7 +696,7 @@ sub parse_clustat
 			   $line =~ s/\s+/ /g;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 				name1 => "line", value1 => "$line"
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line =~ /Could not connect to CMAN/)
 			{
@@ -698,7 +709,7 @@ sub parse_clustat
 				$an->data->{clustat}{cluster_name} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 					name1 => "clustat::cluster_name", value1 => $an->data->{clustat}{cluster_name}
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Member Status: (.*)/)
 			{
@@ -707,7 +718,7 @@ sub parse_clustat
 				   $an->data->{clustat}{quorate} = $is_quorate;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 					name1 => "clustat::quorate", value1 => $an->data->{clustat}{quorate}
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			# Pick out service lines
 			elsif ($line =~ /^(.*?):(.*?) (.*?) (.*)/)
@@ -726,7 +737,7 @@ sub parse_clustat
 					name1 => "clustat::service::${service}::host",      value1 => $an->data->{clustat}{service}{$service}{host},
 					name2 => "clustat::service::${service}::status",    value2 => $an->data->{clustat}{service}{$service}{status},
 					name3 => "clustat::service::${service}::is_server", value3 => $an->data->{clustat}{service}{$service}{is_server},
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			# Parse nodes. Note the '\d' to differentiate node
 			# lines from service lines.
@@ -746,7 +757,7 @@ sub parse_clustat
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => { 
 					name1 => "clustat::node::${node}::cluster_id", value1 => $an->data->{clustat}{node}{$node}{cluster_id},
 					name2 => "clustat::node::${node}::status",     value2 => $an->data->{clustat}{node}{$node}{status},
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;
@@ -754,7 +765,7 @@ sub parse_clustat
 	else
 	{
 		# Not installed.
-		$an->Log->entry({log_level => 2, title_key => "scancore_title_0005", message_key => "scan_clustat_message_0003", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0005", message_key => "scan_clustat_message_0003", file => $THIS_FILE, line => __LINE__});
 		$return_code = 1;
 	}
 	
@@ -767,7 +778,7 @@ sub nice_exit
 {
 	my ($an, $exit_code) = @_;
 	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "scan_directory", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "scan_directory", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Close database connections
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -783,7 +794,7 @@ sub nice_exit
 sub get_switches
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "get_switches", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "get_switches", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $last_argument = "";
 	foreach my $argument (@ARGV)
@@ -868,7 +879,7 @@ sub get_switches
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "${THIS_FILE}_message_0002"}), "\n";
 

@@ -1,3 +1,12 @@
+-- NOTES 
+--     - The public table must have a column called '<table_name>_id' which is
+--       a 'bigserial'.
+--     - The history schema must have a column called 'history_id' which is a
+--       'bigserial' as well.
+--     - There must be a column called 'X_host_id' that is a foreign key to 
+--      'hosts -> host_id'.
+--     
+
 -- This is the database schema for the 'Clustat' scan agent.
 
 CREATE TABLE clustat (
@@ -5,7 +14,7 @@ CREATE TABLE clustat (
 	clustat_host_id			bigint,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
-	modified_date			timestamp with time zone	not null	default now(),
+	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(clustat_host_id) REFERENCES hosts(host_id)
 );
@@ -17,7 +26,7 @@ CREATE TABLE history.clustat (
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
 	history_id			bigserial,
-	modified_date			timestamp with time zone	not null	default now()
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat OWNER TO #!variable!user!#;
 
@@ -58,7 +67,7 @@ CREATE TABLE clustat_node (
 	clustat_node_cluster_id		int,								-- This is the node ID reported by clustat
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
 	clustat_node_status		text,								-- Node status
-	modified_date			timestamp with time zone	not null	default now(),
+	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(clustat_node_clustat_id) REFERENCES clustat(clustat_id)
 );
@@ -71,7 +80,7 @@ CREATE TABLE history.clustat_node (
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
 	clustat_node_status		text,								-- Node status
 	history_id			bigserial,
-	modified_date			timestamp with time zone	not null	default now()
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat_node OWNER TO #!variable!user!#;
 
@@ -114,7 +123,7 @@ CREATE TABLE clustat_service (
 	clustat_service_host		text,
 	clustat_service_status		text,
 	clustat_service_is_vm		boolean				not null,
-	modified_date			timestamp with time zone	not null	default now(),
+	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(clustat_service_clustat_id) REFERENCES clustat(clustat_id)
 );
@@ -128,7 +137,7 @@ CREATE TABLE history.clustat_service (
 	clustat_service_status		text,
 	clustat_service_is_vm		boolean				not null,
 	history_id			bigserial,
-	modified_date			timestamp with time zone	not null	default now()
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat_service OWNER TO #!variable!user!#;
 

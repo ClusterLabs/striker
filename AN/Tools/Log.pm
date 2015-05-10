@@ -95,7 +95,7 @@ sub entry
 		$message_vars = ref($parameter->{message_vars}) eq "HASH" ? $parameter->{message_vars} : "";
 		$language     = $parameter->{language}                    ? $parameter->{language}     : $an->default_log_language;
 		$raw          = $parameter->{raw}                         ? $parameter->{raw}          : "";
-		$log_to       = $parameter->{log_to}                      ? $parameter->{log_to}       : "";
+		$log_to       = $parameter->{log_to}                      ? $parameter->{log_to}       : $an->default_log_file;
 		#print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], language: [$language], raw: [$raw], log_to: [$log_to]\n";
 	}
 	else
@@ -104,13 +104,13 @@ sub entry
 		$log_level    = defined $parameter ? $parameter : 0;
 		$file         = defined $_[0]  ? $_[0]  : "";
 		$line         = defined $_[1]  ? $_[1]  : "";
-		$title_key    = defined $_[2]  ? $_[2]  : "";
+		$title_key    = defined $_[2]  ? $_[2]  : "tools_default_0001";
 		$title_vars   = defined $_[3]  ? $_[3]  : "";
 		$message_key  = defined $_[4]  ? $_[4]  : "";
 		$message_vars = defined $_[5]  ? $_[5]  : "";
 		$language     = defined $_[6]  ? $_[6]  : $an->default_language;
 		$log_to       = defined $_[7]  ? $_[7]  : "";
-		$raw          = defined $_[8]  ? $_[8]  : "";
+		$raw          = defined $_[8]  ? $_[8]  : $an->default_log_file;
 		#print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], language: [$language], raw: [$raw], log_to: [$log_to]\n";
 		#if ($message_vars)
 		#{

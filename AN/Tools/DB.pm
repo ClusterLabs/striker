@@ -49,7 +49,7 @@ sub do_db_write
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have a query, die.
 	if (not $query)
@@ -81,9 +81,9 @@ sub do_db_write
 	
 	# Sort out if I have one or many queries.
 	my @query;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	if (ref($query) eq "ARRAY")
 	{
 		# Multiple things to enter.
@@ -105,7 +105,7 @@ sub do_db_write
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
 			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_vars => { 
@@ -136,10 +136,10 @@ sub do_db_query
 	# Values passed in a hash, good.
 	$id    = $parameter->{id}    ? $parameter->{id}    : $an->data->{sys}{read_db_id};
 	$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Prepare the query
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_vars => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__ });
@@ -182,7 +182,7 @@ sub record_failed_db_write_to_cache
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# TODO: ...
 	
@@ -222,12 +222,12 @@ sub db_do_write
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "id",  value2 => $id, 
 			name2 => "sql", value2 => $sql
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $errors = "";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "sql", value1 => $sql
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		$errors .= $an->data->{dbh}{$id}->do($sql) or $an->Alert->warning({
 			title_key	=>	"scancore_title_0002",
 			message_key	=>	"scancore_warning_0007",
@@ -242,7 +242,7 @@ sub db_do_write
 			
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "errors", value1 => $errors
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($errors)
 		{
 			# Abort, abort!
@@ -261,7 +261,7 @@ sub db_do_write
 		else
 		{
 			# Good!
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0008", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0008", file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->commit;
 		}
 	}
@@ -317,7 +317,7 @@ sub connect_to_databases
 			name2 => "sys::read_db_id", value2 => $an->data->{sys}{read_db_id}, 
 			name3 => "dbh::$id",        value3 => $an->data->{dbh}{$id}, 
 			name4 => "sys::use_db_fh",  value4 => $an->data->{sys}{use_db_fh}
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Log what we're doing.
 		$an->Log->entry({
@@ -346,7 +346,7 @@ sub connect_to_databases
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "db_connect_string", value1 => $db_connect_string
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Connect!
 		my $dbh = "";
@@ -461,7 +461,7 @@ sub connect_to_databases
 			my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 				name1 => "count", value1 => $count
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($count < 1)
 			{
 				# Need to load the database.
@@ -470,16 +470,16 @@ sub connect_to_databases
 		}
 		
 		# Set the first ID to be the one I read from later.
-		$an->data->{sys}{read_db_id}    = $id if not $an->data->{sys}{read_db_id};
-		$an->data->{sys}{use_db_fh}     = $an->data->{dbh}{$id};
+		$an->data->{sys}{read_db_id} = $id if not $an->data->{sys}{read_db_id};
+		$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
 		if (not $an->data->{sys}{db_timestamp})
 		{
 			my $query = "SELECT cast(now() AS timestamp with time zone)";
-			$an->data->{sys}{db_timestamp}  = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-			$an->data->{sys}{db_timestamp}  = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
+			$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+			$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 				name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
 		
@@ -487,7 +487,7 @@ sub connect_to_databases
 			name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
 			name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
 			name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if (not $connections)
 	{
@@ -502,12 +502,15 @@ sub connect_to_databases
 		exit(1);
 	}
 	
-	# Look to see if any of the DBs fell behind and, if so, update their
-	# 'hosts', 'alerts' and 'agents' tables.
-	$an->DB->sync_dbs();
+	### TODO: This is coming along nicely, but the problem right now is 
+	###       sorting out which tables reference 'hosts -> host_id' and
+	###       which reference other tables (possibly layers deep) that
+	###       reference node_id.
+	#$an->DB->sync_dbs();
+	$an->DB->find_behind_databases();
 	
 	# Now look to see if our hostname has changed.
-	$an->DB->check_hostname();
+	#$an->DB->check_hostname();
 	
 	return($connections);
 }
@@ -519,9 +522,83 @@ sub check_hostname
 	my $self = shift;
 	my $an   = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#$an->hostname();
+	
+	return(0);
+}
+
+# This returns the most up to date database ID, the time it was last updated
+# and an array or DB IDs that are behind.
+sub find_behind_databases
+{
+	my $self = shift;
+	my $an   = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Look at all the databases and find the most recent time stamp (and
+	# the ID of the DB).
+	$an->data->{scancore}{sql}{most_updated_id}  = 0;
+	$an->data->{scancore}{sql}{most_recent_time} = 0;
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $name = $an->data->{scancore}{db}{$id}{name};
+		my $user = $an->data->{scancore}{db}{$id}{user};
+		
+		# Read the table's last modified_date
+		my $query = "
+SELECT 
+    round (
+        extract (
+            epoch FROM (
+                SELECT 
+                    modified_date 
+                FROM 
+                    ram_used 
+                WHERE 
+                    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
+                AND 
+                    ram_used_host_id = (".$an->data->{sys}{host_id_query}.")
+            )
+        )
+    );
+";
+		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		   $last_updated = 0 if not defined $last_updated;
+		
+		if ($last_updated > $an->data->{scancore}{sql}{most_recent_time})
+		{
+			$an->data->{scancore}{sql}{most_recent_time} = $last_updated;
+			$an->data->{scancore}{sql}{most_updated_id}  = $id;
+		}
+		
+		### TODO: Determine if I should be checking per-table... Is it
+		###       possible for one agent's table to fall behind? Maybe,
+		###       if the agent is deleted/recovered...
+		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_vars => {
+			name1 => "scancore::sql::most_recent_time",   value1 => $an->data->{scancore}{sql}{most_recent_time}, 
+			name2 => "scancore::sql::most_updated_id",    value2 => $an->data->{scancore}{sql}{most_updated_id}, 
+			name3 => "scancore::db::${id}::last_updated", value3 => $an->data->{scancore}{db}{$id}{last_updated}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Find which DB is most up to date.
+	$an->data->{scancore}{db_to_update} = {};
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		if ($an->data->{scancore}{sql}{most_recent_time} > $an->data->{scancore}{db}{$id}{last_updated})
+		{
+			print "The DB with ID: [$id] is behind!\n";
+			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
+		}
+		else
+		{
+			$an->data->{scancore}{db_to_update}{$id}{behind} = 0;
+		}
+	}
 	
 	return(0);
 }
@@ -533,15 +610,513 @@ sub sync_dbs
 	my $self = shift;
 	my $an   = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, read all databases to see if any are behind and, if so, bring
+	# them up to date.
+	$an->data->{scancore}{sql}{most_updated_id}  = 0;
+	$an->data->{scancore}{sql}{most_recent_time} = 0;
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $name = $an->data->{scancore}{db}{$id}{name};
+		my $user = $an->data->{scancore}{db}{$id}{user};
+		
+		# First, get a list of the tables in the database
+		my $query   = "SELECT DISTINCT table_name FROM information_schema.columns WHERE table_catalog = ".$an->data->{sys}{use_db_fh}->quote($name)." AND table_schema = 'public';";
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
+			name1 => "query",        value1 => $query, 
+			name2 => "results",      value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Read the table's last modified_date
+		$query = "
+SELECT 
+    round (
+        extract (
+            epoch FROM (
+                SELECT 
+                    modified_date 
+                FROM 
+                    ram_used 
+                WHERE 
+                    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
+                AND 
+                    ram_used_host_id = (".$an->data->{sys}{host_id_query}.")
+            )
+        )
+    );
+";
+		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		   $last_updated = 0 if not defined $last_updated;
+		
+		if ($last_updated > $an->data->{scancore}{sql}{most_recent_time})
+		{
+			$an->data->{scancore}{sql}{most_recent_time} = $last_updated;
+			$an->data->{scancore}{sql}{most_updated_id}  = $id;
+		}
+		
+		### TODO: Determine if I should be checking per-table... Is it
+		###       possible for one agent's table to fall behind? Maybe,
+		###       if the agent is deleted/recovered...
+		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "scancore::db::${id}::last_updated", value1 => $an->data->{scancore}{db}{$id}{last_updated}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Now see what tables are in each DB.
+		foreach my $row (@{$results})
+		{
+			my $table = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+				name1 => "id",   value1 => $id, 
+				name2 => "table", value2 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this table in the general list.
+			$an->data->{scancore}{sql}{master_table_list}{$table} = 1;
+			
+			# Record it as a table in this DB.
+			$an->data->{scancore}{sql}{db}{$id}{table}{$table} = 1;
+		}
+	}
+	
+	# Find which DB is most up to date.
+	$an->data->{scancore}{db_to_update} = {};
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		if ($an->data->{scancore}{sql}{most_recent_time} > $an->data->{scancore}{db}{$id}{last_updated})
+		{
+			print "The DB with ID: [$id] is behind!\n";
+			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
+		}
+		else
+		{
+			$an->data->{scancore}{db_to_update}{$id}{behind} = 0;
+		}
+	}
+	
+	# Now, loop through all the tables and see if any are missing on any DBs.
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{master_table_list}})
+	{
+		# Loop through all DBs and verify the table exists.
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			my $exists = $an->data->{scancore}{sql}{db}{$id}{table}{$table} ? $an->data->{scancore}{sql}{db}{$id}{table}{$table} : 0;
+			#print "id: [$id], table: [$table], exists?: [$exists]\n";
+			if (not $exists)
+			{
+				print "Will add the table: [$table] to the DB with ID: [$id]\n";
+				$an->data->{scancore}{db_to_update}{$id}{add_table}{$table} = 1;
+			}
+		}
+	}
+	
+	# Now I know who needs to be updated and what, if any, tables need to
+	# be loaded.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
+	{
+		next if $id eq $an->data->{scancore}{sql}{most_updated_id};
+		my $name = $an->data->{scancore}{db}{$id}{name};
+		my $user = $an->data->{scancore}{db}{$id}{user};
+		print "Updating the DB with ID: [$id]\n";
+		
+		# First, make sure all the tables exist.
+		foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}{$id}{add_table}})
+		{
+			print "- Adding table: [$this_table]\n";
+			if (not $an->data->{scancore}{sql}{schema})
+			{
+				print "I need to read in the DB schema.\n";
+				$an->DB->get_sql_schema or die "Failed to read the SQL schema from the database with ID: [$id]!\n";
+			}
+			
+			# The SQL was assembled already, so we can load it directly.
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} =~ s/#!variable!user!#/$user/sg;
+			$an->DB->db_do_write({id => $id, query => $an->data->{scancore}{sql}{schema}{raw_table}{$this_table}});
+		}
+		
+		# Now I know that all tables exist in the target DB, look for
+		# actual data that needs to be copied.
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{master_table_list}})
+		{
+			print "Table: [$table]\n";
+			my $subquery = "SELECT ";
+			my $query = "
+SELECT 
+	column_name 
+FROM 
+	information_schema.columns 
+WHERE 
+	table_catalog = ".$an->data->{sys}{use_db_fh}->quote($name)." 
+AND 
+	table_schema = 'public' 
+AND 
+	table_name = ".$an->data->{sys}{use_db_fh}->quote($table)."
+";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my $results        = $an->DB->do_db_query({id => $id, query => $query});
+			my $host_id_column = "";
+			my @columns;
+			foreach my $row (@{$results})
+			{
+				my $column = $row->[0];
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+					name1 => "column", value1 => $column, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($column =~ /_host_id$/)
+				{
+					$host_id_column = $column;
+				}
+				else
+				{
+					$subquery .= "$column, ";
+					push @columns, $column;
+				}
+			}
+			my $this_db_last_updated =  $an->data->{scancore}{db}{$id}{last_updated};
+			   $subquery             =~ s/, $/ /;
+			   $subquery             .= "FROM history.$table WHERE $host_id_column = (".$an->data->{sys}{host_id_query}.") AND (SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($this_db_last_updated).")) < modified_date";
+			my $query_id             =  $an->data->{scancore}{sql}{most_updated_id};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_vars => {
+				name1 => "scancore::sql::most_recent_time", value1 => $an->data->{scancore}{sql}{most_recent_time},
+				name2 => "this_db_last_updated",            value2 => $this_db_last_updated,
+				name3 => "query_id",                        value3 => $query_id,
+				name4 => "id",                              value4 => $id, 
+				name5 => "subquery",                        value5 => $subquery
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Query the up-to-date DB
+		}
+
+	}
+	
+	# Show all tables in the DB
+	# SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'public' OR table_schema = 'history' ORDER BY table_schema, table_name;
+	
+	# Get the timestamp of the last entry for each table.
+	# SELECT round(extract(epoch from (SELECT modified_date FROM ram_used WHERE ram_used_by = 'ScanCore' AND ram_used_host_id = (SELECT host_id FROM hosts WHERE host_name = 'an-a05n01.alteeve.ca'))));
+	
+	# List all tables and their columns.
+	# SELECT table_schema || '.' || table_name AS table, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_catalog = 'scancore' AND table_schema = 'public' OR table_schema = 'history';
 	
 	# Get this node's ID for each DB with:
 	# 
+	
+	# Cast a timestamp as unixtime
+	# SELECT ram_used_by, ram_used_bytes, extract(epoch from modified_date) FROM history.ram_used WHERE ram_used_host_id = 1;
 	
 	# Read the time as a unix timestamp for easier comparison with:
 	# SELECT round(extract(epoch from now()));
 	
 	return(0);
+}
+
+# This uses the '$an->data->{scancore}{sql}{most_updated_id}' to call 'pg_dump'
+# and get the database schema. This is parsed and then used to add tables that
+# are missing to other DBs.
+sub get_sql_schema
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_vars => { function => "get_sql_schema" }, file => $THIS_FILE, line => __LINE__, log_to  => $an->data->{path}{log_file} });
+	
+	# Make the variables easier to read
+	my $id       = $an->data->{scancore}{sql}{most_updated_id};
+	my $host     = $an->data->{scancore}{db}{$id}{host};
+	my $port     = $an->data->{scancore}{db}{$id}{port};
+	my $name     = $an->data->{scancore}{db}{$id}{name};
+	my $user     = $an->data->{scancore}{db}{$id}{user};
+	my $password = $an->data->{scancore}{db}{$id}{password};
+	my $pgpass   = "/root/.pgpass";
+	my $dump_ok  = 0;
+	
+	# These are used when walking through the SQL schema
+	my $this_function = "";
+	my $this_table    = "";
+	my $this_trigger  = "";
+	my $this_schema   = "";
+	my $this_sequence = "";
+	my $last_line     = "";
+	
+	# Now I need to connect to the remote host and dump the DB schema. I
+	# need to do this by setting .pgpass.
+	my $shell_call = "$pgpass";
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	print $file_handle "$host:*:*:$user:$password\n";
+	close $file_handle;
+	
+	# Set the permissions on .pgpass
+	my $mode = 0600;
+	chmod $mode, $pgpass; 
+	
+	# Make the shell call.
+	$shell_call =  $an->data->{path}{pg_dump}." --host $host";
+	$shell_call .= " --port $port" if $port;
+	$shell_call .= " --username $user --schema-only $name 2>&1 |";
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+			name1 => ">> line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line eq "-- PostgreSQL database dump complete")
+		{
+			$dump_ok = 1;
+			next;
+		}
+		
+		#$line =~ s/-- .*//;
+		next if not $line;
+		next if $line eq "--";
+		
+		# Note which schema is being used.
+		if ($line =~ /SET search_path = (.*?), pg_catalog;/)
+		{
+			$this_schema = $1;
+			next;
+		}
+		
+		# Dig out functions
+		if ($line =~ /^CREATE FUNCTION (.*?)\(\)/)
+		{
+			$this_function = $1;
+			$an->data->{scancore}{sql}{schema}{function}{$this_function} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{function}{$this_function} .= "$line\n";
+			next;
+		}
+		if ($this_function)
+		{
+			$an->data->{scancore}{sql}{schema}{function}{$this_function} .= "$line\n";
+			if ($line eq '$$;')
+			{
+				$this_function = "";
+			}
+			next;
+		}
+		
+		# Dig out tables;
+		if ($line =~ /CREATE TABLE (.*?) \(/)
+		{
+			$this_table = $1;
+			# Stick the schema onto the table name if it's not 'public'.
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body} .= "$line\n";
+			next;
+		}
+		if ($this_table)
+		{
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body} .= "$line\n";
+			if ($line eq ');')
+			{
+				$this_table = "";
+			}
+			next;
+		}
+		
+		# Dig out default values.
+		if ($line =~ /ALTER TABLE ONLY (.*?) ALTER COLUMN (.*?) SET DEFAULT .*?;/)
+		{
+			my $this_table  = $1;
+			my $this_column = $2;
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}{$this_column}{default_value} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}{$this_column}{default_value} .= "$line\n";
+			next;
+		}
+		
+		# Dig out sequences;
+		if ($line =~ /CREATE SEQUENCE (.*)/)
+		{
+			$this_sequence = $1;
+			$an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$this_sequence} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$this_sequence} .= "$line\n";
+			next;
+		}
+		if ($this_sequence)
+		{
+			$an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$this_sequence} .= "$line\n";
+			if ($line =~ /;$/)
+			{
+				$this_sequence = "";
+			}
+			next;
+		}
+		
+		# Digging out constraints is a little trickier as a line goes
+		# by before we see 'CONSTRAINT'...
+		if ($line =~ /ADD CONSTRAINT (.*?) /)
+		{
+			my $this_constraint = $1;
+			my $this_table      = ($last_line =~ /ALTER TABLE ONLY (.*)/)[0];
+			my $full_line       = "$last_line\n$line";
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}{$this_constraint} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}{$this_constraint} .= "$full_line\n";
+			next;
+		}
+		
+		# Triggers are easy one-liners
+		if ($line =~ /CREATE TRIGGER (.*?) /)
+		{
+			$this_trigger = $1;
+			$an->data->{scancore}{sql}{schema}{trigger}{$this_trigger} = "SET search_path = $this_schema, pg_catalog;\n";
+			$an->data->{scancore}{sql}{schema}{trigger}{$this_trigger} .= "$line\n";
+			next;
+		}
+		
+		#print "line: [$line]\n";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+			name1 => ">> line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$last_line = $line;
+	}
+	close $file_handle;
+	
+	# Remove the .pgpass file.
+	unlink $pgpass;
+	
+	# Put the SQL states together by table.
+	foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}})
+	{
+		print "Recording the SQL schema for the table: [$this_table]\n";
+		my $this_schema = "public";
+		$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} = "
+-- ------------------------------------------------------------------------- --
+-- Start Table: [$this_table]
+-- ------------------------------------------------------------------------- --
+";
+		# The sequences
+		my $table_id_sequence   = "${this_table}_${this_table}_id_seq";
+		my $history_id_sequence = "${this_table}_history_id_seq";
+		foreach my $this_schema (sort {$b cmp $a} keys %{$an->data->{scancore}{sql}{schema}{sequence}})
+		{
+			if ($an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$table_id_sequence})
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- Table ID Sequence: [$table_id_sequence]\n";
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$table_id_sequence}."\n";
+			}
+			else
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- No Table ID sequence: [$table_id_sequence] found.\n";
+			}
+			if ($an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$history_id_sequence})
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- History ID Sequence: [$history_id_sequence]\n";
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$history_id_sequence}."\n";
+			}
+			else
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- No History ID sequence: [$history_id_sequence] found.\n";
+			}
+		}
+		
+		foreach my $this_schema (sort {$b cmp $a} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}})
+		{
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body};
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "ALTER TABLE $this_schema.$this_table OWNER TO #!variable!user!#;\n\n";
+			
+			foreach my $this_column (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}})
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- Column: [$this_column] default:\n";
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}{$this_column}{default_value}."\n";
+			}
+			foreach my $this_constraint (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}})
+			{
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- Constraint: [$this_constraint]\n";
+				$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}{$this_constraint}."\n";
+			}
+		}
+		
+		# The function
+		my $this_function = "history_$this_table";
+		if ($an->data->{scancore}{sql}{schema}{function}{$this_function})
+		{
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- Function: [$this_function]\n";
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{function}{$this_function}."\n";
+		}
+		else
+		{
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- No function called: [$this_function] found.\n";
+		}
+		
+		# The trigger.
+		my $this_trigger = "trigger_$this_table";
+		if ($an->data->{scancore}{sql}{schema}{trigger}{$this_trigger})
+		{
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- Trigger: [$this_trigger]\n";
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= $an->data->{scancore}{sql}{schema}{trigger}{$this_trigger}."\n";
+		}
+		else
+		{
+			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "-- No function called: [$this_trigger] found.\n";
+		}
+		
+		$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} .= "
+-- ------------------------------------------------------------------------- --
+-- End Table: [$this_table]
+-- ------------------------------------------------------------------------- --
+";
+	}
+	
+	# Show what we read
+=pod
+	foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}})
+	{
+		foreach my $this_schema (sort {$b cmp $a} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}})
+		{
+			print "Table: [$this_schema.$this_table]\n";
+			print "========\n";
+			print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body};
+			print "========\n";
+			foreach my $this_column (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}})
+			{
+				print "Column: [$this_column] default:\n";
+				print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{column}{$this_column}{default_value};
+			}
+			foreach my $this_constraint (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}})
+			{
+				print "Constraint: [$this_constraint]\n";
+				print $an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{constraint}{$this_constraint};
+			}
+			print "========\n\n";
+		}
+	}
+	foreach my $this_function (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{function}})
+	{
+		print "Function: [$this_function]\n";
+		print "========\n";
+		print $an->data->{scancore}{sql}{schema}{function}{$this_function};
+		print "========\n\n";
+	}
+	foreach my $this_trigger (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{trigger}})
+	{
+		print "Trigger: [$this_trigger]\n";
+		print "========\n";
+		print $an->data->{scancore}{sql}{schema}{trigger}{$this_trigger};
+		print "========\n\n";
+	}
+	foreach my $this_sequence (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{sequence}})
+	{
+		print "Sequence: [$this_sequence]\n";
+		print "========\n";
+		print $an->data->{scancore}{sql}{schema}{sequence}{$this_schema}{$this_sequence};
+		print "========\n\n";
+	}
+	
+	print "dump_ok: [$dump_ok]\n";
+	die;
+=cut
+	
+	return($dump_ok);
 }
 
 # This loads a SQL schema into the specified DB.
@@ -559,7 +1134,7 @@ sub load_schema
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => { 
 		name1 => "id",   value1 => $id, 
 		name2 => "file", variable2 => $file 
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do I know which DB I am loading the schema into?
 	if (not $id)
@@ -622,7 +1197,7 @@ sub load_schema
 		name => $an->data->{scancore}{db}{$id}{name}, 
 		host => $an->data->{scancore}{db}{$id}{host}, 
 		file => $file
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the SQL file and replace #!variable!name!# with the database
 	# owner name.
@@ -632,7 +1207,7 @@ sub load_schema
 	
 	# Create the read shell call.
 	my $shell_call = $file;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
@@ -640,7 +1215,7 @@ sub load_schema
 		my $line = $_;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => { 
 			name1 => ">> line", value1 => $line 
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/#!variable!user!#/$user/g;
 		$line =~ s/--.*//g;
 		$line =~ s/\t/ /g;
@@ -650,7 +1225,7 @@ sub load_schema
 		next if not $line;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => { 
 			name1 => "line", value1 => $line 
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		$sql .= "$line\n";
 	}
 	close $file_handle;
@@ -658,7 +1233,7 @@ sub load_schema
 	# Now we should be ready.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => { 
 		name1 => "sql", value1 => $sql
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, write!
 	$an->DB->db_do_write({id => $id, query => $sql});
@@ -693,10 +1268,10 @@ sub initialize_db
 	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_vars => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__, log_to  => $an->data->{path}{log_file} });
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "id", value1 => $id
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user we need to initialize
-	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_vars => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success = 1;
 	
@@ -707,7 +1282,7 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_vars => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
@@ -715,7 +1290,7 @@ sub initialize_db
 		my $line = $_;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 			name1 => "line", value1 => $line
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/#!variable!user!#/$user/g;
 		$line =~ s/--.*//g;
 		$line =~ s/\t/ /g;
@@ -730,7 +1305,7 @@ sub initialize_db
 	# Now we should be ready.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "sql", value1 => $sql
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file} });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, disable autocommit, write and commit.
 	$an->DB->db_do_write({id => $id, query => $sql});
