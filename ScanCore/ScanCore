@@ -153,7 +153,6 @@ if (not $connections)
 }
 # Look to see if any databases need to be updated.
 update_db($an);
-die;
 
 # Make sure this node is in the database.
 add_host_to_databases($an);
@@ -236,17 +235,12 @@ nice_exit($an);
 # Functions                                                                   #
 ###############################################################################
 
-# This looks at each DB's 'ram_used' -> 'modified-date' and if any are behind,
-# it will take the most up to data database and copy the missing records to the
-# behind DBs.
+# This looks at each DB's 'updated' table to see if any are behind. If any are,
+# it will update the tables based on the time the last entry was made for a
+# given host.
 sub update_db
 {
 	my ($an) = @_;
-	
-# 	$an->data->{scancore}{sql}{source_updated_time};
-# 	$an->data->{scancore}{sql}{source_db_id};
-# 	$an->data->{scancore}{db_to_update}{$id}{behind};
-# 	$an->data->{scancore}{db}{$id}{last_updated};
 	
 	$an->data->{sys}{sql} = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
@@ -256,18 +250,23 @@ sub update_db
 		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
 		next if $id eq $source_db_id;
 		
-		# TODO: Make these proper log messages
-		print "Updating DB with ID: [$id].\n";
-		print "- The most up to date DB is:   [$source_db_id]\n";
-		print "- It was last updated on:      [$source_updated_time]\n";
-		print "- This DB was last updated on: [$target_last_updated]\n";
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0028", message_vars => {
+			id                  => $id, 
+			source_db_id        => $source_db_id, 
+			source_updated_time => $source_updated_time,
+			target_last_updated => $target_last_updated
+		}, file => $THIS_FILE, line => __LINE__ });
 		if (not $target_last_updated)
 		{
-			print "- This database has no data and will need to copy everything for this host.\n";
+			# Full recovery needed.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__ });
 		}
 		else
 		{
-			print "- It is: [".($source_updated_time - $target_last_updated)."] second(s) behind.\n";
+			# Partial recovery needed.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0030", message_vars => {
+				seconds_behind => ($source_updated_time - $target_last_updated), 
+			}, file => $THIS_FILE, line => __LINE__ });
 		}
 		
 		# Update (and commit) the hosts table
@@ -277,10 +276,7 @@ sub update_db
 		update_db_agents($an, $id);
 		update_db_ram_used($an, $id);
 		#update_db_alerts($an, $id);
-		
-		# Now the rest of the tables I can do in one shot.
 	}
-	die;
 	
 	return(0);
 }
@@ -389,7 +385,7 @@ ORDER BY
 		if (not $an->data->{db}{target}{ram_used}{$ram_used_by})
 		{
 			# Insert!
-			$an->data->{db}{target}{ram_used}{$ram_used_by} = 1;
+			$an->data->{db}{target}{ram_used}{$ram_used_by} = {};
 			push @{$an->data->{sys}{sql}}, "
 INSERT INTO 
     ram_used
@@ -501,7 +497,7 @@ sub update_db_agents
 	###       first, pull all the existing entries out of the target.
 	   $query   = "SELECT agent_name, round(extract(epoch from modified_date)) FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	# One or more records were found.
@@ -509,7 +505,7 @@ sub update_db_agents
 	{
 		my $agent_name    = $row->[0];
 		my $modified_date = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 			name1 => "agent_name",    value1 => $agent_name, 
 			name2 => "modified_date", value2 => $modified_date
 		}, file => $THIS_FILE, line => __LINE__ });
@@ -573,7 +569,7 @@ ORDER BY
 		if (not $an->data->{db}{target}{agents}{$agent_name})
 		{
 			# Insert!
-			$an->data->{db}{target}{agents}{$agent_name} = 1;
+			$an->data->{db}{target}{agents}{$agent_name} = {};
 			push @{$an->data->{sys}{sql}}, "
 INSERT INTO 
     agents
@@ -785,11 +781,11 @@ WHERE
 AND
     updated_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "count", value1 => $count
 	}, file => $THIS_FILE, line => __LINE__ });
 	if (not $count)
@@ -906,19 +902,18 @@ sub call_agents
 		my $start_time =  time;
 		my $say_agent  =  $agent;
 		   $say_agent  =~ s/^.*\///;
-		
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0015", message_vars => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__});
 		
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
 		my $shell_call = "$agent; echo rc:\$? 2>&1 |";
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_vars => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_vars => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 				name1 => "line", value1 => "$line"
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /rc:(\d+)/)

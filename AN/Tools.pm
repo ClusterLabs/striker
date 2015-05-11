@@ -165,8 +165,8 @@ sub new
 	$an->data->{path}{ps}      = "/bin/ps";
 	
 	# Call methods that need to be loaded at invocation of the module.
-	#print "Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
-	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS} =~ /^\.\//))
+	#print "$THIS_FILE ".__LINE__."; Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
+	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))
 	{
 		# Try to find the location of this module (I can't use
 		# Dir::Self' because it's not provided by RHEL 6)
