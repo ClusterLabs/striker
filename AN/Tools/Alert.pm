@@ -40,6 +40,73 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This registers an alert with ScanCore
+sub register_alert
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+# 	$self->_set_error;
+	my $an = $self->parent;
+	
+	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : ""; # This should error.
+	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
+	my $alert_title_key         = $parameter->{alert_title_key}         ? $parameter->{alert_title_key}         : "an_alert_title_0003";
+	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : {};
+	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : ""; # This should error.
+	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : {};
+	
+	my $title_variables = "";
+	if (ref($alert_title_variables) eq "HASH")
+	{
+		foreach my $key (sort {$a cmp $b} keys %{$alert_title_variables})
+		{
+			$title_variables .= "#!$key!$alert_title_variables->{$key}!#,";
+		}
+	}
+	my $message_variables = "";
+	if (ref($alert_message_variables) eq "HASH")
+	{
+		foreach my $key (sort {$a cmp $b} keys %{$alert_message_variables})
+		{
+			$alert_message_variables->{$key} = "--" if not defined $alert_message_variables->{$key};
+			$message_variables .= "#!$key!$alert_message_variables->{$key}!#,";
+		}
+	}
+	
+	# Always INSERT. ScanCore removes them as they're acted on (copy is left in history.alerts).
+	my $query = "
+INSERT INTO 
+    alerts
+(
+    alert_host_id, 
+    alert_agent_name, 
+    alert_level, 
+    alert_title_key, 
+    alert_title_variables, 
+    alert_message_key, 
+    alert_message_variables, 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($title_variables).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_message_variables)."
+);
+";
+	
+	# Record!
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "query",  value1 => $query,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->DB->do_db_write({sql => $query});
+	
+	return(0);
+}
+
 # Later, this will support all the translation and logging methods. For now,
 # just print the error and exit;
 sub error
@@ -52,7 +119,7 @@ sub error
 	my $an = $self->parent;
 	
 	# Setup default values
-	my ($fatal, $title_key, $title_vars, $message_key, $message_vars, $code, $file, $line);
+	my ($fatal, $title_key, $title_variables, $message_key, $message_vars, $code, $file, $line);
 	
 	# See if I am getting parameters is a hash reference or directly as
 	# element arrays.
@@ -61,26 +128,26 @@ sub error
 		# Called via a hash ref, good.
 		$fatal  	= $parameter->{fatal}		? $parameter->{fatal}		: 1;
 		$title_key	= $parameter->{title_key}	? $parameter->{title_key}	: $an->String->get({key => "an_0004"});
-		$title_vars	= $parameter->{title_vars}	? $parameter->{title_vars}	: "";
+		$title_variables	= $parameter->{title_vars}	? $parameter->{title_vars}	: "";
 		$message_key	= $parameter->{message_key}	? $parameter->{message_key}	: $an->String->get({key => "an_0005"});
 		$message_vars	= $parameter->{message_vars}	? $parameter->{message_vars}	: "";
 		$code   	= $parameter->{code}		? $parameter->{code}		: 1;
 		$file		= $parameter->{file}		? $parameter->{file}		: $an->String->get({key => "an_0006"});
 		$line		= $parameter->{line}		? $parameter->{line}		: "";
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title: [$title], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title: [$title], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
 	}
 	else
 	{
 		# Called directly.
 		$fatal		= $parameter ? $parameter : 1;
 		$title_key	= shift;
-		$title_vars	= shift;
+		$title_variables	= shift;
 		$message_key	= shift;
 		$message_vars	= shift;
 		$code		= shift;
 		$file		= shift;
 		$line		= shift;
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
 	}
 	
 	# It is possible for this to become a run-away call, so this helps
@@ -91,9 +158,9 @@ sub error
 		print "Infinite loop detected while trying to print an error:\n";
 		print "- fatal:        [$fatal]\n";
 		print "- title_key:    [$title_key]\n";
-		print "- title_vars:   [$title_vars]\n";
+		print "- title_vars:   [$title_variables]\n";
 		print "- message_key:  [$message_key]\n";
-		print "- message_vars: [$title_vars]\n";
+		print "- message_vars: [$title_variables]\n";
 		print "- code:         [$code]\n";
 		print "- file:         [$file]\n";
 		print "- line:         [$line]\n";
@@ -115,7 +182,7 @@ sub error
 	{
 		$title_key = $an->String->get({
 			key		=>	$title_key,
-			variables	=>	$title_vars,
+			variables	=>	$title_variables,
 		});
 		print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
 	}
@@ -196,7 +263,7 @@ sub warning
 	
 	# Setup default values
 	my $title_key    = "";
-	my $title_vars   = "";
+	my $title_variables   = "";
 	my $message_key  = "";
 	my $message_vars = "";
 	my $code         = 1;
@@ -210,7 +277,7 @@ sub warning
 	{
 		# Called via a hash ref, good.
 		$title_key    = $parameter->{title_key}    ? $parameter->{title_key}    : "";
-		$title_vars   = $parameter->{title_vars}   ? $parameter->{title_vars}   : "";
+		$title_variables   = $parameter->{title_vars}   ? $parameter->{title_vars}   : "";
 		$message_key  = $parameter->{message_key}  ? $parameter->{message_key}  : ""; # This should cause an error
 		$message_vars = $parameter->{message_vars} ? $parameter->{message_vars} : "";
 		$file         = $parameter->{file}         ? $parameter->{file}         : ""; # This should cause an error
@@ -221,7 +288,7 @@ sub warning
 	{
 		# Called directly.
 		$title_key    = $parameter;
-		$title_vars   = shift;
+		$title_variables   = shift;
 		$message_key  = shift;
 		$message_vars = shift;
 		$file         = shift;
@@ -230,9 +297,9 @@ sub warning
 	}
 	if (0)
 	{
-		print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_vars: [$title_vars], message_key: [$message_key], message_vars: [$message_vars], file: [$file], line: [$line], log_to: [$log_to]\n";
+		print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], file: [$file], line: [$line], log_to: [$log_to]\n";
 		use Data::Dumper;
-		if ($title_vars)   { print "$THIS_FILE ".__LINE__."; Title vars hash:\n"; print Dumper $title_vars; }
+		if ($title_variables)   { print "$THIS_FILE ".__LINE__."; Title vars hash:\n"; print Dumper $title_variables; }
 		if ($message_vars) { print "$THIS_FILE ".__LINE__."; Message vars hash:\n"; print Dumper $message_vars; }
 	}
 	
@@ -245,9 +312,9 @@ sub warning
 	{
 		print "Infinite loop detected while trying to print a warning:\n";
 		print "- title_key:    [$title_key]\n";
-		print "- title_vars:   [$title_vars]\n";
+		print "- title_vars:   [$title_variables]\n";
 		print "- message_key:  [$message_key]\n";
-		print "- message_vars: [$title_vars]\n";
+		print "- message_vars: [$title_variables]\n";
 		print "- code:         [$code]\n";
 		print "- file:         [$file]\n";
 		print "- line:         [$line]\n";
@@ -260,7 +327,7 @@ sub warning
 	{
 		$title_key = $an->String->get({
 			key		=>	$title_key,
-			variables	=>	$title_vars,
+			variables	=>	$title_variables,
 		});
 		#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
 	}

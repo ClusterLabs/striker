@@ -15,6 +15,9 @@ the main Striker strings file. Do this by prefixing all strings with
 		
 		<!-- Strings that can change by rebranding -->
 		<key name="scancore_brand_0001">ScanCore</key>
+		<key name="scancore_brand_0002">Anvil!</key>
+		<key name="scancore_brand_0003">Alteeve's Niche!</key>
+		<key name="scancore_brand_0004">https://alteeve.ca/w/Support</key>
 		
 		<!-- Log titles -->
 		<key name="scancore_title_0001">Debug</key>

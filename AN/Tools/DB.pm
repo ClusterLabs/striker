@@ -148,7 +148,7 @@ sub do_db_query
 	# Values passed in a hash, good.
 	$id    = $parameter->{id}    ? $parameter->{id}    : $an->data->{sys}{read_db_id};
 	$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
 	}, file => $THIS_FILE, line => __LINE__});

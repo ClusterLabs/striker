@@ -72,24 +72,15 @@ CREATE TRIGGER trigger_hosts
 	AFTER INSERT OR UPDATE ON hosts
 	FOR EACH ROW EXECUTE PROCEDURE history_hosts();
 
--- 'Temperature' sensor types all have the default hysteresis of '1'. These can
--- be tuned in striker.conf with:
---   scancore::agent::<foo>::hysteresis::<alert_sensor_name> = X
--- The total score needed to trigger a thermal shutdown is '5'. This can be
--- altered with:
---   scancore::core::thermal::over::shutdown_score = X
---   scancore::core::thermal::under::shutdown_score = X
 
 -- This stores alerts coming in from various agents
 CREATE TABLE alerts (
-	alert_id		bigserial				primary key,
+	alert_id		bigserial			primary key,
 	alert_host_id		bigint				not null,			-- The name of the node or dashboard that this alert came from.
 	alert_agent_name	text				not null,
-	alert_sensor_name	text				not null,			-- This is the name of the sensor causing this alert. Note that this must match the name used in striker.conf for the hysteresis tuning
-	alert_sensor_type	text				not null,			-- "temperature", "power", "server", "information" - These are used for making shutdown/restart decisions. "temperature", "power" and "server" should only be used when going to hot/cold, when power is lost (or the batteries are otherwise depleting, like in a brown-out) or when a server needs to be restarted.
-	alert_seconds_remaining	bigint,								-- When 'alert_sensor_type' is 'power', this must be set to the number of minutes remaining in the UPS.
-	alert_temp_event_type	text,								-- "over" or "under" - When 'alert_sensor_type' is 'temperature', this tells ScanCore if it is an over temp or under temp alarm.
-	alert_temp_value	real,								-- When 'alert_sensor_type' is 'temperature', this will have the temperature in celcius.
+	alert_level		text				not null,			-- debug (log only), info (+ admin email), notice (+ curious users), warning (+ client technical staff), critical (+ all)
+	alert_title_key		text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
+	alert_title_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
 	alert_message_key	text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
 	alert_message_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
 	modified_date		timestamp with time zone	not null,
@@ -103,11 +94,9 @@ CREATE TABLE history.alerts (
 	alert_id		bigint,
 	alert_host_id		bigint,
 	alert_agent_name	text,
-	alert_sensor_name	text,
-	alert_sensor_type	text,
-	alert_seconds_remaining	bigint,
-	alert_temp_event_type	text,
-	alert_temp_value	real,
+	alert_level		text,
+	alert_title_key		text,
+	alert_title_variables	text,
 	alert_message_key	text,
 	alert_message_variables	text,
 	modified_date		timestamp with time zone	not null
@@ -124,11 +113,9 @@ BEGIN
 		(alert_id,
 		alert_host_id,
 		alert_agent_name,
-		alert_sensor_name,
-		alert_sensor_type,
-		alert_seconds_remaining,
-		alert_temp_event_type,
-		alert_temp_value,
+		alert_level,
+		alert_title_key,
+		alert_title_variables,
 		alert_message_key,
 		alert_message_variables,
 		modified_date)
@@ -136,11 +123,9 @@ BEGIN
 		(history_alerts.alert_id,
 		history_alerts.alert_host_id,
 		history_alerts.alert_agent_name,
-		history_alerts.alert_sensor_name,
-		history_alerts.alert_sensor_type,
-		history_alerts.alert_seconds_remaining,
-		history_alerts.alert_temp_event_type,
-		history_alerts.alert_temp_value,
+		history_alerts.alert_level,
+		history_alerts.alert_title_key,
+		history_alerts.alert_title_variables,
 		history_alerts.alert_message_key,
 		history_alerts.alert_message_variables,
 		history_alerts.modified_date);
@@ -153,6 +138,142 @@ ALTER FUNCTION history_alerts() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_alerts
 	AFTER INSERT OR UPDATE ON alerts
 	FOR EACH ROW EXECUTE PROCEDURE history_alerts();
+
+
+-- This is used to indicate the power state of UPSes. It is used to determine
+-- when the system needs to be powered off. All UPS-type scan agents must use
+-- this table (in addition to any tables they may wish to use)
+CREATE TABLE powers (
+	power_id		bigserial			primary key,
+	power_host_id		bigint				not null,			-- The name of the node or dashboard that this power came from.
+	power_agent_name	text				not null,
+	power_state		text				not null,			-- normal (nominal voltage), low (UPS is boosting), high (UPS is trimming), loss (no input power)
+	power_on_battery	boolean				not null,			-- TRUE == use "time_remaining" to determine if graceful power off is needed. FALSE == power loss NOT imminent, do not power off node. 
+	power_seconds_left	bigint,								-- Should always be set, but not required *EXCEPT* when 'power_on_battery' is TRUE.
+	power_charge_percentage	double precision,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
+	power_load_percentage	double precision,						-- Can be used to more accurately determine time remaining
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(power_host_id) REFERENCES hosts(host_id)
+);
+ALTER TABLE powers OWNER TO #!variable!user!#;
+
+CREATE TABLE history.powers (
+	history_id		bigserial,
+	power_id		bigint,
+	power_host_id		bigint,
+	power_agent_name	text,
+	power_state		text,
+	power_on_battery	boolean,
+	power_seconds_left	bigint,
+	power_charge_percentage	double precision,
+	power_load_percentage	double precision,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.powers OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_powers() RETURNS trigger
+AS $$
+DECLARE
+	history_powers RECORD;
+BEGIN
+	SELECT INTO history_powers * FROM powers WHERE host_id=new.host_id;
+	INSERT INTO history.powers
+		(power_id,
+		power_host_id,
+		power_agent_name,
+		power_state,
+		power_on_battery,
+		power_seconds_left,
+		power_charge_percentage,
+		power_load_percentage,
+		modified_date)
+	VALUES
+		(history_powers.power_id,
+		history_powers.power_host_id,
+		history_powers.power_agent_name,
+		history_powers.power_state,
+		history_powers.power_on_battery,
+		history_powers.power_seconds_left,
+		history_powers.power_charge_percentage,
+		history_powers.power_load_percentage,
+		history_powers.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_powers() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_powers
+	AFTER INSERT OR UPDATE ON powers
+	FOR EACH ROW EXECUTE PROCEDURE history_powers();
+
+
+-- This stores alerts coming in from various agents
+CREATE TABLE temperatures (
+	temperature_id		bigserial			primary key,
+	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
+	temperature_agent_name	text				not null,
+	temperature_sensor_name	text				not null,
+	temperature_celcius	double precision		not null,
+	temperature_state	text				not null,			-- warning, critical
+	temperature_is		text				not null,			-- high or low
+	temperature_jumped	boolean				not null,			-- Set true if the sensor is still in "Warning" but possibly indicative of a cooling failure.
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(temperature_host_id) REFERENCES hosts(host_id)
+);
+ALTER TABLE temperatures OWNER TO #!variable!user!#;
+
+CREATE TABLE history.temperatures (
+	history_id		bigserial,
+	temperature_id		bigint,
+	temperature_host_id	bigint,
+	temperature_agent_name	text,
+	temperature_sensor_name	text,
+	temperature_celcius	double precision,
+	temperature_state	text,
+	temperature_is		text,
+	temperature_jumped	boolean,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.temperatures OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_temperatures() RETURNS trigger
+AS $$
+DECLARE
+	history_temperatures RECORD;
+BEGIN
+	SELECT INTO history_temperatures * FROM temperatures WHERE host_id=new.host_id;
+	INSERT INTO history.temperatures
+		(temperature_id,
+		temperature_host_id,
+		temperature_agent_name,
+		temperature_sensor_name,
+		temperature_celcius,
+		temperature_state,
+		temperature_is,
+		temperature_jumped,
+		modified_date)
+	VALUES
+		(history_temperatures.temperature_id,
+		history_temperatures.temperature_host_id,
+		history_temperatures.temperature_agent_name,
+		history_temperatures.temperature_sensor_name,
+		history_temperatures.temperature_celcius,
+		history_temperatures.temperature_state,
+		history_temperatures.temperature_is,
+		history_temperatures.temperature_jumped,
+		history_temperatures.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_temperatures() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_temperatures
+	AFTER INSERT OR UPDATE ON temperatures
+	FOR EACH ROW EXECUTE PROCEDURE history_temperatures();
 
 
 -- This stores information about the scan agents on this system

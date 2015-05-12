@@ -9,6 +9,11 @@
 # - See: https://alteeve.ca/w/ScanCoreAPI#Agent_Exit_Codes
 # - 
 # 
+# NOTE:
+#  - Call: [fence_tool ls | grep master | awk '{print $3}'] to see which node
+#    is the fence master and use this node only to try and recover failed
+#    services.
+# 
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -745,7 +750,7 @@ INSERT INTO
     modified_date
 ) VALUES (
     (".$an->data->{sys}{host_id_query}."),
-    $say_quorate, 
+    ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     ".$an->data->{sys}{db_timestamp}."
 );
@@ -775,7 +780,7 @@ INSERT INTO
 UPDATE 
     clustat 
 SET 
-    clustat_quorate = $say_quorate, 
+    clustat_quorate = ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     modified_date = ".$an->data->{sys}{db_timestamp}."
 WHERE 
@@ -784,6 +789,21 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_vars => {
 				table => "clustat"
 			}, file => $THIS_FILE, line => __LINE__ });
+			
+			# Send the alert.
+			$an->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0004",		# Warning
+				alert_title_variables	=>	{},
+				alert_message_key	=>	"scan_clustat_warning_0009",	# Node deleted
+				alert_message_variables	=>	{
+					old_cluster_name	=>	$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} ? $an->data->{clustat}{sql}{clustat}{clustat_cluster_name} : "--",
+					new_cluster_name	=>	$an->data->{clustat}{cluster_name}                       ? $an->data->{clustat}{cluster_name}                       : "--",
+					old_quorum_status	=>	$an->data->{clustat}{sql}{clustat}{clustat_quorate}      ? $an->data->{clustat}{sql}{clustat}{clustat_quorate}      : "--",
+					new_quorum_status	=>	$an->data->{clustat}{quorate}                            ? $an->data->{clustat}{quorate}                            : "--",
+				},
+			});
 		}
 		else
 		{
@@ -809,24 +829,143 @@ WHERE
 					entry => "$node",
 				}, file => $THIS_FILE, line => __LINE__ });
 				insert_into_clustat_node($an, $node);
+				
+				# New node message.
+				$an->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_clustat_note_0004",
+					alert_message_variables	=>	{
+						node			=>	$node,
+					},
+				});
 			}
 			else
 			{
-				### TODO: The node name can't technically
-				###       change, as a new name will be treated
-				###       as a new entry. If we switch to the
-				###       clustat_node_cluster_id, that might
-				###       be more reliable.
 				# This record existed before, look for changes.
 				if (($an->data->{clustat}{node}{$node}{cluster_id} ne $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_cluster_id}) ||
 				    ($an->data->{clustat}{node}{$node}{status}     ne $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status}))
 				{
+					### TODO: Have Striker set a flag that
+					###       suppresses alerts when doing
+					###       a controlled shutdown.
 					# Something changed.
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_vars => {
 						table => "clustat_node",
 						entry => "$node",
 					}, file => $THIS_FILE, line => __LINE__ });
 					update_clustat_node($an, $node);
+					
+					# There are a few possible states;
+					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
+					# 'Online, rgmanager' -> 'Offline'	= *** Node is offline, either by an admin or it crashed.
+					# 'Online' -> 'Offline'			= cman was stopped
+					# 'Offline' -> 'Online'			= cman was started
+					# 'Online' -> 'Online, rgmanager'	= rgmanager started
+					# 'Offline' -> 'Online, rgmanager'	= Cluster started
+					
+					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
+					my $send_alert        = 1;
+					my $say_alert_level   = "notice";
+					my $say_alert_title   = "an_alert_title_0003"; 
+					my $say_alert_message = ""; 
+					if (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Online, rgmanager/i) &&
+					    ($an->data->{clustat}{node}{$node}{status} =~ /Online/i))
+					{
+						$say_alert_message = "scan_clustat_note_0005"; 
+					}
+					
+					# 'Online, rgmanager' -> 'Offline'	= *** Node is offline, either by an admin or it crashed.
+					elsif (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Online, rgmanager/i) &&
+					       ($an->data->{clustat}{node}{$node}{status} =~ /Offline/i))
+					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
+						$say_alert_message = "scan_clustat_note_0006"; 
+					}
+					
+					# 'Online' -> 'Offline'			= cman was stopped
+					elsif (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Online/i) &&
+					       ($an->data->{clustat}{node}{$node}{status} =~ /Offline/i))
+					{
+						$say_alert_message = "scan_clustat_note_0007"; 
+					}
+					
+					# 'Offline' -> 'Online'			= cman was started
+					elsif (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Offline/i) &&
+					       ($an->data->{clustat}{node}{$node}{status} =~ /Online/i))
+					{
+						$say_alert_message = "scan_clustat_note_0008"; 
+					}
+					
+					# 'Online' -> 'Online, rgmanager'	= rgmanager started
+					elsif (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Online/i) &&
+					       ($an->data->{clustat}{node}{$node}{status} =~ /Online, rgmanager/i))
+					{
+						$say_alert_message = "scan_clustat_note_0009"; 
+					}
+					
+					# 'Offline' -> 'Online, rgmanager'	= Cluster started
+					elsif (($an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} =~ /Offline/i) &&
+					       ($an->data->{clustat}{node}{$node}{status} =~ /Online, rgmanager/i))
+					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
+						$say_alert_message = "scan_clustat_note_0011"; 
+					}
+					
+					# We need a catch-all now.
+					else
+					{
+						# I set this to a warning because I don't 
+						# know what it is and better to be safe.
+						$send_alert = 0;
+						$an->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_title_variables	=>	{},
+							alert_message_key	=>	"scan_clustat_warning_0011",
+							alert_message_variables	=>	{
+								node			=>	$node,
+								old_state		=>	$an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} ? $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status} : "--",
+								new_state		=>	$an->data->{clustat}{node}{$node}{status}                           ? $an->data->{clustat}{node}{$node}{status}                           : "--",
+							},
+						});
+					}
+					
+					# Send the alert, if it wasn't cancelled by the
+					# catch-all.
+					if ($send_alert)
+					{
+						$an->register_alert({
+							alert_level		=>	"$say_alert_level", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"$say_alert_title",
+							alert_message_key	=>	"$say_alert_message",
+							alert_message_variables	=>	{
+								node			=>	$node,
+							},
+						});
+					}
+					
+					# Now, in the off chance that the ID changed, it will
+					# be because an admin did it, almost certainly.
+					if ($an->data->{clustat}{node}{$node}{cluster_id} ne $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_cluster_id})
+					{
+						$an->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_clustat_note_0012",
+							alert_message_variables	=>	{
+								node			=>	$node,
+								old_id			=>	$an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_cluster_id} ? $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_cluster_id} : "--",
+								new_id			=>	$an->data->{clustat}{node}{$node}{cluster_id}                           ? $an->data->{clustat}{node}{$node}{cluster_id}                           : "--",
+							},
+						});
+					}
 				}
 				else
 				{
@@ -856,6 +995,23 @@ WHERE
 					entry => "$service",
 				}, file => $THIS_FILE, line => __LINE__ });
 				insert_into_clustat_service($an, $service);
+				
+				# Send the alert.
+				my $say_message = "scan_clustat_note_0013";
+				if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
+				{
+					# It's a new server.
+					$say_message = "scan_clustat_note_0014";
+				}
+				$an->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"$say_message",
+					alert_message_variables	=>	{
+						service			=>	$service,
+					},
+				});
 			}
 			else
 			{
@@ -873,6 +1029,43 @@ WHERE
 						entry => "$service",
 					}, file => $THIS_FILE, line => __LINE__ });
 					update_clustat_service($an, $service);
+					
+					my $send_alert        = 1;
+					my $say_alert_level   = "notice";
+					my $say_alert_title   = "an_alert_title_0003"; 
+					my $say_alert_message = ""; 
+					
+					### Alerts here depend on two things; Is is a VM 
+					### and how did the state change?
+					if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
+					{
+						### It's a server.
+						# Possible state changes:
+						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
+						# 
+						# stopped -> transitory state, so rare we'll let it go into the catch-all.
+						# 
+						# disabled -> starting		= Booting
+						# disabled -> ... -> started	= Booted
+						# ... -> starting -> started	= Booted
+						# ... -> starting -> failed	= Failed to boot
+						# disabled -> ... -> failed	= Failed to boot
+						# 
+						# started -> stopping		= Shutting down
+						# started -> ... -> stopped	= Shut down
+						# started -> failed		= *** Was running, now failed!
+						
+						my $say_message = "scan_clustat_note_0014";
+					}
+# 					$an->register_alert({
+# 						alert_level		=>	"notice", 
+# 						alert_agent_name	=>	"$THIS_FILE",
+# 						alert_title_key		=>	"an_alert_title_0003",
+# 						alert_message_key	=>	"$say_message",
+# 						alert_message_variables	=>	{
+# 							service			=>	$service,
+# 						},
+# 					});
 				}
 				else
 				{
@@ -891,34 +1084,47 @@ WHERE
 	foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_node}})
 	{
 		# Node disappeared. Update the last entry to have the status
-		# 'DELETED' and then delete it.
-		die __LINE__."; node: [$node] lost!\n";
+		# 'DELETED'. Then record a 'notice' level warning.
 		$an->data->{clustat}{node}{$node}{status} = "DELETED";
 		update_clustat_node($an, $node);
-		push @{$an->data->{sys}{sql}}, "
-DELETE FROM 
-    clustat_node
-WHERE
-    clustat_node_id = (".$an->data->{sys}{clustat_node_id_query}.")
-AND
-    clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($node).";
-";
+		
+		# Enter ther alert.
+		$an->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_title_key		=>	"an_alert_title_0003",		# Note
+			alert_title_variables	=>	{},
+			alert_message_key	=>	"scan_clustat_note_0001",	# Node deleted
+			alert_message_variables	=>	{
+				node			=>	$node,
+			},
+		});
 	}
 	foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_service}})
 	{
 		# Service disappeared. Update the last entry to have the status
 		# 'DELETED' and then delete it.
-		die __LINE__."; service: [$service] lost!\n";
 		$an->data->{clustat}{service}{$service}{status} = "DELETED";
 		update_clustat_service($an, $service);
-		push @{$an->data->{sys}{sql}}, "
-DELETE FROM 
-    clustat_service 
-WHERE 
-    clustat_node_id = (".$an->data->{sys}{clustat_node_id_query}.")
-AND
-    clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($service).";
-";
+		
+		# Which message I use depends on whether this was a server or not.
+		my $message_key = "scan_clustat_note_0002";
+		if ($an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_is_vm} eq "TRUE")
+		{
+			$message_key = "scan_clustat_note_0003";
+		}
+		
+		# Enter ther alert.
+		$an->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_title_key		=>	"an_alert_title_0003",		# Note
+			alert_title_variables	=>	{},
+			alert_message_key	=>	"$message_key",	# Node deleted
+			alert_message_variables	=>	{
+				service			=>	$service,
+			},
+		});
 	}
 	
 	# Now commit the changes.
@@ -1256,6 +1462,10 @@ sub parse_clustat
 				# The cluster isn't running.
 				$an->data->{clustat}{cluster_name} = "OFFLINE";
 				$an->data->{clustat}{quorate}      = "FALSE";
+				
+				### TODO: Should I check this node's entry in
+				###       'clustat_node' (if it exists) and set
+				###       it to 'Offline' if need be?
 			}
 			elsif ($line =~ /Cluster Status for (.*?) /)
 			{

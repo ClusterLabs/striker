@@ -276,6 +276,8 @@ sub update_db
 		update_db_agents($an, $id);
 		update_db_ram_used($an, $id);
 		#update_db_alerts($an, $id);
+		#update_db_temperature($an, $id);
+		#update_db_power($an, $id);
 	}
 	
 	return(0);
@@ -429,6 +431,76 @@ WHERE
 
 # Update the alerts table.
 sub update_db_alerts
+{
+	my ($an, $id) = @_;
+	
+	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
+	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
+	my $target_db_id        = $id;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_vars => {
+		name1 => "target_last_updated", value1 => $target_last_updated, 
+		name2 => "source_updated_time", value2 => $source_updated_time, 
+		name3 => "source_db_id",        value3 => $source_db_id, 
+		name4 => "target_db_id",        value4 => $target_db_id
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	# Get the unix time that this table was last updated for this host.
+	#my $query = "SELECT round(extract(epoch from modified_date)) FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+		name1 => "target_db_id", value1 => "$target_db_id", 
+		name2 => "query",        value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
+	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	### TODO
+	
+	return(0);
+}
+
+# Update the temperature table.
+sub update_db_temperature
+{
+	my ($an, $id) = @_;
+	
+	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
+	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
+	my $target_db_id        = $id;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_vars => {
+		name1 => "target_last_updated", value1 => $target_last_updated, 
+		name2 => "source_updated_time", value2 => $source_updated_time, 
+		name3 => "source_db_id",        value3 => $source_db_id, 
+		name4 => "target_db_id",        value4 => $target_db_id
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	# Get the unix time that this table was last updated for this host.
+	#my $query = "SELECT round(extract(epoch from modified_date)) FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+		name1 => "target_db_id", value1 => "$target_db_id", 
+		name2 => "query",        value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
+	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	### TODO
+	
+	return(0);
+}
+
+# Update the power table.
+sub update_db_power
 {
 	my ($an, $id) = @_;
 	
@@ -781,11 +853,11 @@ WHERE
 AND
     updated_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "count", value1 => $count
 	}, file => $THIS_FILE, line => __LINE__ });
 	if (not $count)
