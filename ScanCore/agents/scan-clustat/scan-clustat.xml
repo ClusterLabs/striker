@@ -25,21 +25,29 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0003">It appears that the server: [#!variable!service!#] was deleted.</key>
 		<key name="scan_clustat_note_0004">The new node: [#!variable!node!#] has appeared!</key>
 		<key name="scan_clustat_note_0005">It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. It is still an #!string!scancore_brand_0002!# member, but it can no longer recover lost servers.</key>
-		<key name="scan_clustat_note_0006">The node: [#!variable!node!#] has gone offline! If this was not expected, the node may have crashed and been fenced!</key>
+		<key name="scan_clustat_note_0006"></key>
 		<key name="scan_clustat_note_0007">It looks like 'cman' (the cluster manager) was stopped on the node: [#!variable!node!#]. The node is no longer participating in the #!string!scancore_brand_0002!#.</key>
 		<key name="scan_clustat_note_0008">It looks like the node: [#!variable!node!#] has rejoined the #!string!scancore_brand_0002!#, but it is not yet able to take over lost servers.</key>
 		<key name="scan_clustat_note_0009">The node: [#!variable!node!#] is now a full member of #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
 		<key name="scan_clustat_note_0010">The node: [#!variable!node!#] has fully rejoined the #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
-		<key name="scan_clustat_note_0011">
-The node: [#!variable!node!#]'s status has changed in an unexpected way.
-- The old state was: [#!variable!old_state!#]
-- The new state is:  [#!variable!new_state!#]
-
-Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
-		</key>
+		<key name="scan_clustat_note_0011">The service: [#!variable!service!#] is starting...</key>
 		<key name="scan_clustat_note_0012">The node: [#!variable!node!#]'s internal ID number has changed from: [#!variable!old_id!#] to:  [#!variable!new_id!#]. This should never unless an admin changed this intentionally.</key>
 		<key name="scan_clustat_note_0013">The new service: [#!variable!service!#] has appeared!</key>
-		<key name="scan_clustat_note_0014">Congradulations! Your new server: [#!variable!servics!#] has been created!</key>
+		<key name="scan_clustat_note_0014">Congradulations! Your new server: [#!variable!service!#] has been created!</key>
+		<key name="scan_clustat_note_0015">The server: [#!variable!service!#] is booting...</key>
+		<key name="scan_clustat_note_0016">The server: [#!variable!service!#] has booted.</key>
+		<key name="scan_clustat_note_0017"></key>
+		<key name="scan_clustat_note_0018"></key>
+		<key name="scan_clustat_note_0019">The server: [#!variable!service!#] is being stopped. Please make sure the OS initiated power off!</key>
+		<key name="scan_clustat_note_0020">The server: [#!variable!service!#] has been stopped.</key>
+		<key name="scan_clustat_note_0021">The server: [#!variable!service!#] has been restarted.</key>
+		<key name="scan_clustat_note_0022">The service: [#!variable!service!#] has started.</key>
+		<key name="scan_clustat_note_0023"></key>
+		<key name="scan_clustat_note_0024"></key>
+		<key name="scan_clustat_note_0025">The service: [#!variable!service!#] is being stopped.</key>
+		<key name="scan_clustat_note_0026">The service: [#!variable!service!#] has been stopped.</key>
+		<key name="scan_clustat_note_0027"></key>
+		<key name="scan_clustat_note_0028">The server: [#!variable!server!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_clustat_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
@@ -64,6 +72,33 @@ The cluster's state has changed!
 - Cluster name:  [#!variable!old_cluster_name!#] -> [#!variable!new_cluster_name!#]
 - Quorum status: [#!variable!old_quorum_status!#] -> [#!variable!new_quorum_status!#]
 		</key>
+		<key name="scan_clustat_warning_0010">
+The server: [#!variable!server!#]'s status has changed in an unexpected way.
+- The old state was: [#!variable!old_state!#]
+- The new state is:  [#!variable!new_state!#]
+
+Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+		</key>
+		<key name="scan_clustat_warning_0011">
+The node: [#!variable!node!#]'s status has changed in an unexpected way.
+- The old state was: [#!variable!old_state!#]
+- The new state is:  [#!variable!new_state!#]
+
+Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+		</key>
+		<key name="scan_clustat_warning_0012">
+The service: [#!variable!service!#]'s status has changed in an unexpected way.
+- The old state was: [#!variable!old_state!#]
+- The new state is:  [#!variable!new_state!#]
+
+Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+		</key>
+		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot!</key>
+		<key name="scan_clustat_warning_0014">The server: [#!variable!service!#] has failed!</key>
+		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
+		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
+		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted. This is generally not normal, unless someone is doing work on a node.</key>
+		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline! If this was not expected, the node may have crashed and been fenced!</key>
 		
 		<!-- Errors -->
 		<key name="scan_clustat_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>

@@ -53,9 +53,17 @@ sub register_alert
 	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : ""; # This should error.
 	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
 	my $alert_title_key         = $parameter->{alert_title_key}         ? $parameter->{alert_title_key}         : "an_alert_title_0003";
-	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : {};
+	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
 	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : ""; # This should error.
-	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : {};
+	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_vars => {
+		name1 => "alert_agent_name",        value1 => $alert_agent_name,
+		name2 => "alert_level",             value2 => $alert_level,
+		name3 => "alert_title_key",         value3 => $alert_title_key,
+		name4 => "alert_title_variables",   value4 => $alert_title_variables, 
+		name5 => "alert_message_key",       value5 => $alert_message_key, 
+		name6 => "alert_message_variables", value6 => $alert_message_variables
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $title_variables = "";
 	if (ref($alert_title_variables) eq "HASH")
@@ -87,14 +95,16 @@ INSERT INTO
     alert_title_variables, 
     alert_message_key, 
     alert_message_variables, 
+    modified_date
 ) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
+    (".$an->data->{sys}{host_id_query}."), 
     ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).", 
     ".$an->data->{sys}{use_db_fh}->quote($title_variables).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).", 
-    ".$an->data->{sys}{use_db_fh}->quote($alert_message_variables)."
+    ".$an->data->{sys}{use_db_fh}->quote($message_variables).",
+    ".$an->data->{sys}{db_timestamp}."
 );
 ";
 	
@@ -102,7 +112,8 @@ INSERT INTO
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
 		name1 => "query",  value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->DB->do_db_write({sql => $query});
+	
+	$an->DB->do_db_write({query => $query});
 	
 	return(0);
 }

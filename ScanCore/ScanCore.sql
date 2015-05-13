@@ -49,7 +49,7 @@ AS $$
 DECLARE
 	history_hosts RECORD;
 BEGIN
-	SELECT INTO history_hosts * FROM hosts WHERE host_id=new.host_id;
+	SELECT INTO history_hosts * FROM hosts WHERE host_id = new.host_id;
 	INSERT INTO history.hosts
 		(host_id,
 		host_name,
@@ -108,7 +108,7 @@ AS $$
 DECLARE
 	history_alerts RECORD;
 BEGIN
-	SELECT INTO history_alerts * FROM alerts WHERE host_id=new.host_id;
+	SELECT INTO history_alerts * FROM alerts WHERE alert_id = new.alert_id;
 	INSERT INTO history.alerts
 		(alert_id,
 		alert_host_id,
@@ -177,7 +177,7 @@ AS $$
 DECLARE
 	history_powers RECORD;
 BEGIN
-	SELECT INTO history_powers * FROM powers WHERE host_id=new.host_id;
+	SELECT INTO history_powers * FROM powers WHERE power_id = new.power_id;
 	INSERT INTO history.powers
 		(power_id,
 		power_host_id,
@@ -244,7 +244,7 @@ AS $$
 DECLARE
 	history_temperatures RECORD;
 BEGIN
-	SELECT INTO history_temperatures * FROM temperatures WHERE host_id=new.host_id;
+	SELECT INTO history_temperatures * FROM temperatures WHERE temperature_id = new.temperature_id;
 	INSERT INTO history.temperatures
 		(temperature_id,
 		temperature_host_id,
@@ -305,7 +305,7 @@ AS $$
 DECLARE
 	history_agents RECORD;
 BEGIN
-	SELECT INTO history_agents * FROM agents WHERE agent_id=new.agent_id;
+	SELECT INTO history_agents * FROM agents WHERE agent_id = new.agent_id;
 	INSERT INTO history.agents
 		(agent_id,
 		agent_host_id,
@@ -364,7 +364,7 @@ AS $$
 DECLARE
 	history_ram_used RECORD;
 BEGIN
-	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id=new.ram_used_id;
+	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id = new.ram_used_id;
 	INSERT INTO history.ram_used
 		(ram_used_id,
 		ram_used_host_id,

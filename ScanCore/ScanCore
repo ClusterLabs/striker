@@ -302,14 +302,14 @@ sub update_db_ram_used
 	# Get the unix time that this table was last updated for this host.
 	#my $query = "SELECT round(extract(epoch from modified_date)) FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $query = "SELECT modified_date FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	
 	my $target_ram_used_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
 	   $target_ram_used_last_updated = 0 if not $target_ram_used_last_updated;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "target_ram_used_last_updated", value1 => $target_ram_used_last_updated
 	}, file => $THIS_FILE, line => __LINE__ });
 	
@@ -318,7 +318,7 @@ sub update_db_ram_used
 	###       first, pull all the existing entries out of the target.
 	   $query   = "SELECT ram_used_by, round(extract(epoch from modified_date)) FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	# One or more records were found.
@@ -332,7 +332,7 @@ sub update_db_ram_used
 		}, file => $THIS_FILE, line => __LINE__ });
 		
 		$an->data->{db}{target}{ram_used}{$ram_used_by}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 			name1 => "db::target::ram_used::${ram_used_by}::modified_date", value1 => $an->data->{db}{target}{ram_used}{$ram_used_by}{modified_date}
 		}, file => $THIS_FILE, line => __LINE__ });
 	}
@@ -363,12 +363,12 @@ AND
 ORDER BY
     modified_date ASC;
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	$results = "";
 	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	# One or more records were found.
@@ -615,7 +615,7 @@ AND
 ORDER BY
     modified_date ASC;
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	$results = "";
