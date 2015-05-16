@@ -58,6 +58,7 @@ This is the AN::Tools master 'words' file.
 		<key name="an_variables_0004">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#]</key>
 		<key name="an_variables_0005">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#]</key>
 		<key name="an_variables_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#]</key>
+		<key name="an_variables_0007">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#]</key>
 		
 		<!-- Alert titles -->
 		<key name="an_alert_title_0001">Debug</key>

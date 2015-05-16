@@ -275,9 +275,11 @@ sub update_db
 		# Now update the rest of the ScanCore tables.
 		update_db_agents($an, $id);
 		update_db_ram_used($an, $id);
-		#update_db_alerts($an, $id);
+		update_db_alerts($an, $id);
 		#update_db_temperature($an, $id);
 		#update_db_power($an, $id);
+		
+		#die "$THIS_FILE ".__LINE__."; Testing...\n";
 	}
 	
 	return(0);
@@ -301,7 +303,7 @@ sub update_db_ram_used
 	
 	# Get the unix time that this table was last updated for this host.
 	#my $query = "SELECT round(extract(epoch from modified_date)) FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
-	my $query = "SELECT modified_date FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_vars => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -422,7 +424,7 @@ WHERE
 	# Commit the changes (if any).
 	if (@{$an->data->{sys}{sql}})
 	{
-		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
+		$an->DB->do_db_write({id => $target_db_id, query => $an->data->{sys}{sql}});
 		$an->data->{sys}{sql} = [];
 	}
 	
@@ -438,16 +440,15 @@ sub update_db_alerts
 	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
 	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
 	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_vars => {
 		name1 => "target_last_updated", value1 => $target_last_updated, 
 		name2 => "source_updated_time", value2 => $source_updated_time, 
 		name3 => "source_db_id",        value3 => $source_db_id, 
 		name4 => "target_db_id",        value4 => $target_db_id
 	}, file => $THIS_FILE, line => __LINE__ });
 	
-	# Get the unix time that this table was last updated for this host.
-	#my $query = "SELECT round(extract(epoch from modified_date)) FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	# Get the time that this table was last updated for this host.
+	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -459,7 +460,143 @@ sub update_db_alerts
 		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
 	}, file => $THIS_FILE, line => __LINE__ });
 	
-	### TODO
+	### NOTE: Alerts are a strange beast... There should never be an entry
+	###       in the public table, except when alerts are pending being
+	###       sent. So we'll read in all the missing records from the
+	###       history schema, INSERT them into target, then delete from the
+	###       public schema all the entries NOT in the source's public
+	###       schema so that a pile of old alarms don't go out.
+	
+	# Read in all the newer records from the source DB.
+	my $old_date = $target_alerts_last_updated;
+	if ($target_alerts_last_updated =~ /^\d+$/)
+	{
+		# It's unix time.
+		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_alerts_last_updated)."))";
+	}
+	else
+	{
+		# Already a SQL time stamp
+		$old_date = $an->data->{sys}{use_db_fh}->quote($target_alerts_last_updated);
+	}
+	$query = "
+SELECT 
+    alert_agent_name, 
+    alert_level, 
+    alert_title_key, 
+    alert_title_variables, 
+    alert_message_key, 
+    alert_message_variables, 
+    modified_date 
+FROM 
+    history.alerts 
+WHERE 
+    alert_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    $old_date < modified_date;
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__ });
+	my $results = $an->DB->do_db_query({id => $source_db_id, query => $query});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__ });
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $alert_agent_name        = $row->[0];
+		my $alert_level             = $row->[1];
+		my $alert_title_key         = $row->[2];
+		my $alert_title_variables   = $row->[3];
+		my $alert_message_key       = $row->[4];
+		my $alert_message_variables = $row->[5];
+		my $modified_date           = $row->[6];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_vars => {
+			name1 => "alert_agent_name",        value1 => $alert_agent_name, 
+			name2 => "alert_level",             value2 => $alert_level, 
+			name3 => "alert_title_key",         value3 => $alert_title_key, 
+			name4 => "alert_title_variables",   value4 => $alert_title_variables, 
+			name5 => "alert_message_key",       value5 => $alert_message_key, 
+			name6 => "alert_message_variables", value6 => $alert_message_variables, 
+			name7 => "modified_date",           value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		
+		# If there isn't an existing extry in the target, do an insert
+		my $query = "
+INSERT INTO 
+    alerts 
+(
+    alert_host_id, 
+    alert_agent_name, 
+    alert_level, 
+    alert_title_key, 
+    alert_title_variables, 
+    alert_message_key, 
+    alert_message_variables, 
+    modified_date 
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).",  
+    ".$an->data->{sys}{use_db_fh}->quote($alert_title_variables).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).",  
+    ".$an->data->{sys}{use_db_fh}->quote($alert_message_variables).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+);";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now read is the remaining alerts from the source and delete
+	# all others from the target.
+	my @save_the_dates;
+	$query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__ });
+	$results = "";
+	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__ });
+	foreach my $row (@{$results})
+	{
+		my $modified_date = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			name1 => "modified_date", value1 => $modified_date
+		}, file => $THIS_FILE, line => __LINE__ });
+		push @save_the_dates, $modified_date;
+	}
+	
+	# Now create the DELETE FROM ... query.
+	$query = "
+DELETE FROM 
+    alerts 
+WHERE 
+    alert_host_id = (".$an->data->{sys}{host_id_query}.")";
+	
+	foreach my $modified_date (@save_the_dates)
+	{
+		$query .= "
+AND 
+    modified_date != ".$an->data->{sys}{use_db_fh}->quote($modified_date)." ";
+	}
+	$query .= ";";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__ });
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	# Commit the changes (if any).
+	if (@{$an->data->{sys}{sql}})
+	{
+		$an->DB->do_db_write({id => $target_db_id, query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
 	
 	return(0);
 }
@@ -552,7 +689,7 @@ sub update_db_agents
 	
 	# Get the unix time that this table was last updated for this host.
 	#my $query = "SELECT round(extract(epoch from modified_date)) FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.");";
-	my $query = "SELECT modified_date FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_vars => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
