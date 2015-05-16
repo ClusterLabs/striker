@@ -47,8 +47,8 @@ sub register_alert
 	my $parameter = shift;
 	
 	# Clear any prior errors.
-# 	$self->_set_error;
 	my $an = $self->parent;
+	$self->_set_error;
 	
 	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : ""; # This should error.
 	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
@@ -70,7 +70,7 @@ sub register_alert
 	{
 		foreach my $key (sort {$a cmp $b} keys %{$alert_title_variables})
 		{
-			$title_variables .= "#!$key!$alert_title_variables->{$key}!#,";
+			$title_variables .= "!!$key!$alert_title_variables->{$key}!!,";
 		}
 	}
 	my $message_variables = "";
@@ -79,7 +79,7 @@ sub register_alert
 		foreach my $key (sort {$a cmp $b} keys %{$alert_message_variables})
 		{
 			$alert_message_variables->{$key} = "--" if not defined $alert_message_variables->{$key};
-			$message_variables .= "#!$key!$alert_message_variables->{$key}!#,";
+			$message_variables .= "!!$key!$alert_message_variables->{$key}!!,";
 		}
 	}
 	

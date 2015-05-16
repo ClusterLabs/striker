@@ -56,10 +56,7 @@
 # 39 - Failed to configure shorewall because the BCN subnet mask could not be
 #      converted to CIDR notation.
 # 
-# TODO: - Add a '--bcn-router' option that, if set along with PXE, will
-#         configure shorewall to masq the BCN. Then have the Install Target
-#         function also enable/disabled shorewall/iptables.
-#       - If a repo is specified with an 'https://' address, then be sure that
+# TODO: - If a repo is specified with an 'https://' address, then be sure that
 #         perl-Crypt-SSLeay is installed.
 #       - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -69,6 +66,7 @@
 #          striker stop this when it first starts to configure the node).
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
+#       - Remove 'priority=1' from our repos at the end.
 #         
 # BUG: - 
 # 

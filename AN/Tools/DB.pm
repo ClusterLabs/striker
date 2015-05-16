@@ -125,7 +125,7 @@ sub do_db_write
 		if ($is_array)
 		{
 			$an->data->{dbh}{$id}->commit();
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_vars => {
 				name1 => "is_array", value1 => $is_array
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -190,7 +190,7 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_vars => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_vars => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $connections = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})

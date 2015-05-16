@@ -1,0 +1,622 @@
+#!/usr/bin/perl
+#
+# This tries to recover a server that has entered a 'failed' or 'recovering'
+# state by checking (and trying to fix) common problems, like inactive LVs,
+# deleted ISO that are referenced in definition files, etc.
+# 
+# Return codes:
+# 0  = Normal exit.
+# 1  = Failed to make a shell call.
+# 2  = Failed to read a file.
+# 3  = Failed to write a file.
+# 4  = 
+# 5  = 
+# 6  = 
+# 7  = 
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use Net::SSH2;
+
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+# Turn off buffering.
+$| = 1;
+
+# Default configuration.
+my $conf = {
+	directory	=>	{
+		archive		=>	"/shared/archive/",
+		definitions	=>	"/shared/definitions/",
+		files		=>	"/shared/files/",
+	},
+	executable	=>	{
+		clustat		=>	"/usr/sbin/clustat",
+		clusvcadm	=>	"/usr/sbin/clusvcadm",
+		cp		=>	"/bin/cp",
+		lvchange	=>	"/sbin/lvchange",
+		lvs		=>	"/sbin/lvs",
+	},
+	path		=>	{
+		striker_config	=>	"/etc/striker/striker.conf",
+	},
+	switches	=>	{},
+	remote_users	=>	[],
+	sys		=>	{
+		debug		=>	0,
+		switch_count	=>	0,
+		boot_server	=>	1,
+		server		=>	{},
+	},
+};
+
+logger($conf, $THIS_FILE, __LINE__, "-=] Starting $THIS_FILE");
+
+# No switches is OK, we'll query all configured 
+get_switches($conf);
+if (($conf->{switches}{h})   || 
+    ($conf->{switches}{'?'}) ||
+    ($conf->{switches}{help}))
+{
+	print_usage($conf);
+	exit(0);
+}
+
+# Enable debugging if requested.
+$conf->{sys}{debug} = 1 if $conf->{switches}{d};
+
+if ($conf->{switches}{b})
+{
+	$conf->{sys}{boot_server} = 1;
+}
+elsif ($conf->{switches}{B})
+{
+	$conf->{sys}{boot_server} = 0;
+}
+
+# Read the Striker config.
+read_configuration($conf);
+
+# Recover servers
+check_servers($conf);
+
+exit(0);
+
+# This calls 'clustat' and checks which (if any) servers are in the 'failed' or
+# 'recovering' state. For each found, it will call 'disable' and then look to
+# see what is wrong and try to fix it.
+sub check_servers
+{
+	my ($conf) = @_;
+	
+	my $shell_call = "$conf->{executable}{clustat}";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		if ($line =~ /^vm:(.*?) (.*?) (.*)$/)
+		{
+			my $server = $1;
+			my $host   = $2;
+			my $status = $3;
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - server: [$server], host: [$host], status: [$status]") if $conf->{sys}{debug};
+			
+			if (($status =~ /fail/i) or ($status =~ /recover/i))
+			{
+				logger($conf, $THIS_FILE, __LINE__, "The server: [$server] is in: [$status] status, recovery needed!");
+				recover_server($conf, $server);
+			}
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This calls 'clusvcadm -d' to disable the server, then looks for reasons why
+# if might have failed to start.
+sub recover_server
+{
+	my ($conf, $server) = @_;
+	
+	my @optical_discs;
+	my @logical_voluments;
+	my $in_disk         = 0;
+	my $disk_type       = "";
+	my $disk_device     = "";
+	my $disk_source     = "";
+	my $definition_file = "$conf->{directory}{definitions}/$server.xml";
+	my $shell_call      = "$definition_file";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "<$shell_call") or logger($conf, $THIS_FILE, __LINE__, "Failed to read: [$shell_call], error was: $!\n", 2);
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		
+		if ($line =~ /<disk/)
+		{
+			$in_disk     = 1;
+			$disk_type   = ($line =~ /type='(.*?)'/)[0];
+			$disk_device = ($line =~ /device='(.*?)'/)[0];
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - In disk; type: [$disk_type], device: [$disk_device]") if $conf->{sys}{debug};
+		}
+		if ($in_disk)
+		{
+			if ($line =~ /<\/disk>/)
+			{
+				# Try to recover!
+				if (($disk_type eq "file") && ($disk_device eq "cdrom"))
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Will check the optical disc: [$disk_source]") if $conf->{sys}{debug};
+					push @optical_discs, $disk_source;
+				}
+				elsif (($disk_type eq "block") && ($disk_device eq "disk"))
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Will check the disk: [$disk_source]") if $conf->{sys}{debug};
+					push @logical_voluments, $disk_source;
+				}
+				else
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The source device: [$disk_source] is unknonw. It is a: [$disk_type:$disk_device]") if $conf->{sys}{debug};
+				}
+				
+				# Not blank the values.
+				$in_disk     = 0;
+				$disk_type   = "";
+				$disk_device = "";
+				$disk_source = "";
+				next;
+			}
+			if ($line =~ /source file='(.*?)'/)
+			{
+				# Optical disc
+				$disk_source = $1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - In disk; source: [$disk_source]") if $conf->{sys}{debug};
+			}
+			if ($line =~ /source dev='(.*?)'/)
+			{
+				# disk
+				$disk_source = $1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - In disk; source: [$disk_source]") if $conf->{sys}{debug};
+			}
+		}
+	}
+	close $file_handle;
+	
+	foreach my $disk_source (@optical_discs)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking optical media: [$disk_source]") if $conf->{sys}{debug};
+		check_optical_disc($conf, $disk_source, $server);
+	}
+	
+	foreach my $disk_source (@logical_voluments)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking logical volume: [$disk_source]") if $conf->{sys}{debug};
+		check_logical_volume($conf, $disk_source, $server);
+	}
+	
+	# Now disable and then restart the server.
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::server::${server}::something_fixed: [$disk_source]") if $conf->{sys}{debug};
+	restart_server($conf, $server) if $conf->{sys}{server}{$server}{something_fixed};
+	
+	return(0);
+}
+
+# This looks for the passed-in logical volume and checks if it is active or
+# not. If it isn't, it tries to active it.
+sub check_logical_volume
+{
+	my ($conf, $disk_source, $server) = @_;
+	
+	my $is_active  = 0;
+	my $shell_call = "$conf->{executable}{lvs} --noheadings --options lv_active $disk_source";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		if ($line =~ /locally/)
+		{
+			$is_active = 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The logical volume: [$disk_source] is active") if $conf->{sys}{debug};
+		}
+	}
+	close $file_handle;
+
+	if (not $is_active)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The logical volume: [$disk_source] is NOT active! Activating it...") if $conf->{sys}{debug};
+		
+		# Backup the file.
+		archive_file($conf, $server);
+		
+		my $shell_call = "$conf->{executable}{lvchange} --activate y $disk_source";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+		open (my $file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		}
+		close $file_handle;
+		
+		$conf->{sys}{server}{$server}{something_fixed} = 1;
+		# TODO: Check that this succeeded.
+	}
+	
+	return(0);
+}
+
+# This looks for the passed-in ISO file and, if it is not found, removes it
+# from the the server's definition file.
+sub check_optical_disc
+{
+	my ($conf, $disk_source, $server) = @_;
+	
+	if (not -e $disk_source)
+	{
+		# Backup the file.
+		archive_file($conf, $server);
+		
+		logger($conf, $THIS_FILE, __LINE__, "The optical disk (ISO): [$disk_source] does not exist, removing it from: [$server]'s defintion file.");
+		my $source_xml      = "";
+		my $definition_file = "$conf->{directory}{definitions}/$server.xml";
+		my $shell_call      = "$definition_file";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+		open (my $file_handle, "<$shell_call") or logger($conf, $THIS_FILE, __LINE__, "Failed to read: [$shell_call], error was: $!\n", 2);
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+			next if ($line =~ /file='$disk_source'/);
+			next if $line =~ /^\s+$/;
+			next if not $line;
+			$source_xml .= "$line\n";
+		}
+		close $file_handle;
+		
+		# Write out the file.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - new: [$definition_file] will be:\n========\n$source_xml========\n") if $conf->{sys}{debug};
+		
+		$shell_call = "$definition_file";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+		open ($file_handle, ">$shell_call") or logger($conf, $THIS_FILE, __LINE__, "Failed to wrte: [$shell_call], error was: $!\n", 3);
+		print $file_handle $source_xml;
+		close $file_handle;
+		
+		$conf->{sys}{server}{$server}{something_fixed} = 1;
+	}
+	
+	return(0);
+}
+
+# This returns a 'YY-MM-DD_hh:mm:ss' formatted string based on the given time
+# stamp
+sub get_date
+{
+	my ($conf, $time, $time_only) = @_;
+	$time      = time if not defined $time;
+	$time_only = 0 if not $time_only;
+	
+	my @time   = localtime($time);
+	my $year   = ($time[5] + 1900);
+	my $month  = sprintf("%.2d", ($time[4] + 1));
+	my $day    = sprintf("%.2d", $time[3]);
+	my $hour   = sprintf("%.2d", $time[2]);
+	my $minute = sprintf("%.2d", $time[1]);
+	my $second = sprintf("%.2d", $time[0]);
+	
+	# this returns "yyyy-mm-dd_hh:mm:ss".
+	my $date = $time_only ? "$hour:$minute:$second" : "$year-$month-$day $hour:$minute:$second";
+	
+	return ($date);
+}
+
+# This copies the passed file to '/shared/archive/'
+sub archive_file
+{
+	my ($conf, $server) = @_;
+	### TODO: Check/create the archive directory.
+	
+	my $source      =  "$conf->{directory}{definitions}/$server.xml";
+	my $destination =  "$conf->{directory}{archive}/$server.xml.".get_date($conf, time);
+	   $destination =~ s/ /_/;
+	
+	# If the destination file exists, we probably already made a backup
+	if (not -e $destination)
+	{
+		my $shell_call = "$conf->{executable}{cp} --archive --no-clobber --verbose $source $destination";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+		open (my $file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return (0);
+}
+
+# This does the actual disable and then enable commands.
+sub restart_server
+{
+	my ($conf, $server) = @_;
+	
+	my $shell_call = "$conf->{executable}{clusvcadm} -d vm:$server";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+	}
+	close $file_handle;
+	
+	if ($conf->{sys}{boot_server})
+	{
+		sleep 3;
+		
+		$shell_call = "$conf->{executable}{clusvcadm} -F -e vm:$server";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+		open ($file_handle, "$shell_call 2>&1 |") or logger($conf, $THIS_FILE, __LINE__, "Failed to call: [$shell_call], error was: $!\n", 1);
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
+
+# This collects the command line switches
+sub get_switches
+{
+	my ($conf) = @_;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$conf->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything
+			# after it to 'raw'.
+			$conf->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$conf->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$conf->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$conf->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$conf->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			else
+			{
+				# Got a value without an argument.
+				$conf->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($conf->{switches}{raw})
+	{
+		$conf->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	#foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}}) { print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n"; } exit;
+	
+	return(0);
+}
+
+# Write entries to syslog and STDOUT.
+sub logger
+{
+	my ($conf, $file, $line_number, $message, $fatal) = @_;
+	
+	# Print the message to the screen.
+	print "$message\n";
+	
+	# We split on new-lines so that multi-line message render better in
+	# syslog.
+	my $is_debug = $message =~ /\[ Debug \]/ ? 1 : 0;
+	foreach my $line (split/\n/, $message)
+	{
+		next if not $line;
+		if (($is_debug) && ($line !~ /\[ Debug \]/))
+		{
+			$line = "[ Debug ]   $line";
+		}
+		$line =~ s/\t/    /g;
+		open my $filehandle, '-|', "logger", "-t", $file, "$line_number: $line" or die "Failed to call: [logger -t $THIS_FILE $line]. Error: $!\n";
+		while (<$filehandle>)
+		{
+			print $_;
+		}
+		close $filehandle;
+	}
+	
+	if ($fatal)
+	{
+		exit($fatal);
+	}
+	
+	return(0);
+}
+
+# This reads in the configuration file.
+sub read_configuration
+{
+	my ($conf) = @_;
+	
+	my $file_handle = IO::Handle->new();
+	my $shell_call = "$conf->{path}{striker_config}";
+	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$file_handle->close();
+	
+	return(0);
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($conf) = @_;
+	
+	my $help = q|
+ -=] Tries to recover failed or recovering servers.
+
+DESCRIPTION
+
+This program will perform checks to identify problems and attempt to correct
+common problems that would cause a server to not boot. Examples are activating
+'inactive' LVs, ejecting ISOs that no longer exist is the media library, etc.
+
+
+SWITCHES
+
+ -b
+
+	Boot and servers that are recovered.
+
+ -B
+
+	Do NOT boot and servers that are recovered.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+EXAMPLE
+
+Try to recover servers.
+
+ ./anvil-recover-server
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+                                                              Alteeve's Niche!
+|;
+	open (my $file_handle, ">", "/tmp/$THIS_FILE") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $help;
+	close $file_handle;
+	
+	system("/usr/bin/less /tmp/$THIS_FILE");
+
+	return(0);
+}

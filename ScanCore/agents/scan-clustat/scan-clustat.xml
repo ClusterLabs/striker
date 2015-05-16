@@ -93,12 +93,16 @@ The service: [#!variable!service!#]'s status has changed in an unexpected way.
 
 Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
 		</key>
-		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot!</key>
+		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot! Recovery will be attempted now...</key>
 		<key name="scan_clustat_warning_0014">The server: [#!variable!service!#] has failed!</key>
 		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
 		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
 		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted. This is generally not normal, unless someone is doing work on a node.</key>
 		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline! If this was not expected, the node may have crashed and been fenced!</key>
+		<key name="scan_clustat_warning_0019">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
+		<key name="scan_clustat_warning_0020">The server: [#!variable!service!#] was recovered successfully.</key>
+		<key name="scan_clustat_warning_0021">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
+		<key name="scan_clustat_warning_0022">The server: [#!variable!service!#] was recovered successfully.</key>
 		
 		<!-- Errors -->
 		<key name="scan_clustat_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
