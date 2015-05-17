@@ -86,11 +86,11 @@ sub round
 			$an->Alert->error({
 				fatal		=>	1,
 				title_key	=>	"error_title_0011",
-				title_vars	=>	{
+				title_variables	=>	{
 					method		=>	"AN::Tools::Math->round()",
 				},
 				message_key	=>	"error_message_0020",
-				message_vars	=>	{
+				message_variables	=>	{
 					number		=>	$num,
 				},
 				code		=>	2,

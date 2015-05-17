@@ -56,7 +56,7 @@ sub register_alert
 	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
 	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : ""; # This should error.
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
@@ -109,7 +109,7 @@ INSERT INTO
 ";
 	
 	# Record!
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_vars => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query",  value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -126,39 +126,39 @@ sub error
 	my $parameter = shift;
 	
 	# Clear any prior errors.
-# 	$self->_set_error;
+	$self->_set_error;
 	my $an = $self->parent;
 	
 	# Setup default values
-	my ($fatal, $title_key, $title_variables, $message_key, $message_vars, $code, $file, $line);
+	my ($fatal, $title_key, $title_variables, $message_key, $message_variables, $code, $file, $line);
 	
 	# See if I am getting parameters is a hash reference or directly as
 	# element arrays.
 	if (ref($parameter))
 	{
 		# Called via a hash ref, good.
-		$fatal  	= $parameter->{fatal}		? $parameter->{fatal}		: 1;
-		$title_key	= $parameter->{title_key}	? $parameter->{title_key}	: $an->String->get({key => "an_0004"});
-		$title_variables	= $parameter->{title_vars}	? $parameter->{title_vars}	: "";
-		$message_key	= $parameter->{message_key}	? $parameter->{message_key}	: $an->String->get({key => "an_0005"});
-		$message_vars	= $parameter->{message_vars}	? $parameter->{message_vars}	: "";
-		$code   	= $parameter->{code}		? $parameter->{code}		: 1;
-		$file		= $parameter->{file}		? $parameter->{file}		: $an->String->get({key => "an_0006"});
-		$line		= $parameter->{line}		? $parameter->{line}		: "";
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title: [$title], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
+		$fatal             = $parameter->{fatal}             ? $parameter->{fatal}             : 1;
+		$title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : $an->String->get({key => "an_0004"});
+		$title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
+		$message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : $an->String->get({key => "an_0005"});
+		$message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
+		$code              = $parameter->{code}              ? $parameter->{code}              : 1;
+		$file              = $parameter->{file}              ? $parameter->{file}              : $an->String->get({key => "an_0006"});
+		$line              = $parameter->{line}              ? $parameter->{line}              : "";
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
 	}
 	else
 	{
 		# Called directly.
-		$fatal		= $parameter ? $parameter : 1;
-		$title_key	= shift;
+		$fatal			= $parameter ? $parameter : 1;
+		$title_key		= shift;
 		$title_variables	= shift;
-		$message_key	= shift;
-		$message_vars	= shift;
-		$code		= shift;
-		$file		= shift;
-		$line		= shift;
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], code: [$code], file: [$file], line: [$line]\n";
+		$message_key		= shift;
+		$message_variables	= shift;
+		$code			= shift;
+		$file			= shift;
+		$line			= shift;
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
 	}
 	
 	# It is possible for this to become a run-away call, so this helps
@@ -167,14 +167,14 @@ sub error
 	if ($an->_error_count > $an->_error_limit)
 	{
 		print "Infinite loop detected while trying to print an error:\n";
-		print "- fatal:        [$fatal]\n";
-		print "- title_key:    [$title_key]\n";
-		print "- title_vars:   [$title_variables]\n";
-		print "- message_key:  [$message_key]\n";
-		print "- message_vars: [$title_variables]\n";
-		print "- code:         [$code]\n";
-		print "- file:         [$file]\n";
-		print "- line:         [$line]\n";
+		print "- fatal:             [$fatal]\n";
+		print "- title_key:         [$title_key]\n";
+		print "- title_variables:   [$title_variables]\n";
+		print "- message_key:       [$message_key]\n";
+		print "- message_variables: [$title_variables]\n";
+		print "- code:              [$code]\n";
+		print "- file:              [$file]\n";
+		print "- line:              [$line]\n";
 		die "Infinite loop detected while trying to print an error, exiting.\n";
 	}
 	
@@ -195,7 +195,7 @@ sub error
 			key		=>	$title_key,
 			variables	=>	$title_variables,
 		});
-		print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
+		#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
 	}
 	
 	# If the message is a key, translate it.
@@ -204,7 +204,7 @@ sub error
 	{
 		$message_key = $an->String->get({
 			key		=>	$message_key,
-			variables	=>	$message_vars,
+			variables	=>	$message_variables,
 		});
 		#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
 	}
@@ -273,62 +273,37 @@ sub warning
 	$self->_set_error;
 	
 	# Setup default values
-	my $title_key    = "";
-	my $title_variables   = "";
-	my $message_key  = "";
-	my $message_vars = "";
-	my $code         = 1;
-	my $file         = "";
-	my $line         = 0;
-	my $log_to       = "";
+	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : "";
+	my $title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
+	my $message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : "";
+	my $message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
+	my $file              = $parameter->{file}              ? $parameter->{file}              : "";
+	my $line              = $parameter->{line}              ? $parameter->{line}              : "";
+	my $log_to            = $parameter->{log_to}            ? $parameter->{log_to}            : $an->default_log_file();
+	my $code              = 1;
 	
-	# See if I am getting parameters is a hash reference or directly as
-	# element arrays.
-	if (ref($parameter))
-	{
-		# Called via a hash ref, good.
-		$title_key    = $parameter->{title_key}    ? $parameter->{title_key}    : "";
-		$title_variables   = $parameter->{title_vars}   ? $parameter->{title_vars}   : "";
-		$message_key  = $parameter->{message_key}  ? $parameter->{message_key}  : ""; # This should cause an error
-		$message_vars = $parameter->{message_vars} ? $parameter->{message_vars} : "";
-		$file         = $parameter->{file}         ? $parameter->{file}         : ""; # This should cause an error
-		$line         = $parameter->{line}         ? $parameter->{line}         : ""; # This should cause an error
-		$log_to       = $parameter->{log_to}       ? $parameter->{log_to}       : "";
-	}
-	else
-	{
-		# Called directly.
-		$title_key    = $parameter;
-		$title_variables   = shift;
-		$message_key  = shift;
-		$message_vars = shift;
-		$file         = shift;
-		$line         = shift;
-		$log_to       = shift;
-	}
 	if (0)
 	{
-		print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_vars: [$title_variables], message_key: [$message_key], message_vars: [$message_vars], file: [$file], line: [$line], log_to: [$log_to]\n";
+		print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], file: [$file], line: [$line], log_to: [$log_to]\n";
 		use Data::Dumper;
-		if ($title_variables)   { print "$THIS_FILE ".__LINE__."; Title vars hash:\n"; print Dumper $title_variables; }
-		if ($message_vars) { print "$THIS_FILE ".__LINE__."; Message vars hash:\n"; print Dumper $message_vars; }
+		if ($title_variables)   { print "$THIS_FILE ".__LINE__."; Title variables hash:\n"; print Dumper $title_variables; }
+		if ($message_variables) { print "$THIS_FILE ".__LINE__."; Message variables hash:\n"; print Dumper $message_variables; }
 	}
 	
 	# Turn the arguments into strings.
-	
 	# It is possible for this to become a run-away call, so this helps
 	# catch when that happens.
 	$an->_error_count($an->_error_count + 1);
 	if ($an->_error_count > $an->_error_limit)
 	{
 		print "Infinite loop detected while trying to print a warning:\n";
-		print "- title_key:    [$title_key]\n";
-		print "- title_vars:   [$title_variables]\n";
-		print "- message_key:  [$message_key]\n";
-		print "- message_vars: [$title_variables]\n";
-		print "- code:         [$code]\n";
-		print "- file:         [$file]\n";
-		print "- line:         [$line]\n";
+		print "- title_key:         [$title_key]\n";
+		print "- title_variables:   [$title_variables]\n";
+		print "- message_key:       [$message_key]\n";
+		print "- message_variables: [$title_variables]\n";
+		print "- code:              [$code]\n";
+		print "- file:              [$file]\n";
+		print "- line:              [$line]\n";
 		die "Infinite loop detected while trying to print a warning, exiting.\n";
 	}
 	
@@ -344,12 +319,12 @@ sub warning
 	}
 	
 	# If the message is a key, translate it.
-	#print "$THIS_FILE ".__LINE__."; message_key: [$message_key], message_vars: [$message_vars]\n";
+	#print "$THIS_FILE ".__LINE__."; message_key: [$message_key], message_variables: [$message_variables]\n";
 	if ($message_key =~ /\w+_\d+$/)
 	{
 		$message_key = $an->String->get({
 			key		=>	$message_key,
-			variables	=>	$message_vars,
+			variables	=>	$message_variables,
 		});
 		#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
 	}

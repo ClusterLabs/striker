@@ -50,15 +50,15 @@ sub base2
 		{
 			my $an = $self->parent;
 			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0009",
-				message_key	=>	"error_message_0013",
-				message_vars	=>	{
-					set		=>	$set,
+				fatal			=>	1,
+				title_key		=>	"error_title_0009",
+				message_key		=>	"error_message_0013",
+				message_variables	=>	{
+					set			=>	$set,
 				},
-				code		=>	3,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
+				code			=>	3,
+				file			=>	"$THIS_FILE",
+				line			=>	__LINE__
 			});
 		}
 	}
@@ -99,7 +99,7 @@ sub comma
 			fatal		=>	1,
 			title_key	=>	"error_title_0010",
 			message_key	=>	"error_message_0014",
-			message_vars	=>	{
+			message_variables	=>	{
 				number		=>	$number,
 			},
 			code		=>	4,
@@ -161,18 +161,18 @@ sub time
 	if (($time =~ /\D/) || ($float =~ /\D/))
 	{
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0011",
-			title_vars	=>	{
-				method		=>	"AN::Tools::Readable->time()",
+			fatal			=>	1,
+			title_key		=>	"error_title_0011",
+			title_variables		=>	{
+				method			=>	"AN::Tools::Readable->time()",
 			},
-			message_key	=>	"error_message_0015",
-			message_vars	=>	{
-				old_time	=>	$old_time,
+			message_key		=>	"error_message_0015",
+			message_variables	=>	{
+				old_time		=>	$old_time,
 			},
-			code		=>	5,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	5,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.
@@ -297,18 +297,18 @@ sub bytes_to_hr
 	if ($hr_size =~ /\D/)
 	{
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0011",
-			title_vars	=>	{
-				method		=>	"AN::Tools::Readable->bytes_to_hr()",
+			fatal			=>	1,
+			title_key		=>	"error_title_0011",
+			title_variables		=>	{
+				method			=>	"AN::Tools::Readable->bytes_to_hr()",
 			},
-			message_key	=>	"error_message_0016",
-			message_vars	=>	{
-				size		=>	$size,
+			message_key		=>	"error_message_0016",
+			message_variables	=>	{
+				size			=>	$size,
 			},
-			code		=>	6,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	6,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.
@@ -493,20 +493,20 @@ sub hr_to_bytes
 	if ($size !~ /\d+[\.\d+]?/)
 	{
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0011",
-			title_vars	=>	{
-				method		=>	"AN::Tools::Readable->hr_to_bytes()",
+			fatal			=>	1,
+			title_key		=>	"error_title_0011",
+			title_variables		=>	{
+				method			=>	"AN::Tools::Readable->hr_to_bytes()",
 			},
-			message_key	=>	"error_message_0017",
-			message_vars	=>	{
-				size		=>	$size,
-				sign		=>	$sign,
-				type		=>	$type,
+			message_key		=>	"error_message_0017",
+			message_variables	=>	{
+				size			=>	$size,
+				sign			=>	$sign,
+				type			=>	$type,
 			},
-			code		=>	7,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	7,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.
@@ -523,20 +523,20 @@ sub hr_to_bytes
 		if ($size =~ /\D/)
 		{
 			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0011",
-				title_vars	=>	{
-					method		=>	"AN::Tools::Readable->hr_to_bytes()",
+				fatal			=>	1,
+				title_key		=>	"error_title_0011",
+				title_variables		=>	{
+					method			=>	"AN::Tools::Readable->hr_to_bytes()",
 				},
-				message_key	=>	"error_message_0018",
-				message_vars	=>	{
-					size		=>	$size,
-					sign		=>	$sign,
-					type		=>	$type,
+				message_key		=>	"error_message_0018",
+				message_variables	=>	{
+					size			=>	$size,
+					sign			=>	$sign,
+					type			=>	$type,
 				},
-				code		=>	8,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
+				code			=>	8,
+				file			=>	"$THIS_FILE",
+				line			=>	__LINE__
 			});
 		}
 		return ($sign.$size);
@@ -576,16 +576,16 @@ sub hr_to_bytes
 		# If we're here, we didn't match one of the large sizes or any
 		# of the other sizes, so die.
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0012",
-			message_key	=>	"",
-			message_vars	=>	{
-				size		=>	$size,
-				type		=>	$type,
+			fatal			=>	1,
+			title_key		=>	"error_title_0012",
+			message_key		=>	"",
+			message_variables	=>	{
+				size			=>	$size,
+				type			=>	$type,
 			},
-			code		=>	10,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	10,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.

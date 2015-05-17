@@ -2,6 +2,7 @@ package AN::Tools::String;
 
 use strict;
 use warnings;
+use Data::Dumper;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "String.pm";
@@ -55,7 +56,7 @@ sub force_utf8
 				fatal		=>	1,
 				title_key	=>	"error_title_0001",
 				message_key	=>	"error_message_0004",
-				message_vars	=>	{
+				message_variables	=>	{
 					set		=>	$set,
 				},
 				code		=>	14,
@@ -100,16 +101,23 @@ sub get
 	if (ref($parameter) eq "HASH")
 	{
 		# Values passed in a hash, good.
-# 		print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
-# 		print "$THIS_FILE ".__LINE__."; key:  [$parameter->{key}]\n"       if $parameter->{key};
-# 		print "$THIS_FILE ".__LINE__."; vars: [$parameter->{variables}]\n" if $parameter->{variables};
-# 		print "$THIS_FILE ".__LINE__."; lang: [$parameter->{language}]\n"  if $parameter->{language};
-# 		print "$THIS_FILE ".__LINE__."; hash: [$parameter->{hash}]\n"      if $parameter->{hash};
+#		print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
+#		print "$THIS_FILE ".__LINE__."; key:  [$parameter->{key}]\n"       if $parameter->{key};
+#		print "$THIS_FILE ".__LINE__."; variables: [$parameter->{variables}]\n" if $parameter->{variables};
+#		print "$THIS_FILE ".__LINE__."; lang: [$parameter->{language}]\n"  if $parameter->{language};
+#		print "$THIS_FILE ".__LINE__."; hash: [$parameter->{hash}]\n"      if $parameter->{hash};
 		$key       = $parameter->{key}       if $parameter->{key};
 		$variables = $parameter->{variables} ?  $parameter->{variables} : "";
 		$language  = $parameter->{language}  if $parameter->{language};
 		$hash      = $parameter->{hash}      if $parameter->{hash};
-		#print "$THIS_FILE ".__LINE__."; key: [$key], vars: [$variables], lang: [$language], hash: [$hash]\n";
+# 		print "$THIS_FILE ".__LINE__."; key: [$key], variables: [$variables], language: [$language], hash: [$hash]\n";
+# 		if (ref($variables) eq "HASH")
+# 		{
+# 			print "========================\n";
+# 			print "key: [$key]\n";
+# 			print Dumper $variables;
+# 			print "========================\n";
+# 		}
 	}
 	else
 	{
@@ -118,7 +126,7 @@ sub get
 		$variables = $_[0] if defined $_[0];
 		$language  = $_[1] if defined $_[1];
 		$hash      = $_[2] if defined $_[2];
-		#print "$THIS_FILE ".__LINE__."; key: [$key], vars: [$variables], lang: [$language], hash: [$hash]\n";
+		#print "$THIS_FILE ".__LINE__."; key: [$key], variables: [$variables], lang: [$language], hash: [$hash]\n";
 	}
 	
 	# Make sure we got a key.
@@ -148,7 +156,7 @@ sub get
 			fatal		=>	1,
 			title_key	=>	"error_title_0001",
 			message_key	=>	"error_message_0005",
-			message_vars	=>	{
+			message_variables	=>	{
 				hash		=>	$hash,
 			},
 			code	=>	15,
@@ -160,16 +168,16 @@ sub get
 		return (undef);
 	}
 
-	# Make sure that 'vars' is an array reference, if set.
-	#print "$THIS_FILE ".__LINE__."; vars: [$variables]\n";
+	# Make sure that 'variables' is an array reference, if set.
+	#print "$THIS_FILE ".__LINE__."; variables: [$variables]\n";
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
-		#print "$THIS_FILE ".__LINE__."; The 'vars' string has the value: [$variables], which is not an array, as was expected.\n";
+		#print "$THIS_FILE ".__LINE__."; The 'variables' string has the value: [$variables], which is not a hash reference, as was expected.\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0001",
 			message_key	=>	"error_message_0006",
-			message_vars	=>	{
+			message_variables	=>	{
 				variables	=>	$variables,
 			},
 			code	=>	16,
@@ -197,18 +205,18 @@ sub get
 	# Make sure that the request key is in the language hash.
 	if (not exists $hash->{words}{lang}{$language}{key}{$key}{content})
 	{
-		#print "$THIS_FILE ".__LINE__."; no string key.\n";
+		print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], no string key.\n";
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0004",
-			message_key	=>	"error_message_0007",
-			message_vars	=>	{
-				key		=>	$key,
-				language	=>	$language,
+			fatal			=>	1,
+			title_key		=>	"error_title_0004",
+			message_key		=>	"error_message_0007",
+			message_variables		=>	{
+				key			=>	$key,
+				language		=>	$language,
 			},
-			code		=>	18,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	18,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		return (undef);
 	}
@@ -223,15 +231,21 @@ sub get
 	# to the command line.
 	$string =~ s/\n(\s+)$//;
 	
-	# Make sure that if the string has '#!variable!x!#', that 'vars' is a
-	# hash reference. If it isn't, it would trigger an infinite loop later.
-	# The one exception is '#!variable!*!#' which is used to explain things
-	# to the user, and is explicitely escaped as needed.
+	# Make sure that if the string has '#!variable!x!#', that 'variables' 
+	# is a hash reference. If it isn't, it would trigger an infinite loop 
+	# later. The one exception is '#!variable!*!#' which is used to explain
+	# things to the user, and is explicitely escaped as needed.
 	if (($string =~ /#!variable!(.*?)!#/) && (ref($variables) ne "HASH"))
 	{
 		#print "$THIS_FILE ".__LINE__."; string: [$string], key: [$key]\n";
 		if ($string =~ /#!variable!\*!#/)
 		{
+			#print "$THIS_FILE ".__LINE__."; Passed: '#!variable!\*!#'\n";
+		}
+		else
+		{
+			# Other variable key, so this is fatal.
+			print "$THIS_FILE ".__LINE__."; String: [$string] has a variable substitution, but no variables were passed in.\n";
 			$an->Alert->error({
 				fatal		=>	1,
 				title_key	=>	"error_title_0005",
@@ -246,7 +260,7 @@ sub get
 	
 	# Substitute in any variables if needed.
 	#print "$THIS_FILE ".__LINE__."; string: [$string]\n";
-	#print "$THIS_FILE ".__LINE__."; vars: [".ref($variables)."]\n" if $variables;
+	#print "$THIS_FILE ".__LINE__."; variables: [".ref($variables)."]\n" if $variables;
 	if (ref($variables) eq "HASH")
 	{
 		#foreach my $key (keys %{$variables}) { print "$THIS_FILE ".__LINE__."; key: [$key]\t->[$variables->{$key}]\n"; }
@@ -311,11 +325,12 @@ sub read_words
 	#print "$THIS_FILE ".__LINE__."; words file: [$file]\n";
 	if (not -e $file)
 	{
+		#print "$THIS_FILE ".__LINE__."; Couldn't find: [$file]\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0006",
 			message_key	=>	"error_message_0009",
-			message_vars	=>	{
+			message_variables	=>	{
 				file		=>	$file,
 			},
 			code		=>	11,
@@ -328,11 +343,12 @@ sub read_words
 	}
 	if (not -r $file)
 	{
+		#print "$THIS_FILE ".__LINE__."; Couldn't read: [$file]\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0007",
 			message_key	=>	"error_message_0010",
-			message_vars	=>	{
+			message_variables	=>	{
 				file		=>	$file,
 			},
 			code		=>	12,
@@ -362,7 +378,7 @@ sub read_words
 		fatal		=>	1,
 		title_key	=>	"error_title_0008",
 		message_key	=>	"error_message_0011",
-		message_vars	=>	{
+		message_variables	=>	{
 			file		=>	$file,
 			error		=>	$!,
 		},
@@ -653,7 +669,7 @@ sub _process_string
 # 	print "$i: $parameter->{string}\n";
 	while ($parameter->{string} =~ /#!(.+?)!#/)
 	{
-		# Substitute 'word' keys, but without 'vars'. This has to be
+		# Substitute 'word' keys, but without 'variables'. This has to be
 		# first! 'protect' will catch 'word' keys, because no where
 		# else are they allowed.
 		#print __LINE__."; string: [$parameter->{string}]\n";
@@ -861,11 +877,12 @@ sub _insert_variables_into_string
 		my $variable = $1;
 		
 		# Sometimes, #!variable!*!# is used in explaining things to 
-		# users. So we need to escape those. It will be restored later
-		# in '_restore_protected()'.
+		# users. So we need to escape it. It will be restored later in
+		# '_restore_protected()'.
 		if ($variable eq "*")
 		{
 			$parameter->{string} =~ s/#!variable!\*!#/!#variable!*#!/;
+			next;
 		}
 		
 		#print "$THIS_FILE ".__LINE__."; variable: [$variable] -> [$parameter->{variables}{$variable}]\n";

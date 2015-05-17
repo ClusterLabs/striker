@@ -59,6 +59,7 @@ This is the AN::Tools master 'words' file.
 		<key name="an_variables_0005">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#]</key>
 		<key name="an_variables_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#]</key>
 		<key name="an_variables_0007">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#]</key>
+		<key name="an_variables_0008">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#]</key>
 		
 		<!-- Alert titles -->
 		<key name="an_alert_title_0001">Debug</key>
@@ -91,6 +92,8 @@ This is the AN::Tools master 'words' file.
 		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
 		<key name="error_title_0014">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0015">Failed to write to the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0016">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0017">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>

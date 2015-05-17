@@ -56,13 +56,13 @@ sub _os
 	{
 		# Huh?
 		$an->Alert->warning({
-			title_key	=>	"warning_title_0001",
-			message_key	=>	"warning_message_0001",
-			message_vars	=>	{
-				os		=>	$^O,
+			title_key		=>	"warning_title_0001",
+			message_key		=>	"warning_message_0001",
+			message_variables	=>	{
+				os			=>	$^O,
 			},
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		$an->_directory_delimiter("/");
 	}

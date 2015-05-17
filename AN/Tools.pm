@@ -379,7 +379,7 @@ sub nice_exit
 	my $exit_code = defined $_[0] ? shift : 99;
 	
 	my $an = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_vars => { function => "nice_exit", }, message_key => "tools_log_0003", message_vars => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	$exit_code = 99 if not $exit_code;
 	
 	# Close database connections
@@ -516,19 +516,19 @@ sub _load_fcntl
 	if ($@)
 	{
 		$self->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0013",
-			title_vars	=>	{
-				module		=>	"Fcntl",
+			fatal			=>	1,
+			title_key		=>	"error_title_0013",
+			title_variables		=>	{
+				module			=>	"Fcntl",
 			},
-			message_key	=>	"error_message_0021",
-			message_vars	=>	{
-				module		=>	"Fcntl",
-				error		=>	$@,
+			message_key		=>	"error_message_0021",
+			message_variables	=>	{
+				module			=>	"Fcntl",
+				error			=>	$@,
 			},
-			code		=>	31,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	31,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		return (undef);
 	}
@@ -550,19 +550,19 @@ sub _load_io_handle
 	if ($@)
 	{
 		$self->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0013",
-			title_vars	=>	{
-				module		=>	"IO::Handle",
+			fatal			=>	1,
+			title_key		=>	"error_title_0013",
+			title_variables		=>	{
+				module			=>	"IO::Handle",
 			},
-			message_key	=>	"error_message_0021",
-			message_vars	=>	{
-				module		=>	"IO::Handle",
-				error		=>	$@,
+			message_key		=>	"error_message_0021",
+			message_variables	=>	{
+				module			=>	"IO::Handle",
+				error			=>	$@,
 			},
-			code		=>	13,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	13,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.
@@ -586,19 +586,19 @@ sub _load_math_bigint
 	if ($@)
 	{
 		$self->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0013",
-			title_vars	=>	{
-				module		=>	"Math::BigInt",
+			fatal			=>	1,
+			title_key		=>	"error_title_0013",
+			title_variables		=>	{
+				module			=>	"Math::BigInt",
 			},
-			message_key	=>	"error_message_0021",
-			message_vars	=>	{
-				module		=>	"Math::BigInt",
-				error		=>	$@,
+			message_key		=>	"error_message_0021",
+			message_variables	=>	{
+				module			=>	"Math::BigInt",
+				error			=>	$@,
 			},
-			code		=>	9,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	9,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 		# Return nothing in case the user is blocking fatal
 		# errors.

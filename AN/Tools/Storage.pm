@@ -115,15 +115,15 @@ sub find
 	if ($fatal)
 	{
 		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0002",
-			message_key	=>	"error_message_0002",
-			message_vars	=>	{
-				file		=>	$file,
+			fatal			=>	1,
+			title_key		=>	"error_title_0002",
+			message_key		=>	"error_message_0002",
+			message_variables	=>	{
+				file			=>	$file,
 			},
-			code		=>	44,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
+			code			=>	44,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
 		});
 	}
 	
@@ -290,15 +290,15 @@ sub search_dirs
 		{
 			# Something non-sensical was passed.
 			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0003",
-				message_key	=>	"error_message_0003",
-				message_vars	=>	{
-					array		=>	$array,
+				fatal			=>	1,
+				title_key		=>	"error_title_0003",
+				message_key		=>	"error_message_0003",
+				message_variables	=>	{
+					array			=>	$array,
 				},
-				code	=>	45,
-				file	=>	"$THIS_FILE",
-				line	=>	__LINE__
+				code		=>	45,
+				file		=>	"$THIS_FILE",
+				line		=>	__LINE__
 			});
 			
 		}

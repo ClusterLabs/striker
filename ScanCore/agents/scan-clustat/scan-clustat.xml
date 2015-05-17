@@ -77,21 +77,21 @@ The server: [#!variable!server!#]'s status has changed in an unexpected way.
 - The old state was: [#!variable!old_state!#]
 - The new state is:  [#!variable!new_state!#]
 
-Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
 		</key>
 		<key name="scan_clustat_warning_0011">
 The node: [#!variable!node!#]'s status has changed in an unexpected way.
 - The old state was: [#!variable!old_state!#]
 - The new state is:  [#!variable!new_state!#]
 
-Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
 		</key>
 		<key name="scan_clustat_warning_0012">
 The service: [#!variable!service!#]'s status has changed in an unexpected way.
 - The old state was: [#!variable!old_state!#]
 - The new state is:  [#!variable!new_state!#]
 
-Please send this alert to: #!variable!scancore_brand_0003!# (#!variable!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
+Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
 		</key>
 		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot! Recovery will be attempted now...</key>
 		<key name="scan_clustat_warning_0014">The server: [#!variable!service!#] has failed!</key>
