@@ -46,9 +46,11 @@ sub do_db_write
 
 	$id    = $parameter->{id}    ? $parameter->{id}    : "";
 	$query = $parameter->{query} ? $parameter->{query} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "id",    value1 => $id, 
-		name2 => "query", value2 => $query
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "id", value1 => $id, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have a query, die.
@@ -108,7 +110,7 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -191,6 +193,11 @@ sub connect_to_databases
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	
+	my $file = $parameter->{file};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "file", value1 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $connections = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -352,7 +359,7 @@ sub connect_to_databases
 	###       which reference other tables (possibly layers deep) that
 	###       reference node_id.
 	#$an->DB->sync_dbs();
-	$an->DB->find_behind_databases();
+	$an->DB->find_behind_databases({file => $file});
 	
 	# Now look to see if our hostname has changed.
 	#$an->DB->check_hostname();
@@ -373,12 +380,12 @@ sub get_host_id
 	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : die "$THIS_FILE ".__LINE__."; AN::Tools::DB->get_host_id() called without specifying a 'hostname'.\n";
 	
 	my $query = "SELECT host_id, round(extract(epoch from modified_date)) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({id => $id, query => $query})->[0];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results",       value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -386,7 +393,7 @@ sub get_host_id
 	# found, 'results' will be an empty string, in which case we'll set 
 	# '0' for the two values.
 	my ($host_id, $modified_time) = ref($results) eq "ARRAY" ? @{$results} : (0, 0);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "host_id",       value1 => $host_id, 
 		name2 => "modified_time", value2 => $modified_time
 	}, file => $THIS_FILE, line => __LINE__});
@@ -408,14 +415,104 @@ sub check_hostname
 	return(0);
 }
 
+# This simply updates the 'updated' table with the current time.
+sub update_time
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $id   = $parameter->{id};
+	my $file = $parameter->{file};
+	
+	# If I wasn't passed a specific ID, update all DBs.
+	my @db_ids;
+	if ($id)
+	{
+		push @db_ids, $id;
+	}
+	else
+	{
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			push @db_ids, $id;
+		}
+	}
+	
+	foreach my $id (@db_ids)
+	{
+		# Check to see if there is a time record yet.
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    updated 
+WHERE 
+    updated_host_id = (".$an->data->{sys}{host_id_query}.")
+AND
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
+
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];	# (->[row]->[column])
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__ });
+		if (not $count)
+		{
+			# Add this agent to the DB
+			my $query = "
+INSERT INTO 
+    updated 
+(
+    updated_host_id, 
+    updated_by, 
+    modified_date
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($file).", 
+    ".$an->data->{sys}{db_timestamp}."
+);
+";
+			$an->DB->do_db_write({id => $id, query => $query});
+		}
+		else
+		{
+			# It exists and the value has changed.
+			my $query = "
+UPDATE 
+    updated 
+SET
+    modified_date = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
+AND
+    updated_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+			$an->DB->do_db_write({id => $id, query => $query});
+		}
+	}
+	
+	return(0);
+}
+
 # This returns the most up to date database ID, the time it was last updated
 # and an array or DB IDs that are behind.
 sub find_behind_databases
 {
-	my $self = shift;
-	my $an   = $self->parent;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $file = $parameter->{file};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "file", value1 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Look at all the databases and find the most recent time stamp (and
 	# the ID of the DB).
@@ -433,16 +530,26 @@ SELECT
 FROM 
     updated 
 WHERE 
-    updated_host_id = (".$an->data->{sys}{host_id_query}.");
-";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+    updated_host_id = (".$an->data->{sys}{host_id_query}.")";
+		if ($file)
+		{
+			$query .= "
+AND
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";";
+		}
+		else
+		{
+			$query .= ";";
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -460,7 +567,7 @@ WHERE
 		###       possible for one agent's table to fall behind? Maybe,
 		###       if the agent is deleted/recovered...
 		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "scancore::sql::source_updated_time",   value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::sql::source_db_id",    value2 => $an->data->{scancore}{sql}{source_db_id}, 
 			name3 => "scancore::db::${id}::last_updated", value3 => $an->data->{scancore}{db}{$id}{last_updated}
@@ -471,6 +578,10 @@ WHERE
 	$an->data->{scancore}{db_to_update} = {};
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
+			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind

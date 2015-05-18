@@ -107,7 +107,7 @@ if (parse_clustat($an))
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each
 # one.
-my $connections = $an->DB->connect_to_databases();
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
@@ -127,6 +127,8 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
 
 # Clean up and go away.
 nice_exit($an, 0);
@@ -146,13 +148,19 @@ sub update_db
 	$an->data->{sys}{sql} = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
 	{
+		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_is_behind", value1 => $db_is_behind, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		next if not $db_is_behind;
+		
 		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
 		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
 		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
 		next if $id eq $source_db_id;
 		
 		# TODO: Make these proper log messages
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0028", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0028", message_variables => {
 			id                  => $id, 
 			source_db_id        => $source_db_id, 
 			source_updated_time => $source_updated_time,
@@ -161,24 +169,20 @@ sub update_db
 		if (not $target_last_updated)
 		{
 			# Full recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__ });
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__ });
 		}
 		elsif (($source_updated_time - $target_last_updated) > 0)
 		{
 			# Partial recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0030", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0030", message_variables => {
 				seconds_behind => ($source_updated_time - $target_last_updated), 
 			}, file => $THIS_FILE, line => __LINE__ });
-			
-			# Update clustat, clustat_nodes and clustat services.
-			update_db_clustat($an, $id);
-			update_db_clustat_node($an, $id);
-			update_db_clustat_service($an, $id);
 		}
-		else
-		{
-			# No recovery needed.
-		}
+		
+		# Update clustat, clustat_nodes and clustat services.
+		update_db_clustat($an, $id);
+		update_db_clustat_node($an, $id);
+		update_db_clustat_service($an, $id);
 	}
 	
 	return(0);
@@ -640,6 +644,8 @@ ORDER BY
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
+		# The cluster name can change to OFFLINE, and we don't want to
+		# INSERT that.
 		my $clustat_cluster_name = $row->[0];
 		my $clustat_quorate      = $row->[1];
 		my $modified_date        = $row->[2];
@@ -676,12 +682,11 @@ INSERT INTO
 UPDATE 
     clustat
 SET
-    clustat_host_id = (".$an->data->{sys}{host_id_query}."), 
     clustat_quorate = ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
     modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).";
-";
+    clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
 		}
 	}
 	
@@ -744,7 +749,7 @@ sub find_changes
 	if (read_last_scan($an))
 	{
 		# No record found, INSERT everything.
-		push @{$an->data->{sys}{sql}}, "
+		my $query = "
 INSERT INTO 
     clustat 
 (
@@ -757,8 +762,12 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     ".$an->data->{sys}{db_timestamp}."
-);
-";
+);";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		push @{$an->data->{sys}{sql}}, $query;
+		
 		# Now add the nodes.
 		foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{node}})
 		{
@@ -775,22 +784,39 @@ INSERT INTO
 	{
 		### A record was found, so look for changes.
 		# Look for changes in 'clustat'
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat::cluster_name",                       value1 => $an->data->{clustat}{cluster_name}, 
-			name2 => "clustat::sql::clustat::clustat_cluster_name", value2 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}, 
+		my $old_cluster_name  = $an->data->{clustat}{sql}{clustat}{clustat_cluster_name};
+		my $new_cluster_name  = $an->data->{clustat}{cluster_name};
+		my $old_quorum_status = $an->data->{clustat}{sql}{clustat}{clustat_quorate};
+		my $new_quorum_status = $an->data->{clustat}{quorate};
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "old_cluster_name", value1 => $old_cluster_name, 
+			name2 => "new_cluster_name", value2 => $new_cluster_name, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "old_quorum_status", value1 => $old_quorum_status, 
+			name2 => "new_quorum_status", value2 => $new_quorum_status, 
 		}, file => $THIS_FILE, line => __LINE__ });
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat::quorate",                       value1 => $an->data->{clustat}{quorate}, 
-			name2 => "clustat::sql::clustat::clustat_quorate", value2 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
-		}, file => $THIS_FILE, line => __LINE__ });
-		
-		if (($an->data->{clustat}{cluster_name} ne $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}) || 
-		    ($an->data->{clustat}{quorate}      ne $an->data->{clustat}{sql}{clustat}{clustat_quorate}))
+		if (($new_cluster_name  ne $old_cluster_name) || 
+		    ($new_quorum_status ne $old_quorum_status))
 		{
 			# Update the 'clustat' entry.
-			my $clustat_id = $an->data->{clustat}{sql}{clustat}{clustat_id};
-			push @{$an->data->{sys}{sql}}, "
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_variables => {
+				table => "clustat"
+			}, file => $THIS_FILE, line => __LINE__ });
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "old_cluster_name", value1 => $old_cluster_name, 
+				name2 => "new_cluster_name", value2 => $new_cluster_name, 
+			}, file => $THIS_FILE, line => __LINE__ });
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "old_quorum_status", value1 => $old_quorum_status, 
+				name2 => "new_quorum_status", value2 => $new_quorum_status, 
+			}, file => $THIS_FILE, line => __LINE__ });
+			
+			# Update the clustat record.
+			my $query = "
 UPDATE 
     clustat 
 SET 
@@ -800,23 +826,76 @@ SET
 WHERE 
     clustat_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_variables => {
-				table => "clustat"
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__ });
+			push @{$an->data->{sys}{sql}}, $query;
 			
 			# Send the alert.
-			$an->Alert->register_alert({
-				alert_level		=>	"warning", 
-				alert_agent_name	=>	"$THIS_FILE",
-				alert_title_key		=>	"an_alert_title_0004",		# Warning
-				alert_message_key	=>	"scan_clustat_warning_0009",	# Node deleted
-				alert_message_variables	=>	{
+			my $say_alert_level   = "notice";
+			my $say_alert_title   = "an_alert_title_0003"; 
+			my $say_alert_message = ""; 
+			my $variables         = {};
+			
+			# Cluster came online
+			if ($new_cluster_name eq "OFFLINE")
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0023"; 
+				$variables         = {
+					cluster		=>	$old_cluster_name,
+				};
+			}
+			
+			# Gone offline
+			elsif ($old_cluster_name eq "OFFLINE")
+			{
+				$say_alert_message = "scan_clustat_note_0006"; 
+				$variables         = {
+					cluster		=>	$new_cluster_name,
+				};
+			}
+			
+			# Gained quorum
+			elsif ($new_quorum_status eq "TRUE")
+			{
+				$say_alert_message = "scan_clustat_note_0017"; 
+			}
+			
+			# Lost quorum
+			elsif ($new_quorum_status eq "FALSE")
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0024"; 
+			}
+			
+			# what?
+			else
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0009"; 
+				$variables         = {
 					old_cluster_name	=>	$an->data->{clustat}{sql}{clustat}{clustat_cluster_name},
 					new_cluster_name	=>	$an->data->{clustat}{cluster_name},
 					old_quorum_status	=>	$an->data->{clustat}{sql}{clustat}{clustat_quorate},
 					new_quorum_status	=>	$an->data->{clustat}{quorate},
-				},
-			});
+				};
+			}
+			
+			# Send the alert.
+			if ($say_alert_message)
+			{
+				$an->Alert->register_alert({
+					alert_level		=>	$say_alert_level, 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	$say_alert_title,
+					alert_message_key	=>	$say_alert_message,
+					alert_message_variables	=>	$variables,
+				});
+			}
 		}
 		else
 		{
@@ -824,6 +903,14 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0023", message_variables => {
 				table => "clustat"
 			}, file => $THIS_FILE, line => __LINE__ });
+		}
+		
+		# If the node is OFFLINE, we're done.
+		if ($an->data->{clustat}{cluster_name} eq "OFFLINE")
+		{
+			$an->Log->entry({log_level => 3, message_key => "scan_clustat_log_0001", file => $THIS_FILE, line => __LINE__ });
+			commit_sql($an);
+			return(0);
 		}
 		
 		# Now look for changes in 'clustat_node'
@@ -862,16 +949,16 @@ WHERE
 				my $old_status     = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status};
 				my $new_status     = $an->data->{clustat}{node}{$node}{status};
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "node", value1 => $node, 
 				}, file => $THIS_FILE, line => __LINE__ });
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "old_cluster_id", value1 => $old_cluster_id, 
 					name2 => "new_cluster_id", value2 => $new_cluster_id, 
 				}, file => $THIS_FILE, line => __LINE__ });
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "old_status", value1 => $old_status, 
 					name2 => "new_status", value2 => $new_status, 
 				}, file => $THIS_FILE, line => __LINE__ });
@@ -910,14 +997,17 @@ WHERE
 					# 'Offline' -> 'Online, rgmanager'	= Cluster started
 					
 					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
-					my $send_alert        = 1;
 					my $say_alert_level   = "notice";
 					my $say_alert_title   = "an_alert_title_0003"; 
 					my $say_alert_message = ""; 
+					my $variables         = {};
 					if (($old_status =~ /Online, rgmanager/i) &&
 					    ($new_status =~ /Online/i))
 					{
-						$say_alert_message = "scan_clustat_note_0005"; 
+						$say_alert_message = "scan_clustat_note_0005";
+						$variables         = {
+							node		=>	$node,
+						};
 					}
 					
 					# 'Online, rgmanager' -> 'Offline'	= *** Node is offline, either by an admin or it crashed.
@@ -927,20 +1017,9 @@ WHERE
 						$say_alert_level   = "warning";
 						$say_alert_title   = "an_alert_title_0004"; 
 						$say_alert_message = "scan_clustat_warning_0018"; 
-					}
-					
-					# 'Online' -> 'Offline'			= cman was stopped
-					elsif (($old_status =~ /Online/i) &&
-					       ($new_status =~ /Offline/i))
-					{
-						$say_alert_message = "scan_clustat_note_0007"; 
-					}
-					
-					# 'Offline' -> 'Online'			= cman was started
-					elsif (($old_status =~ /Offline/i) &&
-					       ($new_status =~ /Online/i))
-					{
-						$say_alert_message = "scan_clustat_note_0008"; 
+						$variables         = {
+							node		=>	$node,
+						};
 					}
 					
 					# 'Online' -> 'Online, rgmanager'	= rgmanager started
@@ -948,46 +1027,66 @@ WHERE
 					       ($new_status =~ /Online, rgmanager/i))
 					{
 						$say_alert_message = "scan_clustat_note_0009"; 
+						$variables         = {
+							node		=>	$node,
+						};
 					}
 					
 					# 'Offline' -> 'Online, rgmanager'	= Cluster started
 					elsif (($old_status =~ /Offline/i) &&
 					       ($new_status =~ /Online, rgmanager/i))
 					{
-						$say_alert_message = "scan_clustat_note_0011"; 
+						$say_alert_message = "scan_clustat_note_0010"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Online' -> 'Offline'			= cman was stopped
+					elsif (($old_status =~ /Online/i) &&
+					       ($new_status =~ /Offline/i))
+					{
+						$say_alert_message = "scan_clustat_note_0007"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Offline' -> 'Online'			= cman was started
+					elsif (($old_status =~ /Offline/i) &&
+					       ($new_status =~ /Online/i))
+					{
+						$say_alert_message = "scan_clustat_note_0008"; 
+						$variables         = {
+							node		=>	$node,
+						};
 					}
 					
 					# We need a catch-all now.
-					else
+					elsif ($old_status ne $new_status)
 					{
 						# I set this to a warning because I don't 
 						# know what it is and better to be safe.
-						$send_alert = 0;
-						$an->Alert->register_alert({
-							alert_level		=>	"warning", 
-							alert_agent_name	=>	"$THIS_FILE",
-							alert_title_key		=>	"an_alert_title_0004",
-							alert_message_key	=>	"scan_clustat_warning_0011",
-							alert_message_variables	=>	{
-								node			=>	$node,
-								old_state		=>	$old_status,
-								new_state		=>	$new_status,
-							},
-						});
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
+						$say_alert_message = "scan_clustat_warning_0011"; 
+						$variables         = {
+							node		=>	$node,
+							old_state	=>	$old_status,
+							new_state	=>	$new_status,
+						};
 					}
 					
 					# Send the alert, if it wasn't cancelled by the
 					# catch-all.
-					if ($send_alert)
+					if ($say_alert_message)
 					{
 						$an->Alert->register_alert({
 							alert_level		=>	"$say_alert_level", 
 							alert_agent_name	=>	"$THIS_FILE",
 							alert_title_key		=>	"$say_alert_title",
-							alert_message_key	=>	"$say_alert_message",
-							alert_message_variables	=>	{
-								node			=>	$node,
-							},
+							alert_message_key	=>	$say_alert_message,
+							alert_message_variables	=>	$variables,
 						});
 					}
 					
@@ -1065,12 +1164,12 @@ WHERE
 				my $old_status = $an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_status};
 				my $new_status = $an->data->{clustat}{service}{$service}{status};
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
 					name1 => "old_host",   value1 => $old_host, 
 					name2 => "new_host",   value2 => $new_host 
 				}, file => $THIS_FILE, line => __LINE__ });
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "old_status", value1 => $old_status, 
 					name2 => "new_status", value2 => $new_status, 
 				}, file => $THIS_FILE, line => __LINE__ });
@@ -1084,15 +1183,26 @@ WHERE
 						table => "clustat_service",
 						entry => "$service",
 					}, file => $THIS_FILE, line => __LINE__ });
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+						name1 => "old_host",   value1 => $old_host, 
+						name2 => "new_host",   value2 => $new_host 
+					}, file => $THIS_FILE, line => __LINE__ });
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_status", value1 => $old_status, 
+						name2 => "new_status", value2 => $new_status, 
+					}, file => $THIS_FILE, line => __LINE__ });
+					
 					update_clustat_service($an, $service);
 					
 					### Alerts here depend on two things; Is is a VM 
-					### and how did the state change? It also
-					my $send_alert        = 1;
+					### and how did the state change?
 					my $recover_server    = 0;
 					my $say_alert_level   = "notice";
 					my $say_alert_title   = "an_alert_title_0003"; 
 					my $say_alert_message = "";
+					my $variables         = {},
 					
 					# This handles server related changes
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1105,7 +1215,9 @@ WHERE
 						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
 						# 
 						# disabled -> starting		= Booting
+						# stopped -> starting		= Booting
 						# disabled -> ... -> started	= Booted
+						# stopped -> ... -> started	= Booted
 						# ... -> starting -> started	= Booted
 						# ... -> starting -> failed	= Failed to boot
 						# disabled -> ... -> failed	= Failed to boot
@@ -1115,6 +1227,7 @@ WHERE
 						# 
 						# started -> stopping		= Shutting down
 						# ... -> stopping -> disabled	= Shut down
+						# ... -> stopping -> stopped	= Shut down
 						# started -> ... -> disabled	= Shut down
 						# started -> failed		= *** Was running, now failed!
 						# started -> recover*		= *** Was running, now failed!
@@ -1126,12 +1239,27 @@ WHERE
 						# disabled -> starting		= Booting
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "old_status", value1 => $old_status, 
-							name2 => "new_status",                              value2 => $new_status,
+							name2 => "new_status", value2 => $new_status,
 						}, file => $THIS_FILE, line => __LINE__ });
 						if (($old_status =~ /disabled/i) &&
 						    ($new_status =~ /starting/i))
 						{
 							$say_alert_message = "scan_clustat_note_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> starting	= Booted
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# disabled -> ... -> started	= Booted
@@ -1139,6 +1267,21 @@ WHERE
 						       ($new_status =~ /started/i))
 						{
 							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> started	= Booted
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> starting -> started	= Booted
@@ -1146,6 +1289,10 @@ WHERE
 						       ($new_status =~ /started/i))
 						{
 							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> starting -> failed	= Failed to boot
@@ -1156,6 +1303,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# disabled -> ... -> failed	= Failed to boot
@@ -1166,6 +1316,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# disabled -> ... -> recover*	= Failed to boot
@@ -1176,6 +1329,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# recover* -> disabled		= Recovery attempted
@@ -1186,6 +1342,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0019"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# recover* -> start*		= Recovery successful
@@ -1196,6 +1355,10 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0020"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# started -> stopping		= Shutting down
@@ -1203,6 +1366,10 @@ WHERE
 						       ($new_status =~ /stopping/i))
 						{
 							$say_alert_message = "scan_clustat_note_0019"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> stopping -> stopped	= Shut down
@@ -1210,13 +1377,39 @@ WHERE
 						       ($new_status =~ /disabled/i))
 						{
 							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
-						# started -> ... -> stopped	= Shut down
+						# ... -> stopping -> stopped	= Shut down
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> disabled	= Shut down
 						elsif (($old_status =~ /started/i) &&
 						       ($new_status =~ /disabled/i))
 						{
 							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> stopped	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> failed		= *** Was running, now failed!
@@ -1227,6 +1420,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0014"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> recover*		= *** Was running, now failed!
@@ -1237,6 +1433,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0014"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> starting		= powered off/recovering
@@ -1244,10 +1443,14 @@ WHERE
 						       ($new_status =~ /starting/i))
 						{
 							$say_alert_message = "scan_clustat_note_0021"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# wat?
-						else
+						elsif ($old_status ne $new_status)
 						{
 							# I set this to a warning because I don't 
 							# know what it is and better to be safe.
@@ -1255,19 +1458,15 @@ WHERE
 								name1 => "old_status", value1 => $old_status, 
 								name2 => "new_status", value2 => $new_status, 
 							}, file => $THIS_FILE, line => __LINE__ });
-							$send_alert = 0;
-							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
-								alert_title_key		=>	"an_alert_title_0004",
-								alert_title_variables	=>	{},
-								alert_message_key	=>	"scan_clustat_warning_0010",
-								alert_message_variables	=>	{
-									server			=>	$service,
-									old_state		=>	$old_status,
-									new_state		=>	$new_status,
-								},
-							});
+							
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0010"; 
+							$variables         = {
+								service			=>	$service,
+								old_state		=>	$old_status,
+								new_state		=>	$new_status,
+							};
 						}
 					}
 					else
@@ -1277,7 +1476,9 @@ WHERE
 						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
 						# 
 						# disabled -> starting		= Starting
+						# stopped -> ... -> starting	= Started
 						# disabled -> ... -> started	= started
+						# stopped -> ... -> started	= started
 						# ... -> starting -> started	= started
 						# ... -> starting -> failed	= Failed to start
 						# disabled -> ... -> failed	= Failed to start
@@ -1287,7 +1488,9 @@ WHERE
 						# 
 						# started -> stopping		= Shutting down
 						# ... -> stopping -> disabled	= Shut down
+						# ... -> stopping -> stopped	= Shut down
 						# started -> ... -> disabled	= Shut down
+						# started -> ... -> stopped	= Shut down
 						# started -> failed		= *** Was running, now failed!
 						# started -> recover*		= *** Was running, now failed!
 						# started -> starting		= powered off/recovering
@@ -1299,6 +1502,21 @@ WHERE
 						    ($new_status =~ /starting/i))
 						{
 							$say_alert_message = "scan_clustat_note_0011"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> starting	= Started
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0011"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# disabled -> ... -> started	= Started
@@ -1306,6 +1524,21 @@ WHERE
 						       ($new_status =~ /started/i))
 						{
 							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> started	= Started
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> starting -> started	= Started
@@ -1313,6 +1546,10 @@ WHERE
 						       ($new_status =~ /started/i))
 						{
 							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> starting -> failed	= Failed to start
@@ -1322,6 +1559,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# disabled -> ... -> failed	= Failed to start
@@ -1331,6 +1571,10 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# disabled -> ... -> recover*	= Failed to start
@@ -1340,6 +1584,10 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# recover* -> disabled		= Recovery attempted
@@ -1349,6 +1597,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0021"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# recover* -> started		= Recovery successful
@@ -1358,6 +1609,10 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# started -> stopping		= Stopping
@@ -1365,6 +1620,10 @@ WHERE
 						       ($new_status =~ /stopping/i))
 						{
 							$say_alert_message = "scan_clustat_note_0025"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# ... -> stopping -> stopped	= Stopped
@@ -1372,13 +1631,39 @@ WHERE
 						       ($new_status =~ /disabled/i))
 						{
 							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
-						# started -> ... -> stopped	= Shut down
+						# ... -> stopping -> stopped	= Shut down
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> disabled	= Shut down
 						elsif (($old_status =~ /started/i) &&
 						       ($new_status =~ /disabled/i))
 						{
 							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> stopped	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> failed		= *** Was running, now failed!
@@ -1388,6 +1673,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0016"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> recover*		= *** Was running, now failed!
@@ -1397,6 +1685,9 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0016"; 
+							$variables         = {
+								service		=>	$service,
+							};
 						}
 						
 						# started -> starting		= recovering
@@ -1408,43 +1699,42 @@ WHERE
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
 							$say_alert_message = "scan_clustat_warning_0017"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
 						}
 						
 						# wat?
-						else
+						elsif ($old_status ne $new_status)
 						{
 							# I set this to a warning because I don't 
 							# know what it is and better to be safe.
-							$send_alert = 0;
-							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
-								alert_title_key		=>	"an_alert_title_0004",
-								alert_message_key	=>	"scan_clustat_warning_0012",
-								alert_message_variables	=>	{
-									service			=>	$service,
-									old_state		=>	$old_status,
-									new_state		=>	$new_status,
-								},
-							});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "old_status", value1 => $old_status, 
+								name2 => "new_status", value2 => $new_status, 
+							}, file => $THIS_FILE, line => __LINE__ });
+							
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0012"; 
+							$variables         = {
+								service			=>	$service,
+								old_state		=>	$old_status,
+								new_state		=>	$new_status,
+							};
 						}
 					}
 					
-					# Send the alert, if it wasn't cancelled by the
-					# catch-all.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "send_alert", value1 => $send_alert, 
-					}, file => $THIS_FILE, line => __LINE__ });
-					if ($send_alert)
+					# Send the alert.
+					if ($say_alert_message)
 					{
 						$an->Alert->register_alert({
 							alert_level		=>	"$say_alert_level", 
 							alert_agent_name	=>	"$THIS_FILE",
 							alert_title_key		=>	"$say_alert_title",
-							alert_message_key	=>	"$say_alert_message",
-							alert_message_variables	=>	{
-								service			=>	$service,
-							},
+							alert_message_key	=>	$say_alert_message,
+							alert_message_variables	=>	$variables,
 						});
 					}
 					
@@ -1546,8 +1836,19 @@ WHERE
 	}
 	
 	# Now commit the changes.
+	commit_sql($an);
+	
+	return(0);
+}
+
+# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
+sub commit_sql
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
 	my $count = @{$an->data->{sys}{sql}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::sql #", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	if (@{$an->data->{sys}{sql}} > 0)
@@ -1556,7 +1857,7 @@ WHERE
 		$an->data->{sys}{sql} = [];
 	}
 	
-	return(0);
+	return($count);
 }
 
 # This tries to recover a server that is in a 'failed' or 'recovering' state.
@@ -1657,7 +1958,7 @@ WHERE
         clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($service)."
     );
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	push @{$an->data->{sys}{sql}}, $query;
@@ -1778,10 +2079,9 @@ AND
 	# TODO: This query should only ever return one row, but this fact
 	#       should be explicitely checked for.
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "query",        value1 => $query, 
-		name2 => "results",      value2 => $results, 
-		name3 => "results->[0]", value3 => $results->[0], 
+		name2 => "results->[0]", value2 => $results->[0], 
 	}, file => $THIS_FILE, line => __LINE__ });
 	if ($results->[0])
 	{
@@ -1789,17 +2089,17 @@ AND
 		# for data in the node and services tables.
 		my ($clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "clustat_quorate",      value1 => $clustat_quorate, 
 			name2 => "clustat_cluster_name", value2 => $clustat_cluster_name
 		}, file => $THIS_FILE, line => __LINE__ });
 		
 		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
 		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "clustat::sql::clustat::clustat_quorate",      value1 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
 		}, file => $THIS_FILE, line => __LINE__ });
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "clustat::sql::clustat::clustat_cluster_name", value1 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
 		}, file => $THIS_FILE, line => __LINE__ });
 		
@@ -1821,7 +2121,7 @@ AND
 ";
 		
 		my $results = $an->DB->do_db_query({query => $query});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",   value1 => $query, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__ });
@@ -1830,7 +2130,7 @@ AND
 			my ($clustat_node_name, $clustat_node_cluster_id, $clustat_node_status) = @{$array_reference};
 			
 			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "clustat_node_name",       value1 => $clustat_node_name, 
 				name2 => "clustat_node_cluster_id", value2 => $clustat_node_cluster_id, 
 				name3 => "clustat_node_status",     value3 => $clustat_node_status
@@ -1843,10 +2143,10 @@ AND
 			};
 			
 			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_cluster_id", value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_cluster_id}, 
 			}, file => $THIS_FILE, line => __LINE__ });
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_status",     value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}
 			}, file => $THIS_FILE, line => __LINE__ });
 		}
@@ -1870,12 +2170,16 @@ AND
     c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";
 		$results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",   value1 => $query, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__ });
 		foreach my $array_reference (@{$results})
 		{
 			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_is_vm) = @{$array_reference};
 			
 			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "clustat_service_name",   value1 => $clustat_service_name, 
 				name2 => "clustat_service_host",   value2 => $clustat_service_host, 
 				name3 => "clustat_service_status", value3 => $clustat_service_status, 
@@ -1891,13 +2195,13 @@ AND
 			};
 			
 			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_host",   value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}, 
 			}, file => $THIS_FILE, line => __LINE__ });
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
 			}, file => $THIS_FILE, line => __LINE__ });
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm",  value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 
 			}, file => $THIS_FILE, line => __LINE__ });
 		}

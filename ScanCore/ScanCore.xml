@@ -15,11 +15,12 @@ the main Striker strings file. Do this by prefixing all strings with
 		
 		<!-- These are used for generating emails. -->
 		<key name="scancore_email_0001">[ #!string!scancore_brand_0001!# ] - #!variable!level!# - #!variable!subject!#</key>
-<!-- This forms the email, so do NOT translate 'From: ', 'To: ' or 'Subject: '! -->
+<!-- This forms the email, so do NOT translate 'From: ', 'To: ' or 'Subject: '! Also, there must be a blank line before the message body. -->
 		<key name="scancore_email_0002">
 From:    #!variable!from!#
 To:      #!variable!to!#
 Subject: #!variable!subject!#
+
 #!variable!body!#
 		</key>
 		<key name="scancore_email_0003">
@@ -44,6 +45,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_brand_0002">Anvil!</key>
 		<key name="scancore_brand_0003">Alteeve's Niche!</key>
 		<key name="scancore_brand_0004">https://alteeve.ca/w/Support</key>
+		<key name="scancore_brand_0005">Please contact #!string!scancore_brand_0003!# for support: #!string!scancore_brand_0004!#</key>
 		
 		<!-- Log titles -->
 		<key name="scancore_title_0001">Debug</key>
@@ -100,10 +102,10 @@ Updating DB with ID: [#!variable!id!#].
 </key>
 		<key name="scancore_log_0029">This database appears to have no data, a complete copy is probably necessary (will verify per-table).</key>
 		<key name="scancore_log_0030">It is: [#!variable!seconds_behind!#] second(s) behind.</key>
-		<key name="scancore_log_0031">The DB with ID: [#!variable!id!#] is behind!</key>
+		<key name="scancore_log_0031">The DB with ID: [#!variable!id!#] is behind.</key>
 		<key name="scancore_log_0032">Recording alerts to: [#!variable!file!#].</key>
-		<key name="scancore_log_0033">#!variable!say_date!# - #!variable!alert_agent_name!# - #!variable!title!# - #!variable!message!#</key>
-		<key name="scancore_log_0034">Checking to see of the email relay file: [#!variable!postfix_relay_file!#] needs to be updated.</key>
+		<key name="scancore_log_0033">#!variable!date!# - #!variable!alert_agent_name!# - #!variable!title!# - #!variable!message!#</key>
+		<key name="scancore_log_0034">Checking to see of the email relay file: [#!variable!postfix_relay_file!#] needs to be created or updated.</key>
 		<key name="scancore_log_0035">It exists, reading it.</key>
 		<key name="scancore_log_0036">The email details have changed, rewriting the relay file.</key>
 		<key name="scancore_log_0037">It doesn't exist, creating it.</key>
@@ -116,6 +118,12 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0044">Restarting postfix.</key>
 		<key name="scancore_log_0045">Creating the alert email directory: [#!variable!email_directory!#].</key>
 		<key name="scancore_log_0046">Setting mode to: [#!variable!directory_mode!#].</key>
+		<key name="scancore_log_0047">No changes found.</key>
+		<key name="scancore_log_0048">Writing email file: [#!variable!file!#].</key>
+		<key name="scancore_log_0049">Sending the email stored in the file: [#!variable!file!#] now.</key>
+		<key name="scancore_log_0050">The user: [#!variable!user!#] is not interested in alert ID: [#!variable!alert_id!#] (title: [#!variable!title!#], message: [#!variable!message!#]).</key>
+		<key name="scancore_log_0051">One of the 'alerts::recipient::X::...' entries in the configuration file appears to be malformed and was ignored.</key>
+		<key name="scancore_log_0052">There were no alerts from this scan.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -143,8 +151,8 @@ The error was:
 ----------
 		</key>
 		<key name="scancore_warning_0008">There were errors writing data to the database. Rolling back!</key>
-		<key name="scancore_warning_0009">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]! Please check the 'alerts::recipient::X::email' entries.</key>
-		<key name="scancore_warning_0010">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]! Please check the 'alerts::recipient::X::file' entries.</key>
+		<key name="scancore_warning_0009">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::email' entries.</key>
+		<key name="scancore_warning_0010">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::file' entries.</key>
 		
 		<!-- Errors -->
 		<key name="scancore_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
@@ -159,7 +167,8 @@ The error was:
 		<key name="scancore_error_0010">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
 		<key name="scancore_error_0011">The AN::Tools::DB->do_db_write() method was called without a query.</key>
 		<key name="scancore_error_0012">Failed to do an update or insert the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scancore_error_0013">Too much RAM being used! Using: [#!variable!used_ram!#], maximum allowed: [#!variable!maximum_ram!#]!</key>
+		<key name="scancore_error_0013">Too much RAM being used! Using: [#!variable!used_ram!#], maximum allowed: [#!variable!maximum_ram!#].</key>
+		<key name="scancore_error_0014">It looks like a loop was hit trying to find a unique file name for storing an email. I got to: [#!variable!file!#] before giving up.</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>

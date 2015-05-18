@@ -103,6 +103,7 @@ my $an = AN::Tools->new({data =>
 		strings_read			=>	{},
 		sys		=>	{
 			agents			=>	[],
+			append_email_footer	=>	0,			# Set to '1' to add the footer warning that the email did not come from alteeve.ca
 			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			host_id_query		=>	"",
@@ -143,7 +144,7 @@ print $an->String->get({key => "scancore_message_0001"}), "\n";
 # Connect to the database(s). This is different from the in-loop connection in
 # that failing to connect to any databases right off the bad will cause the
 # program to bail out.
-my $connections = $an->DB->connect_to_databases();
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 if (not $connections)
 {
 	# Failed to connect to any database.
@@ -165,12 +166,6 @@ update_db($an);
 # Make sure this node is in the database.
 add_host_to_databases($an);
 
-### Temp
-# Check for and process alerts
-process_alerts($an);
-die "$THIS_FILE ".__LINE__."; Testing...\n";
-###
-
 # Disconnect from databases... We'll reconnect once the loop starts.
 $an->DB->disconnect_from_databases();
 
@@ -191,7 +186,7 @@ while (1)
 	$an->String->read_words({file => $an->data->{path}{striker_strings}});
 	
 	# Connect to the databases.
-	my $connections = $an->DB->connect_to_databases();
+	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
 	{
 		# Look to see if any databases need to be updated.
@@ -233,10 +228,10 @@ while (1)
 	check_ram_usage($an);
 	
 	# Check for and process alerts
-	#process_alerts($an);
+	process_alerts($an);
 	
 	# Record the time
-	update_time($an);
+	$an->DB->update_time({file => $THIS_FILE});
 	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
@@ -319,7 +314,7 @@ WHERE
 			modified_date           => $modified_date
 		};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_title_variables},
@@ -329,26 +324,44 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__ });
 	}
 	
-	# Sort out who is getting which alerts.
-	foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
+	# Process alerts, if any.
+	if (ref($an->data->{db}{alerts}{agent_name}))
 	{
-		if ($an->data->{alerts}{recipient}{$integer}{email})
+		# Sort out who is getting which alerts.
+		foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 		{
-			# Email recipient
-			send_email($an, $an->data->{alerts}{recipient}{$integer}{email});
+			if ($an->data->{alerts}{recipient}{$integer}{email})
+			{
+				# Email recipient
+				send_email($an, $an->data->{alerts}{recipient}{$integer}{email});
+			}
+			elsif ($an->data->{alerts}{recipient}{$integer}{file})
+			{
+				# Write to a file
+				record_alert_to_file($an, $an->data->{alerts}{recipient}{$integer}{file});
+			}
+			else
+			{
+				# Bad entry
+				$an->Log->entry({log_level => 2, message_key => "scancore_log_0051", file => $THIS_FILE, line => __LINE__ });
+			}
 		}
-		elsif ($an->data->{alerts}{recipient}{$integer}{file})
-		{
-			# Write to a file
-			record_alert_to_file($an, $an->data->{alerts}{recipient}{$integer}{file});
-		}
-		else
-		{
-			# ??
-		}
+		
+		# All done, delete the public.alerts entries.
+		$query = "DELETE FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		$an->DB->do_db_write({query => $query});
+		
+		# Delete the alerts from memory.
+		delete $an->data->{db}{alerts};
 	}
-	
-	# All done, delete the public.alerts entries.
+	else
+	{
+		# No alerts
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__ });
+	}
 	
 	return(0);
 }
@@ -357,7 +370,7 @@ WHERE
 sub convert_level_name_to_number
 {
 	my ($an, $level) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number", }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "level", value1 => "$level" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -389,7 +402,7 @@ sub convert_level_name_to_number
 sub convert_level_number_to_name
 {
 	my ($an, $level) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name", }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "level", value1 => "$level" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -512,11 +525,15 @@ sub send_email
 			$subject = $alert_level if $subject > $alert_level;
 			#print "$THIS_FILE ".__LINE__."; subject: [$subject], alert_level: [$alert_level]\n";
 			
+			my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables);
+			my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables);
 			if ($level >= $alert_level)
 			{
 				#print "$THIS_FILE ".__LINE__."; Sending alert: [$alert_id] to: [$name <$email>] in the language: [$language]...\n";
-				my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables);
-				my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "title",   value1 => $title, 
+					name2 => "message", value2 => $message, 
+				}, file => $THIS_FILE, line => __LINE__ });
 				$body .= $an->String->get({
 					language	=>	$language,
 					key		=>	"scancore_email_0005",
@@ -525,6 +542,16 @@ sub send_email
 						message		=>	$message
 					},
 				})."\n\n";
+			}
+			else
+			{
+				# Ignored
+				$an->Log->entry({log_level => 2, message_key => "scancore_log_0050", message_variables => {
+					user     => "$name <$email>",
+					alert_id => $alert_id, 
+					title    => $title,
+					message  => $message
+				}, file => $THIS_FILE, line => __LINE__ });
 			}
 		}
 	}
@@ -550,14 +577,17 @@ sub send_email
 	# The footer is a generic message tell the user not to yell at us for
 	# spamming them. (hey, you laugh, but managers will get these 
 	# emails...)
-	$body .= $an->String->get({
-		language	=>	$language,
-		key		=>	"scancore_email_0003",
-		variables	=>	{
-			hostname	=>	$an->hostname,
-		},
-	});
-	#print "$THIS_FILE ".__LINE__."; say_footer: [$say_footer]\n";
+	if ($an->data->{sys}{append_email_footer})
+	{
+		$body .= $an->String->get({
+			language	=>	$language,
+			key		=>	"scancore_email_0003",
+			variables	=>	{
+				hostname	=>	$an->hostname,
+			},
+		});
+		#print "$THIS_FILE ".__LINE__."; say_footer: [$say_footer]\n";
+	}
 	
 	# Now assemble the message.
 	my $say_to = "$name <$email>";
@@ -578,14 +608,94 @@ sub send_email
 	});
 	
 	# First, see if the relay file needs to be updated.
-	check_mail_config($an);
+	check_email_configuration($an);
 	
 	### TODO: Send the email!
 	#print "====================================\n";
 	#print "$email_body\n";
 	#print "====================================\n";
 	
+	# Select a known_free email file name.
+	my $email_file = $an->data->{path}{email_directory}."/".get_date($an).".1";
+	my $file_ok = 0;
+	until ($file_ok)
+	{
+		if (-e $email_file)
+		{
+			my ($file, $suffix) = ($email_file =~ /^(.*?)\.(\d+)$/);
+			$suffix++;
+			$email_file = "$file.$suffix\n";
+			# Make sure I'm not sending more than 10/sec...
+			if ($suffix > 10)
+			{
+				# Given the precision of the date coming from
+				# pgsql, there must be something wrong.
+				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0014", message_variables => { 
+					file => $email_file, 
+				}, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			}
+		}
+		else
+		{
+			$file_ok = 1;
+		}
+	}
+	
+	# Write out the email file.
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0048", message_variables => {
+		file => $email_file, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	my $shell_call = $email_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call",   value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	print $file_handle $email_body;
+	close $file_handle;
+	
+	# Now send the email.
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0049", message_variables => {
+		file => $email_file, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	$shell_call = $an->data->{path}{mailx}." -t < $email_file 2>&1 |";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__ });
+	}
+	close $file_handle;
+	
 	return(0);
+}
+
+# This gets the current date and time from one of the databases.
+sub get_date
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "SELECT now();";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	my $date =  $an->DB->do_db_query({query => $query})->[0]->[0];
+	   $date =~ s/ /_/g;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date
+	}, file => $THIS_FILE, line => __LINE__ });
+	
+	return($date);
 }
 
 # This records entries from alerts to a file, if applicable.
@@ -706,19 +816,21 @@ sub record_alert_to_file
 }
 
 # This checks the local postfix and mail relay data and updates if needed.
-sub check_mail_config
+sub check_email_configuration
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_mail_config", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	
 	my $write_relay_file = 0;
 	
+	# Checking to see of the email relay file needs to be created or updated.
 	$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 		postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	if (-e $an->data->{path}{postfix_relay_file})
 	{
+		# It exists, reading it.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0035", file => $THIS_FILE, line => __LINE__ });
 		my $shell_call = $an->data->{path}{postfix_relay_file};
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
@@ -726,20 +838,45 @@ sub check_mail_config
 		{
 			chomp;
 			my $line = $_;
-			if ($line =~ /^(.*?):(\d+)\s(.*?):(.*)$/)
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__ });
+			if ($line =~ /^\[(.*?)\]:(\d+)\s(.*?):(.*)$/)
 			{
-				my $domain   = $1;
+				my $server   = $1;
 				my $port     = $2;
 				my $username = $3;
 				my $password = $4;
 				
-				if (($domain   ne $an->data->{smtp}{server}) ||
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "server",       value1 => $server, 
+					name2 => "smtp::server", value2 => $an->data->{smtp}{server},
+				}, file => $THIS_FILE, line => __LINE__ });
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "port",       value1 => $port, 
+					name2 => "smtp::port", value2 => $an->data->{smtp}{port},
+				}, file => $THIS_FILE, line => __LINE__ });
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "username",       value1 => $username, 
+					name2 => "smtp::username", value2 => $an->data->{smtp}{username},
+				}, file => $THIS_FILE, line => __LINE__ });
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "password",       value1 => $password, 
+					name2 => "smtp::password", value2 => $an->data->{smtp}{password},
+				}, file => $THIS_FILE, line => __LINE__ });
+				if (($server   ne $an->data->{smtp}{server}) ||
 				    ($port     ne $an->data->{smtp}{port}) ||
 				    ($username ne $an->data->{smtp}{username}) ||
 				    ($password ne $an->data->{smtp}{password}))
 				{
+					# Changes made
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__ });
 					$write_relay_file = 1;
+				}
+				else
+				{
+					# No change
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__ });
 				}
 			}
 		}
@@ -754,7 +891,7 @@ sub check_mail_config
 	}
 	
 	# (Re)write the relay file now, if needed.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "write_relay_file", value1 => $write_relay_file, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	if ($write_relay_file)
@@ -776,7 +913,6 @@ sub check_mail_config
 		
 		# Generate the binary version.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__ });
-		
 		$shell_call = $an->data->{path}{postmap}." ".$an->data->{path}{postfix_relay_file}." 2>&1 |";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
@@ -992,11 +1128,15 @@ sub update_db
 	$an->data->{sys}{sql} = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
 	{
+		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_is_behind", value1 => $db_is_behind, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		next if not $db_is_behind;
+		
 		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
 		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
-		next if $id eq $source_db_id;
-		
+		my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0028", message_variables => {
 			id                  => $id, 
 			source_db_id        => $source_db_id, 
@@ -1008,14 +1148,14 @@ sub update_db
 			# Full recovery needed.
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__ });
 		}
-		else
+		elsif ($source_updated_time ne $target_last_updated)
 		{
 			# Partial recovery needed.
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0030", message_variables => {
 				seconds_behind => ($source_updated_time - $target_last_updated), 
 			}, file => $THIS_FILE, line => __LINE__ });
 		}
-		
+	
 		# Update (and commit) the hosts table
 		update_db_hosts($an, $id);
 		
@@ -1026,7 +1166,8 @@ sub update_db
 		#update_db_temperature($an, $id);
 		#update_db_power($an, $id);
 		
-		#die "$THIS_FILE ".__LINE__."; Testing...\n";
+		# All done, update the time
+		$an->DB->update_time({file => $THIS_FILE});
 	}
 	
 	return(0);
@@ -1193,7 +1334,7 @@ sub update_db_alerts
 	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
 	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
 	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "target_last_updated", value1 => $target_last_updated, 
 		name2 => "source_updated_time", value2 => $source_updated_time, 
 		name3 => "source_db_id",        value3 => $source_db_id, 
@@ -1202,14 +1343,14 @@ sub update_db_alerts
 	
 	# Get the time that this table was last updated for this host.
 	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
 	}, file => $THIS_FILE, line => __LINE__ });
 	
 	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
 	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
 	}, file => $THIS_FILE, line => __LINE__ });
 	
@@ -1248,11 +1389,11 @@ WHERE
 AND 
     $old_date < modified_date;
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	my $results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	# One or more records were found.
@@ -1265,7 +1406,7 @@ AND
 		my $alert_message_key       = $row->[4];
 		my $alert_message_variables = $row->[5];
 		my $modified_date           = $row->[6];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "alert_agent_name",        value1 => $alert_agent_name, 
 			name2 => "alert_level",             value2 => $alert_level, 
 			name3 => "alert_title_key",         value3 => $alert_title_key, 
@@ -1298,7 +1439,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($alert_message_variables).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
 );";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
 		push @{$an->data->{sys}{sql}}, $query;
@@ -1308,18 +1449,18 @@ INSERT INTO
 	# all others from the target.
 	my @save_the_dates;
 	$query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	$results = "";
 	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	foreach my $row (@{$results})
 	{
 		my $modified_date = $row->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date
 		}, file => $THIS_FILE, line => __LINE__ });
 		push @save_the_dates, $modified_date;
@@ -1339,7 +1480,7 @@ AND
     modified_date != ".$an->data->{sys}{use_db_fh}->quote($modified_date)." ";
 	}
 	$query .= ";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	push @{$an->data->{sys}{sql}}, $query;
@@ -1663,13 +1804,13 @@ AND
     ".$an->data->{sys}{use_db_fh}->quote($target_hosts_last_updated)." < round(extract(epoch from modified_date))
 ORDER BY 
     modified_date ASC;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__ });
 	
 	# Do the query against the source DB and loop through the results.
 	my $results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__ });
 	foreach my $row (@{$results})
@@ -1718,7 +1859,7 @@ INSERT INTO
 		else
 		{
 			# Update
-			push @{$an->data->{sys}{sql}}, "
+			my $query = "
 UPDATE 
     hosts
 SET
@@ -1729,72 +1870,11 @@ SET
 WHERE
     host_id = ".$an->data->{sys}{use_db_fh}->quote($target_host_id).";
 ";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__ });
+			$an->DB->do_db_write({id => $target_db_id, query => $query});
 		}
-	}
-	
-	# Everything relies on hosts, so record changes now.
-	$an->DB->do_db_write({id => $target_db_id, query => $an->data->{sys}{sql}});
-	$an->data->{sys}{sql} = [];
-	
-	return(0);
-}
-
-# This simply updates the 'updated' table with the current time.
-sub update_time
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Records the RAM used.
-	my $query = "
-SELECT 
-    COUNT(*) 
-FROM 
-    updated 
-WHERE 
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
-AND
-    updated_host_id = (".$an->data->{sys}{host_id_query}.");
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__ });
-	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "count", value1 => $count
-	}, file => $THIS_FILE, line => __LINE__ });
-	if (not $count)
-	{
-		# Add this agent to the DB
-		my $query = "
-INSERT INTO 
-    updated 
-(
-    updated_host_id, 
-    updated_by, 
-    modified_date
-) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
-    ".$an->data->{sys}{db_timestamp}."
-);
-";
-		$an->DB->do_db_write({query => $query});
-	}
-	else
-	{
-		# It exists and the value has changed.
-		my $query = "
-UPDATE 
-    updated 
-SET
-    modified_date = ".$an->data->{sys}{db_timestamp}."
-WHERE 
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
-AND
-    updated_host_id = (".$an->data->{sys}{host_id_query}.");
-";
-		$an->DB->do_db_write({query => $query});
 	}
 	
 	return(0);
@@ -1888,7 +1968,7 @@ sub call_agents
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => "$line"
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /rc:(\d+)/)
@@ -1901,7 +1981,10 @@ sub call_agents
 		}
 		close $file_handle;
 		my $runtime = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { agent => "$agent", runtime => $runtime }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
+			agent   => "$agent", 
+			runtime => $runtime 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Record this run in the DB.
 		my $query = "
@@ -1919,7 +2002,7 @@ AND
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
 		my $count = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
 		if ($count < 1)
