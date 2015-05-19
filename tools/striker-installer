@@ -55,10 +55,10 @@
 # 38 - Failed to register against RHN.
 # 39 - Failed to configure shorewall because the BCN subnet mask could not be
 #      converted to CIDR notation.
+# 40 - Failed to install perl-Crypt-SSLeay, unable to download a repository
+#      at an HTTPS URL.
 # 
-# TODO: - If a repo is specified with an 'https://' address, then be sure that
-#         perl-Crypt-SSLeay is installed.
-#       - Create an init script that deletes anything in the media directory on
+# TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
 #       - Configure avahi to announce newly build nodes and strikers and have
 #         striker listen for newly built nodes. 
@@ -66,7 +66,6 @@
 #          striker stop this when it first starts to configure the node).
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
-#       - Remove 'priority=1' from our repos at the end.
 #         
 # BUG: - 
 # 
@@ -138,7 +137,6 @@ my $conf = {
 		'rhn-channel'		=>	"/usr/sbin/rhn-channel",
 		rhnreg_ks		=>	"/usr/sbin/rhnreg_ks",
 		rsync			=>	"/usr/bin/rsync",
-		scanner			=>	"/usr/share/striker/bin/scanner",
 		sed			=>	"/bin/sed",
 		semanage		=>	"/usr/sbin/semanage",
 		setenforce		=>	"/usr/sbin/setenforce",
@@ -202,7 +200,6 @@ my $conf = {
 			'postgresql94-plperl'		=>	0,
 			'postgresql94-server'		=>	0,
 			rsync				=>	0,
-			#Scanner			=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
 			syslinux			=>	0, 
@@ -519,6 +516,7 @@ my $conf = {
 		skip_hostname		=>	0,
 		skip_mail		=>	0,
 		skip_network		=>	0,
+		ssl_checked		=>	0,
 		stable_version		=>	"1.1.6",
 		striker_database	=>	"scancore",
 		striker_user		=>	"admin",
@@ -619,6 +617,9 @@ if ($conf->{switches}{r})
 	add_repo($conf);
 }
 
+# Configure existing repos be skipped if they can't be reached.
+configure_repos_to_skip_if_unavailable($conf);
+
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
 if (not $conf->{sys}{skip_network})
@@ -675,7 +676,7 @@ if (not $conf->{sys}{skip_network})
 configure_striker_tools($conf);
 
 # This sets up the dashboard to be a ScanCore database server.
-#configure_scancore($conf);
+configure_scancore($conf);
 
 # If requested, run the contents of rc.local. This is sometimes needed if the
 # user has customizations that might get clobbered by a --gui install.
@@ -1143,49 +1144,6 @@ su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to add the database: [$create_database]! Unable to proceed.", 0);
 			exit(34);
 		}
-
-=pod
-		### TODO: Move this out to the main section and check each
-		###       table manually, or provide a switch to force the
-		###       database to be re-initialized.
-		# Load the data now by cat'ing all the SQL files into one temp
-		# file it, then loading that temp file into our DB.
-		my $tables_loaded = 0;
-		   $shell_call = "
-cat $conf->{directory}{sql_files}/*.sql > $conf->{path}{merged_sql}
-sed -i 's/OWNER striker/OWNER $striker_user/I' $conf->{path}{merged_sql}
-sed -i 's/OWNER: striker/OWNER: $striker_user/I' $conf->{path}{merged_sql}
-sed -i 's/OWNER TO striker/OWNER TO $striker_user/I' $conf->{path}{merged_sql}
-sed -i 's/IF EXISTS scanner/IF EXISTS $striker_database/I' $conf->{path}{merged_sql}
-sed -i 's/DATABASE scanner/DATABASE $striker_database/I' $conf->{path}{merged_sql}
-sed -i 's/-d scanner/-d $striker_database/I' $conf->{path}{merged_sql}
-su - postgres -c \"psql -d $striker_database -f $conf->{path}{merged_sql}\"
-su - postgres -c \"psql -d $striker_database -c 'SELECT * FROM alert_listeners';\"";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line =  $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-			next if $line =~ /unrecognized configuration parameter "lock_timeout"/;
-			if ($line =~ /ERROR/i)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Error seen while loading database tables: [$line] (may be harmless, but please test!)", 1);
-			}
-			if ($line =~ /Health Monitor/)
-			{
-				$tables_loaded = 1;
-				logger($conf, $THIS_FILE, __LINE__, "Database tables have been loaded.", 1);
-			}
-		}
-		close $file_handle;
-		if (not $tables_loaded)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to load the initial database tables into: [$create_database]! Unable to proceed.", 0);
-			exit(35);
-		}
-=cut
 	}
 	else
 	{
@@ -1615,6 +1573,44 @@ sub add_repo
 		}
 		else
 		{
+			# If the $url is 'https://', make sure that 
+			# perl-Crypt-SSLeay is available.
+			if (($url =~ /^https:/) && (not $conf->{sys}{ssl_checked}))
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The repository: [$url] requires SSL to download. Verifying the perl SSL module is installed.", 1);
+				get_list_of_installed_packages($conf);
+				if ($conf->{packages}{installed}{'perl-Crypt-SSLeay'})
+				{
+					
+				}
+				else
+				{
+					# It needs to be installed.
+					logger($conf, $THIS_FILE, __LINE__, "- The module is not installed, attempting to install it now.", 1);
+					my $shell_call = "$conf->{executable}{yum} -y install perl-Crypt-SSLeay";
+					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+					open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
+					{
+						print $_;
+					}
+					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+					close $file_handle;
+					logger($conf, $THIS_FILE, __LINE__, "- Verifying it installed...\n", 1);
+					get_list_of_installed_packages($conf);
+					if ($conf->{packages}{installed}{'perl-Crypt-SSLeay'})
+					{
+						logger($conf, $THIS_FILE, __LINE__, "- Success!\n", 1);
+						$conf->{sys}{ssl_checked} = 1;
+					}
+					else
+					{
+						logger($conf, $THIS_FILE, __LINE__, "- Failed! Without this module, we can not download your repository. Unable to proceed.\n", 1);
+						exit(40);
+					}
+				}
+			}
 			logger($conf, $THIS_FILE, __LINE__, "- Downloading: [$url]", 1);
 			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean all";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -1755,6 +1751,153 @@ sub setup_striker
 	#       get scrolled off the screen.
 	# Set the root user's password.
 	set_root_password($conf);
+	
+	# Remove the 'priority=1' from our repos.
+	remove_yum_priority($conf);
+	
+	return(0);
+}
+
+# Make all repos not fail if they're unavailable.
+sub configure_repos_to_skip_if_unavailable
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Configuring yum repositories to be skipped if unavailable.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Searching for repositories...", 1);
+	
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $conf->{directory}{yum_repos});
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file !~ /\.repo$/;
+		my $full_path = "$conf->{directory}{yum_repos}/$file";
+		next if not -f $full_path;
+		logger($conf, $THIS_FILE, __LINE__, "- Checking: [$full_path]", 1);
+		
+		my $this_repo = "";
+		my $add_skip  = 1;
+		my $rewrite   = 0;
+		my $raw_file  = "";
+		
+		# Open it up
+		my $shell_call = "$full_path";
+		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], the error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line].", 3);
+			
+			# Update the apache user entry.
+			if ($line =~ /^\[(.*?)\]/)
+			{
+				$this_repo = $1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_repo: [$this_repo].", 3);
+			}
+			if ($this_repo)
+			{
+				if ($line =~ /skip_if_unavailable=/)
+				{
+					$add_skip = 0;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - already configured to skip.", 3);
+				}
+				if ((not $line) or ($line =~ /^\s+$/))
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - end of repo: [$this_repo], add_skip: [$add_skip].", 3);
+					if ($add_skip)
+					{
+						$raw_file  .= "skip_if_unavailable=1\n";
+						$rewrite   =  1;
+						$this_repo =  "";
+						$add_skip  =  1;
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added skip.", 3);
+					}
+				}
+			}
+			$raw_file .= "$line\n";
+		}
+		close $file_handle;
+		
+		# If I exited the file with a repo still active, do a final
+		# check.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - end of file, last repo: [$this_repo], add_skip: [$add_skip].", 3);
+		if (($this_repo) && ($add_skip))
+		{
+			$raw_file .= "skip_if_unavailable=1\n";
+			$rewrite  =  1;
+		}
+		
+		#print "raw_file:\n========\n$raw_file\n========\n";
+		if (($rewrite) && ($raw_file))
+		{
+			backup_file($conf, $full_path);
+			logger($conf, $THIS_FILE, __LINE__, "- Rewriting: [$full_path].", 1);
+			my $shell_call = "$full_path";
+			open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+			print $file_handle $raw_file;
+			close $file_handle;
+			logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
+		}
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.\n", 1);
+	
+	return(0);
+}
+
+# This removes the 'priority=1' from our repos so that future attempts by the
+# user to upgrade the OS will work.
+sub remove_yum_priority
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Removing priority assignments from yum repositories.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Searching for repositories...", 1);
+	
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $conf->{directory}{yum_repos});
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file !~ /\.repo$/;
+		my $full_path = "$conf->{directory}{yum_repos}/$file";
+		next if not -f $full_path;
+		logger($conf, $THIS_FILE, __LINE__, "- Checking: [$full_path]", 1);
+		
+		my $rewrite  = 0;
+		my $raw_file = "";
+		# Open it up
+		my $shell_call = "$full_path";
+		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], the error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			
+			# Update the apache user entry.
+			if ($line =~ /^priority=/)
+			{
+				$rewrite = 1;
+				logger($conf, $THIS_FILE, __LINE__, "- Priority set, will remove.", 1);
+			}
+			else
+			{
+				$raw_file .= "$line\n";
+			}
+		}
+		close $file_handle;
+		
+		if (($rewrite) && ($raw_file))
+		{
+			backup_file($conf, $full_path);
+			logger($conf, $THIS_FILE, __LINE__, "- Rewriting: [$full_path].", 1);
+			my $shell_call = "$full_path";
+			open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+			print $file_handle $raw_file;
+			close $file_handle;
+			logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
+		}
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.\n", 1);
 	
 	return(0);
 }
@@ -3860,6 +4003,7 @@ baseurl=http://$conf->{network}{ifn}{ip}/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
+priority=1
 EOF
 ";
 	}
