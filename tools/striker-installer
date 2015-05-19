@@ -331,9 +331,9 @@ my $conf = {
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
-		pg_hba_conf		=>	"/var/lib/pgsql/data/pg_hba.conf",
-		postgresql_conf		=>	"/var/lib/pgsql/data/postgresql.conf",
-		postgres_pgpass		=>	"/var/lib/pgsql/.pgpass",
+		pg_hba_conf		=>	"/var/lib/pgsql/9.4/data/pg_hba.conf",
+		postgresql_conf		=>	"/var/lib/pgsql/9.4/data/postgresql.conf",
+		postgres_pgpass		=>	"/var/lib/pgsql/9.4/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
@@ -745,7 +745,7 @@ sub configure_scancore
 	if (not -e $conf->{path}{pg_hba_conf})
 	{
 		# Initialization required.
-		my $shell_call = "/etc/init.d/postgresql initdb && chkconfig postgresql on && chkconfig --list postgresql";
+		my $shell_call = "/etc/init.d/postgresql-9.4 initdb && chkconfig postgresql-9.4 on && chkconfig --list postgresql-9.4";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -774,7 +774,7 @@ sub configure_scancore
 	}
 	
 	# Make sure the server is set to start on boot.
-	my $shell_call = "chkconfig postgresql on && chkconfig --list postgresql";
+	my $shell_call = "chkconfig postgresql-9.4 on && chkconfig --list postgresql-9.4";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -796,12 +796,12 @@ sub configure_scancore
 	
 	# Now start the DB, if needed.
 	$shell_call = "
-/etc/init.d/postgresql status;
+/etc/init.d/postgresql-9.4 status;
 if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
 else
-	/etc/init.d/postgresql start; 
+	/etc/init.d/postgresql-9.4 start; 
 	if [ \"\$?\" -eq '0' ]; 
 	then 
 		echo 'Started';
@@ -1153,8 +1153,8 @@ su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database
 	# Restart postgresql.
 	logger($conf, $THIS_FILE, __LINE__, "- Restarting database server.", 1);
 	$shell_call = "
-/etc/init.d/postgresql restart
-/etc/init.d/postgresql status;
+/etc/init.d/postgresql-9.4 restart
+/etc/init.d/postgresql-9.4 status;
 if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
