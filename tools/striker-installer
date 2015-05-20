@@ -511,6 +511,7 @@ my $conf = {
 		mtu			=>	1500,
 		network_map_cache_read	=>	0,
 		reboot_needed		=>	0,
+		repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
 		rhn_user		=>	"",
 		rhn_password		=>	"",
 		skip_hostname		=>	0,
@@ -523,7 +524,7 @@ my $conf = {
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
 		tarball_dir		=>	"striker-#!striker_version!#",
-		repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
+		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
 	},
 	url		=>	{
 		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
@@ -607,6 +608,10 @@ verify_os($conf);
 # Get the hostname if the user didn't.
 get_hostname($conf);
 
+# Check to see if we have an internet connection so that, if not, we can 
+# disable external repos.
+verify_internet_access($conf, 0);
+
 # Add the user's repo if specified
 if ($conf->{switches}{r})
 {
@@ -618,7 +623,16 @@ if ($conf->{switches}{r})
 }
 
 # Configure existing repos be skipped if they can't be reached.
-configure_repos_to_skip_if_unavailable($conf);
+#configure_repos_to_skip_if_unavailable($conf);
+
+# If the user requested, map the USB ports.
+if ($conf->{switches}{'map-usb'})
+{
+	# OK, go!
+	map_usb_ports($conf);
+}
+
+#die "$THIS_FILE ".__LINE__."; Testing...\n";
 
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
@@ -1587,7 +1601,7 @@ sub add_repo
 				{
 					# It needs to be installed.
 					logger($conf, $THIS_FILE, __LINE__, "- The module is not installed, attempting to install it now.", 1);
-					my $shell_call = "$conf->{executable}{yum} -y install perl-Crypt-SSLeay";
+					my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install perl-Crypt-SSLeay";
 					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 					open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -1943,7 +1957,7 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -2520,7 +2534,7 @@ sub configure_ipmi
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -5840,7 +5854,7 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 		{
 			# Only show this warning if there is an internet
 			# connection.
-			if (verify_internet_access($conf))
+			if (verify_internet_access($conf, 1))
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with RHN and no RHN", 1);
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   credentials have been given. The install will likely fail if any", 1);
@@ -5862,8 +5876,10 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 # Check to see if we can ping 8.8.8.8
 sub verify_internet_access
 {
-	my ($conf) = @_;
+	my ($conf, $quiet) = @_;
+	$quiet = 0 if not $quiet;
 	
+	logger($conf, $THIS_FILE, __LINE__, "Checking for an Internet connection...", 1);
 	my $ok         = 0;
 	my $shell_call = "$conf->{executable}{ping} 8.8.8.8 -c 3 -q";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -5885,6 +5901,18 @@ sub verify_internet_access
 			}
 		}
 	}
+	
+	if ($ok)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Internet access detected.", 1);
+	}
+	else
+	{
+		# Disable external repos
+		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+		logger($conf, $THIS_FILE, __LINE__, "- No internet access detected, disabling external repositories.", 1);
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- done.\n", 1);
 	
 	logger($conf, $THIS_FILE, __LINE__, "ok: [$ok]", 3);
 	return($ok);
@@ -6084,7 +6112,7 @@ sub install_missing_packages
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} -y install $to_install";
+		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -6144,7 +6172,7 @@ sub update_os
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} -y update";
+	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} $conf->{sys}{yum_switches} update";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 	while(<$file_handle>)
@@ -7995,6 +8023,18 @@ sub get_switches
 		logger($conf, $THIS_FILE, __LINE__, "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]", 3);
 	}
 	#exit;
+	
+	return(0);
+}
+
+# If the user wants to enable USB mounting and have asked to map the network
+# interfaces.
+sub map_usb_ports
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Beginning USB identification...", 1);
+	
 	
 	return(0);
 }
