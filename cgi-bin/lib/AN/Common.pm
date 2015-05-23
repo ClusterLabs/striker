@@ -1027,6 +1027,9 @@ sub initialize_conf
 			# set this to '1'. NOTE: This disables web-based VNC!
 # 			use_spice_graphics	=>	1,
 			version			=>	"2.0.0a",
+			# Adds: [--disablerepo='*' --enablerepo='striker*'] if
+			# no internet connection found.
+			yum_switches		=>	"-y",		
 		},
 		# Config values needed to managing strings
 		strings				=>	{

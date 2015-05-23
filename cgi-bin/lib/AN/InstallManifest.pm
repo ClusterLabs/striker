@@ -9690,7 +9690,7 @@ sub install_missing_packages
 			password	=>	$password,
 			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 			'close'		=>	0,
-			shell_call	=>	"yum -y install $to_install",
+			shell_call	=>	"yum $conf->{sys}{yum_switches} install $to_install",
 		});
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		$conf->{node}{$node}{internet} = 0;
@@ -10272,7 +10272,7 @@ sub update_node
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"yum -y update",
+		shell_call	=>	"yum $conf->{sys}{yum_switches} update",
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
@@ -10373,7 +10373,7 @@ sub verify_perl_is_installed_on_node
 					then
 						echo striker:ok
 					else
-						yum -y install perl;
+						yum $conf->{sys}{yum_switches} install perl;
 						if [ -e '/usr/bin/perl' ];
 						then
 							echo striker:installed
@@ -10425,6 +10425,13 @@ sub verify_internet_access
 	
 	my ($node1_online) = ping_website($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_online) = ping_website($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	
+	# If the node is not online, we'll call yum with the switches to 
+	# disable all but our local repos.
+	if ((not $node1_online) or (not $node2_online))
+	{
+		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+	}
 	
 	# I need to remember if there is Internet access or not for later
 	# downloads (web or switch to local).
@@ -12004,7 +12011,7 @@ sub get_node_os_version
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], major: [$major], minor: [$minor]\n");
 	
 	# If it's RHEL, see if it's registered.
-	if ($conf->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	if ($conf->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/i)
 	{
 		# See if it's been registered already.
 		$conf->{node}{$node}{os}{registered} = 0;
