@@ -4039,7 +4039,7 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_domain}       = $conf->{install_manifest}{$file}{common}{anvil}{domain};
 		$conf->{cgi}{anvil_sequence}     = $conf->{install_manifest}{$file}{common}{anvil}{sequence};
 		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}         ? $conf->{install_manifest}{$file}{common}{anvil}{password}         : $conf->{sys}{install_manifest}{'default'}{password};
-		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories}     ? $conf->{install_manifest}{$file}{common}{anvil}{repositories}     : $conf->{sys}{install_manifest}{'default'}{repositories};
+		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories};
 		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}            ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}            : $conf->{sys}{install_manifest}{'default'}{ssh_keysize};
 		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu};
 		$conf->{cgi}{striker_user}       = $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     ? $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     : $conf->{sys}{install_manifest}{'default'}{striker_user};

@@ -6112,7 +6112,7 @@ then
 	echo 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
 	curl \$url/\$file > \$local_file
 fi";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -9131,42 +9131,42 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link2_mac:  [$conf->{cgi}{anvil_node1_sn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_bcn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link1_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link2_mac})
 		{
 			$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node1}::set_nic::ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
 		}
 		else
 		{
@@ -9177,42 +9177,42 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link2_mac:  [$conf->{cgi}{anvil_node2_sn_link2_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}].\n");
 		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_bcn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link1_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}].\n");
 		}
 		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link2_mac})
 		{
 			$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; conf::node::${node2}::set_nic::ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
 		}
 		else
 		{
@@ -9683,6 +9683,8 @@ sub install_missing_packages
 	
 	if ($to_install)
 	{
+		my $shell_call = "yum $conf->{sys}{yum_switches} install $to_install";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	22,
@@ -9690,7 +9692,7 @@ sub install_missing_packages
 			password	=>	$password,
 			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 			'close'		=>	0,
-			shell_call	=>	"yum $conf->{sys}{yum_switches} install $to_install",
+			shell_call	=>	$shell_call,
 		});
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 		$conf->{node}{$node}{internet} = 0;
@@ -10265,6 +10267,8 @@ sub update_node
 	# Skip if the user has decided not to run OS updates.
 	return(1) if not $conf->{sys}{update_os};
 	
+	my $shell_call = "yum $conf->{sys}{yum_switches} update";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -10272,7 +10276,7 @@ sub update_node
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"yum $conf->{sys}{yum_switches} update",
+		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	$conf->{node}{$node}{internet} = 0;
@@ -10362,6 +10366,20 @@ sub verify_perl_is_installed_on_node
 	# Set to '1' if perl was found, '0' if it wasn't found and couldn't be
 	# installed, set to '2' if installed successfully.
 	my $ok = 1;
+	my $shell_call = "
+if [ -e '/usr/bin/perl' ]; 
+then
+	echo striker:ok
+else
+	yum $conf->{sys}{yum_switches} install perl;
+	if [ -e '/usr/bin/perl' ];
+	then
+		echo striker:installed
+	else
+		echo striker:failed
+	fi
+fi";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
@@ -10369,18 +10387,7 @@ sub verify_perl_is_installed_on_node
 		password	=>	$password,
 		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
 		'close'		=>	0,
-		shell_call	=>	"if [ -e '/usr/bin/perl' ]; 
-					then
-						echo striker:ok
-					else
-						yum $conf->{sys}{yum_switches} install perl;
-						if [ -e '/usr/bin/perl' ];
-						then
-							echo striker:installed
-						else
-							echo striker:failed
-						fi
-					fi",
+		shell_call	=>	$shell_call,
 	});
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	
@@ -10431,6 +10438,7 @@ sub verify_internet_access
 	if ((not $node1_online) or (not $node2_online))
 	{
 		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; No internet access, restricting yum repos to local repos only.\n");
 	}
 	
 	# I need to remember if there is Internet access or not for later
