@@ -81,16 +81,7 @@ almost minimal EL6 install.
 
 SWITCHES
 
- -c <host>, --caller <host>
-	
-	This is to be set by the ScanCore server and 'host' must match the
-	FQDN of the caller. When data is recorded to the target databases, this
-	value is used to link the data to this host. Failing to match this name
-	to an entry in the 'hosts' table will cause the agent to exit with the
-	return code of '1'.
-
-
- -ups <ups1>[,<ups2>,...,<upsN>]
+ -upses <ups1>[,<ups2>,...,<upsN>]
 
 	Specify the UPS(es) to query. If host names are used, they must be 
 	convertable to IP addresses. Two or more UPSes can be defined using

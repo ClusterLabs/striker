@@ -14,92 +14,11 @@
 =pod
 OIDs to interest:
 
-Temps:
-Battery temp: 
-OID:		.1.3.6.1.4.1.318.1.1.1.2.2.2.0
-Type:		guage32, value is *C
-example:	snmpget -v 2c -c private ups1 .1.3.6.1.4.1.318.1.1.1.2.2.2.0
-		SNMPv2-SMI::enterprises.318.1.1.1.2.2.2.0 = Gauge32: 24 (24*C)
-
-High-precision battery temp:
-OID:		.1.3.6.1.4.1.318.1.1.1.2.3.2.0
-Type:		guage32, value is 1/10*C
-example:	snmpget -v 2c -c private ups1 .1.3.6.1.4.1.318.1.1.1.2.3.2.0
-		SNMPv2-SMI::enterprises.318.1.1.1.2.3.2.0 = Gauge32: 242 (24.2*C)
-
-
-UPS Serial number:	.1.3.6.1.4.1.318.1.1.1.1.2.3.0		ie: AS1038232403
-UPS Part number:	.1.3.6.1.4.1.318.1.1.1.1.2.5.0		ie: SMT1500
-UPS Basic type:		.1.3.6.1.4.1.318.1.1.1.1.1.1.0		ie: SmartUPS 1500
-UPS Firmware:		.1.3.6.1.4.1.318.1.4.2.4.1.4.1
-NMC Serial number:	.1.3.6.1.4.1.318.1.4.2.4.1.2.1
-Battery Part Number:	.1.3.6.1.4.1.318.1.1.1.2.2.19.0		ie: RBC7
-
-Estimated runtime:	.1.3.6.1.4.1.318.1.1.1.2.2.3.0		(in ticks [10ms])
-
-UPS Basic State:	.1.3.6.1.4.1.318.1.1.1.4.1.1.0		1'	=>	"Unknown, 2'	=>	"Online, 3'	=>	"On Battery, 4'	=>	"onSmartBoost, 5'	=>	"timedSleeping, 6'	=>	"softwareBypass, 7'	=>	"off, 8'	=>	"rebooting, 9'	=>	"switchedBypass, 10'	=>	"hardwareFailureBypass, 11'	=>	"sleepingUntilPowerReturn, 12'	=>	"onSmartTrim, 13'	=>	"ecoMode, 14'	=>	"hotStandby, 15'	=>	"onBatteryTest, 15'	=>	"emergencyStaticBypass, 17'	=>	"staticBypassStandby, 18'	=>	"powerSavingMode, 19'	=>	"spotMode, 20'	=>	"eConversion
-Main UPS outlet state:	.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1	1'	=>	"On, 2'	=>	"Off, 3'	=>	"Unknown
-Outlet group 1 state:	.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.2	1'	=>	"On, 2'	=>	"Off, 3'	=>	"Unknown
-Battery health:		.1.3.6.1.4.1.318.1.1.1.2.2.4.0		1'	=>	"OK, 2'	=>	"Replacement needed
-
-Last transfer reason:	.1.3.6.1.4.1.318.1.1.1.3.2.5.0		1'	=>	"noTransfer, 2'	=>	"highLineVoltage, 3'	=>	"brownout, 4'	=>	"blackout, 5 = smallMomentarySag, 6'	=>	"deepMomentarySag, 7 = smallMomentarySpike, 8'	=>	"largeMomentarySpike, 9'	=>	"selfTest, 10'	=>	"rateOfVoltageChange
-UPS Input Sensitivity:	.1.3.6.1.4.1.318.1.1.1.5.2.7.0		1'	=>	"Auto, 2'	=>	"Low, 3'	=>	"Medium, 4'	=>	"High
-Battery state:		.1.3.6.1.4.1.318.1.1.1.2.1.1.0		1'	=>	"unknown, 2'	=>	"batteryNormal, 3'	=>	"batteryLow, 4'	=>	"batteryInFaultCondition
-
-User-set name:		.1.3.6.1.4.1.318.1.1.1.1.1.2.0		8-byte ID string set by the user.
-Input Hz in 1/10ths	.1.3.6.1.4.1.318.1.1.1.3.3.4.0		ie: 600'	=>	"60Hz
-Input Hz is 1Hz:	.1.3.6.1.4.1.318.1.1.1.3.2.4.0		ie: 60 (Hz)
-Output Hz in 1/10ths:	.1.3.6.1.4.1.318.1.1.1.4.2.2.0		ie: 600'	=>	"60Hz
-Output Hz is 1Hz:	.1.3.6.1.4.1.318.1.1.1.4.2.2.0		ie: 60 (Hz)
 Output in 10 Wh		.1.3.6.1.4.1.318.1.1.1.4.3.6.0		?? guage
-High Xfer Volt:		.1.3.6.1.4.1.318.1.1.1.5.2.2.0		127 (vAC)
-Low Xfer Volt:		.1.3.6.1.4.1.318.1.1.1.5.2.3.0		106 (vAC)
-Input Volt in 1/10v:	.1.3.6.1.4.1.318.1.1.1.3.3.1.0		ie: 1245'	=>	"124.5 vAC
-Input Volt:		.1.3.6.1.4.1.318.1.1.1.3.2.1.0		ie: 124 (vAC)
-60s Max input in 1/10v:	.1.3.6.1.4.1.318.1.1.1.3.3.2.0		ie: 1245'	=>	"124.5 vAC max seen in last 60sec
-60s Max input:		.1.3.6.1.4.1.318.1.1.1.3.2.2.0		ie: 124 (vAC)
-60s Min input in 1/10v:	.1.3.6.1.4.1.318.1.1.1.3.3.3.0		ie: 1245'	=>	"124.5 vAC min seen in last 60sec
-60s Min input:		.1.3.6.1.4.1.318.1.1.1.3.2.3.0		ie: 124 (vAC)
-Output Volt in 1/10v:	.1.3.6.1.4.1.318.1.1.1.4.3.1.0		ie: 1245'	=>	"124.5 vAC
-Output Volt:		.1.3.6.1.4.1.318.1.1.1.4.2.1.0		ie: 124 (vAC)
-Nominal output volt:	.1.3.6.1.4.1.318.1.1.1.5.2.1.0		ie: 120 (vAC)
-Remaining batt 1/10%:	.1.3.6.1.4.1.318.1.1.1.2.3.1.0		ie: 1000'	=>	"100.0% charge
-Remaining battery %:	.1.3.6.1.4.1.318.1.1.1.2.2.1.0		ie: 100 (%) charge
-AC restore boot delay:	.1.3.6.1.2.1.33.1.2.4.0			Ticks after AC restore before UPS powers on (ie: 1000'	=>	"10 seconds)
-UPS Manufacture date:	.1.3.6.1.4.1.318.1.1.1.1.2.2.0		in 'mm/dd/yy' or 'mm/dd/yyyy' format.
-Battery replaced date:	.1.3.6.1.4.1.318.1.1.1.2.1.3.0		in 'mm/dd/yy' or 'mm/dd/yyyy' format.
-Est. next replace date:	.1.3.6.1.4.1.318.1.1.1.2.2.21.0		in 'mm/dd/yy' or 'mm/dd/yyyy' format.
 ASCII state string:	.1.3.6.1.4.1.318.1.1.1.11.1.1.0		64 values; See MIB for values.
-Time on batteries:	.1.3.6.1.4.1.318.1.1.1.2.1.2.0		Time in ticks since transfer to batteries (0 if on AC)
-Current load in 1/10%:	.1.3.6.1.4.1.318.1.1.1.4.3.3.0		(guage) ie: 58'	=>	"5.8%
-Current load in %:	.1.3.6.1.4.1.318.1.1.1.4.2.3.0		(guage) ie: 5 (%)
 
-Temperature units 1:	.1.3.6.1.4.1.318.1.1.10.1.2.2.1.5.1	1'	=>	"C, 2'	=>	"F
-Temperature units 2:	.1.3.6.1.4.1.318.1.1.10.1.2.2.1.5.2	1'	=>	"C, 2'	=>	"F
-High Temp probe 1:	.1.3.6.1.4.1.318.1.1.10.1.2.2.1.3.1	integer of alarm threshold of UPS probe 1 (C or F set above)
-High Temp probe 2:	.1.3.6.1.4.1.318.1.1.10.1.2.2.1.3.2	integer of alarm threshold of UPS probe 2 (C or F set above)
-Battery Temp in 1/10*C:	.1.3.6.1.4.1.318.1.1.1.2.3.2.0		ie: 333'	=>	"33.3 *C
-Battery Temp in *C	.1.3.6.1.4.1.318.1.1.1.2.2.2.0		ie: 33'	=>	"33 *C
-Battery Volt in 1/10v:	.1.3.6.1.4.1.318.1.1.1.2.3.4.0		ie: 271'	=>	"27.1 vDC
-Battery Volt:		.1.3.6.1.4.1.318.1.1.1.2.2.8.0		ie: 27 (vDC)
-
-Read lower transfer voltage:
-snmpget -v 2c -c private ups1 .1.3.6.1.4.1.318.1.1.1.5.2.3.0
-SNMPv2-SMI::enterprises.318.1.1.1.5.2.3.0 = INTEGER: 160
-
-Read upper transfer voltage:
-snmpget -v 2c -c private ups1 .1.3.6.1.4.1.318.1.1.1.5.2.2.0
-SNMPv2-SMI::enterprises.318.1.1.1.5.2.2.0 = INTEGER: 255
-
-
-
+Nominal output volt:	.1.3.6.1.4.1.318.1.1.1.5.2.1.0		ie: 120 (vAC)
 =cut
-
-# NOTE: This is temporary. When the AN::Tools module moves into a standard @INC
-#       directory, this will be removed.
-BEGIN {
-   push @INC, "/var/www/";
-};
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -109,56 +28,153 @@ my $THIS_FILE =  $0;
 use strict;
 use warnings;
 use AN::Tools;
-
-# Exit with 1 until this is done
-exit(1);
+use Data::Dumper;
+use Socket;
 
 # Disable buffering.
 $| = 1;
 
+# This allows our XML and SQL files to be found, even if the path the program
+# is in changes.
+my $running_directory  = ($0                 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
 	{
-		path		=>	{
-			log_file		=>	"/var/log/scan_apc_ups.log",
-			#log_file		=>	"",
-			strings			=>	"/var/www/ScanCore/agents/scan_apc_ups.xml",
-			sql			=>	"/var/www/ScanCore/agents/scan_apc_ups.sql",
+		path			=>	{
+			log_file		=>	"/var/log/striker.log",
+			#log_file		=>	"/var/log/$THIS_FILE.log",
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"/var/www/cgi-bin/Data/strings.xml",
+			striker_strings		=>	"$scancore_directory/Data/strings.xml",
 		},
-		sys		=>	{
+		sys			=>	{
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			host_id_query		=>	"",
+			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+			sql			=>	[],
 		},
-	}
+		# These are values the user might set in striker.conf
+		'scan-apc-ups'		=>	{
+			# CSV of UPSes to scan. If set, /etc/hosts will not be
+			# processed. If not set, hosts will be searched for any
+			# entry with 'ups' in it's name and added to this.
+			upses			=>	"",
+			# Once parsed, the UPSes will be scanned using this
+			# hash where the key is the UPS name and the value is
+			# the IP address.
+			ups			=>	{},
+		},
+		'default'		=>	{
+			battery			=>	{
+				# Estimated next replacement date (in 'mm/dd/yy' or 'mm/dd/yyyy' format.)
+				replacement_date	=>	".1.3.6.1.4.1.318.1.1.1.2.2.21.0",
+				# 1 => OK,	2 => Replacement needed
+				health			=>	".1.3.6.1.4.1.318.1.1.1.2.2.4.0",
+				model			=>	".1.3.6.1.4.1.318.1.1.1.2.2.19.0",
+				# High precision, (1000 = 100.0% charge)
+				percentage_charge_hp	=>	".1.3.6.1.4.1.318.1.1.1.2.3.1.0",
+				# Last approximate replacement date (mm/dd/yy or yyyy format)
+				last_replacement_date	=>	".1.3.6.1.4.1.318.1.1.1.2.1.3.0",
+				# 1 => unknown,	2 => batteryNormal,	3 => batteryLow, 
+				# 4 => batteryInFaultCondition
+				'state'			=>	".1.3.6.1.4.1.318.1.1.1.2.1.1.0",
+				# High-precision, (315 == 31.5)
+				temperature_hp		=>	".1.3.6.1.4.1.318.1.1.1.2.3.2.0",
+				# Temperature alarm upper limit (in even degrees, 40 = 40*C or *F
+				# (see ups::temperature_units))
+				alarm_temperature	=>	".1.3.6.1.4.1.318.1.1.10.1.2.2.1.3.1",
+				# High precision voltage (271 = 27.1 vDC)
+				voltage_hp		=>	".1.3.6.1.4.1.318.1.1.1.2.3.4.0",
+			},
+			input			=>	{
+				# High precision, (600 == 60.0 Hz)
+				frequency_hp		=>	".1.3.6.1.4.1.318.1.1.1.3.3.4.0",
+				# 1 => Auto,	2 => Low,	3 => Medium,	4 => High
+				sensitivity		=>	".1.3.6.1.4.1.318.1.1.1.5.2.7.0",
+				# High precision, (1245 => "124.5 vAC)
+				voltage_hp		=>	".1.3.6.1.4.1.318.1.1.1.3.3.1.0",
+				# High precision; Maximum and minimum voltage in the last 60 seconds (1245 == 124.5 vAC)
+				'1m_maximum_input_voltage_hp'	=>	".1.3.6.1.4.1.318.1.1.1.3.3.2.0",
+				'1m_minimum_input_voltage_hp'	=>	".1.3.6.1.4.1.318.1.1.1.3.3.3.0",
+			},
+			ups			=>	{
+				# Ticks after AC restore before UPS powers on (ie: 1000 = 10 seconds)
+				ac_restore_delay	=>	".1.3.6.1.2.1.33.1.2.4.0",
+				firmware_version	=>	".1.3.6.1.4.1.318.1.4.2.4.1.4.1",
+				# 1 => Unknown, 	2 => Online, 		3 => On Battery, 
+				# 4 => onSmartBoost,	5 => timedSleeping,	6 => softwareBypass,
+				# 7 => off, 		8 => rebooting,		9 => switchedBypass,
+				# 10 => hardwareFailureBypass,	11 => sleepingUntilPowerReturn, 
+				# 12 => onSmartTrim,	13 => ecoMode, 		14 => hotStandby, 
+				# 15 => onBatteryTest,	15 => emergencyStaticBypass, 
+				# 17 => staticBypassStandby,	18 => powerSavingMode,
+				# 19 => spotMode,	20 => eConversion
+				health			=>	".1.3.6.1.4.1.318.1.1.1.4.1.1.0",
+				# Voltage at which TRIM ONLINE kicks in (127 == 127 vAC)
+				high_transfer_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.2.0",
+				# 1 => noTransfer, 	2 => highLineVoltage,	3 => brownout,
+				# 4 => blackout,	5 => smallMomentarySag,	6 => deepMomentarySag,
+				# 7 => smallMomentarySpike,	8 => largeMomentarySpike,
+				# 9 => selfTest,	10 => rateOfVoltageChange
+				last_transfer_reason	=>	".1.3.6.1.4.1.318.1.1.1.3.2.5.0",
+				# Voltage at which BOOST ONLINE kicks in (106 == 106vAC)
+				low_transger_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.3.0",
+				# Manufactured date (in 'mm/dd/yy' or 'mm/dd/yyyy' format.)
+				manufactured_date	=>	".1.3.6.1.4.1.318.1.1.1.1.2.2.0",
+				model			=>	".1.3.6.1.4.1.318.1.1.1.1.2.5.0",
+				# Temperature units (1 = *C, 2 = *F)
+				temperature_units	=>	".1.3.6.1.4.1.318.1.1.10.1.2.2.1.5.1",
+				serial_number		=>	".1.3.6.1.4.1.318.1.1.1.1.2.3.0",
+			},
+			nmc			=>	{
+				firmware_version	=>	".1.3.6.1.4.1.318.1.4.2.4.1.4.1",
+				serial_number		=>	".1.3.6.1.4.1.318.1.4.2.4.1.2.1",
+				mac_address		=>	".1.3.6.1.2.1.4.30.1.4.2",
+			},
+			output			=>	{
+				# High precision, Current load percentage (58 = 5.8%)
+				load_percentage_hp	=>	".1.3.6.1.4.1.318.1.1.1.4.3.3.0",
+				# Time in ticks on batteries, 0 == not on batteries
+				time_on_batties		=>	".1.3.6.1.4.1.318.1.1.1.2.1.2.0",
+				# In ticks (10ms)
+				estimated_runtime	=>	".1.3.6.1.4.1.318.1.1.1.2.2.3.0",
+				# high-precision, (600 == 60.0 Hz)
+				frequency_hp		=>	".1.3.6.1.4.1.318.1.1.1.4.2.2.0",
+				# High precision (1245 = 124.5 vAC)
+				voltage_hp		=>	".1.3.6.1.4.1.318.1.1.1.4.3.1.0",
+			},
+			alternate		=>	{
+				'SUART'			=>	{
+				},
+			},
+		},
+	},
 });
 
-# Read my stuff
+# Set some defaults
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+
+# Set the log level.
 $an->Log->level($an->data->{sys}{log_level});
+
+# Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 $an->String->read_words({file => $an->data->{path}{strings}});
+$an->String->read_words({file => $an->data->{path}{core_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for
 # help.
 get_switches($an);
 print $an->String->get({key => "scan_apc_ups_message_0001"}), "\n";
-
-# Connect to the database(s).
-my $connections = $an->DB->connect_to_databases();
-$an->Log->entry({
-	log_level	=>	3,
-	title_key	=>	"scan_apc_ups_title_0001",
-	message_key	=>	"scan_apc_ups_log_0005",
-	message_vars	=>	{
-		connections	=>	$connections,
-	},
-	file		=>	$THIS_FILE,
-	line		=>	__LINE__,
-	language	=>	$an->data->{sys}{log_language},
-	log_to		=>	$an->data->{path}{log_file},
-});
 
 # Find the UPSes.
 find_upses($an);
@@ -177,12 +193,30 @@ sub find_upses
 {
 	my ($an) = @_;
 	
-	if ($an->data->{switches}{ups})
+	$an->data->{'scan-apc-ups'}{upses} = $an->data->{switches}{upses} if $an->data->{switches}{upses};
+	if ($an->data->{'scan-apc-ups'}{upses})
 	{
-		# User has specified the UPSes to query.
-		foreach my $ups (split/,/, $an->data->{switches}{ups})
+		# User has specified the UPSes to query. We'll resolve them to
+		# IPs.
+		foreach my $ups_name (split/,/, $an->data->{'scan-apc-ups'}{ups})
 		{
-			next if not $ups;
+			next if not $ups_name;
+			
+			my $ip        = "";
+			my $packed_ip = gethostbyname($ups_name);
+			if ($packed_ip)
+			{
+				$ip = inet_ntoa($packed_ip);
+				$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
+				}, file => $THIS_FILE, line => __LINE__ });
+			}
+			else
+			{
+				# Failed to get IP
+				die "$THIS_FILE ".__LINE__."; No IP found for UPS name: [$ups_name].\n";
+			}
 		}
 	}
 	else
@@ -190,7 +224,70 @@ sub find_upses
 		# Read in /etc/hosts and look for anything with 'ups' in the
 		# name.
 		my $shell_call = "</etc/hosts";
-		open (my $file_handle, $shell_call) or 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__ });
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__ });
+			
+			# Clear out comments, knock out white spaces and then
+			# skip anything without 'ups' in the name.
+			$line =~ s/#.*$//;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			next if $line !~ /ups/;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__ });
+			
+			# This should be a UPS entry.
+			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ip",    value1 => $ip, 
+				name2 => "names", value2 => $names,
+			}, file => $THIS_FILE, line => __LINE__ });
+			
+			# It's crude, but we'll use the longest host name.
+			my $ups_name = "";
+			foreach my $name (split/ /, $names)
+			{
+				if (length($name) > length($ups_name))
+				{
+					$ups_name = $name;
+				}
+			}
+			if (($ups_name) && ($ip))
+			{
+				$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
+				}, file => $THIS_FILE, line => __LINE__ });
+			}
+			else
+			{
+				# Bad name or IP.
+				die "$THIS_FILE ".__LINE__."; Bad name: [$ups_name] or IP: [$ip]\n";
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Here is what I found;
+	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
+	{
+		my $ip = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "ups_name", value1 => $ups_name, 
+			name2 => "ip",       value2 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__ });
 	}
 }
 
@@ -201,7 +298,7 @@ sub nice_exit
 	# Close database connections
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->data->{dbh}{$id}->disconnect;
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
 	}
 	
 	exit(0);
@@ -285,9 +382,9 @@ sub get_switches
 	}
 	
 	# If the user has asked for help, print the usage info.
-	if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
+	if (($an->data->{switches}{h}) or ($an->data->{switches}{help}) or ($an->data->{switches}{'?'}))
 	{
-		print_usage($conf);
+		print_usage($an);
 		exit(0);
 	}
 	

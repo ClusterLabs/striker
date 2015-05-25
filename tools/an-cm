@@ -8,7 +8,7 @@
 
 use strict;
 use warnings;
-require "./an-cm.lib";
+require "/sbin/striker/an-cm.lib";
 our $THIS_FILE = "an-cm";
 
 $SIG{INT}  = \&catch_sig;

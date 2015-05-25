@@ -46,7 +46,7 @@ sub do_db_write
 
 	$id    = $parameter->{id}    ? $parameter->{id}    : "";
 	$query = $parameter->{query} ? $parameter->{query} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "id", value1 => $id, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -110,7 +110,7 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -208,6 +208,7 @@ sub connect_to_databases
 		my $name              = $an->data->{scancore}{db}{$id}{name}              ? $an->data->{scancore}{db}{$id}{name}              : ""; # This should fail
 		my $user              = $an->data->{scancore}{db}{$id}{user}              ? $an->data->{scancore}{db}{$id}{user}              : ""; # This should fail
 		my $password          = $an->data->{scancore}{db}{$id}{password}          ? $an->data->{scancore}{db}{$id}{password}          : "";
+		
 		# These are not used yet.
 		my $postgres_password = $an->data->{scancore}{db}{$id}{postgres_password} ? $an->data->{scancore}{db}{$id}{postgres_password} : "";
 		my $initialize        = $an->data->{scancore}{db}{$id}{initialize}        ? $an->data->{scancore}{db}{$id}{initialize}        : 0;
@@ -326,23 +327,26 @@ sub connect_to_databases
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::db_timestamp", value1 => $an->data->{sys}{db_timestamp}
 		}, file => $THIS_FILE, line => __LINE__});
-		if (not $an->data->{sys}{db_timestamp})
+		if ($an->data->{dbh}{$id})
 		{
-			my $query = "SELECT cast(now() AS timestamp with time zone)";
-			$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-			$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
+			if (not $an->data->{sys}{db_timestamp})
+			{
+				my $query = "SELECT cast(now() AS timestamp with time zone)";
+				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+				$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
+				name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
+				name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
-		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
-			name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
-			name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if (not $connections)
 	{
@@ -510,7 +514,7 @@ sub find_behind_databases
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -542,14 +546,14 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -567,7 +571,7 @@ AND
 		###       possible for one agent's table to fall behind? Maybe,
 		###       if the agent is deleted/recovered...
 		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "scancore::sql::source_updated_time",   value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::sql::source_db_id",    value2 => $an->data->{scancore}{sql}{source_db_id}, 
 			name3 => "scancore::db::${id}::last_updated", value3 => $an->data->{scancore}{db}{$id}{last_updated}
@@ -578,14 +582,14 @@ AND
 	$an->data->{scancore}{db_to_update} = {};
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0031", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0031", message_variables => {
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
@@ -657,7 +661,7 @@ SELECT
 		###       possible for one agent's table to fall behind? Maybe,
 		###       if the agent is deleted/recovered...
 		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::db::${id}::last_updated", value1 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -665,7 +669,7 @@ SELECT
 		foreach my $row (@{$results})
 		{
 			my $table = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",   value1 => $id, 
 				name2 => "table", value2 => $table, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -777,7 +781,7 @@ AND
 			   $subquery             =~ s/, $/ /;
 			   $subquery             .= "FROM history.$table WHERE $host_id_column = (".$an->data->{sys}{host_id_query}.") AND (SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($this_db_last_updated).")) < modified_date";
 			my $query_id             =  $an->data->{scancore}{sql}{source_db_id};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time},
 				name2 => "this_db_last_updated",            value2 => $this_db_last_updated,
 				name3 => "query_id",                        value3 => $query_id,
@@ -820,7 +824,7 @@ sub get_sql_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "get_sql_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "get_sql_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Make the variables easier to read
 	my $id       = $an->data->{scancore}{sql}{source_db_id};
@@ -843,7 +847,7 @@ sub get_sql_schema
 	# Now I need to connect to the remote host and dump the DB schema. I
 	# need to do this by setting .pgpass.
 	my $shell_call = "$pgpass";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	print $file_handle "$host:*:*:$user:$password\n";
 	close $file_handle;
@@ -856,7 +860,7 @@ sub get_sql_schema
 	$shell_call =  $an->data->{path}{pg_dump}." --host $host";
 	$shell_call .= " --port $port" if $port;
 	$shell_call .= " --username $user --schema-only $name 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
@@ -1123,12 +1127,12 @@ sub load_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",   value1 => $id, 
 		name2 => "file", value2 => $file 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1261,8 +1265,8 @@ sub initialize_db
 		exit(1);
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "id", value1 => $id
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1278,13 +1282,13 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line
 		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/#!variable!user!#/$user/g;
@@ -1299,7 +1303,7 @@ sub initialize_db
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sql", value1 => $sql
 	}, file => $THIS_FILE, line => __LINE__});
 	

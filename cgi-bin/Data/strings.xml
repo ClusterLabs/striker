@@ -1666,7 +1666,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this file properly in place, installation can not proceed.]]></key>
 		<key name="message_0364"><![CDATA[A program called <span class="highlight_detail">libvirtd</span> was found to be running on the dashboard.<br />We tried to turned it off because it can conflicts with us being an install target.<br />This attempt failed, so it probably will have to be stopped manually by running, as the <span class="highlight_detail">root</span> user,<br /><span class="highlight_detail">#!conf!path::initd_libvirtd!# stop</span>]]></key>
 		<key name="message_0365"><![CDATA[The free space on the nodes is not the same! The smaller of the two will be used.]]></key>
-		<key name="message_0366"><![CDATA[There appears to be no access to the Internet. If all packages are already installed, this should be ok.<br />If anything is missing, however, the install may fail.]]></key>
+		<key name="message_0366"><![CDATA[There appears to be no access to the Internet.<br />If all packages are already installed or if local repositories are available, this should be ok.<br />If not, however, the install may fail.]]></key>
 		<key name="message_0367"><![CDATA[Failed to add the local repositories.]]></key>
 		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>

@@ -7488,7 +7488,7 @@ sub compare_new_and_old
 	# Send an email and record the new values if there are changes.
 	if ($changes)
 	{
-		$conf->{mail_data}{subject} = "State Change!";
+		#$conf->{mail_data}{subject} = "State Change!";
 		$conf->{mail_data}{body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
@@ -7503,7 +7503,7 @@ $changes";
 	# Send the debug email if it is needed.
 	if ($debug_changes)
 	{
-		$conf->{mail_data}{debug_subject} = "State Change!";
+		#$conf->{mail_data}{debug_subject} = "State Change!";
 		$conf->{mail_data}{debug_body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
@@ -7899,7 +7899,7 @@ Description:
 ======================================================================
 ";
 
-	my $debug_subject = "$debug_subject_prefix - $subject";
+	my $debug_subject = $subject =~ /\[ Anvil/ ? $subject : "$debug_subject_prefix - $subject";
 	my $debug_body    = $body.$debug_body_suffix;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
