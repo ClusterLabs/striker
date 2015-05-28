@@ -1127,12 +1127,12 @@ sub load_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",   value1 => $id, 
 		name2 => "file", value2 => $file 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1206,7 +1206,7 @@ sub load_schema
 	
 	# Create the read shell call.
 	my $shell_call = $file;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
@@ -1222,7 +1222,7 @@ sub load_schema
 		$line =~ s/^\s+//g;
 		$line =~ s/\s+$//g;
 		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
 			name1 => "line", value1 => $line 
 		}, file => $THIS_FILE, line => __LINE__});
 		$sql .= "$line\n";
@@ -1230,7 +1230,7 @@ sub load_schema
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",  value1 => $id, 
 		name2 => "sql", value2 => $sql
 	}, file => $THIS_FILE, line => __LINE__});

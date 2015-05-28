@@ -14,59 +14,77 @@ with 'scan_apc_ups_'.
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the APC UPS Scan Agent.</key>
 		
 		<!-- Strings that can change by rebranding -->
-		<key name="scan_apc_ups_brand_0001">APC UPS Scan Agent</key>
+		<key name="scan_apc_ups_brand_0001">APC/Schneider Electronics UPS Scan Agent</key>
 		
 		<!-- Log titles -->
-		<key name="scan_apc_ups_title_0001">Debug</key>
-		<key name="scan_apc_ups_title_0002">Warning</key>
-		<key name="scan_apc_ups_title_0003">Error</key>
-		<key name="scan_apc_ups_title_0004">Success</key>
-		<key name="scan_apc_ups_title_0005">Note</key>
+		<key name="scan_apc_ups_title_0001"></key>
 		
 		<!-- Log messages -->
-		<key name="scan_apc_ups_log_0001">Entering: [#!variable!function!#()]</key>
-		<key name="scan_apc_ups_log_0002">
-Connecting to Database with configuration ID: [#!variable!id!#]
-- driver:            [#!variable!driver!#]
-- host:              [#!variable!host!#]
-- port:              [#!variable!port!#]
-- postgres_password: [#!variable!postgres_password!#]
-- name:              [#!variable!name!#]
-- user:              [#!variable!user!#]
-- password:          [#!variable!password!#]
-- initialize:        [#!variable!initialize!#]
-		</key>
-		<key name="scan_apc_ups_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
-		<key name="scan_apc_ups_log_0004">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#]. The file handle is: [#!variable!conf_dbh!# (#!variable!dbh!#)].</key>
-		<key name="scan_apc_ups_log_0005">Connected to: [#!variable!connections!#] database(s).</key>
-		<key name="scan_apc_ups_log_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
-		<key name="scan_apc_ups_log_0007">Shell call: [#!variable!shell_call!#].</key>
-		<key name="scan_apc_ups_log_0008">Committing changes to the database.</key>
-		<key name="scan_apc_ups_log_0009">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
+		<key name="scan_apc_ups_log_0001"></key>
 		
 		<!-- Warnings. -->
-		<key name="scan_apc_ups_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
-		<key name="scan_apc_ups_warning_0002">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
-		<key name="scan_apc_ups_warning_0003"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_apc_ups_warning_0004"><![CDATA[The password set for the user: [#!variable!user!#] is incorrect. Please update: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_apc_ups_warning_0005">
-The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_apc_ups_warning_0006">This database can not be used, skipping it.</key>
-		<key name="scan_apc_ups_warning_0007">Error during DB 'do'. The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_apc_ups_warning_0008">There were errors writing data to the database. Rolling back!</key>
+		<key name="scan_apc_ups_warning_0001"></key>
 		
 		<!-- Errors -->
-		<key name="scan_apc_ups_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_apc_ups_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_apc_ups_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="scan_apc_ups_error_0001"></key>
+		
+		<!-- The UPS reports states as integers. These are used to 
+		     translate those states into strings that a human would 
+		     understand. See the MIB for OID 
+		     .1.3.6.1.4.1.318.1.1.1.4.1.1.0 -->
+		<key name="scan_apc_ups_health_0001">The UPS's health is in an unknown state.</key>
+		<key name="scan_apc_ups_health_0002">The UPS is operating normally.</key>
+		<key name="scan_apc_ups_health_0003">The UPS is running on it's batteries. It is likely that the input power feeding the UPS has failed.</key>
+		<key name="scan_apc_ups_health_0004">The UPS is compensating for low input power.</key>
+		<key name="scan_apc_ups_health_0005">The UPS is in a timed sleep. It will power back on when the timer has expired.</key>
+		<key name="scan_apc_ups_health_0006">The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
+		<key name="scan_apc_ups_health_0007">The UPS is off. No power is being provided to down-stream equipment.</key>
+		<key name="scan_apc_ups_health_0008">The UPS is currently rebooting.</key>
+		<key name="scan_apc_ups_health_0009">The UPS is in bypass-mode and was placed in this mode by a hardware switch. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
+		<key name="scan_apc_ups_health_0010">The UPS is in bypass-mode because of an internal failure. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
+		<key name="scan_apc_ups_health_0011">The UPS has lost input power and is sleeping. It will restore output power once input power has been restored.</key>
+		<key name="scan_apc_ups_health_0012">The UPS is compensating for high input voltage.</key>
+		<key name="scan_apc_ups_health_0013">The UPS is operating in low-power mode. In this mode, the UPS is in static bypass mode and it is drawing very little power. If a fault is detected, it will switch to either normal operation or forced static bypass mode.</key>
+		<key name="scan_apc_ups_health_0014">The UPS is operating in hot-standby mode.</key>
+		<key name="scan_apc_ups_health_0015">The UPS is performing a test of it's batteries.</key>
+		<key name="scan_apc_ups_health_0016">The UPS has been placed in emergency static bypass mode. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
+		<key name="scan_apc_ups_health_0017">The UPS is in static bypass standby mode. It is not currently providing power to downstream devices.</key>
+		<key name="scan_apc_ups_health_0018">The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.</key>
+		<key name="scan_apc_ups_health_0019">The UPS is in SPoT (Self Power Test) operating mode.</key> <!-- http://www.apcmedia.com/salestools/COCR-9TZK8N/COCR-9TZK8N_R0_EN.pdf -->
+		<key name="scan_apc_ups_health_0020">The UPS is in ECOnversion mode. The UPS is providing power to the downstream devices via the bypass. The UPS's inverter is operational and ready to take over the output load if an input fault occurs.</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
+		
+		<!-- The UPS reports the last transfer as integers. These are
+		     used to translate those states into strings that a human
+		     would understand. See the MIB for OID 
+		      -->
+		<key name="scan_apc_ups_last_xfer_0001">The UPS has not transfered to battery power since the last time it booted.</key>
+		<key name="scan_apc_ups_last_xfer_0002">The UPS last transfered to batteries because of high input voltage.</key>
+		<key name="scan_apc_ups_last_xfer_0003">The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0004">The UPS last transfered to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0005">The UPS last transfered to batteries because of a brief, minor redunction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0006">The UPS last transfered to batteries because of a brief, significant redunction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0007">The UPS last transfered to batteries because of a brief, minor increase of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0008">The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0009">The UPS last transfered to batteries as part of a planned self-test.</key>
+		<key name="scan_apc_ups_last_xfer_0010">The UPS last transfered to batteries because of a significant change of input voltage from the mains circuit.</key>
+		
+		<!-- The UPS reports the battery state as an integer. These are
+		     used to translate those states into strings that a human
+		     would understand. See the MIB for OID 
+		     .1.3.6.1.4.1.318.1.1.1.2.1.1.0 -->
+		<key name="scan_apc_ups_battery_0001">The UPS battery is in an unknown state.</key>
+		<key name="scan_apc_ups_battery_0002">The UPS battery is operating normally.</key>
+		<key name="scan_apc_ups_battery_0003">The UPS battery is in a low voltage state.</key>
+		<key name="scan_apc_ups_battery_0004">The UPS battery is in a failed state and needs to be replaced.</key>
+		
+		<!-- The UPS reports the input sensitive as an integer. These
+		     are used to translate those levels into strings that a
+		     human would understand. See the MIB for OID 
+		     .1.3.6.1.4.1.318.1.1.1.5.2.7.0 -->
+		<key name="scan_apc_ups_sensitivity_0001">The UPS is automatically determining the input power sensitivity.</key>
+		<key name="scan_apc_ups_sensitivity_0002">The UPS is set to have a low input sensitivity. It will not switch to batteries unless the input power degrades significantly. This mode should only be used if the downstream equipment can handle a wider range of input voltages and frequencies.</key>
+		<key name="scan_apc_ups_sensitivity_0003">The UPS is set to medium input sensitivity. This will cause the UPS to transfer to battery power under moderately distorted input.</key>
+		<key name="scan_apc_ups_sensitivity_0004">The UPS is set to high sensitivity. It will switch to battery power under minor input distortion, providing the best protection for downstream equipment, but will shorten the servicable life of the batteries if input power distorts frequently.</key>
 		
 		<!-- APC UPS Agent-specific messages -->
 		<key name="scan_apc_ups_message_0001">Starting #!string!scan_apc_ups_brand_0001!#:</key>
@@ -107,5 +125,6 @@ https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
+		<key name="scan_apc_ups_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
 	</lang>
 </words>

@@ -7488,7 +7488,7 @@ sub compare_new_and_old
 	# Send an email and record the new values if there are changes.
 	if ($changes)
 	{
-		#$conf->{mail_data}{subject} = "State Change!";
+		$conf->{mail_data}{subject} = "[ Anvil! Alert ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name} - State Change!";
 		$conf->{mail_data}{body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
@@ -7503,7 +7503,7 @@ $changes";
 	# Send the debug email if it is needed.
 	if ($debug_changes)
 	{
-		#$conf->{mail_data}{debug_subject} = "State Change!";
+		$conf->{mail_data}{debug_subject} = "[ Anvil! Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name} - State Change!";
 		$conf->{mail_data}{debug_body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 

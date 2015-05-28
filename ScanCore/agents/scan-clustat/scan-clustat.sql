@@ -10,7 +10,7 @@
 -- This is the database schema for the 'Clustat' scan agent.
 
 CREATE TABLE clustat (
-	clustat_id			bigserial				primary key,
+	clustat_id			bigserial			primary key,
 	clustat_host_id			bigint,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
@@ -21,11 +21,11 @@ CREATE TABLE clustat (
 ALTER TABLE clustat OWNER TO #!variable!user!#;
 
 CREATE TABLE history.clustat (
-	clustat_id			bigserial,
+	history_id			bigserial,
+	clustat_id			bigint,
 	clustat_host_id			bigint,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
-	history_id			bigserial,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat OWNER TO #!variable!user!#;
@@ -74,12 +74,12 @@ CREATE TABLE clustat_node (
 ALTER TABLE clustat_node OWNER TO #!variable!user!#;
 
 CREATE TABLE history.clustat_node (
-	clustat_node_id			bigserial,
+	history_id			bigserial,
+	clustat_node_id			bigint,
 	clustat_node_clustat_id		bigint,
 	clustat_node_cluster_id		int,
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
 	clustat_node_status		text,								-- Node status
-	history_id			bigserial,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat_node OWNER TO #!variable!user!#;
@@ -130,13 +130,13 @@ CREATE TABLE clustat_service (
 ALTER TABLE clustat_service OWNER TO #!variable!user!#;
 
 CREATE TABLE history.clustat_service (
-	clustat_service_id		bigserial,
+	history_id			bigserial,
+	clustat_service_id		bigint,
 	clustat_service_clustat_id	bigint,
 	clustat_service_name		text,
 	clustat_service_host		text,
 	clustat_service_status		text,
 	clustat_service_is_vm		boolean				not null,
-	history_id			bigserial,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.clustat_service OWNER TO #!variable!user!#;

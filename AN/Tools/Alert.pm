@@ -122,7 +122,7 @@ INSERT INTO
 # just print the error and exit;
 sub error
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
 	
 	# Clear any prior errors.

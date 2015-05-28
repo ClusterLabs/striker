@@ -729,6 +729,7 @@ sub initialize_conf
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
 					"ntpd",		# LSB compliant
 					"ricci",	# LSB compliant
+					"snmpd",
 				],
 				disable		=>	[
 					"acpid",
@@ -738,6 +739,7 @@ sub initialize_conf
 					"gfs2",		# 
 					"ip6tables",	# 
 					"rgmanager",	# 
+					"snmptrapd",
 				],
 			},
 			date_seperator		=>	"-",			# Should put these in the strings.xml file

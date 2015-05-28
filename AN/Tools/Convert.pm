@@ -33,4 +33,95 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This takes value and converts it from fahrenheit to celsius.
+sub convert_to_celsius
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	
+	my $temperature = $parameter->{temperature};
+	return("#!null!#") if not $temperature;
+	
+	# Split off the value from the suffix, if any.
+	if ($temperature =~ /^(\d+\.\d+).*/)
+	{
+		$temperature = $1;
+	}
+	elsif ($temperature =~ /^(\d+)(.*)/)
+	{
+		$temperature = $1;
+	}
+	
+	# Return if the temperature wasn't found.
+	return("#!invalid!#") if $temperature !~ /^\d/;
+	
+	# Convert the temperature.
+	my $new_temperature = (($temperature - 32) / 1.8);
+	
+	return($new_temperature);
+}
+
+# This takes value and converts it from celsius to fahrenheit.
+sub convert_to_fahrenheit
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	
+	my $temperature = $parameter->{temperature};
+	return("#!null!#") if not $temperature;
+	
+	# Split off the value from the suffix, if any.
+	if ($temperature =~ /^(\d+\.\d+).*/)
+	{
+		$temperature = $1;
+	}
+	elsif ($temperature =~ /^(\d+)(.*)/)
+	{
+		$temperature = $1;
+	}
+	
+	# Return if the temperature wasn't found.
+	return("#!invalid!#") if $temperature !~ /^\d/;
+	
+	# Convert the temperature.
+	my $new_temperature = (($temperature * 1.8) + 32);
+	
+	return($new_temperature);
+}
+
+# This converts a mm/dd/yy or mm/dd/yyyy string into the more sensible yy/mm/dd
+# or yyyy/mm/dd string.
+sub convert_to_mmddyy_to_yymmdd
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	
+	my $date = $parameter->{date};
+	return("#!null!#") if not $date;
+	
+	# Split off the value from the suffix, if any.
+	if ($date =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)/)
+	{
+		$date = "$3/$1/$2";
+	}
+	elsif ($date =~ /^(\d\d)\/(\d\d)\/(\d\d)/)
+	{
+		$date = "$3/$1/$2";
+	}
+	
+	# Return if the temperature wasn't found.
+	return("#!invalid!#") if $date !~ /^\d/;
+	
+	return($date);
+}
+
 1;
