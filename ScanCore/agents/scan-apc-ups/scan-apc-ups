@@ -95,9 +95,12 @@ my $an = AN::Tools->new({data =>
 				'1m_minimum_input_voltage_hp'	=>	".1.3.6.1.4.1.318.1.1.1.3.3.3.0",
 			},
 			ups			=>	{
-				# Ticks after AC restore before UPS powers on (ie: 1000 = 10 seconds)
+				# Time in 1/10s after AC restore before UPS powers on (ie: 100 = 10 seconds)
 				ac_restore_delay	=>	".1.3.6.1.2.1.33.1.2.4.0",
-				firmware_version	=>	".1.3.6.1.4.1.318.1.4.2.4.1.4.1",
+				# Delay time from when the shutdown command is sent until when the UPS
+				# actually powers off (measured in ticks)
+				shutdown_delay		=>	".1.3.6.1.4.1.318.1.1.1.5.2.10.0",
+				firmware_version	=>	".1.3.6.1.4.1.318.1.1.1.1.2.1.0",
 				# The modes are documented as 'scan_apc_ups_health_00{01..20}' with
 				# the integer value correlating to the returned health integer value.
 				health			=>	".1.3.6.1.4.1.318.1.1.1.4.1.1.0",
@@ -239,6 +242,7 @@ sub find_changes
 		###############################################################
 		
 		my $new_apc_ups_ac_restore_delay      = $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay};
+		my $new_apc_ups_shutdown_delay        = $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay};
 		my $new_apc_ups_firmware_version      = $an->data->{ups}{$ups_name}{apc_ups_firmware_version};
 		my $new_apc_ups_health                = $an->data->{ups}{$ups_name}{apc_ups_health};
 		my $new_apc_ups_high_transfer_voltage = $an->data->{ups}{$ups_name}{apc_ups_high_transfer_voltage};
@@ -249,18 +253,19 @@ sub find_changes
 		my $new_apc_ups_nmc_firmware_version  = $an->data->{ups}{$ups_name}{apc_ups_nmc_firmware_version};
 		my $new_apc_ups_nmc_serial_number     = $an->data->{ups}{$ups_name}{apc_ups_nmc_serial_number};
 		my $new_apc_ups_nmc_mac_address       = $an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "new_apc_ups_ac_restore_delay",      value1  => $new_apc_ups_ac_restore_delay,
-			name2  => "new_apc_ups_firmware_version",      value2  => $new_apc_ups_firmware_version,
-			name3  => "new_apc_ups_health",                value3  => $new_apc_ups_health,
-			name4  => "new_apc_ups_high_transfer_voltage", value4  => $new_apc_ups_high_transfer_voltage,
-			name5  => "new_apc_ups_low_transfer_voltage",  value5  => $new_apc_ups_low_transfer_voltage,
-			name6  => "new_apc_ups_last_transfer_reason",  value6  => $new_apc_ups_last_transfer_reason,
-			name7  => "new_apc_ups_manufactured_date",     value7  => $new_apc_ups_manufactured_date,
-			name8  => "new_apc_ups_temperature_units",     value8  => $new_apc_ups_temperature_units,
-			name9  => "new_apc_ups_nmc_firmware_version",  value9  => $new_apc_ups_nmc_firmware_version,
-			name10 => "new_apc_ups_nmc_serial_number",     value10 => $new_apc_ups_nmc_serial_number,
-			name11 => "new_apc_ups_nmc_mac_address",       value11 => $new_apc_ups_nmc_mac_address,
+			name2  => "new_apc_ups_shutdown_delay",        value2  => $new_apc_ups_shutdown_delay,
+			name3  => "new_apc_ups_firmware_version",      value3  => $new_apc_ups_firmware_version,
+			name4  => "new_apc_ups_health",                value4  => $new_apc_ups_health,
+			name5  => "new_apc_ups_high_transfer_voltage", value5  => $new_apc_ups_high_transfer_voltage,
+			name6  => "new_apc_ups_low_transfer_voltage",  value6  => $new_apc_ups_low_transfer_voltage,
+			name7  => "new_apc_ups_last_transfer_reason",  value7  => $new_apc_ups_last_transfer_reason,
+			name8  => "new_apc_ups_manufactured_date",     value8  => $new_apc_ups_manufactured_date,
+			name9  => "new_apc_ups_temperature_units",     value9  => $new_apc_ups_temperature_units,
+			name10  => "new_apc_ups_nmc_firmware_version",  value10 => $new_apc_ups_nmc_firmware_version,
+			name11 => "new_apc_ups_nmc_serial_number",     value11 => $new_apc_ups_nmc_serial_number,
+			name12 => "new_apc_ups_nmc_mac_address",       value12 => $new_apc_ups_nmc_mac_address,
 		}, file => $THIS_FILE, line => __LINE__ });
 		
 		###############################################################
@@ -347,6 +352,7 @@ INSERT INTO
     apc_ups_fqdn, 
     apc_ups_ip, 
     apc_ups_ac_restore_delay, 
+    apc_ups_shutdown_delay, 
     apc_ups_firmware_version, 
     apc_ups_health, 
     apc_ups_high_transfer_voltage, 
@@ -365,6 +371,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_fqdn).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ip).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ac_restore_delay).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_shutdown_delay).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_firmware_version).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_health).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_high_transfer_voltage).", 
@@ -811,11 +818,18 @@ sub gather_ups_data
 		# Base UPS and NMC information                                #
 		###############################################################
 		
-		# Get the AC restore delay, if set. (This is ticks, divide by 100 to get seconds).
+		# Get the AC restore delay, if set. (High-precision, divide by 10 to get seconds).
 		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{ac_restore_delay});
-		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /^\d+$/;
+		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /^\d+$/;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Get the shut down delay, if set. (in ticks, divide by 100).
+		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{shutdown_delay});
+		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =~ /^\d+$/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ups::${ups_name}::apc_ups_shutdown_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the UPS's firmware version.
@@ -895,7 +909,8 @@ sub gather_ups_data
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Now the MAC address.
-		$an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{nmc}{mac_address});
+		$an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{nmc}{mac_address});
+		$an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address} =~ s/([0-9a-fA-F]{2}) ([0-9a-fA-F]{2}) ([0-9a-fA-F]{2}) ([0-9a-fA-F]{2}) ([0-9a-fA-F]{2}) ([0-9a-fA-F]{2})/$1:$2:$3:$4:$5:$6/g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_nmc_mac_address", value1 => $an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address}, 
 		}, file => $THIS_FILE, line => __LINE__});

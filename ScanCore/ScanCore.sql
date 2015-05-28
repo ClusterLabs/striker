@@ -143,7 +143,7 @@ CREATE TRIGGER trigger_alerts
 -- This is used to indicate the power state of UPSes. It is used to determine
 -- when the system needs to be powered off. All UPS-type scan agents must use
 -- this table (in addition to any tables they may wish to use)
-CREATE TABLE powers (
+CREATE TABLE power (
 	power_id		bigserial			primary key,
 	power_host_id		bigint				not null,			-- The name of the node or dashboard that this power came from.
 	power_agent_name	text				not null,
@@ -156,9 +156,9 @@ CREATE TABLE powers (
 	
 	FOREIGN KEY(power_host_id) REFERENCES hosts(host_id)
 );
-ALTER TABLE powers OWNER TO #!variable!user!#;
+ALTER TABLE power OWNER TO #!variable!user!#;
 
-CREATE TABLE history.powers (
+CREATE TABLE history.power (
 	history_id		bigserial,
 	power_id		bigint,
 	power_host_id		bigint,
@@ -170,15 +170,15 @@ CREATE TABLE history.powers (
 	power_load_percentage	double precision,
 	modified_date		timestamp with time zone	not null
 );
-ALTER TABLE history.powers OWNER TO #!variable!user!#;
+ALTER TABLE history.power OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_powers() RETURNS trigger
+CREATE FUNCTION history_power() RETURNS trigger
 AS $$
 DECLARE
-	history_powers RECORD;
+	history_power RECORD;
 BEGIN
-	SELECT INTO history_powers * FROM powers WHERE power_id = new.power_id;
-	INSERT INTO history.powers
+	SELECT INTO history_power * FROM power WHERE power_id = new.power_id;
+	INSERT INTO history.power
 		(power_id,
 		power_host_id,
 		power_agent_name,
@@ -189,28 +189,28 @@ BEGIN
 		power_load_percentage,
 		modified_date)
 	VALUES
-		(history_powers.power_id,
-		history_powers.power_host_id,
-		history_powers.power_agent_name,
-		history_powers.power_state,
-		history_powers.power_on_battery,
-		history_powers.power_seconds_left,
-		history_powers.power_charge_percentage,
-		history_powers.power_load_percentage,
-		history_powers.modified_date);
+		(history_power.power_id,
+		history_power.power_host_id,
+		history_power.power_agent_name,
+		history_power.power_state,
+		history_power.power_on_battery,
+		history_power.power_seconds_left,
+		history_power.power_charge_percentage,
+		history_power.power_load_percentage,
+		history_power.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_powers() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_power() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_powers
-	AFTER INSERT OR UPDATE ON powers
-	FOR EACH ROW EXECUTE PROCEDURE history_powers();
+CREATE TRIGGER trigger_power
+	AFTER INSERT OR UPDATE ON power
+	FOR EACH ROW EXECUTE PROCEDURE history_power();
 
 
 -- This stores alerts coming in from various agents
-CREATE TABLE temperatures (
+CREATE TABLE temperature (
 	temperature_id		bigserial			primary key,
 	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
@@ -223,9 +223,9 @@ CREATE TABLE temperatures (
 	
 	FOREIGN KEY(temperature_host_id) REFERENCES hosts(host_id)
 );
-ALTER TABLE temperatures OWNER TO #!variable!user!#;
+ALTER TABLE temperature OWNER TO #!variable!user!#;
 
-CREATE TABLE history.temperatures (
+CREATE TABLE history.temperature (
 	history_id		bigserial,
 	temperature_id		bigint,
 	temperature_host_id	bigint,
@@ -237,15 +237,15 @@ CREATE TABLE history.temperatures (
 	temperature_jumped	boolean,
 	modified_date		timestamp with time zone	not null
 );
-ALTER TABLE history.temperatures OWNER TO #!variable!user!#;
+ALTER TABLE history.temperature OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_temperatures() RETURNS trigger
+CREATE FUNCTION history_temperature() RETURNS trigger
 AS $$
 DECLARE
-	history_temperatures RECORD;
+	history_temperature RECORD;
 BEGIN
-	SELECT INTO history_temperatures * FROM temperatures WHERE temperature_id = new.temperature_id;
-	INSERT INTO history.temperatures
+	SELECT INTO history_temperature * FROM temperature WHERE temperature_id = new.temperature_id;
+	INSERT INTO history.temperature
 		(temperature_id,
 		temperature_host_id,
 		temperature_agent_name,
@@ -256,24 +256,24 @@ BEGIN
 		temperature_jumped,
 		modified_date)
 	VALUES
-		(history_temperatures.temperature_id,
-		history_temperatures.temperature_host_id,
-		history_temperatures.temperature_agent_name,
-		history_temperatures.temperature_sensor_name,
-		history_temperatures.temperature_celcius,
-		history_temperatures.temperature_state,
-		history_temperatures.temperature_is,
-		history_temperatures.temperature_jumped,
-		history_temperatures.modified_date);
+		(history_temperature.temperature_id,
+		history_temperature.temperature_host_id,
+		history_temperature.temperature_agent_name,
+		history_temperature.temperature_sensor_name,
+		history_temperature.temperature_celcius,
+		history_temperature.temperature_state,
+		history_temperature.temperature_is,
+		history_temperature.temperature_jumped,
+		history_temperature.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_temperatures() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_temperature() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_temperatures
-	AFTER INSERT OR UPDATE ON temperatures
-	FOR EACH ROW EXECUTE PROCEDURE history_temperatures();
+CREATE TRIGGER trigger_temperature
+	AFTER INSERT OR UPDATE ON temperature
+	FOR EACH ROW EXECUTE PROCEDURE history_temperature();
 
 
 -- This stores information about the scan agents on this system
