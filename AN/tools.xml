@@ -43,6 +43,23 @@ This is the AN::Tools master 'words' file.
 		<!-- Branding stuff that others might want to change. -->
 		<key name="an_brand_0001">https://alteeve.ca</key>
 		
+		<!-- Suffixes used often -->
+		<key name="tools_suffix_0001">h</key>
+		<key name="tools_suffix_0002">hour</key>
+		<key name="tools_suffix_0003">hours</key>
+		<key name="tools_suffix_0004">m</key>
+		<key name="tools_suffix_0005">minute</key>
+		<key name="tools_suffix_0006">minutes</key>
+		<key name="tools_suffix_0007">h</key>
+		<key name="tools_suffix_0008">hour</key>
+		<key name="tools_suffix_0009">hours</key>
+		<key name="tools_suffix_0010">°C</key>
+		<key name="tools_suffix_0011">Celsius</key>
+		<key name="tools_suffix_0012">°F</key>
+		<key name="tools_suffix_0013">Fahrenheit</key>
+		<key name="tools_suffix_0014">°K</key>
+		<key name="tools_suffix_0015">Kelvin</key>
+		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>
 		
@@ -55,15 +72,154 @@ This is the AN::Tools master 'words' file.
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="an_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
 		<key name="an_variables_0003">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
-		<key name="an_variables_0004">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#]</key>
-		<key name="an_variables_0005">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#]</key>
-		<key name="an_variables_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#]</key>
-		<key name="an_variables_0007">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#]</key>
-		<key name="an_variables_0008">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#]</key>
-		<key name="an_variables_0009">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#], #!variable!name9!#: [#!variable!value9!#]</key>
-		<key name="an_variables_0010">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#], #!variable!name9!#: [#!variable!value9!#], #!variable!name10!#: [#!variable!value10!#]</key>
-		<key name="an_variables_0011">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#], #!variable!name9!#: [#!variable!value9!#], #!variable!name10!#: [#!variable!value10!#], #!variable!name11!#: [#!variable!value11!#]</key>
-		<key name="an_variables_0012">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#], #!variable!name4!#: [#!variable!value4!#], #!variable!name5!#: [#!variable!value5!#], #!variable!name6!#: [#!variable!value6!#], #!variable!name7!#: [#!variable!value7!#], #!variable!name8!#: [#!variable!value8!#], #!variable!name9!#: [#!variable!value9!#], #!variable!name10!#: [#!variable!value10!#], #!variable!name11!#: [#!variable!value11!#], #!variable!name12!#: [#!variable!value12!#]</key>
+		<key name="an_variables_0004">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+\- #!variable!name4!#: [#!variable!value4!#]</key>
+		<key name="an_variables_0005">Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+\- #!variable!name5!#: [#!variable!value5!#]
+		</key>
+		<key name="an_variables_0006">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+\- #!variable!name6!#: [#!variable!value6!#]
+		</key>
+		<key name="an_variables_0007">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+\- #!variable!name7!#: [#!variable!value7!#]
+		</key>
+		<key name="an_variables_0008">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+\- #!variable!name8!#: [#!variable!value8!#]
+		</key>
+		<key name="an_variables_0009">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+\- #!variable!name9!#: [#!variable!value9!#]
+		</key>
+		<key name="an_variables_0010">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+\- #!variable!name10!#: [#!variable!value10!#]
+		</key>
+		<key name="an_variables_0011">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+\- #!variable!name11!#: [#!variable!value11!#]
+		</key>
+		<key name="an_variables_0012">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+\- #!variable!name12!#: [#!variable!value12!#]
+		</key>
+		<key name="an_variables_0013">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+\- #!variable!name13!#: [#!variable!value13!#]
+		</key>
+		<key name="an_variables_0014">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+\- #!variable!name14!#: [#!variable!value14!#]
+		</key>
+		<key name="an_variables_0015">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+\- #!variable!name15!#: [#!variable!value15!#]
+		</key>
 		
 		<!-- Alert titles -->
 		<key name="an_alert_title_0001">Debug</key>
@@ -71,6 +227,7 @@ This is the AN::Tools master 'words' file.
 		<key name="an_alert_title_0003">Notice</key>
 		<key name="an_alert_title_0004">Warning</key>
 		<key name="an_alert_title_0005">Critical</key>
+		<key name="an_alert_title_0006">Warning Cleared</key>
 		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>

@@ -52,16 +52,16 @@ BEGIN
 	SELECT INTO history_hosts * FROM hosts WHERE host_id = new.host_id;
 	INSERT INTO history.hosts
 		(host_id,
-		host_name,
-		host_type,
-		host_status,
-		modified_date)
+		 host_name,
+		 host_type,
+		 host_status,
+		 modified_date)
 	VALUES
 		(history_hosts.host_id,
-		history_hosts.host_name,
-		history_hosts.host_type,
-		history_hosts.host_status,
-		history_hosts.modified_date);
+		 history_hosts.host_name,
+		 history_hosts.host_type,
+		 history_hosts.host_status,
+		 history_hosts.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -111,24 +111,24 @@ BEGIN
 	SELECT INTO history_alerts * FROM alerts WHERE alert_id = new.alert_id;
 	INSERT INTO history.alerts
 		(alert_id,
-		alert_host_id,
-		alert_agent_name,
-		alert_level,
-		alert_title_key,
-		alert_title_variables,
-		alert_message_key,
-		alert_message_variables,
-		modified_date)
+		 alert_host_id,
+		 alert_agent_name,
+		 alert_level,
+		 alert_title_key,
+		 alert_title_variables,
+		 alert_message_key,
+		 alert_message_variables,
+		 modified_date)
 	VALUES
 		(history_alerts.alert_id,
-		history_alerts.alert_host_id,
-		history_alerts.alert_agent_name,
-		history_alerts.alert_level,
-		history_alerts.alert_title_key,
-		history_alerts.alert_title_variables,
-		history_alerts.alert_message_key,
-		history_alerts.alert_message_variables,
-		history_alerts.modified_date);
+		 history_alerts.alert_host_id,
+		 history_alerts.alert_agent_name,
+		 history_alerts.alert_level,
+		 history_alerts.alert_title_key,
+		 history_alerts.alert_title_variables,
+		 history_alerts.alert_message_key,
+		 history_alerts.alert_message_variables,
+		 history_alerts.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -180,24 +180,24 @@ BEGIN
 	SELECT INTO history_power * FROM power WHERE power_id = new.power_id;
 	INSERT INTO history.power
 		(power_id,
-		power_host_id,
-		power_agent_name,
-		power_state,
-		power_on_battery,
-		power_seconds_left,
-		power_charge_percentage,
-		power_load_percentage,
-		modified_date)
+		 power_host_id,
+		 power_agent_name,
+		 power_state,
+		 power_on_battery,
+		 power_seconds_left,
+		 power_charge_percentage,
+		 power_load_percentage,
+		 modified_date)
 	VALUES
 		(history_power.power_id,
-		history_power.power_host_id,
-		history_power.power_agent_name,
-		history_power.power_state,
-		history_power.power_on_battery,
-		history_power.power_seconds_left,
-		history_power.power_charge_percentage,
-		history_power.power_load_percentage,
-		history_power.modified_date);
+		 history_power.power_host_id,
+		 history_power.power_agent_name,
+		 history_power.power_state,
+		 history_power.power_on_battery,
+		 history_power.power_seconds_left,
+		 history_power.power_charge_percentage,
+		 history_power.power_load_percentage,
+		 history_power.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -247,24 +247,24 @@ BEGIN
 	SELECT INTO history_temperature * FROM temperature WHERE temperature_id = new.temperature_id;
 	INSERT INTO history.temperature
 		(temperature_id,
-		temperature_host_id,
-		temperature_agent_name,
-		temperature_sensor_name,
-		temperature_celcius,
-		temperature_state,
-		temperature_is,
-		temperature_jumped,
-		modified_date)
+		 temperature_host_id,
+		 temperature_agent_name,
+		 temperature_sensor_name,
+		 temperature_celcius,
+		 temperature_state,
+		 temperature_is,
+		 temperature_jumped,
+		 modified_date)
 	VALUES
 		(history_temperature.temperature_id,
-		history_temperature.temperature_host_id,
-		history_temperature.temperature_agent_name,
-		history_temperature.temperature_sensor_name,
-		history_temperature.temperature_celcius,
-		history_temperature.temperature_state,
-		history_temperature.temperature_is,
-		history_temperature.temperature_jumped,
-		history_temperature.modified_date);
+		 history_temperature.temperature_host_id,
+		 history_temperature.temperature_agent_name,
+		 history_temperature.temperature_sensor_name,
+		 history_temperature.temperature_celcius,
+		 history_temperature.temperature_state,
+		 history_temperature.temperature_is,
+		 history_temperature.temperature_jumped,
+		 history_temperature.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -308,18 +308,18 @@ BEGIN
 	SELECT INTO history_agents * FROM agents WHERE agent_id = new.agent_id;
 	INSERT INTO history.agents
 		(agent_id,
-		agent_host_id,
-		agent_name,
-		agent_exit_code,
-		agent_runtime,
-		modified_date)
+		 agent_host_id,
+		 agent_name,
+		 agent_exit_code,
+		 agent_runtime,
+		 modified_date)
 	VALUES
 		(history_agents.agent_id,
-		history_agents.agent_host_id,
-		history_agents.agent_name,
-		history_agents.agent_exit_code,
-		history_agents.agent_runtime,
-		history_agents.modified_date);
+		 history_agents.agent_host_id,
+		 history_agents.agent_name,
+		 history_agents.agent_exit_code,
+		 history_agents.agent_runtime,
+		 history_agents.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -367,16 +367,16 @@ BEGIN
 	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id = new.ram_used_id;
 	INSERT INTO history.ram_used
 		(ram_used_id,
-		ram_used_host_id,
-		ram_used_by,
-		ram_used_bytes,
-		modified_date)
+		 ram_used_host_id,
+		 ram_used_by,
+		 ram_used_bytes,
+		 modified_date)
 	VALUES
 		(history_ram_used.ram_used_id,
-		history_ram_used.ram_used_host_id,
-		history_ram_used.ram_used_by,
-		history_ram_used.ram_used_bytes,
-		history_ram_used.modified_date);
+		 history_ram_used.ram_used_host_id,
+		 history_ram_used.ram_used_by,
+		 history_ram_used.ram_used_bytes,
+		 history_ram_used.modified_date);
 	RETURN NULL;
 END;
 $$

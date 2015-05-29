@@ -38,16 +38,16 @@ BEGIN
 	SELECT INTO history_clustat * FROM clustat WHERE clustat_id=new.clustat_id;
 	INSERT INTO history.clustat
 		(clustat_id,
-		clustat_host_id,
-		clustat_quorate,
-		clustat_cluster_name,
-		modified_date)
+		 clustat_host_id,
+		 clustat_quorate,
+		 clustat_cluster_name,
+		 modified_date)
 	VALUES
 		(history_clustat.clustat_id,
-		history_clustat.clustat_host_id,
-		history_clustat.clustat_quorate,
-		history_clustat.clustat_cluster_name,
-		history_clustat.modified_date);
+		 history_clustat.clustat_host_id,
+		 history_clustat.clustat_quorate,
+		 history_clustat.clustat_cluster_name,
+		 history_clustat.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -92,18 +92,18 @@ BEGIN
 	SELECT INTO history_clustat_node * FROM clustat_node WHERE clustat_node_id=new.clustat_node_id;
 	INSERT INTO history.clustat_node
 		(clustat_node_id,
-		clustat_node_clustat_id,
-		clustat_node_cluster_id,
-		clustat_node_name,
-		clustat_node_status,
-		modified_date)
+		 clustat_node_clustat_id,
+		 clustat_node_cluster_id,
+		 clustat_node_name,
+		 clustat_node_status,
+		 modified_date)
 	VALUES
 		(history_clustat_node.clustat_node_id,
-		history_clustat_node.clustat_node_clustat_id,
-		history_clustat_node.clustat_node_cluster_id,
-		history_clustat_node.clustat_node_name,
-		history_clustat_node.clustat_node_status,
-		history_clustat_node.modified_date);
+		 history_clustat_node.clustat_node_clustat_id,
+		 history_clustat_node.clustat_node_cluster_id,
+		 history_clustat_node.clustat_node_name,
+		 history_clustat_node.clustat_node_status,
+		 history_clustat_node.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -149,20 +149,20 @@ BEGIN
 	SELECT INTO history_clustat_service * FROM clustat_service WHERE clustat_service_id=new.clustat_service_id;
 	INSERT INTO history.clustat_service
 		(clustat_service_id,
-		clustat_service_clustat_id,
-		clustat_service_name,
-		clustat_service_host,
-		clustat_service_status,
-		clustat_service_is_vm,
-		modified_date)
+		 clustat_service_clustat_id,
+		 clustat_service_name,
+		 clustat_service_host,
+		 clustat_service_status,
+		 clustat_service_is_vm,
+		 modified_date)
 	VALUES
 		(history_clustat_service.clustat_service_id,
-		history_clustat_service.clustat_service_clustat_id,
-		history_clustat_service.clustat_service_name,
-		history_clustat_service.clustat_service_host,
-		history_clustat_service.clustat_service_status,
-		history_clustat_service.clustat_service_is_vm,
-		history_clustat_service.modified_date);
+		 history_clustat_service.clustat_service_clustat_id,
+		 history_clustat_service.clustat_service_name,
+		 history_clustat_service.clustat_service_host,
+		 history_clustat_service.clustat_service_status,
+		 history_clustat_service.clustat_service_is_vm,
+		 history_clustat_service.modified_date);
 	RETURN NULL;
 END;
 $$

@@ -37,7 +37,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_email_0004">There has been a state change on #!variable!hostname!#</key>
 		<key name="scancore_email_0005">
 #!variable!title!#:
-- #!variable!message!#
+#!variable!message!#
 		</key>
 		
 		<!-- Strings that can change by rebranding -->

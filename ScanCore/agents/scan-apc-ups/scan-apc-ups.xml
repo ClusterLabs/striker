@@ -20,18 +20,213 @@ with 'scan_apc_ups_'.
 		<key name="scan_apc_ups_title_0001"></key>
 		
 		<!-- Log messages -->
-		<key name="scan_apc_ups_log_0001"></key>
+		<key name="scan_apc_ups_log_0001">The DB table [#!variable!table!#] for the UPS with the serial number: [#!variable!serial_number!#] needs to be updated.</key>
+		
+		<!-- Notices -->
+		<key name="scan_apc_ups_note_0001">
+The UPS with the serial number: [#!variable!serial_number!#] has a new host name:
+- New host name: [#!variable!new_value!#]
+- Old host name: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0002">
+The UPS with the serial number: [#!variable!serial_number!#] has a new IP address:
+- New IP address: [#!variable!new_value!#]
+- Old IP address: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0003">
+The UPS with the serial number: [#!variable!serial_number!#] has had its start time after input power is restored changed:
+- New start delay: [#!variable!new_value!#] second(s)
+- Old start delay: [#!variable!old_value!#] second(s)
+
+This controls how long the UPS will wait after the input power has returned until it starts providing output power.
+		</key>
+		<key name="scan_apc_ups_note_0004">
+The UPS with the serial number: [#!variable!serial_number!#] has had its shutdown delay time changed:
+- New shutdown delay: [#!variable!new_value!#] second(s)
+- Old shutdown delay: [#!variable!old_value!#] second(s)
+
+This controls how long the UPS will wait after being asked to power down before actually disabling it's output power.
+		</key>
+		<key name="scan_apc_ups_note_0005">
+The UPS with the serial number: [#!variable!serial_number!#] has had its firmware updated:
+- New firmware version: [#!variable!new_value!#] second(s)
+- Old firmware version: [#!variable!old_value!#] second(s)
+
+The firmware is software inside the UPS that controls how the UPS operates and how users interact with it. Typically a firmware is upgraded by an administrator to fox bugs or add new functionality.
+		</key>
+		<key name="scan_apc_ups_note_0006">
+The UPS with the serial number: [#!variable!serial_number!#] has had its health status changed.:
+- New health status: [#!variable!new_value!#]
+- Old health status: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0007">
+The UPS with the serial number: [#!variable!serial_number!#] has had the high-voltage transfer voltage decreased:
+- New high-voltage transfer: [#!variable!new_value!#] vAC
+- Old high-voltage transfer: [#!variable!old_value!#] vAC
+
+An administrator may have made this change in order to help protect more sensitive down-stream equipment from high input voltages. This will likely shorten the life of the UPSes as the UPS will switch to batteries earlier on high-input power.
+		</key>
+		<key name="scan_apc_ups_note_0008">
+The UPS with the serial number: [#!variable!serial_number!#] has had the high-voltage transfer voltage increased:
+- New high-voltage transfer: [#!variable!new_value!#] vAC
+- Old high-voltage transfer: [#!variable!old_value!#] vAC
+
+An administrator may have made this change in order to reduce how often the UPS switches to batteries. This may be done in cases where input power is often high and the down-stream equipment is known to be able to handle the higher voltage without issue. This change would help extend the life of the batteries.
+		</key>
+		<key name="scan_apc_ups_note_0009">
+The UPS with the serial number: [#!variable!serial_number!#] has had the low-voltage transfer voltage increased:
+- New low-voltage transfer: [#!variable!new_value!#] vAC
+- Old low-voltage transfer: [#!variable!old_value!#] vAC
+
+An administrator may have made this change in order to help protect more sensitive down-stream equipment from low input voltages. This will likely shorten the life of the UPSes as the UPS will switch to batteries earlier on low-input power.
+		</key>
+		<key name="scan_apc_ups_note_0010">
+The UPS with the serial number: [#!variable!serial_number!#] has had the low-voltage transfer voltage decreased:
+- New low-voltage transfer: [#!variable!new_value!#] vAC
+- Old low-voltage transfer: [#!variable!old_value!#] vAC
+
+An administrator may have made this change in order to reduce how often the UPS switches to batteries. This may be done in cases where input power is often low and the down-stream equipment is known to be able to handle the lower voltage without issue. This change would help extend the life of the batteries.
+		</key>
+		<key name="scan_apc_ups_note_0011">
+The UPS with the serial number: [#!variable!serial_number!#] has a new "last transfer to batteries" reason:
+- New transfer reason: [#!variable!new_value!#]
+- Old transfer reason: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0012">
+The UPS with the serial number: [#!variable!serial_number!#] has a new manufactured date:
+- New date: [#!variable!new_value!#]
+- Old date: [#!variable!old_value!#]
+
+This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it's a warning level alert.
+
+Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that it can be investigated.
+		</key>
+		<key name="scan_apc_ups_note_0013">
+The UPS with the serial number: [#!variable!serial_number!#] has a new model number:
+- New model number: [#!variable!new_value!#]
+- Old model number: [#!variable!old_value!#]
+
+This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it's a warning level alert.
+
+Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that it can be investigated.
+		</key>
+		<key name="scan_apc_ups_note_0014">
+The UPS with the serial number: [#!variable!serial_number!#] is using a new internal measurement of temperature:
+- New units: [#!variable!new_value!#]
+- Old units: [#!variable!old_value!#]
+
+#!string!scancore_brand_0001!# converts everything internally to #!string!tools_suffix_0011!# (#!string!tools_suffix_0010!#), so this change should have no visible impact.
+		</key>
+		<key name="scan_apc_ups_note_0015">
+The UPS with the serial number: [#!variable!serial_number!#] has had its network interfaces's firmware updated:
+- New NMC firmware version: [#!variable!new_value!#] second(s)
+- Old NMC firmware version: [#!variable!old_value!#] second(s)
+
+The firmware is software inside the UPS's network interface card that controls how the card operates and how users interact with it. Typically a firmware is upgraded by an administrator to fox bugs or add new functionality.
+		</key>
+		<key name="scan_apc_ups_note_0016">
+The UPS with the serial number: [#!variable!serial_number!#] has had its network interface's serial number changed:
+- New serial number: [#!variable!new_value!#]
+- Old serial number: [#!variable!old_value!#]
+
+This probably a result of the network card being replaced.
+		</key>
+		<key name="scan_apc_ups_note_0017">
+The UPS with the serial number: [#!variable!serial_number!#] has had its network interface's MAC address changed:
+- New MAC address: [#!variable!new_value!#]
+- Old MAC address: [#!variable!old_value!#]
+
+This probably a result of the network card being replaced.
+		</key>
+		<key name="scan_apc_ups_note_0018">
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery's estimated replacement date change:
+- New estimated replacement date: [#!variable!new_value!#]
+- Old estimated replacement date: [#!variable!old_value!#]
+
+If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by an change in how often the UPS has run on it's batteries.
+		</key>
+		<key name="scan_apc_ups_note_0019">
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery fail:
+- New battery health status: [#!variable!new_value!#]
+- Old battery health status: [#!variable!old_value!#]
+
+The battery will need to be replaced. Please order an APC brand: [#!variable!battery_model!#] battery.
+		</key>
+		<key name="scan_apc_ups_note_0020">
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery replaced:
+- New battery health status: [#!variable!new_value!#]
+- Old battery health status: [#!variable!old_value!#]
+
+The battery appears to have been replaced with a: [#!variable!battery_model!#] model battery.
+		</key>
+		<key name="scan_apc_ups_note_0021">
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery changed:
+- New battery model: [#!variable!new_value!#]
+- Old battery model: [#!variable!old_value!#]
+
+The battery appears to have been replaced by an administrator.
+		</key>
+		<key name="scan_apc_ups_note_0022">
+The UPS with the serial number: [#!variable!serial_number!#] is charging:
+- New charge percentage: [#!variable!new_value!#]
+- Old charge percentage: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0023">
+The UPS with the serial number: [#!variable!serial_number!#] has charged to it's "minimum good" charge percentage:
+- New charge percentage: [#!variable!new_value!#]
+- Old charge percentage: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0024">
+The UPS with the serial number: [#!variable!serial_number!#] has finished charging:
+- New charge percentage: [#!variable!new_value!#]
+- Old charge percentage: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0025">
+The UPS with the serial number: [#!variable!serial_number!#] is discharging!:
+- New charge percentage: [#!variable!new_value!#]
+- Old charge percentage: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0026">
+The UPS with the serial number: [#!variable!serial_number!#] has discharged below the warning threshold!:
+- New charge percentage: [#!variable!new_value!#]
+- Old charge percentage: [#!variable!old_value!#]
+
+If power is not restored soon, this UPS will be marked as unusable. If the other UPS(es) also drop below this level, your #!string!scancore_brand_0002!# will automatically shut down, if configured to do so.
+		</key>
+		<key name="scan_apc_ups_note_0027">
+The UPS with the serial number: [#!variable!serial_number!#] has had it's battery's last replacement date changed:
+- New replacement date: [#!variable!new_value!#]
+- Old replacement date: [#!variable!old_value!#]
+
+This is most likely do to an administrator replacing the battery pack in the UPS.
+		</key>
+		<key name="scan_apc_ups_note_0028">
+The UPS with the serial number: [#!variable!serial_number!#] has had it's battery enter a warning state!:
+- New battery state: [#!variable!new_value!#]
+- Old battery state: [#!variable!old_value!#]
+
+It is possible that the battery has failed and will need to be replaced.
+		</key>
+		<key name="scan_apc_ups_note_0029">
+The UPS with the serial number: [#!variable!serial_number!#] has had it's battery recover from a warning state:
+- New battery state: [#!variable!new_value!#]
+- Old battery state: [#!variable!old_value!#]
+
+This is most likely do to an administrator replacing the battery pack in the UPS.
+		</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_apc_ups_warning_0001"></key>
 		
 		<!-- Errors -->
-		<key name="scan_apc_ups_error_0001"></key>
+		<key name="scan_apc_ups_error_0001">The variable: [#!variable!name!#] should have been an integer, but it appears it was not. Read: [#!variable!value!#].</key>
 		
 		<!-- The UPS reports states as integers. These are used to 
 		     translate those states into strings that a human would 
-		     understand. See the MIB for OID 
+		     understand. If we lose contact with the UPS entirely,
+		     we will set this to '0'. See the MIB for OID 
 		     .1.3.6.1.4.1.318.1.1.1.4.1.1.0 -->
+		<key name="scan_apc_ups_health_0000">Communication with the UPS has been lost.</key>
 		<key name="scan_apc_ups_health_0001">The UPS's health is in an unknown state.</key>
 		<key name="scan_apc_ups_health_0002">The UPS is operating normally.</key>
 		<key name="scan_apc_ups_health_0003">The UPS is running on it's batteries. It is likely that the input power feeding the UPS has failed.</key>
@@ -56,13 +251,13 @@ with 'scan_apc_ups_'.
 		<!-- The UPS reports the last transfer as integers. These are
 		     used to translate those states into strings that a human
 		     would understand. See the MIB for OID 
-		      -->
+		     .1.3.6.1.4.1.318.1.1.1.3.2.5.0 -->
 		<key name="scan_apc_ups_last_xfer_0001">The UPS has not transfered to battery power since the last time it booted.</key>
 		<key name="scan_apc_ups_last_xfer_0002">The UPS last transfered to batteries because of high input voltage.</key>
 		<key name="scan_apc_ups_last_xfer_0003">The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.</key>
 		<key name="scan_apc_ups_last_xfer_0004">The UPS last transfered to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0005">The UPS last transfered to batteries because of a brief, minor redunction of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0006">The UPS last transfered to batteries because of a brief, significant redunction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0005">The UPS last transfered to batteries because of a brief, minor reduction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0006">The UPS last transfered to batteries because of a brief, significant reduction of input voltage from the mains circuit.</key>
 		<key name="scan_apc_ups_last_xfer_0007">The UPS last transfered to batteries because of a brief, minor increase of input voltage from the mains circuit.</key>
 		<key name="scan_apc_ups_last_xfer_0008">The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.</key>
 		<key name="scan_apc_ups_last_xfer_0009">The UPS last transfered to batteries as part of a planned self-test.</key>
@@ -72,10 +267,17 @@ with 'scan_apc_ups_'.
 		     used to translate those states into strings that a human
 		     would understand. See the MIB for OID 
 		     .1.3.6.1.4.1.318.1.1.1.2.1.1.0 -->
-		<key name="scan_apc_ups_battery_0001">The UPS battery is in an unknown state.</key>
-		<key name="scan_apc_ups_battery_0002">The UPS battery is operating normally.</key>
-		<key name="scan_apc_ups_battery_0003">The UPS battery is in a low voltage state.</key>
-		<key name="scan_apc_ups_battery_0004">The UPS battery is in a failed state and needs to be replaced.</key>
+		<key name="scan_apc_ups_battery_state_0001">The UPS battery is in an unknown state.</key>
+		<key name="scan_apc_ups_battery_state_0002">The UPS battery is operating normally.</key>
+		<key name="scan_apc_ups_battery_state_0003">The UPS battery is in a low voltage state.</key>
+		<key name="scan_apc_ups_battery_state_0004">The UPS battery is in a failed state and needs to be replaced.</key>
+		
+		<!-- The UPS reports the battery overall health. These are used
+		     to translate those states into strings that a human would
+		     understand. See the MIB for OID 
+		     .1.3.6.1.4.1.318.1.1.1.2.2.4.0 -->
+		<key name="scan_apc_ups_battery_health_0001">The UPS battery is healthy.</key>
+		<key name="scan_apc_ups_battery_health_0002">The UPS battery has failed and needs to be replaced.</key>
 		
 		<!-- The UPS reports the input sensitive as an integer. These
 		     are used to translate those levels into strings that a
@@ -126,5 +328,60 @@ https://alteeve.ca/w/Support
 							      Alteeve's Niche!
 		]]></key>
 		<key name="scan_apc_ups_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
+		<key name="scan_apc_ups_message_0004">A new APC/Schneider brand UPS was found!</key>
+		<key name="scan_apc_ups_message_0005">
+
+-=] UPS Information:
+
+- Model:            [#!variable!model!#] (may not be exact)
+- Serial Number:    [#!variable!serial_number!#]
+- Manufactured:     [#!variable!manufactured_date!#] (yyyy/mm/dd)
+- Host Name:        [#!variable!fqdn!#]
+- IP Address:       [#!variable!ip!#]
+- Firmware Version: [#!variable!firmware_version!#]
+
+-=] Network Interface Information:
+
+- Serial Number:    [#!variable!nmc_serial_number!#]
+- Firmware Version: [#!variable!nmc_firmware_version!#]
+- MAC Address:      [#!variable!nmc_mac_address!#]
+
+-=] Battery Information:
+
+- Model Number:               [#!variable!battery_model!#]
+- Current Battery Installed:  [#!variable!battery_last_replacement_date!#] (yyyy/mm/dd)
+- Estimated Replacement Date: [#!variable!battery_replacement_date!#] (yyyy/mm/dd)
+
+-=] UPS Configuration:
+
+- Delay between input power being restored and turning back on: [#!variable!ac_restore_delay!#] second(s).
+- Delay between shutdown command received and actual shut down: [#!variable!shutdown_delay!#] second(s).
+- Transfer to batteries when input power goes below: [#!variable!low_transfer_voltage!#] or above: [#!variable!high_transfer_voltage!#] vAC.
+- #!variable!input_sensitivity!#
+
+-=] Current Sensor Values:
+
+- Battery Temperature:    [#!variable!battery_temperature!#]°C (alarms at: [#!variable!battery_alarm_temperature!#]°C)
+- Battery Voltage:        [#!variable!battery_voltage!#] vDC
+- Input Power Frequency:  [#!variable!input_frequency!#] Hz
+- Input Power Voltage:    [#!variable!input_voltage!#] vAC
+  - In the last 60 seconds, the input voltage ranged from: [#!variable!input_1m_minimum_input_voltage!#] to: [#!variable!input_1m_maximum_input_voltage!#] vAC.
+- Estimated Runtime:      [#!variable!say_estimated_runtime!#]
+- Output Load Percentage: [#!variable!output_load_percentage!#] %
+- Output Power Frequency: [#!variable!output_frequency!#] Hz
+- Output Power Voltage:   [#!variable!output_voltage!#] vAC
+- Lifetime Power Output:  [#!variable!output_total_output!#] kWh
+
+-=] UPS Health Information: 
+
+- #!variable!health!#
+- #!variable!last_transfer_reason!#
+- #!variable!battery_health!#
+- #!variable!battery_state!#
+- #!variable!say_time_on_batteries!#
+		</key>
+		<key name="scan_apc_ups_message_0006">The UPS is not running on batteries.</key>
+		<key name="scan_apc_ups_message_0007">The UPS has been running on batteries for: [#!variable!output_time_on_batteries!#]</key>
+		<key name="scan_apc_ups_message_0008">A new UPS named: [#!variable!name!#] has been found</key>
 	</lang>
 </words>

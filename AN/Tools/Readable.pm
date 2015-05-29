@@ -157,6 +157,8 @@ sub time
 		($time, $float) = split/\./, $time, 2;
 	}
 	
+	### TODO: Change the suffixes to 'tools_suffix_XXXX'.
+	
 	# Die if either the 'time' or 'float' has a non-digit character in it.
 	if (($time =~ /\D/) || ($float =~ /\D/))
 	{

@@ -49,6 +49,16 @@ my $an = AN::Tools->new({data =>
 			log_level		=>	2,
 			log_language		=>	"en_CA",
 			sql			=>	[],
+			# By default, a temperature sensor will go into warning
+			# state this number of °C below critical temperature.
+			temperature_warning_delta	=>	5,
+			# If the battery charge drops below this level, a
+			# warning level alert will be triggered.
+			low_charge_percentage_warning	=>	20,
+			# If the battery charge rate climbs above this level,
+			# the user will be informed that the UPS is back to an
+			# acceptible charge
+			low_charge_percentage_ok	=>	25,
 		},
 		# These are values the user might set in striker.conf
 		'scan-apc-ups'		=>	{
@@ -129,7 +139,7 @@ my $an = AN::Tools->new({data =>
 				# High precision, Current load percentage (58 = 5.8%)
 				load_percentage_hp	=>	".1.3.6.1.4.1.318.1.1.1.4.3.3.0",
 				# Time in ticks on batteries, 0 == not on batteries
-				time_on_batties		=>	".1.3.6.1.4.1.318.1.1.1.2.1.2.0",
+				time_on_batteries		=>	".1.3.6.1.4.1.318.1.1.1.2.1.2.0",
 				# In ticks (10ms)
 				estimated_runtime	=>	".1.3.6.1.4.1.318.1.1.1.2.2.3.0",
 				# high-precision, (600 == 60.0 Hz)
@@ -220,12 +230,17 @@ sub find_changes
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Read in last scan data (if any).
+	# As I read in each UPS, I will record the serial numbers. At
+	# the end, I will check in the database for any entries that
+	# were not found and mark them as lost.
+	my $seen_upses = [];
+	
+	# Loop through each UPS
 	my $id        = $an->data->{sys}{read_db_id};
 	my $host_name = $an->hostname;
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
 	{
-		# Convert all the long-ass hashes into shorter variables
+		# Convert all the long hashes into shorter variables
 		my $new_apc_ups_ip            = $an->data->{ups}{$ups_name}{ip};
 		my $new_apc_ups_model         = $an->data->{ups}{$ups_name}{model};
 		my $new_apc_ups_serial_number = $an->data->{ups}{$ups_name}{apc_ups_serial_number};
@@ -235,7 +250,10 @@ sub find_changes
 			name2 => "new_apc_ups_model",         value2 => $new_apc_ups_model, 
 			name3 => "new_apc_ups_serial_number", value3 => $new_apc_ups_serial_number, 
 			name4 => "new_apc_ups_fqdn",          value4 => $new_apc_ups_fqdn, 
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Record this UPS
+		push @{$seen_upses}, $new_apc_ups_serial_number;
 		
 		###############################################################
 		# Base UPS and NMC information                                #
@@ -263,10 +281,10 @@ sub find_changes
 			name7  => "new_apc_ups_last_transfer_reason",  value7  => $new_apc_ups_last_transfer_reason,
 			name8  => "new_apc_ups_manufactured_date",     value8  => $new_apc_ups_manufactured_date,
 			name9  => "new_apc_ups_temperature_units",     value9  => $new_apc_ups_temperature_units,
-			name10  => "new_apc_ups_nmc_firmware_version",  value10 => $new_apc_ups_nmc_firmware_version,
+			name10  => "new_apc_ups_nmc_firmware_version", value10 => $new_apc_ups_nmc_firmware_version,
 			name11 => "new_apc_ups_nmc_serial_number",     value11 => $new_apc_ups_nmc_serial_number,
 			name12 => "new_apc_ups_nmc_mac_address",       value12 => $new_apc_ups_nmc_mac_address,
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		###############################################################
 		# Battery information                                         #
@@ -291,7 +309,7 @@ sub find_changes
 			name7 => "new_apc_ups_battery_temperature",           value7 =>  $new_apc_ups_battery_temperature, 
 			name8 => "new_apc_ups_battery_alarm_temperature",     value8 =>  $new_apc_ups_battery_alarm_temperature, 
 			name9 => "new_apc_ups_battery_voltage",               value9 =>  $new_apc_ups_battery_voltage, 
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		###############################################################
 		# Input Information                                           #
@@ -308,38 +326,1059 @@ sub find_changes
 			name3 => "new_apc_ups_input_voltage",                  value3 => $new_apc_ups_input_voltage,
 			name4 => "new_apc_ups_input_1m_maximum_input_voltage", value4 => $new_apc_ups_input_1m_maximum_input_voltage,
 			name5 => "new_apc_ups_input_1m_minimum_input_voltage", value5 => $new_apc_ups_input_1m_minimum_input_voltage,
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		###############################################################
 		# Output Information                                          #
 		###############################################################
 		
 		my $new_apc_ups_output_load_percentage   = $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage};
-		my $new_apc_ups_output_time_on_batties   = $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batties};
+		my $new_apc_ups_output_time_on_batteries   = $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries};
 		my $new_apc_ups_output_estimated_runtime = $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime};
 		my $new_apc_ups_output_frequency         = $an->data->{ups}{$ups_name}{apc_ups_output_frequency};
 		my $new_apc_ups_output_voltage           = $an->data->{ups}{$ups_name}{apc_ups_output_voltage};
 		my $new_apc_ups_output_total_output      = $an->data->{ups}{$ups_name}{apc_ups_output_total_output};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "new_apc_ups_output_load_percentage",   value1 => $new_apc_ups_output_load_percentage,
-			name2 => "new_apc_ups_output_time_on_batties",   value2 => $new_apc_ups_output_time_on_batties,
+			name2 => "new_apc_ups_output_time_on_batteries",   value2 => $new_apc_ups_output_time_on_batteries,
 			name3 => "new_apc_ups_output_estimated_runtime", value3 => $new_apc_ups_output_estimated_runtime,
 			name4 => "new_apc_ups_output_frequency",         value4 => $new_apc_ups_output_frequency,
 			name5 => "new_apc_ups_output_voltage",           value5 => $new_apc_ups_output_voltage,
 			name6 => "new_apc_ups_output_total_output",      value6 => $new_apc_ups_output_total_output,
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I need to setup the 'apc_ups_id' for this UPS's serial number.
 		my $this_apc_ups_id_query = $an->data->{sys}{apc_ups_id_query}." = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_serial_number);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "this_apc_ups_id_query",   value1 => $this_apc_ups_id_query,
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This returns the 'apc_ups_id' if the UPS is found.
 		if (read_last_scan($an, $new_apc_ups_serial_number))
 		{
-			# The UPS exists. Look for updates.
-			die "$THIS_FILE ".__LINE__."; testing...\n";
+			# The UPS exists. Look for updates. We're using the
+			# serial number for referencing the SQL data to catch
+			# hostname changes.
+			my $ups_serial_number = $new_apc_ups_serial_number;
+			
+			#######################################################
+			# Base UPS and NMC information                        #
+			#######################################################
+			
+			my $old_apc_ups_fqdn                  = $an->data->{sql}{$ups_serial_number}{apc_ups_fqdn};
+			my $old_apc_ups_ip                    = $an->data->{sql}{$ups_serial_number}{apc_ups_ip};
+			my $old_apc_ups_ac_restore_delay      = $an->data->{sql}{$ups_serial_number}{apc_ups_ac_restore_delay};
+			my $old_apc_ups_shutdown_delay        = $an->data->{sql}{$ups_serial_number}{apc_ups_shutdown_delay};
+			my $old_apc_ups_firmware_version      = $an->data->{sql}{$ups_serial_number}{apc_ups_firmware_version};
+			my $old_apc_ups_health                = $an->data->{sql}{$ups_serial_number}{apc_ups_health};
+			my $old_apc_ups_high_transfer_voltage = $an->data->{sql}{$ups_serial_number}{apc_ups_high_transfer_voltage};
+			my $old_apc_ups_low_transfer_voltage  = $an->data->{sql}{$ups_serial_number}{apc_ups_low_transfer_voltage};
+			my $old_apc_ups_last_transfer_reason  = $an->data->{sql}{$ups_serial_number}{apc_ups_last_transfer_reason};
+			my $old_apc_ups_manufactured_date     = $an->data->{sql}{$ups_serial_number}{apc_ups_manufactured_date};
+			my $old_apc_ups_model                 = $an->data->{sql}{$ups_serial_number}{apc_ups_model};
+			my $old_apc_ups_temperature_units     = $an->data->{sql}{$ups_serial_number}{apc_ups_temperature_units};
+			my $old_apc_ups_nmc_firmware_version  = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_firmware_version};
+			my $old_apc_ups_nmc_serial_number     = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_serial_number};
+			my $old_apc_ups_nmc_mac_address       = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_mac_address};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
+				name1  => "old_apc_ups_fqdn",                  value1  => $old_apc_ups_fqdn, 
+				name2  => "old_apc_ups_ip",                    value2  => $old_apc_ups_ip, 
+				name3  => "old_apc_ups_ac_restore_delay",      value3  => $old_apc_ups_ac_restore_delay, 
+				name4  => "old_apc_ups_shutdown_delay",        value4  => $old_apc_ups_shutdown_delay, 
+				name5  => "old_apc_ups_firmware_version",      value5  => $old_apc_ups_firmware_version, 
+				name6  => "old_apc_ups_health",                value6  => $old_apc_ups_health, 
+				name7  => "old_apc_ups_high_transfer_voltage", value7  => $old_apc_ups_high_transfer_voltage, 
+				name8  => "old_apc_ups_low_transfer_voltage",  value8  => $old_apc_ups_low_transfer_voltage, 
+				name9  => "old_apc_ups_last_transfer_reason",  value9  => $old_apc_ups_last_transfer_reason, 
+				name10 => "old_apc_ups_manufactured_date",     value10 => $old_apc_ups_manufactured_date, 
+				name11 => "old_apc_ups_model",                 value11 => $old_apc_ups_model, 
+				name12 => "old_apc_ups_temperature_units",     value12 => $old_apc_ups_temperature_units, 
+				name13 => "old_apc_ups_nmc_firmware_version",  value13 => $old_apc_ups_nmc_firmware_version, 
+				name14 => "old_apc_ups_nmc_serial_number",     value14 => $old_apc_ups_nmc_serial_number, 
+				name15 => "old_apc_ups_nmc_mac_address",       value15 => $old_apc_ups_nmc_mac_address, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			#######################################################
+			# Battery information                                 #
+			#######################################################
+			
+			my $old_apc_ups_battery_replacement_date      = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_replacement_date};
+			my $old_apc_ups_battery_health                = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_health};
+			my $old_apc_ups_battery_model                 = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_model};
+			my $old_apc_ups_battery_percentage_charge     = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_percentage_charge};
+			my $old_apc_ups_battery_last_replacement_date = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_last_replacement_date};
+			my $old_apc_ups_battery_state                 = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_state};
+			my $old_apc_ups_battery_temperature           = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_temperature};
+			my $old_apc_ups_battery_alarm_temperature     = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_alarm_temperature};
+			my $old_apc_ups_battery_voltage               = $an->data->{sql}{$ups_serial_number}{apc_ups_battery_voltage};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "old_apc_ups_battery_replacement_date",      value1 => $old_apc_ups_battery_replacement_date, 
+				name2 => "old_apc_ups_battery_health",                value2 => $old_apc_ups_battery_health, 
+				name3 => "old_apc_ups_battery_model",                 value3 => $old_apc_ups_battery_model, 
+				name4 => "old_apc_ups_battery_percentage_charge",     value4 => $old_apc_ups_battery_percentage_charge, 
+				name5 => "old_apc_ups_battery_last_replacement_date", value5 => $old_apc_ups_battery_last_replacement_date, 
+				name6 => "old_apc_ups_battery_state",                 value6 => $old_apc_ups_battery_state, 
+				name7 => "old_apc_ups_battery_temperature",           value7 => $old_apc_ups_battery_temperature, 
+				name8 => "old_apc_ups_battery_alarm_temperature",     value8 => $old_apc_ups_battery_alarm_temperature, 
+				name9 => "old_apc_ups_battery_voltage",               value9 => $old_apc_ups_battery_voltage, 
+			}, file => $THIS_FILE, line => __LINE__});
+				
+			#######################################################
+			# Input Information                                   #
+			#######################################################
+				
+			my $old_apc_ups_input_frequency                = $an->data->{sql}{$ups_serial_number}{apc_ups_input_frequency};
+			my $old_apc_ups_input_sensitivity              = $an->data->{sql}{$ups_serial_number}{apc_ups_input_sensitivity};
+			my $old_apc_ups_input_voltage                  = $an->data->{sql}{$ups_serial_number}{apc_ups_input_voltage};
+			my $old_apc_ups_input_1m_maximum_input_voltage = $an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_maximum_input_voltage};
+			my $old_apc_ups_input_1m_minimum_input_voltage = $an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_minimum_input_voltage};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "old_apc_ups_input_frequency",                value1 => $old_apc_ups_input_frequency, 
+				name2 => "old_apc_ups_input_sensitivity",              value2 => $old_apc_ups_input_sensitivity, 
+				name3 => "old_apc_ups_input_voltage",                  value3 => $old_apc_ups_input_voltage, 
+				name4 => "old_apc_ups_input_1m_maximum_input_voltage", value4 => $old_apc_ups_input_1m_maximum_input_voltage, 
+				name5 => "old_apc_ups_input_1m_minimum_input_voltage", value5 => $old_apc_ups_input_1m_minimum_input_voltage, 
+			}, file => $THIS_FILE, line => __LINE__});
+				
+			#######################################################
+			# Output Information                                  #
+			#######################################################
+				
+			my $old_apc_ups_output_load_percentage   = $an->data->{sql}{$ups_serial_number}{apc_ups_output_load_percentage};
+			my $old_apc_ups_output_time_on_batteries = $an->data->{sql}{$ups_serial_number}{apc_ups_output_time_on_batteries};
+			my $old_apc_ups_output_estimated_runtime = $an->data->{sql}{$ups_serial_number}{apc_ups_output_estimated_runtime};
+			my $old_apc_ups_output_frequency         = $an->data->{sql}{$ups_serial_number}{apc_ups_output_frequency};
+			my $old_apc_ups_output_voltage           = $an->data->{sql}{$ups_serial_number}{apc_ups_output_voltage};
+			my $old_apc_ups_output_total_output      = $an->data->{sql}{$ups_serial_number}{apc_ups_output_total_output};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "old_apc_ups_output_load_percentage",   value1 => $old_apc_ups_output_load_percentage, 
+				name2 => "old_apc_ups_output_time_on_batteries", value2 => $old_apc_ups_output_time_on_batteries, 
+				name3 => "old_apc_ups_output_estimated_runtime", value3 => $old_apc_ups_output_estimated_runtime, 
+				name4 => "old_apc_ups_output_frequency",         value4 => $old_apc_ups_output_frequency, 
+				name5 => "old_apc_ups_output_voltage",           value5 => $old_apc_ups_output_voltage, 
+				name6 => "old_apc_ups_output_total_output",      value6 => $old_apc_ups_output_total_output, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Create the apc_ups_id query for this serial number.
+			my $this_apc_ups_id_query = $an->data->{sys}{apc_ups_id_query}." = ".$an->data->{sys}{use_db_fh}->quote($ups_serial_number);
+			
+			### Start comparing!
+			# Start with the core values;
+			if (($new_apc_ups_fqdn                  ne $old_apc_ups_fqdn) or 
+			    ($new_apc_ups_ip                    ne $old_apc_ups_ip) or 
+			    ($new_apc_ups_ac_restore_delay      ne $old_apc_ups_ac_restore_delay) or 
+			    ($new_apc_ups_shutdown_delay        ne $old_apc_ups_shutdown_delay) or 
+			    ($new_apc_ups_firmware_version      ne $old_apc_ups_firmware_version) or 
+			    ($new_apc_ups_health                ne $old_apc_ups_health) or 
+			    ($new_apc_ups_high_transfer_voltage ne $old_apc_ups_high_transfer_voltage) or 
+			    ($new_apc_ups_low_transfer_voltage  ne $old_apc_ups_low_transfer_voltage) or 
+			    ($new_apc_ups_last_transfer_reason  ne $old_apc_ups_last_transfer_reason) or 
+			    ($new_apc_ups_manufactured_date     ne $old_apc_ups_manufactured_date) or 
+			    ($new_apc_ups_model                 ne $old_apc_ups_model) or 
+			    ($new_apc_ups_temperature_units     ne $old_apc_ups_temperature_units) or 
+			    ($new_apc_ups_nmc_firmware_version  ne $old_apc_ups_nmc_firmware_version) or 
+			    ($new_apc_ups_nmc_serial_number     ne $old_apc_ups_nmc_serial_number) or 
+			    ($new_apc_ups_nmc_mac_address       ne $old_apc_ups_nmc_mac_address))
+			{
+				# Something in the 'apc_ups' table changed for
+				# this UPS.
+				$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_log_0001", message_variables => {
+					table         => "apc_ups", 
+					serial_number => $ups_serial_number
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				### Log the variables to help see what actually changed.
+				# Did the domain name change?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_fqdn", value1 => $new_apc_ups_fqdn, 
+					name2 => "old_apc_ups_fqdn", value2 => $old_apc_ups_fqdn, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_fqdn ne $old_apc_ups_fqdn)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0001",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_fqdn,
+							old_value		=>	$old_apc_ups_fqdn,
+						},
+					});
+				}
+				
+				# See if the IP address has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_ip", value1 => $new_apc_ups_ip, 
+					name2 => "old_apc_ups_ip", value2 => $old_apc_ups_ip, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_ip ne $old_apc_ups_ip)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0002",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_ip,
+							old_value		=>	$old_apc_ups_ip,
+						},
+					});
+				}
+				
+				# See if the AC restore delay has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_ac_restore_delay", value1 => $new_apc_ups_ac_restore_delay, 
+					name2 => "old_apc_ups_ac_restore_delay", value2 => $old_apc_ups_ac_restore_delay, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_ac_restore_delay ne $old_apc_ups_ac_restore_delay)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0003",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_ac_restore_delay,
+							old_value		=>	$old_apc_ups_ac_restore_delay,
+						},
+					});
+				}
+				
+				# See if the shutdown delay has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_shutdown_delay", value1 => $new_apc_ups_shutdown_delay, 
+					name2 => "old_apc_ups_shutdown_delay", value2 => $old_apc_ups_shutdown_delay, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_shutdown_delay ne $old_apc_ups_shutdown_delay)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0004",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_shutdown_delay,
+							old_value		=>	$old_apc_ups_shutdown_delay,
+						},
+					});
+				}
+				
+				# Has the firmware version changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_firmware_version", value1 => $new_apc_ups_firmware_version, 
+					name2 => "old_apc_ups_firmware_version", value2 => $old_apc_ups_firmware_version, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_firmware_version ne $old_apc_ups_firmware_version)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0005",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_firmware_version,
+							old_value		=>	$old_apc_ups_firmware_version,
+						},
+					});
+				}
+				
+				# Has the health changed? This is fairly 
+				# complex as there are many possible health 
+				# values.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_health", value1 => $new_apc_ups_health, 
+					name2 => "old_apc_ups_health", value2 => $old_apc_ups_health, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_health ne $old_apc_ups_health)
+				{
+					my $level             = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $message_key       = "";
+					
+					### There are 20 possible states 
+					### (* == warning, rest are notice):
+					# *1 - The UPS's health is in an unknown state.
+					#  2 - The UPS is operating normally.
+					# *3 - The UPS is running on it's batteries. It is likely that the input power feeding the UPS has failed.
+					#  4 - The UPS is compensating for low input power.
+					#  5 - The UPS is in a timed sleep. It will power back on when the timer has expired.
+					#  6 - The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
+					# *7 - The UPS is off. No power is being provided to down-stream equipment.
+					# *8 - The UPS is currently rebooting.
+					#  9 - The UPS is in bypass-mode and was placed in this mode by a hardware switch. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
+					#  10 - The UPS is in bypass-mode because of an internal failure. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
+					# *11 - The UPS has lost input power and is sleeping. It will restore output power once input power has been restored.
+					#  12 - The UPS is compensating for high input voltage.
+					#  13 - The UPS is operating in low-power mode. In this mode, the UPS is in static bypass mode and it is drawing very little power. If a fault is detected, it will switch to either normal operation or forced static bypass mode.
+					#  14 - The UPS is operating in hot-standby mode.
+					#  15 - The UPS is performing a test of it's batteries.
+					# *16 - The UPS has been placed in emergency static bypass mode. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
+					#  17 - The UPS is in static bypass standby mode. It is not currently providing power to downstream devices.
+					#  18 - The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.
+					#  19 - The UPS is in SPoT (Self Power Test) operating mode. <!-- http://www.apcmedia.com/salestools/COCR-9TZK8N/COCR-9TZK8N_R0_EN.pdf -->
+					#  20 - The UPS is in ECOnversion mode. The UPS is providing power to the downstream devices via the bypass. The UPS's inverter is operational and ready to take over the output load if an input fault occurs. <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
+					
+					# If the old or new level is one worthy
+					# of a warning, set the alert level to
+					# warning.
+					if (($new_apc_ups_health eq "1") or 
+					    ($new_apc_ups_health eq "3") or 
+					    ($new_apc_ups_health eq "7") or 
+					    ($new_apc_ups_health eq "8") or 
+					    ($new_apc_ups_health eq "11") or 
+					    ($new_apc_ups_health eq "16"))
+					{
+						# Entered a warning state.
+						$level     = "warning";
+						$title_key = "an_alert_title_0004";
+					}
+					elsif (($old_apc_ups_health eq "1") or 
+					       ($old_apc_ups_health eq "3") or 
+					       ($old_apc_ups_health eq "7") or 
+					       ($old_apc_ups_health eq "8") or 
+					       ($old_apc_ups_health eq "11") or 
+					       ($old_apc_ups_health eq "16"))
+					{
+						# Warning state cleared.
+						$level     = "warning";
+						$title_key = "an_alert_title_0006";
+					}
+					
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	"scan_apc_ups_note_0006",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	"#!string!scan_apc_ups_health_".sprintf("%04d", $new_apc_ups_health)."!#",
+							old_value		=>	"#!string!scan_apc_ups_health_".sprintf("%04d", $old_apc_ups_health)."!#",
+						};
+					});
+				}
+				
+				# See if the high-voltage transfer to battery
+				# value has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_high_transfer_voltage", value1 => $new_apc_ups_high_transfer_voltage, 
+					name2 => "old_apc_ups_high_transfer_voltage", value2 => $old_apc_ups_high_transfer_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_high_transfer_voltage ne $old_apc_ups_high_transfer_voltage)
+				{
+					# This is a 'notice' level alert.
+					# Which message we use will depend on
+					# whether the threshold increased or 
+					# decreased.
+					my $message_key = "scan_apc_ups_note_0007";
+					if ($new_apc_ups_high_transfer_voltage > $old_apc_ups_high_transfer_voltage)
+					{
+						$message_key = "scan_apc_ups_note_0008";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_high_transfer_voltage,
+							old_value		=>	$old_apc_ups_high_transfer_voltage,
+						},
+					});
+				}
+				
+				# See if the low-voltage transfer to battery
+				# value has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_low_transfer_voltage", value1 => $new_apc_ups_low_transfer_voltage, 
+					name2 => "old_apc_ups_low_transfer_voltage", value2 => $old_apc_ups_low_transfer_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_low_transfer_voltage ne $old_apc_ups_low_transfer_voltage)
+				{
+					# This is a 'notice' level alert.
+					# Which message we use will depend on
+					# whether the threshold increased or 
+					# decreased.
+					my $message_key = "scan_apc_ups_note_0009";
+					if ($new_apc_ups_low_transfer_voltage < $old_apc_ups_low_transfer_voltage)
+					{
+						$message_key = "scan_apc_ups_note_0010";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_low_transfer_voltage,
+							old_value		=>	$old_apc_ups_low_transfer_voltage,
+						},
+					});
+				}
+				
+				# Has the last transfer reason changed? There
+				# are 10 reasons why this might happen, some
+				# being more critical than others.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_last_transfer_reason", value1 => $new_apc_ups_last_transfer_reason, 
+					name2 => "old_apc_ups_last_transfer_reason", value2 => $old_apc_ups_last_transfer_reason, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_last_transfer_reason ne $old_apc_ups_last_transfer_reason)
+				{
+					my $level             = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $message_key       = "";
+					
+					### There are 10 possible states 
+					### (* == warning, rest are notice):
+					#  1 -  The UPS has not transfered to battery power since the last time it booted.
+					#  2 -  The UPS last transfered to batteries because of high input voltage.
+					# *3 -  The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
+					# *4 -  The UPS last transfered to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.
+					#  5 -  The UPS last transfered to batteries because of a brief, minor reduction of input voltage from the mains circuit.
+					# *6 -  The UPS last transfered to batteries because of a brief, significant reduction of input voltage from the mains circuit.
+					#  7 -  The UPS last transfered to batteries because of a brief, minor increase of input voltage from the mains circuit.
+					# *8 -  The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.
+					#  9 -  The UPS last transfered to batteries as part of a planned self-test.
+					# *10 - The UPS last transfered to batteries because of a significant change of input voltage from the mains circuit.
+					
+					# If the old or new level is one worthy
+					# of a warning, set the alert level to
+					# warning.
+					if (($new_apc_ups_last_transfer_reason eq "3") or 
+					    ($new_apc_ups_last_transfer_reason eq "4") or 
+					    ($new_apc_ups_last_transfer_reason eq "6") or 
+					    ($new_apc_ups_last_transfer_reason eq "8") or 
+					    ($new_apc_ups_last_transfer_reason eq "10"))
+					{
+						# Entered a warning state.
+						$level     = "warning";
+						$title_key = "an_alert_title_0004";
+					}
+					elsif (($old_apc_ups_last_transfer_reason eq "3") or 
+					       ($old_apc_ups_last_transfer_reason eq "4") or 
+					       ($old_apc_ups_last_transfer_reason eq "6") or 
+					       ($old_apc_ups_last_transfer_reason eq "8") or 
+					       ($old_apc_ups_last_transfer_reason eq "10"))
+					{
+						# Warning state cleared.
+						$level     = "warning";
+						$title_key = "an_alert_title_0006";
+					}
+					
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	"scan_apc_ups_note_0011",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	"#!string!scan_apc_ups_health_".sprintf("%04d", $new_apc_ups_health)."!#",
+							old_value		=>	"#!string!scan_apc_ups_health_".sprintf("%04d", $old_apc_ups_health)."!#",
+						};
+					});
+				}
+				
+				# o_O
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_manufactured_date", value1 => $new_apc_ups_manufactured_date, 
+					name2 => "old_apc_ups_manufactured_date", value2 => $old_apc_ups_manufactured_date, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_manufactured_date ne $old_apc_ups_manufactured_date)
+				{
+					# This is a 'warning' level alert
+					# simply because it should never happen
+					# and it probably a sign of a bigger 
+					# problem.
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_apc_ups_note_0012",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_manufactured_date,
+							old_value		=>	$old_apc_ups_manufactured_date,
+						},
+					});
+				}
+				
+				# O_o
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_model", value1 => $new_apc_ups_model, 
+					name2 => "old_apc_ups_model", value2 => $old_apc_ups_model, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_model ne $old_apc_ups_model)
+				{
+					# This is a 'warning' level alert
+					# simply because it should never happen
+					# and it probably a sign of a bigger 
+					# problem.
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_apc_ups_note_0013",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_model,
+							old_value		=>	$old_apc_ups_model,
+						},
+					});
+				}
+				
+				# See if the core temperature units has changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_temperature_units", value1 => $new_apc_ups_temperature_units, 
+					name2 => "old_apc_ups_temperature_units", value2 => $old_apc_ups_temperature_units, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_temperature_units ne $old_apc_ups_temperature_units)
+				{
+					# This should not impact the user at all.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0014",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_temperature_units eq "F" ? "tools_suffix_0013" : "tools_suffix_0011";
+							old_value		=>	$old_apc_ups_temperature_units eq "F" ? "tools_suffix_0013" : "tools_suffix_0011",
+						},
+					});
+				}
+				
+				# Has the NMC's firmware changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_nmc_firmware_version", value1 => $new_apc_ups_nmc_firmware_version, 
+					name2 => "old_apc_ups_nmc_firmware_version", value2 => $old_apc_ups_nmc_firmware_version, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_nmc_firmware_version ne $old_apc_ups_nmc_firmware_version)
+				{
+					# This is a 'notice' level alert.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0015",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_nmc_firmware_version,
+							old_value		=>	$old_apc_ups_nmc_firmware_version,
+						},
+					});
+				}
+				
+				# Has the NMC serial number changed? If the 
+				# user changed the network card, this could be
+				# triggered.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_nmc_serial_number", value1 => $new_apc_ups_nmc_serial_number, 
+					name2 => "old_apc_ups_nmc_serial_number", value2 => $old_apc_ups_nmc_serial_number, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_nmc_serial_number ne $old_apc_ups_nmc_serial_number)
+				{
+					# This is a 'notice' level alert
+					# because the administrator will most
+					# likely already know about it.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0016",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_nmc_serial_number,
+							old_value		=>	$old_apc_ups_nmc_serial_number,
+						},
+					});
+				}
+				
+				# As with above, if the MAC address changed, it
+				# is probably because the NMC was replaced.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_nmc_mac_address", value1 => $new_apc_ups_nmc_mac_address, 
+					name2 => "old_apc_ups_nmc_mac_address", value2 => $old_apc_ups_nmc_mac_address, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_nmc_mac_address ne $old_apc_ups_nmc_mac_address)
+				{
+					# This is a 'notice' level alert
+					# because the administrator will most
+					# likely already know about it.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0017",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_nmc_mac_address,
+							old_value		=>	$old_apc_ups_nmc_mac_address,
+						},
+					});
+				}
+			
+				# Update the apc_ups record, then we'll handle
+				# notifying users.
+				my $query = "
+UPDATE 
+    apc_ups 
+SET 
+    apc_ups_fqdn                  = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_fqdn).", 
+    apc_ups_ip                    = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ip).", 
+    apc_ups_ac_restore_delay      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ac_restore_delay).", 
+    apc_ups_shutdown_delay        = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_shutdown_delay).", 
+    apc_ups_firmware_version      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_firmware_version).", 
+    apc_ups_health                = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_health).", 
+    apc_ups_high_transfer_voltage = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_high_transfer_voltage).", 
+    apc_ups_low_transfer_voltage  = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_low_transfer_voltage).", 
+    apc_ups_last_transfer_reason  = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_last_transfer_reason).", 
+    apc_ups_manufactured_date     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_manufactured_date).", 
+    apc_ups_model                 = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_model).", 
+    apc_ups_temperature_units     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_temperature_units).", 
+    apc_ups_nmc_firmware_version  = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_nmc_firmware_version).", 
+    apc_ups_nmc_serial_number     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_nmc_serial_number).", 
+    apc_ups_nmc_mac_address       = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_nmc_mac_address).", 
+    modified_date                 = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    apc_ups_id = ($this_apc_ups_id_query);
+";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# Now figure out what changed and report it to
+				# the user.
+			}
+			
+			# Though we use other tables, this is done to conserve
+			# disk space. As such, we're not going to check 
+			# individually for the existence of each table. This
+			# may prove to be a bad decision, so this approach may
+			# change later.
+			
+			# Check for changes in the battery
+			if (($new_apc_ups_battery_replacement_date      ne $old_apc_ups_battery_replacement_date) or 
+			    ($new_apc_ups_battery_health                ne $old_apc_ups_battery_health) or 
+			    ($new_apc_ups_battery_model                 ne $old_apc_ups_battery_model) or 
+			    ($new_apc_ups_battery_percentage_charge     ne $old_apc_ups_battery_percentage_charge) or 
+			    ($new_apc_ups_battery_last_replacement_date ne $old_apc_ups_battery_last_replacement_date) or 
+			    ($new_apc_ups_battery_state                 ne $old_apc_ups_battery_state) or 
+			    ($new_apc_ups_battery_temperature           ne $old_apc_ups_battery_temperature) or 
+			    ($new_apc_ups_battery_alarm_temperature     ne $old_apc_ups_battery_alarm_temperature) or 
+			    ($new_apc_ups_battery_voltage               ne $old_apc_ups_battery_voltage))
+			{
+				# Something in the 'apc_ups_battery' table
+				# changed for this UPS.
+				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0001", message_variables => {
+					table         => "apc_ups_battery", 
+					serial_number => $ups_serial_number
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				### Log the variables to help see what actually changed.
+				
+				# Has the estimated replacement date changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_replacement_date", value1 => $new_apc_ups_battery_replacement_date, 
+					name2 => "old_apc_ups_battery_replacement_date", value2 => $old_apc_ups_battery_replacement_date, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_replacement_date ne $old_apc_ups_battery_replacement_date)
+				{
+					# This is a 'notice' level alert
+					# because the administrator will most
+					# likely already know about it.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0018",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_battery_replacement_date,
+							old_value		=>	$old_apc_ups_battery_replacement_date,
+						},
+					});
+				}
+				
+				# Has the battery health changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_health", value1 => $new_apc_ups_battery_health, 
+					name2 => "old_apc_ups_battery_health", value2 => $old_apc_ups_battery_health, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_health ne $old_apc_ups_battery_health)
+				{
+					my $level             = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $message_key       = "";
+					
+					### There are 2 possible states 
+					### (* == warning):
+					#  1 - The UPS battery is healthy.
+					# *2 - The UPS battery has failed and needs to be replaced.
+					if ($new_apc_ups_battery_health eq "2")
+					{
+						# Entered a warning state.
+						$level       = "warning";
+						$title_key   = "an_alert_title_0004";
+						$message_key = "scan_apc_ups_note_0019";
+					}
+					elsif ($old_apc_ups_battery_health eq "2")
+					{
+						# Warning state cleared.
+						$level       = "warning";
+						$title_key   = "an_alert_title_0006";
+						$message_key = "scan_apc_ups_note_0020";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	"#!string!scan_apc_ups_battery_health_".sprintf("%04d", $new_apc_ups_battery_health)."!#",
+							old_value		=>	"#!string!scan_apc_ups_battery_health_".sprintf("%04d", $old_apc_ups_battery_health)."!#",
+							battery_model		=>	$new_apc_ups_battery_model,
+						};
+					});
+				}
+				
+				# Has the battery model changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_model", value1 => $new_apc_ups_battery_model, 
+					name2 => "old_apc_ups_battery_model", value2 => $old_apc_ups_battery_model, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_model ne $old_apc_ups_battery_model)
+				{
+					# This is a 'notice' level alert
+					# because the administrator will most
+					# likely already know about it.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0021",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_battery_model,
+							old_value		=>	$old_apc_ups_battery_model,
+						},
+					});
+				}
+				
+				# If the battery charge percentage has changed,
+				# it will usually be an 'info' level event, 
+				# unless it drops below the warning threshold,
+				# climbs above the OK threshold or hits 100%
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_percentage_charge", value1 => $new_apc_ups_battery_percentage_charge, 
+					name2 => "old_apc_ups_battery_percentage_charge", value2 => $old_apc_ups_battery_percentage_charge, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_percentage_charge ne $old_apc_ups_battery_percentage_charge)
+				{
+					### TODO: I need to set a flag to note
+					###       when we sent out an alert so
+					###       that we don't randomly email
+					###       a "cleared" message.
+					my $level       = "info";
+					my $title_key   = "an_alert_title_0002";
+					my $message_key = "";
+					
+					# Is the battery charging or discharging?
+					if ($new_apc_ups_battery_percentage_charge > $old_apc_ups_battery_percentage_charge)
+					{
+						# Charging
+						$message_key = "scan_apc_ups_note_0022";
+						if (($new_apc_ups_battery_percentage_charge >  $an->data->{sys}{low_charge_percentage_ok}) && 
+						    ($old_apc_ups_battery_percentage_charge <= $an->data->{sys}{low_charge_percentage_ok}))
+						{
+							# Crossed the "now OK" threshold.
+							$level       = "warning";
+							$title_key   = "an_alert_title_0006";
+							$message_key = "scan_apc_ups_note_0023";
+						}
+						elsif ($new_apc_ups_battery_percentage_charge eq "100")
+						{
+							# Full charge
+							$level       = "notice";
+							$title_key   = "an_alert_title_0003";
+							$message_key = "scan_apc_ups_note_0024";
+						}
+					}
+					else
+					{
+						# Discharging
+						$message_key = "scan_apc_ups_note_0025";
+						if (($new_apc_ups_battery_percentage_charge >  $an->data->{sys}{low_charge_percentage_warning}) && 
+						    ($old_apc_ups_battery_percentage_charge >= $an->data->{sys}{low_charge_percentage_warning}))
+						{
+							# Crossed the "oh crap" threshold.
+							$level       = "warning";
+							$title_key   = "an_alert_title_0004";
+							$message_key = "scan_apc_ups_note_0026";
+						}
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_battery_model,
+							old_value		=>	$old_apc_ups_battery_model,
+						},
+					});
+				}
+				
+				# Has the replacement date changed?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_last_replacement_date", value1 => $new_apc_ups_battery_last_replacement_date, 
+					name2 => "old_apc_ups_battery_last_replacement_date", value2 => $old_apc_ups_battery_last_replacement_date, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_last_replacement_date ne $old_apc_ups_battery_last_replacement_date)
+				{
+					# This is a 'notice' level alert
+					# because the administrator will most
+					# likely already know about it.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_apc_ups_note_0027",
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	$new_apc_ups_battery_last_replacement_date,
+							old_value		=>	$old_apc_ups_battery_last_replacement_date,
+						},
+					});
+				}
+				
+				# Has the battery state changed? There are four
+				# possible battery states.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_state", value1 => $new_apc_ups_battery_state, 
+					name2 => "old_apc_ups_battery_state", value2 => $old_apc_ups_battery_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($new_apc_ups_battery_state ne $old_apc_ups_battery_state)
+				{
+					my $level             = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $message_key       = "";
+					
+					### There are four possible states 
+					### (* == warning):
+					# *1 - The UPS battery is in an unknown state.
+					#  2 - The UPS battery is operating normally.
+					#  3 - The UPS battery is in a low voltage state.
+					# *4 - The UPS battery is in a failed state and needs to be replaced.
+					if (($new_apc_ups_battery_state eq "1") or ($new_apc_ups_battery_state eq "4"))
+					{
+						# Entered a warning state.
+						$level       = "warning";
+						$title_key   = "an_alert_title_0004";
+						$message_key = "scan_apc_ups_note_0028";
+					}
+					elsif (($old_apc_ups_battery_state eq "1") or ($old_apc_ups_battery_state eq "4"))
+					{
+						# Warning state cleared.
+						$level       = "warning";
+						$title_key   = "an_alert_title_0006";
+						$message_key = "scan_apc_ups_note_0029";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							serial_number		=>	$ups_serial_number,
+							new_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $new_apc_ups_battery_state)."!#",
+							old_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $old_apc_ups_battery_state)."!#",
+							battery_model		=>	$new_apc_ups_battery_model,
+						};
+					});
+				}
+				
+				# Has the batter's temperature change? If so,
+				# check to see if it crossed over the warning
+				# threshold. 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_temperature", value1 => $new_apc_ups_battery_temperature, 
+					name2 => "old_apc_ups_battery_temperature", value2 => $old_apc_ups_battery_temperature, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_alarm_temperature", value1 => $new_apc_ups_battery_alarm_temperature, 
+					name2 => "old_apc_ups_battery_alarm_temperature", value2 => $old_apc_ups_battery_alarm_temperature, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_battery_voltage", value1 => $new_apc_ups_battery_voltage, 
+					name2 => "old_apc_ups_battery_voltage", value2 => $old_apc_ups_battery_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Update the DB table
+				my $query = "
+UPDATE 
+    apc_ups_battery 
+SET 
+    apc_ups_battery_replacement_date      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_replacement_date).", 
+    apc_ups_battery_health                = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_health).", 
+    apc_ups_battery_model                 = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_model).", 
+    apc_ups_battery_percentage_charge     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_percentage_charge).", 
+    apc_ups_battery_last_replacement_date = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_last_replacement_date).", 
+    apc_ups_battery_state                 = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_state).", 
+    apc_ups_battery_temperature           = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_temperature).", 
+    apc_ups_battery_alarm_temperature     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_alarm_temperature).", 
+    apc_ups_battery_voltage               = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_voltage).", 
+    modified_date                         = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    apc_ups_battery_apc_ups_id = ($this_apc_ups_id_query);
+";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# Now figure out what changed and report it to
+				# the user.
+			}
+			
+			# Now check for changes in the input power
+			if (($new_apc_ups_input_frequency                ne $old_apc_ups_input_frequency) or 
+			    ($new_apc_ups_input_sensitivity              ne $old_apc_ups_input_sensitivity) or 
+			    ($new_apc_ups_input_voltage                  ne $old_apc_ups_input_voltage) or 
+			    ($new_apc_ups_input_1m_maximum_input_voltage ne $old_apc_ups_input_1m_maximum_input_voltage) or 
+			    ($new_apc_ups_input_1m_minimum_input_voltage ne $old_apc_ups_input_1m_minimum_input_voltage))
+			{
+				# Something in the 'apc_ups_input' table
+				# changed for this UPS.
+				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0001", message_variables => {
+					table         => "apc_ups_input", 
+					serial_number => $ups_serial_number
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Log the variables to help see what actually changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_input_frequency", value1 => $new_apc_ups_input_frequency, 
+					name2 => "old_apc_ups_input_frequency", value2 => $old_apc_ups_input_frequency, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_input_sensitivity", value1 => $new_apc_ups_input_sensitivity, 
+					name2 => "old_apc_ups_input_sensitivity", value2 => $old_apc_ups_input_sensitivity, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_input_voltage", value1 => $new_apc_ups_input_voltage, 
+					name2 => "old_apc_ups_input_voltage", value2 => $old_apc_ups_input_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_input_1m_maximum_input_voltage", value1 => $new_apc_ups_input_1m_maximum_input_voltage, 
+					name2 => "old_apc_ups_input_1m_maximum_input_voltage", value2 => $old_apc_ups_input_1m_maximum_input_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_input_1m_minimum_input_voltage", value1 => $new_apc_ups_input_1m_minimum_input_voltage, 
+					name2 => "old_apc_ups_input_1m_minimum_input_voltage", value2 => $old_apc_ups_input_1m_minimum_input_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Update the DB table
+				my $query = "
+UPDATE 
+    apc_ups_input 
+SET 
+    apc_ups_input_frequency                = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_frequency).", 
+    apc_ups_input_sensitivity              = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_sensitivity).", 
+    apc_ups_input_voltage                  = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_voltage).", 
+    apc_ups_input_1m_maximum_input_voltage = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_1m_maximum_input_voltage).", 
+    apc_ups_input_1m_minimum_input_voltage = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_1m_minimum_input_voltage).", 
+    modified_date                          = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    apc_ups_input_apc_ups_id = ($this_apc_ups_id_query);
+";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# Now figure out what changed and report it to
+				# the user.
+			}
+			
+			# Finally, check the output power.
+			if (($new_apc_ups_output_load_percentage   ne $old_apc_ups_output_load_percentage) or 
+			    ($new_apc_ups_output_time_on_batteries ne $old_apc_ups_output_time_on_batteries) or 
+			    ($new_apc_ups_output_estimated_runtime ne $old_apc_ups_output_estimated_runtime) or 
+			    ($new_apc_ups_output_frequency         ne $old_apc_ups_output_frequency) or 
+			    ($new_apc_ups_output_voltage           ne $old_apc_ups_output_voltage) or 
+			    ($new_apc_ups_output_total_output      ne $old_apc_ups_output_total_output))
+			{
+				# Something in the 'apc_ups_input' table
+				# changed for this UPS.
+				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0001", message_variables => {
+					table         => "apc_ups_output", 
+					serial_number => $ups_serial_number
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Log the variables to help see what actually changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_load_percentage", value1 => $new_apc_ups_output_load_percentage, 
+					name2 => "old_apc_ups_output_load_percentage", value2 => $old_apc_ups_output_load_percentage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_time_on_batteries", value1 => $new_apc_ups_output_time_on_batteries, 
+					name2 => "old_apc_ups_output_time_on_batteries", value2 => $old_apc_ups_output_time_on_batteries, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_estimated_runtime", value1 => $new_apc_ups_output_estimated_runtime, 
+					name2 => "old_apc_ups_output_estimated_runtime", value2 => $old_apc_ups_output_estimated_runtime, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_frequency", value1 => $new_apc_ups_output_frequency, 
+					name2 => "old_apc_ups_output_frequency", value2 => $old_apc_ups_output_frequency, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_voltage", value1 => $new_apc_ups_output_voltage, 
+					name2 => "old_apc_ups_output_voltage", value2 => $old_apc_ups_output_voltage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_apc_ups_output_total_output", value1 => $new_apc_ups_output_total_output, 
+					name2 => "old_apc_ups_output_total_output", value2 => $old_apc_ups_output_total_output, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Update the DB table
+				my $query = "
+UPDATE 
+    apc_ups_output 
+SET 
+    apc_ups_output_load_percentage   = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_load_percentage).", 
+    apc_ups_output_time_on_batteries = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_time_on_batteries).", 
+    apc_ups_output_estimated_runtime = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_estimated_runtime).", 
+    apc_ups_output_frequency         = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_frequency).", 
+    apc_ups_output_voltage           = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_voltage).", 
+    apc_ups_output_total_output      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_total_output).", 
+    modified_date                    = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    apc_ups_output_apc_ups_id = ($this_apc_ups_id_query);
+";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# Now figure out what changed and report it to
+				# the user.
+			}
 		}
 		else
 		{
@@ -356,8 +1395,8 @@ INSERT INTO
     apc_ups_firmware_version, 
     apc_ups_health, 
     apc_ups_high_transfer_voltage, 
-    apc_ups_last_transfer_reason, 
     apc_ups_low_transfer_voltage, 
+    apc_ups_last_transfer_reason, 
     apc_ups_manufactured_date, 
     apc_ups_model, 
     apc_ups_temperature_units, 
@@ -375,8 +1414,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_firmware_version).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_health).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_high_transfer_voltage).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_last_transfer_reason).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_low_transfer_voltage).",  
+    ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_last_transfer_reason).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_manufactured_date).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_model).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_temperature_units).",  
@@ -388,7 +1427,7 @@ INSERT INTO
 );";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
 			# Now INSERT the battery info.
@@ -422,7 +1461,7 @@ INSERT INTO
 );";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
 			# Next, INSERT the input info.
@@ -448,7 +1487,7 @@ INSERT INTO
 );";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
 			# And finally, INSERT the output info.
@@ -458,7 +1497,7 @@ INSERT INTO
 (
     apc_ups_output_apc_ups_id, 
     apc_ups_output_load_percentage, 
-    apc_ups_output_time_on_batties, 
+    apc_ups_output_time_on_batteries, 
     apc_ups_output_estimated_runtime, 
     apc_ups_output_frequency, 
     apc_ups_output_voltage, 
@@ -467,7 +1506,7 @@ INSERT INTO
 ) VALUES (
     ($this_apc_ups_id_query),
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_load_percentage).",  
-    ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_time_on_batties).",  
+    ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_time_on_batteries).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_estimated_runtime).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_frequency).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_voltage).",  
@@ -476,13 +1515,114 @@ INSERT INTO
 );";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
+			
+			### TODO: Send an email/alert notifying of this new UPS
+			###       being found.
+			my $say_time_on_batteries = $new_apc_ups_output_time_on_batteries ? "#!string!scan_apc_ups_message_0007!#" : "#!string!scan_apc_ups_message_0006!#";
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"scan_apc_ups_message_0008",
+				alert_title_variables	=>	{
+					name			=>	$new_apc_ups_fqdn,
+				},
+				alert_message_key	=>	"scan_apc_ups_message_0005",
+				alert_message_variables	=>	{
+					model				=>	$new_apc_ups_model,
+					serial_number			=>	$new_apc_ups_serial_number,
+					manufactured_date		=>	$new_apc_ups_manufactured_date,
+					fqdn				=>	$new_apc_ups_fqdn,
+					ip				=>	$new_apc_ups_ip,
+					firmware_version		=>	$new_apc_ups_firmware_version,
+					nmc_serial_number		=>	$new_apc_ups_nmc_serial_number,
+					nmc_firmware_version		=>	$new_apc_ups_nmc_firmware_version,
+					nmc_mac_address			=>	$new_apc_ups_nmc_mac_address,
+					battery_model			=>	$new_apc_ups_battery_model,
+					battery_last_replacement_date	=>	$new_apc_ups_battery_last_replacement_date,
+					battery_replacement_date	=>	$new_apc_ups_battery_replacement_date,
+					ac_restore_delay		=>	$new_apc_ups_ac_restore_delay,
+					shutdown_delay			=>	$new_apc_ups_shutdown_delay,
+					low_transfer_voltage		=>	$new_apc_ups_low_transfer_voltage,
+					high_transfer_voltage		=>	$new_apc_ups_high_transfer_voltage,
+					input_sensitivity		=>	"#!string!scan_apc_ups_sensitivity_".sprintf("%04d", $new_apc_ups_input_sensitivity)."!#",
+					battery_temperature		=>	$an->Math->round({number => $new_apc_ups_battery_temperature, places => 1}),
+					battery_alarm_temperature	=>	$new_apc_ups_battery_alarm_temperature,
+					battery_voltage			=>	$an->Math->round({number => $new_apc_ups_battery_voltage, places => 1}),
+					input_frequency			=>	$an->Math->round({number => $new_apc_ups_input_frequency, places => 1}),
+					input_voltage			=>	$an->Math->round({number => $new_apc_ups_input_voltage, places => 1}),
+					input_1m_maximum_input_voltage	=>	$an->Math->round({number => $new_apc_ups_input_1m_maximum_input_voltage, places => 1}),
+					input_1m_minimum_input_voltage	=>	$an->Math->round({number => $new_apc_ups_input_1m_minimum_input_voltage, places => 1}),
+					say_estimated_runtime		=>	$an->Readable->time({'time' => $new_apc_ups_output_estimated_runtime}),
+					output_load_percentage		=>	$an->Math->round({number => $new_apc_ups_output_load_percentage, places => 1}),
+					output_frequency		=>	$an->Math->round({number => $new_apc_ups_output_frequency, places => 1}),
+					output_voltage			=>	$an->Math->round({number => $new_apc_ups_output_voltage, places => 1}),
+					output_total_output		=>	$an->Math->round({number => $new_apc_ups_output_total_output, places => 2}),
+					health				=>	"#!string!scan_apc_ups_health_".sprintf("%04d", $new_apc_ups_health)."!#",
+					last_transfer_reason		=>	"#!string!scan_apc_ups_last_xfer_".sprintf("%04d", $new_apc_ups_last_transfer_reason)."!#",
+					battery_health			=>	"#!string!scan_apc_ups_battery_health_".sprintf("%04d", $new_apc_ups_battery_health)."!#",
+					battery_state			=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $new_apc_ups_battery_state)."!#",
+					say_time_on_batteries		=>	$say_time_on_batteries,
+					# This is only used when actually running on batteries.
+					output_time_on_batteries	=>	$an->Readable->time({'time' => $new_apc_ups_output_time_on_batteries}),
+				},
+			});
 		}
-		
-		# Now commit the changes.
-		commit_sql($an);
 	}
+	
+	# Now look for any old UPSes that weren't seen this time.
+	my $query = "
+SELECT 
+    apc_ups_serial_number
+FROM 
+    apc_ups
+WHERE
+    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+AND 
+    apc_ups_health != 0
+";
+	foreach my $serial_number (sort {$a cmp $b} @{$seen_upses})
+	{
+		$query .= "
+AND 
+    apc_ups_serial_number != ".$an->data->{sys}{use_db_fh}->quote($serial_number)."
+";
+	}
+	$query .= ";";
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "query",        value1 => $query, 
+		name2 => "results->[0]", value2 => $results->[0], 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $this_apc_ups_serial_number = $row->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_apc_ups_serial_number", value1 => $this_apc_ups_serial_number, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Change the 'apc_ups_health' to '0'.
+		my $query .= "
+UPDATE 
+    apc_ups
+SET
+    apc_ups_health = 0
+WHERE
+    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+AND
+    apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($this_apc_ups_serial_number).";
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		# TODO: Send an alert...
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
 	
 	return(0);
 }
@@ -496,7 +1636,7 @@ sub commit_sql
 	my $count = @{$an->data->{sys}{sql}};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::sql #", value1 => $count, 
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	if (@{$an->data->{sys}{sql}} > 0)
 	{
 		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
@@ -510,34 +1650,239 @@ sub commit_sql
 sub read_last_scan
 {
 	my ($an, $new_apc_ups_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "new_apc_ups_serial_number", value1 => "$new_apc_ups_serial_number" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Couple of variables to make the code cleaner
 	my $id            = $an->data->{sys}{read_db_id};
 	my $host_name     = $an->hostname;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "id",        value1 => $id, 
 		name2 => "host_name", value2 => $host_name, 
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# We want to look up the apc_ups_id for the given serial number.
 	my $query = $an->data->{sys}{apc_ups_id_query}." = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_serial_number);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query,
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query...
 	my $apc_ups_id = $an->DB->do_db_query({query => $query})->[0]->[0];	# Row -> Column
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "apc_ups_id", value1 => $apc_ups_id, 
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($apc_ups_id)
 	{
-		# Read in existing data.
-		
+		### Read in existing data.
+		# 
+		my $query = "
+SELECT 
+    a.apc_ups_fqdn, 
+    a.apc_ups_ip, 
+    a.apc_ups_ac_restore_delay, 
+    a.apc_ups_shutdown_delay, 
+    a.apc_ups_firmware_version, 
+    a.apc_ups_health, 
+    a.apc_ups_high_transfer_voltage, 
+    a.apc_ups_low_transfer_voltage, 
+    a.apc_ups_last_transfer_reason, 
+    a.apc_ups_manufactured_date, 
+    a.apc_ups_model, 
+    a.apc_ups_temperature_units, 
+    a.apc_ups_serial_number, 
+    a.apc_ups_nmc_firmware_version, 
+    a.apc_ups_nmc_serial_number, 
+    a.apc_ups_nmc_mac_address, 
+    b.apc_ups_battery_replacement_date, 
+    b.apc_ups_battery_health, 
+    b.apc_ups_battery_model, 
+    b.apc_ups_battery_percentage_charge, 
+    b.apc_ups_battery_last_replacement_date, 
+    b.apc_ups_battery_state, 
+    b.apc_ups_battery_temperature, 
+    b.apc_ups_battery_alarm_temperature, 
+    b.apc_ups_battery_voltage, 
+    c.apc_ups_input_frequency, 
+    c.apc_ups_input_sensitivity, 
+    c.apc_ups_input_voltage, 
+    c.apc_ups_input_1m_maximum_input_voltage, 
+    c.apc_ups_input_1m_minimum_input_voltage, 
+    d.apc_ups_output_load_percentage, 
+    d.apc_ups_output_time_on_batteries, 
+    d.apc_ups_output_estimated_runtime, 
+    d.apc_ups_output_frequency, 
+    d.apc_ups_output_voltage, 
+    d.apc_ups_output_total_output 
+FROM     
+    apc_ups a, 
+    apc_ups_battery b, 
+    apc_ups_input c, 
+    apc_ups_output d 
+WHERE 
+    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND
+    a.apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_serial_number)." 
+AND 
+    a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
+AND 
+    a.apc_ups_id = c.apc_ups_input_apc_ups_id 
+AND 
+    a.apc_ups_id = d.apc_ups_output_apc_ups_id;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		# One or more records were found.
+		foreach my $row (@{$results})
+		{
+			my $apc_ups_fqdn                           = $row->[0];
+			my $apc_ups_ip                             = $row->[1];
+			my $apc_ups_ac_restore_delay               = $row->[2];
+			my $apc_ups_shutdown_delay                 = $row->[3];
+			my $apc_ups_firmware_version               = $row->[4];
+			my $apc_ups_health                         = $row->[5];
+			my $apc_ups_high_transfer_voltage          = $row->[6];
+			my $apc_ups_low_transfer_voltage           = $row->[7];
+			my $apc_ups_last_transfer_reason           = $row->[8];
+			my $apc_ups_manufactured_date              = $row->[9];
+			my $apc_ups_model                          = $row->[10];
+			my $apc_ups_temperature_units              = $row->[11];
+			my $apc_ups_serial_number                  = $row->[12];
+			my $apc_ups_nmc_firmware_version           = $row->[13];
+			my $apc_ups_nmc_serial_number              = $row->[14];
+			my $apc_ups_nmc_mac_address                = $row->[15];
+			my $apc_ups_battery_replacement_date       = $row->[16];
+			my $apc_ups_battery_health                 = $row->[17];
+			my $apc_ups_battery_model                  = $row->[18];
+			my $apc_ups_battery_percentage_charge      = $row->[19];
+			my $apc_ups_battery_last_replacement_date  = $row->[20];
+			my $apc_ups_battery_state                  = $row->[21];
+			my $apc_ups_battery_temperature            = $row->[22];
+			my $apc_ups_battery_alarm_temperature      = $row->[23];
+			my $apc_ups_battery_voltage                = $row->[24];
+			my $apc_ups_input_frequency                = $row->[25];
+			my $apc_ups_input_sensitivity              = $row->[26];
+			my $apc_ups_input_voltage                  = $row->[27];
+			my $apc_ups_input_1m_maximum_input_voltage = $row->[28];
+			my $apc_ups_input_1m_minimum_input_voltage = $row->[29];
+			my $apc_ups_output_load_percentage         = $row->[30];
+			my $apc_ups_output_time_on_batteries       = $row->[31];
+			my $apc_ups_output_estimated_runtime       = $row->[32];
+			my $apc_ups_output_frequency               = $row->[33];
+			my $apc_ups_output_voltage                 = $row->[34];
+			my $apc_ups_output_total_output            = $row->[35];
+			
+			# When I scan the UPS, I use the FQDN as the hash key.
+			# Here though, we use the serial number. When we do the
+			# comparison, we'll maps them so that host name changes
+			# won't cause a problem.
+			my $ups_serial_number = $apc_ups_serial_number;
+			
+			#######################################################
+			# Base UPS and NMC information                        #
+			#######################################################
+			
+			$an->data->{sql}{$ups_serial_number}{apc_ups_fqdn}                  = $apc_ups_fqdn;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_ip}                    = $apc_ups_ip;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_ac_restore_delay}      = $apc_ups_ac_restore_delay;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_shutdown_delay}        = $apc_ups_shutdown_delay;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_firmware_version}      = $apc_ups_firmware_version;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_health}                = $apc_ups_health;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_high_transfer_voltage} = $apc_ups_high_transfer_voltage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_low_transfer_voltage}  = $apc_ups_low_transfer_voltage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_last_transfer_reason}  = $apc_ups_last_transfer_reason;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_manufactured_date}     = $apc_ups_manufactured_date;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_model}                 = $apc_ups_model;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_temperature_units}     = $apc_ups_temperature_units;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_nmc_firmware_version}  = $apc_ups_nmc_firmware_version;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_nmc_serial_number}     = $apc_ups_nmc_serial_number;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_nmc_mac_address}       = $apc_ups_nmc_mac_address;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
+				name1  => "sql::${ups_serial_number}::apc_ups_fqdn",                  value1  => $an->data->{sql}{$ups_serial_number}{apc_ups_fqdn}, 
+				name2  => "sql::${ups_serial_number}::apc_ups_ip",                    value2  => $an->data->{sql}{$ups_serial_number}{apc_ups_ip}, 
+				name3  => "sql::${ups_serial_number}::apc_ups_ac_restore_delay",      value3  => $an->data->{sql}{$ups_serial_number}{apc_ups_ac_restore_delay}, 
+				name4  => "sql::${ups_serial_number}::apc_ups_shutdown_delay",        value4  => $an->data->{sql}{$ups_serial_number}{apc_ups_shutdown_delay}, 
+				name5  => "sql::${ups_serial_number}::apc_ups_firmware_version",      value5  => $an->data->{sql}{$ups_serial_number}{apc_ups_firmware_version}, 
+				name6  => "sql::${ups_serial_number}::apc_ups_health",                value6  => $an->data->{sql}{$ups_serial_number}{apc_ups_health}, 
+				name7  => "sql::${ups_serial_number}::apc_ups_high_transfer_voltage", value7  => $an->data->{sql}{$ups_serial_number}{apc_ups_high_transfer_voltage}, 
+				name8  => "sql::${ups_serial_number}::apc_ups_low_transfer_voltage",  value8  => $an->data->{sql}{$ups_serial_number}{apc_ups_low_transfer_voltage}, 
+				name9  => "sql::${ups_serial_number}::apc_ups_last_transfer_reason",  value9  => $an->data->{sql}{$ups_serial_number}{apc_ups_last_transfer_reason}, 
+				name10 => "sql::${ups_serial_number}::apc_ups_manufactured_date",     value10 => $an->data->{sql}{$ups_serial_number}{apc_ups_manufactured_date}, 
+				name11 => "sql::${ups_serial_number}::apc_ups_model",                 value11 => $an->data->{sql}{$ups_serial_number}{apc_ups_model}, 
+				name12 => "sql::${ups_serial_number}::apc_ups_temperature_units",     value12 => $an->data->{sql}{$ups_serial_number}{apc_ups_temperature_units}, 
+				name13 => "sql::${ups_serial_number}::apc_ups_nmc_firmware_version",  value13 => $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_firmware_version}, 
+				name14 => "sql::${ups_serial_number}::apc_ups_nmc_serial_number",     value14 => $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_serial_number}, 
+				name15 => "sql::${ups_serial_number}::apc_ups_nmc_mac_address",       value15 => $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_mac_address}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			#######################################################
+			# Battery information                                 #
+			#######################################################
+			
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_replacement_date}      = $apc_ups_battery_replacement_date;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_health}                = $apc_ups_battery_health;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_model}                 = $apc_ups_battery_model;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_percentage_charge}     = $apc_ups_battery_percentage_charge;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_last_replacement_date} = $apc_ups_battery_last_replacement_date;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_state}                 = $apc_ups_battery_state;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_temperature}           = $apc_ups_battery_temperature;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_alarm_temperature}     = $apc_ups_battery_alarm_temperature;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_battery_voltage}               = $apc_ups_battery_voltage;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+				name1 => "sql::${ups_serial_number}::apc_ups_battery_replacement_date",      value1 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_replacement_date}, 
+				name2 => "sql::${ups_serial_number}::apc_ups_battery_health",                value2 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_health}, 
+				name3 => "sql::${ups_serial_number}::apc_ups_battery_model",                 value3 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_model}, 
+				name4 => "sql::${ups_serial_number}::apc_ups_battery_percentage_charge",     value4 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_percentage_charge}, 
+				name5 => "sql::${ups_serial_number}::apc_ups_battery_last_replacement_date", value5 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_last_replacement_date}, 
+				name6 => "sql::${ups_serial_number}::apc_ups_battery_state",                 value6 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_state}, 
+				name7 => "sql::${ups_serial_number}::apc_ups_battery_temperature",           value7 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_temperature}, 
+				name8 => "sql::${ups_serial_number}::apc_ups_battery_alarm_temperature",     value8 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_alarm_temperature}, 
+				name9 => "sql::${ups_serial_number}::apc_ups_battery_voltage",               value9 => $an->data->{sql}{$ups_serial_number}{apc_ups_battery_voltage}, 
+			}, file => $THIS_FILE, line => __LINE__});
+				
+			#######################################################
+			# Input Information                                   #
+			#######################################################
+				
+			$an->data->{sql}{$ups_serial_number}{apc_ups_input_frequency}                = $apc_ups_input_frequency;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_input_sensitivity}              = $apc_ups_input_sensitivity;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_input_voltage}                  = $apc_ups_input_voltage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_maximum_input_voltage} = $apc_ups_input_1m_maximum_input_voltage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_minimum_input_voltage} = $apc_ups_input_1m_minimum_input_voltage;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "sql::${ups_serial_number}::apc_ups_input_frequency",                value1 => $an->data->{sql}{$ups_serial_number}{apc_ups_input_frequency}, 
+				name2 => "sql::${ups_serial_number}::apc_ups_input_sensitivity",              value2 => $an->data->{sql}{$ups_serial_number}{apc_ups_input_sensitivity}, 
+				name3 => "sql::${ups_serial_number}::apc_ups_input_voltage",                  value3 => $an->data->{sql}{$ups_serial_number}{apc_ups_input_voltage}, 
+				name4 => "sql::${ups_serial_number}::apc_ups_input_1m_maximum_input_voltage", value4 => $an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_maximum_input_voltage}, 
+				name5 => "sql::${ups_serial_number}::apc_ups_input_1m_minimum_input_voltage", value5 => $an->data->{sql}{$ups_serial_number}{apc_ups_input_1m_minimum_input_voltage}, 
+			}, file => $THIS_FILE, line => __LINE__});
+				
+			#######################################################
+			# Output Information                                  #
+			#######################################################
+				
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_load_percentage}         = $apc_ups_output_load_percentage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_time_on_batteries}       = $apc_ups_output_time_on_batteries;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_estimated_runtime}       = $apc_ups_output_estimated_runtime;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_frequency}               = $apc_ups_output_frequency;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_voltage}                 = $apc_ups_output_voltage;
+			$an->data->{sql}{$ups_serial_number}{apc_ups_output_total_output}            = $apc_ups_output_total_output;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "sql::${ups_serial_number}::apc_ups_output_load_percentage",   value1 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_load_percentage}, 
+				name2 => "sql::${ups_serial_number}::apc_ups_output_time_on_batteries", value2 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_time_on_batteries}, 
+				name3 => "sql::${ups_serial_number}::apc_ups_output_estimated_runtime", value3 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_estimated_runtime}, 
+				name4 => "sql::${ups_serial_number}::apc_ups_output_frequency",         value4 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_frequency}, 
+				name5 => "sql::${ups_serial_number}::apc_ups_output_voltage",           value5 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_voltage}, 
+				name6 => "sql::${ups_serial_number}::apc_ups_output_total_output",      value6 => $an->data->{sql}{$ups_serial_number}{apc_ups_output_total_output}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
 	}
 	
 	return($apc_ups_id);
@@ -557,7 +1902,7 @@ sub update_db
 		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "db_is_behind", value1 => $db_is_behind, 
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		next if not $db_is_behind;
 		
 		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
@@ -571,18 +1916,18 @@ sub update_db
 			source_db_id        => $source_db_id, 
 			source_updated_time => $source_updated_time,
 			target_last_updated => $target_last_updated
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $target_last_updated)
 		{
 			# Full recovery needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__ });
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (($source_updated_time - $target_last_updated) > 0)
 		{
 			# Partial recovery needed.
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0030", message_variables => {
 				seconds_behind => ($source_updated_time - $target_last_updated), 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Update apc_ups, apc_ups_nodes and apc_ups services.
@@ -612,20 +1957,20 @@ sub update_db_apc_ups
 		name2 => "source_updated_time", value2 => $source_updated_time, 
 		name3 => "source_db_id",        value3 => $source_db_id, 
 		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the unix time that this table was last updated for this host.
 	my $query = "SELECT modified_date FROM apc_ups WHERE apc_ups_host_id = (".$an->data->{sys}{host_id_query}.");";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $target_apc_ups_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
 	   $target_apc_ups_last_updated = 0 if not $target_apc_ups_last_updated;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target_apc_ups_last_updated", value1 => $target_apc_ups_last_updated
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For each apc_ups_cluster_name, check to see if the same name exists
 	###       in the target and decide if it needs an INSERT or UPDATE. So
@@ -634,7 +1979,7 @@ sub update_db_apc_ups
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
@@ -643,17 +1988,17 @@ sub update_db_apc_ups
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "apc_ups_cluster_name", value1 => $apc_ups_cluster_name, 
 			name2 => "modified_date",        value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{db}{target}{apc_ups}{$apc_ups_cluster_name}{modified_date} = $modified_date;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "db::target::apc_ups::${apc_ups_cluster_name}::modified_date", value1 => $an->data->{db}{target}{apc_ups}{$apc_ups_cluster_name}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now read in all the newer records from the source DB.
 	my $old_date = $target_apc_ups_last_updated;
-	if ($target_apc_ups_last_updated =~ /^\d+$/)
+	if ($target_apc_ups_last_updated =~ /\D/)
 	{
 		# It's unix time.
 		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_apc_ups_last_updated)."))";
@@ -679,12 +2024,12 @@ ORDER BY
 ";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	$results = "";
 	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__ });
+	}, file => $THIS_FILE, line => __LINE__});
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
@@ -697,7 +2042,7 @@ ORDER BY
 			name1 => "apc_ups_cluster_name",    value1 => $apc_ups_cluster_name, 
 			name2 => "apc_ups_quorate", value2 => $apc_ups_quorate, 
 			name3 => "modified_date",  value3 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If there isn't an existing extry in the target, do an insert
 		if (not $an->data->{db}{target}{apc_ups}{$apc_ups_cluster_name})
@@ -752,7 +2097,7 @@ sub prep_databases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__ });
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_ups' AND schemaname='public';";
@@ -761,17 +2106,17 @@ sub prep_databases
 		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($count < 1)
 		{
 			# Need to load the database schema.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__ });
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
 		}
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__ });
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -820,14 +2165,39 @@ sub gather_ups_data
 		
 		# Get the AC restore delay, if set. (High-precision, divide by 10 to get seconds).
 		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{ac_restore_delay});
-		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /^\d+$/;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
+			name1 => ">> ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_ac_restore_delay", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} /= 10;
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the shut down delay, if set. (in ticks, divide by 100).
 		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{shutdown_delay});
-		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_shutdown_delay", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} /= 100;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_shutdown_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -845,9 +2215,9 @@ sub gather_ups_data
 		# 7 => off, 		8 => rebooting,		9 => switchedBypass,
 		# 10 => hardwareFailureBypass,	11 => sleepingUntilPowerReturn, 
 		# 12 => onSmartTrim,	13 => ecoMode, 		14 => hotStandby, 
-		# 15 => onBatteryTest,	15 => emergencyStaticBypass, 
+		# 15 => onBatteryTest,		15 => emergencyStaticBypass, 
 		# 17 => staticBypassStandby,	18 => powerSavingMode,
-		# 19 => spotMode,	20 => eConversion
+		# 19 => spotMode,		20 => eConversion
 		$an->data->{ups}{$ups_name}{apc_ups_health} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{health});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_health", value1 => $an->data->{ups}{$ups_name}{apc_ups_health}, 
@@ -944,7 +2314,18 @@ sub gather_ups_data
 		# Read the percentage charge. This is high-precision, so divide
 		# by 10 to get the actual percentage (ie: 1000 == 100.0%).
 		$an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{percentage_charge_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_battery_percentage_charge", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_battery_percentage_charge", value1 => $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -969,7 +2350,18 @@ sub gather_ups_data
 		# high-precision, so divide by 10 to get the actual 
 		# temperature. It is always celsius, so don't convert it.
 		$an->data->{ups}{$ups_name}{apc_ups_battery_temperature} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{temperature_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_battery_temperature} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_battery_temperature} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_battery_temperature} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_battery_temperature", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_battery_temperature} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_battery_temperature", value1 => $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -994,7 +2386,18 @@ sub gather_ups_data
 		# Read the current battery voltage (vDC). It is a 
 		# high-precision value, so divide by 10.
 		$an->data->{ups}{$ups_name}{apc_ups_battery_voltage} =  read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{voltage_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_battery_voltage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_battery_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_battery_voltage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_battery_voltage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_battery_voltage} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_battery_voltage", value1 => $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1007,7 +2410,18 @@ sub gather_ups_data
 		# This is the current input frequency. It is high-precision, so
 		# divide by 10.
 		$an->data->{ups}{$ups_name}{apc_ups_input_frequency}  = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{frequency_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_input_frequency} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_input_frequency} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_input_frequency} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_input_frequency", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_input_frequency}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_input_frequency} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_input_frequency", value1 => $an->data->{ups}{$ups_name}{apc_ups_input_frequency}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1022,7 +2436,18 @@ sub gather_ups_data
 		
 		# High-precision input voltage (vAC), divide by 10.
 		$an->data->{ups}{$ups_name}{apc_ups_input_voltage}  = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{voltage_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_input_voltage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_input_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_input_voltage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_input_voltage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_input_voltage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_input_voltage} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_input_voltage", value1 => $an->data->{ups}{$ups_name}{apc_ups_input_voltage}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1030,9 +2455,31 @@ sub gather_ups_data
 		# High-precision maximum and minimum input voltages (vAC) over
 		# the last 60 seconds.
 		$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{'1m_maximum_input_voltage_hp'});
-		$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_input_1m_maximum_input_voltage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} /= 10;
+		}
 		$an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{'1m_minimum_input_voltage_hp'});
-		$an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_input_1m_minimum_input_voltage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_input_1m_maximum_input_voltage", value1 => $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage}, 
 			name2 => "ups::${ups_name}::apc_ups_input_1m_minimum_input_voltage", value2 => $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage}, 
@@ -1045,7 +2492,18 @@ sub gather_ups_data
 		
 		# High-precision output load percentage, divide by 10.
 		$an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{load_percentage_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_load_percentage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_output_load_percentage", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1053,29 +2511,73 @@ sub gather_ups_data
 		# The time (in ticks, divide by 100) that the UPS has been
 		# running on batteries. '0' indicates that it is not on
 		# batteries.
-		$an->data->{ups}{$ups_name}{apc_ups_output_time_on_batties} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{time_on_batties});
-		$an->data->{ups}{$ups_name}{apc_ups_output_time_on_batties} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batties} =~ /^\d+$/;
+		$an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{time_on_batteries});
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_time_on_batteries", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} /= 100;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "ups::${ups_name}::apc_ups_output_time_on_batties", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batties}, 
+			name1 => "ups::${ups_name}::apc_ups_output_time_on_batteries", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Estimated remaining runtime (in ticks, divide by 100).
 		$an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{estimated_runtime});
-		$an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_estimated_runtime", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} /= 100;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_output_estimated_runtime", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This is the high-precision output frequency in Hz (divide by 10).
 		$an->data->{ups}{$ups_name}{apc_ups_output_frequency} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{frequency_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_output_frequency} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_output_frequency} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_frequency} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_frequency", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_frequency}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_frequency} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_output_frequency", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_frequency}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# High-precision output voltage (vAC, divide by 10).
 		$an->data->{ups}{$ups_name}{apc_ups_output_voltage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{voltage_hp});
-		$an->data->{ups}{$ups_name}{apc_ups_output_voltage} /= 10 if $an->data->{ups}{$ups_name}{apc_ups_output_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_voltage} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_voltage", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_voltage}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_voltage} /= 10;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_output_voltage", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_voltage}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1084,10 +2586,25 @@ sub gather_ups_data
 		# It is measured in tens of watt-hours, so divide be 100 to get
 		# kW/hr.
 		$an->data->{ups}{$ups_name}{apc_ups_output_total_output} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{total_output});
-		$an->data->{ups}{$ups_name}{apc_ups_output_total_output} /= 100 if $an->data->{ups}{$ups_name}{apc_ups_output_voltage} =~ /^\d+$/;
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
+		{
+			# This should have been an integer...
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+				name  => "ups::${ups_name}::apc_ups_output_total_output", 
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_output_total_output} /= 100;
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_output_total_output", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO:
+		# Here I need to decide if the UPS is in a state requiring an
+		# entry in the 'power' or 'temperature' tables.
 	}
 	
 	return($no_ups_found);
@@ -1107,7 +2624,7 @@ sub read_oid
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => "$shell_call"
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1139,8 +2656,7 @@ sub read_oid
 		}
 		if ($line =~ /Hex-STRING: (.*)$/i)
 		{
-			$value =  $1;
-			$value =~ s/\s+$//;
+			$value = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "value", value1 => "$value"
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1169,10 +2685,13 @@ sub read_oid
 	}
 	close $file_handle;
 	
+	# Strip leading and trailing white spaces
+	$value =~ s/^\s+//;
+	$value =~ s/\s+$//;
+	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "value", value1 => "$value"
 	}, file => $THIS_FILE, line => __LINE__});
-	#die "$THIS_FILE ".__LINE__."; value: [$value]\n" if $value eq "#!no_value!#";
 	return($value);
 }
 
@@ -1199,7 +2718,7 @@ sub find_upses
 				$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
-				}, file => $THIS_FILE, line => __LINE__ });
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -1215,15 +2734,15 @@ sub find_upses
 		my $shell_call = "</etc/hosts";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__ });
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Clear out comments, knock out white spaces and then
 			# skip anything without 'ups' in the name.
@@ -1235,14 +2754,14 @@ sub find_upses
 			next if $line !~ /ups/;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# This should be a UPS entry.
 			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "ip",    value1 => $ip, 
 				name2 => "names", value2 => $names,
-			}, file => $THIS_FILE, line => __LINE__ });
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# It's crude, but we'll use the longest host name.
 			my $ups_name = "";
@@ -1258,7 +2777,7 @@ sub find_upses
 				$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
-				}, file => $THIS_FILE, line => __LINE__ });
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -1276,7 +2795,7 @@ sub find_upses
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ups_name", value1 => $ups_name, 
 			name2 => "ip",       value2 => $ip, 
-		}, file => $THIS_FILE, line => __LINE__ });
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 }
 
