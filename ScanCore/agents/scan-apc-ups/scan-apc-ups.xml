@@ -21,6 +21,8 @@ with 'scan_apc_ups_'.
 		
 		<!-- Log messages -->
 		<key name="scan_apc_ups_log_0001">The DB table [#!variable!table!#] for the UPS with the serial number: [#!variable!serial_number!#] needs to be updated.</key>
+		<key name="scan_apc_ups_log_0002">Starting to read the SNMP OIDs for the UPS: [#!variable!ups!#].</key>
+		<key name="scan_apc_ups_log_0003">SNMP OIDs reads for the UPS: [#!variable!ups!#] completed in: [#!variable!time!#].</key>
 		
 		<!-- Notices -->
 		<key name="scan_apc_ups_note_0001">
@@ -194,25 +196,161 @@ The UPS with the serial number: [#!variable!serial_number!#] has discharged belo
 If power is not restored soon, this UPS will be marked as unusable. If the other UPS(es) also drop below this level, your #!string!scancore_brand_0002!# will automatically shut down, if configured to do so.
 		</key>
 		<key name="scan_apc_ups_note_0027">
-The UPS with the serial number: [#!variable!serial_number!#] has had it's battery's last replacement date changed:
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery's last replacement date changed:
 - New replacement date: [#!variable!new_value!#]
 - Old replacement date: [#!variable!old_value!#]
 
 This is most likely do to an administrator replacing the battery pack in the UPS.
 		</key>
 		<key name="scan_apc_ups_note_0028">
-The UPS with the serial number: [#!variable!serial_number!#] has had it's battery enter a warning state!:
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery enter a warning state!:
 - New battery state: [#!variable!new_value!#]
 - Old battery state: [#!variable!old_value!#]
 
 It is possible that the battery has failed and will need to be replaced.
 		</key>
 		<key name="scan_apc_ups_note_0029">
-The UPS with the serial number: [#!variable!serial_number!#] has had it's battery recover from a warning state:
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery recover from a warning state:
 - New battery state: [#!variable!new_value!#]
 - Old battery state: [#!variable!old_value!#]
 
 This is most likely do to an administrator replacing the battery pack in the UPS.
+		</key>
+		<key name="scan_apc_ups_note_0030">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] is rising:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0031">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] is getting close to the critical temperature of: [#!variable!critical_temperature!#] °C!:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0032">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] is falling:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0033">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] has fallen back down below safe levels:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0034">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] has reached the critical temperature of: [#!variable!critical_temperature!#] °C!:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+
+The UPS will soon be powered off if the temperature continues to rise.
+		</key>
+		<key name="scan_apc_ups_note_0035">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] has reached the shutdown temperature of: [#!variable!shutdown_temperature!#] °C!:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+
+The UPS will now be powered off.
+		</key>
+		<key name="scan_apc_ups_note_0036">
+The temperature of the battery in the UPS with the serial number: [#!variable!serial_number!#] has fallen below critical levels:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0037">
+The UPS with the serial number: [#!variable!serial_number!#] has had its battery alarm temperature changed:
+- New temperature: [#!variable!new_value!#] °C
+- Old temparature: [#!variable!old_value!#] °C
+		</key>
+		<key name="scan_apc_ups_note_0038">
+The voltage from the battery in the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New voltage: [#!variable!new_value!#] vDC
+- Old voltage: [#!variable!old_value!#] vDC
+		</key>
+		<key name="scan_apc_ups_note_0039">
+The input frequency to the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New frequency: [#!variable!new_value!#] Hz
+- Old frequency: [#!variable!old_value!#] Hz
+		</key>
+		<key name="scan_apc_ups_note_0040">
+The input sensitivity for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New sensitivity level: [#!variable!new_value!#]
+- Old sensitivity level: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0041">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has risen:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0042">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has dropped:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0043">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has gone above the high-voltage transfer level!:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0044">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has dropped below the low-voltage transfer level!:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0045">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has risen back above the low-voltage transfer level and is operating normally again:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0046">
+The input voltage for the UPS with the serial number: [#!variable!serial_number!#] has dropped back down below the high-voltage transfer level and is operating normally again:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0047">
+The highest input voltage seen in the last 60 seconds for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New maximum voltage: [#!variable!new_value!#] vAC
+- Old maximum voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0048">
+The lowest input voltage seen in the last 60 seconds for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New minimum voltage: [#!variable!new_value!#] vAC
+- Old minimum voltage: [#!variable!old_value!#] vAC
+		</key>
+		<key name="scan_apc_ups_note_0049">
+The load percentage on the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New load: [#!variable!new_value!#] %
+- Old load: [#!variable!old_value!#] %
+		</key>
+		<key name="scan_apc_ups_note_0050">
+The UPS with the serial number: [#!variable!serial_number!#] is now running on batteries:
+- New time on batteries: [#!variable!new_value!#]
+- Old time on batteries: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0051">
+The UPS with the serial number: [#!variable!serial_number!#] has returned to running on mains power:
+- New time on batteries: [#!variable!new_value!#]
+- Old time on batteries: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0052">
+The time on batteries for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New time on batteries: [#!variable!new_value!#]
+- Old time on batteries: [#!variable!old_value!#]
+		</key>
+		<key name="scan_apc_ups_note_0053">
+The estimated hold-up time for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New estimate: [#!variable!new_value!#]
+- Old estimate: [#!variable!old_value!#]
+
+This is an estimate of how long the UPS can provide power should the input power be lost at the current load level. An increase in the average load will shorten the actual hold-up time.
+		</key>
+		<key name="scan_apc_ups_note_0054">
+The output frequency for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New frequency: [#!variable!new_value!#] Hz
+- Old frequency: [#!variable!old_value!#] Hz
+		</key>
+		<key name="scan_apc_ups_note_0054">
+The output voltage for the UPS with the serial number: [#!variable!serial_number!#] has changed:
+- New voltage: [#!variable!new_value!#] vAC
+- Old voltage: [#!variable!old_value!#] vAC
 		</key>
 		
 		<!-- Warnings. -->

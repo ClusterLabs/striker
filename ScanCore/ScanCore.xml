@@ -37,7 +37,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_email_0004">There has been a state change on #!variable!hostname!#</key>
 		<key name="scancore_email_0005">
 #!variable!title!#:
-#!variable!message!#
+  #!variable!message!#
 		</key>
 		
 		<!-- Strings that can change by rebranding -->
@@ -153,6 +153,10 @@ The error was:
 		<key name="scancore_warning_0008">There were errors writing data to the database. Rolling back!</key>
 		<key name="scancore_warning_0009">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::email' entries.</key>
 		<key name="scancore_warning_0010">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::file' entries.</key>
+		<key name="scancore_warning_0011">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
+		
+		<!-- Cleared warnings. -->
+		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
 		
 		<!-- Errors -->
 		<key name="scancore_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>

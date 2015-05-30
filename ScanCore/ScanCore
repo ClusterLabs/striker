@@ -287,10 +287,12 @@ WHERE
 		my $alert_message_variables = $row->[6]; 
 		my $modified_date           = $row->[7]; 
 		
+		# Sometimes alerts are sent by modules. In those cases, ignore
+		# them.
 		if ($last_agent ne $alert_agent_name)
 		{
 			   $last_agent    = $alert_agent_name;
-			my $agent_strings = $an->data->{path}{agents_directory}."/$alert_agent_name/$alert_agent_name.xml";
+			my $agent_strings = $alert_agent_name eq "ScanCore" ? $an->data->{path}{scancore_strings} : $an->data->{path}{agents_directory}."/$alert_agent_name/$alert_agent_name.xml";
 			   $an->String->read_words({file => $agent_strings});
 		}
 		
@@ -366,75 +368,6 @@ WHERE
 	return(0);
 }
 
-# This converts a level name to a number for easier comparison.
-sub convert_level_name_to_number
-{
-	my ($an, $level) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number", }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "level", value1 => "$level" 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if ($level eq "debug")
-	{
-		$level = 5;
-	}
-	elsif ($level eq "info")
-	{
-		$level = 4;
-	}
-	elsif ($level eq "notice")
-	{
-		$level = 3;
-	}
-	elsif ($level eq "warning")
-	{
-		$level = 2;
-	}
-	elsif ($level eq "critical")
-	{
-		$level = 1;
-	}
-	
-	return ($level);
-}
-
-# This converts an alert level number to a name.
-sub convert_level_number_to_name
-{
-	my ($an, $level) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name", }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "level", value1 => "$level" 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if ($level eq "5")
-	{
-		# Debug
-		$level = "#!string!scancore_title_0001!#";
-	}
-	elsif ($level eq "4")
-	{
-		# Info
-		$level = "#!string!scancore_title_0006!#";
-	}
-	elsif ($level eq "3")
-	{
-		# Notice
-		$level = "#!string!scancore_title_0005!#";
-	}
-	elsif ($level eq "2")
-	{
-		# Warning
-		$level = "#!string!scancore_title_0002!#";
-	}
-	elsif ($level eq "1")
-	{
-		# Critical
-		$level = "#!string!scancore_title_0007!#";
-	}
-	
-	return ($level);
-}
-
 # This sends any pending alerts to a give recipient, if applicable.
 sub send_email
 {
@@ -484,7 +417,7 @@ sub send_email
 	
 	# Convert the user's log level to a numeric number for easier
 	# comparison.
-	$level = convert_level_name_to_number($an, $level);
+	$level = $an->Alert->convert_level_name_to_number({level => $level});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -515,7 +448,7 @@ sub send_email
 				name5 => "alert_message_variables", value5 => $alert_message_variables, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$alert_level = convert_level_name_to_number($an, $alert_level);
+			$alert_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_level", value1 => $alert_level, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -569,7 +502,7 @@ sub send_email
 		language	=>	$language,
 		key		=>	"scancore_email_0001",
 		variables	=>	{
-			level		=>	convert_level_number_to_name($an, $subject),
+			level		=>	$an->Alert->convert_level_number_to_name({level => $subject}),
 			subject		=>	$subject_line,
 		},
 	});
@@ -739,7 +672,7 @@ sub record_alert_to_file
 	
 	# Convert the user's log level to a numeric number for easier
 	# comparison.
-	$level = convert_level_name_to_number($an, $level);
+	$level = $an->Alert->convert_level_name_to_number({level => $level});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -773,7 +706,7 @@ sub record_alert_to_file
 				name6 => "modified_date",           value6 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$alert_level = convert_level_name_to_number($an, $alert_level);
+			$alert_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_level", value1 => $alert_level, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1193,7 +1126,6 @@ sub update_db_ram_used
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the unix time that this table was last updated for this host.
-	#my $query = "SELECT round(extract(epoch from modified_date)) FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $query = "SELECT modified_date FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
@@ -1515,7 +1447,6 @@ sub update_db_temperature
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the unix time that this table was last updated for this host.
-	#my $query = "SELECT round(extract(epoch from modified_date)) FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
@@ -1553,7 +1484,6 @@ sub update_db_power
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the unix time that this table was last updated for this host.
-	#my $query = "SELECT round(extract(epoch from modified_date)) FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
@@ -1591,7 +1521,6 @@ sub update_db_agents
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the unix time that this table was last updated for this host.
-	#my $query = "SELECT round(extract(epoch from modified_date)) FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $query = "SELECT modified_date FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 

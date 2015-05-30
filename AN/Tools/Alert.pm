@@ -40,6 +40,195 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This is used by scan agents that need to track whether an alert was sent when
+# a sensor dropped below/rose above a set alert threshold. For example, if a
+# sensor alerts at 20°C and clears at 25°C, this will be called when either
+# value is passed. When passing the warning threshold, the alert is registered
+# and sent to the user. Once set, no further warning alerts are sent. When the
+# value passes over the clear threshold, this is checked and if an alert was
+# previously registered, it is removed and an "all clear" message is sent. In
+# this way, multiple alerts will not go out if a sensor floats around the
+# warning threshold and a "cleared" message won't be sent unless a "warning"
+# message was previously sent.
+sub check_alert_sent
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$self->_set_error;
+	
+	# This will get set to '1' if an alert is added or removed.
+	my $set = 0;
+	
+	# If 'type' is 'warning', an entry will be made if it doesn't exist. If
+	# 'clear', an alert will be removed if it exists. 
+	my $type                 = $parameter->{type}                 ? $parameter->{type}                 : ""; # This should error.
+	my $alert_sent_by        = $parameter->{alert_sent_by}        ? $parameter->{alert_sent_by}        : "";
+	my $alert_record_locator = $parameter->{alert_record_locator} ? $parameter->{alert_record_locator} : "";
+	my $alert_name           = $parameter->{alert_name}           ? $parameter->{alert_name}           : "";
+	my $modified_date        = $parameter->{modified_date}        ? $parameter->{modified_date}        : "";
+	
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    alert_sent 
+WHERE 
+    alert_sent_host_id   = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    alert_sent_by        = ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by)." 
+AND 
+    alert_record_locator = ".$an->data->{sys}{use_db_fh}->quote($alert_record_locator)." 
+AND 
+    alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "type",  value1 => $type, 
+		name2 => "count", value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now, if this is type=warning, register the alert if it doesn't exist.
+	# If it is type=clear, remove the alert if it exists.
+	if (($type eq "warning") && (not $count))
+	{
+		# New alert
+		   $set   = 1;
+		my $query = "
+INSERT INTO 
+    alert_sent 
+(
+    alert_sent_host_id, 
+    alert_sent_by, 
+    alert_record_locator, 
+    alert_name, 
+    modified_date
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_record_locator).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_name).", 
+    ".$an->data->{sys}{db_timestamp}."
+);
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query", value1 => $query, 
+			name2 => "set",   value2 => $set, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query});
+	}
+	elsif (($type eq "clear") && ($count))
+	{
+		# Alert previously existed, clear it.
+		   $set   = 1;
+		my $query = "
+DELETE FROM 
+    alert_sent 
+WHERE 
+    alert_sent_host_id   = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    alert_sent_by        = ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by)." 
+AND 
+    alert_record_locator = ".$an->data->{sys}{use_db_fh}->quote($alert_record_locator)." 
+AND 
+    alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query", value1 => $query, 
+			name2 => "set",   value2 => $set, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set", value1 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($set);
+}
+
+# This converts a level name to a number for easier comparison.
+sub convert_level_name_to_number
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$self->_set_error;
+	
+	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
+	
+	if ($level eq "debug")
+	{
+		$level = 5;
+	}
+	elsif ($level eq "info")
+	{
+		$level = 4;
+	}
+	elsif ($level eq "notice")
+	{
+		$level = 3;
+	}
+	elsif ($level eq "warning")
+	{
+		$level = 2;
+	}
+	elsif ($level eq "critical")
+	{
+		$level = 1;
+	}
+	
+	return ($level);
+}
+
+# This converts an alert level number to a name.
+sub convert_level_number_to_name
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$self->_set_error;
+	
+	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
+	
+	if ($level eq "5")
+	{
+		# Debug
+		$level = "debug";
+	}
+	elsif ($level eq "4")
+	{
+		# Info
+		$level = "info";
+	}
+	elsif ($level eq "3")
+	{
+		# Notice
+		$level = "notice";
+	}
+	elsif ($level eq "2")
+	{
+		# Warning
+		$level = "warning";
+	}
+	elsif ($level eq "1")
+	{
+		# Critical
+		$level = "critical";
+	}
+	
+	return ($level);
+}
+
 # This registers an alert with ScanCore
 sub register_alert
 {
@@ -50,13 +239,13 @@ sub register_alert
 	my $an = $self->parent;
 	$self->_set_error;
 	
-	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : ""; # This should error.
+	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : die "$THIS_FILE ".__LINE__." 'alert_agent_name' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
 	my $alert_title_key         = $parameter->{alert_title_key}         ? $parameter->{alert_title_key}         : "an_alert_title_0003";
 	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
-	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : ""; # This should error.
+	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : die "$THIS_FILE ".__LINE__." 'alert_message_key' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
@@ -81,6 +270,73 @@ sub register_alert
 			$alert_message_variables->{$key} = "--" if not defined $alert_message_variables->{$key};
 			$message_variables .= "!!$key!$alert_message_variables->{$key}!!,";
 		}
+	}
+	
+	# In most cases, no one is listening to 'debug' or 'info' level alerts.
+	# If that is the case here, don't record the alert because it can cause
+	# the history.alerts table to grow needlessly. So find the lowest level
+	# log level actually being listened to and simply skip anything lower
+	# than that.
+	# 5 == debug
+	# 1 == critical
+	my $lowest_log_level = 5;
+	foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
+	{
+		# We want to know the alert level, regardless of whether the 
+		# recipient is an email of file target.
+		my $this_level;
+		if ($an->data->{alerts}{recipient}{$integer}{email})
+		{
+			# Email recipient
+			$this_level = ($an->data->{alerts}{recipient}{$integer}{email} =~ /level="(.*?)"/)[0];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_level", value1 => $this_level,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{alerts}{recipient}{$integer}{file})
+		{
+			# File target
+			$this_level = ($an->data->{alerts}{recipient}{$integer}{file} =~ /level="(.*?)"/)[0];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_level", value1 => $this_level,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_level",  value1 => $this_level,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($this_level)
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_level",  value1 => $this_level,
+			}, file => $THIS_FILE, line => __LINE__});
+			$this_level = $an->Alert->convert_level_name_to_number({level => $this_level});
+			
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_level",       value1 => $this_level,
+				name2 => "lowest_log_level", value2 => $lowest_log_level,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_level < $lowest_log_level)
+			{
+				$lowest_log_level = $this_level;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "lowest_log_level", value1 => $lowest_log_level,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now get the numeric value of this alert and return if it is higher.
+	my $this_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "alert_level",      value1 => $alert_level,
+		name2 => "this_level",       value2 => $this_level,
+		name3 => "lowest_log_level", value3 => $lowest_log_level,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($this_level > $lowest_log_level)
+	{
+		# Return.
+		$an->Log->entry({log_level => 2, message_key => "tools_log_0004", file => $THIS_FILE, line => __LINE__});
+		return(0);
 	}
 	
 	# Always INSERT. ScanCore removes them as they're acted on (copy is left in history.alerts).

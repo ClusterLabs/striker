@@ -5,6 +5,7 @@ package AN::Tools::DB;
 use strict;
 use warnings;
 use DBI;
+use Data::Dumper;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "DB.pm";
@@ -110,7 +111,7 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -148,11 +149,15 @@ sub do_db_query
 	my ($id, $query);
 	
 	# Values passed in a hash, good.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "parameter->{id}", value1 => $parameter->{id}, 
+	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
 	$id    = $parameter->{id}    ? $parameter->{id}    : $an->data->{sys}{read_db_id};
 	$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "id",    value1 => $id, 
-		name2 => "query", value2 => $query
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "id",       value1 => $id, 
+		name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}, 
+		name3 => "query",    value3 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Prepare the query
@@ -200,6 +205,8 @@ sub connect_to_databases
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $connections = 0;
+	my $failed_connections     = [];
+	my $successful_connections = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $driver            = "DBI:Pg";
@@ -246,17 +253,26 @@ sub connect_to_databases
 		if ($@)
 		{
 			# Something went wrong...
+			$an->data->{scancore}{db}{$id}{connection_error} = [];
+			push @{$failed_connections}, $id;
 			$an->Alert->warning({ title_key => "scancore_title_0002", message_key => "scancore_warning_0001", message_variables => {
 				name		=>	$name,
 				host		=>	$host,
 				port		=>	$port,
 			}, file => $THIS_FILE, line => __LINE__});
-			#print "[ Warning ] - Failed to connect to database: [$name] on host: [$host:$port].\n";
+			push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0001", message_variables => {
+				name		=>	$name,
+				host		=>	$host,
+				port		=>	$port,
+			}};
 			if ($DBI::errstr =~ /No route to host/)
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0002", message_variables => {
 					port	=>	$port,
 				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0002", message_variables => {
+					port	=>	$port,
+				}};
 			}
 			elsif ($DBI::errstr =~ /no password supplied/)
 			{
@@ -264,6 +280,10 @@ sub connect_to_databases
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
 				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0003", message_variables => {
+					id		=>	$id,
+					config_file	=>	$an->data->{path}{striker_config},
+				}};
 			}
 			elsif ($DBI::errstr =~ /password authentication failed for user/)
 			{
@@ -272,12 +292,33 @@ sub connect_to_databases
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
 				}, file	 => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0004", message_variables => {
+					user		=>	$user,
+					id		=>	$id,
+					config_file	=>	$an->data->{path}{striker_config},
+				}};
+			}
+			elsif ($DBI::errstr =~ /Connection refused/)
+			{
+				$an->Alert->warning({ message_key => "scancore_warning_0011", message_variables => {
+					name		=>	$name,
+					host		=>	$host,
+					port		=>	$port,
+				}, file	 => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0011", message_variables => {
+					name		=>	$name,
+					host		=>	$host,
+					port		=>	$port,
+				}};
 			}
 			else
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$DBI::errstr,
 				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
+					dbi_error	=>	$DBI::errstr,
+				}};
 			}
 			$an->Alert->warning({ message_key => "scancore_warning_0006", file => $THIS_FILE, line => __LINE__});
 		}
@@ -285,6 +326,7 @@ sub connect_to_databases
 		{
 			# Woot!
 			$connections++;
+			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
 			$an->Log->entry({ log_level => 3, title_key => "scancore_title_0004", message_key => "scancore_log_0004", message_variables => {
 				host		=>	$host,
@@ -306,36 +348,36 @@ sub connect_to_databases
 				# Need to load the database.
 				$an->DB->initialize_db({id => $id});
 			}
-		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
-			name2 => "dbh::$id",        value2 => $an->data->{dbh}{$id}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Set the first ID to be the one I read from later.
-		if (not $an->data->{sys}{read_db_id})
-		{
-			$an->data->{sys}{read_db_id} = $id;
-			$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id} ;
 			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
-				name2 => "sys::use_db_fh",  value2 => $an->data->{sys}{use_db_fh}
+				name2 => "dbh::$id",        value2 => $an->data->{dbh}{$id}, 
 			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::db_timestamp", value1 => $an->data->{sys}{db_timestamp}
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{dbh}{$id})
-		{
+			
+			# Set the first ID to be the one I read from later.
+			if (not $an->data->{sys}{read_db_id})
+			{
+				$an->data->{sys}{read_db_id} = $id;
+				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id} ;
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+					name2 => "sys::use_db_fh",  value2 => $an->data->{sys}{use_db_fh}
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Get a time stamp for this run, if not yet gotten.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "dbh::$id",          value1 => $an->data->{dbh}{$id}, 
+				name2 => "sys::db_timestamp", value2 => $an->data->{sys}{db_timestamp}
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 				$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
 				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -348,6 +390,11 @@ sub connect_to_databases
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	
+	# Do I have any connections?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "connections", value1 => $connections, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $connections)
 	{
 		# Failed to connect to any database.
@@ -358,11 +405,97 @@ sub connect_to_databases
 		exit(1);
 	}
 	
+	# Report any failed DB connections
+	foreach my $id (@{$failed_connections})
+	{
+		# Copy my alert hash before I delete the id.
+		my $error_array = [];
+		foreach my $hash (@{$an->data->{scancore}{db}{$id}{connection_error}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "hash", value1 => $hash
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$error_array}, $hash;
+		}
+		
+		# Delete this DB so that we don't try to use it later.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "DELETE id", value1 => $id
+		}, file => $THIS_FILE, line => __LINE__});
+		delete $an->data->{scancore}{db}{$id};
+		
+		# If I've not sent an alert about this DB loss before, send
+		# one now.
+		my $set = $an->Alert->check_alert_sent({
+			type			=>	"warning",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$id,
+			alert_name		=>	"connect_to_db",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "set", value1 => $set
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($set)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "error_array", value1 => $error_array
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $hash (@{$error_array})
+			{
+				my $message_key       = $hash->{message_key};
+				my $message_variables = $hash->{message_variables};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "hash",              value1 => $hash, 
+					name2 => "message_key",       value2 => $message_key, 
+					name3 => "message_variables", value3 => $message_variables, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# These are warning level alerts.
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	"ScanCore",
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	$message_key,
+					alert_message_variables	=>	$message_variables,
+				});
+			}
+		}
+	}
+	# Send an 'all clear' message if a now-connected DB previously wasn't.
+	foreach my $id (@{$successful_connections})
+	{
+		my $cleared = $an->Alert->check_alert_sent({
+			type			=>	"clear",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$id,
+			alert_name		=>	"connect_to_db",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
+		if ($cleared)
+		{
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	"ScanCore",
+				alert_title_key		=>	"an_alert_title_0006",
+				alert_message_key	=>	"scancore_cleared_0001",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					port			=>	$an->data->{scancore}{db}{$id}{port} ? $an->data->{scancore}{db}{$id}{port} : 5432,
+				},
+			});
+		}
+	}
+	
 	### TODO: This is coming along nicely, but the problem right now is 
 	###       sorting out which tables reference 'hosts -> host_id' and
 	###       which reference other tables (possibly layers deep) that
 	###       reference node_id.
 	#$an->DB->sync_dbs();
+	
+	# For now, we just find which DBs are behind and let each agent deal
+	# with bringing their tables up to date.
 	$an->DB->find_behind_databases({file => $file});
 	
 	# Now look to see if our hostname has changed.

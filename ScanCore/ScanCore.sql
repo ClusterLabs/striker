@@ -215,7 +215,7 @@ CREATE TABLE temperature (
 	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
 	temperature_sensor_name	text				not null,
-	temperature_celcius	double precision		not null,
+	temperature_celsius	double precision		not null,
 	temperature_state	text				not null,			-- warning, critical
 	temperature_is		text				not null,			-- high or low
 	temperature_jumped	boolean				not null,			-- Set true if the sensor is still in "Warning" but possibly indicative of a cooling failure.
@@ -231,7 +231,7 @@ CREATE TABLE history.temperature (
 	temperature_host_id	bigint,
 	temperature_agent_name	text,
 	temperature_sensor_name	text,
-	temperature_celcius	double precision,
+	temperature_celsius	double precision,
 	temperature_state	text,
 	temperature_is		text,
 	temperature_jumped	boolean,
@@ -250,7 +250,7 @@ BEGIN
 		 temperature_host_id,
 		 temperature_agent_name,
 		 temperature_sensor_name,
-		 temperature_celcius,
+		 temperature_celsius,
 		 temperature_state,
 		 temperature_is,
 		 temperature_jumped,
@@ -260,7 +260,7 @@ BEGIN
 		 history_temperature.temperature_host_id,
 		 history_temperature.temperature_agent_name,
 		 history_temperature.temperature_sensor_name,
-		 history_temperature.temperature_celcius,
+		 history_temperature.temperature_celsius,
 		 history_temperature.temperature_state,
 		 history_temperature.temperature_is,
 		 history_temperature.temperature_jumped,
@@ -388,14 +388,35 @@ CREATE TRIGGER trigger_ram_used
 	FOR EACH ROW EXECUTE PROCEDURE history_ram_used();
 
 
--- This is a special table with no history that simply records the last time a
--- scan ran.
+-- These are special tables with no history that simply record transient state
+-- information. 
+
+-- This table records the last time a scan ran.
 CREATE TABLE updated (
 	updated_host_id		bigint				not null,
 	updated_by		text				not null,			-- The name of the agent (or "ScanCore' itself) that updated.
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(updated_host_id) REFERENCES hosts(host_id)
+);
+ALTER TABLE updated OWNER TO #!variable!user!#;
+
+
+-- To avoid "waffling" when a sensor is close to an alert (or cleared)
+-- threshold, a gap between the alarm value and the clear value is used. If the
+-- sensor climbs above (or below) the "clear" value, but didn't previously pass
+-- the "alert" threshold, we DON'T want to send an "all clear" message. So do
+-- solve that, this table is used by agents to record when a warning message
+-- was sent. 
+CREATE TABLE alert_sent (
+	alert_sent_host_id	bigint				not null,			-- The node associated with this alert
+	alert_sent_id		bigserial			not null,
+	alert_sent_by		text				not null,			-- name of the agent
+	alert_record_locator	text,								-- Optional string used by the agent to identify the source of the alert (ie: UPS serial number)
+	alert_name		text				not null,			-- A free-form name used by the caller to identify this alert.
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(alert_sent_host_id) REFERENCES hosts(host_id)
 );
 ALTER TABLE updated OWNER TO #!variable!user!#;
 

@@ -67,6 +67,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
+		<key name="tools_log_0004">Recording an alert to the database was skipped because it's log level was lower than any recipients.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
