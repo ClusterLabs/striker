@@ -67,7 +67,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
-		<key name="tools_log_0004">Recording an alert to the database was skipped because it's log level was lower than any recipients.</key>
+		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -221,14 +221,62 @@ Variables:
 |- #!variable!name14!#: [#!variable!value14!#]
 \- #!variable!name15!#: [#!variable!value15!#]
 		</key>
+		<key name="an_variables_0016">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+|- #!variable!name15!#: [#!variable!value15!#]
+\- #!variable!name16!#: [#!variable!value16!#]
+		</key>
+		<key name="an_variables_0017">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+|- #!variable!name15!#: [#!variable!value15!#]
+|- #!variable!name16!#: [#!variable!value16!#]
+\- #!variable!name17!#: [#!variable!value17!#]
+		</key>
 		
 		<!-- Alert titles -->
 		<key name="an_alert_title_0001">Debug</key>
-		<key name="an_alert_title_0002">Info</key>
+		<key name="an_alert_title_0002">Information</key>
 		<key name="an_alert_title_0003">Notice</key>
 		<key name="an_alert_title_0004">Warning</key>
 		<key name="an_alert_title_0005">Critical</key>
 		<key name="an_alert_title_0006">Warning Cleared</key>
+		
+		<!-- These are used when creating an alert email subject. They
+		     map the log level to a name. Eventually, I will delete the
+		     values above. -->
+		<key name="an_alert_subject_0001">Critical</key>
+		<key name="an_alert_subject_0002">Warning</key>
+		<key name="an_alert_subject_0003">Notice</key>
+		<key name="an_alert_subject_0004">Information</key>
+		<key name="an_alert_subject_0005">Debug</key>
 		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>

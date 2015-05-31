@@ -344,10 +344,10 @@ INSERT INTO
 UPDATE 
     clustat_service 
 SET 
-    clustat_service_host = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
-    clustat_service_is_vm = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    clustat_service_is_vm  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
     clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).",
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     clustat_service_id = (
         ".$an->data->{sys}{clustat_service_id_query}."
@@ -525,7 +525,7 @@ UPDATE
     clustat_node 
 SET 
     clustat_node_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).",
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     clustat_node_id = (
         ".$an->data->{sys}{clustat_node_id_query}."
@@ -559,20 +559,21 @@ sub update_db_clustat
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Put a few things into local variables for easier reading.
 	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
 	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
 	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
 	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "target_last_updated", value1 => $target_last_updated, 
 		name2 => "source_updated_time", value2 => $source_updated_time, 
 		name3 => "source_db_id",        value3 => $source_db_id, 
 		name4 => "target_db_id",        value4 => $target_db_id
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Get the unix time that this table was last updated for this host.
+	# Get the timestamp that this table was last updated for this host.
 	my $query = "SELECT modified_date FROM clustat WHERE clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -609,15 +610,15 @@ sub update_db_clustat
 	
 	# Now read in all the newer records from the source DB.
 	my $old_date = $target_clustat_last_updated;
-	if ($target_clustat_last_updated =~ /^\d+$/)
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_clustat_last_updated)."))";
-	}
-	else
+	if ($target_clustat_last_updated =~ /\D/)
 	{
 		# Already a SQL time stamp
 		$old_date = $an->data->{sys}{use_db_fh}->quote($target_clustat_last_updated);
+	}
+	else
+	{
+		# It's unix time.
+		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_clustat_last_updated)."))";
 	}
 	$query = "
 SELECT 
@@ -682,9 +683,9 @@ INSERT INTO
 UPDATE 
     clustat
 SET
-    clustat_quorate = ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    clustat_quorate      = ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
 		}
@@ -820,9 +821,9 @@ INSERT INTO
 UPDATE 
     clustat 
 SET 
-    clustat_quorate = ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
+    clustat_quorate      = ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
-    modified_date = ".$an->data->{sys}{db_timestamp}."
+    modified_date        = ".$an->data->{sys}{db_timestamp}."
 WHERE 
     clustat_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
@@ -1791,6 +1792,11 @@ WHERE
 	# Anything left from the DB?
 	foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_node}})
 	{
+		next if not $node;
+		# I only want to consider a service deleted *IF* the node's
+		# 'rgmanager' is running.
+		next if ($an->data->{clustat}{node}{$node}{status} !~ /rgmanager/i);
+
 		# Node disappeared. Update the last entry to have the status
 		# 'DELETED'. Then record a 'notice' level warning.
 		$an->data->{clustat}{node}{$node}{status} = "DELETED";
@@ -1800,39 +1806,41 @@ WHERE
 		$an->Alert->register_alert({
 			alert_level		=>	"notice", 
 			alert_agent_name	=>	"$THIS_FILE",
-			alert_title_key		=>	"an_alert_title_0003",		# Note
-			alert_title_variables	=>	{},
-			alert_message_key	=>	"scan_clustat_note_0001",	# Node deleted
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scan_clustat_note_0001",
 			alert_message_variables	=>	{
 				node			=>	$node,
 			},
 		});
-	}
-	foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_service}})
-	{
-		# Service disappeared. Update the last entry to have the status
-		# 'DELETED' and then delete it.
-		$an->data->{clustat}{service}{$service}{status} = "DELETED";
-		update_clustat_service($an, $service);
 		
-		# Which message I use depends on whether this was a server or not.
-		my $message_key = "scan_clustat_note_0002";
-		if ($an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_is_vm} eq "TRUE")
+		# I process the services here so that I don't try and process
+		# them if the node isn't running rgmanager.
+		foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_service}})
 		{
-			$message_key = "scan_clustat_note_0003";
+			next if not $service;
+			
+			# Which message I use depends on whether this was a server or not.
+			my $message_key = "scan_clustat_note_0002";
+			if ($an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_is_vm} eq "TRUE")
+			{
+				$message_key = "scan_clustat_note_0003";
+			}
+			
+			# Enter ther alert.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"$message_key",	# Node deleted
+				alert_message_variables	=>	{
+					service			=>	$service,
+				},
+			});
+			
+			# Delete it so that I don't process it again on the
+			# second node's pass.
+			delete $an->data->{clustat}{sql}{clustat_service}{$service};
 		}
-		
-		# Enter ther alert.
-		$an->Alert->register_alert({
-			alert_level		=>	"notice", 
-			alert_agent_name	=>	"$THIS_FILE",
-			alert_title_key		=>	"an_alert_title_0003",		# Note
-			alert_title_variables	=>	{},
-			alert_message_key	=>	"$message_key",	# Node deleted
-			alert_message_variables	=>	{
-				service			=>	$service,
-			},
-		});
 	}
 	
 	# Now commit the changes.
@@ -1948,9 +1956,9 @@ sub update_clustat_service
 UPDATE 
     clustat_service 
 SET 
-    clustat_service_host = ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
+    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
     clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
-    clustat_service_is_vm = $say_is_server
+    clustat_service_is_vm  = $say_is_server
 WHERE 
     clustat_service_id = (
         ".$an->data->{sys}{clustat_service_id_query}."
@@ -1958,7 +1966,7 @@ WHERE
         clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($service)."
     );
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2027,7 +2035,7 @@ UPDATE
     clustat_node 
 SET 
     clustat_node_status = ".$an->data->{sys}{use_db_fh}->quote($say_status).",
-    modified_date = ".$an->data->{sys}{db_timestamp}."
+    modified_date       = ".$an->data->{sys}{db_timestamp}."
 WHERE 
     clustat_node_id = (
         ".$an->data->{sys}{clustat_node_id_query}."

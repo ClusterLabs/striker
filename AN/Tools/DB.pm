@@ -111,7 +111,7 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",    value1 => $id,
 				name2 => "query", value2 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -255,16 +255,16 @@ sub connect_to_databases
 			# Something went wrong...
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
-			$an->Alert->warning({ title_key => "scancore_title_0002", message_key => "scancore_warning_0001", message_variables => {
-				name		=>	$name,
-				host		=>	$host,
-				port		=>	$port,
-			}, file => $THIS_FILE, line => __LINE__});
-			push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0001", message_variables => {
-				name		=>	$name,
-				host		=>	$host,
-				port		=>	$port,
-			}};
+			#$an->Alert->warning({ title_key => "scancore_title_0002", message_key => "scancore_warning_0001", message_variables => {
+			#	name		=>	$name,
+			#	host		=>	$host,
+			#	port		=>	$port,
+			#}, file => $THIS_FILE, line => __LINE__});
+			#push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0001", message_variables => {
+			#	name		=>	$name,
+			#	host		=>	$host,
+			#	port		=>	$port,
+			#}};
 			if ($DBI::errstr =~ /No route to host/)
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0002", message_variables => {
@@ -383,7 +383,7 @@ sub connect_to_databases
 			}
 			$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
 				name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
 				name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},

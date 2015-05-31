@@ -84,12 +84,12 @@ AND
 AND 
     alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "type",  value1 => $type, 
 		name2 => "count", value2 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -117,7 +117,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );
 ";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -139,14 +139,14 @@ AND
 AND 
     alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "set", value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($set);
@@ -327,7 +327,7 @@ sub register_alert
 	
 	# Now get the numeric value of this alert and return if it is higher.
 	my $this_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "alert_level",      value1 => $alert_level,
 		name2 => "this_level",       value2 => $this_level,
 		name3 => "lowest_log_level", value3 => $lowest_log_level,
@@ -335,7 +335,9 @@ sub register_alert
 	if ($this_level > $lowest_log_level)
 	{
 		# Return.
-		$an->Log->entry({log_level => 2, message_key => "tools_log_0004", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "tools_log_0004", message_variables => {
+			message_key => "$alert_message_key"
+		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
 	
@@ -365,7 +367,7 @@ INSERT INTO
 ";
 	
 	# Record!
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query",  value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
 	

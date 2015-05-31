@@ -424,7 +424,7 @@ sub get_ram_used_by_pid
 		my $kilobytes   =  ($line =~ /total (\d+)K/i)[0];
 		my $bytes       =  ($kilobytes * 1024);
 		   $total_bytes += $bytes;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "kilobytes",   value1 => "$kilobytes", 
 			name2 => "bytes",       value2 => "$bytes", 
 			name3 => "total_bytes", value3 => "$total_bytes"

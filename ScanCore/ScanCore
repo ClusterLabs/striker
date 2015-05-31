@@ -296,7 +296,7 @@ WHERE
 			   $an->String->read_words({file => $agent_strings});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "alert_id",                value1 => $alert_id, 
 			name2 => "alert_agent_name",        value2 => $alert_agent_name, 
 			name3 => "alert_level",             value3 => $alert_level, 
@@ -316,7 +316,7 @@ WHERE
 			modified_date           => $modified_date
 		};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_id::${alert_id}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_title_variables},
@@ -345,25 +345,32 @@ WHERE
 			else
 			{
 				# Bad entry
-				$an->Log->entry({log_level => 2, message_key => "scancore_log_0051", file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 3, message_key => "scancore_log_0051", file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
 		# All done, delete the public.alerts entries.
 		$query = "DELETE FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query});
 		
 		# Delete the alerts from memory.
 		delete $an->data->{db}{alerts};
+		
+		# Mark that an alert was sent
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0053", file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# No alerts
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__});
 	}
+	# Visual break in the log file
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "----------------------------------------", value1 => "----------------------------------------"
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -372,7 +379,7 @@ WHERE
 sub send_email
 {
 	my ($an, $variables) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "send_email", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email", }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "variables", value1 => "$variables" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -390,7 +397,7 @@ sub send_email
 	{
 		next if not $pair;
 		my ($variable, $value) = ($pair =~ /^(.*?)="(.*)"/);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable", value1 => $variable, 
 			name2 => "value",    value2 => $value, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -408,7 +415,7 @@ sub send_email
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "name",     value1 => $name, 
 		name2 => "email",    value2 => $email, 
 		name3 => "language", value3 => $language, 
@@ -418,19 +425,20 @@ sub send_email
 	# Convert the user's log level to a numeric number for easier
 	# comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Generate the title key.
+	my $lowest_level = 5;
 	foreach my $alert_agent_name (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "alert_agent_name", value1 => $alert_agent_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $alert_id (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_id", value1 => $alert_id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -440,7 +448,7 @@ sub send_email
 			my $alert_message_key       = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_message_key};
 			my $alert_message_variables = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_id}{$alert_id}{alert_message_variables};
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "alert_level",             value1 => $alert_level, 
 				name2 => "alert_title_key",         value2 => $alert_title_key, 
 				name3 => "alert_title_variables",   value3 => $alert_title_variables, 
@@ -449,9 +457,14 @@ sub send_email
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$alert_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "alert_level", value1 => $alert_level, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "alert_level",  value1 => $alert_level, 
+				name2 => "lowest_level", value2 => $lowest_level, 
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($alert_level < $lowest_level)
+			{
+				$lowest_level = $alert_level;
+			}
 			
 			# Record the alert level if it's higher than we saw
 			# before.
@@ -463,7 +476,7 @@ sub send_email
 			if ($level >= $alert_level)
 			{
 				#print "$THIS_FILE ".__LINE__."; Sending alert: [$alert_id] to: [$name <$email>] in the language: [$language]...\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "title",   value1 => $title, 
 					name2 => "message", value2 => $message, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -502,7 +515,7 @@ sub send_email
 		language	=>	$language,
 		key		=>	"scancore_email_0001",
 		variables	=>	{
-			level		=>	$an->Alert->convert_level_number_to_name({level => $subject}),
+			level		=>	"#!string!an_alert_subject_".sprintf("%04d", $lowest_level)."!#",
 			subject		=>	$subject_line,
 		},
 	});
@@ -575,12 +588,12 @@ sub send_email
 	}
 	
 	# Write out the email file.
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0048", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0048", message_variables => {
 		file => $email_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $email_file;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call",   value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -588,12 +601,12 @@ sub send_email
 	close $file_handle;
 	
 	# Now send the email.
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0049", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0049", message_variables => {
 		file => $email_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$shell_call = $an->data->{path}{mailx}." -t < $email_file 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -602,7 +615,7 @@ sub send_email
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2017,7 +2030,7 @@ sub check_ram_usage
 		my $pid        =  ($line =~ /^.*?\s(\d+)\s/)[0];
 		my ($pids_ram) =  $an->Get->get_ram_used_by_pid({pid => $pid});
 		   $used_ram   += $pids_ram;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "pid",              value1 => "$pid", 
 			name2 => "pids_ram",         value2 => "$pids_ram", 
 			name3 => "used_ram",         value3 => "$used_ram", 
