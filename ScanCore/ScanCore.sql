@@ -29,7 +29,7 @@ CREATE TABLE hosts (
 	host_id			bigserial			primary key,
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
-	host_status		text,
+	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
@@ -39,7 +39,7 @@ CREATE TABLE history.hosts (
 	host_id			bigint,
 	host_name		text,
 	host_type		text,
-	host_status		text,
+	host_emergency_stop	boolean				not null,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.hosts OWNER TO #!variable!user!#;
@@ -54,13 +54,13 @@ BEGIN
 		(host_id,
 		 host_name,
 		 host_type,
-		 host_status,
+		 host_emergency_stop,
 		 modified_date)
 	VALUES
 		(history_hosts.host_id,
 		 history_hosts.host_name,
 		 history_hosts.host_type,
-		 history_hosts.host_status,
+		 history_hosts.host_emergency_stop,
 		 history_hosts.modified_date);
 	RETURN NULL;
 END;
@@ -147,11 +147,11 @@ CREATE TABLE power (
 	power_id		bigserial			primary key,
 	power_host_id		bigint				not null,			-- The name of the node or dashboard that this power came from.
 	power_agent_name	text				not null,
-	power_state		text				not null,			-- normal (nominal voltage), low (UPS is boosting), high (UPS is trimming), loss (no input power)
+	power_record_locator	text,								-- Optional string used by the agent to identify the UPS
+	power_ups_fqdn		text				not null,			-- This is the full domain name of the UPS. This is used by ScanCore to determine which UPSes are powering a given node so this MUST match the host names used in the node's /etc/hosts file.
 	power_on_battery	boolean				not null,			-- TRUE == use "time_remaining" to determine if graceful power off is needed. FALSE == power loss NOT imminent, do not power off node. 
 	power_seconds_left	bigint,								-- Should always be set, but not required *EXCEPT* when 'power_on_battery' is TRUE.
 	power_charge_percentage	double precision,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
-	power_load_percentage	double precision,						-- Can be used to more accurately determine time remaining
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(power_host_id) REFERENCES hosts(host_id)
@@ -163,11 +163,11 @@ CREATE TABLE history.power (
 	power_id		bigint,
 	power_host_id		bigint,
 	power_agent_name	text,
-	power_state		text,
+	power_record_locator	text,
+	power_ups_fqdn		text,
 	power_on_battery	boolean,
 	power_seconds_left	bigint,
 	power_charge_percentage	double precision,
-	power_load_percentage	double precision,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.power OWNER TO #!variable!user!#;
@@ -182,21 +182,21 @@ BEGIN
 		(power_id,
 		 power_host_id,
 		 power_agent_name,
-		 power_state,
+		 power_record_locator,
+		 power_ups_fqdn, 
 		 power_on_battery,
 		 power_seconds_left,
 		 power_charge_percentage,
-		 power_load_percentage,
 		 modified_date)
 	VALUES
 		(history_power.power_id,
 		 history_power.power_host_id,
 		 history_power.power_agent_name,
-		 history_power.power_state,
+		 history_power.power_record_locator,
+		 history_power.power_ups_fqdn, 
 		 history_power.power_on_battery,
 		 history_power.power_seconds_left,
 		 history_power.power_charge_percentage,
-		 history_power.power_load_percentage,
 		 history_power.modified_date);
 	RETURN NULL;
 END;

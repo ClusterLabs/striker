@@ -256,6 +256,18 @@ sub hostname
 	return($ENV{HOSTNAME});
 }
 
+# This returns the short hostname for the machine this is running on. That is
+# to say, the hostname up to the first '.'.
+sub short_hostname
+{
+	my $self = shift;
+	
+	my $short_host_name =  $ENV{HOSTNAME};
+	   $short_host_name =~ s/\..*$//;
+	
+	return($short_host_name);
+}
+
 # Makes my handle to AN::Tools::Alert clearer when using this module to access
 # it's methods.
 sub Alert

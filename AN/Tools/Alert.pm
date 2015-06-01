@@ -509,7 +509,7 @@ sub error
 	
 	# Don't actually die, but do print the error, if fatal errors have been
 	# globally disabled (as is done in the tests).
-	if ($self->no_fatal_errors == 0)
+	if (($fatal) && (not $self->no_fatal_errors))
 	{
 		#$error =~ s/\n/<br \/>\n/g;
 		print "$error\n" if not $self->no_fatal_errors;

@@ -219,7 +219,6 @@ $an->data->{sys}{apc_ups_id_query} = "SELECT apc_ups_id FROM apc_ups WHERE apc_u
 
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
-print "$THIS_FILE ".__LINE__."; Prepping the DB(s) if needed.\n";
 prep_databases($an);
 
 # Look to see if any databases need to be updated.
@@ -2311,6 +2310,202 @@ AND
 		shutdown_ups($an, $ups);
 	}
 	
+	### Now add entries to the 'power' table.
+	process_power($an);
+	
+	# If the power is on, record the charge percentage if needed. 
+	
+	return(0);
+}
+
+# This adds or updates entries in the 'power' table that ScanCore will use to
+# decide if a given node needs to be shutdown.
+sub process_power
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_power", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# The main bits we need to know is, for each UPS, is there input power?
+	
+	my $query = "
+SELECT 
+    a.apc_ups_serial_number, 
+    a.apc_ups_fqdn, 
+    c.apc_ups_input_voltage, 
+    d.apc_ups_output_estimated_runtime, 
+    b.apc_ups_battery_percentage_charge 
+FROM     
+    apc_ups a, 
+    apc_ups_battery b, 
+    apc_ups_input c, 
+    apc_ups_output d 
+WHERE 
+    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
+AND 
+    a.apc_ups_id = c.apc_ups_input_apc_ups_id 
+AND 
+    a.apc_ups_id = d.apc_ups_output_apc_ups_id;
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $apc_ups_serial_number             = $row->[0];
+		my $apc_ups_fqdn                      = $row->[1];
+		my $apc_ups_input_voltage             = $row->[2];
+		my $apc_ups_output_estimated_runtime  = $row->[3];
+		my $apc_ups_battery_percentage_charge = $row->[4];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "apc_ups_serial_number",             value1 => $apc_ups_serial_number,
+			name2 => "apc_ups_fqdn",                      value2 => $apc_ups_fqdn,
+			name3 => "apc_ups_input_voltage",             value3 => $apc_ups_input_voltage,
+			name4 => "apc_ups_output_estimated_runtime",  value4 => $apc_ups_output_estimated_runtime,
+			name5 => "apc_ups_battery_percentage_charge", value5 => $apc_ups_battery_percentage_charge,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Convert the input voltage into a boolean value.
+		my $apc_ups_on_battery = $apc_ups_input_voltage eq "0" ? "1" : "0";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "apc_ups_on_battery", value1 => $apc_ups_on_battery,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# For each UPS, see if there is an existing entry in the
+		# 'power' table
+		my $query = "
+SELECT 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left, 
+    power_charge_percentage 
+FROM 
+    power 
+WHERE 
+    power_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND 
+    power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		my $results = $an->DB->do_db_query({query => $query});
+		
+		my $array_count = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results",     value1 => $results, 
+			name2 => "array_count", value2 => $array_count
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($array_count)
+		{
+			# I'm not doing the usual 'foreach my $row (@{$results})',
+			# so this is a short-cut to pull the variables out directly.
+			my $power_ups_fqdn          = $results->[0]->[0];
+			my $power_on_battery        = $results->[0]->[1];
+			my $power_seconds_left      = $results->[0]->[2];
+			my $power_charge_percentage = $results->[0]->[3];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "power_ups_fqdn",          value1 => $power_ups_fqdn,
+				name2 => "power_on_battery",        value2 => $power_on_battery,
+				name3 => "power_seconds_left",      value3 => $power_seconds_left,
+				name4 => "power_charge_percentage", value4 => $power_charge_percentage,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Existing record; See if there is a difference and update if so.
+			if (($power_ups_fqdn          ne $apc_ups_fqdn) or 
+			    ($power_on_battery        ne $apc_ups_on_battery) or 
+			    ($power_seconds_left      ne $apc_ups_output_estimated_runtime) or 
+			    ($power_charge_percentage ne $apc_ups_battery_percentage_charge))
+			{
+				# Something changed.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_ups_fqdn", value1 => $power_ups_fqdn,
+					name2 => "apc_ups_fqdn",   value2 => $apc_ups_fqdn,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_on_battery",   value1 => $power_on_battery,
+					name2 => "apc_ups_on_battery", value2 => $apc_ups_on_battery,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_seconds_left",               value1 => $power_seconds_left,
+					name2 => "apc_ups_output_estimated_runtime", value2 => $apc_ups_output_estimated_runtime,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_charge_percentage",           value1 => $power_charge_percentage,
+					name2 => "apc_ups_battery_percentage_charge", value2 => $apc_ups_battery_percentage_charge,
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "
+UPDATE 
+    power 
+SET 
+    power_ups_fqdn          = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_fqdn).", 
+    power_on_battery        = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_on_battery).", 
+    power_seconds_left      = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_output_estimated_runtime).", 
+    power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_battery_percentage_charge).", 
+    modified_date           = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    power_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND 
+    power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";
+";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			else
+			{
+				# No change found, update not needed.
+				$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_log_0004", message_variables => {
+					ups_name => $apc_ups_fqdn
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		else
+		{
+			# No existing entry, do an INSERT.
+			my $query = "
+INSERT INTO  
+    power 
+(
+    power_host_id, 
+    power_agent_name, 
+    power_record_locator, 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left, 
+    power_charge_percentage, 
+    modified_date
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_ups_fqdn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_ups_on_battery).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_ups_output_estimated_runtime).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_ups_battery_percentage_charge).", 
+    ".$an->data->{sys}{db_timestamp}."
+);
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+		}
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
+	
 	return(0);
 }
 
@@ -2644,6 +2839,7 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# TODO: This should be checking 'apc_ups'
 	$an->data->{sys}{sql} = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
 	{
@@ -2707,7 +2903,7 @@ sub update_db_apc_ups_battery
 	# Read the UPS serial numbers of the entries we have already. We'll use
 	# this to know when to INSERT vs UPDATE a record.
 	my $existing_serial_numbers = {};
-	my $query = "SELECT DISTINCT a.apc_ups_serial_number FROM apc_ups a, history.apc_ups_battery b;";
+	my $query = "SELECT DISTINCT a.apc_ups_serial_number FROM apc_ups a, history.apc_ups_battery b AND a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.");";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -2724,7 +2920,20 @@ sub update_db_apc_ups_battery
 	$results = "";
 	
 	# Now read in the most recent modified_date from the target.
-	$query = "SELECT modified_date FROM apc_ups_battery ORDER BY modified_date DESC LIMIT 1;";
+	$query = "
+SELECT 
+    b.modified_date 
+FROM 
+    apc_ups a, 
+    apc_ups_battery b 
+WHERE 
+    a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
+AND 
+    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+ORDER BY 
+    b.modified_date DESC 
+LIMIT 1;
+";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -2926,7 +3135,20 @@ sub update_db_apc_ups_output
 	$results = "";
 	
 	# Now read in the most recent modified_date from the target.
-	$query = "SELECT modified_date FROM apc_ups_output ORDER BY modified_date DESC LIMIT 1;";
+	$query = "
+SELECT 
+    b.modified_date 
+FROM 
+    apc_ups a, 
+    apc_ups_output b 
+WHERE 
+    a.apc_ups_id = b.apc_ups_output_apc_ups_id 
+AND 
+    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+ORDER BY 
+    b.modified_date DESC 
+LIMIT 1;
+";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -3109,7 +3331,20 @@ sub update_db_apc_ups_input
 	$results = "";
 	
 	# Now read in the most recent modified_date from the target.
-	$query = "SELECT modified_date FROM apc_ups_input ORDER BY modified_date DESC LIMIT 1;";
+	$query = "
+SELECT 
+    b.modified_date 
+FROM 
+    apc_ups a, 
+    apc_ups_input b 
+WHERE 
+    a.apc_ups_id = b.apc_ups_input_apc_ups_id 
+AND 
+    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+ORDER BY 
+    b.modified_date DESC 
+LIMIT 1;
+";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 

@@ -89,46 +89,69 @@ my $an = AN::Tools->new({data =>
 			agents_directory	=>	"$running_directory/agents",
 			cp			=>	"/bin/cp",
 			email_directory		=>	"/var/log/alert_emails",
+			# under this directory will be a file called 
+			# ".<node_name>" for each node. This contains the 
+			# string 'health = [ok,warning,critical]. This is used
+			# to indicate to the peer our state and controls how
+			# 'safe_anvil_shutdown' behaves.
+			health_file		=>	"/shared/status",
 			log_file		=>	"/var/log/striker.log",
 			mailx			=>	"/bin/mailx",
 			postfix_init		=>	"/etc/init.d/postfix",
 			postfix_main		=>	"/etc/postfix/main.cf",
 			postfix_relay_file	=>	"/etc/postfix/relay_password",
 			postmap			=>	"/usr/sbin/postmap",
+			safe_anvil_shutdown	=>	"/sbin/striker/safe_anvil_shutdown",
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"$running_directory/Data/strings.xml",
 		},
-		strings_read			=>	{},
-		sys		=>	{
-			agents			=>	[],
-			append_email_footer	=>	0,			# Set to '1' to add the footer warning that the email did not come from alteeve.ca
-			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
-			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query		=>	"",
+		# Things set here are meant to be overwritable by the user in
+		# striker.conf.
+		scancore			=>	{
+			# Set to '1' to add the footer warning that the email
+			# did not come from alteeve.ca
+			append_email_footer	=>	0,
+			# This gets set to 'dashboard' if we determine this is
+			# a dashboard machine.
+			i_am_a			=>	"node",
+			maximum_ram		=>	(256 * 1048576),
+			# When both/all UPSes powering a node switch to 
+			# batteries, their remaining hold-up time will be 
+			# checked and the strongest will be compared against
+			# this value. If the remaining runtime of the strongest
+			# ups is below this time, 'safe_anvil_shutdown' will be
+			# invoked.
+			minimum_ups_runtime	=>	600,
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+			sleep_time		=>	30,
+		},
+		strings_read			=>	{},
+		sys		=>	{
+			agents			=>	[],
+			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			host_id_query		=>	"",
 			# This looks like a lot, but 'pmap' kinda sucks and 
 			# reports shared memory, so to even start a program 
 			# lists 120 MiB+ used. I will make it smarter later.
-			maximum_ram		=>	(256 * 1048576),
 			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
-			sleep_time		=>	30,
 			use_db_fh		=>	"",
 		},
 	}
 });
 
 # Set some defaults
-$an->default_language    ($an->data->{sys}{language});
-$an->default_log_language($an->data->{sys}{log_language});
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
 # Set the log level.
-$an->Log->level($an->data->{sys}{log_level});
+$an->Log->level($an->data->{scancore}{log_level});
 
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
@@ -185,6 +208,10 @@ while (1)
 	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
 	$an->String->read_words({file => $an->data->{path}{striker_strings}});
 	
+	# TODO: Calc the md5s of ScanCore's core files and if they change, exit
+	#       when the scan runs at x:x4 or x:x9 minutes so that it restarts
+	#       and misses the fewest possible scans.
+	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
@@ -204,7 +231,7 @@ while (1)
 			title_key	=>	"scancore_title_0001",
 			message_key	=>	"scancore_log_0012",	# Sleeping for X seconds.
 			message_variables	=>	{
-				sleep_time	=>	$an->data->{sys}{sleep_time},
+				sleep_time	=>	$an->data->{scancore}{sleep_time},
 			},
 			file		=>	$THIS_FILE,
 			line		=>	__LINE__,
@@ -230,14 +257,23 @@ while (1)
 	# Check for and process alerts
 	process_alerts($an);
 	
+	# Do the end-of-scan checks to see if we need to power off, boot
+	# others, set/alter health flags, etc.
+	do_post_scan_checks($an);
+	
 	# Record the time
 	$an->DB->update_time({file => $THIS_FILE});
 	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
 	
+	# Visual break in the log file
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "----------------------------------------", value1 => "----------------------------------------"
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Sleep.
-	sleep $an->data->{sys}{sleep_time};
+	sleep $an->data->{scancore}{sleep_time};
 }
 
 # This should never be hit...
@@ -246,6 +282,387 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+sub do_post_scan_checks
+{
+	my ($an) = @_;
+	
+	# What we do here strongly depends on whether we're a node or a
+	# dashboard. 
+	# 
+	# If we're a node, we will withdraw and shut down if the UPS power is 
+	# depleted past a certain point or if temperatures go outside 
+	# acceptible ranges. If any sensor diviates, we set our "sick" flag and
+	# ensure it's clear if we're A-OK.
+	# 
+	# If this is a dashboard, we never shutdown. Instead, we will watch the
+	# nodes configured in our /etc/striker/striker.conf and if they're 
+	# offline and the host shut itself down, we'll watch the UPSes and
+	# temperature sensors. If/when things are good, we'll boot the nodes
+	# back up.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{scancore}{i_am_a} eq "dashboard")
+	{
+		# Do the dashboard stuff.
+		do_post_scan_dashboard_tasks($an);
+	}
+	else
+	{
+		# Do the node stuff.
+		do_post_scan_node_tasks($an);
+	}
+	
+	return(0);
+}
+
+# This will read it's /etc/striker/striker.conf file and for each node it sees,
+# it will reference it's cache to check it's power status. If the node if off,
+# it will check hosts -> host_emergency_stop and if it is TRUE, check to see if
+# it is safe to boot the nodes back up.
+sub do_post_scan_dashboard_tasks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_dashboard_tasks", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
+
+# This will check the 'power' and 'temperature' tables. If the UPSes found in
+# the local '/etc/hosts' file are both running on batteries, their remaining
+# run time is checked. 
+sub do_post_scan_node_tasks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_node_tasks", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hostname       = $an->hostname;
+	my $short_hostname = $an->short_hostname;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "hostname",       value1 => $hostname, 
+		name2 => "short_hostname", value2 => $short_hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my ($node_power_ok) = check_node_power($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_power_ok", value1 => $node_power_ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my ($node_temperature_ok) = check_node_temperature($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# OK, if both are '1', make sure our health file is set to 'OK'. If 
+	# either returned '2', make sure our health file is set to 'Warning'.
+	# If either returned '3', set the health file to 'Critical' and set the
+	# hosts -> host_emergency_stop to TRUE and then call 
+	# 'safe_anvil_shutdown'.
+	if (($node_power_ok eq "3") || ($node_temperature_ok eq "3"))
+	{
+		# Set the health to 'Critical'.
+		update_health_file($an, 3);
+		
+		# Update hosts to set host_emergency_stop to TRUE
+		my $query = "UPDATE hosts SET host_emergency_stop = TRUE WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
+		$an->DB->do_db_write({query => $query});
+		
+		### NOTE: We don't set an alert here because we're toast and
+		###       that really should be happening over and over.
+		# Send our final email.
+		$an->Alert->register_alert({
+			alert_level		=>	"critical", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_title_key		=>	"an_alert_title_0005",
+			alert_message_key	=>	"scancore_error_0015",
+			alert_message_variables	=>	{
+				node			=>	$an->hostname,
+			},
+		});
+		
+		# Send the email
+		process_alerts($an);
+		
+		# And now die via 'safe_anvil_shutdown'. We should be dead 
+		# before this exits. So ya, so long and thanks for all the
+		# fish.
+		my $shell_call = $an->data->{path}{safe_anvil_shutdown}." 2>&1 |";
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Why are we still alive? die already.
+		exit(255);
+	}
+	elsif (($node_power_ok eq "2") || ($node_temperature_ok eq "2"))
+	{
+		### We're sick
+		# Set the health to 'Warning'.
+		update_health_file($an, 2);
+		
+		# Tell the user that we're no longer a migration target.
+		my $set = $an->Alert->check_alert_sent({
+			type			=>	"warning",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$an->hostname,
+			alert_name		=>	"node_sick",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
+		if ($set)
+		{
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	"scancore_warning_0012",
+				alert_message_variables	=>	{
+					node			=>	$an->hostname,
+				},
+			});
+			
+			# Send the email
+			process_alerts($an);
+		}
+	}
+	else
+	{
+		### We're healthy
+		# Set the health to 'OK'.
+		update_health_file($an, 1);
+		
+		# If we were previously sick, tell the user that we're OK now.
+		my $cleared = $an->Alert->check_alert_sent({
+			type			=>	"clear",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$an->hostname,
+			alert_name		=>	"node_sick",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
+		if ($cleared)
+		{
+			# Tell the user that we're OK.
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0006",
+				alert_message_key	=>	"scancore_warning_0013",
+				alert_message_variables	=>	{
+					node			=>	$an->hostname,
+				},
+			});
+			
+			# Send the email
+			process_alerts($an);
+		}
+	}
+	
+	return(0);
+}
+
+# This looks to see if the directory '/shared/status' exists. If it does, we 
+# assume the cluster is up and will create or update 
+# '/shared/status.<node_short_name>' to have 'health = [ok|warning|critical]
+# depending on the passed-in health level.
+sub update_health_file
+{
+	my ($an, $health_level) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_health_file", }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "health_level", value1 => "$health_level" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $health_file = $an->data->{path}{health_file}."/.".$an->short_hostname;
+	my $say_health  = "health = ok\n";
+	   $say_health  = "health = warning\n"  if $health_level eq "2";
+	   $say_health  = "health = critical\n" if $health_level eq "3";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "health_file", value1 => $health_file, 
+		name2 => "say_health",  value2 => $say_health, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (-d $an->data->{path}{health_file})
+	{
+		# Cluster is up, write the file.
+		my $shell_call = $health_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We don't die if we fail to write. If the system needs to 
+		# poweroff, this is not the time to be exiting on small errors.
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 0, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $say_health;
+		close $file_handle;
+	}
+	else
+	{
+		# Can't write, cluster may be down (in which case, we aren't a
+		# migration target anyway so it hardly matters).
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0054", message_variables => {
+			health_file => $health_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This pulls the data on the various temperature sensors. If all are within
+# acceptible ranges, '1' will be returned. If any are in warning or critical
+# state, '2' will be returned. If enough are critical to trigger power-down,
+# '3' will be returned.
+sub check_node_temperature
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_temperature_ok = 1;
+	
+	# TODO...
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($node_temperature_ok);
+}
+
+# This pulls the data on the UPSes associated with this node and returns '1' if
+# at least one of the UPSes has power, '2' if neither do but the hold-up time 
+# of at least one is above minimum and '3' if both are on batteries and below
+# the minimum hold-up time.
+sub check_node_power
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_power", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_power_ok       = 1;
+	my $a_ups_has_input     = 0;
+	my $highest_holdup_time = 0;
+	my $minimum_ups_runtime = $an->data->{scancore}{minimum_ups_runtime};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node_power_ok",       value1 => $node_power_ok,
+		name2 => "a_ups_has_input",     value2 => $a_ups_has_input,
+		name3 => "highest_holdup_time", value3 => $highest_holdup_time,
+		name4 => "minimum_ups_runtime", value4 => $minimum_ups_runtime,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# First, see if my UPSes have input power. If not:
+	# * See which has the longest hold-up time. If one of them is above the
+	#   minimum hold-up time, set our health to '2/warning'.
+	# * If the strongest is too low, set our health to '3/critical' and
+	#   shut down.
+	my $query = "
+SELECT 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left 
+FROM 
+    power 
+WHERE 
+    power_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# NOTE: I know I could sort by remaining hold-up time and/or filter by
+	#       which UPS is on batteries, but slurping it all in makes it 
+	#       easier to debug with everything in perl.
+	my $last_agent = "";
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $power_ups_fqdn     = $row->[0];
+		my $power_on_battery   = $row->[1];
+		my $power_seconds_left = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "power_ups_fqdn",     value1 => $power_ups_fqdn,
+			name2 => "power_on_battery",   value2 => $power_on_battery,
+			name3 => "power_seconds_left", value3 => $power_seconds_left,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Record the highest hold-up time.
+		if ($power_seconds_left > $highest_holdup_time)
+		{
+			$highest_holdup_time = $power_seconds_left;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "highest_holdup_time", value1 => $highest_holdup_time,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Are we on batteries?
+		if ($power_on_battery)
+		{
+			# Well poop.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "power_seconds_left",  value1 => $power_seconds_left,
+				name2 => "highest_holdup_time", value2 => $highest_holdup_time,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# We've got input power, sweeeet.
+			$a_ups_has_input = 1;
+			$node_power_ok   = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_power_ok", value1 => $node_power_ok,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$results = "";
+	
+	# Now, if no UPS has input power, see if the highest holdup time 
+	# exceeds the minimum required to avoid a shut down.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "a_ups_has_input", value1 => $a_ups_has_input,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($a_ups_has_input)
+	{
+		$node_power_ok = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_power_ok", value1 => $node_power_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# No input power from mains...
+		$node_power_ok = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_power_ok",       value1 => $node_power_ok,
+			name2 => "minimum_ups_runtime", value2 => $minimum_ups_runtime, 
+			name3 => "highest_holdup_time", value3 => $highest_holdup_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($minimum_ups_runtime > $highest_holdup_time)
+		{
+			# Time to go zzz
+			$node_power_ok = 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_power_ok", value1 => $node_power_ok,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_power_ok", value1 => $node_power_ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	return ($node_power_ok);
+}
+
 
 # This reads in the 'alerts' table and generates the emails/log file entries as
 # needed.
@@ -367,10 +784,6 @@ WHERE
 		# No alerts
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__});
 	}
-	# Visual break in the log file
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "----------------------------------------", value1 => "----------------------------------------"
-	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -523,7 +936,7 @@ sub send_email
 	# The footer is a generic message tell the user not to yell at us for
 	# spamming them. (hey, you laugh, but managers will get these 
 	# emails...)
-	if ($an->data->{sys}{append_email_footer})
+	if ($an->data->{scancore}{append_email_footer})
 	{
 		$body .= $an->String->get({
 			language	=>	$language,
@@ -1111,9 +1524,6 @@ sub update_db
 		update_db_alerts($an, $id);
 		#update_db_temperature($an, $id);
 		#update_db_power($an, $id);
-		
-		# All done, update the time
-		$an->DB->update_time({file => $THIS_FILE});
 	}
 	
 	return(0);
@@ -1857,6 +2267,7 @@ sub add_host_to_databases
 		{
 			$host_type = "dashboard";
 		}
+		$an->data->{scancore}{i_am_a} = $host_type;
 		
 		# Add this host to the DB
 		my $query = "
@@ -1865,14 +2276,44 @@ INSERT INTO
 (
     host_name, 
     host_type, 
+    host_emergency_stop, 
     modified_date
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($host_name).",
-    '$host_type',
+    ".$an->data->{sys}{use_db_fh}->quote($host_type).",
+    FALSE, 
     ".$an->data->{sys}{db_timestamp}."
 );
 ";
 		$an->DB->do_db_write({query => $query});
+	}
+	else
+	{
+		# A record exists. Check to see if the 'host_emergency_stop' 
+		# has been set and clear it, if so.
+		my $query = "SELECT host_emergency_stop FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#          The actual query -----------------.        .------- Row 0
+		#                                            |        |    .-- Columns 0
+		my $host_emergency_stop = $an->DB->do_db_query({query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_emergency_stop", value1 => $host_emergency_stop
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($host_emergency_stop)
+		{
+			my $query = "
+UPDATE 
+    hosts
+SET 
+    host_emergency_stop = FALSE
+WHERE
+    host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
+";
+			$an->DB->do_db_write({query => $query});
+		}
 	}
 	
 	return(0);
@@ -1995,7 +2436,7 @@ AND
 }
 
 # This checks the amount RAM used by ScanCore and exits if it exceeds a
-# sys::maximum_ram bytes. It looks for any process with our name and sums the
+# scancore::maximum_ram bytes. It looks for any process with our name and sums the
 # RAM used.
 sub check_ram_usage
 {
@@ -2007,7 +2448,7 @@ sub check_ram_usage
 	# usage.
 	my $used_ram   = 0;
 	my $shell_call = $an->data->{path}{ps}." aux 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
@@ -2031,10 +2472,10 @@ sub check_ram_usage
 		my ($pids_ram) =  $an->Get->get_ram_used_by_pid({pid => $pid});
 		   $used_ram   += $pids_ram;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "pid",              value1 => "$pid", 
-			name2 => "pids_ram",         value2 => "$pids_ram", 
-			name3 => "used_ram",         value3 => "$used_ram", 
-			name4 => "sys::maximum_ram", value4 => $an->data->{sys}{maximum_ram}
+			name1 => "pid",                   value1 => "$pid", 
+			name2 => "pids_ram",              value2 => "$pids_ram", 
+			name3 => "used_ram",              value3 => "$used_ram", 
+			name4 => "scancore::maximum_ram", value4 => $an->data->{scancore}{maximum_ram}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
@@ -2099,13 +2540,13 @@ AND
 		#print __LINE__."; The amount of RAM used by ".$an->data->{sys}{program_name}." is unchanged.\n";
 	}
 	
-	if ($used_ram > $an->data->{sys}{maximum_ram})
+	if ($used_ram > $an->data->{scancore}{maximum_ram})
 	{
 		# Much, too much, much music!
 		# err, too much RAM...
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
 			used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
-			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{sys}{maximum_ram}})
+			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{scancore}{maximum_ram}})
 		}, code => 5, file => "$THIS_FILE", line => __LINE__});
 	}
 	

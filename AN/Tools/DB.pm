@@ -360,14 +360,14 @@ sub connect_to_databases
 				$an->data->{sys}{read_db_id} = $id;
 				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id} ;
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 					name2 => "sys::use_db_fh",  value2 => $an->data->{sys}{use_db_fh}
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Get a time stamp for this run, if not yet gotten.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "dbh::$id",          value1 => $an->data->{dbh}{$id}, 
 				name2 => "sys::db_timestamp", value2 => $an->data->{sys}{db_timestamp}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -377,13 +377,13 @@ sub connect_to_databases
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 				$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
 				name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
 				name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
@@ -392,7 +392,7 @@ sub connect_to_databases
 	}
 	
 	# Do I have any connections?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "connections", value1 => $connections, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $connections)
@@ -1355,7 +1355,7 @@ sub load_schema
 		$line =~ s/^\s+//g;
 		$line =~ s/\s+$//g;
 		next if not $line;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
 			name1 => "line", value1 => $line 
 		}, file => $THIS_FILE, line => __LINE__});
 		$sql .= "$line\n";
@@ -1363,7 +1363,7 @@ sub load_schema
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",  value1 => $id, 
 		name2 => "sql", value2 => $sql
 	}, file => $THIS_FILE, line => __LINE__});

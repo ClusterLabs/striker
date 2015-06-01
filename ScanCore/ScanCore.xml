@@ -56,6 +56,11 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_title_0006">Information</key>
 		<key name="scancore_title_0007">Critical</key>
 		
+		<!-- These strings correspond to the health level of the node. -->
+		<key name="scancore_health_0001">OK</key>
+		<key name="scancore_health_0002">Warning</key>
+		<key name="scancore_health_0003">Critical</key>
+		
 		<!-- Log messages -->
 		<key name="scancore_log_0001">Entering: [#!variable!function!#()]</key>
 		<key name="scancore_log_0002">
@@ -125,6 +130,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0051">One of the 'alerts::recipient::X::...' entries in the configuration file appears to be malformed and was ignored.</key>
 		<key name="scancore_log_0052">There were no alerts from this scan.</key>
 		<key name="scancore_log_0053">One or more alerts were sent this scan.</key>
+		<key name="scancore_log_0054">Unable to update the health file: [#!variable!health_file!#]. Is the node out of the cluster? This will not matter if so because the node won't be a migration target anyway.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -155,6 +161,8 @@ The error was:
 		<key name="scancore_warning_0009">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::email' entries.</key>
 		<key name="scancore_warning_0010">There was an unknown variable: [#!variable!variable!#] with the value: [#!variable!value!#]. Please check the 'alerts::recipient::X::file' entries.</key>
 		<key name="scancore_warning_0011">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
+		<key name="scancore_warning_0012">The node: [#!variable!node!#] has entered a 'warning' state. If the peer goes critical, it will not migrate to this node and instead gracefully shut down it's server.</key>
+		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy. It is again an migration target should the peer go into emergency shutdown.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
@@ -174,6 +182,7 @@ The error was:
 		<key name="scancore_error_0012">Failed to do an update or insert the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scancore_error_0013">Too much RAM being used! Using: [#!variable!used_ram!#], maximum allowed: [#!variable!maximum_ram!#].</key>
 		<key name="scancore_error_0014">It looks like a loop was hit trying to find a unique file name for storing an email. I got to: [#!variable!file!#] before giving up.</key>
+		<key name="scancore_error_0015">The node: [#!variable!node!#] has gone into "emergency stop" and is shutting down!</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
