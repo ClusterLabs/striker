@@ -457,12 +457,12 @@ then
 	chown root:root $conf->{path}{nodes}{cron_root}
 	chmod 600 $conf->{path}{nodes}{cron_root}
 fi
-grep -q scanner /var/spool/cron/root
+grep -q ScanCore /var/spool/cron/root
 if [ \"\$?\" -eq '0' ];
 then
 	echo 'exits'
 else
-	echo '*/5 * * * * /usr/share/striker/bin/scanner' >> $conf->{path}{nodes}{cron_root}
+	echo '#*/5 * * * * /sbin/striker/ScanCore/ScanCore' >> $conf->{path}{nodes}{cron_root}
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {

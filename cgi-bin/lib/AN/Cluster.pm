@@ -4851,7 +4851,7 @@ Striker Version: $conf->{sys}{version}
 		</kvm>
 		<striker>
 			<!-- 
-			The user and password are, primarily, for the Scanner
+			The user and password are, primarily, for the ScanCore
 			database user and passowrd, but should be the same as
 			the user and password set via:
 			striker-installer -u <user:password>
