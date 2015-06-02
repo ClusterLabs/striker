@@ -311,6 +311,19 @@ sub connect_to_databases
 					port		=>	$port,
 				}};
 			}
+			elsif ($DBI::errstr =~ /Temporary failure in name resolution/i)
+			{
+				$an->Alert->warning({ message_key => "scancore_warning_0014", message_variables => {
+					name		=>	$name,
+					host		=>	$host,
+					port		=>	$port,
+				}, file	 => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0014", message_variables => {
+					name		=>	$name,
+					host		=>	$host,
+					port		=>	$port,
+				}};
+			}
 			else
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
@@ -328,7 +341,7 @@ sub connect_to_databases
 			$connections++;
 			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
-			$an->Log->entry({ log_level => 3, title_key => "scancore_title_0004", message_key => "scancore_log_0004", message_variables => {
+			$an->Log->entry({log_level => 3, title_key => "scancore_title_0004", message_key => "scancore_log_0004", message_variables => {
 				host		=>	$host,
 				port		=>	$port,
 				name		=>	$name,
@@ -339,6 +352,9 @@ sub connect_to_databases
 			
 			# Now that I have connected, see if my 'hosts' table exists.
 			my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='hosts' AND schemaname='public';";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
 			my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "count", value1 => $count
@@ -374,6 +390,9 @@ sub connect_to_databases
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 				$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
 				
@@ -408,18 +427,35 @@ sub connect_to_databases
 	# Report any failed DB connections
 	foreach my $id (@{$failed_connections})
 	{
+		# If the node/dashboard is trying to connect for the first time
+		# (thus has no hosts entry), sending the alert will fail.
+		my $query = $an->data->{sys}{host_id_query};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $host_id = $an->DB->do_db_query({query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_id", value1 => $host_id
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $host_id)
+		{
+			# fatal error
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0018", code => 3, file => "$THIS_FILE", line => __LINE__});
+		}
+		
 		# Copy my alert hash before I delete the id.
 		my $error_array = [];
 		foreach my $hash (@{$an->data->{scancore}{db}{$id}{connection_error}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "hash", value1 => $hash
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$error_array}, $hash;
 		}
 		
 		# Delete this DB so that we don't try to use it later.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "DELETE id", value1 => $id
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
@@ -433,19 +469,19 @@ sub connect_to_databases
 			alert_name		=>	"connect_to_db",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "set", value1 => $set
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($set)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "error_array", value1 => $error_array
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $hash (@{$error_array})
 			{
 				my $message_key       = $hash->{message_key};
 				my $message_variables = $hash->{message_variables};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "hash",              value1 => $hash, 
 					name2 => "message_key",       value2 => $message_key, 
 					name3 => "message_variables", value3 => $message_variables, 

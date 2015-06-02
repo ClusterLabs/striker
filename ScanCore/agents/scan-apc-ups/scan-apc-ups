@@ -352,14 +352,14 @@ sub find_changes
 		###############################################################
 		
 		my $new_apc_ups_output_load_percentage   = $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage};
-		my $new_apc_ups_output_time_on_batteries   = $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries};
+		my $new_apc_ups_output_time_on_batteries = $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries};
 		my $new_apc_ups_output_estimated_runtime = $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime};
 		my $new_apc_ups_output_frequency         = $an->data->{ups}{$ups_name}{apc_ups_output_frequency};
 		my $new_apc_ups_output_voltage           = $an->data->{ups}{$ups_name}{apc_ups_output_voltage};
 		my $new_apc_ups_output_total_output      = $an->data->{ups}{$ups_name}{apc_ups_output_total_output};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "new_apc_ups_output_load_percentage",   value1 => $new_apc_ups_output_load_percentage,
-			name2 => "new_apc_ups_output_time_on_batteries",   value2 => $new_apc_ups_output_time_on_batteries,
+			name2 => "new_apc_ups_output_time_on_batteries", value2 => $new_apc_ups_output_time_on_batteries,
 			name3 => "new_apc_ups_output_estimated_runtime", value3 => $new_apc_ups_output_estimated_runtime,
 			name4 => "new_apc_ups_output_frequency",         value4 => $new_apc_ups_output_frequency,
 			name5 => "new_apc_ups_output_voltage",           value5 => $new_apc_ups_output_voltage,
@@ -1901,14 +1901,14 @@ WHERE
 						# We're on batteries now.
 						$level       = "notice";
 						$title_key   = "an_alert_title_0003";
-						$message_key = "scan_apc_ups_note_0050";
+						$message_key = "scan_apc_ups_note_0051";
 					}
 					elsif ($old_apc_ups_output_time_on_batteries eq "0")
 					{
 						# We're no longer on batteries.
 						$level       = "notice";
 						$title_key   = "an_alert_title_0003";
-						$message_key = "scan_apc_ups_note_0051";
+						$message_key = "scan_apc_ups_note_0050";
 					}
 					else
 					{

@@ -97,6 +97,11 @@ my $an = AN::Tools->new({data =>
 			health_file		=>	"/shared/status",
 			log_file		=>	"/var/log/striker.log",
 			mailx			=>	"/bin/mailx",
+			# This is the path to Striker's cache directory. It is
+			# used by striker dashboards when they want to reboot a
+			# node that is in emergency-stop and the environment is
+			# safe again.
+			node_cache		=>	"/var/www/home/cache", 
 			postfix_init		=>	"/etc/init.d/postfix",
 			postfix_main		=>	"/etc/postfix/main.cf",
 			postfix_relay_file	=>	"/etc/postfix/relay_password",
@@ -115,7 +120,7 @@ my $an = AN::Tools->new({data =>
 			append_email_footer	=>	0,
 			# This gets set to 'dashboard' if we determine this is
 			# a dashboard machine.
-			i_am_a			=>	"node",
+			i_am_a			=>	"",
 			maximum_ram		=>	(256 * 1048576),
 			# When both/all UPSes powering a node switch to 
 			# batteries, their remaining hold-up time will be 
@@ -124,6 +129,7 @@ my $an = AN::Tools->new({data =>
 			# ups is below this time, 'safe_anvil_shutdown' will be
 			# invoked.
 			minimum_ups_runtime	=>	600,
+			minimum_safe_charge	=>	45,
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
@@ -268,8 +274,9 @@ while (1)
 	$an->DB->disconnect_from_databases();
 	
 	# Visual break in the log file
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "----------------------------------------", value1 => "----------------------------------------"
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "scancore::sleep_time",                     value1 => $an->data->{scancore}{sleep_time}, 
+		name2 => "----------------------------------------", value2 => "----------------------------------------"
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Sleep.
@@ -286,6 +293,7 @@ nice_exit($an);
 sub do_post_scan_checks
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_checks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# What we do here strongly depends on whether we're a node or a
 	# dashboard. 
@@ -300,10 +308,25 @@ sub do_post_scan_checks
 	# offline and the host shut itself down, we'll watch the UPSes and
 	# temperature sensors. If/when things are good, we'll boot the nodes
 	# back up.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{scancore}{i_am_a})
+	{
+		# What am I?
+		my $query = "SELECT host_type FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->data->{scancore}{i_am_a} = $an->DB->do_db_query({query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	if ($an->data->{scancore}{i_am_a} eq "dashboard")
 	{
 		# Do the dashboard stuff.
@@ -314,6 +337,7 @@ sub do_post_scan_checks
 		# Do the node stuff.
 		do_post_scan_node_tasks($an);
 	}
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0061", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -325,8 +349,442 @@ sub do_post_scan_checks
 sub do_post_scan_dashboard_tasks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_dashboard_tasks", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_dashboard_tasks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# So first thing, see if any nodes are in emergency_stop. If not, there
+	# is nothing further for us to do. We order by host name to be sure to
+	# boot node 1 first, when both are recoverable. 'Tis but a minor thing,
+	# but hey, why not.
+	my $query = "SELECT host_name FROM hosts WHERE host_type = 'node' AND host_emergency_stop = TRUE ORDER BY host_name";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count)
+	{
+		# At least one node is in an emergency-off state. See if we can
+		# recover it and if it is safe to do so.
+		
+		# First step is to read in any/all cache files. If we don't
+		# have a cache directory, then we're done.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
+		}, file => $THIS_FILE, line => __LINE__});
+		if (-d $an->data->{path}{node_cache})
+		{
+			# So we do have a cache directory. What about actual
+			# cache files?
+			local(*DIRECTORY);
+			opendir(DIRECTORY, $an->data->{path}{node_cache});
+			while(my $file = readdir(DIRECTORY))
+			{
+				next if $file eq ".";
+				next if $file eq "..";
+				next if $file !~ /cache_.*?\.striker/;
+				my $full_path = $an->data->{path}{node_cache}."/$file";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "full_path", value1 => "$full_path"
+				}, file => $THIS_FILE, line => __LINE__});
+				if (-r $full_path)
+				{
+					# Woot!
+					my $in_hosts       = 0;
+					my $shell_call     = $full_path;
+					my ($anvil, $node) = ($full_path =~ /cache_(.*?)_(.*?)\.striker/);
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						name1 => "in_hosts",   value1 => "$in_hosts", 
+						name2 => "shell_call", value2 => "$shell_call", 
+						name3 => "anvil",      value3 => "$anvil", 
+						name4 => "node",       value4 => "$node", 
+					}, file => $THIS_FILE, line => __LINE__});
+					open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line =  $_;
+						   $line =~ s/\s+/ /g;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => "$line"
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						if ($line eq "#! start hosts !#")
+						{
+							$in_hosts = 1;
+							next;
+						}
+						if ($line eq "#! end hosts !#")
+						{
+							$in_hosts = 1;
+							next;
+						}
+						if (($in_hosts) && ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/))
+						{
+							my $this_ip   = $1;
+							my $this_host = $2;
+							$an->data->{cache}{$node}{host}{$this_host}{ip} = $this_ip;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "cache::${node}::host::${this_host}::ip", value1 => $an->data->{cache}{$node}{host}{$this_host}{ip}
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						else
+						{
+							next if $line !~ /=/;
+							my ($variable, $value) = (split/=/, $line, 2);
+							$variable =~ s/^\s+//;
+							$variable =~ s/\s+$//;
+							$value    =~ s/^\s+//;
+							$value    =~ s/\s+$//;
+							
+							$an->data->{cache}{$node}{info}{$variable} = $value;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "cache::${node}::info::${variable}", value1 => $an->data->{cache}{$node}{info}{$variable}
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					close $file_handle;
+				}
+			}
+			
+			# I might be able to boot down nodes, so I want to now
+			# read in the 'power' and 'temperature' tables. As I
+			# loop through the downed nodes, I will pull their
+			# particulars and decide on a case by case basis if it
+			# is safe to boot them back up.
+			
+			# First, read in the power table.
+			read_power_table($an);
+			
+			# Now read in the temperature table.
+			read_temperature_table($an);
+			
+			# Now that I've read in my cache files, start looking
+			# at the nodes that are down.
+			foreach my $row (@{$results})
+			{
+				my $node = $row->[0];
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",                value1 => $node, 
+					name2 => "path::node_cache",    value2 => $an->data->{path}{node_cache}, 
+					name3 => "ref: cache::${node}", value3 => ref($an->data->{cache}{$node}),
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# See if the power is safe enough to boot this
+				# node.
+				my $power_is_safe       = check_node_power_health($an, $node);
+				my $temperature_is_safe = check_node_temperature_health($an, $node);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_is_safe",       value1 => $power_is_safe, 
+					name2 => "temperature_is_safe", value2 => $temperature_is_safe, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Now, if the power and temperature is good,
+				# try to boot the node!
+				if (($power_is_safe) && ($temperature_is_safe))
+				{
+					# Okie!
+					boot_node($an, $node);
+				}
+			}
+		}
+		else
+		{
+			# I don't have any cache files, so ya, no bueno.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0057", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# No nodes are in emergency-off, so nothing more to do.
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0056", file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This is called when the environment is safe enough to boot a node that was
+# put into emergency-stop. If the cache file gave us the power_check_command
+# and we can reach the node's IPMI, we'll boot it.
+sub boot_node
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => "$node" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do I have the node's 'power_check_command'?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cache::${node}::info::power_check_command", value1 => $an->data->{cache}{$node}{info}{power_check_command}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cache}{$node}{info}{power_check_command})
+	{
+		# Fantastic! Check the power state to see if the node is
+		# already online. This can happen is the other Striker 
+		# dashboard got to the node faster than us.
+		my $boot_node  = 0;
+		my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o status; echo rc:\$? 2>&1 |";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^rc:(\d+)$/)
+			{
+				my $rc = $1;
+				# The return code is defined here: 
+				# https://fedorahosted.org/cluster/wiki/FenceAgentAPI#agent_ops
+				# 
+				# 0 - The fence device is reachable and the
+				#     port is in the on state.
+				# 1 - The fence device could not be reached.
+				# 2 - The fence device is reachable and the
+				#     port is in the off state.
+				$boot_node = 1 if $rc eq "2";
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+					name1 => "rc",        value1 => $rc, 
+					name2 => "boot_node", value2 => $boot_node,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+		
+		# So? Are we good to go?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "boot_node", value1 => $boot_node,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($boot_node)
+		{
+			# About darn time!
+			my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$? 2>&1 |";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /^rc:(\d+)$/)
+				{
+					my $rc = $1;
+					# 0 - The operation was successful
+					# 1 - Not successful or verification 
+					#     could not be performed. This 
+					#     includes inability to contact the
+					#     fence device at any point. 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "rc", value1 => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($rc eq "0")
+					{
+						# Booted!
+						$an->Log->entry({log_level => 2, message_key => "scancore_log_0059", message_variables => {
+							node	=>	$node,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Clear the 'emergency_stop' flag.
+						my $query = "UPDATE hosts SET host_emergency_stop = FALSE WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($node).";";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->DB->do_db_write({query => $query});
+					}
+					else
+					{
+						# Maybe not booted.
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0060", message_variables => {
+							node		=>	$node,
+							shell_call	=>	$shell_call, 
+							rc		=>	$rc
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+			close $file_handle;
+		}
+	}
+	else
+	{
+		# Nope :(
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0058", message_variables => {
+			node	=>	$node,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+
+# This pulls in the list of UPSes powering the given node and checks to see if
+# they are healthy enough to power the node.
+sub check_node_power_health
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power_health" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => "$node" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $power_is_safe = 0;
+	
+	# This will hold the percentag charge of the strongest UPS powering the
+	# node that has input power.
+	my $highest_charge = 0;
+	
+	# Read in the names of the UPSes watched by this node.
+	my $query = "SELECT power_ups_fqdn FROM power WHERE power_host_id = (SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($node).");";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	foreach my $row (@{$results})
+	{
+		my $power_ups_fqdn = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",                       value1 => $query, 
+			name2 => "ref: power::$power_ups_fqdn", value2 => ref($an->data->{power}{$power_ups_fqdn}),
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do I know about this UPS?
+		if (ref($an->data->{power}{$power_ups_fqdn}))
+		{
+			# Yup!
+			my $power_on_battery        = $an->data->{power}{$power_ups_fqdn}{power_on_battery};
+			my $power_charge_percentage = $an->data->{power}{$power_ups_fqdn}{power_charge_percentage};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "power_on_battery",        value1 => $power_on_battery, 
+				name2 => "power_charge_percentage", value2 => $power_charge_percentage,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ((not $power_on_battery) && ($power_charge_percentage > $highest_charge))
+			{
+				$highest_charge = $power_charge_percentage;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "highest_charge", value1 => $highest_charge, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now, do I have a UPS above the minimum charge percentage?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "scancore::minimum_safe_charge", value1 => $an->data->{scancore}{minimum_safe_charge}, 
+		name2 => "highest_charge",                value2 => $highest_charge, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($highest_charge > $an->data->{scancore}{minimum_safe_charge})
+	{
+		# Yup, bueno!
+		$power_is_safe = 1;
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "power_is_safe", value1 => $power_is_safe
+	}, file => $THIS_FILE, line => __LINE__});
+	return($power_is_safe);
+}
+
+# This pulls in the list of UPSes powering the given node and checks to see if
+# they are healthy enough to power the node.
+sub check_node_temperature_health
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature_health" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => "$node" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### WARNING: Set to '1' until this section is done.
+	my $temperature_is_safe = 1;
+	
+	
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "temperature_is_safe", value1 => $temperature_is_safe
+	}, file => $THIS_FILE, line => __LINE__});
+	return($temperature_is_safe);
+}
+
+# TODO: This is still to be written...
+sub read_temperature_table
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_temperature_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	
+	return(0);
+}
+
+# This reads in all of the entries in the 'power' table that this host knows
+# about. This will be used by 'do_post_scan_dashboard_tasks()' to see if the 
+# node can be booted is it is in an emergency-stop condition because of power
+# loss.
+sub read_power_table
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_power_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, read in the UPS information that I know. The records for the
+	# nodes will be stale if they're off so they're not any use to us.
+	my $query = "
+SELECT 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left, 
+    power_charge_percentage 
+FROM 
+    power 
+WHERE 
+    power_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $power_ups_fqdn          = $row->[0];
+		my $power_on_battery        = $row->[1];
+		my $power_seconds_left      = $row->[2];
+		my $power_charge_percentage = $row->[3];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "power_ups_fqdn",          value1 => $power_ups_fqdn, 
+			name2 => "power_on_battery",        value2 => $power_on_battery, 
+			name3 => "power_seconds_left",      value3 => $power_seconds_left, 
+			name4 => "power_charge_percentage", value4 => $power_charge_percentage, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Shovel it into the hash
+		$an->data->{power}{$power_ups_fqdn} = {
+			power_on_battery	=>	$power_on_battery, 
+			power_seconds_left	=>	$power_seconds_left, 
+			power_charge_percentage	=>	$power_charge_percentage 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "power::${power_ups_fqdn}::power_on_battery",        value1 => $an->data->{power}{$power_ups_fqdn}{power_on_battery}, 
+			name2 => "power::${power_ups_fqdn}::power_seconds_left",      value2 => $an->data->{power}{$power_ups_fqdn}{power_seconds_left}, 
+			name3 => "power::${power_ups_fqdn}::power_charge_percentage", value3 => $an->data->{power}{$power_ups_fqdn}{power_charge_percentage}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	return(0);
 }
@@ -337,7 +795,7 @@ sub do_post_scan_dashboard_tasks
 sub do_post_scan_node_tasks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_node_tasks", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_node_tasks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hostname       = $an->hostname;
 	my $short_hostname = $an->short_hostname;
@@ -368,6 +826,9 @@ sub do_post_scan_node_tasks
 		
 		# Update hosts to set host_emergency_stop to TRUE
 		my $query = "UPDATE hosts SET host_emergency_stop = TRUE WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query});
 		
 		### NOTE: We don't set an alert here because we're toast and
@@ -478,7 +939,7 @@ sub do_post_scan_node_tasks
 sub update_health_file
 {
 	my ($an, $health_level) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_health_file", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_health_file" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "health_level", value1 => "$health_level" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -524,7 +985,7 @@ sub update_health_file
 sub check_node_temperature
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_temperature_ok = 1;
 	
@@ -543,7 +1004,7 @@ sub check_node_temperature
 sub check_node_power
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_power", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_power_ok       = 1;
 	my $a_ups_has_input     = 0;
@@ -571,7 +1032,7 @@ FROM
 WHERE 
     power_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -669,7 +1130,7 @@ WHERE
 sub process_alerts
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in all pending alerts
 	my $query = "
@@ -792,7 +1253,7 @@ WHERE
 sub send_email
 {
 	my ($an, $variables) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "variables", value1 => "$variables" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -801,7 +1262,6 @@ sub send_email
 	# proper.
 	my $subject  = 5;
 	my $body     = "";
-	
 	my $name     = "";
 	my $email    = "";
 	my $language = $an->data->{sys}{language};
@@ -905,7 +1365,7 @@ sub send_email
 			else
 			{
 				# Ignored
-				$an->Log->entry({log_level => 2, message_key => "scancore_log_0050", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "scancore_log_0050", message_variables => {
 					user     => "$name <$email>",
 					alert_id => $alert_id, 
 					title    => $title,
@@ -923,7 +1383,9 @@ sub send_email
 			hostname	=>	$an->hostname,
 		},
 	});
-	#print "$THIS_FILE ".__LINE__."; subject: [$subject]\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "subject", value1 => $subject, 
+	}, file => $THIS_FILE, line => __LINE__});
 	my $say_subject = $an->String->get({
 		language	=>	$language,
 		key		=>	"scancore_email_0001",
@@ -932,10 +1394,16 @@ sub send_email
 			subject		=>	$subject_line,
 		},
 	});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_subject", value1 => $say_subject, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# The footer is a generic message tell the user not to yell at us for
 	# spamming them. (hey, you laugh, but managers will get these 
 	# emails...)
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::append_email_footer", value1 => $an->data->{scancore}{append_email_footer}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{append_email_footer})
 	{
 		$body .= $an->String->get({
@@ -945,16 +1413,19 @@ sub send_email
 				hostname	=>	$an->hostname,
 			},
 		});
-		#print "$THIS_FILE ".__LINE__."; say_footer: [$say_footer]\n";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "body", value1 => $body, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now assemble the message.
 	my $say_to = "$name <$email>";
-	#print "$THIS_FILE ".__LINE__."; from:    [".$an->data->{smtp}{username}."]\n";
-	#print "$THIS_FILE ".__LINE__."; to:      [$say_to]\n";
-	#print "$THIS_FILE ".__LINE__."; subject: [$say_subject]\n";
-	#print "$THIS_FILE ".__LINE__."; body:    [$body]\n";
-	#print "$THIS_FILE ".__LINE__."; footer:  [$body]\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "smtp::username", value1 => $an->data->{smtp}{username},
+		name2 => "say_to",         value2 => $say_to, 
+		name3 => "say_subject",    value3 => $say_subject,
+		name4 => "body",           value4 => $body,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $email_body = $an->String->get({
 		language	=>	$language,
 		key		=>	"scancore_email_0002",
@@ -965,17 +1436,18 @@ sub send_email
 			body		=>	$body,
 		},
 	});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "email_body", value1 => $email_body,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# First, see if the relay file needs to be updated.
 	check_email_configuration($an);
 	
-	### TODO: Send the email!
-	#print "====================================\n";
-	#print "$email_body\n";
-	#print "====================================\n";
-	
 	# Select a known_free email file name.
 	my $email_file = $an->data->{path}{email_directory}."/".get_date($an).".1";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "email_file", value1 => $email_file,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $file_ok = 0;
 	until ($file_ok)
 	{
@@ -997,17 +1469,16 @@ sub send_email
 		else
 		{
 			$file_ok = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "email_file", value1 => $email_file,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Write out the email file.
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0048", message_variables => {
-		file => $email_file, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	my $shell_call = $email_file;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call",   value1 => $shell_call, 
+		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	print $file_handle $email_body;
@@ -1022,7 +1493,6 @@ sub send_email
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
@@ -1041,7 +1511,7 @@ sub send_email
 sub get_date
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "SELECT now();";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1061,7 +1531,7 @@ sub get_date
 sub record_alert_to_file
 {
 	my ($an, $variables) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "record_alert_to_file", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "record_alert_to_file" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "variables", value1 => "$variables" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1178,26 +1648,24 @@ sub record_alert_to_file
 sub check_email_configuration
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	
-	my $write_relay_file = 0;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Checking to see of the email relay file needs to be created or updated.
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
+	my $write_relay_file = 0;
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 		postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{postfix_relay_file})
 	{
 		# It exists, reading it.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0035", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0035", file => $THIS_FILE, line => __LINE__});
 		my $shell_call = $an->data->{path}{postfix_relay_file};
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^\[(.*?)\]:(\d+)\s(.*?):(.*)$/)
@@ -1207,19 +1675,19 @@ sub check_email_configuration
 				my $username = $3;
 				my $password = $4;
 				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "server",       value1 => $server, 
 					name2 => "smtp::server", value2 => $an->data->{smtp}{server},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "port",       value1 => $port, 
 					name2 => "smtp::port", value2 => $an->data->{smtp}{port},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "username",       value1 => $username, 
 					name2 => "smtp::username", value2 => $an->data->{smtp}{username},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "password",       value1 => $password, 
 					name2 => "smtp::password", value2 => $an->data->{smtp}{password},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1229,13 +1697,13 @@ sub check_email_configuration
 				    ($password ne $an->data->{smtp}{password}))
 				{
 					# Changes made
-					$an->Log->entry({log_level => 3, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__});
 					$write_relay_file = 1;
 				}
 				else
 				{
 					# No change
-					$an->Log->entry({log_level => 3, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -1245,24 +1713,24 @@ sub check_email_configuration
 	{
 		# Relay file doesn't exist at all, so this might be an upgrade.
 		# As such, check that the programs we need are installed.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
 		$write_relay_file = 1;
 	}
 	
 	# (Re)write the relay file now, if needed.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "write_relay_file", value1 => $write_relay_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($write_relay_file)
 	{
 		# Write the new relay file.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 			postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call   = $an->data->{path}{postfix_relay_file};
 		my $postfix_line = "[".$an->data->{smtp}{server}."]:".$an->data->{smtp}{port}." ".$an->data->{smtp}{username}.":".$an->data->{smtp}{password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call",   value1 => $shell_call, 
 			name2 => "postfix_line", value2 => $postfix_line,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1271,9 +1739,9 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Generate the binary version.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__});
 		$shell_call = $an->data->{path}{postmap}." ".$an->data->{path}{postfix_relay_file}." 2>&1 |";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1281,7 +1749,7 @@ sub check_email_configuration
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1291,19 +1759,19 @@ sub check_email_configuration
 		# hasn't been configured yet. So check it and, if needed,
 		# fix it.
 		my $backup_file = $an->data->{path}{postfix_main}.".anvil";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "backup_file", value1 => $backup_file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not -e $backup_file)
 		{
 			# Backup the original.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 				source      => $an->data->{path}{postfix_main},
 				destination =>  $backup_file,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $shell_call = $an->data->{path}{cp}." --archive --no-clobber --verbose ".$an->data->{path}{postfix_main}." $backup_file 2>&1 |";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1311,7 +1779,7 @@ sub check_email_configuration
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1320,14 +1788,14 @@ sub check_email_configuration
 		else
 		{
 			# Already backed up
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now update the postfix main.cf file by reading it in and
 		# replacing the variables we want to update, then writing it
 		# all back out.
 		my $postfix_main = "";
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0041", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0041", message_variables => {
 			postfix_main => $an->data->{path}{postfix_main}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1371,18 +1839,18 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Write out the new version.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0043", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0043", message_variables => {
 			postfix_main => $an->data->{path}{postfix_main}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Record the config in the main log
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "postfix_main", value1 => $postfix_main, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the actual write...
 		$shell_call = $an->data->{path}{postfix_main};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call",   value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1390,7 +1858,7 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Reload postfix
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0044", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0044", file => $THIS_FILE, line => __LINE__});
 		$shell_call = $an->data->{path}{postfix_init}." restart 2>&1 |";
 		open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
@@ -1399,7 +1867,7 @@ sub check_email_configuration
 			my $line = $_;
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1408,10 +1876,16 @@ sub check_email_configuration
 	}
 	
 	# Make sure the mail alerts directory exists and create it if not.
-	if (not -e $an->data->{path}{email_directory})
+	if (-e $an->data->{path}{email_directory})
+	{
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0055", message_variables => {
+			email_directory => $an->data->{path}{email_directory}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
 	{
 		# Need to create it.
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0045", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0045", message_variables => {
 			email_directory => $an->data->{path}{email_directory}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1422,7 +1896,7 @@ sub check_email_configuration
 		
 		# Set the mode
 		my $directory_mode = 0775;
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0046", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
 			directory_mode => sprintf("%04o", $directory_mode), 
 		}, file => $THIS_FILE, line => __LINE__});
 		chmod $directory_mode, $an->data->{path}{email_directory};
@@ -1435,7 +1909,7 @@ sub check_email_configuration
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang", }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "language",  value1 => "$language", 
 		name2 => "key",       value2 => "$key", 
 		name3 => "variables", value3 => "$variables" 
@@ -1482,7 +1956,7 @@ sub get_string_from_double_bang
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->data->{sys}{sql} = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
@@ -1533,7 +2007,7 @@ sub update_db
 sub update_db_ram_used
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ram_used", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ram_used" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1681,7 +2155,7 @@ WHERE
 sub update_db_alerts
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_alerts", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_alerts" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1854,7 +2328,7 @@ AND
 sub update_db_temperature
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_temperature", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_temperature" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1891,7 +2365,7 @@ sub update_db_temperature
 sub update_db_power
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_power", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_power" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1928,7 +2402,7 @@ sub update_db_power
 sub update_db_agents
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_agents", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_agents" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2082,7 +2556,7 @@ WHERE
 sub update_db_hosts
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_hosts", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_hosts" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2236,7 +2710,7 @@ WHERE
 sub add_host_to_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_host_to_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_host_to_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Check each DB
 	my $query = "SELECT COUNT(*) FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
@@ -2323,7 +2797,7 @@ WHERE
 sub call_agents
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "call_agents", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "call_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through the agents directory and call each agent. Record how
 	# long it takes and note the exit code, then record the run-data in the
@@ -2441,7 +2915,7 @@ AND
 sub check_ram_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this ___way___ smarter.
 	# Call PS to get our (and any other duplicate copies of ScanCore) RAM 
@@ -2557,7 +3031,7 @@ AND
 sub analyze_results
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "analyze_results", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "analyze_results" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the
 	# time to select after. 
@@ -2571,7 +3045,7 @@ sub analyze_results
 sub scan_directory
 {
 	my ($an, $directory) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "directory", value1 => "$directory" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2609,7 +3083,7 @@ sub nice_exit
 {
 	my ($an, $exit_code) = @_;
 	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "an_variables_0001", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit" }, message_key => "an_variables_0001", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Close database connections
 	$an->DB->disconnect_from_databases();
@@ -2621,7 +3095,7 @@ sub nice_exit
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file_handle = IO::Handle->new();
 	my $shell_call  = $an->data->{path}{pgrep}." $THIS_FILE 2>&1 |";

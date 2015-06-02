@@ -72,7 +72,12 @@ This is the AN::Tools master 'words' file.
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="an_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
-		<key name="an_variables_0003">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
+		<key name="an_variables_0003">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+\- #!variable!name3!#: [#!variable!value3!#]
+		</key>
 		<key name="an_variables_0004">
 Variables:
 |- #!variable!name1!#: [#!variable!value1!#]
@@ -304,6 +309,7 @@ Variables:
 		<key name="error_title_0015">Failed to write to the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0016">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0017">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0018">Failed to connect to a database. This machine is not registered in the remaining database(s), so this is a fatal error. Please address the issues raised in the error above and then try running the program again.</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
