@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the APC UPS Scan Agent. Please be careful not to use
+names used by the main Striker strings file. Do this by prefixing all strings
+with 'scan_ipmitool_'.
+-->
+<words>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the ipmitool Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using</key>
+		
+		<!-- IPMI Agent-specific messages -->
+		<key name="scan_ipmitool_message_0001">Starting #!string!scan_ipmitool_brand_0001!#:</key>
+		<key name="scan_ipmitool_message_0002"><![CDATA[
+ -=] IPMI Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore alert, monitoring and recovery
+tool for the Anvil! high-availabiltiy platform.
+
+It monitors health of nodes (and IPMI-equiped Striker dashboards) using the
+'ipmitool' program. It uses the IPMI's network connection to monitor machines.
+
+On Anvil! nodes, the thermal information will be used by ScanCore to determine
+when a node is getting dangerously hot. This information (along with thermal 
+sensor data from other scan agents) will be used to decide when a node needs to
+be powered down to avoid a dangerous over-temperature excursion.
+
+On Striker dashboards, this agent will provide up to date thermal information
+to ScanCore to allow it to determine when a node that has gone into 
+emergency-stop can be safely rebooted.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		
+	</lang>
+</words>

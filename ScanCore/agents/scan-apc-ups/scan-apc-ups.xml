@@ -361,12 +361,21 @@ The total lifetime power output from the UPS: [#!variable!ups_name!#] has increa
 		<!-- APC UPS Agent-specific messages -->
 		<key name="scan_apc_ups_message_0001">Starting #!string!scan_apc_ups_brand_0001!#:</key>
 		<key name="scan_apc_ups_message_0002"><![CDATA[
- -=] Striker installer
+ -=] APC UPS Scan Agent
 
 DESCRIPTION
 
-This program installs and configures Striker, the Anvil! dashboard, on an
-almost minimal EL6 install.
+This program is a "scan agent" for the ScanCore alert, monitoring and recovery
+tool for the Anvil! high-availabiltiy platform.
+
+It monitors APC/Schneider brand UPSes. When run on Anvil! nodes, it will
+gracefully shut down all servers, withdraw the nodes from the cluster stack and
+power the node down when the UPSes powering the node are running on batteries
+and the estimated runtime drops below a critical level.
+
+When run on Striker dashboards, it will provide up to date information on the
+health of APC brand UPSes so that ScanCore can determine when it is safe to
+restart nodes that have gone into emergency-stop. 
 
 
 SWITCHES

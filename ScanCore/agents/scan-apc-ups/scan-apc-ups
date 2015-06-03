@@ -3,6 +3,8 @@
 # This software was created by Alteeve's Niche! Inc. and has been released
 # under the terms of the GNU GPL version 2.
 #
+# ScanCore Scan Agent for APC/Schneider Brand UPSes.
+#
 # https://alteeve.ca
 # 
 # Exit Codes:
