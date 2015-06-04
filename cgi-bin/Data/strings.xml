@@ -1055,7 +1055,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0083"><![CDATA[Failed to '<span class="highlight_detail">attach</span>' a resource. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
 		<key name="state_0084"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0008!#</a>]]></key>
 		<key name="state_0085"><![CDATA[Failed to enter '<span class="highlight_detail">connect</span>' state. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
-		<key name="state_0086">Entered connecting state but failed to connect</key>
+		<key name="state_0086"><![CDATA[Entered connecting state but failed to connect<br />Is the network's <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit" target="_new">MTU</a> set too high?]]></key>
 		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
 		<key name="state_0088">Failed; Please see logs</key>
 		<key name="state_0089">Failed to format the logical volume as a gfs2 partition</key>

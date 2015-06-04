@@ -72,6 +72,7 @@ sub run_new_install_manifest
 		mailx				=>	0,
 		man				=>	0,
 		mlocate				=>	0,
+		'net-snmp'			=>	0,
 		ntp				=>	0,
 		OpenIPMI			=>	0,
 		'OpenIPMI-libs'			=>	0,
@@ -381,7 +382,7 @@ sub configure_striker_tools
 	
 	# If requested, enable safe_anvil_start.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
-	if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
+	if ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true")
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_safe_anvil_start($conf);
@@ -389,7 +390,7 @@ sub configure_striker_tools
 	
 	# If requested, enable anvil-kick-apc-ups
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
-	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
+	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true")
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_anvil_kick_apc_ups($conf);

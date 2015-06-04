@@ -11,6 +11,23 @@
 # 0  - Success
 # 1  - Passed in host name was not found in the database.
 # 
+=pod
+Change/set thresholds:
+
+From: https://forums.freenas.org/index.php?threads/how-to-change-sensor-thresholds-with-ipmi-using-ipmitool.23571/
+
+Lower Non-Recoverable
+Lower Critical
+Lower Non-Critical
+
+Upper Non-Critical
+Upper Critical
+Upper Non-Recoverable
+
+ipmitool sensor thresh "*sensor name*" lower *lnr* *lcr* *lnc*
+
+ipmitool sensor thresh "*sensor name*" upper *unc* *ucr* *unr*
+=cut
 
 # Determine this file name.
 my $THIS_FILE =  $0;
