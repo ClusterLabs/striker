@@ -2,7 +2,7 @@
 
 CREATE TABLE apc_ups (
 	apc_ups_id			bigserial			primary key,
-	apc_ups_host_id			bigint,
+	apc_ups_host_id			bigint				not null,
 	apc_ups_fqdn			text,
 	apc_ups_ip			text,
 	apc_ups_ac_restore_delay	double precision,
@@ -45,7 +45,7 @@ CREATE TABLE history.apc_ups (
 	apc_ups_nmc_firmware_version	text,
 	apc_ups_nmc_serial_number	text,
 	apc_ups_nmc_mac_address		text,
-	modified_date	timestamp with time zone	not null
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.apc_ups OWNER TO #!variable!user!#;
 

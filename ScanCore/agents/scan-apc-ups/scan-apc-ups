@@ -2833,9 +2833,9 @@ AND
 	return($apc_ups_id);
 }
 
-# This looks at each DB's 'updated' table to see if any are behind. If any are,
-# it will update the tables based on the time the last entry was made for a
-# given host.
+# This looks at each DB's 'updated' table entry to see if any tables are 
+# behind. If any are, it will update the tables based on the time the last
+# entry was made for a given host.
 sub update_db
 {
 	my ($an) = @_;
@@ -2853,7 +2853,7 @@ sub update_db
 		
 		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
 		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
+		my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
 		next if $id eq $source_db_id;
 		
 		# TODO: Make these proper log messages
@@ -3297,7 +3297,7 @@ WHERE
 	return(0);
 }
 
-# Update the 'apc_ups' table.
+# Update the 'apc_ups_input' table.
 sub update_db_apc_ups_input
 {
 	my ($an, $id) = @_;
@@ -3355,8 +3355,6 @@ LIMIT 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target_apc_ups_input_last_updated", value1 => $target_apc_ups_input_last_updated
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Now read in all records from the source newer than this date.
 	
 	# Now read in all the newer records from the source DB.
 	my $old_date = $target_apc_ups_input_last_updated;
@@ -3719,7 +3717,7 @@ SET
 WHERE 
     apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
 AND 
-    ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number)." 
+    apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number)." 
 ;";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
