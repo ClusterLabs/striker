@@ -59,6 +59,11 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0013">Fahrenheit</key>
 		<key name="tools_suffix_0014">°K</key>
 		<key name="tools_suffix_0015">Kelvin</key>
+		<key name="tools_suffix_0016">%</key>
+		<key name="tools_suffix_0017">w</key>	<!-- watts -->
+		<key name="tools_suffix_0018">vDC</key>	<!-- volts DC -->
+		<key name="tools_suffix_0019">vAC</key>	<!-- volts AC -->
+		<key name="tools_suffix_0020">a</key>	<!-- amps -->
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>

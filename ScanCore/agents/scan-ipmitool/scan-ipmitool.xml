@@ -16,6 +16,16 @@ with 'scan_ipmitool_'.
 		<!-- Strings that can change by rebranding -->
 		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using</key>
 		
+		<!-- Sensor status strings -->
+		<key name="scan_ipmitool_sensor_status_0001">OK</key>		<!-- ok -->
+		<key name="scan_ipmitool_sensor_status_0002">No Signal</key>	<!-- ns -->
+		
+		<!-- Notices -->
+		<key name="scan_ipmitool_note_0001">
+The IPMI sensor: [#!variable!sensor_name!#] has appeared:
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		
 		<!-- IPMI Agent-specific messages -->
 		<key name="scan_ipmitool_message_0001">Starting #!string!scan_ipmitool_brand_0001!#:</key>
 		<key name="scan_ipmitool_message_0002"><![CDATA[
