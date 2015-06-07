@@ -48,10 +48,14 @@ my $an = AN::Tools->new({data =>
 		sys			=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			host_id_query		=>	"",
+			sql			=>	[],
+		},
+		# This is used so that the user can set the language in on
+		# striker.conf variable.
+		scancore		=>	{
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
-			sql			=>	[],
 		},
 		# These are values the user might set in striker.conf
 		'scan-apc-ups'		=>	{
@@ -180,12 +184,12 @@ my $an = AN::Tools->new({data =>
 });
 
 # Set some defaults
-$an->default_language    ($an->data->{sys}{language});
-$an->default_log_language($an->data->{sys}{log_language});
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
 # Set the log level.
-$an->Log->level($an->data->{sys}{log_level});
+$an->Log->level($an->data->{scancore}{log_level});
 
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
@@ -4546,7 +4550,7 @@ sub get_switches
 			},
 			file		=>	$THIS_FILE,
 			line		=>	__LINE__,
-			language	=>	$an->data->{sys}{log_language},
+			language	=>	$an->data->{scancore}{log_language},
 			log_to		=>	$an->data->{path}{log_file},
 		});
 	}

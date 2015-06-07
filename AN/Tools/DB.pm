@@ -265,7 +265,16 @@ sub connect_to_databases
 			#	host		=>	$host,
 			#	port		=>	$port,
 			#}};
-			if ($DBI::errstr =~ /No route to host/)
+			if (not defined $DBI::errstr)
+			{
+				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
+					dbi_error	=>	$@,
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
+					dbi_error	=>	$@,
+				}};
+			}
+			elsif ($DBI::errstr =~ /No route to host/)
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0002", message_variables => {
 					port	=>	$port,

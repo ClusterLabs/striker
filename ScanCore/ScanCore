@@ -57,7 +57,9 @@ su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';
 su - postgres -c "createdb --owner striker scancore"
 su postgres -c "psql scancore"
 
-# Node
+# ScanCore clients
+yum install perl-DBI perl-DBD-Pg
+
 
 ----
 
@@ -1009,7 +1011,7 @@ sub check_node_temperature
 sub check_node_power
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_power_ok       = 1;
 	my $a_ups_has_input     = 0;
@@ -1037,14 +1039,24 @@ FROM
 WHERE 
     power_host_id = (".$an->data->{sys}{host_id_query}.");
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If there are no results, then mark power as always OK because #yolo
+	my $ups_count = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ups_count", value1 => $ups_count
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $ups_count)
+	{
+		return(0);
+	}
 	
 	# NOTE: I know I could sort by remaining hold-up time and/or filter by
 	#       which UPS is on batteries, but slurping it all in makes it 
@@ -1269,13 +1281,16 @@ sub send_email
 	my $body     = "";
 	my $name     = "";
 	my $email    = "";
-	my $language = $an->data->{sys}{language};
+	my $language = $an->data->{scancore}{language};
 	my $level    = "warning";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "language", value1 => $language, 
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $pair (split/,/, $variables)
 	{
 		next if not $pair;
 		my ($variable, $value) = ($pair =~ /^(.*?)="(.*)"/);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable", value1 => $variable, 
 			name2 => "value",    value2 => $value, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1293,7 +1308,7 @@ sub send_email
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "name",     value1 => $name, 
 		name2 => "email",    value2 => $email, 
 		name3 => "language", value3 => $language, 
@@ -1347,7 +1362,6 @@ sub send_email
 			# Record the alert level if it's higher than we saw
 			# before.
 			$subject = $alert_level if $subject > $alert_level;
-			#print "$THIS_FILE ".__LINE__."; subject: [$subject], alert_level: [$alert_level]\n";
 			
 			my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables);
 			my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables);
@@ -1542,8 +1556,11 @@ sub record_alert_to_file
 	
 	my $messages = "";
 	my $file     = "";
-	my $language = $an->data->{sys}{language};
+	my $language = $an->data->{scancore}{language};
 	my $level    = "warning";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "language", value1 => $language, 
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $pair (split/,/, $variables)
 	{
 		next if not $pair;
@@ -1914,7 +1931,7 @@ sub check_email_configuration
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "language",  value1 => "$language", 
 		name2 => "key",       value2 => "$key", 
 		name3 => "variables", value3 => "$variables" 
@@ -1936,7 +1953,7 @@ sub get_string_from_double_bang
 		}
 		$variables = $hash;
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "language",  value1 => $language, 
 		name2 => "key",       value2 => $key, 
 		name3 => "variables", value3 => $variables, 

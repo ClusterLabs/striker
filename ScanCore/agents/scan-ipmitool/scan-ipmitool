@@ -64,12 +64,16 @@ my $an = AN::Tools->new({data =>
 			striker_strings			=>	"$scancore_directory/Data/strings.xml",
 			strings				=>	"$running_directory/$THIS_FILE.xml",
 		},
+		# This is used so that the user can set the language in on
+		# striker.conf variable.
+		scancore		=>	{
+			language		=>	"en_CA",
+			log_level			=>	2,
+			log_language			=>	"en_CA",
+		},
 		sys			=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			host_id_query			=>	"",
-			language			=>	"en_CA",
-			log_level			=>	2,
-			log_language			=>	"en_CA",
 			sql				=>	[],
 		},
 		# These are values the user might set in striker.conf
@@ -80,12 +84,12 @@ my $an = AN::Tools->new({data =>
 });
 
 # Set some defaults
-$an->default_language    ($an->data->{sys}{language});
-$an->default_log_language($an->data->{sys}{log_language});
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
 # Set the log level.
-$an->Log->level($an->data->{sys}{log_level});
+$an->Log->level($an->data->{scancore}{log_level});
 
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
@@ -342,7 +346,7 @@ INSERT INTO
 			foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{ipmi}{$machine}{ipmitool_sensor_name}})
 			{
 				my $this_ipmitool_id_query = $an->data->{sys}{ipmitool_id_query}." = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_ipmitool_id_query", value1 => $this_ipmitool_id_query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1334,7 +1338,7 @@ sub get_switches
 			},
 			file		=>	$THIS_FILE,
 			line		=>	__LINE__,
-			language	=>	$an->data->{sys}{log_language},
+			language	=>	$an->data->{scancore}{log_language},
 			log_to		=>	$an->data->{path}{log_file},
 		});
 	}
