@@ -36,6 +36,9 @@
 =pod
 Steps to setup ScanCore DB:
 
+# Striker
+yum install postgresql94-server
+
 # Database setup
 /etc/init.d/postgresql-9.4 initdb
 /etc/init.d/postgresql-9.4 start
@@ -53,6 +56,8 @@ su - postgres -c "createuser --no-superuser --createdb --no-createrole striker"
 su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';\""
 su - postgres -c "createdb --owner striker scancore"
 su postgres -c "psql scancore"
+
+# Node
 
 ----
 
