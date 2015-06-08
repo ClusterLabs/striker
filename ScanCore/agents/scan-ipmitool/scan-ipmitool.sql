@@ -3,6 +3,7 @@
 CREATE TABLE ipmitool (
 	ipmitool_id			bigserial			primary key,
 	ipmitool_host_id		bigint				not null,
+	ipmitool_sensor_host		text				not null,	-- The hostname of the machine we pulled the sensor value from.
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,	-- Temperature (°C), vDC, vAC, watt, amp, percent
 	ipmitool_sensor_status		text				not null,
@@ -20,6 +21,7 @@ CREATE TABLE history.ipmitool (
 	history_id			bigserial,
 	ipmitool_id			bigint,
 	ipmitool_host_id		bigint,
+	ipmitool_sensor_host		text				not null,
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,
 	ipmitool_sensor_status		text				not null,
@@ -40,6 +42,7 @@ BEGIN
 	INSERT INTO history.ipmitool
 		(ipmitool_id,
 		 ipmitool_host_id, 
+		 ipmitool_sensor_host, 
 		 ipmitool_sensor_name, 
 		 ipmitool_sensor_units, 
 		 ipmitool_sensor_status, 
@@ -51,7 +54,7 @@ BEGIN
 	VALUES
 		(history_ipmitool.ipmitool_id,
 		 history_ipmitool.ipmitool_host_id, 
-		 history_ipmitool.ipmitool_fqdn,
+		 history_ipmitool.ipmitool_sensor_host, 
 		 history_ipmitool.ipmitool_sensor_name, 
 		 history_ipmitool.ipmitool_sensor_units, 
 		 history_ipmitool.ipmitool_sensor_status, 
@@ -85,6 +88,7 @@ ALTER TABLE ipmitool_value OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ipmitool_value (
 	history_id			bigserial,
+	ipmitool_value_id		bigint,
 	ipmitool_value_ipmitool_id	bigint,
 	ipmitool_value_sensor_value	double precision,
 	modified_date			timestamp with time zone	not null

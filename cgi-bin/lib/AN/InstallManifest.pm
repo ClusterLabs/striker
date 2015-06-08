@@ -382,7 +382,7 @@ sub configure_striker_tools
 	
 	# If requested, enable safe_anvil_start.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
-	if ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true")
+	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_safe_anvil_start($conf);
@@ -390,7 +390,7 @@ sub configure_striker_tools
 	
 	# If requested, enable anvil-kick-apc-ups
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
-	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true")
+	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
 	{
 		# Don't fail on this, yet. Maybe later.
 		enable_anvil_kick_apc_ups($conf);

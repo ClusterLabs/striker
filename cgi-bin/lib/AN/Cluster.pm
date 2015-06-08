@@ -3803,8 +3803,11 @@ sub load_install_manifest
 					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					
-					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
-					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
+					$safe_anvil_start   = 1 if $safe_anvil_start   eq "true";
+					$anvil_kick_apc_ups = 1 if $anvil_kick_apc_ups eq "true";
+					
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
 					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}]\n");
 				}
 				elsif ($b eq "media_library")

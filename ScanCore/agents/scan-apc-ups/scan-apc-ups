@@ -11,6 +11,12 @@
 # 0  - Success
 # 1  - Passed in host name was not found in the database.
 # 
+# TODO:
+# - Try to ping each UPS with a 1 second timeout and skip if no results. 
+#   Without this, 2 UPSes can take ~12 seconds to scan and timeout when they 
+#   don't exist.
+# - 
+# 
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -3781,7 +3787,7 @@ sub gather_ups_data
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_ups_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $no_ups_found    = 1;
+	my $no_ups_found = 1;
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
 	{
 		# This is a visual break in the logs. Useful when printing all
@@ -3791,17 +3797,15 @@ sub gather_ups_data
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->data->{ups}{$ups_name}{ip}    = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
 		$an->data->{ups}{$ups_name}{model} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{model});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "ups_name",                value1 => $ups_name, 
 			name2 => "ups::${ups_name}::ip",    value2 => $an->data->{ups}{$ups_name}{ip}, 
 			name3 => "ups::${ups_name}::model", value3 => $an->data->{ups}{$ups_name}{model}
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If I got a model, I found a UPS.
-		if ($an->data->{ups}{$ups_name}{model})
-		{
-			$no_ups_found = 0;
-		}
+		next if $an->data->{ups}{$ups_name}{model} eq "#!no_connection!#";
+		$no_ups_found = 0;
 		
 		# If the UPS is an SURTD model, we may need to adjust some of
 		# the OIDs we use.

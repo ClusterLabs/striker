@@ -17,6 +17,7 @@
 # TODO:
 # - Record the hostname to a file and check the current host name with the one
 #   on file. If it differs, update the appropriate 'hosts' table in the DBs
+# - Have DB.pm return an error code and have ScanCore exit if a query fails.
 #         
 # BUG:
 # - 
