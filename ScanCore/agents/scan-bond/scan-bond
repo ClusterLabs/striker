@@ -1,0 +1,1030 @@
+#!/usr/bin/perl
+# 
+# This is a ScanCore agent for monitoring bonded network interfaces. It is
+# designed for active/passive (mode=1) bonds. Other modes have not been tested
+# and may or may not work.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 1  - Passed in host name was not found in the database.
+# 
+# NOTE:
+#  - Call: [fence_tool ls | grep master | awk '{print $3}'] to see which node
+#    is the fence master and use this node only to try and recover failed
+#    services.
+# 
+
+# Determine this file name.
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+
+# Disable buffering.
+$| = 1;
+
+# This allows our XML and SQL files to be found, even if the path the program
+# is in changes.
+my $running_directory  = ($0                 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		bond		=>	{
+		},
+		path		=>	{
+			proc_bond		=>	"/proc/net/bonding",
+			log_file		=>	"/var/log/striker.log",
+			#log_file		=>	"/var/log/$THIS_FILE.log",
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"$scancore_directory/Data/strings.xml",
+		},
+		# This is used so that the user can set the language in on
+		# striker.conf variable.
+		scancore		=>	{
+			language		=>	"en_CA",
+			log_level		=>	2,
+			log_language		=>	"en_CA",
+		},
+		sys		=>	{
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			host_id_query		=>	"",
+			# This is set below after we connect to the databases 
+			# because we need 'host_id_query' set.
+			bond_id_query		=>	"",
+			sql			=>	[],
+		},
+	}
+});
+
+# Set some defaults
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+
+# Set the log level.
+$an->Log->level($an->data->{scancore}{log_level});
+
+# Read my stuff
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->String->read_words({file => $an->data->{path}{strings}});
+$an->String->read_words({file => $an->data->{path}{core_strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+# Get the switches before printing anything in case the user is asking for
+# help.
+print $an->String->get({key => "scan_bond_message_0001"}), "\n";
+get_switches($an);
+
+# Read in bond. If it returns '1', then bond wasn't found and we will
+# exit.
+if (parse_bonds($an))
+{
+	# Clustat not found, exit.
+	nice_exit($an, 1);
+}
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each
+# one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
+	connections	=>	$connections,
+}, file => $THIS_FILE, line => __LINE__});
+
+# Setup some repeatedly used subqueries for easier use later.
+$an->data->{sys}{bond_id_query}         = "SELECT bond_id FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.")";
+$an->data->{sys}{bond_node_id_query}    = "SELECT bond_node_id FROM bond_node WHERE bond_node_bond_id = (".$an->data->{sys}{bond_id_query}.")";
+$an->data->{sys}{bond_interface_id_query} = "SELECT bond_interface_id FROM bond_interface WHERE bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.")";
+
+# Do the loading of the schemas and copying data from more up to date DBs if
+# the DB was loaded.
+prep_databases($an);
+
+# Look to see if any databases need to be updated.
+update_db($an);
+
+# Look for changes.
+find_changes($an);
+
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
+
+# Clean up and go away.
+nice_exit($an, 0);
+
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# This looks at each DB's 'updated' table to see if any are behind. If any are,
+# it will update the tables based on the time the last entry was made for a
+# given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# TODO: This should be checking 'apc_ups'
+	$an->data->{sys}{sql} = [];
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
+	{
+		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_is_behind", value1 => $db_is_behind, 
+		}, file => $THIS_FILE, line => __LINE__});
+		next if not $db_is_behind;
+		
+		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
+		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
+		next if $id eq $source_db_id;
+		
+		# TODO: Make these proper log messages
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0028", message_variables => {
+			id                  => $id, 
+			source_db_id        => $source_db_id, 
+			source_updated_time => $source_updated_time,
+			target_last_updated => $target_last_updated
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $target_last_updated)
+		{
+			# Full recovery needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (($source_updated_time - $target_last_updated) > 0)
+		{
+			# Partial recovery needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0030", message_variables => {
+				seconds_behind => ($source_updated_time - $target_last_updated), 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Update bond, bond_nodes and bond services.
+		update_db_bond($an, $id);
+		update_db_bond_interface($an, $id);
+	}
+	
+	return(0);
+}
+
+# Update the bond_interface table
+sub update_db_bond_interface
+{
+	my ($an, $id) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bond_interface", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "id", value1 => "$id" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
+	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
+	my $target_db_id        = $id;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "target_last_updated", value1 => $target_last_updated, 
+		name2 => "source_updated_time", value2 => $source_updated_time, 
+		name3 => "source_db_id",        value3 => $source_db_id, 
+		name4 => "target_db_id",        value4 => $target_db_id
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Get the unix time that this table was last updated for this host.
+	my $query = "
+SELECT 
+    modified_date 
+FROM 
+    bond_interface 
+WHERE 
+    bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.") 
+ORDER BY 
+    modified_date ASC 
+LIMIT 1;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target_db_id", value1 => "$target_db_id", 
+		name2 => "query",        value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $target_bond_interface_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
+	   $target_bond_interface_last_updated = 0 if not $target_bond_interface_last_updated;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target_bond_interface_last_updated", value1 => $target_bond_interface_last_updated
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: For each bond_interface_name, check to see if the same name exists
+	###       in the target and decide if it needs an INSERT or UPDATE. So
+	###       first, pull all the existing entries out of the target.
+	   $query   = "
+SELECT 
+    bond_interface_name, 
+    round(extract(epoch from modified_date)) 
+FROM 
+    bond_interface 
+WHERE 
+    bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.");";
+	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $bond_interface_name = $row->[0];
+		my $modified_date        = $row->[1];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "bond_interface_name", value1 => $bond_interface_name, 
+			name2 => "modified_date",     value2 => $modified_date
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{db}{target}{bond_interface}{$bond_interface_name}{modified_date} = $modified_date;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "db::target::bond_interface::${bond_interface_name}::modified_date", value1 => $an->data->{db}{target}{bond_interface}{$bond_interface_name}{modified_date}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now read in all the newer records from the source DB.
+	my $old_date = $target_bond_interface_last_updated;
+	if ($target_bond_interface_last_updated =~ /^\d+$/)
+	{
+		# It's unix time.
+		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_bond_interface_last_updated)."))";
+	}
+	else
+	{
+		# Already a SQL time stamp
+		$old_date = $an->data->{sys}{use_db_fh}->quote($target_bond_interface_last_updated);
+	}
+	$query = "
+SELECT 
+    a.bond_interface_name, 
+
+    a.modified_date 
+FROM 
+    bond_interface a, 
+    bond b 
+WHERE 
+    a.bond_interface_bond_id = b.bond_id 
+AND 
+    b.bond_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    $old_date < a.modified_date;
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$results = "";
+	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $bond_interface_name   = $row->[0];
+		#...
+		my $modified_date          = $row->[4];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "bond_interface_name",   value1 => $bond_interface_name, 
+			# ...
+			name5 => "modified_date",          value5 => $modified_date
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If there isn't an existing extry in the target, do an insert
+		if (not $an->data->{db}{target}{bond_interface}{$bond_interface_name})
+		{
+			# Insert!
+			$an->data->{db}{target}{bond_interface}{$bond_interface_name} = {};
+			push @{$an->data->{sys}{sql}}, "
+INSERT INTO 
+    bond_interface
+(
+    bond_interface_bond_id, 
+    bond_interface_name, 
+...
+    modified_date 
+) VALUES (
+    (".$an->data->{sys}{bond_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_is_vm).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+);";
+		}
+		else
+		{
+			# Update
+			push @{$an->data->{sys}{sql}}, "
+UPDATE 
+    bond_interface 
+SET 
+    bond_interface_host   = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_host).", 
+...
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    bond_interface_id = (
+        ".$an->data->{sys}{bond_interface_id_query}."
+    AND
+        bond_interface_name = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name)."
+    );
+";
+		}
+	}
+	
+	# Commit the changes (if any).
+	if (@{$an->data->{sys}{sql}})
+	{
+		#foreach my $query (@{$an->data->{sys}{sql}})
+		#{
+		#	print "$THIS_FILE ".__LINE__."; query: [$query]\n";
+		#}
+		#die "$THIS_FILE ".__LINE__."; testing...\n";
+		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
+	
+	return(0);
+}
+
+# Update the 'bond' table.
+sub update_db_bond
+{
+	my ($an, $id) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bond", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "id", value1 => "$id" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Put a few things into local variables for easier reading.
+	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
+	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
+	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
+	my $target_db_id        = $id;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "target_last_updated", value1 => $target_last_updated, 
+		name2 => "source_updated_time", value2 => $source_updated_time, 
+		name3 => "source_db_id",        value3 => $source_db_id, 
+		name4 => "target_db_id",        value4 => $target_db_id
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Get the timestamp that this table was last updated for this host.
+	my $query = "SELECT modified_date FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target_db_id", value1 => "$target_db_id", 
+		name2 => "query",        value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $target_bond_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
+	   $target_bond_last_updated = 0 if not $target_bond_last_updated;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target_bond_last_updated", value1 => $target_bond_last_updated
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: For each bond_cluster_name, check to see if the same name exists
+	###       in the target and decide if it needs an INSERT or UPDATE. So
+	###       first, pull all the existing entries out of the target.
+	   $query   = "SELECT bond_cluster_name, round(extract(epoch from modified_date)) FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $bond_cluster_name = $row->[0];
+		my $modified_date        = $row->[1];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "bond_cluster_name", value1 => $bond_cluster_name, 
+			name2 => "modified_date",        value2 => $modified_date
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{db}{target}{bond}{$bond_cluster_name}{modified_date} = $modified_date;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "db::target::bond::${bond_cluster_name}::modified_date", value1 => $an->data->{db}{target}{bond}{$bond_cluster_name}{modified_date}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now read in all the newer records from the source DB.
+	my $old_date = $target_bond_last_updated;
+	if ($target_bond_last_updated =~ /\D/)
+	{
+		# Already a SQL time stamp
+		$old_date = $an->data->{sys}{use_db_fh}->quote($target_bond_last_updated);
+	}
+	else
+	{
+		# It's unix time.
+		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_bond_last_updated)."))";
+	}
+	$query = "
+SELECT 
+    bond_name, 
+    ...
+    bond_quorate, 
+    modified_date 
+FROM 
+    history.bond 
+WHERE 
+    bond_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    $old_date < modified_date 
+ORDER BY
+    modified_date ASC;
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$results = "";
+	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		# The cluster name can change to OFFLINE, and we don't want to
+		# INSERT that.
+		my $bond_cluster_name = $row->[0];
+		my $bond_quorate      = $row->[1];
+		my $modified_date        = $row->[2];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "bond_cluster_name",    value1 => $bond_cluster_name, 
+			name2 => "bond_quorate", value2 => $bond_quorate, 
+			name3 => "modified_date",  value3 => $modified_date
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If there isn't an existing extry in the target, do an insert
+		if (not $an->data->{db}{target}{bond}{$bond_cluster_name})
+		{
+			# Insert!
+			$an->data->{db}{target}{bond}{$bond_cluster_name} = {};
+			push @{$an->data->{sys}{sql}}, "
+INSERT INTO 
+    bond
+(
+    bond_host_id, 
+    bond_nae_name, 
+    ...
+    modified_date 
+) VALUES (
+    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_cluster_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($bond_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+);";
+		}
+		else
+		{
+			# Update
+			push @{$an->data->{sys}{sql}}, "
+UPDATE 
+    bond
+SET
+    ...
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+		}
+	}
+	
+	# Commit the changes (if any).
+	if (@{$an->data->{sys}{sql}})
+	{
+		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
+	
+	return(0);
+}
+
+# This checks to see if this agent's databases tables exist and, if not, load
+# the schema. If the schema gets loaded, we'll check other databases for
+# older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='bond' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count < 1)
+		{
+			# Need to load the database schema.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This reads in the last scan data from one of the databases and compares it
+# against the just-read data. If anything changed, register an alert.
+sub find_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	# Now commit the changes.
+	#commit_sql($an);
+	
+	return(0);
+}
+
+# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
+sub commit_sql
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $count = @{$an->data->{sys}{sql}};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::sql #", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (@{$an->data->{sys}{sql}} > 0)
+	{
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
+	
+	return($count);
+}
+
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Couple of variables to make the code cleaner
+	my $id        = $an->data->{sys}{read_db_id};
+	my $host_name = $an->hostname;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",        value1 => $id, 
+		name2 => "host_name", value2 => $host_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This calls up the entry for this host. If no entry is found, 'new'
+	# gets set to '1' and the main function won't bother looking for
+	# changes and directly INSERT the scanned data.
+	my $new   = 0;
+=pod
+	my $query = "
+SELECT 
+    a.bond_quorate, 
+    a.bond_cluster_name 
+FROM 
+    bond a, 
+    hosts b 
+WHERE 
+    a.bond_host_id = b.host_id 
+AND 
+    b.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+";
+	# TODO: This query should only ever return one row, but this fact
+	#       should be explicitely checked for.
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "query",        value1 => $query, 
+		name2 => "results->[0]", value2 => $results->[0], 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($results->[0])
+	{
+		# We've got an entry in the 'bond' table, so now we'll look
+		# for data in the node and services tables.
+		my ($bond_quorate, $bond_cluster_name) = @{$results->[0]};
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "bond_quorate",      value1 => $bond_quorate, 
+			name2 => "bond_cluster_name", value2 => $bond_cluster_name
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{bond}{sql}{bond}{bond_quorate}      = $bond_quorate ? "TRUE" : "FALSE";
+		$an->data->{bond}{sql}{bond}{bond_cluster_name} = $bond_cluster_name;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "bond::sql::bond::bond_quorate",      value1 => $an->data->{bond}{sql}{bond}{bond_quorate}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "bond::sql::bond::bond_cluster_name", value1 => $an->data->{bond}{sql}{bond}{bond_cluster_name}
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    a.bond_node_name, 
+    a.bond_node_cluster_id, 
+    a.bond_node_status 
+FROM 
+    bond_node a, 
+    bond b, 
+    hosts c 
+WHERE 
+    a.bond_node_bond_id = b.bond_id 
+AND 
+    b.bond_host_id = c.host_id 
+AND 
+    c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+";
+		
+		my $results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",   value1 => $query, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $array_reference (@{$results})
+		{
+			my ($bond_node_name, $bond_node_cluster_id, $bond_node_status) = @{$array_reference};
+			
+			# Record the values directly as we received them.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "bond_node_name",       value1 => $bond_node_name, 
+				name2 => "bond_node_cluster_id", value2 => $bond_node_cluster_id, 
+				name3 => "bond_node_status",     value3 => $bond_node_status
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Push them into the hash
+			$an->data->{bond}{sql}{bond_node}{$bond_node_name} = {
+				bond_node_cluster_id	=>	$bond_node_cluster_id,
+				bond_node_status	=>	$bond_node_status,
+			};
+			
+			# Record the now-in-the-hash data.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bond::sql::bond_node::${bond_node_name}::bond_node_cluster_id", value1 => $an->data->{bond}{sql}{bond_node}{$bond_node_name}{bond_node_cluster_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bond::sql::bond_node::${bond_node_name}::bond_node_status",     value1 => $an->data->{bond}{sql}{bond_node}{$bond_node_name}{bond_node_status}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Now pull our the services
+		$query = "
+SELECT 
+    a.bond_interface_name, 
+    a.bond_interface_host, 
+    a.bond_interface_status, 
+    a.bond_interface_is_vm 
+FROM 
+    bond_interface a, 
+    bond b, 
+    hosts c 
+WHERE 
+    a.bond_interface_bond_id = b.bond_id 
+AND 
+    b.bond_host_id = c.host_id 
+AND 
+    c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+";
+		$results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",   value1 => $query, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $array_reference (@{$results})
+		{
+			my ($bond_interface_name, $bond_interface_host, $bond_interface_status, $bond_interface_is_vm) = @{$array_reference};
+			
+			# Record the values directly as we received them.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "bond_interface_name",   value1 => $bond_interface_name, 
+				name2 => "bond_interface_host",   value2 => $bond_interface_host, 
+				name3 => "bond_interface_status", value3 => $bond_interface_status, 
+				name4 => "bond_interface_is_vm",  value4 => $bond_interface_is_vm
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Push them into the hash
+			$bond_interface_is_vm = $bond_interface_is_vm ? "TRUE" : "FALSE";
+			$an->data->{bond}{sql}{bond_interface}{$bond_interface_name} = {
+				bond_interface_host	=>	$bond_interface_host, 
+				bond_interface_status	=>	$bond_interface_status, 
+				bond_interface_is_vm	=>	$bond_interface_is_vm
+			};
+			
+			# Record the now-in-the-hash data.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bond::sql::bond_interface::${bond_interface_name}::bond_interface_host",   value1 => $an->data->{bond}{sql}{bond_interface}{$bond_interface_name}{bond_interface_host}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bond::sql::bond_interface::${bond_interface_name}::bond_interface_status", value1 => $an->data->{bond}{sql}{bond_interface}{$bond_interface_name}{bond_interface_status}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bond::sql::bond_interface::${bond_interface_name}::bond_interface_is_vm",  value1 => $an->data->{bond}{sql}{bond_interface}{$bond_interface_name}{bond_interface_is_vm}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# Looks like this is the first run ever.
+		$new = 1;
+	}
+=cut
+	
+	return($new);
+}
+
+# This looks rgmanager's 'bond' and, if it is found, parse it.
+sub parse_bonds
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_bond", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 0;
+	if (-e $an->data->{path}{proc_bond})
+	{
+=pod
+# Internet-Facing Network - Bond
+DEVICE="ifn_bond1"
+BRIDGE="ifn_bridge1"
+NM_CONTROLLED="no"
+BOOTPROTO="none"
+ONBOOT="yes"
+BONDING_OPTS="mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1"
+
+=============
+
+Ethernet Channel Bonding Driver: v3.6.0 (September 26, 2009)
+ 
+Bonding Mode: fault-tolerance (active-backup)
+Primary Slave: bcn_link1 (primary_reselect always)
+Currently Active Slave: bcn_link1
+MII Status: up
+MII Polling Interval (ms): 100
+Up Delay (ms): 120000
+Down Delay (ms): 0
+ 
+Slave Interface: bcn_link1
+MII Status: up
+Speed: 1000 Mbps
+Duplex: full
+Link Failure Count: 0
+Permanent HW addr: 00:19:99:9c:9b:9e
+Slave queue ID: 0
+ 
+Slave Interface: bcn_link2
+MII Status: up
+Speed: 1000 Mbps
+Duplex: full
+Link Failure Count: 0
+Permanent HW addr: 00:1b:21:81:c3:35
+Slave queue ID: 0
+=cut
+		local(*DIRECTORY);
+		opendir(DIRECTORY, $an->data->{path}{proc_bond});
+		while(my $file = readdir(DIRECTORY))
+		{
+			next if $file eq ".";
+			next if $file eq "..";
+			
+			# There is a bug where an almost-empty 'bond0' 
+			# interface file is created, we want to ignore that.
+			next if $file eq "bond0";
+			
+			# OK, parse
+			my $full_path = $an->data->{path}{proc_bond}."/$file";
+			my $bond      = $file;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "full_path", value1 => $full_path, 
+				name2 => "bond",      value2 => $bond,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (-r $full_path)
+			{
+				# Woot!
+				my $interface  = "";
+				my $shell_call = $full_path;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => "$shell_call", 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => "$line"
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Core bonding details
+					if (not $interface)
+					{
+						if ($line =~ /Bonding Mode: .*? \((.*?)\)/)
+						{
+							$an->data->{bond}{$bond}{mode} = $1;
+						}
+						if ($line =~ /Primary Slave: (.*?) \(primary_reselect (.*?)\)/)
+						{
+							$an->data->{bond}{$bond}{primary_slave}    = $1;
+							$an->data->{bond}{$bond}{primary_reselect} = $2;
+						}
+						if ($line =~ /Currently Active Slave: (.*)$/)
+						{
+							$an->data->{bond}{$bond}{active_slave} = $1;
+						}
+						if ($line =~ /MII Status: (.*)$/)
+						{
+							$an->data->{bond}{$bond}{mii_status} = $1;
+						}
+						if ($line =~ /MII Polling Interval \(ms\): (\d+)$/)
+						{
+							$an->data->{bond}{$bond}{mii_polling_interval} = $1;
+						}
+						if ($line =~ /Up Delay \(ms\): (\d+)$/)
+						{
+							$an->data->{bond}{$bond}{up_delay} = $1;
+						}
+						if ($line =~ /Down Delay \(ms\): (\d+)$/)
+						{
+							$an->data->{bond}{$bond}{down_delay} = $1;
+						}
+					}
+					if ($line =~ /Slave Interface: (.*)$/)
+					{
+						$interface = $1;
+						next;
+					}
+					if (($interface) && (not $line))
+					{
+						$interface = "";
+						next;
+					}
+					
+					# Slave details
+					if ($interface)
+					{
+						if ($line =~ /MII Status: (.*)$/)
+						{
+							$an->data->{bond}{$bond}{slave}{$interface}{mii_status} = $1;
+						}
+						if ($line =~ /Speed: (.*)$/)
+						{
+							# Convert to bps for the DB
+							$an->data->{bond}{$bond}{slave}{$interface}{speed} = $1;
+						}
+						if ($line =~ /Duplex: (.*)$/)
+						{
+							$an->data->{bond}{$bond}{slave}{$interface}{duplex} = $1;
+						}
+						if ($line =~ /Link Failure Count: (\d+)$/)
+						{
+							$an->data->{bond}{$bond}{slave}{$interface}{failure_count} = $1;
+						}
+						if ($line =~ /Permanent HW addr: (.*)$/)
+						{
+							$an->data->{bond}{$bond}{slave}{$interface}{mac} = $1;
+						}
+						if ($line =~ /Slave queue ID: (.*)$/)
+						{
+							# I really don't need this, but maybe
+							# someday...
+							$an->data->{bond}{$bond}{slave}{$interface}{slave_queue_id} = $1;
+						}
+					}
+				}
+				close $file_handle;
+			}
+		}
+	}
+	else
+	{
+		# Not installed.
+		$an->Log->entry({log_level => 2, title_key => "scancore_title_0005", message_key => "scan_bond_message_0003", file => $THIS_FILE, line => __LINE__});
+		$return_code = 1;
+	}
+	
+	return($return_code);
+}
+
+### TODO: Make this a method
+# Nicely exits the program.
+sub nice_exit
+{
+	my ($an, $exit_code) = @_;
+	$exit_code = 99 if not defined $exit_code;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
+	
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
+	}
+	
+	exit($exit_code);
+}
+
+### TODO: Move this into AN::Tools
+# This collects the command line switches
+sub get_switches
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_switches", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$an->data->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything
+			# after it to 'raw'.
+			$an->data->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument             = "raw";
+				$an->data->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$an->data->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$an->data->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$an->data->{switches}{$last_argument} = $argument;
+				$last_argument                        = "";
+			}
+			else
+			{
+				# Got a value without an argument.
+				$an->data->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($an->data->{switches}{raw})
+	{
+		$an->data->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{switches}})
+	{
+		$an->Log->entry({
+			log_level	=>	2,
+			message_key	=>	"scancore_log_0010",
+			message_variables	=>	{
+				variable	=>	$variable,
+				value		=>	$an->data->{switches}{$variable},
+			},
+			file		=>	$THIS_FILE,
+			line		=>	__LINE__,
+			log_to		=>	$an->data->{path}{log_file},
+		});
+	}
+	
+	# If the user has asked for help, print the usage info.
+	if (($an->data->{switches}{h}) or ($an->data->{switches}{help}) or ($an->data->{switches}{'?'}))
+	{
+		print_usage($an);
+		exit(0);
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "${THIS_FILE}_message_0002"}), "\n";
+
+	return(0);
+}

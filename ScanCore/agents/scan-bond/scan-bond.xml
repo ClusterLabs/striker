@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the rgmanager 'bond' Scan Agent. Please be careful
+not to use names used by the main Striker strings file. Do this by prefixing
+all strings with 'scan_bond_'.
+-->
+<words>
+	<!-- Canadian English -->
+	<name>scan-bond.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the bonded network interface scan agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_bond_brand_0001">Bonded Network Interface Scan Agent</key>
+		
+		<!-- Log messages -->
+		<key name="scan_bond_log_0001"></key>
+		
+		<!-- Notices -->
+		<key name="scan_bond_note_0001"></key>
+		
+		<!-- Warnings. -->
+		<key name="scan_bond_warning_0001"></key>
+		
+		<!-- Errors -->
+		<key name="scan_bond_error_0001"></key>
+		
+		<!-- bond Agent-specific messages -->
+		<key name="scan_bond_message_0001">Starting #!string!scan_bond_brand_0001!#:</key>
+		<key name="scan_bond_message_0002"><![CDATA[
+ -=] ScanCore - Agent - scan-bond
+
+DESCRIPTION
+
+This agent reads and parses the procfs 'bond' files for any bonded interfaces
+found on the host.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
+		]]></key>
+		<key name="scan_bond_message_0003">It looks like this system has no bonded network interfaces, exiting.</key>
+	</lang>
+</words>

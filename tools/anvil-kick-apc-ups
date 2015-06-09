@@ -1165,7 +1165,7 @@ https://alteeve.ca/w/Support
 
                                                               Alteeve's Niche!
 ";
-	open (my $file_handle, ">", "/tmp/$THIS_FILE") or die "Couldn't write help to /tmp/, error was: $!\n";
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
 	print $file_handle $help;
 	close $file_handle;
 	
