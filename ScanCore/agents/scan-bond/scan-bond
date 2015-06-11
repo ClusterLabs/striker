@@ -19,6 +19,8 @@
 #    services.
 # 
 
+exit(0);
+
 # Determine this file name.
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
