@@ -59,7 +59,7 @@ su - postgres -c "createdb --owner striker scancore"
 su postgres -c "psql scancore"
 
 # ScanCore clients
-yum install perl-DBI perl-DBD-Pg
+yum install perl-DBI perl-DBD-Pg perl-CGI perl-TermReadKey perl-XML-Simple perl-Net-SSH2 
 
 
 ----

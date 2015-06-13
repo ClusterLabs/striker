@@ -117,6 +117,7 @@ sub do_db_write
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
+			#print "id: [$id], query: ============\n$query\n============\n";
 			$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
 # 			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
 # 								query    => $query, 
@@ -165,7 +166,11 @@ sub do_db_query
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
 	# Execute on the query
-	$DBreq->execute() or $an->Alert->error({ fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0002", message_variables => {query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr, }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0002", message_variables => {
+					query    => $query, 
+					server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+					db_error => $DBI::errstr
+				}, code => 3, file => "$THIS_FILE", line => __LINE__});
 	
 	# Return the array
 	return($DBreq->fetchall_arrayref());

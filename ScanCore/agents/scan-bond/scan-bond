@@ -19,8 +19,6 @@
 #    services.
 # 
 
-exit(0);
-
 # Determine this file name.
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -66,7 +64,7 @@ my $an = AN::Tools->new({data =>
 			host_id_query		=>	"",
 			# This is set below after we connect to the databases 
 			# because we need 'host_id_query' set.
-			bond_id_query		=>	"",
+		bond_id_query		=>	"",
 			sql			=>	[],
 		},
 	}
@@ -95,21 +93,20 @@ get_switches($an);
 # exit.
 if (parse_bonds($an))
 {
-	# Clustat not found, exit.
+	# No bonds found, exit.
 	nice_exit($an, 1);
 }
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each
 # one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
+$an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 
 # Setup some repeatedly used subqueries for easier use later.
-$an->data->{sys}{bond_id_query}         = "SELECT bond_id FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.")";
-$an->data->{sys}{bond_node_id_query}    = "SELECT bond_node_id FROM bond_node WHERE bond_node_bond_id = (".$an->data->{sys}{bond_id_query}.")";
-$an->data->{sys}{bond_interface_id_query} = "SELECT bond_interface_id FROM bond_interface WHERE bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.")";
+$an->data->{sys}{bond_id_query}           = "SELECT bond_id FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.")";
+$an->data->{sys}{bond_interface_id_query} = "SELECT b.bond_interface_id FROM bond a, bond_interface b WHERE a.bond_id = b.bond_interface_id AND b.bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.") AND ";
 
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
@@ -269,7 +266,12 @@ WHERE
 	$query = "
 SELECT 
     a.bond_interface_name, 
-
+    a.bond_interface_mii_status, 
+    a.bond_interface_speed, 
+    a.bond_interface_duplex, 
+    a.bond_interface_failure_count, 
+    a.bond_interface_mac, 
+    a.bond_interface_slave_queue_id, 
     a.modified_date 
 FROM 
     bond_interface a, 
@@ -292,13 +294,23 @@ AND
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $bond_interface_name   = $row->[0];
-		#...
-		my $modified_date          = $row->[4];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "bond_interface_name",   value1 => $bond_interface_name, 
-			# ...
-			name5 => "modified_date",          value5 => $modified_date
+		my $bond_interface_name           = $row->[0];
+		my $bond_interface_mii_status     = $row->[1];
+		my $bond_interface_speed          = $row->[2];
+		my $bond_interface_duplex         = $row->[3];
+		my $bond_interface_failure_count  = $row->[4];
+		my $bond_interface_mac            = $row->[5];
+		my $bond_interface_slave_queue_id = $row->[6];
+		my $modified_date                 = $row->[7];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "bond_interface_name",           value1 => $bond_interface_name, 
+			name2 => "bond_interface_mii_status",     value2 => $bond_interface_mii_status,  
+			name3 => "bond_interface_speed",          value3 => $bond_interface_speed,  
+			name4 => "bond_interface_duplex",         value4 => $bond_interface_duplex,  
+			name5 => "bond_interface_failure_count",  value5 => $bond_interface_failure_count,  
+			name6 => "bond_interface_mac",            value6 => $bond_interface_mac, 
+			name7 => "bond_interface_slave_queue_id", value7 => $bond_interface_slave_queue_id, 
+			name8 => "modified_date",                 value8 => $modified_date
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If there isn't an existing extry in the target, do an insert
@@ -306,40 +318,42 @@ AND
 		{
 			# Insert!
 			$an->data->{db}{target}{bond_interface}{$bond_interface_name} = {};
-			push @{$an->data->{sys}{sql}}, "
-INSERT INTO 
-    bond_interface
-(
-    bond_interface_bond_id, 
-    bond_interface_name, 
-...
-    modified_date 
-) VALUES (
-    (".$an->data->{sys}{bond_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name).",  
-    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_host).", 
-    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_is_vm).", 
-    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
-);";
+# 			push @{$an->data->{sys}{sql}}, "
+# INSERT INTO 
+#     bond_interface
+# (
+#     a.bond_interface_bond_id, 
+#     a.bond_interface_name, 
+#     a.bond_interface_mii_status, 
+#     a.bond_interface_speed, 
+#     a.bond_interface_duplex, 
+#     a.bond_interface_failure_count, 
+#     a.bond_interface_mac, 
+#     a.bond_interface_slave_queue_id, 
+#     modified_date 
+# ) VALUES (
+#     (".$an->data->{sys}{bond_id_query}."), 
+#     ".$an->data->{sys}{use_db_fh}->quote().", 
+#     ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+# );";
 		}
 		else
 		{
 			# Update
-			push @{$an->data->{sys}{sql}}, "
-UPDATE 
-    bond_interface 
-SET 
-    bond_interface_host   = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_host).", 
-...
-    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    bond_interface_id = (
-        ".$an->data->{sys}{bond_interface_id_query}."
-    AND
-        bond_interface_name = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name)."
-    );
-";
+# 			push @{$an->data->{sys}{sql}}, "
+# UPDATE 
+#     bond_interface 
+# SET 
+#     bond_interface_host   = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_host).", 
+# ...
+#     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+# WHERE 
+#     bond_interface_id = (
+#         ".$an->data->{sys}{bond_interface_id_query}."
+#     AND
+#         bond_interface_name = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name)."
+#     );
+# ";
 		}
 	}
 	
@@ -362,7 +376,7 @@ WHERE
 sub update_db_bond
 {
 	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bond", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_bond", }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -387,7 +401,7 @@ sub update_db_bond
 	
 	my $target_bond_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
 	   $target_bond_last_updated = 0 if not $target_bond_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target_bond_last_updated", value1 => $target_bond_last_updated
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -396,17 +410,17 @@ sub update_db_bond
 	###       first, pull all the existing entries out of the target.
 	   $query   = "SELECT bond_cluster_name, round(extract(epoch from modified_date)) FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.");";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
 		my $bond_cluster_name = $row->[0];
-		my $modified_date        = $row->[1];
+		my $modified_date     = $row->[1];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "bond_cluster_name", value1 => $bond_cluster_name, 
-			name2 => "modified_date",        value2 => $modified_date
+			name2 => "modified_date",     value2 => $modified_date
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{db}{target}{bond}{$bond_cluster_name}{modified_date} = $modified_date;
@@ -430,8 +444,14 @@ sub update_db_bond
 	$query = "
 SELECT 
     bond_name, 
-    ...
-    bond_quorate, 
+    bond_mode, 
+    bond_primary_slave, 
+    bond_primary_reselect, 
+    bond_active_slave, 
+    bond_mii_status, 
+    bond_mii_polling_interval, 
+    bond_up_delay, 
+    bond_down_delay, 
     modified_date 
 FROM 
     history.bond 
@@ -442,12 +462,12 @@ AND
 ORDER BY
     modified_date ASC;
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	$results = "";
 	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	# One or more records were found.
@@ -455,32 +475,60 @@ ORDER BY
 	{
 		# The cluster name can change to OFFLINE, and we don't want to
 		# INSERT that.
-		my $bond_cluster_name = $row->[0];
-		my $bond_quorate      = $row->[1];
-		my $modified_date        = $row->[2];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "bond_cluster_name",    value1 => $bond_cluster_name, 
-			name2 => "bond_quorate", value2 => $bond_quorate, 
-			name3 => "modified_date",  value3 => $modified_date
+		my $bond_name                 = $row->[0], 
+		my $bond_mode                 = $row->[1];
+		my $bond_primary_slave        = $row->[2];
+		my $bond_primary_reselect     = $row->[3];
+		my $bond_active_slave         = $row->[4];
+		my $bond_mii_status           = $row->[5];
+		my $bond_mii_polling_interval = $row->[6];
+		my $bond_up_delay             = $row->[7];
+		my $bond_down_delay           = $row->[8];
+		my $modified_date             = $row->[9];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "bond_name",                 value1  => $bond_name, 
+			name2  => "bond_mode",                 value2  => $bond_mode, 
+			name3  => "bond_primary_slave",        value3  => $bond_primary_slave, 
+			name4  => "bond_primary_reselect",     value4  => $bond_primary_reselect, 
+			name5  => "bond_active_slave",         value5  => $bond_active_slave, 
+			name6  => "bond_mii_status",           value6  => $bond_mii_status, 
+			name7  => "bond_mii_polling_interval", value7  => $bond_mii_polling_interval, 
+			name8  => "bond_up_delay",             value8  => $bond_up_delay, 
+			name9  => "bond_down_delay",           value9  => $bond_down_delay, 
+			name10 => "modified_date",             value10 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{bond}{$bond_cluster_name})
+		if (not $an->data->{db}{target}{bond}{$bond_name})
 		{
 			# Insert!
-			$an->data->{db}{target}{bond}{$bond_cluster_name} = {};
+			$an->data->{db}{target}{bond}{$bond_name} = {};
 			push @{$an->data->{sys}{sql}}, "
 INSERT INTO 
     bond
 (
     bond_host_id, 
-    bond_nae_name, 
-    ...
+    bond_name, 
+    bond_mode, 
+    bond_primary_slave, 
+    bond_primary_reselect, 
+    bond_active_slave, 
+    bond_mii_status, 
+    bond_mii_polling_interval, 
+    bond_up_delay, 
+    bond_down_delay, 
     modified_date 
 ) VALUES (
     (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($bond_cluster_name).",  
-    ".$an->data->{sys}{use_db_fh}->quote($bond_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_mode).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_primary_slave).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_primary_reselect).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_active_slave).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_mii_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_mii_polling_interval).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_up_delay).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_down_delay).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
 );";
 		}
@@ -491,8 +539,16 @@ INSERT INTO
 UPDATE 
     bond
 SET
-    ...
-    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    bond_name                 = ".$an->data->{sys}{use_db_fh}->quote($bond_name).", 
+    bond_mode                 = ".$an->data->{sys}{use_db_fh}->quote($bond_mode).", 
+    bond_primary_slave        = ".$an->data->{sys}{use_db_fh}->quote($bond_primary_slave).", 
+    bond_primary_reselect     = ".$an->data->{sys}{use_db_fh}->quote($bond_primary_reselect).", 
+    bond_active_slave         = ".$an->data->{sys}{use_db_fh}->quote($bond_active_slave).", 
+    bond_mii_status           = ".$an->data->{sys}{use_db_fh}->quote($bond_mii_status).", 
+    bond_mii_polling_interval = ".$an->data->{sys}{use_db_fh}->quote($bond_mii_polling_interval).", 
+    bond_up_delay             = ".$an->data->{sys}{use_db_fh}->quote($bond_up_delay).", 
+    bond_down_delay           = ".$an->data->{sys}{use_db_fh}->quote($bond_down_delay).", 
+    modified_date             = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     bond_host_id = (".$an->data->{sys}{host_id_query}.");";
 		}
@@ -549,6 +605,14 @@ sub find_changes
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Read in last scan data (if any).
+	my $id               = $an->data->{sys}{read_db_id};
+	my $host_name        = $an->hostname;
+	my $say_cluster_name = $an->data->{clustat}{cluster_name};
+	my $say_quorate      = $an->data->{clustat}{quorate};
+	if (read_last_scan($an))
+	{
+	}
 	
 	# Now commit the changes.
 	#commit_sql($an);
@@ -668,8 +732,8 @@ AND
 			
 			# Push them into the hash
 			$an->data->{bond}{sql}{bond_node}{$bond_node_name} = {
-				bond_node_cluster_id	=>	$bond_node_cluster_id,
-				bond_node_status	=>	$bond_node_status,
+			    a.bond_node_cluster_id	=>	$bond_node_cluster_id,
+			    a.bond_node_status	=>	$bond_node_status,
 			};
 			
 			# Record the now-in-the-hash data.
@@ -719,9 +783,9 @@ AND
 			# Push them into the hash
 			$bond_interface_is_vm = $bond_interface_is_vm ? "TRUE" : "FALSE";
 			$an->data->{bond}{sql}{bond_interface}{$bond_interface_name} = {
-				bond_interface_host	=>	$bond_interface_host, 
-				bond_interface_status	=>	$bond_interface_status, 
-				bond_interface_is_vm	=>	$bond_interface_is_vm
+			    a.bond_interface_host	=>	$bond_interface_host, 
+			    a.bond_interface_status	=>	$bond_interface_status, 
+			    a.bond_interface_is_vm	=>	$bond_interface_is_vm
 			};
 			
 			# Record the now-in-the-hash data.
@@ -750,48 +814,14 @@ AND
 sub parse_bonds
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_bond", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_bond", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $return_code = 0;
+	my $return_code = 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::proc_bond", value1 => $an->data->{path}{proc_bond},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{proc_bond})
 	{
-=pod
-# Internet-Facing Network - Bond
-DEVICE="ifn_bond1"
-BRIDGE="ifn_bridge1"
-NM_CONTROLLED="no"
-BOOTPROTO="none"
-ONBOOT="yes"
-BONDING_OPTS="mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1"
-
-=============
-
-Ethernet Channel Bonding Driver: v3.6.0 (September 26, 2009)
- 
-Bonding Mode: fault-tolerance (active-backup)
-Primary Slave: bcn_link1 (primary_reselect always)
-Currently Active Slave: bcn_link1
-MII Status: up
-MII Polling Interval (ms): 100
-Up Delay (ms): 120000
-Down Delay (ms): 0
- 
-Slave Interface: bcn_link1
-MII Status: up
-Speed: 1000 Mbps
-Duplex: full
-Link Failure Count: 0
-Permanent HW addr: 00:19:99:9c:9b:9e
-Slave queue ID: 0
- 
-Slave Interface: bcn_link2
-MII Status: up
-Speed: 1000 Mbps
-Duplex: full
-Link Failure Count: 0
-Permanent HW addr: 00:1b:21:81:c3:35
-Slave queue ID: 0
-=cut
 		local(*DIRECTORY);
 		opendir(DIRECTORY, $an->data->{path}{proc_bond});
 		while(my $file = readdir(DIRECTORY))
@@ -802,6 +832,9 @@ Slave queue ID: 0
 			# There is a bug where an almost-empty 'bond0' 
 			# interface file is created, we want to ignore that.
 			next if $file eq "bond0";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "file", value1 => $file,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# OK, parse
 			my $full_path = $an->data->{path}{proc_bond}."/$file";
@@ -833,36 +866,59 @@ Slave queue ID: 0
 						if ($line =~ /Bonding Mode: .*? \((.*?)\)/)
 						{
 							$an->data->{bond}{$bond}{mode} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::mode", value1 => $an->data->{bond}{$bond}{mode}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Primary Slave: (.*?) \(primary_reselect (.*?)\)/)
 						{
 							$an->data->{bond}{$bond}{primary_slave}    = $1;
 							$an->data->{bond}{$bond}{primary_reselect} = $2;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "bond::${bond}::primary_slave",    value1 => $an->data->{bond}{$bond}{primary_slave}, 
+								name2 => "bond::${bond}::primary_reselect", value2 => $an->data->{bond}{$bond}{primary_reselect}, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Currently Active Slave: (.*)$/)
 						{
 							$an->data->{bond}{$bond}{active_slave} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::active_slave", value1 => $an->data->{bond}{$bond}{active_slave}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /MII Status: (.*)$/)
 						{
 							$an->data->{bond}{$bond}{mii_status} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::mii_status", value1 => $an->data->{bond}{$bond}{mii_status}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /MII Polling Interval \(ms\): (\d+)$/)
 						{
 							$an->data->{bond}{$bond}{mii_polling_interval} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::mii_polling_interval", value1 => $an->data->{bond}{$bond}{mii_polling_interval}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Up Delay \(ms\): (\d+)$/)
 						{
 							$an->data->{bond}{$bond}{up_delay} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::up_delay", value1 => $an->data->{bond}{$bond}{up_delay}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Down Delay \(ms\): (\d+)$/)
 						{
 							$an->data->{bond}{$bond}{down_delay} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::down_delay", value1 => $an->data->{bond}{$bond}{down_delay}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 					if ($line =~ /Slave Interface: (.*)$/)
 					{
-						$interface = $1;
+						$interface   = $1;
+						$return_code = 0;
 						next;
 					}
 					if (($interface) && (not $line))
@@ -877,29 +933,47 @@ Slave queue ID: 0
 						if ($line =~ /MII Status: (.*)$/)
 						{
 							$an->data->{bond}{$bond}{slave}{$interface}{mii_status} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::mii_status", value1 => $an->data->{bond}{$bond}{slave}{$interface}{mii_status}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Speed: (.*)$/)
 						{
 							# Convert to bps for the DB
 							$an->data->{bond}{$bond}{slave}{$interface}{speed} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::speed", value1 => $an->data->{bond}{$bond}{slave}{$interface}{speed}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Duplex: (.*)$/)
 						{
 							$an->data->{bond}{$bond}{slave}{$interface}{duplex} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::duplex", value1 => $an->data->{bond}{$bond}{slave}{$interface}{duplex}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Link Failure Count: (\d+)$/)
 						{
 							$an->data->{bond}{$bond}{slave}{$interface}{failure_count} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::failure_count", value1 => $an->data->{bond}{$bond}{slave}{$interface}{failure_count}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Permanent HW addr: (.*)$/)
 						{
 							$an->data->{bond}{$bond}{slave}{$interface}{mac} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::mac", value1 => $an->data->{bond}{$bond}{slave}{$interface}{mac}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						if ($line =~ /Slave queue ID: (.*)$/)
 						{
 							# I really don't need this, but maybe
 							# someday...
 							$an->data->{bond}{$bond}{slave}{$interface}{slave_queue_id} = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "bond::${bond}::slave::${interface}::slave_queue_id", value1 => $an->data->{bond}{$bond}{slave}{$interface}{slave_queue_id}
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -914,6 +988,9 @@ Slave queue ID: 0
 		$return_code = 1;
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code
+	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
 }
 

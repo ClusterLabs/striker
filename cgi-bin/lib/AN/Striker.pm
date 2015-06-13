@@ -6665,6 +6665,7 @@ sub delete_vm
 			}});
 		}
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; proceed: [$proceed], host: [$host]\n");
 	
 	# Get to work!
 	my $say_title = AN::Common::get_string($conf, {key => "title_0057", variables => {
@@ -6732,14 +6733,17 @@ sub delete_vm
 		print AN::Common::template($conf, "server.html", "delete-server-start-footer");
 		
 		my $stop_exit_code;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; stop_vm: [$stop_vm], ccs_exit_code: [$ccs_exit_code]\n");
 		if (($stop_vm) && ($ccs_exit_code eq "0"))
 		{
 			# Server is still running, kill it.
 			print AN::Common::template($conf, "server.html", "delete-server-force-off-header");
 			
 			   $proceed = 0;
-			my $virsh_exit_code;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+			my $virsh_exit_code;
+			my $shell_call = "virsh destroy $say_vm; echo virsh:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$host,
 				port		=>	$conf->{node}{$host}{port},
@@ -6747,7 +6751,7 @@ sub delete_vm
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	0,
-				shell_call	=>	"virsh destroy $say_vm; echo virsh:\$?",
+				shell_call	=>	"",
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -6776,12 +6780,18 @@ sub delete_vm
 			}
 			else
 			{
-				my $say_error = AN::Common::get_string($conf, {key => "message_0200", variables => {
+				# It is possible that the VM dies before now, 
+				# so print a warning, but then move on.
+				my $say_warning = AN::Common::get_string($conf, {key => "message_0200", variables => {
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-				print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
-					error	=>	$say_error,
+				print AN::Common::template($conf, "server.html", "one-line-message", {
+					message	=>	"$say_warning",
 				});
+				$proceed = 1;
+				#print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
+				#	error	=>	$say_error,
+				#});
 			}
 			print AN::Common::template($conf, "server.html", "delete-server-force-off-footer");
 		}

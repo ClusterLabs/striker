@@ -228,7 +228,7 @@ SET
     ipmitool_value_sensor_value = ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_value_sensor_value).", 
     modified_date               = ".$an->data->{sys}{db_timestamp}." 
 WHERE 
-    ipmitool_value_ipmitool_id = $this_ipmitool_id_query;
+    ipmitool_value_ipmitool_id = ($this_ipmitool_id_query);
 ";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -263,11 +263,11 @@ WHERE
 						name2 => "old_ipmitool_sensor_low_warning", value2 => $old_ipmitool_sensor_low_warning, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if (($new_ipmitool_sensor_units         ne $old_ipmitool_sensor_units) or 
-					($new_ipmitool_sensor_status        ne $old_ipmitool_sensor_status) or 
-					($new_ipmitool_sensor_high_critical ne $old_ipmitool_sensor_high_critical) or 
-					($new_ipmitool_sensor_high_warning  ne $old_ipmitool_sensor_high_warning) or 
-					($new_ipmitool_sensor_low_critical  ne $old_ipmitool_sensor_low_critical) or 
-					($new_ipmitool_sensor_low_warning   ne $old_ipmitool_sensor_low_warning))
+					    ($new_ipmitool_sensor_status        ne $old_ipmitool_sensor_status) or 
+					    ($new_ipmitool_sensor_high_critical ne $old_ipmitool_sensor_high_critical) or 
+					    ($new_ipmitool_sensor_high_warning  ne $old_ipmitool_sensor_high_warning) or 
+					    ($new_ipmitool_sensor_low_critical  ne $old_ipmitool_sensor_low_critical) or 
+					    ($new_ipmitool_sensor_low_warning   ne $old_ipmitool_sensor_low_warning))
 					{
 						# Huh, interesting. Well, update
 						my $query = "
@@ -282,7 +282,7 @@ SET
     ipmitool_sensor_low_warning   = ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_sensor_low_warning).", 
     modified_date                 = ".$an->data->{sys}{db_timestamp}." 
 WHERE 
-    ipmitool_value_ipmitool_id = $this_ipmitool_id_query;
+    ipmitool_id = ($this_ipmitool_id_query);
 ";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -570,12 +570,12 @@ AND
 		
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}         = $ipmitool_sensor_units;
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}        = $ipmitool_sensor_status;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = $ipmitool_sensor_high_critical;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = $ipmitool_sensor_high_warning;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning;
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = $ipmitool_sensor_high_critical ? $ipmitool_sensor_high_critical : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = $ipmitool_sensor_high_warning  ? $ipmitool_sensor_high_warning  : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical  ? $ipmitool_sensor_low_critical  : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_high_critical", value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical}, 

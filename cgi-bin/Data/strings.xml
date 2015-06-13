@@ -1496,7 +1496,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0197">The server has been successfully removed.</key>
 		<key name="message_0198"><![CDATA[The removal call should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.]]></key>
 		<key name="message_0199">The server has been forced off.</key>
-		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.]]></key>
+		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.<br />Is it possible that the server shut down on it's own?<br />Proceeding with the delete process.]]></key>
 		<key name="message_0201"><![CDATA[Deleting <span class="fixed_width">#!variable!lv!#</span>...]]></key>
 		<key name="message_0202">Removed successfully</key>
 		<key name="message_0203"><![CDATA[It would appear that <span class="fixed_width">#!variable!lv!#</span> was not removed.]]></key>
