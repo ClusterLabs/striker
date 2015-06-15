@@ -283,6 +283,7 @@ SELECT
     a.clustat_service_host, 
     a.clustat_service_is_vm, 
     a.clustat_service_status, 
+    a.clustat_service_notes, 
     a.modified_date 
 FROM 
     clustat_service a, 
@@ -309,13 +310,15 @@ AND
 		my $clustat_service_host   = $row->[1];
 		my $clustat_service_is_vm  = $row->[2];
 		my $clustat_service_status = $row->[3];
-		my $modified_date          = $row->[4];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		my $clustat_service_notes  = $row->[4]; 
+		my $modified_date          = $row->[5];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "clustat_service_name",   value1 => $clustat_service_name, 
 			name2 => "clustat_service_host",   value2 => $clustat_service_host, 
 			name3 => "clustat_service_is_vm",  value3 => $clustat_service_is_vm, 
 			name4 => "clustat_service_status", value4 => $clustat_service_status, 
-			name5 => "modified_date",          value5 => $modified_date
+			name5 => "clustat_service_notes",  value5 => $clustat_service_notes, 
+			name6 => "modified_date",          value6 => $modified_date
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If there isn't an existing extry in the target, do an insert
@@ -332,6 +335,7 @@ INSERT INTO
     clustat_service_host, 
     clustat_service_is_vm, 
     clustat_service_status, 
+    clustat_service_notes, 
     modified_date 
 ) VALUES (
     (".$an->data->{sys}{clustat_id_query}."), 
@@ -339,6 +343,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
 );";
 		}
@@ -352,6 +357,7 @@ SET
     clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
     clustat_service_is_vm  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
     clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).",
+    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).",
     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     clustat_service_id = (
@@ -1912,6 +1918,7 @@ sub insert_into_clustat_service
 	my $host_name     = $an->hostname;
 	my $say_host      = $an->data->{clustat}{service}{$service}{host};
 	my $say_status    = $an->data->{clustat}{service}{$service}{status};
+	my $say_notes     = $an->data->{clustat}{service}{$service}{notes};
 	my $say_is_server = $an->data->{clustat}{service}{$service}{is_server};
 	
 	my $query = "
@@ -1922,6 +1929,7 @@ INSERT INTO
     clustat_service_name, 
     clustat_service_host, 
     clustat_service_status, 
+    clustat_service_notes, 
     clustat_service_is_vm, 
     modified_date
 ) VALUES (
@@ -1929,6 +1937,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($service).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_notes).", 
     $say_is_server, 
     ".$an->data->{sys}{db_timestamp}."
 );
@@ -1955,6 +1964,7 @@ sub update_clustat_service
 	my $host_name     = $an->hostname;
 	my $say_host      = $an->data->{clustat}{service}{$service}{host};
 	my $say_status    = $an->data->{clustat}{service}{$service}{status};
+	my $say_notes     = $an->data->{clustat}{service}{$service}{notes};
 	my $say_is_server = $an->data->{clustat}{service}{$service}{is_server};
 	
 	my $query = "
@@ -1963,6 +1973,7 @@ UPDATE
 SET 
     clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
     clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
+    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($say_notes).", 
     clustat_service_is_vm  = $say_is_server
 WHERE 
     clustat_service_id = (
@@ -2170,6 +2181,7 @@ SELECT
     a.clustat_service_name, 
     a.clustat_service_host, 
     a.clustat_service_status, 
+    a.clustat_service_notes, 
     a.clustat_service_is_vm 
 FROM 
     clustat_service a, 
@@ -2189,14 +2201,15 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $array_reference (@{$results})
 		{
-			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_is_vm) = @{$array_reference};
+			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_notes, $clustat_service_is_vm) = @{$array_reference};
 			
 			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "clustat_service_name",   value1 => $clustat_service_name, 
 				name2 => "clustat_service_host",   value2 => $clustat_service_host, 
 				name3 => "clustat_service_status", value3 => $clustat_service_status, 
-				name4 => "clustat_service_is_vm",  value4 => $clustat_service_is_vm
+				name4 => "clustat_service_notes",  value4 => $clustat_service_notes, 
+				name5 => "clustat_service_is_vm",  value5 => $clustat_service_is_vm
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Push them into the hash
@@ -2204,6 +2217,7 @@ AND
 			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name} = {
 				clustat_service_host	=>	$clustat_service_host, 
 				clustat_service_status	=>	$clustat_service_status, 
+				clustat_service_notes	=>	$clustat_service_notes, 
 				clustat_service_is_vm	=>	$clustat_service_is_vm
 			};
 			
@@ -2213,6 +2227,9 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_notes", value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm",  value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 

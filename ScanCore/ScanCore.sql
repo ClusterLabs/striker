@@ -218,7 +218,6 @@ CREATE TABLE temperature (
 	temperature_celsius	double precision		not null,
 	temperature_state	text				not null,			-- warning, critical
 	temperature_is		text				not null,			-- high or low
-	temperature_jumped	boolean				not null,			-- Set true if the sensor is still in "Warning" but possibly indicative of a cooling failure.
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(temperature_host_id) REFERENCES hosts(host_id)
@@ -234,7 +233,6 @@ CREATE TABLE history.temperature (
 	temperature_celsius	double precision,
 	temperature_state	text,
 	temperature_is		text,
-	temperature_jumped	boolean,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.temperature OWNER TO #!variable!user!#;
@@ -253,7 +251,6 @@ BEGIN
 		 temperature_celsius,
 		 temperature_state,
 		 temperature_is,
-		 temperature_jumped,
 		 modified_date)
 	VALUES
 		(history_temperature.temperature_id,
@@ -263,7 +260,6 @@ BEGIN
 		 history_temperature.temperature_celsius,
 		 history_temperature.temperature_state,
 		 history_temperature.temperature_is,
-		 history_temperature.temperature_jumped,
 		 history_temperature.modified_date);
 	RETURN NULL;
 END;

@@ -1284,6 +1284,7 @@ sub send_email
 	my $email    = "";
 	my $language = $an->data->{scancore}{language};
 	my $level    = "warning";
+	my $units    = "metric";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "language", value1 => $language, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1300,6 +1301,7 @@ sub send_email
 		elsif ($variable eq "email")    { $email    = $value; }
 		elsif ($variable eq "language") { $language = $value; }
 		elsif ($variable eq "level")    { $level    = $value; }
+		elsif ($variable eq "units")    { $units    = $value; }
 		else
 		{
 			# Invalid entry.
@@ -1309,11 +1311,12 @@ sub send_email
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "name",     value1 => $name, 
 		name2 => "email",    value2 => $email, 
 		name3 => "language", value3 => $language, 
 		name4 => "level",    value4 => $level, 
+		name5 => "units",    value5 => $units, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Convert the user's log level to a numeric number for easier
@@ -1364,8 +1367,10 @@ sub send_email
 			# before.
 			$subject = $alert_level if $subject > $alert_level;
 			
-			my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables);
-			my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables);
+			# The conversion if C to F is handled in 
+			# translate_sensor_{name,value}() functions.
+			my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables, $units);
+			my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables, $units);
 			if ($level >= $alert_level)
 			{
 				#print "$THIS_FILE ".__LINE__."; Sending alert: [$alert_id] to: [$name <$email>] in the language: [$language]...\n";
@@ -1559,6 +1564,7 @@ sub record_alert_to_file
 	my $file     = "";
 	my $language = $an->data->{scancore}{language};
 	my $level    = "warning";
+	my $units    = "metric";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "language", value1 => $language, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1574,6 +1580,7 @@ sub record_alert_to_file
 		if    ($variable eq "file")     { $file     = $value; }
 		elsif ($variable eq "language") { $language = $value; }
 		elsif ($variable eq "level")    { $level    = $value; }
+		elsif ($variable eq "units")    { $units    = $value; }
 		else
 		{
 			# Invalid entry.
@@ -1583,10 +1590,11 @@ sub record_alert_to_file
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "file",     value1 => $file, 
 		name2 => "language", value2 => $language, 
 		name3 => "level",    value3 => $level, 
+		name4 => "units",    value4 => $units, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Convert the user's log level to a numeric number for easier
@@ -1632,8 +1640,8 @@ sub record_alert_to_file
 			
 			if ($level >= $alert_level)
 			{
-				my $title    =  get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables);
-				my $message  =  get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables);
+				my $title    =  get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables, $units);
+				my $message  =  get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables, $units);
 				my $say_date =  $modified_date;
 				   $say_date =~ s/(\d+-\d+-\d+ \d+:\d+:\d+)\.\d+(.*)$/$1 (GMT$2)/;
 				
@@ -1928,14 +1936,17 @@ sub check_email_configuration
 	return(0);
 }
 
-# This converts the string keys and variables stored in the alerts table (flanked with '!!') to strings.
+# This converts the string keys and variables stored in the alerts table 
+# (flanked with '!!') to strings. It also handles the special 'sensor' data and
+# will convert metric to imperial values as needed.
 sub get_string_from_double_bang
 {
-	my ($an, $language, $key, $variables) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0003", message_variables => { 
-		name1 => "language",  value1 => "$language", 
-		name2 => "key",       value2 => "$key", 
-		name3 => "variables", value3 => "$variables" 
+	my ($an, $language, $key, $variables, $units) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "language",  value1 => $language, 
+		name2 => "key",       value2 => $key,  
+		name3 => "variables", value3 => $variables, 
+		name4 => "units",     value4 => $units
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($variables)
@@ -1945,6 +1956,21 @@ sub get_string_from_double_bang
 		{
 			next if not $pair;
 			my ($variable, $value) = ($pair =~ /^!!(.*?)!(.*)!!$/);
+			
+			# If the value is one of the special sensor name or 
+			# value strings, translate it.
+			if ($variable eq "sensor_name") 
+			{
+				my ($sensor_name, $sensor_units) = ($value =~ /name=(.*?),units=(.*)$/);
+				$value = translate_sensor_name($an, $sensor_name, $sensor_units);
+			}
+			# Catch 'sensor_value', 'new_sensor_value' and 
+			# 'old_sensor_value'.
+			elsif ($variable =~ /sensor_value/)
+			{
+				my ($sensor_value, $sensor_units) = ($value =~ /value=(.*?),units=(.*)$/);
+				$value = translate_sensor_value($an, $sensor_value, $sensor_units, $units);
+			}
 			$hash->{$variable} = $value;
 			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1971,6 +1997,285 @@ sub get_string_from_double_bang
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($string);
+}
+
+# This and translate_sensor_value() are special functions used to translate 
+# PMI sensor data into a user's chosen language and units (metric v. imperial).
+sub translate_sensor_name
+{
+	my ($an, $ipmitool_sensor_name, $ipmitool_sensor_units) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_name", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "ipmitool_sensor_name",  value1 => $ipmitool_sensor_name, 
+		name2 => "ipmitool_sensor_units", value2 => $ipmitool_sensor_units, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $say_sensor_name = $ipmitool_sensor_name;
+	
+	# Now, if it's a sensor we know, we'll not use the base units but
+	# instead five it a proper name. We'll translate the value after.
+	if ($ipmitool_sensor_units eq "C")
+	{
+		if ($say_sensor_name eq "Ambient")
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0001"});
+		}
+		elsif ($say_sensor_name =~ /CPU(\d+)/)
+		{
+			my $cpu = $1;
+			$say_units = $an->String->get({
+				key	=>	"scan_ipmitool_sensor_name_0003",
+				variables	=>	{
+					cpu		=>	$cpu,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /DIMM-(.*)/)
+		{
+			my $module = $1;
+			$say_units = $an->String->get({
+				key	=>	"scan_ipmitool_sensor_name_0006",
+				variables	=>	{
+					module		=>	$module,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /Systemboard/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0023"});
+		}
+	}
+	elsif ($ipmitool_sensor_units eq "V")
+	{
+		if ($say_sensor_name =~ /BATT (\d+\.?\d+?)V/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0002"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /CPU(\d+) (\d+\.?\d+?)V/)
+		{
+			my $cpu     = $1;
+			my $voltage = $2;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0004"
+				variables	=>	{
+					cpu		=>	$cpu,
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /ICH (\d+\.?\d+?)V/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0013"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /IOH (\d+\.?\d+?)V AUX/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0014"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /IOH (\d+\.?\d+?)V/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0015"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /iRMC (\d+\.?\d+?)V STBY/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0016"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /LAN (\d+\.?\d+?)V STBY/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0017"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /MAIN (\d+\.?\d+?)V/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0018"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /STBY (\d+\.?\d+?)V/)
+		{
+			my $voltage = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0022"
+				variables	=>	{
+					voltage		=>	$voltage,
+				},
+			});
+		}
+	}
+	elsif ($ipmitool_sensor_units eq "W")
+	{
+		if ($say_sensor_name =~ /CPU(\d+) Power/)
+		{
+			my $cpu = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0005"
+				variables	=>	{
+					cpu		=>	$cpu,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /Fan Power/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0010"});
+		}
+		elsif ($say_sensor_name =~ /HDD Power/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0011"});
+		}
+		elsif ($say_sensor_name =~ /Memory Power/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0019"});
+		}
+		elsif ($say_sensor_name =~ /PSU(\d+) Power/)
+		{
+			my $psu = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0020"
+				variables	=>	{
+					psu		=>	$psu,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /Total Power/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0024"});
+		}
+	}
+	elsif ($ipmitool_sensor_units eq "%")
+	{
+		if ($say_sensor_name =~ /I2C(\d+) error ratio/)
+		{
+			my $channel = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0012"
+				variables	=>	{
+					channel		=>	$channel,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /SEL Level/)
+		{
+			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0021"});
+		}
+	}
+	elsif ($ipmitool_sensor_units eq "RPM")
+	{
+		if ($say_sensor_name =~ /FAN(\d+) PSU(\d+)/)
+		{
+			my $fan = $1;
+			my $psu = $2;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0007"
+				variables	=>	{
+					cpu		=>	$cpu,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /FAN(\d+) PSU/)
+		{
+			my $fan = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0008"
+				variables	=>	{
+					cpu		=>	$cpu,
+				},
+			});
+		}
+		elsif ($say_sensor_name =~ /FAN(\d+) SYS/)
+		{
+			my $fan = $1;
+			$say_units = $an->String->get({
+				key		=>	"scan_ipmitool_sensor_name_0009"
+				variables	=>	{
+					cpu		=>	$cpu,
+				},
+			});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_sensor_name",  value1 => $say_sensor_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($say_sensor_name)
+}
+
+# This and translate_sensor_name() are special functions used to translate 
+# PMI sensor data into a user's chosen language and units (metric v. imperial).
+sub translate_sensor_value
+{
+	my ($an, $ipmitool_value_sensor_value, $ipmitool_sensor_units, $units) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_value", }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "ipmitool_value_sensor_value", value1 => $ipmitool_value_sensor_value, 
+		name2 => "ipmitool_sensor_units",       value2 => $ipmitool_sensor_units, 
+		name3 => "units",                       value3 => $units, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$units = "metric" if not $units;
+	
+	# Translate the sensor units.
+	my $say_units = $ipmitool_sensor_units;
+	if    ($say_units eq "C")
+	{
+		if ($units eq "imperial")
+		{
+			# Leave as °C
+			$say_units = $an->String->get({key => "tools_suffix_0012"});
+		}
+		else
+		{
+			# Convert to °F
+			$say_units                   = $an->String->get({key => "tools_suffix_0010"});
+			$ipmitool_value_sensor_value = $an->Convert->convert_to_fahrenheit({temperature => $ipmitool_value_sensor_value});
+		}
+	} # Always °C at this time
+	elsif ($say_units eq "%")   { $say_units = $an->String->get({key => "tools_suffix_0016"}); }
+	elsif ($say_units eq "W")   { $say_units = $an->String->get({key => "tools_suffix_0017"}); } # watts
+	elsif ($say_units eq "V")   { $say_units = $an->String->get({key => "tools_suffix_0018"}); } # vDC is always assumed, may need to update this later.
+	elsif ($say_units eq "RPM") { $say_units = $an->String->get({key => "tools_suffix_0021"}); } # rotations per minute.
+	
+	# This will be the sensor name if nothing matches.
+	my $say_sensor_value = "$ipmitool_value_sensor_value $say_units";
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_sensor_value", value1 => $say_sensor_value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($say_sensor_value);
 }
 
 # This looks at each DB's 'updated' table to see if any are behind. If any are,

@@ -20,6 +20,32 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_sensor_status_0001">OK</key>		<!-- ok -->
 		<key name="scan_ipmitool_sensor_status_0002">No Signal</key>	<!-- ns -->
 		
+		<!-- Sensor names -->
+		<key name="scan_ipmitool_sensor_name_0001">Ambient Temperature</key>
+		<key name="scan_ipmitool_sensor_name_0002">#!variable!voltage!#vDC Battery</key>
+		<key name="scan_ipmitool_sensor_name_0003">CPU ##!variable!cpu!# Temperature</key>
+		<key name="scan_ipmitool_sensor_name_0004">CPU ##!variable!cpu!# #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0005">CPU ##!variable!cpu!# Power Consumption</key>
+		<key name="scan_ipmitool_sensor_name_0006">Memory Module #!variable!module!# Temperature</key>
+		<key name="scan_ipmitool_sensor_name_0007">Power Supply Unit ##!variable!psu!#, Cooling Fan ##!variable!fan!# Speed</key>
+		<key name="scan_ipmitool_sensor_name_0008">Power Supply Unit, Cooling Fan ##!variable!fan!# Speed</key>
+		<key name="scan_ipmitool_sensor_name_0009">System Cooling Fan ##!variable!fan!# Speed</key>
+		<key name="scan_ipmitool_sensor_name_0010">Power Used by Fans</key>
+		<key name="scan_ipmitool_sensor_name_0011">Power used by Drives</key>
+		<key name="scan_ipmitool_sensor_name_0012">BMC I²C Channel ##!variable!channel!# Error Ration</key>
+		<key name="scan_ipmitool_sensor_name_0013">I/O Controller Hub (North Bridge) #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0014">I/O Hub (South Bridge) Auxiliary #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0015">I/O Hub (South Bridge) #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0016">iRMC Baseboard Management Controller, Stand-By #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0017">LAN Controller, Stand-By #!variable!voltage!#vDC</key>
+		<key name="scan_ipmitool_sensor_name_0018">Main #!variable!voltage!#vDC Rail</key>
+		<key name="scan_ipmitool_sensor_name_0019">Power Used by Memory Modules</key>
+		<key name="scan_ipmitool_sensor_name_0020">Power Used by Power Supply Unit ##!variable!psu!#</key>
+		<key name="scan_ipmitool_sensor_name_0021">System Event Log, Percent Full</key>
+		<key name="scan_ipmitool_sensor_name_0022">Main Stand-by #!variable!voltage!#vDC Rail</key>
+		<key name="scan_ipmitool_sensor_name_0023">Mainboard Temperature</key>
+		<key name="scan_ipmitool_sensor_name_0024">Total Power Draw</key>
+		
 		<!-- Notices -->
 		<key name="scan_ipmitool_note_0001">
 The IPMI sensor: [#!variable!sensor_name!#] has appeared:
@@ -63,6 +89,47 @@ https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
+		<key name="scan_ipmitool_message_0003">The new sensor: [#!variable!sensor_name!#] has the value: [#!variable!sensor_value!#]</key>
+		<key name="scan_ipmitool_message_0004">
+The temperature sensor: [#!variable!sensor_name!#] has gone critically high!
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If enough sensors go critical, this node will withdraw and power off!
+		</key>
+		<key name="scan_ipmitool_message_0005">
+The temperature sensor: [#!variable!sensor_name!#] has entered a high warning state!
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If the temperature continues to rise, the sensor will go critical. If enough sensors go critical, the node will withdraw and power off.
+		</key>
+		<key name="scan_ipmitool_message_0006">
+The temperature sensor: [#!variable!sensor_name!#] has returned to normal levels.
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+		</key>
+		<key name="scan_ipmitool_message_0007">
+The temperature sensor: [#!variable!sensor_name!#] has jumped a large amount in a short period of time!
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+		</key>
+		<key name="scan_ipmitool_message_0008">
+The temperature sensor: [#!variable!sensor_name!#] has gone critically low!
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If enough sensors go critical, this node will withdraw and power off!
+		</key>
+		<key name="scan_ipmitool_message_0009">
+The temperature sensor: [#!variable!sensor_name!#] has entered a low warning state!
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If the temperature continues to drop, the sensor will go critical. If enough sensors go critical, the node will withdraw and power off.
+		</key>
+		<key name="scan_ipmitool_message_0010">
+The temperature sensor: [#!variable!sensor_name!#] has risen above critically low levels, but it is still in a warning state.
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If you are listening to 'critical' level alerts only, you will not get the alert telling you when the temperature is back to normal.
+		</key>
+		<key name="scan_ipmitool_message_0011">
+The temperature sensor: [#!variable!sensor_name!#] has risen blow critically high levels, but it is still in a warning state.
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+  Note: If you are listening to 'critical' level alerts only, you will not get the alert telling you when the temperature is back to normal.
+		</key>
 		
+		<!-- Sensor message titles -->
+		<key name="scan_ipmitool_title_0001">New sensor found on: [#!variable!machine!#]</key>
 	</lang>
 </words>

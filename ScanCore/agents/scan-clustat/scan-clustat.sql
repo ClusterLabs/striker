@@ -122,6 +122,7 @@ CREATE TABLE clustat_service (
 	clustat_service_name		text,
 	clustat_service_host		text,
 	clustat_service_status		text,
+	clustat_service_notes		text,
 	clustat_service_is_vm		boolean				not null,
 	modified_date			timestamp with time zone	not null,
 	
@@ -136,6 +137,7 @@ CREATE TABLE history.clustat_service (
 	clustat_service_name		text,
 	clustat_service_host		text,
 	clustat_service_status		text,
+	clustat_service_notes		text,
 	clustat_service_is_vm		boolean				not null,
 	modified_date			timestamp with time zone	not null
 );
@@ -153,6 +155,7 @@ BEGIN
 		 clustat_service_name,
 		 clustat_service_host,
 		 clustat_service_status,
+		 clustat_service_notes, 
 		 clustat_service_is_vm,
 		 modified_date)
 	VALUES
@@ -161,6 +164,7 @@ BEGIN
 		 history_clustat_service.clustat_service_name,
 		 history_clustat_service.clustat_service_host,
 		 history_clustat_service.clustat_service_status,
+		 history_clustat_service.clustat_service_notes, 
 		 history_clustat_service.clustat_service_is_vm,
 		 history_clustat_service.modified_date);
 	RETURN NULL;

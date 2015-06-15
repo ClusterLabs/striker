@@ -236,6 +236,9 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "provision")
 	{
+		### TODO: If '$conf->{cgi}{os_variant}' is "generic", warn the
+		###       user and ask them to confirm that they really want to
+		###       do this.
 		# Confirmed yet?
 		if ($conf->{cgi}{confirm})
 		{
