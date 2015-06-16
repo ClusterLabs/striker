@@ -2477,7 +2477,7 @@ AND
 			else
 			{
 				# No change found, update not needed.
-				$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_log_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0004", message_variables => {
 					ups_name => $apc_ups_fqdn
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3797,7 +3797,7 @@ sub gather_ups_data
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->data->{ups}{$ups_name}{ip}    = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
 		$an->data->{ups}{$ups_name}{model} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{model});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "ups_name",                value1 => $ups_name, 
 			name2 => "ups::${ups_name}::ip",    value2 => $an->data->{ups}{$ups_name}{ip}, 
 			name3 => "ups::${ups_name}::model", value3 => $an->data->{ups}{$ups_name}{model}
@@ -4267,10 +4267,6 @@ sub gather_ups_data
 			ups    => $ups_name, 
 			'time' => $oid_read_time
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		### TODO:
-		# Here I need to decide if the UPS is in a state requiring an
-		# entry in the 'power' or 'temperature' tables.
 	}
 	
 	return($no_ups_found);

@@ -7,10 +7,10 @@ CREATE TABLE ipmitool (
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,	-- Temperature (°C), vDC, vAC, watt, amp, percent
 	ipmitool_sensor_status		text				not null,
-	ipmitool_sensor_high_critical	double precision,
-	ipmitool_sensor_high_warning	double precision,
-	ipmitool_sensor_low_critical	double precision,
-	ipmitool_sensor_low_warning	double precision,
+	ipmitool_sensor_high_critical	numeric,
+	ipmitool_sensor_high_warning	numeric,
+	ipmitool_sensor_low_critical	numeric,
+	ipmitool_sensor_low_warning	numeric,
 	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(ipmitool_host_id) REFERENCES hosts(host_id)
@@ -25,10 +25,10 @@ CREATE TABLE history.ipmitool (
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,
 	ipmitool_sensor_status		text				not null,
-	ipmitool_sensor_high_critical	double precision,
-	ipmitool_sensor_high_warning	double precision,
-	ipmitool_sensor_low_critical	double precision,
-	ipmitool_sensor_low_warning	double precision,
+	ipmitool_sensor_high_critical	numeric,
+	ipmitool_sensor_high_warning	numeric,
+	ipmitool_sensor_low_critical	numeric,
+	ipmitool_sensor_low_warning	numeric,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.ipmitool OWNER TO #!variable!user!#;
@@ -79,7 +79,7 @@ CREATE TRIGGER trigger_ipmitool
 CREATE TABLE ipmitool_value (
 	ipmitool_value_id		bigserial			primary key,
 	ipmitool_value_ipmitool_id	bigint,
-	ipmitool_value_sensor_value	double precision,
+	ipmitool_value_sensor_value	numeric,
 	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(ipmitool_value_ipmitool_id) REFERENCES ipmitool(ipmitool_id)
@@ -90,7 +90,7 @@ CREATE TABLE history.ipmitool_value (
 	history_id			bigserial,
 	ipmitool_value_id		bigint,
 	ipmitool_value_ipmitool_id	bigint,
-	ipmitool_value_sensor_value	double precision,
+	ipmitool_value_sensor_value	numeric,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.ipmitool_value OWNER TO #!variable!user!#;

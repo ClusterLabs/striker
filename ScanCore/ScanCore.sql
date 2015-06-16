@@ -36,7 +36,7 @@ ALTER TABLE hosts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.hosts (
 	history_id		bigserial,
-	host_id			bigint,
+	host_id			numeric,
 	host_name		text,
 	host_type		text,
 	host_emergency_stop	boolean				not null,
@@ -150,8 +150,8 @@ CREATE TABLE power (
 	power_record_locator	text,								-- Optional string used by the agent to identify the UPS
 	power_ups_fqdn		text				not null,			-- This is the full domain name of the UPS. This is used by ScanCore to determine which UPSes are powering a given node so this MUST match the host names used in the node's /etc/hosts file.
 	power_on_battery	boolean				not null,			-- TRUE == use "time_remaining" to determine if graceful power off is needed. FALSE == power loss NOT imminent, do not power off node. 
-	power_seconds_left	bigint,								-- Should always be set, but not required *EXCEPT* when 'power_on_battery' is TRUE.
-	power_charge_percentage	double precision,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
+	power_seconds_left	numeric,								-- Should always be set, but not required *EXCEPT* when 'power_on_battery' is TRUE.
+	power_charge_percentage	numeric,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(power_host_id) REFERENCES hosts(host_id)
@@ -166,8 +166,8 @@ CREATE TABLE history.power (
 	power_record_locator	text,
 	power_ups_fqdn		text,
 	power_on_battery	boolean,
-	power_seconds_left	bigint,
-	power_charge_percentage	double precision,
+	power_seconds_left	numeric,
+	power_charge_percentage	numeric,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.power OWNER TO #!variable!user!#;
@@ -215,7 +215,7 @@ CREATE TABLE temperature (
 	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
 	temperature_sensor_name	text				not null,
-	temperature_celsius	double precision		not null,
+	temperature_celsius	numeric		not null,
 	temperature_state	text				not null,			-- warning, critical
 	temperature_is		text				not null,			-- high or low
 	modified_date		timestamp with time zone	not null,
@@ -230,7 +230,7 @@ CREATE TABLE history.temperature (
 	temperature_host_id	bigint,
 	temperature_agent_name	text,
 	temperature_sensor_name	text,
-	temperature_celsius	double precision,
+	temperature_celsius	numeric,
 	temperature_state	text,
 	temperature_is		text,
 	modified_date		timestamp with time zone	not null
@@ -338,7 +338,7 @@ CREATE TABLE ram_used (
 	ram_used_id		bigserial,
 	ram_used_host_id	bigint				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
-	ram_used_bytes		bigint				not null,
+	ram_used_bytes		numeric				not null,
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(ram_used_host_id) REFERENCES hosts(host_id)
@@ -350,7 +350,7 @@ CREATE TABLE history.ram_used (
 	ram_used_id		bigint,
 	ram_used_host_id	bigint,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
-	ram_used_bytes		bigint				not null,
+	ram_used_bytes		numeric				not null,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.ram_used OWNER TO #!variable!user!#;

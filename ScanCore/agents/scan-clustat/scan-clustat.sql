@@ -64,7 +64,7 @@ CREATE TRIGGER trigger_clustat
 CREATE TABLE clustat_node (
 	clustat_node_id			bigserial,
 	clustat_node_clustat_id		bigint				not null,
-	clustat_node_cluster_id		int,								-- This is the node ID reported by clustat
+	clustat_node_cluster_id		bigint,								-- This is the node ID reported by clustat
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
 	clustat_node_status		text,								-- Node status
 	modified_date			timestamp with time zone	not null,
@@ -77,7 +77,7 @@ CREATE TABLE history.clustat_node (
 	history_id			bigserial,
 	clustat_node_id			bigint,
 	clustat_node_clustat_id		bigint,
-	clustat_node_cluster_id		int,
+	clustat_node_cluster_id		bigint,
 	clustat_node_name		text,								-- Node name (from the 'Member Name' column)
 	clustat_node_status		text,								-- Node status
 	modified_date			timestamp with time zone	not null

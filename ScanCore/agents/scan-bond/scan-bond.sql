@@ -4,14 +4,14 @@ CREATE TABLE bond (
 	bond_id				bigserial			primary key,
 	bond_host_id			bigint,
 	bond_name			text				not null,
-	bond_mode			integer				not null,	-- This is the numerical bond type (will translate to the user's language in ScanCore)
+	bond_mode			numeric				not null,	-- This is the numerical bond type (will translate to the user's language in ScanCore)
 	bond_primary_slave		text				not null,
 	bond_primary_reselect		text				not null,
 	bond_active_slave		text				not null,
 	bond_mii_status			text				not null,
-	bond_mii_polling_interval	integer,
-	bond_up_delay			integer,
-	bond_down_delay			integer,
+	bond_mii_polling_interval	numeric,
+	bond_up_delay			numeric,
+	bond_down_delay			numeric,
 	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(bond_host_id) REFERENCES hosts(host_id)
@@ -23,14 +23,14 @@ CREATE TABLE history.bond (
 	bond_id				bigint,
 	bond_host_id			bigint,
 	bond_name			text				not null,
-	bond_mode			integer				not null,
+	bond_mode			numeric				not null,
 	bond_primary_slave		text				not null,
 	bond_primary_reselect		text				not null,
 	bond_active_slave		text				not null,
 	bond_mii_status			text				not null,
-	bond_mii_polling_interval	integer,
-	bond_up_delay			integer,
-	bond_down_delay			integer,
+	bond_mii_polling_interval	numeric,
+	bond_up_delay			numeric,
+	bond_down_delay			numeric,
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.bond OWNER TO #!variable!user!#;
@@ -84,9 +84,9 @@ CREATE TABLE bond_interface (
 	bond_interface_bond_id		bigint				not null,
 	bond_interface_name		text				not null,
 	bond_interface_mii_status	text				not null,
-	bond_interface_speed		bigint				not null,	-- Speed in bps
+	bond_interface_speed		numeric				not null,	-- Speed in bps
 	bond_interface_duplex		text				not null,
-	bond_interface_failure_count	integer				not null,
+	bond_interface_failure_count	numeric				not null,
 	bond_interface_mac		text				not null,
 	bond_interface_slave_queue_id	text,
 	modified_date			timestamp with time zone	not null,
@@ -101,9 +101,9 @@ CREATE TABLE history.bond_interface (
 	bond_interface_bond_id		bigint				not null,
 	bond_interface_name		text				not null,
 	bond_interface_mii_status	text				not null,
-	bond_interface_speed		bigint				not null,	-- Speed in bps
+	bond_interface_speed		numeric				not null,	-- Speed in bps
 	bond_interface_duplex		text				not null,
-	bond_interface_failure_count	integer				not null,
+	bond_interface_failure_count	numeric				not null,
 	bond_interface_mac		text				not null,
 	bond_interface_slave_queue_id	text,
 	modified_date			timestamp with time zone	not null

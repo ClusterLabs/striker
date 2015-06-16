@@ -16,6 +16,10 @@ with 'scan_ipmitool_'.
 		<!-- Strings that can change by rebranding -->
 		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using</key>
 		
+		<!-- Log strings -->
+		<key name="scan_ipmitool_log_0001">Starting to read the IPMI sensor values for: [#!variable!machine!#].</key>
+		<key name="scan_ipmitool_log_0002">IPMI sensor values read from: [#!variable!machine!#] in: [#!variable!time!#].</key>
+		
 		<!-- Sensor status strings -->
 		<key name="scan_ipmitool_sensor_status_0001">OK</key>		<!-- ok -->
 		<key name="scan_ipmitool_sensor_status_0002">No Signal</key>	<!-- ns -->
@@ -127,6 +131,25 @@ The temperature sensor: [#!variable!sensor_name!#] has risen above critically lo
 The temperature sensor: [#!variable!sensor_name!#] has risen blow critically high levels, but it is still in a warning state.
 - [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
   Note: If you are listening to 'critical' level alerts only, you will not get the alert telling you when the temperature is back to normal.
+		</key>
+		<key name="scan_ipmitool_message_0012">
+The sensor: [#!variable!sensor_name!#] has changed.
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+- [#!variable!old_sensor_status!#] -> [#!variable!new_sensor_status!#]
+- Thresholds:
+  - High critical: [#!variable!old_high_critical!#] -> [#!variable!new_high_critical!#]
+  - High warning:  [#!variable!old_high_warning!#] -> [#!variable!new_high_warning!#]
+  - Low warning:   [#!variable!old_low_warning!#] -> [#!variable!new_low_warning!#]
+  - Low critical:  [#!variable!old_low_critical!#] -> [#!variable!new_low_critical!#]
+		</key>
+		<key name="scan_ipmitool_message_0013">
+The new sensor: [#!variable!sensor_name!#] has been found.
+- Value: [#!variable!sensor_value!#], Status: [#!variable!sensor_status!#]
+- Thresholds:
+  - High critical: [#!variable!high_critical!#]
+  - High warning:  [#!variable!high_warning!#]
+  - Low warning:   [#!variable!low_warning!#]
+  - Low critical:  [#!variable!low_critical!#]
 		</key>
 		
 		<!-- Sensor message titles -->

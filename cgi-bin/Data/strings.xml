@@ -234,7 +234,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
-		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.]]></key>
+		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.<br />Enter a percentage to use that percent of the remaining free space.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
 		<key name="explain_0036"><![CDATA[Save the current configuration of this #!string!brand_0002!# to a file on your computer.<br />This can be used to restore the configuration should this dashboard get reset or replaced.]]></key>
 		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration.<br />If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>

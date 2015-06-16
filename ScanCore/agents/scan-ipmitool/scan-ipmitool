@@ -78,6 +78,8 @@ my $an = AN::Tools->new({data =>
 		},
 		# These are values the user might set in striker.conf
 		'scan-ipmitool'		=>	{
+			# It will be marked as 'clear' when the temperature
+			# drops this many °C below the critical temperature.
 			machine				=>	{},
 			# These are used when no other limits are set for a
 			# given sensor.
@@ -88,6 +90,11 @@ my $an = AN::Tools->new({data =>
 					low_warning			=>	5,
 					low_critical			=>	0,
 					jump				=>	5,
+					### TODO: Some sensors define their
+					###       hysteresis which we can read 
+					###       using: 
+					###       ipmitool ... sensor get "Ambient"
+					buffer				=>	2,
 				},
 				# If the user wants to assign manual values for
 				# a given sensor, they can do so by creating an
@@ -100,6 +107,7 @@ my $an = AN::Tools->new({data =>
 				#	low_warning			=>	5,
 				#	low_critical			=>	0,
 				#	jump				=>	5,
+				#	buffer				=>	2,
 				#	weight				=>	1,
 				#},
 			},
@@ -211,7 +219,7 @@ sub find_changes
 			foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{ipmi}{$machine}{ipmitool_sensor_name}})
 			{
 				my $this_ipmitool_id_query = get_ipmitool_id_query($an, $ipmitool_sensor_name, $machine);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_ipmitool_id_query", value1 => $this_ipmitool_id_query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -238,19 +246,27 @@ sub find_changes
 					
 					# These will be used in alert messages,
 					# if needed.
-					my $sensor_name      = "name=$ipmitool_sensor_name,units=$new_ipmitool_sensor_units";
-					my $new_sensor_value = "value=$new_ipmitool_value_sensor_value,units=$new_ipmitool_sensor_units";
-					my $old_sensor_value = "value=$old_ipmitool_value_sensor_value,units=$old_ipmitool_sensor_units";
+					my $sensor_name      = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
+					my $new_sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
+					my $old_sensor_value = "value=$old_ipmitool_value_sensor_value:units=$old_ipmitool_sensor_units";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+						name1 => "ipmitool_sensor_name", value1 => $ipmitool_sensor_name, 
+						name2 => "sensor_name",          value2 => $sensor_name, 
+						name3 => "new_sensor_value",     value3 => $new_sensor_value, 
+						name4 => "old_sensor_value",     value4 => $old_sensor_value, 
+					}, file => $THIS_FILE, line => __LINE__});
 					
 					### Look for changes
 					# Sensor value:
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_value_sensor_value", value1 => $new_ipmitool_value_sensor_value, 
-						name2 => "old_ipmitool_value_sensor_value", value2 => $old_ipmitool_value_sensor_value, 
-					}, file => $THIS_FILE, line => __LINE__});
 					if ($new_ipmitool_value_sensor_value ne $old_ipmitool_value_sensor_value)
 					{
 						# Update (no surprise ...)
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							name1 => "machine",                         value1 => $machine,
+							name2 => "sensor_name",                     value2 => $sensor_name, 
+							name3 => "new_ipmitool_value_sensor_value", value3 => $new_ipmitool_value_sensor_value, 
+							name4 => "old_ipmitool_value_sensor_value", value4 => $old_ipmitool_value_sensor_value, 
+						}, file => $THIS_FILE, line => __LINE__});
 						my $query = "
 UPDATE 
     ipmitool_value 
@@ -261,7 +277,7 @@ WHERE
     ipmitool_value_ipmitool_id = ($this_ipmitool_id_query);
 ";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -276,25 +292,28 @@ WHERE
 						my $title_key   = "an_alert_title_0002";
 						my $message_key = "scan_ipmitool_message_0003";
 						
-						# If this is a temperature, find my thresholds. 
-						# First use the defaults, then use the read-value 
-						# if it exits, and finally use the user's defined
-						# values, if set. Note that I check for a digit
-						# because the values should  always be defined and
-						# '0' is a valid value.
+						# If this is a temperature, see if we need to 
+						# trigger an alarm and set/clear the 'temperature'
+						# table entry. 
+						# TODO: For the rest of the sensors, we just log 
+						#       the changes. If a sensor goes bad, for now
+						#       we'll catch errors on the sensor status 
+						#       change. We'll add better checks later.
 						if ($new_ipmitool_sensor_units eq "C")
 						{
-							# This doesn't check for sensor status 
-							# changes
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "sensor_name",                     value1 => $sensor_name, 
+								name2 => "new_ipmitool_value_sensor_value", value2 => $new_ipmitool_value_sensor_value, 
+								name3 => "old_ipmitool_value_sensor_value", value3 => $old_ipmitool_value_sensor_value, 
+							}, file => $THIS_FILE, line => __LINE__});
 							($level, $title_key, $message_key) = process_temperature_change($an, $machine, $ipmitool_sensor_name);
 						}
 						else
 						{
-							# Process all other sensor types.
+							# TODO: Add the checks of variables against
+							#       the high/low warning/critical 
+							#       thresholds here.
 						}
-						
-						# Handle sensor status changes now.
-						
 						$an->Alert->register_alert({
 							alert_level		=>	$level, 
 							alert_agent_name	=>	"$THIS_FILE",
@@ -309,30 +328,6 @@ WHERE
 					}
 					
 					# Everything else
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_units", value1 => $new_ipmitool_sensor_units, 
-						name2 => "old_ipmitool_sensor_units", value2 => $old_ipmitool_sensor_units, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_status", value1 => $new_ipmitool_sensor_status, 
-						name2 => "old_ipmitool_sensor_status", value2 => $old_ipmitool_sensor_status, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_high_critical", value1 => $new_ipmitool_sensor_high_critical, 
-						name2 => "old_ipmitool_sensor_high_critical", value2 => $old_ipmitool_sensor_high_critical, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_high_warning", value1 => $new_ipmitool_sensor_high_warning, 
-						name2 => "old_ipmitool_sensor_high_warning", value2 => $old_ipmitool_sensor_high_warning, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_low_critical", value1 => $new_ipmitool_sensor_low_critical, 
-						name2 => "old_ipmitool_sensor_low_critical", value2 => $old_ipmitool_sensor_low_critical, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "new_ipmitool_sensor_low_warning", value1 => $new_ipmitool_sensor_low_warning, 
-						name2 => "old_ipmitool_sensor_low_warning", value2 => $old_ipmitool_sensor_low_warning, 
-					}, file => $THIS_FILE, line => __LINE__});
 					if (($new_ipmitool_sensor_units         ne $old_ipmitool_sensor_units) or 
 					    ($new_ipmitool_sensor_status        ne $old_ipmitool_sensor_status) or 
 					    ($new_ipmitool_sensor_high_critical ne $old_ipmitool_sensor_high_critical) or 
@@ -341,6 +336,30 @@ WHERE
 					    ($new_ipmitool_sensor_low_warning   ne $old_ipmitool_sensor_low_warning))
 					{
 						# Huh, interesting. Well, update
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_units", value1 => $new_ipmitool_sensor_units, 
+							name2 => "old_ipmitool_sensor_units", value2 => $old_ipmitool_sensor_units, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_status", value1 => $new_ipmitool_sensor_status, 
+							name2 => "old_ipmitool_sensor_status", value2 => $old_ipmitool_sensor_status, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_high_critical", value1 => $new_ipmitool_sensor_high_critical, 
+							name2 => "old_ipmitool_sensor_high_critical", value2 => $old_ipmitool_sensor_high_critical, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_high_warning", value1 => $new_ipmitool_sensor_high_warning, 
+							name2 => "old_ipmitool_sensor_high_warning", value2 => $old_ipmitool_sensor_high_warning, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_low_critical", value1 => $new_ipmitool_sensor_low_critical, 
+							name2 => "old_ipmitool_sensor_low_critical", value2 => $old_ipmitool_sensor_low_critical, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "new_ipmitool_sensor_low_warning", value1 => $new_ipmitool_sensor_low_warning, 
+							name2 => "old_ipmitool_sensor_low_warning", value2 => $old_ipmitool_sensor_low_warning, 
+						}, file => $THIS_FILE, line => __LINE__});
 						my $query = "
 UPDATE 
     ipmitool 
@@ -356,10 +375,45 @@ WHERE
     ipmitool_id = ($this_ipmitool_id_query);
 ";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
+						
+						# If this is a status change, set a 'warning'
+						# level alert unless the change is to/from 'ns'.
+						my $level       = "notice";
+						my $title_key   = "an_alert_title_0003";
+						my $message_key = "scan_ipmitool_message_0012";
+						if (($new_ipmitool_sensor_status ne $old_ipmitool_sensor_status) && 
+						    ($new_ipmitool_sensor_status ne "ns") &&
+						    ($old_ipmitool_sensor_status ne "ns"))
+						{
+							$level       = "warning";
+							$title_key   = "an_alert_title_0004";
+							$message_key = "scan_ipmitool_message_0012";
+						}
+						$an->Alert->register_alert({
+							alert_level		=>	$level, 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	$title_key,
+							alert_message_key	=>	$message_key,
+							alert_message_variables	=>	{
+								sensor_name		=>	$sensor_name,
+								new_sensor_value	=>	$new_sensor_value,
+								old_sensor_value	=>	$old_sensor_value, 
+								new_sensor_status	=>	$new_ipmitool_sensor_status, 
+								old_sensor_status	=>	$old_ipmitool_sensor_status, 
+								new_high_critical	=>	$new_ipmitool_sensor_high_critical eq "NULL" ? "--" : "$new_ipmitool_sensor_high_critical $new_ipmitool_sensor_units",
+								new_high_warning	=>	$new_ipmitool_sensor_high_warning  eq "NULL" ? "--" : "$new_ipmitool_sensor_high_warning $new_ipmitool_sensor_units", 
+								new_low_critical	=>	$new_ipmitool_sensor_low_critical  eq "NULL" ? "--" : "$new_ipmitool_sensor_low_critical $new_ipmitool_sensor_units", 
+								new_low_warning		=>	$new_ipmitool_sensor_low_warning   eq "NULL" ? "--" : "$new_ipmitool_sensor_low_warning $new_ipmitool_sensor_units", 
+								old_high_critical	=>	$old_ipmitool_sensor_high_critical eq "NULL" ? "--" : "$old_ipmitool_sensor_high_critical $old_ipmitool_sensor_units",
+								old_high_warning	=>	$old_ipmitool_sensor_high_warning  eq "NULL" ? "--" : "$old_ipmitool_sensor_high_warning $old_ipmitool_sensor_units", 
+								old_low_critical	=>	$old_ipmitool_sensor_low_critical  eq "NULL" ? "--" : "$old_ipmitool_sensor_low_critical $old_ipmitool_sensor_units", 
+								old_low_warning		=>	$old_ipmitool_sensor_low_warning   eq "NULL" ? "--" : "$old_ipmitool_sensor_low_warning $old_ipmitool_sensor_units", 
+							},
+						});
 					}
 					
 					# Delete the old key so that I can check to see
@@ -397,7 +451,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -416,7 +470,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -424,8 +478,8 @@ INSERT INTO
 					# TODO: Use the following variable/value pairs to have the
 					#       sensor name and value translated/converted to 
 					#       imperial as needed.
-					my $sensor_name  = "name=$ipmitool_sensor_name,units=$new_ipmitool_sensor_units";
-					my $sensor_value = "value=$new_ipmitool_value_sensor_value,units=$new_ipmitool_sensor_units";
+					my $sensor_name  = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
+					my $sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
 						alert_agent_name	=>	"$THIS_FILE",
@@ -437,6 +491,32 @@ INSERT INTO
 						alert_message_variables	=>	{
 							sensor_name		=>	$sensor_name,
 							sensor_value		=>	$sensor_value
+						},
+					});
+					
+					# If the sensor is not 'ok', set a warning level alert.
+					my $level       = "notice";
+					my $title_key   = "an_alert_title_0003";
+					my $message_key = "scan_ipmitool_message_0013";
+					if ($new_ipmitool_sensor_status ne "ok")
+					{
+						$level       = "warning";
+						$title_key   = "an_alert_title_0004";
+						$message_key = "scan_ipmitool_message_0013";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	$level, 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							sensor_name		=>	$sensor_name,
+							sensor_value		=>	$sensor_value,
+							sensor_status		=>	$new_ipmitool_sensor_status, 
+							high_critical		=>	$new_ipmitool_sensor_high_critical eq "NULL" ? "--" : "$new_ipmitool_sensor_high_critical $new_ipmitool_sensor_units",
+							high_warning		=>	$new_ipmitool_sensor_high_warning  eq "NULL" ? "--" : "$new_ipmitool_sensor_high_warning $new_ipmitool_sensor_units", 
+							low_critical		=>	$new_ipmitool_sensor_low_critical  eq "NULL" ? "--" : "$new_ipmitool_sensor_low_critical $new_ipmitool_sensor_units", 
+							low_warning		=>	$new_ipmitool_sensor_low_warning   eq "NULL" ? "--" : "$new_ipmitool_sensor_low_warning $new_ipmitool_sensor_units", 
 						},
 					});
 				}
@@ -495,7 +575,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -514,7 +594,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -524,19 +604,32 @@ INSERT INTO
 				# prefered language and units. As such, we're
 				# going to use a couple special variable 
 				# strings for this.
-				my $sensor_name  = "name=$ipmitool_sensor_name,units=$new_ipmitool_sensor_units";
-				my $sensor_value = "value=$new_ipmitool_value_sensor_value,units=$new_ipmitool_sensor_units";
+				my $sensor_name  = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
+				my $sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
+				
+				# If the sensor is not 'ok', set a warning level alert.
+				my $level       = "notice";
+				my $title_key   = "an_alert_title_0003";
+				my $message_key = "scan_ipmitool_message_0013";
+				if ($new_ipmitool_sensor_status ne "ok")
+				{
+					$level       = "warning";
+					$title_key   = "an_alert_title_0004";
+					$message_key = "scan_ipmitool_message_0013";
+				}
 				$an->Alert->register_alert({
-					alert_level		=>	"notice", 
+					alert_level		=>	$level, 
 					alert_agent_name	=>	"$THIS_FILE",
-					alert_title_key		=>	"scan_ipmitool_title_0001",
-					alert_title_variables	=>	{
-						machine			=>	$machine,
-					},
-					alert_message_key	=>	"scan_ipmitool_message_0003",
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
 						sensor_name		=>	$sensor_name,
-						sensor_value		=>	$sensor_value
+						sensor_value		=>	$sensor_value,
+						sensor_status		=>	$new_ipmitool_sensor_status, 
+						high_critical		=>	$new_ipmitool_sensor_high_critical eq "NULL" ? "--" : "$new_ipmitool_sensor_high_critical $new_ipmitool_sensor_units",
+						high_warning		=>	$new_ipmitool_sensor_high_warning  eq "NULL" ? "--" : "$new_ipmitool_sensor_high_warning $new_ipmitool_sensor_units", 
+						low_critical		=>	$new_ipmitool_sensor_low_critical  eq "NULL" ? "--" : "$new_ipmitool_sensor_low_critical $new_ipmitool_sensor_units", 
+						low_warning		=>	$new_ipmitool_sensor_low_warning   eq "NULL" ? "--" : "$new_ipmitool_sensor_low_warning $new_ipmitool_sensor_units", 
 					},
 				});
 			}
@@ -557,7 +650,7 @@ INSERT INTO
 sub process_temperature
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_temperature", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, read in all existing entries. We'll compare and UPDATE or
 	# INSERT as needed and DELETE any stale entries.
@@ -571,6 +664,8 @@ FROM
     temperature 
 WHERE 
     temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+AND 
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
@@ -629,7 +724,9 @@ SET
 WHERE
     temperature_host_id = (".$an->data->{sys}{host_id_query}.")
 AND
-    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).";
+    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
+AND
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
 ";
 				push @{$an->data->{sys}{sql}}, $query;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -647,6 +744,7 @@ INSERT INTO
 (
     temperature_host_id, 
     temperature_sensor_name, 
+    temperature_agent_name, 
     temperature_celsius, 
     temperature_state, 
     temperature_is, 
@@ -654,6 +752,7 @@ INSERT INTO
 ) VALUES (
     (".$an->data->{sys}{host_id_query}."), 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_temperature_celsius).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_temperature_state).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_temperature_is).", 
@@ -666,7 +765,10 @@ INSERT INTO
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	
+
+### NOTE: On second thought, I may not want to delete this as it clears when
+###       there was no change in the previous scan.
+=pod
 	# Now, if any undeleted old entries remain, delete them from the
 	# database.
 	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{old}{temperature}})
@@ -685,7 +787,9 @@ SET
 WHERE
     temperature_host_id = (".$an->data->{sys}{host_id_query}.")
 AND
-    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).";
+    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
+AND
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
 ";
 		push @{$an->data->{sys}{sql}}, $query;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -697,13 +801,16 @@ DELETE FROM
 WHERE
     temperature_host_id = (".$an->data->{sys}{host_id_query}.")
 AND
-    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).";
+    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)." 
+AND
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
 ";
 		push @{$an->data->{sys}{sql}}, $query;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+=cut
 	
 	return(0);
 }
@@ -734,14 +841,22 @@ sub process_temperature_change
 	# Old value, if it exists.
 	my $old_ipmitool_value_sensor_value   = $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} ? $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} : 0;
 	
+	### Buffer, used for clearing all alerts.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::buffer",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{buffer}, 
+		name2 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::buffer", value2 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{buffer}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $buffer = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{buffer} ? $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{buffer} : $an->data->{'scan-ipmitool'}{thresholds}{'default'}{buffer};
+	
 	### High Warning
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "scan-ipmitool::thresholds::defaults::high_warning",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{high_warning}, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::high_warning",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_warning}, 
 		name2 => "new_ipmitool_sensor_high_warning",                                 value2 => $new_ipmitool_sensor_high_critical, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::high_warning", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $high_warning = $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{high_warning};
-	if ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning} =~ /^\d/)
+	my $high_warning = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_warning};
+	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning}) && 
+	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning} =~ /^\d/))
 	{
 		$high_warning = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning};
 	}
@@ -751,13 +866,14 @@ sub process_temperature_change
 	}
 	
 	### High Critical
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "scan-ipmitool::thresholds::defaults::high_critical",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{high_critical}, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::high_critical",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_critical}, 
 		name2 => "new_ipmitool_sensor_high_critical",                                 value2 => $new_ipmitool_sensor_high_critical, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::high_critical", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $high_critical = $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{high_critical};
-	if ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical} =~ /^\d/)
+	my $high_critical = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_critical};
+	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical}) && 
+	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical} =~ /^\d/))
 	{
 		$high_critical = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical};
 	}
@@ -767,13 +883,14 @@ sub process_temperature_change
 	}
 	
 	### Low Warning
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "scan-ipmitool::thresholds::defaults::low_warning",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{low_warning}, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::low_warning",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_warning}, 
 		name2 => "new_ipmitool_sensor_low_warning",                                 value2 => $new_ipmitool_sensor_low_warning, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::low_warning", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $low_warning = $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{low_warning};
-	if ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning} =~ /^\d/)
+	my $low_warning = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_warning};
+	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning}) && 
+	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning} =~ /^\d/))
 	{
 		$low_warning = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning};
 	}
@@ -783,13 +900,14 @@ sub process_temperature_change
 	}
 	
 	### Low Critical
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "scan-ipmitool::thresholds::defaults::low_critical",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{low_critical}, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::low_critical",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_critical}, 
 		name2 => "new_ipmitool_sensor_low_critical",                                 value2 => $new_ipmitool_sensor_low_critical, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::low_critical", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $low_critical = $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{low_critical};
-	if ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical} =~ /^\d/)
+	my $low_critical = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_critical};
+	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical}) && 
+	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical} =~ /^\d/))
 	{
 		$low_critical = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical};
 	}
@@ -799,23 +917,26 @@ sub process_temperature_change
 	}
 	
 	### Jump delta
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "scan-ipmitool::thresholds::defaults::jump",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{jump}, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "scan-ipmitool::thresholds::defaults::jump",                value1 => $an->data->{'scan-ipmitool'}{thresholds}{'default'}{jump}, 
 		name2 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::jump", value2 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{jump}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $jump = $an->data->{'scan-ipmitool'}{thresholds}{'defaults'}{jump};
+	my $jump = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{jump};
 	if ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{jump})
 	{
 		$jump = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{jump};
 	}
 	
 	# Final levels
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-		name1 => "high_warning",  value1 => $high_warning, 
-		name2 => "high_critical", value2 => $high_critical, 
-		name3 => "low_warning",   value3 => $low_warning, 
-		name4 => "low_critical",  value4 => $low_critical, 
-		name5 => "jump",          value5 => $jump, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		name1 => "machine",              value1 => $machine,
+		name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name,
+		name3 => "high_warning",         value3 => $high_warning, 
+		name4 => "high_critical",        value4 => $high_critical, 
+		name5 => "low_warning",          value5 => $low_warning, 
+		name6 => "low_critical",         value6 => $low_critical, 
+		name7 => "jump",                 value7 => $jump, 
+		name8 => "buffer",               value8 => $buffer,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now, has the value climbed or fallen? Pretend it's rising if it's a 
@@ -848,7 +969,7 @@ sub process_temperature_change
 				$an->Alert->check_alert_sent({
 					type			=>	"clear",
 					alert_sent_by		=>	$THIS_FILE,
-					alert_record_locator	=>	$ipmitool_sensor_name,
+					alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 					alert_name		=>	$type,
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
@@ -858,7 +979,7 @@ sub process_temperature_change
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_high_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -889,14 +1010,14 @@ sub process_temperature_change
 			$an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_high_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_high_warning",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -916,21 +1037,21 @@ sub process_temperature_change
 				};
 			}
 		}
-		elsif ($new_ipmitool_value_sensor_value > $low_warning)
+		elsif ($new_ipmitool_value_sensor_value > ($low_warning + $buffer))
 		{
 			# If there was a 'low_warning' or 'low_critical', clear
 			# it and tell the user that we're OK now.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			my $clear_warning = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_warning",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -946,13 +1067,13 @@ sub process_temperature_change
 				$message_key = "scan_ipmitool_message_0006";
 			}
 		}
-		elsif ($new_ipmitool_value_sensor_value > $low_critical)
+		elsif ($new_ipmitool_value_sensor_value > ($low_critical + $buffer))
 		{
 			# It has risen above critically low levels.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -984,9 +1105,9 @@ sub process_temperature_change
 			{
 				# Temperature jumped. This is a stand-alone
 				# 'warning' level alarm.
-				my $sensor_name      = "name=$ipmitool_sensor_name,units=C";
-				my $new_sensor_value = "value=$new_ipmitool_value_sensor_value,units=C";
-				my $old_sensor_value = "value=$old_ipmitool_value_sensor_value,units=C";
+				my $sensor_name      = "name=$ipmitool_sensor_name:units=C";
+				my $new_sensor_value = "value=$new_ipmitool_value_sensor_value:units=C";
+				my $old_sensor_value = "value=$old_ipmitool_value_sensor_value:units=C";
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
 					alert_agent_name	=>	"$THIS_FILE",
@@ -1026,7 +1147,7 @@ sub process_temperature_change
 				$an->Alert->check_alert_sent({
 					type			=>	"clear",
 					alert_sent_by		=>	$THIS_FILE,
-					alert_record_locator	=>	$ipmitool_sensor_name,
+					alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 					alert_name		=>	$type,
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
@@ -1036,7 +1157,7 @@ sub process_temperature_change
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -1067,14 +1188,14 @@ sub process_temperature_change
 			$an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			my $set = $an->Alert->check_alert_sent({
 				type			=>	"warning",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_warning",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -1094,21 +1215,21 @@ sub process_temperature_change
 				};
 			}
 		}
-		elsif ($new_ipmitool_value_sensor_value < $high_warning)
+		elsif ($new_ipmitool_value_sensor_value < ($high_warning - $buffer))
 		{
 			# If there was a 'high_warning' or 'high_critical', clear
 			# it and tell the user that we're OK now.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_high_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			my $clear_warning = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_high_warning",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -1124,13 +1245,13 @@ sub process_temperature_change
 				$message_key = "scan_ipmitool_message_0006";
 			}
 		}
-		elsif ($new_ipmitool_value_sensor_value < $high_critical)
+		elsif ($new_ipmitool_value_sensor_value < ($high_critical - $buffer))
 		{
 			# It is below critically high levels.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ipmitool_sensor_name,
+				alert_record_locator	=>	"$machine:$ipmitool_sensor_name",
 				alert_name		=>	"temperature_low_critical",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
@@ -1161,7 +1282,6 @@ sub process_temperature_change
 	}, file => $THIS_FILE, line => __LINE__});
 	return($level, $title_key, $message_key);
 }
-
 
 # This reads in the last scan's data.
 sub read_last_scan
@@ -1199,7 +1319,7 @@ AND
     a.ipmitool_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine)." 
 AND 
     a.ipmitool_id = b.ipmitool_value_ipmitool_id;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query});
@@ -1225,7 +1345,7 @@ AND
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical  ? $ipmitool_sensor_low_critical  : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_high_critical", value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical}, 
@@ -1674,7 +1794,7 @@ AND
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -1695,7 +1815,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1706,7 +1826,7 @@ sub prep_databases
 sub query_ipmi_targets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "query_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
 	{
@@ -1725,9 +1845,15 @@ sub query_ipmi_targets
 		print $file_handle $ipmi_password;
 		close $file_handle;
 		
+		# Time the call.
+		my $read_start_time = time;
+		$an->Log->entry({log_level => 2, message_key => "scan_ipmitool_log_0001", message_variables => {
+			machine => $machine, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Call!
 		$shell_call = "$ipmitool_command -f $temp_file sensor list all 2>&1 |";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1826,6 +1952,13 @@ sub query_ipmi_targets
 		
 		# Delete the temp file.
 		unlink $temp_file;
+		
+		# Record how long it took.
+		my $sensor_read_time = $an->Readable->time({'time' => (time - $read_start_time)});
+		$an->Log->entry({log_level => 2, message_key => "scan_ipmitool_log_0002", message_variables => {
+			machine	=>	$machine, 
+			'time'	=>	$sensor_read_time
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -1836,7 +1969,7 @@ sub query_ipmi_targets
 sub find_ipmi_targets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, call 'anvil-report-ipmi-details' and see what we find. Then
 	# we'll read in user definitions so that the user can override what we
@@ -1911,7 +2044,7 @@ sub find_ipmi_targets
 			# will be called and then the temp file will be 
 			# deleted. So we'll store the password separately.
 			my $power_check_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}." ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "machine",             value1 => $machine,
 				name2 => "power_check_command", value2 => $power_check_command, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1937,7 +2070,7 @@ sub find_ipmi_targets
 			
 			$an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command} = $ipmitool_command;
 			$an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password}    = $ipmi_password;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scan-ipmitool::machine::${machine}::ipmitool_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command},
 				name2 => "scan-ipmitool::machine::${machine}::ipmi_password",    value2 => $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password}, 
 			}, file => $THIS_FILE, line => __LINE__});

@@ -4901,6 +4901,11 @@ sub provision_vm
 			{
 				$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
 			}
+			elsif ($lv_size =~ /^(\d+\.?\d+?)%$/)
+			{
+				my $size = $1;
+				$provision .= "lvcreate -l $size\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+			}
 			else
 			{
 				$provision .= "lvcreate -L ${lv_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
@@ -5290,6 +5295,10 @@ sub verify_vm_config
 				{
 					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "all";
 				}
+				elsif ($conf->{cgi}{$vg_suffix_key} eq "%")
+				{
+					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "${lv_size}%";
+				}
 				else
 				{
 					# Make to lvcreate command a GiB value.
@@ -5475,17 +5484,17 @@ sub confirm_provision_vm
 		my $vg_suffix_key            =  "vg_suffix_$vg";
 		$conf->{cgi}{$vg_key}        =  ""    if not $conf->{cgi}{$vg_key};
 		$conf->{cgi}{$vg_suffix_key} =  "GiB" if not $conf->{cgi}{$vg_suffix_key};
-		my $select_vg_suffix                   =  AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB"]);
+		my $select_vg_suffix         =  AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB", "%"]);
 		if ($space < (2 ** 30))
 		{
 			# Less than a Terabyte
-			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB"]);
+			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "%"]);
 			$conf->{cgi}{$vg_suffix_key} = "GiB" if not $conf->{cgi}{$vg_suffix_key};
 		}
 		elsif ($space < (2 ** 20))
 		{
 			# Less than a Gigabyte
-			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB"]);
+			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "%"]);
 			$conf->{cgi}{$vg_suffix_key} = "MiB" if not $conf->{cgi}{$vg_suffix_key};
 		}
 		# Devine the node associated with this VG.
@@ -5520,10 +5529,10 @@ sub confirm_provision_vm
 		my $say_max_storage  =  $conf->{vg_selects}{$vg}{say_storage};
 		my $select_vg_suffix =  $conf->{vg_selects}{$vg}{select_suffix};
 		my $say_node         =  $conf->{vg_selects}{$vg}{say_node};
-		$say_node            =~ s/\..*$//;
+		   $say_node         =~ s/\..*$//;
 		my $short_vg         =  $conf->{vg_selects}{$vg}{short_vg};
 		my $vg_key           =  "vg_$vg";
-		$say_selects         .= AN::Common::template($conf, "server.html", "provision-server-selects", {
+		   $say_selects      .= AN::Common::template($conf, "server.html", "provision-server-selects", {
 			node			=>	$say_node,
 			short_vg		=>	$short_vg,
 			max_storage		=>	$say_max_storage,
@@ -5531,7 +5540,7 @@ sub confirm_provision_vm
 			vg_key_value		=>	$conf->{cgi}{$vg_key},
 			select_vg_suffix	=>	$select_vg_suffix,
 		});
-		$say_selects         .= "$say_or";
+		$say_selects .= "$say_or";
 	}
 	$say_selects =~ s/$say_or$//m;
 	$say_selects .= AN::Common::template($conf, "server.html", "provision-server-vg-list-hidden-input", {
