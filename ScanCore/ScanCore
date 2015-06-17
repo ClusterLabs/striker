@@ -655,7 +655,20 @@ sub check_node_power_health
 	my $highest_charge = 0;
 	
 	# Read in the names of the UPSes watched by this node.
-	my $query = "SELECT power_ups_fqdn FROM power WHERE power_host_id = (SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($node).");";
+	my $query = "
+SELECT 
+    power_ups_fqdn 
+FROM 
+    power 
+WHERE 
+    power_host_id = (
+        SELECT 
+            host_id 
+        FROM 
+            hosts 
+        WHERE 
+            host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
+	);";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -719,7 +732,7 @@ sub check_node_temperature_health
 	### WARNING: Set to '1' until this section is done.
 	my $temperature_is_safe = 1;
 	
-	
+	# Read in all of the temperature entries for this node 
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "temperature_is_safe", value1 => $temperature_is_safe

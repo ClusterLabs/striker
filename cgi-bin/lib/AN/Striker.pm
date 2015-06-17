@@ -2692,7 +2692,7 @@ sub vm_insert_media
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?",
+			shell_call	=>	"/usr/bin/virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?",
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -2839,7 +2839,7 @@ sub vm_eject_media
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
+			shell_call	=>	"/usr/bin/virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -4000,7 +4000,7 @@ sub read_live_xml
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"virsh dumpxml $say_vm",
+		shell_call	=>	"/usr/bin/virsh dumpxml $say_vm",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4079,7 +4079,7 @@ sub update_vm_definition
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
+		shell_call	=>	"/usr/bin/virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4275,7 +4275,7 @@ sub add_vm_to_cluster
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
 		my $virsh_exit_code;
-		my $shell_call      = "virsh start $vm; echo virsh:\$?";
+		my $shell_call      = "/usr/bin/virsh start $vm; echo virsh:\$?";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -4318,7 +4318,7 @@ sub add_vm_to_cluster
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
 			my $virsh_exit_code;
-			my $shell_call      = "virsh create /shared/definitions/${vm}.xml; echo virsh:\$?";
+			my $shell_call      = "/usr/bin/virsh create /shared/definitions/${vm}.xml; echo virsh:\$?";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
@@ -4401,7 +4401,7 @@ sub add_vm_to_cluster
 	}
 	my @new_vm_xml;
 	my $virsh_exit_code;
-	my $shell_call = "virsh dumpxml $vm; echo virsh:\$?";
+	my $shell_call = "/usr/bin/virsh dumpxml $vm; echo virsh:\$?";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -4536,7 +4536,7 @@ sub add_vm_to_cluster
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	$ssh_fh,
 		'close'		=>	0,
-		shell_call	=>	"virsh undefine $vm; echo virsh:\$?",
+		shell_call	=>	"/usr/bin/virsh undefine $vm; echo virsh:\$?",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $undefine_ok = 0;
@@ -4755,7 +4755,7 @@ sub find_vm_host
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"virsh list --all",
+		shell_call	=>	"/usr/bin/virsh list --all",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -4794,7 +4794,7 @@ sub find_vm_host
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"virsh list --all",
+			shell_call	=>	"/usr/bin/virsh list --all",
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -6592,7 +6592,7 @@ sub force_off_vm
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"virsh destroy $vm",
+		shell_call	=>	"/usr/bin/virsh destroy $vm",
 	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
@@ -6686,7 +6686,9 @@ sub delete_vm
 	print AN::Common::template($conf, "server.html", "delete-server-header", {
 		title	=>	$say_title,
 	});
-
+	
+	# We have to remove the server from the cluster *before* we force it
+	# off. Otherwise, the cluster will boot it right back up.
 	if ($proceed)
 	{
 		print AN::Common::template($conf, "server.html", "delete-server-start");
@@ -6698,7 +6700,7 @@ sub delete_vm
 		my $ccs_exit_code;
 		   $proceed = 0;
 		my $shell_call = "ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$host,
 			port		=>	$conf->{node}{$host}{port},
@@ -6754,8 +6756,8 @@ sub delete_vm
 			   $proceed = 0;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			my $virsh_exit_code;
-			my $shell_call = "virsh destroy $say_vm; echo virsh:\$?";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			my $shell_call = "/usr/bin/virsh destroy $say_vm; echo virsh:\$?";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$host,
 				port		=>	$conf->{node}{$host}{port},
@@ -6763,7 +6765,7 @@ sub delete_vm
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	$ssh_fh,
 				'close'		=>	0,
-				shell_call	=>	"",
+				shell_call	=>	$shell_call,
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -6792,18 +6794,14 @@ sub delete_vm
 			}
 			else
 			{
-				# It is possible that the VM dies before now, 
-				# so print a warning, but then move on.
-				my $say_warning = AN::Common::get_string($conf, {key => "message_0200", variables => {
+				# This is fatal
+				my $say_error = AN::Common::get_string($conf, {key => "message_0200", variables => {
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-				print AN::Common::template($conf, "server.html", "one-line-message", {
-					message	=>	"$say_warning",
+				print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
+					error	=>	$say_error,
 				});
-				$proceed = 1;
-				#print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
-				#	error	=>	$say_error,
-				#});
+				$proceed = 0;
 			}
 			print AN::Common::template($conf, "server.html", "delete-server-force-off-footer");
 		}
@@ -9363,7 +9361,7 @@ sub check_vms
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	1,
-				shell_call	=>	"virsh dumpxml $say_vm",
+				shell_call	=>	"/usr/bin/virsh dumpxml $say_vm",
 			});
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
