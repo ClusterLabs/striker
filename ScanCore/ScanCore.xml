@@ -151,7 +151,15 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
 		<key name="scancore_warning_0002">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
 		<key name="scancore_warning_0003"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scancore_warning_0004"><![CDATA[The password set for the user: [#!variable!user!#] is incorrect. Please update: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
+		<key name="scancore_warning_0004"><![CDATA[
+
+The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either not the owner of the database: [#!variable!name!#], or the password for that user is incorrect. 
+- Please edit: [#!variable!config_file!#]
+  * If the user name is not correct, please update: 
+    scancore::db::#!variable!id!#::user = <user>
+  * If the user name is correct, please update: 
+    scancore::db::#!variable!id!#::password = <password>
+		]]></key>
 		<key name="scancore_warning_0005">
 The error was:
 ----------

@@ -9333,6 +9333,8 @@ sub gather_node_details
 		### Get the rest of the shell calls done before starting to
 		### parse.
 		# Get meminfo
+		my $shell_call = "cat /proc/meminfo";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $meminfo) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9340,11 +9342,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"cat /proc/meminfo",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], meminfo: [$meminfo (".@{$meminfo}." lines)]\n");
 		
 		# Get drbd info
+		$shell_call = "if [ -e /proc/drbd ]; then cat /proc/drbd; else echo 'drbd offline'; fi";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $proc_drbd) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9352,10 +9356,12 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"if [ -e /proc/drbd ]; then cat /proc/drbd; else echo 'drbd offline'; fi",
+			shell_call	=>	$shell_call,
 		});
 		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], proc_drbd: [$proc_drbd (".@{$proc_drbd}." lines)]\n");
 		#foreach my $line (@{$proc_drbd}) { record($conf, "$THIS_FILE ".__LINE__."; proc_drbd line: [$line]\n"); }
+		$shell_call = "drbdadm dump-xml";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $parse_drbdadm_dumpxml) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9363,11 +9369,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"drbdadm dump-xml",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], drbd_res_file: [$parse_drbdadm_dumpxml (".@{$parse_drbdadm_dumpxml}." lines)]\n");
 		
 		# clustat info
+		$shell_call = "clustat";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $clustat) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9375,11 +9383,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"clustat",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], clustat: [$clustat (".@{$clustat}." lines)]\n");
 		
 		# Read cluster.conf
+		$shell_call = "cat /etc/cluster/cluster.conf";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $cluster_conf) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9387,12 +9397,20 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"cat /etc/cluster/cluster.conf",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], cluster_conf: [$cluster_conf (".@{$cluster_conf}." lines)]\n");
 		
 		### TODO: Break these up into individual calls to be cleaner.
 		# Read the daemon states
+		$shell_call = "
+/etc/init.d/rgmanager status; echo striker:rgmanager:\$?; 
+/etc/init.d/cman status; echo striker:cman:\$?; 
+/etc/init.d/drbd status; echo striker:drbd:\$?; 
+/etc/init.d/clvmd status; echo striker:clvmd:\$?; 
+/etc/init.d/gfs2 status; echo striker:gfs2:\$?; 
+/etc/init.d/libvirtd status; echo striker:libvirtd:\$?;";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $daemons) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9400,17 +9418,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"
-				/etc/init.d/rgmanager status; echo striker:rgmanager:\$?; 
-				/etc/init.d/cman status; echo striker:cman:\$?; 
-				/etc/init.d/drbd status; echo striker:drbd:\$?; 
-				/etc/init.d/clvmd status; echo striker:clvmd:\$?; 
-				/etc/init.d/gfs2 status; echo striker:gfs2:\$?; 
-				/etc/init.d/libvirtd status; echo striker:libvirtd:\$?;",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], daemons: [$daemons (".@{$daemons}." lines)]\n");
 		
 		# LVM data
+		$shell_call = "pvscan; vgscan; lvscan";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $lvm_scan) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9418,9 +9432,14 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"pvscan; vgscan; lvscan",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], lvm_scan: [$lvm_scan (".@{$lvm_scan}." lines)]\n");
+		$shell_call = "
+pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
+vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
+lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $lvm_data) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9428,14 +9447,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"
-				pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
-				vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
-				lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], lvm_data: [$lvm_data (".@{$lvm_data}." lines)]\n");
 		
 		# GFS2 data
+		$shell_call = "cat /etc/fstab | grep gfs2 && df -hP";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $gfs2) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9443,12 +9461,14 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"cat /etc/fstab | grep gfs2 && df -hP",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], gfs2: [$gfs2 (".@{$gfs2}." lines)]\n");
 		
 		# virsh data
 		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [virsh list --all]\n");
+		$shell_call = "virsh list --all";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $virsh) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9456,11 +9476,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"virsh list --all",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], virsh: [$virsh (".@{$virsh}." lines)]\n");
 		
 		# VM definitions
+		$shell_call = "cat /shared/definitions/*";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $vm_defs) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9468,12 +9490,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	0,
-			shell_call	=>	"cat /shared/definitions/*",
-			#shell_call	=>	"for f in \$(ls /shared/definitions/); do cat /shared/definitions/\$f; done",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
 		
 		# Host name, in case the cluster isn't configured yet.
+		$shell_call = "hostname";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $hostname) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9481,7 +9504,7 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"hostname",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hostname->[0]: [$hostname->[0]]\n");
 		if ($hostname->[0])
@@ -9491,6 +9514,8 @@ sub gather_node_details
 		}
 		
 		# Read the node's host file.
+		$shell_call = "cat /etc/hosts";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $hosts) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9498,11 +9523,13 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"cat /etc/hosts",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hosts: [$hosts]\n");
 		
 		# Read the node's dmesg.
+		$shell_call = "dmesg";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $dmesg) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9510,12 +9537,31 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"dmesg",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmesg: [$dmesg]\n");
 		
 		### Last call, close the door on our way out.
 		# Bond data
+		$shell_call = "
+if [ -e '/proc/net/bonding/ifn_bond1' ];
+then
+    for i in \$(ls /proc/net/bonding/); 
+    do 
+        if [ \$i != 'bond0' ];
+        then
+            echo 'start: \$i';
+            cat /proc/net/bonding/\$i;
+        fi
+    done
+else
+    for i in \$(ls /proc/net/bonding/bond*);
+    do
+        echo 'start: \$i';
+        cat \$i;
+    done;
+fi;";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $bond) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -9523,23 +9569,7 @@ sub gather_node_details
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	$ssh_fh,
 			'close'		=>	1,
-			shell_call	=>	"if [ -e '/proc/net/bonding/ifn_bond1' ];
-						then
-							for i in \$(ls /proc/net/bonding/); 
-							do 
-								if [ \$i != 'bond0' ];
-								then
-									echo 'start: \$i';
-									cat /proc/net/bonding/\$i;
-								fi
-							done
-						else
-							for i in \$(ls /proc/net/bonding/bond*);
-							do
-								echo 'start: \$i';
-								cat \$i;
-							done;
-						fi;",
+			shell_call	=>	$shell_call,
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
 		

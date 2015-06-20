@@ -303,6 +303,8 @@ sub connect_to_databases
 			elsif ($DBI::errstr =~ /password authentication failed for user/)
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0004", message_variables => {
+					name		=>	$name,
+					host		=>	$host,
 					user		=>	$user,
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},

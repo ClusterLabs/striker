@@ -129,6 +129,9 @@ my $an = AN::Tools->new({data =>
 			# This gets set to 'dashboard' if we determine this is
 			# a dashboard machine.
 			i_am_a			=>	"",
+			language		=>	"en_CA",
+			log_level		=>	2,
+			log_language		=>	"en_CA",
 			maximum_ram		=>	(256 * 1048576),
 			# When both/all UPSes powering a node switch to 
 			# batteries, their remaining hold-up time will be 
@@ -138,9 +141,14 @@ my $an = AN::Tools->new({data =>
 			# invoked.
 			minimum_ups_runtime	=>	600,
 			minimum_safe_charge	=>	45,
-			language		=>	"en_CA",
-			log_level		=>	2,
-			log_language		=>	"en_CA",
+			temperature		=>	{
+				# This is the weight given to each thermal 
+				# sensor by default.
+				default_sensor_weight	=>	1,
+				# The sum of the critical temperature weights
+				# must exceed this value to cause a shut down.
+				shutdown_limit		=>	5,
+			},
 			sleep_time		=>	30,
 		},
 		strings_read			=>	{},
@@ -459,11 +467,11 @@ sub do_post_scan_dashboard_tasks
 				}
 			}
 			
-			# I might be able to boot down nodes, so I want to now
-			# read in the 'power' and 'temperature' tables. As I
-			# loop through the downed nodes, I will pull their
-			# particulars and decide on a case by case basis if it
-			# is safe to boot them back up.
+			# I might be able to boot up nodes that are down, so I
+			# want to now read in the 'power' and 'temperature' 
+			# tables. As I loop through the downed nodes, I will 
+			# pull their particulars and decide on a case by case
+			# basis if it is safe to boot them back up.
 			
 			# First, read in the power table.
 			read_power_table($an);
@@ -733,6 +741,39 @@ sub check_node_temperature_health
 	my $temperature_is_safe = 1;
 	
 	# Read in all of the temperature entries for this node 
+	# Read in the names of the UPSes watched by this node.
+	my $query = "
+SELECT 
+    temperature_agent_name, 
+    temperature_sensor_name, 
+    temperature_state 
+FROM 
+    temperature 
+WHERE 
+    temperature_host_id = (
+        SELECT 
+            host_id 
+        FROM 
+            hosts 
+        WHERE 
+            host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
+	);";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	foreach my $row (@{$results})
+	{
+		my $temperature_agent_name  = $row->[0];
+		my $temperature_sensor_name = $row->[1];
+		my $temperature_state       = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "temperature_agent_name",  value1 => $temperature_agent_name, 
+			name2 => "temperature_sensor_name", value2 => $temperature_sensor_name, 
+			name3 => "temperature_state",       value3 => $temperature_state, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "temperature_is_safe", value1 => $temperature_is_safe
@@ -744,7 +785,7 @@ sub check_node_temperature_health
 sub read_temperature_table
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_temperature_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_temperature_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	
 	
@@ -1008,9 +1049,109 @@ sub check_node_temperature
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_temperature_ok = 1;
+	# 1 == OK, 2 == Warning, 3 == Critical (should shut down)
+	my $node_temperature_ok   = 1;
+	my $default_sensor_weight = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
+	my $shutdown_threshold    = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;
+	my $total_sensor_weight   = 0;
 	
-	# TODO...
+	# Read in the temperature values for this machine.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node_temperature_ok",   value1 => $node_temperature_ok,
+		name2 => "default_sensor_weight", value2 => $default_sensor_weight,
+		name3 => "shutdown_threshold",    value3 => $shutdown_threshold,
+		name4 => "total_sensor_weight",   value4 => $total_sensor_weight,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Pull in all the thermal sensors for this host. If any are returned,
+	# 'node_temperature_ok' will get set to '2'. If any are critical, their
+	# weight will be added to 'total_sensor_weight'. If the final weight is
+	# higher than 'shutdown_threshold', 'node_temperature_ok' will get set
+	# to '3'.
+	my $query = "
+SELECT 
+    temperature_agent_name, 
+    temperature_sensor_name, 
+    temperature_state 
+FROM 
+    temperature 
+WHERE 
+    temperature_host_id = (".$an->data->{sys}{host_id_query}.");
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If there are no results, then mark power as always OK because #yolo
+	my $sensor_count = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sensor_count", value1 => $sensor_count
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($sensor_count)
+	{
+		$node_temperature_ok = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# No sensors are high, we're done.
+		return($node_temperature_ok);
+	}
+	
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $temperature_agent_name  = $row->[0];
+		my $temperature_sensor_name = $row->[1];
+		my $temperature_state       = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "temperature_agent_name",  value1 => $temperature_agent_name,
+			name2 => "temperature_sensor_name", value2 => $temperature_sensor_name,
+			name3 => "temperature_state",       value3 => $temperature_state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($temperature_state =~ /critical/)
+		{
+			# Get the weight of the sensor.
+			my $this_sensor_weight = $default_sensor_weight;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "total_sensor_weight",                                                       value1 => $total_sensor_weight, 
+				name2 => "this_sensor_weight",                                                        value2 => $this_sensor_weight,
+				name3 => "${temperature_agent_name}::thresholds::${temperature_sensor_name}::weight", value3 => $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight})
+			{
+				$this_sensor_weight = $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_sensor_weight", value1 => $this_sensor_weight,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$total_sensor_weight += $this_sensor_weight;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "total_sensor_weight", value1 => $total_sensor_weight,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "total_sensor_weight", value1 => $total_sensor_weight,
+		name2 => "shutdown_threshold",  value2 => $shutdown_threshold,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($total_sensor_weight > $shutdown_threshold)
+	{
+		$node_temperature_ok = 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
