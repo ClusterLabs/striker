@@ -138,6 +138,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0059">The node: [#!variable!node!#] was booted back up successfully.</key>
 		<key name="scancore_log_0060">Failed to boot the node: [#!variable!node!#]. Tried using the shell call: [#!variable!shell_call!#] which should have returned the code '0' but: [#!variable!rc!#] was returned.</key>
 		<key name="scancore_log_0061">Post-scan checks and tasks completed.</key>
+		<key name="scancore_log_0062">The node: [#!variable!node!#], which went into an emergency-stop, is not ready to boot yet.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -179,7 +180,7 @@ The error was:
 		<key name="scancore_warning_0012">
 The node: [#!variable!node!#] has entered a 'warning' state. 
 Warning: If the peer goes critical, it will not migrate to this node and instead gracefully shut down it's server.</key>
-		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy. It is again an migration target should the peer go into emergency shutdown.</key>
+		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy. It is again a migration target should the peer go into emergency shutdown.</key>
 		<key name="scancore_warning_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		
 		<!-- Cleared warnings. -->
@@ -201,6 +202,7 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_error_0013">Too much RAM being used! Using: [#!variable!used_ram!#], maximum allowed: [#!variable!maximum_ram!#].</key>
 		<key name="scancore_error_0014">It looks like a loop was hit trying to find a unique file name for storing an email. I got to: [#!variable!file!#] before giving up.</key>
 		<key name="scancore_error_0015">The node: [#!variable!node!#] has gone into "emergency stop" and is shutting down!</key>
+		<key name="scancore_error_0016">The node: [#!variable!node!#] has reaches an "emergency stop" threshold, but the automatic shutdown feature has been disabled! Please manually shut down the machine (or fix the problem) as soon as possible.</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>

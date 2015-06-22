@@ -3,7 +3,7 @@
 CREATE TABLE ipmitool (
 	ipmitool_id			bigserial			primary key,
 	ipmitool_host_id		bigint				not null,
-	ipmitool_sensor_host		text				not null,	-- The hostname of the machine we pulled the sensor value from.
+	ipmitool_sensor_host		text				not null,	-- The hostname of the machine we pulled the sensor value from. We don't link this to a host_id because it is possible the host doesn't doesn't have an entry (yet)
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,	-- Temperature (°C), vDC, vAC, watt, amp, percent
 	ipmitool_sensor_status		text				not null,

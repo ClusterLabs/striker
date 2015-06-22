@@ -2290,7 +2290,8 @@ AND
 UPDATE 
     apc_ups
 SET
-    apc_ups_health = 0
+    apc_ups_health = 0, 
+    modified_date  = ".$an->data->{sys}{db_timestamp}."
 WHERE
     apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
 AND

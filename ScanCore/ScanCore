@@ -66,7 +66,7 @@ yum install perl-DBI perl-DBD-Pg perl-CGI perl-TermReadKey perl-XML-Simple perl-
 
 # Reset DB
 su - postgres -c "dropdb scancore"
-su - postgres -c "createdb --owner striker scancore"
+su - postgres -c "createdb --owner admin scancore"
 su postgres -c "psql scancore"
 
 
@@ -126,6 +126,10 @@ my $an = AN::Tools->new({data =>
 			# Set to '1' to add the footer warning that the email
 			# did not come from alteeve.ca
 			append_email_footer	=>	0,
+			disable			=>	{
+				power_shutdown		=>	0,
+				thermal_shutdown	=>	0,
+			},
 			# This gets set to 'dashboard' if we determine this is
 			# a dashboard machine.
 			i_am_a			=>	"",
@@ -148,6 +152,13 @@ my $an = AN::Tools->new({data =>
 				# The sum of the critical temperature weights
 				# must exceed this value to cause a shut down.
 				shutdown_limit		=>	5,
+			},
+			thermal_reboot_delay	=>	{
+				'1'			=>	600,
+				'2'			=>	1800,
+				'3'			=>	3600,
+				'4'			=>	7200,
+				more			=>	21600,
 			},
 			sleep_time		=>	30,
 		},
@@ -490,21 +501,38 @@ sub do_post_scan_dashboard_tasks
 					name3 => "ref: cache::${node}", value3 => ref($an->data->{cache}{$node}),
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				### TODO: Should we make it a config option to
+				###       let the usee decide if they want to
+				###       boot a node while a dashboard is in 
+				###       'warning'?
+				
+				# Make sure our own temperature is good.
+				my $my_temperature_is_ok = check_node_temperature_health($an, $an->hostname);
+				
 				# See if the power is safe enough to boot this
 				# node.
-				my $power_is_safe       = check_node_power_health($an, $node);
+				my $power_is_safe       = check_node_power_health      ($an, $node);
 				my $temperature_is_safe = check_node_temperature_health($an, $node);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "power_is_safe",       value1 => $power_is_safe, 
-					name2 => "temperature_is_safe", value2 => $temperature_is_safe, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "power_is_safe",        value1 => $power_is_safe, 
+					name2 => "temperature_is_safe",  value2 => $temperature_is_safe, 
+					name3 => "my_temperature_is_ok", value3 => $my_temperature_is_ok
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Now, if the power and temperature is good,
 				# try to boot the node!
-				if (($power_is_safe) && ($temperature_is_safe))
+				if (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
 				{
 					# Okie!
+					#print "I would have booted the node, but I'm lazy.\n";
 					boot_node($an, $node);
+				}
+				else
+				{
+					# Not ready to boot yet.
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0062", message_variables => {
+						node => $node, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -685,7 +713,7 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		my $power_ups_fqdn = $row->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",                       value1 => $query, 
 			name2 => "ref: power::$power_ups_fqdn", value2 => ref($an->data->{power}{$power_ups_fqdn}),
 		}, file => $THIS_FILE, line => __LINE__});
@@ -728,8 +756,8 @@ WHERE
 	return($power_is_safe);
 }
 
-# This pulls in the list of UPSes powering the given node and checks to see if
-# they are healthy enough to power the node.
+# This pulls in the list of temperatures for the given node and checks to see 
+# if they are healthy enough to power the node back up.
 sub check_node_temperature_health
 {
 	my ($an, $node) = @_;
@@ -737,11 +765,12 @@ sub check_node_temperature_health
 		name1 => "node", value1 => "$node" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### WARNING: Set to '1' until this section is done.
+	### NOTE: When this is called against a dashboard without IPMI, it will
+	###       always return OK.
+	# This will get set to '0' if the temperature is not OK.
 	my $temperature_is_safe = 1;
 	
 	# Read in all of the temperature entries for this node 
-	# Read in the names of the UPSes watched by this node.
 	my $query = "
 SELECT 
     temperature_agent_name, 
@@ -750,14 +779,10 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_id = (
-        SELECT 
-            host_id 
-        FROM 
-            hosts 
-        WHERE 
-            host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
-	);";
+    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+AND 
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($node).";
+";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -765,6 +790,8 @@ WHERE
 	my $results = $an->DB->do_db_query({query => $query});
 	foreach my $row (@{$results})
 	{
+		# If any are in 'warning' or 'critical', set the
+		# 'temperature_is_safe' variable to '0'.
 		my $temperature_agent_name  = $row->[0];
 		my $temperature_sensor_name = $row->[1];
 		my $temperature_state       = $row->[2];
@@ -773,9 +800,174 @@ WHERE
 			name2 => "temperature_sensor_name", value2 => $temperature_sensor_name, 
 			name3 => "temperature_state",       value3 => $temperature_state, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($temperature_state ne "ok")
+		{
+			$temperature_is_safe = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "temperature_is_safe",  value1 => $temperature_is_safe, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	### Make sure that, if the sensors are OK, that we've waited the 
+	### required amount of time. If not, set the 'temperature_is_safe' to
+	### '0' to prevent booting.
+	
+	# When a node has gone into emergency stop because of an 
+	# over-temperature event, we want to give it time to cool down before
+	# we boot it back up.
+	# 
+	# Likewise, if we rebooted it and it went back down quickly, give it
+	# more time before starting it back up. We do this by reading in how
+	# many times the node went into thermal shutdown over the last six 
+	# hours. The number of returned shut-downs will determine how long I
+	# wait before booting the node back up.
+	# 
+	# The default schedule is:
+	# Reboots | Wait until boot
+	# --------+-----------------
+	#  1      | 10m
+	#  2      | 30m
+	#  3      | 60m
+	#  4      | 120m
+	#  >4     | 6h
+	# --------+-----------------
+	# 
+	# NOTE: When a node is off, we can't read most of it's sensors, but I
+	#       usually can read 'Ambient' and 'Systemboard'. So before
+	#       starting the node, check with these values and make sure 
+	#       they're ok. If either are still in warning territory, stay off
+	#       no matter what.
+	#       
+	# To determine the number or reboots, do the following query:
+	# 
+	# TODO: This will catch power-loss reboots. For now, we aren't going to
+	#       worry about this because it is unlikely it would happen at the
+	#       same time and even if it did, the consequences aren't that big.
+	#       This could be a wrong assumption though, so revisit this later
+	#       once testing is under way.
+	#     
+	# NOTE: As time passes, we may slip into a period where the node starts
+	#       rebooting more often until the count goes back up. We may need
+	#       to read the time stamps of the last day and analyze the reboot
+	#       times later.
+	# 
+	if ($temperature_is_safe)
+	{
+		# How often have I shut down?
+		my $last_shutdown = 0;
+		my $query         = "
+SELECT 
+    round(extract(epoch from modified_date))
+FROM 
+    history.hosts 
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)." 
+AND 
+    host_emergency_stop = TRUE 
+AND 
+    host_stop_reason = 'temperature' 
+AND 
+    modified_date > (now() - interval '6h')
+ORDER BY 
+    modified_date ASC;
+";
+		# There should always be at least one.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		my $results        = $an->DB->do_db_query({query => $query});
+		my $shutdown_count = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shutdown_count", value1 => $shutdown_count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$last_shutdown = $row->[0];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "last_shutdown", value1 => $last_shutdown
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "last_shutdown", value1 => $last_shutdown
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Now I know when the node last shut down and how many times it
+		# shut down in the last 6 hours. 
+		# 
+		# Now, how long should we wait and has it been that long since
+		# the last shutdown?
+		my $delay = 0;
+		if ($shutdown_count > 4)
+		{
+			# 6 hours
+			$delay = $an->data->{scancore}{thermal_reboot_delay}{more};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($shutdown_count == 4)
+		{
+			# 2 hours
+			$delay = $an->data->{scancore}{thermal_reboot_delay}{'4'};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($shutdown_count == 3)
+		{
+			# 1 hour
+			$delay = $an->data->{scancore}{thermal_reboot_delay}{'3'};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($shutdown_count == 2)
+		{
+			# 30 minutes
+			$delay = $an->data->{scancore}{thermal_reboot_delay}{'2'};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($shutdown_count == 1)
+		{
+			# 10 minutes
+			$delay = $an->data->{scancore}{thermal_reboot_delay}{'1'};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No delay
+			$delay = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "delay", value1 => $delay
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Now, see if the last reboot time is more than delay time ago.
+		if ($delay)
+		{
+			my $last_shutdown_was = (time - $last_shutdown);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "last_shutdown_was", value1 => $last_shutdown_was, 
+				name2 => "delay",             value2 => $delay, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($last_shutdown_was < $delay)
+			{
+				# Wait longer.
+				$temperature_is_safe = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "temperature_is_safe", value1 => $temperature_is_safe
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "temperature_is_safe", value1 => $temperature_is_safe
 	}, file => $THIS_FILE, line => __LINE__});
 	return($temperature_is_safe);
@@ -786,7 +978,6 @@ sub read_temperature_table
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_temperature_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
 	
 	
 	return(0);
@@ -886,21 +1077,39 @@ sub do_post_scan_node_tasks
 		# Set the health to 'Critical'.
 		update_health_file($an, 3);
 		
+		# Why exactly are we shutting down?
+		my $host_stop_reason = $node_power_ok eq "3" ? "power" : "temperature";
+		
 		# Update hosts to set host_emergency_stop to TRUE
-		my $query = "UPDATE hosts SET host_emergency_stop = TRUE WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
+		my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = TRUE, 
+    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($host_stop_reason).", 
+    modified_date       = ".$an->data->{sys}{db_timestamp}."
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query});
 		
-		### NOTE: We don't set an alert here because we're toast and
-		###       that really should be happening over and over.
+		my $do_shutdown = 1;
+		my $message_key = "scancore_error_0015";
+		if ((($host_stop_reason eq "power")       && ($an->data->{scancore}{disable}{power_shutdown})) or 
+		    (($host_stop_reason eq "temperature") && ($an->data->{scancore}{disable}{thermal_shutdown})))
+		{
+			# Shutdown has been disabled.
+			$do_shutdown = 0;
+			$message_key = "scancore_error_0016";
+		}
 		# Send our final email.
 		$an->Alert->register_alert({
 			alert_level		=>	"critical", 
 			alert_agent_name	=>	"$THIS_FILE",
 			alert_title_key		=>	"an_alert_title_0005",
-			alert_message_key	=>	"scancore_error_0015",
+			alert_message_key	=>	$message_key,
 			alert_message_variables	=>	{
 				node			=>	$an->hostname,
 			},
@@ -908,26 +1117,40 @@ sub do_post_scan_node_tasks
 		
 		# Send the email
 		process_alerts($an);
-		
-		# And now die via 'safe_anvil_shutdown'. We should be dead 
-		# before this exits. So ya, so long and thanks for all the
-		# fish.
-		my $shell_call = $an->data->{path}{safe_anvil_shutdown}." 2>&1 |";
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
+		if ($do_shutdown)
 		{
-			chomp;
-			my $line = $_;
-			$line =~ s/\n//g;
-			$line =~ s/\r//g;
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
+			# And now die via 'safe_anvil_shutdown'. We should be dead 
+			# before this exits. So ya, so long and thanks for all the
+			# fish.
+			my $shell_call = $an->data->{path}{safe_anvil_shutdown}." 2>&1 |";
+			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$line =~ s/\n//g;
+				$line =~ s/\r//g;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			# Why are we still alive? die already.
+			exit(255);
 		}
-		close $file_handle;
-		
-		# Why are we still alive? die already.
-		exit(255);
+		else
+		{
+			
+			# We're not going to die, so record that we've warned the user.
+			my $cleared = $an->Alert->check_alert_sent({
+				type			=>	"warning",
+				alert_sent_by		=>	$THIS_FILE,
+				alert_record_locator	=>	$an->hostname,
+				alert_name		=>	"shutdown_should_have_happened",
+				modified_date		=>	$an->data->{sys}{db_timestamp},
+			});
+		}
 	}
 	elsif (($node_power_ok eq "2") || ($node_temperature_ok eq "2"))
 	{
@@ -966,14 +1189,21 @@ sub do_post_scan_node_tasks
 		update_health_file($an, 1);
 		
 		# If we were previously sick, tell the user that we're OK now.
-		my $cleared = $an->Alert->check_alert_sent({
+		my $cleared_node_sick = $an->Alert->check_alert_sent({
 			type			=>	"clear",
 			alert_sent_by		=>	$THIS_FILE,
 			alert_record_locator	=>	$an->hostname,
 			alert_name		=>	"node_sick",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
-		if ($cleared)
+		my $cleared_poweroff = $an->Alert->check_alert_sent({
+			type			=>	"clear",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$an->hostname,
+			alert_name		=>	"shutdown_should_have_happened",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
+		if ($cleared_node_sick)
 		{
 			# Tell the user that we're OK.
 			$an->Alert->register_alert({
@@ -1076,7 +1306,9 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.");
+    temperature_host_id = (".$an->data->{sys}{host_id_query}.") 
+AND 
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1092,14 +1324,7 @@ WHERE
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sensor_count", value1 => $sensor_count
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($sensor_count)
-	{
-		$node_temperature_ok = 2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
+	if (not $sensor_count)
 	{
 		# No sensors are high, we're done.
 		return($node_temperature_ok);
@@ -1117,6 +1342,17 @@ WHERE
 			name3 => "temperature_state",       value3 => $temperature_state,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# If this is a sensor that is 'ok', skip it. Otherwise, we'll
+		# set the 'node_temperature_ok' to '2' (which may get set to
+		# '3' after these checks are done.
+		next if $temperature_state eq "ok";
+		$node_temperature_ok = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If it is critical, find this sensor's weight and add it to 
+		# the total.
 		if ($temperature_state =~ /critical/)
 		{
 			# Get the weight of the sensor.
@@ -3113,10 +3349,10 @@ INSERT INTO
 UPDATE 
     agents
 SET
-    agent_host_id = (".$an->data->{sys}{host_id_query}."), 
+    agent_host_id   = (".$an->data->{sys}{host_id_query}."), 
     agent_exit_code = ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    agent_runtime = ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
+    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name).";
 ";
@@ -3270,9 +3506,9 @@ INSERT INTO
 UPDATE 
     hosts
 SET
-    host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
-    host_type = ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    host_status = ".$an->data->{sys}{use_db_fh}->quote($host_status).", 
+    host_name     = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
+    host_type     = ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
+    host_status   = ".$an->data->{sys}{use_db_fh}->quote($host_status).", 
     modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE
     host_id = ".$an->data->{sys}{use_db_fh}->quote($target_host_id).";
@@ -3363,7 +3599,9 @@ INSERT INTO
 UPDATE 
     hosts
 SET 
-    host_emergency_stop = FALSE
+    host_emergency_stop = FALSE, 
+    host_stop_reason    = NULL, 
+    modified_date       = ".$an->data->{sys}{db_timestamp}."
 WHERE
     host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
 ";
@@ -3479,8 +3717,8 @@ UPDATE
     agents 
 SET
     agent_exit_code = ".$an->data->{sys}{use_db_fh}->quote($agent_rc).", 
-    agent_runtime = ".$an->data->{sys}{use_db_fh}->quote($runtime).", 
-    modified_date = ".$an->data->{sys}{db_timestamp}."
+    agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($runtime).", 
+    modified_date   = ".$an->data->{sys}{db_timestamp}."
 WHERE 
     agent_host_id = (".$an->data->{sys}{host_id_query}.")
 AND
@@ -3587,7 +3825,7 @@ UPDATE
     ram_used 
 SET
     ram_used_bytes = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
-    modified_date = ".$an->data->{sys}{db_timestamp}."
+    modified_date  = ".$an->data->{sys}{db_timestamp}."
 WHERE 
     ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND

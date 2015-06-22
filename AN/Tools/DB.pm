@@ -117,13 +117,14 @@ sub do_db_write
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
+			#print "$query\n\n";
 			#print "id: [$id], query: ============\n$query\n============\n";
-			$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
-# 			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
-# 								query    => $query, 
-# 								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
-# 								db_error => $DBI::errstr
-# 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
+#			$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
+			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
+								query    => $query, 
+								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+								db_error => $DBI::errstr
+							}, code => 2, file => "$THIS_FILE", line => __LINE__});
 		}
 		
 		# Commit the changes.

@@ -30,6 +30,7 @@ CREATE TABLE hosts (
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
+	host_stop_reason	text,								-- Set to 'power' if the UPS shut down and 'temperature' if the temperature went too high or low
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
@@ -40,6 +41,7 @@ CREATE TABLE history.hosts (
 	host_name		text,
 	host_type		text,
 	host_emergency_stop	boolean				not null,
+	host_stop_reason	text,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.hosts OWNER TO #!variable!user!#;
@@ -55,12 +57,14 @@ BEGIN
 		 host_name,
 		 host_type,
 		 host_emergency_stop,
+		 host_stop_reason, 
 		 modified_date)
 	VALUES
 		(history_hosts.host_id,
 		 history_hosts.host_name,
 		 history_hosts.host_type,
 		 history_hosts.host_emergency_stop,
+		 history_hosts.host_stop_reason, 
 		 history_hosts.modified_date);
 	RETURN NULL;
 END;
@@ -214,6 +218,7 @@ CREATE TABLE temperature (
 	temperature_id		bigserial			primary key,
 	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
+	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text				not null,
 	temperature_celsius	numeric		not null,
 	temperature_state	text				not null,			-- warning, critical
@@ -229,6 +234,7 @@ CREATE TABLE history.temperature (
 	temperature_id		bigint,
 	temperature_host_id	bigint,
 	temperature_agent_name	text,
+	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text,
 	temperature_celsius	numeric,
 	temperature_state	text,
@@ -247,6 +253,7 @@ BEGIN
 		(temperature_id,
 		 temperature_host_id,
 		 temperature_agent_name,
+		 temperature_sensor_host, 
 		 temperature_sensor_name,
 		 temperature_celsius,
 		 temperature_state,
@@ -256,6 +263,7 @@ BEGIN
 		(history_temperature.temperature_id,
 		 history_temperature.temperature_host_id,
 		 history_temperature.temperature_agent_name,
+		 history_temperature.temperature_sensor_host, 
 		 history_temperature.temperature_sensor_name,
 		 history_temperature.temperature_celsius,
 		 history_temperature.temperature_state,

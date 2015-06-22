@@ -112,7 +112,7 @@ The UPS: [#!variable!ups_name!#] has had its network interface's MAC address cha
 		<key name="scan_apc_ups_note_0018">
 The UPS: [#!variable!ups_name!#] has had its battery's estimated replacement date change:
 - [#!variable!old_value!#] -> [#!variable!new_value!#] (yyyy/mm/dd)
-  Note: If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by an change in how often the UPS has run on it's batteries.
+  Note: If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by a change in how often the UPS has run on it's batteries.
 		</key>
 		<key name="scan_apc_ups_note_0019">
 The UPS: [#!variable!ups_name!#] has had its battery fail:

@@ -111,6 +111,7 @@ my $an = AN::Tools->new({data =>
 				#	weight				=>	1,
 				#},
 			},
+			offline_sensor_list		=>	"Ambient,Systemboard",
 		},
 	},
 });
@@ -136,17 +137,21 @@ print $an->String->get({key => "scan_ipmitool_message_0001"}), "\n";
 
 # This calls anvil-report-ipmi-details to find IPMI devices to scan. It also
 # handles any user-defined IPMI devices set in striker.conf.
-find_ipmi_targets($an);
-
-# Query IPMI targets. Unreachable targets will simply be ignored.
-query_ipmi_targets($an);
+if (not find_ipmi_targets($an))
+{
+	# No targets found, exit.
+	nice_exit($an, 1);
+}
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each
 # one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "scancore_log_0005", message_variables => {
-	connections	=>	$connections,
+$an->Log->entry({log_level => 3, message_key => "scancore_log_0005", message_variables => {
+	connections => $connections,
 }, file => $THIS_FILE, line => __LINE__});
+
+# Query IPMI targets. Unreachable targets will simply be ignored.
+query_ipmi_targets($an);
 
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
@@ -206,12 +211,19 @@ sub find_changes
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Loop through each UPS
+	# Loop through each machine
 	my $id        = $an->data->{sys}{read_db_id};
 	my $host_name = $an->hostname;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",        value1 => $id, 
+		name2 => "host_name", value2 => $host_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{ipmi}})
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "machine", value1 => $machine, 
+		}, file => $THIS_FILE, line => __LINE__});
 		# This returns the 'ipmitool_id' if the UPS is found.
 		if (read_last_scan($an, $machine))
 		{
@@ -274,7 +286,8 @@ SET
     ipmitool_value_sensor_value = ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_value_sensor_value).", 
     modified_date               = ".$an->data->{sys}{db_timestamp}." 
 WHERE 
-    ipmitool_value_ipmitool_id = ($this_ipmitool_id_query);
+    ipmitool_value_ipmitool_id = ($this_ipmitool_id_query)
+;
 ";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -301,7 +314,7 @@ WHERE
 						#       change. We'll add better checks later.
 						if ($new_ipmitool_sensor_units eq "C")
 						{
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 								name1 => "machine",                         value1 => $machine,
 								name2 => "sensor_name",                     value2 => $sensor_name, 
 								name3 => "new_ipmitool_value_sensor_value", value3 => $new_ipmitool_value_sensor_value, 
@@ -373,7 +386,9 @@ SET
     ipmitool_sensor_low_warning   = ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_sensor_low_warning).", 
     modified_date                 = ".$an->data->{sys}{db_timestamp}." 
 WHERE 
-    ipmitool_id = ($this_ipmitool_id_query);
+    ipmitool_id = ($this_ipmitool_id_query)
+AND 
+    ipmitool_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -452,7 +467,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -471,7 +486,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -528,6 +543,10 @@ INSERT INTO
 			# New machine, INSERT everything.
 			foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{ipmi}{$machine}{ipmitool_sensor_name}})
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ipmitool_sensor_name", value1 => $ipmitool_sensor_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				my $this_ipmitool_id_query = get_ipmitool_id_query($an, $ipmitool_sensor_name, $machine);
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_ipmitool_id_query", value1 => $this_ipmitool_id_query, 
@@ -576,7 +595,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -595,7 +614,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -635,10 +654,10 @@ INSERT INTO
 				});
 			}
 		}
+		
+		### Now add, update and delete 'temperature' entries.
+		process_temperature($an, $machine);
 	}
-	
-	### Now add, update and delete 'temperature' entries.
-	process_temperature($an);
 	
 	# Now commit the changes.
 	commit_sql($an);
@@ -650,8 +669,10 @@ INSERT INTO
 # table, deleting stale entries as needed.
 sub process_temperature
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_temperature", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my ($an, $machine) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature", }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "machine", value1 => $machine, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# First, read in all existing entries. We'll compare and UPDATE or
 	# INSERT as needed and DELETE any stale entries.
@@ -666,15 +687,15 @@ FROM
 WHERE 
     temperature_host_id = (".$an->data->{sys}{host_id_query}.")
 AND 
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
+
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
@@ -689,27 +710,39 @@ AND
 			name4 => "temperature_is",       value4 => $temperature_is,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{old}{temperature}{$ipmitool_sensor_name} = {
+		$an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name} = {
 			temperature_celsius	=>	$temperature_celsius,
 			temperature_state	=>	$temperature_state,
 			temperature_is		=>	$temperature_is,
 		};
-		
 	}
 	
 	# Look at the new values.
-	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{new}{temperature}})
+	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{new}{$machine}{temperature}})
 	{
-		my $new_temperature_celsius = $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
-		my $new_temperature_state   = $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_state};
-		my $new_temperature_is      = $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_is};
+		my $new_temperature_celsius = $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
+		my $new_temperature_state   = $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state};
+		my $new_temperature_is      = $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "ipmitool_sensor_name",     value1 => $ipmitool_sensor_name,
+			name2 => "new_temperature_celsius",  value2 => $new_temperature_celsius,
+			name3 => "new_temperature_state",    value3 => $new_temperature_state,
+			name4 => "new_temperature_is",       value4 => $new_temperature_is,
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		if (ref($an->data->{old}{temperature}{$ipmitool_sensor_name}))
+		if (ref($an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}))
 		{
 			# Update the existing entry, if needed.
-			my $old_temperature_celsius = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
-			my $old_temperature_state   = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_state};
-			my $old_temperature_is      = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_is};
+			my $old_temperature_celsius = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
+			my $old_temperature_state   = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state};
+			my $old_temperature_is      = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "ipmitool_sensor_name",     value1 => $ipmitool_sensor_name,
+				name2 => "old_temperature_celsius",  value2 => $old_temperature_celsius,
+				name3 => "old_temperature_state",    value3 => $old_temperature_state,
+				name4 => "old_temperature_is",       value4 => $old_temperature_is,
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if (($new_temperature_celsius ne $old_temperature_celsius) || 
 			    ($new_temperature_state   ne $old_temperature_state)   ||
 			    ($new_temperature_is      ne $old_temperature_is))
@@ -727,14 +760,26 @@ WHERE
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
 				push @{$an->data->{sys}{sql}}, $query;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
-				delete $an->data->{old}{temperature}{$ipmitool_sensor_name};
 			}
+			else
+			{
+				# No change.
+				$an->Log->entry({log_level => 2, message_key => "scan_ipmitool_log_0004", message_variables => {
+					sensor_name => $ipmitool_sensor_name,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# We still want this value, so delete it from the hash
+			# so it doesn't get deleted in the next step.
+			delete $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name};
 		}
 		else
 		{
@@ -744,6 +789,7 @@ INSERT INTO
     temperature 
 (
     temperature_host_id, 
+    temperature_sensor_host, 
     temperature_sensor_name, 
     temperature_agent_name, 
     temperature_celsius, 
@@ -752,6 +798,7 @@ INSERT INTO
     modified_date
 ) VALUES (
     (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($machine).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_temperature_celsius).", 
@@ -769,11 +816,11 @@ INSERT INTO
 
 	# Now, if any undeleted old entries remain, delete them from the
 	# database.
-	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{old}{temperature}})
+	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{old}{$machine}{temperature}})
 	{
-		my $old_temperature_celsius = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
-		my $old_temperature_state   = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_state};
-		my $old_temperature_is      = $an->data->{old}{temperature}{$ipmitool_sensor_name}{temperature_is};
+		my $old_temperature_celsius = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
+		my $old_temperature_state   = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state};
+		my $old_temperature_is      = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is};
 		
 		# Mark the sensor as DELETEd.
 		my $query = "
@@ -787,7 +834,9 @@ WHERE
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+AND
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
 		push @{$an->data->{sys}{sql}}, $query;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -801,7 +850,9 @@ WHERE
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)." 
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
+    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
+AND
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
 		push @{$an->data->{sys}{sql}}, $query;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -910,58 +961,93 @@ sub log_abnormal_temperatures
 	if ($new_ipmitool_value_sensor_value < $low_critical)
 	{
 		# Setup the 'temperature' entry.
-		$an->data->{new}{temperature}{$ipmitool_sensor_name} = {
+		$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
 			temperature_celsius	=>	$new_ipmitool_value_sensor_value,
 			temperature_state	=>	'critical',
 			temperature_is		=>	'low',
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "new::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
-			name2 => "new::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
-			name3 => "new::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+			name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+			name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_value_sensor_value < $low_warning)
 	{
 		# Setup the 'temperature' entry.
-		$an->data->{new}{temperature}{$ipmitool_sensor_name} = {
+		$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
 			temperature_celsius	=>	$new_ipmitool_value_sensor_value,
 			temperature_state	=>	'warning',
 			temperature_is		=>	'low',
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "new::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
-			name2 => "new::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
-			name3 => "new::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+			name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+			name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_value_sensor_value > $high_critical)
 	{
 		# Setup the 'temperature' entry.
-		$an->data->{new}{temperature}{$ipmitool_sensor_name} = {
+		$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
 			temperature_celsius	=>	$new_ipmitool_value_sensor_value,
 			temperature_state	=>	'critical',
 			temperature_is		=>	'high',
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "new::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
-			name2 => "new::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
-			name3 => "new::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+			name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+			name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_value_sensor_value > $high_warning)
 	{
 		# Setup the 'temperature' entry.
-		$an->data->{new}{temperature}{$ipmitool_sensor_name} = {
+		$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
 			temperature_celsius	=>	$new_ipmitool_value_sensor_value,
 			temperature_state	=>	'warning',
 			temperature_is		=>	'high',
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "new::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
-			name2 => "new::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
-			name3 => "new::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+			name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+			name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# When the dashboard scans a node, it needs to know about the Ambient
+	# and Systemboard temperatures in order to device whether the node is 
+	# safe too boot back up or not. So if this machine is a dashboard, log
+	# the 'Ambient' and 'Systemboard' temperatures (or whatever the user
+	# defined) as 'good', if they're not already in the 
+	# 'new::temperature::x' hash.
+	my $query = "SELECT host_type FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	my $i_am_a = $an->DB->do_db_query({query => $query})->[0]->[0];
+	foreach my $sensor (split/,/, $an->data->{'scan-ipmitool'}{offline_sensor_list})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "sensor",               value1 => $sensor, 
+			name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name, 
+			name3 => "i_am_a",               value3 => $i_am_a, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($ipmitool_sensor_name eq $sensor) && 
+		    ($i_am_a               eq "dashboard") && 
+		    (not exists $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}))
+		{
+			$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
+				temperature_celsius	=>	$new_ipmitool_value_sensor_value,
+				temperature_state	=>	'ok',
+				temperature_is		=>	'nominal',
+			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+				name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+				name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	return(0);
@@ -1943,7 +2029,7 @@ sub query_ipmi_targets
 	{
 		my $ipmitool_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command};
 		my $ipmi_password    = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "machine",          value1 => $machine,
 			name2 => "ipmitool_command", value2 => $ipmitool_command,
 			name3 => "ipmi_password",    value3 => $ipmi_password, 
@@ -1964,7 +2050,7 @@ sub query_ipmi_targets
 		
 		# Call!
 		$shell_call = "$ipmitool_command -f $temp_file sensor list all 2>&1 |";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1983,6 +2069,17 @@ sub query_ipmi_targets
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Catch errors:
+			if ($line =~ /Activate Session command failed/)
+			{
+				# Failed to connect.
+				$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0003", message_variables => {
+					machine	=> $machine, 
+					call	=> $ipmitool_command, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			next if $line !~ /\|/;
 			
 			#     high fail -------------------------------------.
@@ -2091,6 +2188,9 @@ sub find_ipmi_targets
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# This will keep track of how many IPMI targets we find.
+	my $ipmi_targets = 0;
+	
 	# First, call 'anvil-report-ipmi-details' and see what we find. Then
 	# we'll read in user definitions so that the user can override what we
 	# find.
@@ -2111,10 +2211,17 @@ sub find_ipmi_targets
 		{
 			my $machine             = $1;
 			my $power_check_command = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			   $ipmi_targets++;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "machine",             value1 => $machine, 
-				name2 => "power_check_command", value2 => $power_check_command
+				name2 => "power_check_command", value2 => $power_check_command, 
+				name3 => "ipmi_targets",        value3 => $ipmi_targets
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# I need to remove the double-quotes from the 
+			# '-p "<password>"'.
+			$power_check_command =~ s/-p "(.*?)"/-p $1/;
+			
 			$an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command} = $power_check_command;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "scan-ipmitool::${machine}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}, 
@@ -2197,7 +2304,7 @@ sub find_ipmi_targets
 		}
 	}
 	
-	return(0);
+	return($ipmi_targets);
 }
 
 # This commits the SQL queries in '$an->data->{sys}{sql}', if any.
