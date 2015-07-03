@@ -24,7 +24,7 @@ my $conf = {
 		# -PR            == ARP ping scan 
 		nmap_switches	=>	"-sn -n -PR",
 		quiet		=>	1,
-		network		=>	"10.20",
+		network		=>	"192.168",
 	},
 };
 

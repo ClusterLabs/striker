@@ -1067,6 +1067,16 @@ sub do_post_scan_node_tasks
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: Enable load shedding where, if the power is out for > 5 
+	###       minutes and/or if the temperature has climbed into warning
+	###       on both nodes for > 5 minutes, consolidate the VMs by 
+	###       migrating servers from the node with the lease guests to the
+	###       node with the most guests (to minimize migration time) and 
+	###       then power off the node. To this, I will need to know who my
+	###       peer is and read in the UPS and thermal data for both of us,
+	###       looking at the times that we both went into a 'warning' 
+	###       state.
+	
 	# OK, if both are '1', make sure our health file is set to 'OK'. If 
 	# either returned '2', make sure our health file is set to 'Warning'.
 	# If either returned '3', set the health file to 'Critical' and set the

@@ -997,7 +997,7 @@ sub initialize_conf
 			time_seperator		=>	":",
 			# ~3 GiB, but in practice more because it will round down the
 			# available RAM before subtracting this to leave the user with
-			# an even number of GiB or RAM to allocate to servers.
+			# an even number of GiB of RAM to allocate to servers.
 			unusable_ram		=>	(3 * (1024 ** 3)),
 			up_nodes		=>	0,
 			update_os		=>	1,

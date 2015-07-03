@@ -451,12 +451,9 @@ fi
 ###       When booting off of the USB drive though, the USB drive comes up as
 ###       'sdb' and the HDD comes up as 'sdc'... I need to make this smarter, 
 ###       but it works for now.
-#if grep -q sdc /proc/partitions; then
-#	DRIVE="sdc"
-#fi
-#else if grep -q sdb /proc/partitions; then
-#	DRIVE="sdb"
-#fi
+if grep -q sdc /proc/partitions; then
+	DRIVE="sdc"
+fi
 
 # HP servers
 if grep -q c0d0 /proc/partitions; then
