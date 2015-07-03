@@ -1586,7 +1586,7 @@ sub display_node_health
 							$disk_state_class = "highlight_bad";
 							$say_disk_action = AN::Common::template($conf, "common.html", "new_line", "", "", 1);
 							$say_disk_action .= AN::Common::template($conf, "common.html", "enabled-button", {
-								button_class	=>	$disk_state_class,
+								button_class	=>	"highlight_warning",
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0008!#",
 								id		=>	"make_disk_good_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
@@ -1626,12 +1626,19 @@ sub display_node_health
 								next if $this_logical_disk eq "";
 								if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
 								{
+									# NOTE: I only loop once because if two drives are missing from a RAID 6 
+									#       array, the 'Add to Logical Disk' will print twice, once for each
+									#       row. So we exit the loop after the first run and thus will always
+									#       add disks to the first open row.
 									foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 									{
+										AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_row: [$this_row]\n");
 										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
-											$say_disk_action = AN::Common::template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
-											my $say_button   =  AN::Common::get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
+											my $say_button = AN::Common::get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
+											AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_button: [$say_button]\n");
+											
+											$say_disk_action =  AN::Common::template($conf, "common.html", "new_line", "", "", 1) if not $say_disk_action;
 											$say_disk_action .= AN::Common::template($conf, "common.html", "enabled-button", {
 												button_class	=>	"bold_button",
 												button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
@@ -1639,7 +1646,9 @@ sub display_node_health
 												id		=>	"add_disk_to_array_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 											}, "", 1);
 											$say_disk_action .= AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+											AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_disk_action: [$say_disk_action]\n");
 										}
+										last;
 									}
 								}
 								elsif ($this_logical_disk == 9999)
