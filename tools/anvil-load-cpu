@@ -1,0 +1,38 @@
+#!/bin/bash -e
+# 
+# Written by Owen Jacobson - owen.jacobson@grimoire.ca
+# Released as MIT-licensed code
+# 
+# Puts all CPUs under high load. Useful for testing ScanCore's thermal shutdown 
+# Feature. To test, edit '/etc/striker/striker.conf' and set/add:
+# 
+#scanner::temperature::shutdown_limit           = 5
+#scan-ipmitool::thresholds::CPU1::high_warning  = 45
+#scan-ipmitool::thresholds::CPU1::high_critical = 55
+#scan-ipmitool::thresholds::CPU1::weight        = 2.6
+#scan-ipmitool::thresholds::CPU2::high_warning  = 45
+#scan-ipmitool::thresholds::CPU2::high_critical = 55
+#scan-ipmitool::thresholds::CPU2::weight        = 2.6
+# 
+# With ScanCore running, run this program and within a short time a thermal
+# shutdown should be triggered.
+# 
+
+CPUS=$(grep '^processor' /proc/cpuinfo | cut -c 13-)
+PIDS=()
+
+cleanup() {
+  for pid in "${PIDS[@]}"; do
+    kill $pid
+  done
+}
+trap cleanup EXIT
+
+for CORE in ${CPUS};
+do
+  taskset -c "${CORE}" dd if=/dev/zero of=/dev/null &
+  PIDS+=($!)
+done
+
+read -p "Press return to exit..."
+
