@@ -674,7 +674,7 @@ sub initialize_conf
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
-				'anvil-kick-apc-ups_link'	=>	"/etc/rc3.d/S99z_anvil-kick-apc-ups",
+				'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99z_anvil-kick-apc-ups",
 				backups			=>	"/root/backups",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
@@ -700,7 +700,7 @@ sub initialize_conf
 				ntp_conf		=>	"/etc/ntp.conf",
 				scan_agents		=>	"/etc/striker/Config/",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
-				safe_anvil_start_link	=>	"/etc/rc3.d/S99z_safe_anvil_start",
+				safe_anvil_start_link	=>	"/etc/rc3.d/S99y_safe_anvil_start",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",

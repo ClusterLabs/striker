@@ -8555,10 +8555,25 @@ sub display_details
 sub display_watchdog_panel
 {
 	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in display_watchdog_panel()\n");
 	
 	my $watchdog_panel = "";
+	my $use_node       = "";
+	my $this_cluster   = $conf->{cgi}{cluster};
+	my $enable         = 0;
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	{
+		if ($conf->{node}{$node}{up})
+		{
+			$use_node = $node;
+			last;
+		}
+	}
+	
+	return("") if not $use_node;
+	my $node = $use_node;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node].\n");
 
-=pod
 	# If the user has enabled 
 	# sys::use_apc_ups_watchdog, create the button
 	# for it as well.
@@ -8596,29 +8611,16 @@ fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable: [$enable]\n");
 		if ($enable)
 		{
-			$say_hard_reset = AN::Common::template($conf, "common.html", "enabled-button", {
+			$watchdog_panel = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_class	=>	"bold_button",
 				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_reset",
 				button_text	=>	"#!string!button_0065!#",
 				id		=>	"cold_reset",
 			}, "", 1);
-			$say_hard_reset =~ s/\n$//;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
-		}
-		else
-		{
-			# The user asked for Hard-Reset,
-			# but the script isn't installed
-			# on the nodes, so disable the
-			# button.
-			$say_hard_reset = AN::Common::template($conf, "common.html", "disabled-button", {
-				button_text	=>	"#!string!button_0065!#",
-			}, "", 1);
-			$say_hard_reset =~ s/\n$//;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
+			$watchdog_panel =~ s/\n$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watchdog_panel: [$watchdog_panel].\n");
 		}
 	}
-=cut
 	
 	return($watchdog_panel);
 }
@@ -10049,7 +10051,7 @@ sub display_node_controls
 	my $rowspan    = 2;
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-	my $cold_stop  = ($conf->{sys}{up_nodes} > 0)                                                    ? 1 : 0;
+	my $cold_stop  = ($conf->{sys}{up_nodes} > 0)                                                         ? 1 : 0;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::up_nodes: [$conf->{sys}{up_nodes}], dual_boot: [$dual_boot], dual_join: [$dual_join], cold_stop: [$cold_stop]\n");
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{

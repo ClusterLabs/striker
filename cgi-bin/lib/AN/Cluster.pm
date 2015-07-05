@@ -4843,6 +4843,12 @@ Striker Version: $conf->{sys}{version}
 		$xml .= "
 			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
 	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
+	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
+	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
+	record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start]\n");
+	
 	$xml .= "
 		</pdu>
 		<ipmi>
@@ -4877,7 +4883,7 @@ Striker Version: $conf->{sys}{version}
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 		<tools>
-			<use safe_anvil_start=\"true\" anvil-kick-apc-ups=\"false\" />
+			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" />
 		</tools>
 	</common>
 </config>
@@ -9326,7 +9332,7 @@ sub gather_node_details
 	{
 		# Record that this node is up.
 		$conf->{sys}{online_nodes} = 1;
-		$conf->{node}{$node}{up}      = 1;
+		$conf->{node}{$node}{up}   = 1;
 		push @{$conf->{up_nodes}}, $node;
 		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::up: [$conf->{node}{$node}{up}], up_nodes: [".@{$conf->{up_nodes}}."]\n");
 		

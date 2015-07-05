@@ -92,12 +92,6 @@ my $conf = {
 			# Setting either one controls both groups it seems. Set both at the same time to be safe.
 			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1'	=>	"Sleep Time; Outlet Group 1",	# Called 'Main Outlet Group' on SMT1500
 			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2'	=>	"Sleep Time; Outlet Group 2",	# Called 'Outlet Group 1' on SMT1500
-			
-			
-			
-#UPS Basic State:	.1.3.6.1.4.1.318.1.1.1.4.1.1.0		1'	=>	"Unknown, 2'	=>	"Online, 3'	=>	"On Battery, 4'	=>	"onSmartBoost, 5'	=>	"timedSleeping, 6'	=>	"softwareBypass, 7'	=>	"off, 8'	=>	"rebooting, 9'	=>	"switchedBypass, 10'	=>	"hardwareFailureBypass, 11'	=>	"sleepingUntilPowerReturn, 12'	=>	"onSmartTrim, 13'	=>	"ecoMode, 14'	=>	"hotStandby, 15'	=>	"onBatteryTest, 15'	=>	"emergencyStaticBypass, 17'	=>	"staticBypassStandby, 18'	=>	"powerSavingMode, 19'	=>	"spotMode, 20'	=>	"eConversion
-#Main UPS outlet state:	.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1	1'	=>	"On, 2'	=>	"Off, 3'	=>	"Unknown
-#Outlet group 1 state:	.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.2	1'	=>	"On, 2'	=>	"Off, 3'	=>	"Unknown
 		},
 		reboot_ups	=>	{
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.2.0",
@@ -263,7 +257,7 @@ $conf->{sys}{apc}{ups}{power_off_delay} = $conf->{switches}{power_off_delay} if 
 $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 
 # Read the Striker config.
-#read_configuration($conf);
+read_configuration($conf);
 
 # Figure out what UPS(es) we're using.
 get_ups_ips($conf);
@@ -435,8 +429,8 @@ logger($conf, $THIS_FILE, __LINE__, "Run complete.");
 # Only set this to '1' for debugging.
 if ($conf->{sys}{connections})
 {
-	logger($conf, $THIS_FILE, __LINE__, "Monitoring, press <ctrl> + <c> to end.");
-	while (1)
+	#logger($conf, $THIS_FILE, __LINE__, "Monitoring, press <ctrl> + <c> to end.");
+	while (0)
 	{
 		foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		{
@@ -497,9 +491,6 @@ sub manage_cron_entry
 {
 	my ($conf, $task) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - manage_cron_entry(); task: [$task]") if $conf->{sys}{debug};
-	
-	# Disabled for now.
-	return(0);
 	
 	my $changed  = 0;
 	my $raw_cron = "";
