@@ -136,7 +136,7 @@ my $an = AN::Tools->new({data =>
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
-			maximum_ram		=>	(256 * 1048576),
+			maximum_ram		=>	(512 * 1048576),
 			# When both/all UPSes powering a node switch to 
 			# batteries, their remaining hold-up time will be 
 			# checked and the strongest will be compared against

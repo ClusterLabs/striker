@@ -14,6 +14,10 @@ my $conf = inititialize_configuration();
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Removal Script");
 read_configuration($conf);
+if (not $conf->{'remote-usb'}{enable_remote_usb_mount})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Striker Remote USB not enabled, exiting.");
+}
 read_syslog($conf);
 parse_syslog($conf);
 cleanup_remote($conf);
@@ -59,8 +63,8 @@ sub cleanup_local
 	# above. So look up the usual mount point for the removed device and
 	# see if it's expected mount point exists and is empty.
 	my $this_usb    = $conf->{this_usb};
-	my $local_mount = $conf->{usb}{$this_usb}{local_mount};
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_mount: [$local_mount], usb::${this_usb}::local_mount: [$conf->{usb}{$this_usb}{local_mount}]");
+	my $local_mount = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_mount: [$local_mount], remote-usb::local::mount: [$conf->{'remote-usb'}{'local'}{mount}], this_usb: [$this_usb]");
 	if ($local_mount =~ /\/mnt\//)
 	{
 		local(*DIRECTORY);
@@ -183,14 +187,14 @@ sub cleanup_remote
 	my ($conf) = @_;
 	
 	my $this_usb        = $conf->{this_usb};
-	my $remote          = $conf->{usb}{$this_usb}{sshfs}{host};
-	my $remote_user     = $conf->{usb}{$this_usb}{sshfs}{user};
-	my $remote_password = $conf->{usb}{$this_usb}{sshfs}{password};
-	my $local_mount     = $conf->{usb}{$this_usb}{local_mount};
-	my $remote_mount    = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-	my $local_host      = $conf->{'local'}{host};
-	my $local_user      = $conf->{'local'}{user};
-	my $local_password  = $conf->{'local'}{password};
+	my $remote          = $conf->{'remote-usb'}{remote}{host};
+	my $remote_user     = $conf->{'remote-usb'}{remote}{user};
+	my $remote_password = $conf->{'remote-usb'}{remote}{password};
+	my $remote_mount    = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+	my $local_mount     = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+	my $local_host      = $conf->{'remote-usb'}{'local'}{host};
+	my $local_user      = $conf->{'remote-usb'}{'local'}{user};
+	my $local_password  = $conf->{'remote-usb'}{'local'}{password};
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
 	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that were mounted at: [$remote_mount] from here: [$local_user\@$local_host]");
 	
@@ -311,9 +315,9 @@ sub parse_syslog
 {
 	my ($conf) = @_;
 	
-	my $this_usb        = "";
-	my $block_device    = "";
-	my $rule_found      = 0;
+	my $this_usb     = "";
+	my $block_device = "";
+	my $proceed      = 0;
 	foreach my $line (@{$conf->{syslog}})
 	{
 		# This will intentionally overwrite older removal messages
@@ -333,15 +337,29 @@ sub parse_syslog
 	
 	$conf->{this_usb} = $this_usb;
 	logger($conf, $THIS_FILE, __LINE__, "USB device: [$this_usb]");
-	foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
+	
+	# Read the currently mounted devices and see if one of them appears to
+	# be ours.
+	my $shell_call = "$conf->{path}{ls} $conf->{'remote-usb'}{'local'}{mount}*";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
+	while (<$file_handle>)
 	{
-		if (exists $conf->{usb}{$this_usb})
+		chomp;
+		my $line = $_;
+		next if not $line;
+		$line =~ s/\s+/ /g;
+		# If the drive was removed, we're likely going to get an IO error
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line =~ /Input\/output error/i)
 		{
-			$rule_found = 1;
-			last;
+			$proceed = 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - proceed: [$proceed]");
 		}
 	}
-	if (not $rule_found)
+	close $file_handle;
+	
+	if (not $proceed)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "The removed block device is not using a managed USB port.");
 		exit(0);

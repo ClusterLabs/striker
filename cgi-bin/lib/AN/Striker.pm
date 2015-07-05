@@ -8493,6 +8493,7 @@ sub display_details
 		my $drbd_details_panel         = "";
 		my $free_resources_panel       = "";
 		my $no_access_panel            = "";
+		my $watchdog_panel             = "";
 
 		# I don't show below here unless at least one node is up.
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}] ($up_nodes)\n");
@@ -8521,6 +8522,10 @@ sub display_details
 			# Show the free resources available for new VMs.
 			$free_resources_panel = display_free_resources($conf);
 			#print $free_resources_panel;
+			
+			# This generates a panel below 'Available Resources' 
+			# *if* the user has enabled 'sys::use_apc_ups_watchdog'
+			$watchdog_panel = display_watchdog_panel($conf);
 		}
 		else
 		{
@@ -8543,6 +8548,79 @@ sub display_details
 	}
 	
 	return (0);
+}
+
+# This returns a panel for controlling hard-resets via the 'APC UPS Watchdog'
+# tools
+sub display_watchdog_panel
+{
+	my ($conf) = @_;
+	
+	my $watchdog_panel = "";
+
+=pod
+	# If the user has enabled 
+	# sys::use_apc_ups_watchdog, create the button
+	# for it as well.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::use_apc_ups_watchdog: [$conf->{sys}{use_apc_ups_watchdog}].\n");
+	if ($conf->{sys}{use_apc_ups_watchdog})
+	{
+		# Check that 'anvil-kick-apc-ups'
+		# exists on both nodes in /root/.
+		my $shell_call = "
+if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ];
+then 
+    echo ok; 
+else 
+    echo not found; 
+fi";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line eq "ok")
+			{
+				$enable = 1;
+			}
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable: [$enable]\n");
+		if ($enable)
+		{
+			$say_hard_reset = AN::Common::template($conf, "common.html", "enabled-button", {
+				button_class	=>	"bold_button",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_reset",
+				button_text	=>	"#!string!button_0065!#",
+				id		=>	"cold_reset",
+			}, "", 1);
+			$say_hard_reset =~ s/\n$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
+		}
+		else
+		{
+			# The user asked for Hard-Reset,
+			# but the script isn't installed
+			# on the nodes, so disable the
+			# button.
+			$say_hard_reset = AN::Common::template($conf, "common.html", "disabled-button", {
+				button_text	=>	"#!string!button_0065!#",
+			}, "", 1);
+			$say_hard_reset =~ s/\n$//;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
+		}
+	}
+=cut
+	
+	return($watchdog_panel);
 }
 
 # This shows the free resources available to be assigned to new VMs.
@@ -10085,66 +10163,6 @@ sub display_node_controls
 				}, "", 1);
 				$say_boot_or_stop =~ s/\n$//;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_boot_or_stop: [$say_boot_or_stop].\n");
-				
-				# If the user has enabled 
-				# sys::use_apc_ups_watchdog, create the button
-				# for it as well.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::use_apc_ups_watchdog: [$conf->{sys}{use_apc_ups_watchdog}].\n");
-				if ($conf->{sys}{use_apc_ups_watchdog})
-				{
-					# Check that 'anvil-kick-apc-ups'
-					# exists on both nodes in /root/.
-					my $enable     = 0;
-					my $shell_call = "if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ];
-							then 
-								echo ok; 
-							else 
-								echo not found; 
-							fi";
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
-						password	=>	$conf->{sys}{root_password},
-						ssh_fh		=>	"",
-						'close'		=>	0,
-						shell_call	=>	$shell_call,
-					});
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
-					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-						if ($line eq "ok")
-						{
-							$enable = 1;
-						}
-					}
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable: [$enable]\n");
-					if ($enable)
-					{
-						$say_hard_reset = AN::Common::template($conf, "common.html", "enabled-button", {
-							button_class	=>	"bold_button",
-							button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_reset",
-							button_text	=>	"#!string!button_0065!#",
-							id		=>	"cold_reset",
-						}, "", 1);
-						$say_hard_reset =~ s/\n$//;
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
-					}
-					else
-					{
-						# The user asked for Hard-Reset,
-						# but the script isn't installed
-						# on the nodes, so disable the
-						# button.
-						$say_hard_reset = AN::Common::template($conf, "common.html", "disabled-button", {
-							button_text	=>	"#!string!button_0065!#",
-						}, "", 1);
-						$say_hard_reset =~ s/\n$//;
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_hard_reset: [$say_hard_reset].\n");
-					}
-				}
 			}
 			
 			# Dual-Join button

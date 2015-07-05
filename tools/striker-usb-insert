@@ -11,9 +11,9 @@
 # # This triggers the insert and eject scripts to mount and unmount USB drives on
 # # remote servers when a USB storage device is plugged into a managed port.
 # 
-# ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-insert"
+# ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-insert"
 # 
-# ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker-usb-remove"
+# ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-remove"
 #------------------------------------------------------------------------------
 # 
 # Exit codes:
@@ -55,6 +55,10 @@ my $conf = inititialize_configuration();
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
 read_configuration($conf);
+if (not $conf->{'remote-usb'}{enable_remote_usb_mount})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Striker Remote USB Insert not enabled, exiting.");
+}
 read_syslog($conf);
 parse_syslog($conf);
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script finished.");
@@ -70,19 +74,18 @@ sub parse_syslog
 	my $this_usb        = "";
 	my $is_mass_storage = 0;
 	my $block_device    = "";
-	my $rule_found      = 0;
 	foreach my $line (@{$conf->{syslog}})
 	{
 		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line].");
 		if ($line =~ /kernel: usb (.*?): New USB device found/)
 		{
 			$this_usb = $1;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
 		}
 		if ($line =~ /Uniform CD-ROM driver/)
 		{
 			$block_device = 1;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
 			last;
 		}
 		next if not $this_usb;
@@ -90,65 +93,41 @@ sub parse_syslog
 		if ($line =~ /SCSI emulation for USB Mass Storage devices/)
 		{
 			$is_mass_storage = 1;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - is_mass_storage: [$is_mass_storage].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - is_mass_storage: [$is_mass_storage].");
 		}
 		next if not $is_mass_storage;
 		if ($line =~ /sd(\w+): sd(\w+)\d/)
 		{
 			my $lhs = $1;
 			my $rhs = $2;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lhs: [$lhs], rhs: [$rhs]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lhs: [$lhs], rhs: [$rhs]");
 			next if (($lhs) && ($lhs ne $rhs));
 			$block_device = "sd".$lhs;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
 		}
 		next if not $block_device;
 		last;
 	}
-	if ($block_device)
-	{
-		$conf->{this_usb} = $this_usb;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - USB device: [$this_usb], block device: [$block_device]");
-		foreach my $usb (sort {$a cmp $b} keys %{$conf->{usb}})
-		{
-			if (exists $conf->{usb}{$this_usb})
-			{
-				$rule_found   = 1;
-				my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-				my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-				my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-				my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-				my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-				my $device       = "/dev/".$block_device;
-				#logger($conf, $THIS_FILE, __LINE__, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
-				last;
-			}
-		}
-		if (not $rule_found)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "The inserted block device is not using a managed USB port.");
-		}
-	}
-	else
+	if (not $block_device)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "The inserted device is not a block device.");
 		exit(0);
 	}
-
-	if ($rule_found)
-	{
-		my $this_usb     = $conf->{this_usb};
-		my $host         = $conf->{usb}{$this_usb}{sshfs}{host};
-		my $user         = $conf->{usb}{$this_usb}{sshfs}{user};
-		my $password     = $conf->{usb}{$this_usb}{sshfs}{password};
-		my $local_mount  = $conf->{usb}{$this_usb}{local_mount};
-		my $remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-		my $device       = "/dev/".$block_device;
-		logger($conf, $THIS_FILE, __LINE__, "I will mount the partition on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
-		
-		find_file_systems($conf, $device);
-		mount_filesystems($conf);
-	}
+	
+	# We no longer require rules. If it's a block device and if
+	# remote USB mounting is enabled, proceed.
+	$conf->{this_usb} = $this_usb;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - USB device: [$this_usb], block device: [$block_device]");
+	my $host         = $conf->{'remote-usb'}{remote}{host};
+	my $user         = $conf->{'remote-usb'}{remote}{user};
+	my $password     = $conf->{'remote-usb'}{remote}{password};
+	my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+	my $local_mount  = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+	my $device       = "/dev/".$block_device;
+	logger($conf, $THIS_FILE, __LINE__, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+	
+	find_file_systems($conf, $device);
+	mount_filesystems($conf);
 }
 
 # This tries to read the UUIS of a LUKS encypted device then checks to see if
@@ -168,7 +147,7 @@ sub decrypt_luks
 	my $uuid        = "";
 	my $label       = "";
 	my $shell_call  = "
-$conf->{path}{echo} '$conf->{luks}{passphrase}' > $temp_file
+$conf->{path}{echo} '$conf->{'remote-usb'}{luks}{passphrase}' > $temp_file
 $conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
 unlink $temp_file
 if [ -e '$dm_path' ]
@@ -222,9 +201,9 @@ fi
 	else
 	{
 		logger($conf, $THIS_FILE, __LINE__, "The decrypted device: [$dm_path] doesn't appear to have a file system on it. The UUID and/or filesystem Type were not read.");
-		if ($conf->{luks}{force_initialize})
+		if ($conf->{'remote-usb'}{luks}{force_initialize})
 		{
-			logger($conf, $THIS_FILE, __LINE__, "The 'luks::force_initialize' option is set, formatting it now.");
+			logger($conf, $THIS_FILE, __LINE__, "The 'remote-usb::luks::force_initialize' option is set, formatting it now.");
 			my ($fs, $uuid, $label) = format_device($conf, $dm_path);
 			$device = $dm_path;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
@@ -267,7 +246,7 @@ sub format_device_luks
 	my $dm_path     = "/dev/mapper/$device_name";
 	my $temp_file   = "/tmp/".time;
 	my $shell_call  = "
-$conf->{path}{echo} '$conf->{luks}{passphrase}' > $temp_file
+$conf->{path}{echo} '$conf->{'remote-usb'}{luks}{passphrase}' > $temp_file
 $conf->{path}{echo} YES | $conf->{path}{cryptsetup} luksFormat $device $temp_file
 ";
 	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
@@ -360,16 +339,16 @@ sub format_device
 	my ($conf, $device) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - format_device(); device: [$device]");
 	
-	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} $device";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - luks::use_filesystem: [$conf->{luks}{use_filesystem}], luks::fs_label: [$conf->{luks}{fs_label}]");
-	if ($conf->{luks}{fs_label})
+	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::luks::use_filesystem: [$conf->{'remote-usb'}{luks}{use_filesystem}], remote-usb::luks::fs_label: [$conf->{'remote-usb'}{luks}{fs_label}]");
+	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
-		$mkfs_call = "$conf->{path}{mkfs} -t $conf->{luks}{use_filesystem} -L '$conf->{luks}{fs_label}' $device";
+		$mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} -L '$conf->{'remote-usb'}{luks}{fs_label}' $device";
 	}
 	my $fs    = "";
 	my $uuid  = "";
 	my $label = "";
-	logger($conf, $THIS_FILE, __LINE__, "Will now format the device: [$device] as: [$conf->{luks}{use_filesystem}]");
+	logger($conf, $THIS_FILE, __LINE__, "Will now format the device: [$device] as: [$conf->{'remote-usb'}{luks}{use_filesystem}]");
 	my $shell_call = "
 echo 'formatting $device now'
 $mkfs_call
@@ -437,11 +416,11 @@ sub mount_filesystems
 	{
 		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
 		my $this_usb        = $conf->{this_usb};
-		my $remote          = $conf->{usb}{$this_usb}{sshfs}{host};
-		my $remote_user     = $conf->{usb}{$this_usb}{sshfs}{user};
-		my $remote_password = $conf->{usb}{$this_usb}{sshfs}{password};
-		my $local_mount     = $conf->{usb}{$this_usb}{local_mount};
-		my $remote_mount    = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+		my $remote          = $conf->{'remote-usb'}{remote}{host};
+		my $remote_user     = $conf->{'remote-usb'}{remote}{user};
+		my $remote_password = $conf->{'remote-usb'}{remote}{password};
+		my $remote_mount    = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+		my $local_mount     = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
 		if ($conf->{devices}{$device}{label})
 		{
 			$remote_mount .= "-$conf->{devices}{$device}{label}";
@@ -470,12 +449,7 @@ sub mount_filesystems
 			if ($conf->{devices}{$device}{label})
 			{
 				# A label was set, update the mount name.
-				$remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
-				if ($conf->{devices}{$device}{label})
-				{
-					$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
-				}
+				$remote_mount .= "_$conf->{devices}{$device}{label}";
 				if ($i)
 				{
 					$remote_mount .= "-$i";
@@ -493,22 +467,22 @@ sub mount_filesystems
 			
 			# If the user has requested 'luks::force_initialize', 
 			# then we're going to have to format this partition.
-			if ($conf->{luks}{force_initialize})
+			if ($conf->{'remote-usb'}{luks}{force_initialize})
 			{
 				# Before we format, see if the user has set a
 				# protected label and, if so, if this FS is
 				# protected.
 				my $proceed = 1;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - About to format, but checking first for a protected label: [$conf->{luks}{protected_label}] that matches the partition's label: [$conf->{devices}{$device}{label}].");
-				if (($conf->{luks}{protected_label}) && ($conf->{devices}{$device}{label}))
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - About to format, but checking first for a protected label: [$conf->{'remote-usb'}{luks}{protected_label}] that matches the partition's label: [$conf->{devices}{$device}{label}].");
+				if (($conf->{'remote-usb'}{luks}{protected_label}) && ($conf->{devices}{$device}{label}))
 				{
 					# They have and there is a label, see 
 					# if they match.
 					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Label found on file system, seeing if it is protected.");
 					my $wildcard = 0;
-					my $string   = $conf->{luks}{protected_label};
+					my $string   = $conf->{'remote-usb'}{luks}{protected_label};
 					my $label    = $conf->{devices}{$device}{label};
-					if ($conf->{luks}{protected_label} =~ /^(.*?)\*/)
+					if ($conf->{'remote-usb'}{luks}{protected_label} =~ /^(.*?)\*/)
 					{
 						$string   = $1;
 						$wildcard = 1;
@@ -560,13 +534,16 @@ sub mount_filesystems
 					{
 						# A label was set, update the mount name.
 						$remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						if ($conf->{devices}{$device}{label})
 						{
 							$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
+							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 						if ($i)
 						{
 							$remote_mount .= "-$i";
+							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 					}
 				}
@@ -664,12 +641,15 @@ sub mount_filesystems
 		my $directory_in_use = 0; 
 		my $j                = 0;
 		my $use_directory    = $remote_mount;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
+		die if not $use_directory;
 		until($directory_found)
 		{
 			$directory_in_use = 0;
 			if ($j)
 			{
 				$use_directory = "${remote_mount}-$j";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
 			}
 			my $shell_call = "ls -A $use_directory";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
@@ -747,14 +727,15 @@ sub mount_filesystems
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 		
 		# If I am still alive, I can mount.
-		my $local_host         = $conf->{'local'}{host};
-		my $local_user         = $conf->{'local'}{user};
-		my $local_password     = $conf->{'local'}{password};
+		my $local_host         = $conf->{'remote-usb'}{'local'}{host};
+		my $local_user         = $conf->{'remote-usb'}{'local'}{user};
+		my $local_password     = $conf->{'remote-usb'}{'local'}{password};
 		my $remote_known_hosts = "/home/$remote_user/.ssh/known_hosts";
 		if ($remote_user eq "root")
 		{
 			$remote_known_hosts = "/root/.ssh/known_hosts";
 		}
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_host: [$local_host], local_user: [$local_user], local_password: [$local_password], remote_known_hosts: [$remote_known_hosts]");
 		
 		# Make sure the remote machine's user has us in their
 		# known_hosts file.
@@ -910,6 +891,7 @@ sub get_mount_point
 	return($mount_point);
 }
 
+# Find any filesystems on a given device
 sub find_file_systems
 {
 	my ($conf, $device) = @_;
@@ -929,6 +911,7 @@ sub find_file_systems
 		if ($line =~ /^$device\d+/)
 		{
 			$conf->{sys}{partition_seen} = 1;
+			logger($conf, $THIS_FILE, __LINE__, "sys::partition_seen: [$conf->{sys}{partition_seen}]");
 		}
 		# Now see if I can find out more about the drive/partition
 		if (($line eq $device) or ($line =~ /^$device\d+/))
@@ -937,10 +920,11 @@ sub find_file_systems
 		}
 	}
 	close $file_handle;
-		
+	
 	return(0);
 }
 
+# For a given device, see if there is a filesystem
 sub call_blkid
 {
 	my ($conf, $device) = @_;
@@ -956,22 +940,26 @@ sub call_blkid
 		chomp;
 		my $line = $_;
 		next if not $line;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /UUID="(.*?)"/)
 		{
 			$uuid = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - uuid: [$uuid]");
 		}
 		if ($line =~ /TYPE="(.*?)"/)
 		{
 			$fs = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs]");
 		}
 		if ($line =~ /LABEL="(.*?)"/)
 		{
 			$label = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - label: [$label]");
 		}
 	}
 	close $file_handle;
 	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs]");
 	if ($fs)
 	{
 		$conf->{devices}{$device}{fs}    = $fs;
