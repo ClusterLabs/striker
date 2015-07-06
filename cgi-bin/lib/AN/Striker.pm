@@ -162,16 +162,28 @@ sub process_task
 			confirm_cold_stop_anvil($conf);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "cold_reset")
+	elsif ($conf->{cgi}{task} eq "expire_cold_reset")
 	{
 		# Confirmed yet?
 		if ($conf->{cgi}{confirm})
 		{
-			cold_reset_anvil($conf);
+			expire_cold_reset_anvil($conf);
 		}
 		else
 		{
-			confirm_cold_reset_anvil($conf);
+			confirm_expire_cold_reset_anvil($conf);
+		}
+	}
+	elsif ($conf->{cgi}{task} eq "immediate_cold_reset")
+	{
+		# Confirmed yet?
+		if ($conf->{cgi}{confirm})
+		{
+			immediate_cold_reset_anvil($conf);
+		}
+		else
+		{
+			confirm_immediate_cold_reset_anvil($conf);
 		}
 	}
 	elsif ($conf->{cgi}{task} eq "start_vm")
@@ -5754,12 +5766,29 @@ sub confirm_cold_stop_anvil
 }
 
 # Confirm that the user wants to cold-reset the Anvil!.
-sub confirm_cold_reset_anvil
+sub confirm_expire_cold_reset_anvil
 {
 	my ($conf) = @_;
 	
 	# Ask the user to confirm
 	my $say_message = AN::Common::get_string($conf, {key => "message_0435", variables => {
+		anvil	=>	$conf->{cgi}{cluster},
+	}});
+	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
+		message		=>	$say_message,
+		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+	});
+
+	return (0);
+}
+
+# Confirm that the user wants to immediately cold-reset the rack.
+sub confirm_immediate_cold_reset_anvil
+{
+	my ($conf) = @_;
+	
+	# Ask the user to confirm
+	my $say_message = AN::Common::get_string($conf, {key => "message_0439", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
 	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
@@ -7162,12 +7191,24 @@ sub poweroff_node
 
 # This calls 'cold_stop_anvil' but passes the option to NOT cancel the APC UPS
 # watchdog timer.
-sub cold_reset_anvil
+sub expire_cold_reset_anvil
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_reset_anvil()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; expire_cold_reset_anvil()\n");
 	
 	cold_stop_anvil($conf, 0);
+	
+	return(0);
+}
+
+# This calls 'cold_stop_anvil' but passes the option to power cycle the UPSes
+# as soon as the nodes are off and power back on one minute later.
+sub immediate_cold_reset_anvil
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; expire_cold_reset_anvil()\n");
+	
+	cold_stop_anvil($conf, 2);
 	
 	return(0);
 }
@@ -7255,6 +7296,7 @@ sub cold_stop_anvil
 				});
 			}
 		}
+		
 		# Servers down?
 		my $proceed = 1;
 		foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
@@ -7398,15 +7440,21 @@ sub cold_stop_anvil
 						message		=>	"$say_message",
 					});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
-					my $shell_call = "if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
-					then
-						echo 'Cancelling APC UPS watchdog timer.'
-						$conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel
-					fi;
-					poweroff";
-					if (not $cancel_ups)
+					
+					# If 'cancel_ups' is '1' or '2', I will
+					# stop the UPS timer. In '2', we'll
+					# call the poweroff from here once the
+					# nodes are down.
+					my $shell_call = "poweroff";
+					if ($cancel_ups)
 					{
-						$shell_call = "poweroff";
+						$shell_call = "
+if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
+then
+    echo 'Cancelling APC UPS watchdog timer.'
+    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel
+fi;
+poweroff";
 					}
 					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 						node		=>	$node,
@@ -7425,10 +7473,10 @@ sub cold_stop_anvil
 						# watchdog app.
 						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 					}
-					my $message = "#!string!message_0428!#";
-					if (not $cancel_ups)
+					my $message = "#!string!message_0436!#";
+					if ($cancel_ups eq "1")
 					{
-						$message = "#!string!message_0436!#";
+						$message = "#!string!message_0428!#";
 					}
 					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 						row_class	=>	"highlight_detail_bold",
@@ -7485,6 +7533,21 @@ sub cold_stop_anvil
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
+	}
+	
+	# If 'cancel_ups' is '2', go into a loop watching for the nodes to
+	# power off. Once both are off, call out copy of 
+	if ($cancel_ups eq "2")
+	{
+		# OK, wait for both nodes to be off.
+#		AN::Cluster::read_node_cache($conf, $node);
+=pod
+if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
+then
+    echo 'Cancelling APC UPS watchdog timer.'
+    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel
+fi;
+=cut
 	}
 	
 	AN::Cluster::footer($conf);
@@ -8544,6 +8607,7 @@ sub display_details
 			drbd_details_panel		=>	$drbd_details_panel,
 			free_resources_panel		=>	$free_resources_panel,
 			no_access_panel			=>	$no_access_panel,
+			watchdog_panel			=>	$watchdog_panel,
 		});
 	}
 	
@@ -8570,58 +8634,50 @@ sub display_watchdog_panel
 		}
 	}
 	
-	return("") if not $use_node;
+	# Return nothing if this feature is disabled or if neither node is up.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::use_apc_ups_watchdog: [$conf->{sys}{use_apc_ups_watchdog}], use_node: [$use_node].\n");
+	return("") if ((not $conf->{sys}{use_apc_ups_watchdog}) or (not $use_node));
 	my $node = $use_node;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node].\n");
 
-	# If the user has enabled 
-	# sys::use_apc_ups_watchdog, create the button
-	# for it as well.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::use_apc_ups_watchdog: [$conf->{sys}{use_apc_ups_watchdog}].\n");
-	if ($conf->{sys}{use_apc_ups_watchdog})
-	{
-		# Check that 'anvil-kick-apc-ups'
-		# exists on both nodes in /root/.
-		my $shell_call = "
+	# Check that 'anvil-kick-apc-ups' exists.
+	my $shell_call = "
 if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ];
 then 
     echo ok; 
 else 
     echo not found; 
 fi";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	"",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{sys}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line eq "ok")
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line eq "ok")
-			{
-				$enable = 1;
-			}
-		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable: [$enable]\n");
-		if ($enable)
-		{
-			$watchdog_panel = AN::Common::template($conf, "common.html", "enabled-button", {
-				button_class	=>	"bold_button",
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_reset",
-				button_text	=>	"#!string!button_0065!#",
-				id		=>	"cold_reset",
-			}, "", 1);
-			$watchdog_panel =~ s/\n$//;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watchdog_panel: [$watchdog_panel].\n");
+			$enable = 1;
 		}
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable: [$enable]\n");
+	if ($enable)
+	{
+		# It exists, load the template
+		$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
+			immediate_cycle	=>	"?cluster=$conf->{cgi}{cluster}&task=immediate_cold_reset",
+			expire_timer	=>	"?cluster=$conf->{cgi}{cluster}&task=expire_cold_reset",
+		}, "", 1);
+		$watchdog_panel =~ s/\n$//;
+	}
 	
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watchdog_panel: [$watchdog_panel].\n");
 	return($watchdog_panel);
 }
 
@@ -10235,7 +10291,7 @@ sub display_node_controls
 		$boot_or_stop = AN::Common::template($conf, "server.html", "boot-or-stop-two-buttons", {
 			button	=>	$say_boot_or_stop,
 		}, "", 1);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot_or_stop: [$boot_or_stop].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot_or_stop: [$boot_or_stop].\n");
 		$hard_reset = AN::Common::template($conf, "server.html", "boot-or-stop-two-buttons", {
 			button	=>	$say_hard_reset,
 		}, "", 1);
@@ -10245,7 +10301,7 @@ sub display_node_controls
 		$boot_or_stop = AN::Common::template($conf, "server.html", "boot-or-stop-one-button", {
 			button	=>	$say_boot_or_stop,
 		}, "", 1);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot_or_stop: [$boot_or_stop].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot_or_stop: [$boot_or_stop].\n");
 	}
 	my $node_control_panel = AN::Common::template($conf, "server.html", "display-node-controls-full", {
 		say_node1_name		=>	$say_node_name[0],
