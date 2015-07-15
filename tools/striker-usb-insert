@@ -789,7 +789,11 @@ fi";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 			if ($line =~ /sshfs: command not found/)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "Remote machine: [$remote] does not have 'sshfs' installed. Unable to proceed.");
+				# Make this stand out in syslog
+				logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
+				logger($conf, $THIS_FILE, __LINE__, "ERROR: Remote machine: [$remote] does not have 'sshfs' installed.");
+				logger($conf, $THIS_FILE, __LINE__, "ERROR: Unable to mount this USB device on the target node.");
+				logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
 				unmount($conf, $device);
 				exit(7);
 			}

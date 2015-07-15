@@ -340,7 +340,13 @@ sub parse_syslog
 	
 	# Read the currently mounted devices and see if one of them appears to
 	# be ours.
-	my $shell_call = "$conf->{path}{ls} $conf->{'remote-usb'}{'local'}{mount}*";
+	   $conf->{cleanup} = [];
+	my $shell_call      = "
+for dir in \$(ls /mnt/ |grep $this_usb); 
+do
+    echo clean: [/mnt/\${dir}];
+done
+";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
 	while (<$file_handle>)
@@ -351,17 +357,20 @@ sub parse_syslog
 		$line =~ s/\s+/ /g;
 		# If the drive was removed, we're likely going to get an IO error
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-		if ($line =~ /Input\/output error/i)
+		if ($line =~ /clean: \[(.*?)]/i)
 		{
-			$proceed = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - proceed: [$proceed]");
+			my $mount = $1;
+			push @{$conf->{cleanup}}, $mount;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added: [$mount] to cleanup list.");
 		}
 	}
 	close $file_handle;
+	my $cleanup_count = @{$conf->{cleanup}};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cleanup_count: [$cleanup_count]");
 	
-	if (not $proceed)
+	if (not $cleanup_count)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "The removed block device is not using a managed USB port.");
+		logger($conf, $THIS_FILE, __LINE__, "The removed block device is not currently managed by us.");
 		exit(0);
 	}
 	
