@@ -14,6 +14,9 @@ package AN::InstallManifest;
 # - Back-button doesn't work after creating a new manifest.
 # - keys are being added in duplicate to ~/.ssh/authorized_keys
 # - Failed to add local repo... Didn't install the PGP key
+# - Saving the mail data fails to record the target email addresses
+# - The vnetX data comes from the /shared/definitions, this is wrong when the
+#   VM is on and useless when it is off.
 # 
 # TODO:
 # - Add a hidden option to the install manifest for auto-adding RSA keys to
@@ -22,6 +25,9 @@ package AN::InstallManifest;
 # - Check with fragmentless ping if the MTU is >1500 and error out if the 
 #   packet fails. Otherwise, DRBD will blow up.
 # - Add 'skip_if_unavailable=1' to all repos.
+# - Make DG default to low IP range if the first octet is 192.x.x.x
+# - Make it easier to identify which node is being worked on when doing things
+#   like managing a node's Storage (ie; <b>Node X</b> in the top right)
 # 
 
 use strict;
@@ -7363,6 +7369,23 @@ common {
 	syncer {
 		# rate after al-extents use-rle cpu-mask verify-alg csums-alg
 		rate			30M;
+		
+		# During resync-handshake, the dirty-bitmaps of the nodes are 
+		# exchanged and merged (using bit-or), so the nodes will have 
+		# the same understanding of which blocks are dirty. On large 
+		# devices, the fine grained dirty-bitmap can become large as 
+		# well, and the bitmap exchange can take quite some time on 
+		# low-bandwidth links.
+		# 
+		# Because the bitmap typically contains compact areas where all
+		# bits are unset (clean) or set (dirty), a simple run-length 
+		# encoding scheme can considerably reduce the network traffic 
+		# necessary for the bitmap exchange.
+		# 
+		# This can help speed up the start time on resources with large
+		# devices. If you find problems with VGs bein inactive and/or
+		# drbd not promoting to Primary, this may solve the problem.
+		use-rle;
 	}
 }
 ";
@@ -10265,12 +10288,47 @@ sub update_node
 {
 	my ($conf, $node, $password) = @_;
 	
-	# Skip if the user has decided not to run OS updates.
-	return(1) if not $conf->{sys}{update_os};
-	
+	# Remove the 'priority=' line from our repos so that the update hits
+	# the web.
+	my $shell_call = "
+for repo in striker01.repo striker02.repo; 
+do 
+    if [ -e \"/etc/yum.repos.d/\$repo\" ];
+    then
+        if $(grep -q 'priority=' /etc/yum.repos.d/\$repo);
+        then 
+            echo Removing 'priority=' from /etc/yum.repos.d/\${repo}; 
+            sed '/priority=/d' /etc/yum.repos.d/\${repo} > /etc/yum.repos.d/\${repo}
+        else 
+            echo Priority not set in /etc/yum.repos.d/\${repo} 
+        fi
+    fi
+done
+";
 	my $shell_call = "yum $conf->{sys}{yum_switches} update";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	$conf->{node}{$node}{internet} = 0;
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+	}
+	
+	# Skip if the user has decided not to run OS updates.
+	return(1) if not $conf->{sys}{update_os};
+	
+	$shell_call = "yum $conf->{sys}{yum_switches} update";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",

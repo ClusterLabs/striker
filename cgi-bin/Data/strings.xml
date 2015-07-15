@@ -69,8 +69,8 @@
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063">Restart</key>
 		<key name="button_0064">Create</key>
-		<key name="button_0065">Cycle power as soon as the nodes are off</key>
-		<key name="button_0066">Allow current timer to expire</key>
+		<key name="button_0065">Power Cycle Rack</key>
+		<key name="button_0066">Power Off Rack</key>
 		<key name="button_0067"></key>
 		<key name="button_0068"></key>
 		<key name="button_0069"></key>

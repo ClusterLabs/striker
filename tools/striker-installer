@@ -1626,7 +1626,7 @@ sub add_repo
 				}
 			}
 			logger($conf, $THIS_FILE, __LINE__, "- Downloading: [$url]", 1);
-			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean all";
+			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean expire-cache";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);

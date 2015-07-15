@@ -9488,10 +9488,29 @@ lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uui
 		});
 		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], virsh: [$virsh (".@{$virsh}." lines)]\n");
 		
-		# VM definitions
+		# VM definitions - from file
 		$shell_call = "cat /shared/definitions/*";
 		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $vm_defs) = remote_call($conf, {
+			node		=>	$node,
+			port		=>	$conf->{node}{$node}{port},
+			user		=>	"root",
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	$ssh_fh,
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
+		
+		# VM definitions - in memory
+		$shell_call = "
+for server in \$(virsh list | grep running | awk '{print \$2}'); 
+do 
+    virsh dumpxml \$server; 
+done
+";
+		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		($error, $ssh_fh, my $vm_defs_in_mem) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
 			user		=>	"root",
@@ -9593,6 +9612,7 @@ fi;";
 		parse_gfs2           ($conf, $node, $gfs2);
 		parse_virsh          ($conf, $node, $virsh);
 		parse_vm_defs        ($conf, $node, $vm_defs);
+		parse_vm_defs_in_mem ($conf, $node, $vm_defs_in_mem);	# Always parse this after 'parse_vm_defs()' so that we overwrite it.
 		parse_bonds          ($conf, $node, $bond);
 		parse_hosts          ($conf, $node, $hosts);
 		parse_dmesg          ($conf, $node, $dmesg);
@@ -10103,6 +10123,51 @@ sub parse_bonds
 		}
 		next if not $this_bond;
 		#record($conf, "$THIS_FILE ".__LINE__."; this_bond: [$this_bond], line: [$line]\n");
+	}
+	
+	return (0);
+}
+
+# This (tries to) parse the VM definitions as they are in memory.
+sub parse_vm_defs_in_mem
+{
+	my ($conf, $node, $array) = @_;
+	
+	record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs_in_mem() for node: [$node]\n");
+	my $this_vm    = "";
+	my $in_domain  = 0;
+	my $this_array = [];
+	foreach my $line (@{$array})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		# Find the start of a domain.
+		if ($line =~ /<domain/)
+		{
+			$in_domain = 1;
+		}
+		
+		# Get this name of the current domain
+		if ($line =~ /<name>(.*?)<\/name>/)
+		{
+			$this_vm = $1;
+		}
+		
+		# Push all lines into the current domain array.
+		if ($in_domain)
+		{
+			push @{$this_array}, $line;
+		}
+		
+		# When the end of a domain is found, push the array over to
+		# $conf.
+		if ($line =~ /<\/domain>/)
+		{
+			my $vm_key = "vm:$this_vm";
+			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$this_vm], array: [$this_array], lines: [".@{$this_array}."]\n");
+			$conf->{vm}{$vm_key}{xml} = $this_array;
+			$in_domain  = 0;
+			$this_array = [];
+		}
 	}
 	
 	return (0);

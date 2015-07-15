@@ -38,6 +38,37 @@ binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
 my $THIS_FILE = "AN::Striker.pm";
 
+
+# Update the ScanCore database(s) to mark the node's 
+# (hosts -> host_stop_reason = 'clean') so that they don't just turn right back
+# on.
+sub mark_node_as_clean_off
+{
+	my ($conf, $node) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node]\n");
+	
+	# Connect to the databases.
+	
+	### TODO:
+	
+	return(0);
+}
+
+# Update the ScanCore database(s) to mark the node's 
+# (hosts -> host_stop_reason = NULL) so that they turn on if they're suddenly 
+# found to be off.
+sub mark_node_as_clean_on
+{
+	my ($conf, $node) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_on(); node: [$node]\n");
+	
+	# Connect to the databases.
+	
+	### TODO:
+	
+	return(0);
+}
+
 # This takes a node name and returns the peer node.
 sub get_peer_node
 {
@@ -1729,7 +1760,7 @@ sub display_node_health
 						{
 							$foreign_state_class =  "highlight_warning_bold_fixed_width_left";
 							$say_foreign_state   =  "#!string!state_0012!#";
-							$say_disk_action     =  AN::Common::template($conf, "common.html", "new_line", "", "", 1);
+							$say_disk_action     .= AN::Common::template($conf, "common.html", "new_line", "", "", 1);
 							$say_disk_action     .= AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 								button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 								button_text	=>	"#!string!button_0038!#",
@@ -6263,6 +6294,8 @@ sub migrate_vm
 		print AN::Common::template($conf, "server.html", "migrate-server-header", {
 			title	=>	$say_title,
 		});
+		my $shell_call = "$conf->{path}{clusvcadm} -M vm:$vm -m $target";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -6270,7 +6303,7 @@ sub migrate_vm
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"$conf->{path}{clusvcadm} -M vm:$vm -m $target",
+			shell_call	=>	$shell_call,
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -7139,6 +7172,13 @@ sub poweroff_node
 			title	=>	$say_title,
 			message	=>	$say_message,
 		});
+		
+		# The ScanCore that we're cleanly shutting down so we don't 
+		# auto-reboot the node.
+		mark_node_as_clean_off($conf, $node);
+		
+		my $shell_call = "poweroff && echo \"Power down initiated. Please return to the main page now.\"";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -7146,7 +7186,7 @@ sub poweroff_node
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	1,
-			shell_call	=>	"poweroff && echo \"Power down initiated. Please return to the main page now.\"",
+			shell_call	=>	$shell_call,
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
@@ -7441,6 +7481,11 @@ sub cold_stop_anvil
 					});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
 					
+					# The ScanCore that we're cleanly 
+					# shutting down so we don't auto-reboot
+					# the node.
+					mark_node_as_clean_off($conf, $node);
+					
 					# If 'cancel_ups' is '1' or '2', I will
 					# stop the UPS timer. In '2', we'll
 					# call the poweroff from here once the
@@ -7560,9 +7605,10 @@ sub dual_boot
 {
 	my ($conf) = @_;
 	
-	my $proceed = 1;
-	my $cluster = $conf->{cgi}{cluster};
-	my $shell_call      = "";
+	my $proceed      = 1;
+	my $cluster      = $conf->{cgi}{cluster};
+	my $shell_call   = "";
+	my $booted_nodes = [];
 	# TODO: Provide an option to boot just one node if one node fails for
 	# some reason but the other node is fine.
 	AN::Cluster::scan_cluster($conf);
@@ -7629,6 +7675,7 @@ sub dual_boot
 		
 		# Still alive?
 		$shell_call .= "$conf->{node}{$node}{info}{power_check_command} -o on; ";
+		push @{$booted_nodes}, $node;
 	}
 	
 	# Let's go
@@ -7661,6 +7708,14 @@ sub dual_boot
 			});
 		}
 		close $file_handle;
+		
+		# Update ScanCore to tell it that the nodes should now be
+		# booted if they're found to be off.
+		foreach my $node (sort {$a cmp $b} @{$booted_nodes})
+		{
+			mark_node_as_clean_on($conf, $node);
+		}
+		
 		print AN::Common::template($conf, "server.html", "dual-boot-footer");
 	}
 	else

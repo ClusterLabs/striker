@@ -221,6 +221,13 @@ my $conf = {
 				ticks			=>	10,	# ms
 				kick_every_minutes	=>	2,	# Sets the cron job to run this script (kick the UPS) every X minutes
 			},
+			reboot		=>	{
+				power_off_delay		=>	60,
+				sleep_time		=>	60,
+			},
+			'shutdown'	=>	{
+				power_off_delay		=>	60,
+			},
 		},
 		debug		=>	0,
 		log_file	=>	"/var/log/$THIS_FILE.log",
@@ -228,6 +235,7 @@ my $conf = {
 		connections	=>	0,
 	},
 };
+
 
 # No switches is OK, we'll try to detect UPSes via /etc/hosts.
 get_switches($conf);
@@ -288,6 +296,77 @@ if ($conf->{switches}{cancel})
 	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Make sure you cancel on the other node, too!");
 	exit($exit);
 }
+
+# If the user has asked for a hard reboot, set the power off delay and sleep
+# time and then exit.
+if ($conf->{switches}{reboot})
+{
+	my $exit = 0;
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling the previous power-off sequence.");
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
+	{
+		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
+			$exit = 4;
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
+		}
+	}
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Done.");
+	logger($conf, $THIS_FILE, __LINE__, "- Setting the sleep timer to: [$conf->{sys}{apc}{reboot}{sleep_timer}] seconds.");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Initiating power off...");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
+	logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
+	exit($exit);
+}
+
+# If the user has asked for a complete shutdown, set the disable the sleep 
+# timer, set the power off delay and initiate the power down.
+if ($conf->{switches}{'shutdown'})
+{
+	my $exit = 0;
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling the previous power-off sequence.");
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
+	{
+		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
+			$exit = 4;
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
+		}
+	}
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Done.");
+	logger($conf, $THIS_FILE, __LINE__, "- Disabling the sleep timer..");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Setting the shut down timer to: [$conf->{sys}{apc}{'shutdown'}{power_off_delay}] seconds.");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Initiating power off...");
+	### TODO:...
+	logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
+	logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
+	exit($exit);
+}
+
 
 # We're ready to start.
 logger($conf, $THIS_FILE, __LINE__, "Will now attempt to delay the reboot of the following UPS(es):");
@@ -1169,6 +1248,36 @@ SWITCHES
 	The default is '600' (10 minutes). This can be changed by setting:
 	
 	sys::apc::ups::power_off_delay = <seconds>
+
+ --reboot
+
+	This tells all UPSes to power off in $conf->{sys}{apc}{reboot}{power_off_delay} seconds, stay off for $conf->{sys}{apc}{reboot}{sleep_timer}
+	seconds, and then power back on. The effect of this is that all
+	equipment powered by the Anvil!'s UPSes will be hard power cycled.
+	
+	Use with caution!
+	
+	The power off delay and sleep timers can be adjusted in striker.conf
+	by setting;
+	
+	sys::apc::reboot::power_off_delay = x
+	sys::apc::reboot::sleep_time      = x
+	
+	Where 'x' is the desired time in seconds.
+
+ --shutdown
+
+	This tells all UPSes to power in $conf->{sys}{apc}{'shutdown'}{power_off_delay} off and stay off. The effect of
+	this is that everything powered by the Anvil!'s UPSes will shut down
+	entirely and stay off until power is manually restored.
+	
+	Use with caution!
+	
+	The power off delay can be adjusted in striker.conf by setting;
+	
+	sys::apc::shutdown::power_off_delay = x
+	
+	Where 'x' is the desired time in seconds.
 
  --sleep_time <seconds>
 

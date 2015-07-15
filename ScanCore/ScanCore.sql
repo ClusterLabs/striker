@@ -30,7 +30,7 @@ CREATE TABLE hosts (
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
-	host_stop_reason	text,								-- Set to 'power' if the UPS shut down and 'temperature' if the temperature went too high or low
+	host_stop_reason	text,								-- Set to 'power' if the UPS shut down and 'temperature' if the temperature went too high or low. Set to 'clean' if the user used Striker to power off the node (this prevents any Striker from booting the nodes back up).
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
